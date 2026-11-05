@@ -15,35 +15,41 @@ BUN_NATIVE_HOST="$PWD/target/release/bun-native-host" bun examples/native-window
 The explicit executable path is trusted configuration. A successful handshake checks protocol compatibility; it does not authenticate an arbitrary executable. `app.capabilities` is a frozen, readonly list containing the required `tree`, `input_revisions`, `layout_v1`, `interactions_v1` and `window_display_v1` features. Launch fails if the host cannot negotiate all five. Feature availability does not grant OS-service authority; see [the trust boundary](../../docs/decisions/0003-bridge-security.md).
 
 ```ts
-import { createApplication } from '@bun-native/core'
+import { createApplication } from "@bun-native/core";
 
-const executable = process.env['BUN_NATIVE_HOST']
-if (!executable) throw new Error('Set an absolute BUN_NATIVE_HOST path')
+const executable = process.env["BUN_NATIVE_HOST"];
+if (!executable) throw new Error("Set an absolute BUN_NATIVE_HOST path");
 
-const app = await createApplication({ executable })
+const app = await createApplication({ executable });
 try {
-  const window = await app.openWindow({ title: 'Counter', width: 560, height: 380 })
+  const window = await app.openWindow({
+    title: "Counter",
+    width: 560,
+    height: 380,
+  });
   const { label, button } = await window.batch((batch) => {
     batch.set(window.root, {
-      kind: 'box',
-      style: { direction: 'column', gap: 12, padding: 24 },
-    })
-    const label = batch.create({ kind: 'text', text: 'Clicks: 0' })
-    const button = batch.create({ kind: 'button', text: 'Increment' })
-    batch.append(window.root, label)
-    batch.append(window.root, button)
-    return { label, button }
-  })
-  let clicks = 0
+      kind: "box",
+      style: { direction: "column", gap: 12, padding: 24 },
+    });
+    const label = batch.create({ kind: "text", text: "Clicks: 0" });
+    const button = batch.create({ kind: "button", text: "Increment" });
+    batch.append(window.root, label);
+    batch.append(window.root, button);
+    return { label, button };
+  });
+  let clicks = 0;
   window.onClick(button, async (event) => {
-    if (event.signal.aborted) return
-    clicks += 1
-    await window.batch((batch) => batch.set(label, { kind: 'text', text: `Clicks: ${clicks}` }))
-  })
-  await window.closed
+    if (event.signal.aborted) return;
+    clicks += 1;
+    await window.batch((batch) =>
+      batch.set(label, { kind: "text", text: `Clicks: ${clicks}` }),
+    );
+  });
+  await window.closed;
 } finally {
-  await app.shutdown()
-  await app.closed
+  await app.shutdown();
+  await app.closed;
 }
 ```
 
@@ -76,9 +82,13 @@ To replace an input intentionally, read its revision inside the synchronous batc
 
 ```ts
 await window.batch((batch) => {
-  const current = window.input(input)
-  batch.set(input, { kind: 'input', value: 'Replacement', placeholder: 'Type here' }, current.revision)
-})
+  const current = window.input(input);
+  batch.set(
+    input,
+    { kind: "input", value: "Replacement", placeholder: "Type here" },
+    current.revision,
+  );
+});
 ```
 
 The native side rejects a replacement if a newer edit wins the race before commit. Handle that stale-revision error according to the application's intent; do not retry blindly with an old value. An accepted explicit replacement advances the input revision even if its text is unchanged. An input callback already describes a native edit: update application state without echoing the same text back into the native input.
@@ -88,13 +98,18 @@ The native side rejects a replacement if a newer edit wins the race before commi
 `window.on(node, type, listener, { capture?: boolean })` registers one binding for that node, event type and phase. It accepts any owned node, including an ancestor box. A new binding replaces the previous binding in that exact slot; it does not replace another event type or phase. The returned unsubscribe is idempotent and cannot remove a replacement. `onClick(button, listener)` and `onInput(input, listener)` are target-specific bubble conveniences using the same registry.
 
 ```ts
-window.on(window.root, 'key_down', (event) => {
-  console.log(event.key, event.modifiers.control, event.phase)
-}, { capture: true })
+window.on(
+  window.root,
+  "key_down",
+  (event) => {
+    console.log(event.key, event.modifiers.control, event.phase);
+  },
+  { capture: true },
+);
 
-window.on(button, 'pointer_up', (event) => {
-  console.log(event.button, event.x, event.y)
-})
+window.on(button, "pointer_up", (event) => {
+  console.log(event.button, event.x, event.y);
+});
 ```
 
 | Type                         | Additional fields                      | Meaning                                                                  |
@@ -144,7 +159,7 @@ No per-request option or protocol message can grant access. Both framework
 adapters use this same public window method.
 
 `app.serviceCapabilities.windowDisplay` reports implementation availability,
-the negotiated permission and `owned_window` scope. Menus, dialogs, notifications, drag/drop, filesystem grants and PTY/process
+the negotiated permission and `owned_window` scope. Menus, message dialogs, drag/drop, filesystem grants and PTY/process
 entries explicitly report `unavailable` / `not_implemented`; they have no
 placeholder callable methods. This policy constrains the selected native
 host, not trusted Bun code's ordinary OS APIs.
@@ -193,14 +208,17 @@ execution; the existing display evidence describes its previous exact source.
 ### Global shortcuts
 
 ```ts
-const app = await createApplication({ executable, permissions: { globalShortcuts: 'allow' } })
-const window = await app.openWindow({ title: 'Launcher' })
+const app = await createApplication({
+  executable,
+  permissions: { globalShortcuts: "allow" },
+});
+const window = await app.openWindow({ title: "Launcher" });
 const shortcut = await window.registerGlobalShortcut(
-  { key: 'k', control: true, alt: true },
-  (event) => console.log('activated', event.sequence)
-)
+  { key: "k", control: true, alt: true },
+  (event) => console.log("activated", event.sequence),
+);
 // Later: delivery stops at once; the promise resolves after the OS release.
-await shortcut.unregister()
+await shortcut.unregister();
 ```
 
 `window.registerGlobalShortcut(options, listener)` registers an OS-wide
@@ -227,17 +245,21 @@ See [ADR 0008](../../docs/decisions/0008-native-global-shortcuts.md).
 ### Notifications
 
 ```ts
-const app = await createApplication({ executable, permissions: { notifications: 'allow' } })
-const window = await app.openWindow({ title: 'Builds' })
+const app = await createApplication({
+  executable,
+  permissions: { notifications: "allow" },
+});
+const window = await app.openWindow({ title: "Builds" });
 const notification = await window.postNotification(
-  { title: 'Build finished', body: 'All tests passed' },
+  { title: "Build finished", body: "All tests passed" },
   (event) => {
-    if (event.type === 'notification_activated') window.root /* focus your UI */
-    else console.log('dismissed', event.reason)
-  }
-)
+    if (event.type === "notification_activated")
+      window.root; /* focus your UI */
+    else console.log("dismissed", event.reason);
+  },
+);
 // Later: delivery stops at once; the promise resolves after the server closes it.
-await notification.withdraw()
+await notification.withdraw();
 ```
 
 `window.postNotification(options, listener)` posts a plain-text desktop
@@ -267,14 +289,18 @@ are live per application. See
 const app = await createApplication({
   executable,
   permissions: {
-    filesystemRoots: [{ id: 'workspace', path: '/home/me/project', access: 'read_write' }],
+    filesystemRoots: [
+      { id: "workspace", path: "/home/me/project", access: "read_write" },
+    ],
   },
-})
-const window = await app.openWindow({ title: 'Workspace' })
-const grant = await window.openFileGrant('workspace', { access: 'read_write' })
-await grant.write('notes/today.md', new TextEncoder().encode('# Today\n'), { mode: 'truncate' })
-const { bytes } = await grant.read('notes/today.md')
-await grant.close()
+});
+const window = await app.openWindow({ title: "Workspace" });
+const grant = await window.openFileGrant("workspace", { access: "read_write" });
+await grant.write("notes/today.md", new TextEncoder().encode("# Today\n"), {
+  mode: "truncate",
+});
+const { bytes } = await grant.read("notes/today.md");
+await grant.close();
 ```
 
 `window.openFileGrant(root, { access })` opens a scoped grant on a directory
@@ -288,6 +314,47 @@ directory with `openat2` without following symbolic links. The frozen
 Closing the grant, its window or the application revokes it and withholds
 late results. Other targets report `unavailable` / `unsupported_platform`.
 See the [service contract](../../docs/native-services.md#filesystem-grants).
+
+### File dialogs
+
+```ts
+const app = await createApplication({
+  executable,
+  permissions: { fileDialogs: "allow" },
+});
+const window = await app.openWindow({ title: "Editor" });
+const controller = new AbortController();
+const opened = await window.showOpenDialog(
+  {
+    title: "Open",
+    select: "files",
+    filters: [{ name: "Text", patterns: ["*.txt"] }],
+  },
+  { signal: controller.signal },
+);
+if (opened.kind === "selected") console.log(opened.paths);
+const saved = await window.showSaveDialog({
+  title: "Save as",
+  name: "notes.txt",
+});
+if (saved.kind === "selected") console.log(saved.path);
+```
+
+`window.showOpenDialog(options, { signal })` (`select`: `file`, `files` or
+`directory`) and `window.showSaveDialog(options, { signal })` show the
+operating system's file chooser, owned by the window. The `fileDialogs` launch
+permission defaults to `deny`. On Linux with a D-Bus session bus
+`app.serviceCapabilities.fileDialogs` reports `available`, the permission,
+`owned_window` scope and backend `xdg_desktop_portal`; other targets report
+`unavailable` / `unsupported_platform`. A missing portal rejects with
+`NativeServiceError` code `service_unavailable`.
+
+Results are frozen `{ kind: 'selected', paths }` / `{ kind: 'selected', path }`
+or `{ kind: 'cancelled' }`. **The paths are data, not filesystem authority**:
+nothing is opened, created or granted, and turning a path into a scoped grant
+is a separate operation. A window has at most one file dialog. Aborting the
+signal, closing the window or shutting down closes the OS dialog. See
+[ADR 0013](../../docs/decisions/0013-native-file-dialogs.md).
 
 ## Supported scope
 

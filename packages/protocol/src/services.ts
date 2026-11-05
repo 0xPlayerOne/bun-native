@@ -18,6 +18,8 @@ export interface ServicePolicy {
   notifications: boolean
   /** Directories a window may open as scoped grants, in launch order. */
   filesystem_roots: FilesystemRoot[]
+  /** Optional on the wire, so existing peers stay exact: absence is a denial. */
+  file_dialogs?: boolean
 }
 
 /** The closed set of layout-level keys a global shortcut may name. */
@@ -115,6 +117,7 @@ export function parseServicePolicy(value: unknown): ServicePolicy {
     'global_shortcuts',
     'notifications',
     'filesystem_roots',
+    'file_dialogs',
   ])
   const grant = (key: keyof ServicePolicy) => {
     if (typeof data[key] !== 'boolean')
@@ -128,6 +131,7 @@ export function parseServicePolicy(value: unknown): ServicePolicy {
     global_shortcuts: grant('global_shortcuts'),
     notifications: grant('notifications'),
     filesystem_roots: parseFilesystemRoots(data['filesystem_roots']),
+    ...('file_dialogs' in data ? { file_dialogs: grant('file_dialogs') } : {}),
   }
 }
 

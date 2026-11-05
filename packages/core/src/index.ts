@@ -25,6 +25,13 @@ export type {
   NativeFileStat,
 } from './files.ts'
 export type {
+  FileDialogFilter,
+  OpenDialogOptions,
+  OpenDialogResult,
+  SaveDialogOptions,
+  SaveDialogResult,
+} from './dialogs.ts'
+export type {
   ApplicationOptions,
   ClickEvent,
   Element,

@@ -20,6 +20,12 @@ import type {
 } from './shortcuts.ts'
 import type { NativeNotification, NotificationEvent, NotificationOptions } from './notifications.ts'
 import type { FileGrantOptions, NativeFileGrant } from './files.ts'
+import type {
+  OpenDialogOptions,
+  OpenDialogResult,
+  SaveDialogOptions,
+  SaveDialogResult,
+} from './dialogs.ts'
 
 export type { Element, KeyModifiers, PointerButton, Style }
 export type ApplicationOptions = HostOptions
@@ -179,6 +185,21 @@ export interface NativeWindow {
    * pathname or model text can create one. Closing the window revokes it.
    */
   openFileGrant(root: string, options?: FileGrantOptions): Promise<NativeFileGrant>
+  /**
+   * Show an OS file-open or folder dialog owned by this window. Requires the
+   * immutable fileDialogs launch grant; at most one file dialog per window.
+   * The returned paths are data, never a filesystem grant. Aborting the signal,
+   * closing the window or shutting down closes the dialog.
+   */
+  showOpenDialog(
+    options: OpenDialogOptions,
+    request?: ServiceRequestOptions
+  ): Promise<OpenDialogResult>
+  /** Show an OS save dialog owned by this window. Nothing is written or created. */
+  showSaveDialog(
+    options: SaveDialogOptions,
+    request?: ServiceRequestOptions
+  ): Promise<SaveDialogResult>
   /** Idempotent. Revokes listeners before requesting native window removal. */
   close(): Promise<void>
 }

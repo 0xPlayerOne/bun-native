@@ -58,6 +58,7 @@ identifier!(EventSequence);
 identifier!(ShortcutId);
 identifier!(NotificationId);
 identifier!(FileGrantId);
+identifier!(DialogId);
 
 /// JSON has one number type. Match JavaScript's safe-integer validation even
 /// when a sender spells an integer as `1.0` or `1e0` instead of canonical `1`.
@@ -423,6 +424,17 @@ pub enum Command {
         path: String,
         operation: crate::FileOperation,
     },
+    ShowFileDialog {
+        id: RequestId,
+        window_id: WindowId,
+        dialog_id: DialogId,
+        options: crate::FileDialogOptions,
+    },
+    CloseFileDialog {
+        id: RequestId,
+        window_id: WindowId,
+        dialog_id: DialogId,
+    },
     Shutdown {
         id: RequestId,
     },
@@ -464,6 +476,7 @@ pub enum Capability {
     GlobalShortcutsV1,
     NotificationsV1,
     FilesystemGrantsV1,
+    FileDialogsV1,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -521,6 +534,8 @@ impl Command {
             | Self::OpenFileGrant { id, .. }
             | Self::CloseFileGrant { id, .. }
             | Self::FileRequest { id, .. }
+            | Self::ShowFileDialog { id, .. }
+            | Self::CloseFileDialog { id, .. }
             | Self::Shutdown { id } => *id,
         }
     }
@@ -599,6 +614,7 @@ impl Command {
             Self::FileRequest {
                 path, operation, ..
             } => operation.validate(path)?,
+            Self::ShowFileDialog { options, .. } => options.validate()?,
             Self::Hello { .. }
             | Self::Close { .. }
             | Self::DisplaySnapshot { .. }
@@ -606,6 +622,7 @@ impl Command {
             | Self::UnregisterGlobalShortcut { .. }
             | Self::WithdrawNotification { .. }
             | Self::CloseFileGrant { .. }
+            | Self::CloseFileDialog { .. }
             | Self::Shutdown { .. } => {}
         }
         Ok(())

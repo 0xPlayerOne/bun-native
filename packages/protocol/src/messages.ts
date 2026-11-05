@@ -1,3 +1,9 @@
+import {
+  parseFileDialogOptions,
+  parseFileDialogResult,
+  type FileDialogOptions,
+  type FileDialogResult,
+} from './dialogs.ts'
 import { parseElement, type Element } from './elements.ts'
 import { MAX_FRAME_BYTES, ProtocolError } from './framing.ts'
 import {
@@ -82,7 +88,11 @@ export const DEFAULT_LIMITS: Readonly<Limits> = Object.freeze({
 
 export type Operation =
   | { type: 'create'; node_id: number; element: Element }
-  | { type: 'set'; node_id: number; element: Exclude<Element, { kind: 'input' }> }
+  | {
+      type: 'set'
+      node_id: number
+      element: Exclude<Element, { kind: 'input' }>
+    }
   | {
       type: 'set'
       node_id: number
@@ -122,7 +132,12 @@ export type Command =
       key: string
       modifiers: ShortcutModifiers
     }
-  | { id: number; type: 'unregister_global_shortcut'; window_id: number; shortcut_id: number }
+  | {
+      id: number
+      type: 'unregister_global_shortcut'
+      window_id: number
+      shortcut_id: number
+    }
   | {
       id: number
       type: 'post_notification'
@@ -131,7 +146,12 @@ export type Command =
       title: string
       body: string
     }
-  | { id: number; type: 'withdraw_notification'; window_id: number; notification_id: number }
+  | {
+      id: number
+      type: 'withdraw_notification'
+      window_id: number
+      notification_id: number
+    }
   | {
       id: number
       type: 'open_file_grant'
@@ -140,7 +160,12 @@ export type Command =
       root: string
       access: FileAccess
     }
-  | { id: number; type: 'close_file_grant'; window_id: number; grant_id: number }
+  | {
+      id: number
+      type: 'close_file_grant'
+      window_id: number
+      grant_id: number
+    }
   | {
       id: number
       type: 'file_request'
@@ -148,6 +173,19 @@ export type Command =
       grant_id: number
       path: string
       operation: FileOperation
+    }
+  | {
+      id: number
+      type: 'show_file_dialog'
+      window_id: number
+      dialog_id: number
+      options: FileDialogOptions
+    }
+  | {
+      id: number
+      type: 'close_file_dialog'
+      window_id: number
+      dialog_id: number
     }
   | { id: number; type: 'shutdown' }
 
@@ -186,6 +224,7 @@ const CAPABILITIES = [
   'global_shortcuts_v1',
   'notifications_v1',
   'filesystem_grants_v1',
+  'file_dialogs_v1',
 ] as const
 export type Capability = (typeof CAPABILITIES)[number]
 
@@ -214,10 +253,32 @@ type RoutedEvent = NodeEventRoute &
     | { type: 'focus' }
     | { type: 'blur' }
     | { type: 'input'; value: string; input_revision: number }
-    | { type: 'key_down'; key: string; key_char?: string; modifiers: KeyModifiers }
-    | { type: 'key_up'; key: string; key_char?: string; modifiers: KeyModifiers }
-    | { type: 'pointer_down'; button: PointerButton; x: number; y: number; modifiers: KeyModifiers }
-    | { type: 'pointer_up'; button: PointerButton; x: number; y: number; modifiers: KeyModifiers }
+    | {
+        type: 'key_down'
+        key: string
+        key_char?: string
+        modifiers: KeyModifiers
+      }
+    | {
+        type: 'key_up'
+        key: string
+        key_char?: string
+        modifiers: KeyModifiers
+      }
+    | {
+        type: 'pointer_down'
+        button: PointerButton
+        x: number
+        y: number
+        modifiers: KeyModifiers
+      }
+    | {
+        type: 'pointer_up'
+        button: PointerButton
+        x: number
+        y: number
+        modifiers: KeyModifiers
+      }
   )
 
 export type NativeEvent =
@@ -229,15 +290,46 @@ export type NativeEvent =
       service_policy: ServicePolicy
     }
   | { type: 'ack'; id: number }
-  | { type: 'opened'; id: number; window_id: number; root_id: number; tree_revision: number }
+  | {
+      type: 'opened'
+      id: number
+      window_id: number
+      root_id: number
+      tree_revision: number
+    }
   | { type: 'applied'; id: number; window_id: number; tree_revision: number }
-  | { type: 'display_snapshot'; id: number; window_id: number; snapshot: DisplaySnapshot }
-  | { type: 'clipboard_text'; id: number; window_id: number; result: ClipboardText }
+  | {
+      type: 'display_snapshot'
+      id: number
+      window_id: number
+      snapshot: DisplaySnapshot
+    }
+  | {
+      type: 'clipboard_text'
+      id: number
+      window_id: number
+      result: ClipboardText
+    }
   | { type: 'clipboard_written'; id: number; window_id: number }
-  | { type: 'global_shortcut_registered'; id: number; window_id: number; shortcut_id: number }
-  | { type: 'global_shortcut_unregistered'; id: number; window_id: number; shortcut_id: number }
+  | {
+      type: 'global_shortcut_registered'
+      id: number
+      window_id: number
+      shortcut_id: number
+    }
+  | {
+      type: 'global_shortcut_unregistered'
+      id: number
+      window_id: number
+      shortcut_id: number
+    }
   | RoutedEvent
-  | { type: 'global_shortcut'; sequence: number; window_id: number; shortcut_id: number }
+  | {
+      type: 'global_shortcut'
+      sequence: number
+      window_id: number
+      shortcut_id: number
+    }
   | {
       type: 'notification_posted'
       id: number
@@ -245,8 +337,18 @@ export type NativeEvent =
       notification_id: number
       activatable: boolean
     }
-  | { type: 'notification_withdrawn'; id: number; window_id: number; notification_id: number }
-  | { type: 'notification_activated'; sequence: number; window_id: number; notification_id: number }
+  | {
+      type: 'notification_withdrawn'
+      id: number
+      window_id: number
+      notification_id: number
+    }
+  | {
+      type: 'notification_activated'
+      sequence: number
+      window_id: number
+      notification_id: number
+    }
   | {
       type: 'notification_dismissed'
       sequence: number
@@ -254,9 +356,44 @@ export type NativeEvent =
       notification_id: number
       reason: NotificationDismissal
     }
-  | { type: 'file_grant_opened'; id: number; window_id: number; grant_id: number }
-  | { type: 'file_grant_closed'; id: number; window_id: number; grant_id: number }
-  | { type: 'file_result'; id: number; window_id: number; grant_id: number; result: FileResult }
+  | {
+      type: 'file_grant_opened'
+      id: number
+      window_id: number
+      grant_id: number
+    }
+  | {
+      type: 'file_grant_closed'
+      id: number
+      window_id: number
+      grant_id: number
+    }
+  | {
+      type: 'file_result'
+      id: number
+      window_id: number
+      grant_id: number
+      result: FileResult
+    }
+  | {
+      type: 'file_dialog_opened'
+      id: number
+      window_id: number
+      dialog_id: number
+    }
+  | {
+      type: 'file_dialog_closed'
+      id: number
+      window_id: number
+      dialog_id: number
+    }
+  | {
+      type: 'file_dialog_completed'
+      sequence: number
+      window_id: number
+      dialog_id: number
+      result: FileDialogResult
+    }
   | { type: 'closed'; sequence: number; window_id: number }
   | { type: 'error'; id?: number; code: ErrorCode; message: string }
 
@@ -313,7 +450,11 @@ export function parseCommand(value: unknown): Command {
   switch (message['type']) {
     case 'hello':
       keys(message, ['id', 'type', 'protocol'])
-      return { id: request, type: 'hello', protocol: version(message['protocol']) }
+      return {
+        id: request,
+        type: 'hello',
+        protocol: version(message['protocol']),
+      }
     case 'open': {
       keys(message, ['id', 'type', 'window_id', 'root_id', 'title', 'width', 'height'])
       const title = string(message['title'], 'title', MAX_TITLE_BYTES)
@@ -348,7 +489,11 @@ export function parseCommand(value: unknown): Command {
     case 'display_snapshot':
     case 'clipboard_read':
       keys(message, ['id', 'type', 'window_id'])
-      return { id: request, type: message['type'], window_id: id(message['window_id']) }
+      return {
+        id: request,
+        type: message['type'],
+        window_id: id(message['window_id']),
+      }
     case 'clipboard_write':
       keys(message, ['id', 'type', 'window_id', 'text'])
       return {
@@ -425,6 +570,23 @@ export function parseCommand(value: unknown): Command {
         operation: parseFileOperation(message['operation'], path),
       }
     }
+    case 'show_file_dialog':
+      keys(message, ['id', 'type', 'window_id', 'dialog_id', 'options'])
+      return {
+        id: request,
+        type: 'show_file_dialog',
+        window_id: id(message['window_id']),
+        dialog_id: id(message['dialog_id']),
+        options: parseFileDialogOptions(message['options']),
+      }
+    case 'close_file_dialog':
+      keys(message, ['id', 'type', 'window_id', 'dialog_id'])
+      return {
+        id: request,
+        type: 'close_file_dialog',
+        window_id: id(message['window_id']),
+        dialog_id: id(message['dialog_id']),
+      }
     case 'shutdown':
       keys(message, ['id', 'type'])
       return { id: request, type: 'shutdown' }
@@ -626,6 +788,24 @@ export function parseEvent(value: unknown): NativeEvent {
         window_id: id(message['window_id']),
         grant_id: id(message['grant_id']),
         result: parseFileResult(message['result']),
+      }
+    case 'file_dialog_opened':
+    case 'file_dialog_closed':
+      keys(message, ['type', 'id', 'window_id', 'dialog_id'])
+      return {
+        type: message['type'],
+        id: id(message['id']),
+        window_id: id(message['window_id']),
+        dialog_id: id(message['dialog_id']),
+      }
+    case 'file_dialog_completed':
+      keys(message, ['type', 'sequence', 'window_id', 'dialog_id', 'result'])
+      return {
+        type: 'file_dialog_completed',
+        sequence: id(message['sequence']),
+        window_id: id(message['window_id']),
+        dialog_id: id(message['dialog_id']),
+        result: parseFileDialogResult(message['result']),
       }
     case 'click':
     case 'focus':

@@ -40,6 +40,8 @@ export type WindowCommand = WithoutId<
         | 'open_file_grant'
         | 'close_file_grant'
         | 'file_request'
+        | 'show_file_dialog'
+        | 'close_file_dialog'
     }
   >
 >
@@ -61,6 +63,8 @@ export type HostResponse = Extract<
       | 'file_grant_opened'
       | 'file_grant_closed'
       | 'file_result'
+      | 'file_dialog_opened'
+      | 'file_dialog_closed'
   }
 >
 
@@ -77,7 +81,13 @@ export interface ServicePermissions {
    * Directories an owned window may open as scoped file grants. Each `path`
    * is absolute and normalized; `access` caps every grant on that root.
    */
-  readonly filesystemRoots?: readonly Readonly<{ id: string; path: string; access: FileAccess }>[]
+  readonly filesystemRoots?: readonly Readonly<{
+    id: string
+    path: string
+    access: FileAccess
+  }>[]
+  /** OS file open/save/folder dialogs owned by a window. Paths are data, never grants. */
+  readonly fileDialogs?: 'allow' | 'deny'
 }
 
 export class NativeCommandError extends Error {
@@ -113,6 +123,7 @@ function launchPolicy(value: unknown = {}): Readonly<ServicePolicy> {
           'globalShortcuts',
           'notifications',
           'filesystemRoots',
+          'fileDialogs',
         ].includes(key)
     )
   )
@@ -130,6 +141,7 @@ function launchPolicy(value: unknown = {}): Readonly<ServicePolicy> {
     global_shortcuts: grant('globalShortcuts'),
     notifications: grant('notifications'),
     filesystem_roots: filesystemRoots(value),
+    file_dialogs: grant('fileDialogs'),
   })
 }
 
@@ -156,6 +168,7 @@ function samePolicy(left: Readonly<ServicePolicy>, right: Readonly<ServicePolicy
     left.clipboard_write === right.clipboard_write &&
     left.global_shortcuts === right.global_shortcuts &&
     left.notifications === right.notifications &&
+    (left.file_dialogs ?? false) === (right.file_dialogs ?? false) &&
     left.filesystem_roots.length === right.filesystem_roots.length &&
     left.filesystem_roots.every(
       (root, index) =>
@@ -223,6 +236,7 @@ export class NativeHost implements AsyncIterable<WindowEvent> {
         ...(requestedPolicy.global_shortcuts ? ['--bun-native-allow-global-shortcuts'] : []),
         ...(requestedPolicy.notifications ? ['--bun-native-allow-notifications'] : []),
         ...requestedPolicy.filesystem_roots.map(filesystemRootArgument),
+        ...(requestedPolicy.file_dialogs ? ['--bun-native-allow-file-dialogs'] : []),
       ],
       stdin: 'pipe',
       stdout: 'pipe',
@@ -318,6 +332,12 @@ export class NativeHost implements AsyncIterable<WindowEvent> {
   send(
     command: Extract<WindowCommand, { type: 'file_request' }>
   ): Promise<Extract<HostResponse, { type: 'file_result' }>>
+  send(
+    command: Extract<WindowCommand, { type: 'show_file_dialog' }>
+  ): Promise<Extract<HostResponse, { type: 'file_dialog_opened' }>>
+  send(
+    command: Extract<WindowCommand, { type: 'close_file_dialog' }>
+  ): Promise<Extract<HostResponse, { type: 'file_dialog_closed' }>>
   send(command: WindowCommand): Promise<HostResponse>
   send(command: WindowCommand): Promise<HostResponse> {
     if (this.phase !== 'running') return Promise.reject(this.closedError())
@@ -549,6 +569,8 @@ export class NativeHost implements AsyncIterable<WindowEvent> {
       event.type === 'file_grant_opened' ||
       event.type === 'file_grant_closed' ||
       event.type === 'file_result' ||
+      event.type === 'file_dialog_opened' ||
+      event.type === 'file_dialog_closed' ||
       event.type === 'error'
     ) {
       if (event.type === 'error' && event.id === undefined)
@@ -629,6 +651,18 @@ export class NativeHost implements AsyncIterable<WindowEvent> {
           response.window_id === command.window_id &&
           response.grant_id === command.grant_id &&
           fileResultAnswers(command.operation, response.result)
+        )
+      case 'show_file_dialog':
+        return (
+          response.type === 'file_dialog_opened' &&
+          response.window_id === command.window_id &&
+          response.dialog_id === command.dialog_id
+        )
+      case 'close_file_dialog':
+        return (
+          response.type === 'file_dialog_closed' &&
+          response.window_id === command.window_id &&
+          response.dialog_id === command.dialog_id
         )
       case 'open':
         return (

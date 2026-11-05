@@ -10,8 +10,14 @@ defines the supported style subset; the [interaction contract](native-events.md)
 defines native event observations and public propagation. The
 [service contract](native-services.md) defines immutable launch policy and
 owned-window display reads, bounded clipboard transfers, owned global
-shortcut registrations, owned desktop notifications and scoped filesystem
-grants on launch-policy roots ([ADR 0010](decisions/0010-filesystem-grants.md)).
+shortcut registrations, owned desktop notifications, scoped filesystem
+grants on launch-policy roots ([ADR 0010](decisions/0010-filesystem-grants.md))
+and owned OS file dialogs ([ADR 0013](decisions/0013-native-file-dialogs.md)).
+File dialogs add the optional `file_dialogs_v1` capability,
+`show_file_dialog`/`close_file_dialog` commands, `file_dialog_opened`/
+`file_dialog_closed` responses and a sequenced `file_dialog_completed` event
+without changing the protocol version; the policy's `file_dialogs` field is
+optional and omitted when denied.
 
 The authoritative schemas and validators are
 [`packages/protocol/src/messages.ts`](../packages/protocol/src/messages.ts),
@@ -243,7 +249,8 @@ Protocol 9's services additionally require their immutable explicit
 launch policy; there is no wire grant or general service selector. File
 commands (`open_file_grant`, `close_file_grant`, `file_request`) name a
 launch-policy root ID and relative paths only; no command accepts an absolute
-path. No shell, process, network, update or browser service command exists. The
+path. `show_file_dialog` returns chosen paths as data and grants no access
+to them. No shell, process, network, update or browser service command exists. The
 [security ADR](decisions/0003-bridge-security.md) defines the trusted
 application/untrusted data boundary and default-deny requirements for future
 services. Neither AOT nor the child-process boundary sandboxes trusted Bun code.

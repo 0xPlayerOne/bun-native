@@ -1,4 +1,9 @@
-import { ProtocolError, type Capability, type Limits } from '@bun-native/protocol'
+import {
+  ProtocolError,
+  type Capability,
+  type FileDialogOptions,
+  type Limits,
+} from '@bun-native/protocol'
 import {
   NativeCommandError,
   NativeHost,
@@ -37,6 +42,15 @@ import {
   type FileGrantOptions,
   type NativeFileGrant,
 } from './files.ts'
+import {
+  FileDialogRequest,
+  openDialogRequest,
+  saveDialogRequest,
+  type OpenDialogOptions,
+  type OpenDialogResult,
+  type SaveDialogOptions,
+  type SaveDialogResult,
+} from './dialogs.ts'
 import { makeNode, own, Transaction, type NodeState } from './tree.ts'
 import {
   NativeStateError,
@@ -73,6 +87,8 @@ class Application implements NativeApplication {
   private nextNotification = 1
   readonly fileGrants = new Map<number, FileGrantRegistration>()
   private nextFileGrant = 1
+  readonly dialogs = new Map<number, FileDialogRequest>()
+  private nextDialog = 1
   private tail: Promise<void> = Promise.resolve()
   private queued = 0
   private readonly services = new Set<Promise<void>>()
@@ -143,6 +159,16 @@ class Application implements NativeApplication {
     if (!Number.isSafeInteger(this.nextFileGrant))
       throw new NativeStateError('limit_exceeded', 'File grant identity space exhausted')
     return this.nextFileGrant++
+  }
+
+  allocateDialog(): number {
+    if (!Number.isSafeInteger(this.nextDialog))
+      throw new NativeStateError('limit_exceeded', 'File dialog identity space exhausted')
+    return this.nextDialog++
+  }
+
+  isAllocatedDialog(id: number): boolean {
+    return id < this.nextDialog
   }
 
   cancelCallbacks(windowId: number): void {
@@ -319,6 +345,8 @@ class Application implements NativeApplication {
           !this.isAllocatedNotification(event.notification_id)
         )
           throw new ProtocolError('Native event names an unallocated notification')
+        if (event.type === 'file_dialog_completed' && !this.isAllocatedDialog(event.dialog_id))
+          throw new ProtocolError('Native event names an unallocated file dialog')
         const window = this.windows.get(event.window_id)
         if (!window) {
           if (event.window_id >= this.nextWindow)
@@ -398,6 +426,15 @@ const FILE_ERRORS = [
 ] as const
 
 const NOTIFICATION_ERRORS = [
+  'permission_denied',
+  'service_unavailable',
+  'cancelled',
+  'native_failure',
+  'operation_timed_out',
+  'limit_exceeded',
+] as const
+
+const DIALOG_ERRORS = [
   'permission_denied',
   'service_unavailable',
   'cancelled',
@@ -919,6 +956,116 @@ class Window implements NativeWindow {
     })
   }
 
+  async showOpenDialog(
+    options: OpenDialogOptions,
+    request: ServiceRequestOptions = {}
+  ): Promise<OpenDialogResult> {
+    const wire = openDialogRequest(options)
+    const result = await this.fileDialog(wire, serviceSignal(request))
+    return result.kind === 'selected'
+      ? Object.freeze({ kind: 'selected', paths: Object.freeze([...result.paths]) })
+      : Object.freeze({ kind: 'cancelled' })
+  }
+
+  async showSaveDialog(
+    options: SaveDialogOptions,
+    request: ServiceRequestOptions = {}
+  ): Promise<SaveDialogResult> {
+    const wire = saveDialogRequest(options)
+    const result = await this.fileDialog(wire, serviceSignal(request))
+    return result.kind === 'selected'
+      ? Object.freeze({ kind: 'selected', path: result.paths[0]! })
+      : Object.freeze({ kind: 'cancelled' })
+  }
+
+  private async fileDialog(options: FileDialogOptions, signal: AbortSignal | undefined) {
+    this.assertActive()
+    checkServiceCancellation(signal, 'file_dialogs')
+    const dialog = await this.application.service(async () => {
+      this.assertActive()
+      checkServiceCancellation(signal, 'file_dialogs')
+      for (const other of this.application.dialogs.values())
+        if (other.windowId === this.id)
+          throw new NativeServiceError(
+            'file_dialogs',
+            'limit_exceeded',
+            'This window already has an open file dialog'
+          )
+      const dialog = new FileDialogRequest(this.application.allocateDialog(), this.id, options.mode)
+      this.application.dialogs.set(dialog.id, dialog)
+      try {
+        await this.application.host.send({
+          type: 'show_file_dialog',
+          window_id: this.id,
+          dialog_id: dialog.id,
+          options,
+        })
+        this.assertActive()
+        return dialog
+      } catch (error) {
+        dialog.fail(error instanceof Error ? error : new Error(String(error)))
+        this.application.dialogs.delete(dialog.id)
+        if (error instanceof ProtocolError) throw error
+        this.assertActive()
+        if (
+          error instanceof NativeCommandError &&
+          (DIALOG_ERRORS as readonly string[]).includes(error.code)
+        )
+          throw new NativeServiceError(
+            'file_dialogs',
+            error.code as NativeServiceError['code'],
+            error.message
+          )
+        throw error
+      }
+    })
+    // An abort while the host was showing it closes the now-live dialog.
+    const cancel = () => this.closeFileDialog(dialog)
+    if (signal?.aborted) cancel()
+    else signal?.addEventListener('abort', cancel, { once: true })
+    try {
+      return await dialog.result
+    } finally {
+      signal?.removeEventListener('abort', cancel)
+    }
+  }
+
+  /** Delivery stops at once; the OS dialog is then closed natively. */
+  private closeFileDialog(dialog: FileDialogRequest): void {
+    if (!dialog.live) return
+    dialog.fail(
+      new NativeServiceError('file_dialogs', 'cancelled', 'The file dialog was cancelled')
+    )
+    this.application.dialogs.delete(dialog.id)
+    // Window close and application shutdown close it natively.
+    if (!this.active || !this.application.running) return
+    void this.application
+      .track(
+        this.application.host
+          .send({ type: 'close_file_dialog', window_id: this.id, dialog_id: dialog.id })
+          .then(
+            () => {},
+            (error: unknown) => {
+              // The user can finish it, or the owner close, while this is in flight.
+              if (error instanceof NativeCommandError && error.code === 'invalid_handle') return
+              if (!this.application.running) return
+              throw error
+            }
+          )
+      )
+      .catch(() => {})
+  }
+
+  receiveFileDialog(event: Extract<WindowEvent, { type: 'file_dialog_completed' }>): void {
+    if (!this.active) return
+    const dialog = this.application.dialogs.get(event.dialog_id)
+    if (!dialog) return // Cancelled: the host may already have queued a result.
+    if (dialog.windowId !== this.id)
+      throw new ProtocolError('Native event names a file dialog outside its owner')
+    this.application.dialogs.delete(dialog.id)
+    dialog.complete(event.result)
+  }
+
   receiveShortcut(event: Extract<WindowEvent, { type: 'global_shortcut' }>): void {
     if (!this.active) return
     const registration = this.application.shortcuts.get(event.shortcut_id)
@@ -980,6 +1127,11 @@ class Window implements NativeWindow {
         registration.revoke()
         this.application.fileGrants.delete(registration.id)
       }
+    for (const dialog of this.application.dialogs.values())
+      if (dialog.windowId === this.id) {
+        dialog.fail(new NativeStateError('invalid_handle', 'File dialog owner window was closed'))
+        this.application.dialogs.delete(dialog.id)
+      }
     this.application.windows.delete(this.id)
     this.resolveClosed()
   }
@@ -999,6 +1151,10 @@ class Window implements NativeWindow {
     }
     if (event.type === 'notification_activated' || event.type === 'notification_dismissed') {
       this.receiveNotification(event)
+      return
+    }
+    if (event.type === 'file_dialog_completed') {
+      this.receiveFileDialog(event)
       return
     }
     if (!this.active) return

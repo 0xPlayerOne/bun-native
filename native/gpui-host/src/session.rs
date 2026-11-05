@@ -3,6 +3,7 @@ use crate::{
     evidence::Evidence,
     services,
     services::clipboard::{Clipboard, Operation as ClipboardOperation},
+    services::file_dialogs::FileDialogs,
     services::files::Files,
     services::notifications::Notifications,
     services::shortcuts::Shortcuts,
@@ -10,9 +11,9 @@ use crate::{
     view::NativeView,
 };
 use bun_native_protocol::{
-    Capability, Command, ErrorCode, Event, FileAccess, FileGrantId, FileOperation, Limits,
-    MAX_WINDOWS, NodeId, NotificationId, Operation, PROTOCOL_VERSION, RequestId, ServicePolicy,
-    ShortcutId, ShortcutModifiers, Tree, WindowId,
+    Capability, Command, DialogId, ErrorCode, Event, FileAccess, FileDialogOptions, FileGrantId,
+    FileOperation, Limits, MAX_WINDOWS, NodeId, NotificationId, Operation, PROTOCOL_VERSION,
+    RequestId, ServicePolicy, ShortcutId, ShortcutModifiers, Tree, WindowId,
 };
 use gpui::{
     App, Bounds, TitlebarOptions, WindowBounds, WindowHandle, WindowOptions, prelude::*, px, size,
@@ -49,6 +50,7 @@ pub(crate) struct Session {
     shortcuts: Shortcuts,
     notifications: Notifications,
     files: Files,
+    file_dialogs: FileDialogs,
 }
 
 impl Session {
@@ -65,6 +67,7 @@ impl Session {
         evidence.observe_keys(cx);
         let notifications = Notifications::new(events.clone(), cx);
         let files = Files::new(events.clone(), policy.filesystem_roots.clone(), cx);
+        let file_dialogs = FileDialogs::new(events.clone(), cx);
         cx.on_window_closed({
             let windows = windows.clone();
             let finishing = finishing.clone();
@@ -74,6 +77,7 @@ impl Session {
             let shortcuts = shortcuts.clone();
             let notifications = notifications.clone();
             let files = files.clone();
+            let file_dialogs = file_dialogs.clone();
             move |cx, closed| {
                 let id = windows
                     .borrow()
@@ -93,6 +97,7 @@ impl Session {
                     shortcuts.close_window(window_id, cx);
                     notifications.close_window(window_id, cx);
                     files.close_window(window_id, cx);
+                    file_dialogs.close_window(window_id, cx);
                     if !finishing.get() {
                         events.ui(
                             |sequence| Event::Closed {
@@ -120,6 +125,7 @@ impl Session {
             shortcuts,
             notifications,
             files,
+            file_dialogs,
         }
     }
 
@@ -185,6 +191,9 @@ impl Session {
                 }
                 if self.files.available() {
                     capabilities.push(Capability::FilesystemGrantsV1);
+                }
+                if self.file_dialogs.available() {
+                    capabilities.push(Capability::FileDialogsV1);
                 }
                 self.events.send(
                     Event::Ready {
@@ -301,6 +310,22 @@ impl Session {
                 operation,
                 ..
             } => self.file_request((id, window_id, grant_id), path, operation, cx),
+            Command::ShowFileDialog {
+                window_id,
+                dialog_id,
+                options,
+                ..
+            } => self.show_file_dialog((id, window_id, dialog_id), options, cx),
+            Command::CloseFileDialog {
+                window_id,
+                dialog_id,
+                ..
+            } => {
+                if let Err((code, message)) = self.file_dialogs.close(id, window_id, dialog_id, cx)
+                {
+                    self.error(id, code, message, cx);
+                }
+            }
             Command::Shutdown { .. } => self.finish(Event::Ack { id }, cx),
             Command::Hello { .. } => unreachable!("hello handled before command dispatch"),
         }
@@ -524,6 +549,7 @@ impl Session {
             self.shortcuts.close_window(window_id, cx);
             self.notifications.close_window(window_id, cx);
             self.files.close_window(window_id, cx);
+            self.file_dialogs.close_window(window_id, cx);
             self.events.send(Event::Ack { id }, cx);
         } else {
             state.borrow_mut().active = true;
@@ -684,6 +710,39 @@ impl Session {
         }
     }
 
+    fn show_file_dialog(
+        &self,
+        request: (RequestId, WindowId, DialogId),
+        options: FileDialogOptions,
+        cx: &mut App,
+    ) {
+        let (id, window_id, _) = request;
+        if !self.policy.file_dialogs {
+            self.error(
+                id,
+                ErrorCode::PermissionDenied,
+                "file dialogs were not granted at native process launch",
+                cx,
+            );
+            return;
+        }
+        let Some((handle, _)) = self.window(id, window_id, cx) else {
+            return;
+        };
+        let Ok(parent) = handle.update(cx, |_, window, _| FileDialogs::parent(window)) else {
+            self.error(
+                id,
+                ErrorCode::InvalidHandle,
+                "native window is no longer available",
+                cx,
+            );
+            return;
+        };
+        if let Err((code, message)) = self.file_dialogs.show(request, options, parent, cx) {
+            self.error(id, code, message, cx);
+        }
+    }
+
     fn revoke(&self) {
         self.finishing.set(true);
         for entry in self.windows.borrow().values() {
@@ -700,6 +759,7 @@ impl Session {
             self.shortcuts.stop(cx),
             self.notifications.stop(cx),
             self.files.stop(cx),
+            self.file_dialogs.stop(cx),
         ]
         .into_iter()
         .flatten()
