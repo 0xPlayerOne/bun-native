@@ -92,13 +92,17 @@ python3 tests/native/streaming-list.py summarize --output "$run/baseline.json" "
 
 ## Recorded baselines
 
-The [Linux evidence record](evidence/streaming-list-linux-2026-11-05.json) holds the first passed local run of all four combinations, together with the exact host hash and source commit. That run used a **development-profile** host on Xvfb with Mesa llvmpipe at scale 1.
+The [Linux evidence record](evidence/streaming-list-linux-2026-11-05.json) holds a passed local run of all four combinations at commit `1049a3b`, together with the host hash. That run used a **development-profile** (unoptimized) host on Xvfb with Mesa llvmpipe at scale 1, on a shared 4-core VM that other jobs were loading at the same time.
 
-- The paint-callback cadence was about 28–42 frames per second. The p95 interval was 35–52 ms.
-- Update-to-acknowledgement p50 was 1–2 ms.
-- Host RSS grew by about 10 MiB over the stream.
-- Host descriptors stayed at 23 and host threads at 35–36.
-- Mounted nodes peaked at 51 and listeners at 14 in every run.
+- The paint-callback cadence was about 21–25 frames per second. The p50 interval was 33–46 ms and the p95 interval was 64–79 ms.
+- `render_to_paint` p95 was 15–18 ms.
+- Update-to-acknowledgement p50 was 1.5–1.9 ms and p95 was 63–79 ms.
+- The stream took 11.9–14.1 s and coalesced 2,400 tokens into 935–1,050 commits.
+- Host RSS grew by 7–10 MiB over the stream. Host descriptors stayed at 24 and host threads at 35–36 throughout.
+- Development Bun RSS peaked at 50 MiB (Solid) and 81 MiB (React). AOT applications peaked at 36–37 MiB.
+- Mounted nodes peaked at 51 and listeners at 14 in every run. All four runs ended with the same digest.
+
+An earlier exploratory run on the same machine with less load measured 28–42 frames per second. The machine's load clearly moves these figures, so they cannot be used as acceptance budgets.
 
 These are baselines, not thresholds. Release-host CI artifacts supersede them for comparison. Acceptance budgets must come from repeated release-host runs, not from this single record.
 
