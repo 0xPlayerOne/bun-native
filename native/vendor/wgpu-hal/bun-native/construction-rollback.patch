@@ -1,0 +1,81 @@
+--- a/wgpu-hal/src/gles/egl.rs
++++ b/wgpu-hal/src/gles/egl.rs
+@@ -369,12 +369,12 @@
+     display: khronos_egl::Display,
+ ) -> Result<(i32, i32), khronos_egl::Error> {
+     let mut guard = DISPLAYS_REFERENCE_COUNT.lock();
+-    *guard.entry(display.as_ptr() as usize).or_default() += 1;
+-
+     // We don't need to check the reference count here since according to the `eglInitialize`
+     // documentation, initializing an already initialized EGL display connection has no effect
+     // besides returning the version numbers.
+-    egl.initialize(display)
++    let version = egl.initialize(display)?;
++    *guard.entry(display.as_ptr() as usize).or_default() += 1;
++    Ok(version)
+ }
+
+ fn terminate_display(
+@@ -398,6 +398,30 @@
+     }
+ }
+
++// Own each successful initialization until construction transfers its resources
++// into Inner. A failed attempt must not retain a reference to a shared display.
++struct ContextInitialization<'a> {
++    egl: &'a EglInstance,
++    display: Option<khronos_egl::Display>,
++    context: Option<khronos_egl::Context>,
++}
++
++impl Drop for ContextInitialization<'_> {
++    fn drop(&mut self) {
++        let Some(display) = self.display else {
++            return;
++        };
++        if let Some(context) = self.context {
++            if let Err(e) = self.egl.destroy_context(display, context) {
++                log::warn!("Error in destroy_context: {e:?}");
++            }
++        }
++        if let Err(e) = terminate_display(self.egl, display) {
++            log::warn!("Error in terminate: {e:?}");
++        }
++    }
++}
++
+ fn instance_err<E: core::error::Error + Send + Sync + 'static>(
+     message: impl Into<String>,
+ ) -> impl FnOnce(E) -> crate::InstanceError {
+@@ -413,6 +437,11 @@
+     ) -> Result<Self, crate::InstanceError> {
+         let version = initialize_display(&egl, display)
+             .map_err(instance_err("failed to initialize EGL display connection"))?;
++        let mut initialization = ContextInitialization {
++            egl: &egl,
++            display: Some(display),
++            context: None,
++        };
+         let vendor = egl
+             .query_string(Some(display), khronos_egl::VENDOR)
+             .map_err(instance_err("failed to query EGL vendor"))?;
+@@ -614,6 +643,8 @@
+                 )
+             })
+         }?;
++
++        initialization.context = Some(context);
+
+         // Testing if context can be binded without surface
+         // and creating dummy pbuffer surface if not.
+@@ -641,6 +672,10 @@
+                 })?
+         };
+
++        // No fallible operations remain. Inner now owns the context and the
++        // one display reference acquired by initialize_display.
++        initialization.display = None;
++        drop(initialization);
+         Ok(Self {
+             egl: EglContext {
+                 instance: egl,
