@@ -109,6 +109,34 @@ test('invalid names, versions, URLs, digests and bounds fail before network acti
   expect(http.requests).toHaveLength(0)
 })
 
+test('the default options reject an invalid pin before any production fetch', async () => {
+  await assert.rejects(downloadPinnedArchive({ ...archive, version: 'latest' }), {
+    message: 'Invalid exact official Bun package pin',
+  })
+})
+
+test('a synchronously throwing body cancellation cannot replace the HTTP failure', async () => {
+  let cancellations = 0
+  const response = {
+    status: 404,
+    headers: new Headers(),
+    body: {
+      cancel() {
+        cancellations += 1
+        throw new Error('private synchronous cancellation')
+      },
+    },
+  } as unknown as Response
+  await assert.rejects(
+    downloadPinnedArchive(archive, {
+      ...sequence().options,
+      fetchImplementation: async () => response,
+    }),
+    { message: 'Pinned Bun download failed with HTTP 404' }
+  )
+  expect(cancellations).toBe(1)
+})
+
 test('changed bytes and truncated declarations fail before extraction can receive data', async () => {
   await assert.rejects(
     downloadPinnedArchive(archive, sequence(new Response('changed')).options),
