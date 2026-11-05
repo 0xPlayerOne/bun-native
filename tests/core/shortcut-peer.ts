@@ -2,6 +2,7 @@
 // never evidence that an OS key grab was acquired or delivered.
 import {
   DEFAULT_LIMITS,
+  filesystemRootsFromArguments,
   encodeFrame,
   FrameDecoder,
   parseCommand,
@@ -20,6 +21,7 @@ const policy = {
   clipboard_write: process.argv.includes('--bun-native-allow-clipboard-write'),
   global_shortcuts: process.argv.includes('--bun-native-allow-global-shortcuts'),
   notifications: process.argv.includes('--bun-native-allow-notifications'),
+  filesystem_roots: filesystemRootsFromArguments(process.argv),
 }
 const windows = new Set<number>()
 const registrations = new Map<number, number>()
