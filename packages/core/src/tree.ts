@@ -9,6 +9,8 @@ import {
 
 const identities = new WeakMap<NativeNode, number>()
 const encoder = new TextEncoder()
+// Normalized elements are replaced, never mutated, so their size is stable.
+const textSizes = new WeakMap<Element, readonly number[]>()
 const elementKinds: readonly string[] = ['box', 'text', 'button', 'input']
 
 function normalize(element: Element): Element {
@@ -58,10 +60,29 @@ export function own(nodes: ReadonlyMap<number, NodeState>, handle: NativeNode): 
   return node
 }
 
-/** A bounded candidate graph; native preflight remains authoritative. */
+function textSizesOf(element: Element): readonly number[] {
+  let sizes = textSizes.get(element)
+  if (!sizes) {
+    const texts =
+      element.kind === 'input'
+        ? [element.value, element.placeholder ?? '']
+        : element.kind === 'box'
+          ? []
+          : [element.text]
+    sizes = texts.map((text) => encoder.encode(text).byteLength)
+    textSizes.set(element, sizes)
+  }
+  return sizes
+}
+
+/**
+ * A bounded candidate graph; native preflight remains authoritative. Nodes are
+ * shared with the committed graph until this transaction first writes one.
+ */
 export class Transaction implements NativeBatch {
   readonly nodes: Map<number, NodeState>
   readonly operations: Operation[] = []
+  private readonly copied = new Set<number>()
   private active = true
 
   constructor(
@@ -70,9 +91,16 @@ export class Transaction implements NativeBatch {
     private readonly allocateId: () => number,
     private readonly limits: Readonly<Limits>
   ) {
-    this.nodes = new Map(
-      [...current].map(([id, node]) => [id, { ...node, children: [...node.children] }])
-    )
+    this.nodes = new Map(current)
+  }
+
+  /** The candidate's own copy of a node, made on its first write. */
+  private writable(node: NodeState): NodeState {
+    if (this.copied.has(node.id)) return this.nodes.get(node.id)!
+    const copy = { ...node, children: [...node.children] }
+    this.nodes.set(node.id, copy)
+    this.copied.add(node.id)
+    return copy
   }
 
   private check(): void {
@@ -93,6 +121,7 @@ export class Transaction implements NativeBatch {
     const normalized = normalize(element)
     const node = makeNode(this.allocateId(), normalized)
     this.nodes.set(node.id, node)
+    this.copied.add(node.id)
     this.operations.push({ type: 'create', node_id: node.id, element: node.element })
     return node.handle as NativeNode<E['kind']>
   }
@@ -108,7 +137,7 @@ export class Transaction implements NativeBatch {
   ): void
   set(handle: NativeNode, value: Element, expectedInputRevision?: number): void {
     this.check()
-    const node = own(this.nodes, handle)
+    const node = this.writable(own(this.nodes, handle))
     const element = normalize(value)
     if (element.kind !== node.element.kind)
       throw new NativeStateError(
@@ -143,8 +172,8 @@ export class Transaction implements NativeBatch {
 
   insert(parentHandle: NativeNode<'box'>, childHandle: NativeNode, index: number): void {
     this.check()
-    const parent = own(this.nodes, parentHandle)
-    const child = own(this.nodes, childHandle)
+    let parent = own(this.nodes, parentHandle)
+    let child = own(this.nodes, childHandle)
     if (parent.element.kind !== 'box' || child.id === this.rootId)
       throw new NativeStateError(
         'invalid_state',
@@ -159,10 +188,12 @@ export class Transaction implements NativeBatch {
     const length = parent.children.length - (child.parent === parent.id ? 1 : 0)
     if (!Number.isSafeInteger(index) || index < 0 || index > length)
       throw new NativeStateError('invalid_state', 'Child insertion index is out of range')
+    child = this.writable(child)
     if (child.parent !== undefined) {
-      const previous = this.nodes.get(child.parent)!
+      const previous = this.writable(this.nodes.get(child.parent)!)
       previous.children.splice(previous.children.indexOf(child.id), 1)
     }
+    parent = this.writable(parent)
     parent.children.splice(index, 0, child.id)
     child.parent = parent.id
     this.operations.push({ type: 'insert', parent_id: parent.id, child_id: child.id, index })
@@ -184,7 +215,7 @@ export class Transaction implements NativeBatch {
     if (node.id === this.rootId)
       throw new NativeStateError('invalid_state', 'Close the window to dispose its root')
     if (node.parent !== undefined) {
-      const parent = this.nodes.get(node.parent)!
+      const parent = this.writable(this.nodes.get(node.parent)!)
       parent.children.splice(parent.children.indexOf(node.id), 1)
     }
     const pending = [node.id]
@@ -199,28 +230,25 @@ export class Transaction implements NativeBatch {
   validate(): void {
     let seen = 0
     let bytes = 0
-    const pending = [{ id: this.rootId, depth: 0 }]
-    for (const { id, depth } of pending) {
+    // Breadth-first, one level at a time, so the depth needs no per-node record.
+    let level = [this.rootId]
+    for (let depth = 0; level.length; depth += 1) {
       if (depth > this.limits.max_depth)
         throw new NativeStateError('limit_exceeded', 'Native tree depth limit exceeded')
-      const node = this.nodes.get(id)!
-      seen += 1
-      const element = node.element
-      const texts =
-        element.kind === 'input'
-          ? [element.value, element.placeholder ?? '']
-          : element.kind === 'box'
-            ? []
-            : [element.text]
-      for (const text of texts) {
-        const size = encoder.encode(text).byteLength
-        if (size > this.limits.max_text_bytes)
-          throw new NativeStateError('limit_exceeded', 'Native text limit exceeded')
-        bytes += size
+      const next: number[] = []
+      for (const id of level) {
+        const node = this.nodes.get(id)!
+        seen += 1
+        for (const size of textSizesOf(node.element)) {
+          if (size > this.limits.max_text_bytes)
+            throw new NativeStateError('limit_exceeded', 'Native text limit exceeded')
+          bytes += size
+        }
+        if (bytes > this.limits.max_text_bytes_per_window)
+          throw new NativeStateError('limit_exceeded', 'Window text memory limit exceeded')
+        for (const child of node.children) next.push(child)
       }
-      if (bytes > this.limits.max_text_bytes_per_window)
-        throw new NativeStateError('limit_exceeded', 'Window text memory limit exceeded')
-      pending.push(...node.children.map((child) => ({ id: child, depth: depth + 1 })))
+      level = next
     }
     if (seen !== this.nodes.size)
       throw new NativeStateError(
