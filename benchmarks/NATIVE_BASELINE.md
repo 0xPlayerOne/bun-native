@@ -131,6 +131,35 @@ PID/start-time checks prevent an unrelated recycled PID from being treated as an
 owned child. The setting applies only to the test driver process, not to machine
 configuration or the application API.
 
+## Release host profile
+
+The root `[profile.release]` uses `lto = "fat"`, `codegen-units = 1` and
+`strip = "debuginfo"`. A local x86-64 Linux comparison (4 vCPU, other builds
+sharing the machine, `cargo build --locked --release -p bun-native-host --bin
+bun-native-host`, full compile of every crate, rustc 1.98.1) measured:
+
+| `lto`  | host bytes | `strip --strip-all` bytes | wall build | user CPU | reject-argument exit, median | GPUI init to stdin EOF, median / peak RSS |
+| ------ | ---------: | ------------------------: | ---------: | -------: | ---------------------------: | ----------------------------------------: |
+| `thin` | 30,714,000 |                25,271,008 |     4m 40s |  13m 42s |                      2.0 ms |                         22–24 ms / 16.2 MiB |
+| `fat`  | 28,098,288 |                23,796,728 |     8m 27s |  13m 36s |                      2.0 ms |                         23 ms / 14.9 MiB |
+
+Fat LTO is 8.5% smaller (`.text` −4.1%, unwind and exception tables −7–12%) and
+showed no measurable startup change. Its cost is a longer serial link, about
+four more minutes of wall time per release link on this machine. Startup used
+30–40 runs per binary under Xvfb. Those runs time the process from exec to exit
+and are not the GUI baseline above.
+
+The release profile keeps symbols (`strip = "symbols"` would remove a further
+~4.3 MB with fat LTO). The heaptrack allocation lane in `native-linux.yml` symbolizes and
+demangles callsites from the release host. Panic strategy remains unwind.
+
+The largest remaining contributors, attributed from symbol sizes, are
+`zvariant`/`zbus` (~20% of symbolized text), `naga` (~7%) and `wgpu-core`/`wgpu-hal`
+(~6%). D-Bus code comes from GPUI's Linux platform: AT-SPI accessibility,
+desktop portals and the `oo7` keyring, which also enables zvariant's
+`gvariant` encoding. Trimming that would require an upstream GPUI feature
+change. It is not configurable from this workspace.
+
 ## Separate compiled input-race check
 
 The negative input-revision fixture is a separate correctness test and is not

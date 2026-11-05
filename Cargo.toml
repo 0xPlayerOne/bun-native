@@ -21,7 +21,9 @@ all = "warn"
 debug = 0
 
 [profile.release]
-lto = "thin"
+# Fat LTO cuts the release host by ~8.5% versus thin; symbols stay for
+# heaptrack callsites. Measurements: benchmarks/NATIVE_BASELINE.md.
+lto = "fat"
 codegen-units = 1
 strip = "debuginfo"
 
