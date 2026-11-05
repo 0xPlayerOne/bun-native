@@ -2,7 +2,7 @@
 
 use super::{Evidence, append};
 use bun_native_protocol::WindowId;
-use gpui::{DispatchPhase, MouseDownEvent, MouseMoveEvent, MouseUpEvent, Window};
+use gpui::{App, DispatchPhase, MouseDownEvent, MouseMoveEvent, MouseUpEvent, Window};
 use serde_json::{Value, json};
 use std::collections::BTreeSet;
 
@@ -11,6 +11,7 @@ const RECORD_LIMIT: u16 = 64;
 #[derive(Default)]
 pub(super) struct PointerTrace {
     records: u16,
+    keys: u16,
     windows: BTreeSet<WindowId>,
 }
 
@@ -85,6 +86,52 @@ impl Evidence {
                 );
             }
         });
+    }
+
+    /// Modified key downs (control, alt or platform) GPUI received in any
+    /// owned window, before dispatch, with their own bound. With the close
+    /// record this separates an OS close shortcut the window manager consumed
+    /// from one delivered to the application instead. Plain typing is never
+    /// recorded.
+    pub(crate) fn observe_keys(&self, cx: &mut App) {
+        if !self.pointer_tracing() {
+            return;
+        }
+        let evidence = self.clone();
+        cx.intercept_keystrokes(move |event, window, _| {
+            let Some(log) = &evidence.0 else { return };
+            let mut log = log.borrow_mut();
+            let Some(trace) = log.pointer.as_mut() else {
+                return;
+            };
+            let modifiers = &event.keystroke.modifiers;
+            if trace.keys == RECORD_LIMIT
+                || !(modifiers.control || modifiers.alt || modifiers.platform)
+            {
+                return;
+            }
+            trace.keys += 1;
+            let index = trace.keys;
+            let record = json!({
+                "nonce": log.nonce,
+                "type": "key_trace",
+                "stage": "gpui-window-input",
+                "key": event.keystroke.key,
+                "modifiers": {
+                    "control": modifiers.control,
+                    "alt": modifiers.alt,
+                    "shift": modifiers.shift,
+                    "platform": modifiers.platform,
+                },
+                "trace_index": index,
+                "trace_limit": RECORD_LIMIT,
+                "window_active": window.is_window_active(),
+            });
+            if let Err(error) = append(&mut log.file, &record) {
+                eprintln!("Bun Native key trace unavailable: {error}");
+            }
+        })
+        .detach();
     }
 
     fn pointer_record(&self, window_id: WindowId, mut record: Value, ready: bool, window: &Window) {
