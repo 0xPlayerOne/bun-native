@@ -1,6 +1,11 @@
 import { describe, expect, test } from 'bun:test'
 import type { Limits } from '@bun-native/protocol'
-import { makeNode, Transaction, type NodeState } from '../../packages/core/src/tree.ts'
+import {
+  CommittedText,
+  makeNode,
+  Transaction,
+  type NodeState,
+} from '../../packages/core/src/tree.ts'
 import type { NativeNode } from '../../packages/core/src/types.ts'
 
 const limits = {
@@ -14,13 +19,16 @@ const limits = {
 function committed() {
   let next = 1
   const root = makeNode(next++, { kind: 'box' })
-  const first = new Transaction(new Map([[root.id, root]]), root.id, () => next++, limits)
+  const base = new Map([[root.id, root]])
+  const text = new CommittedText(limits.max_text_bytes, base.values())
+  const first = new Transaction(base, root.id, () => next++, limits, text)
   const box = first.create({ kind: 'box' })
   const label = first.create({ kind: 'text', text: 'abc' })
   first.append(root.handle as NativeNode<'box'>, box)
   first.append(box, label)
   first.validate()
   first.finish()
+  first.commit(base, text)
   const snapshot = (nodes: ReadonlyMap<number, NodeState>) =>
     structuredClone(
       [...nodes.values()].map(({ id, element, parent, children, inputRevision }) => ({
@@ -32,13 +40,13 @@ function committed() {
       }))
     )
   return {
-    nodes: first.nodes,
+    nodes: base as ReadonlyMap<number, NodeState>,
     root: root.handle as NativeNode<'box'>,
     box,
     label,
     snapshot,
     begin: (nodes: ReadonlyMap<number, NodeState>) =>
-      new Transaction(nodes, root.id, () => next++, limits),
+      new Transaction(nodes, root.id, () => next++, limits, text),
   }
 }
 
