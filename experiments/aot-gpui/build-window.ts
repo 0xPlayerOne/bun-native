@@ -54,6 +54,7 @@ const entries = {
   solid: 'examples/solid-counter/main.tsx',
   'solid-workspace': 'examples/solid-workspace/main.tsx',
   'solid-workspace-flow': 'tests/native/solid-workspace.tsx',
+  'solid-workspace-soak': 'tests/native/solid-workspace-soak.tsx',
   'solid-input-intent': 'tests/native/solid-input-intent.tsx',
   'solid-interactions': 'tests/native/solid-interactions.tsx',
   'solid-input-viewport': 'tests/native/solid-input-viewport.tsx',
@@ -75,6 +76,7 @@ const solidEntry =
   entry === 'solid' ||
   entry === 'solid-workspace' ||
   entry === 'solid-workspace-flow' ||
+  entry === 'solid-workspace-soak' ||
   entry === 'solid-input-intent' ||
   entry === 'solid-interactions' ||
   entry === 'solid-input-viewport' ||
@@ -225,7 +227,11 @@ async function sourceHashes() {
   if (entry === 'services' || entry === 'solid-services' || entry === 'react-services')
     sources.add('tests/native/display-service-policy.ts')
   for (const path of workloadSources.keys()) sources.add(path)
-  if (entry === 'solid-workspace' || entry === 'solid-workspace-flow') {
+  if (
+    entry === 'solid-workspace' ||
+    entry === 'solid-workspace-flow' ||
+    entry === 'solid-workspace-soak'
+  ) {
     sources.add('examples/solid-workspace/app.tsx')
     sources.add('examples/solid-workspace/model.ts')
   }
