@@ -32,6 +32,7 @@ async function assertObserverLifetime(watch: Watch) {
       displaySnapshot: actual.displaySnapshot.bind(actual),
       readClipboardText: actual.readClipboardText.bind(actual),
       writeClipboardText: actual.writeClipboardText.bind(actual),
+      registerGlobalShortcut: actual.registerGlobalShortcut.bind(actual),
       input: actual.input.bind(actual),
       on: actual.on.bind(actual),
       onClick: actual.onClick.bind(actual),

@@ -11,19 +11,14 @@ use std::cell::RefCell;
 use std::collections::BTreeMap;
 use std::rc::Rc;
 use std::sync::Arc;
-use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::thread::JoinHandle;
-use std::time::{Duration, Instant};
 
-mod auth;
-mod stream;
-mod wake;
-mod x11;
+mod selection;
 
-const TRANSFER_TIMEOUT: Duration = Duration::from_secs(2);
-const WORKER_POLL: Duration = Duration::from_millis(5);
-const MAX_INBOUND_BYTES: usize = 262_144;
-type Failure = (ErrorCode, &'static str);
+use super::x11::{self, Budget, WORKER_POLL, wake};
+
+type Failure = x11::Failure;
 
 pub(crate) enum Operation {
     Read,
@@ -44,52 +39,6 @@ struct Job {
 struct Completion {
     id: RequestId,
     result: Result<Response, Failure>,
-}
-
-#[derive(Clone)]
-struct Budget {
-    deadline: Instant,
-    cancelled: Arc<AtomicBool>,
-    stopping: Arc<AtomicBool>,
-    inbound: Arc<AtomicUsize>,
-}
-
-impl Budget {
-    fn check(&self) -> Result<(), Failure> {
-        if self.cancelled.load(Ordering::Acquire) || self.stopping.load(Ordering::Acquire) {
-            Err((
-                ErrorCode::Cancelled,
-                "native clipboard request was cancelled",
-            ))
-        } else if self.inbound.load(Ordering::Relaxed) > MAX_INBOUND_BYTES {
-            Err((
-                ErrorCode::LimitExceeded,
-                "native clipboard transfer exceeded its inbound byte budget",
-            ))
-        } else if Instant::now() >= self.deadline {
-            Err((
-                ErrorCode::OperationTimedOut,
-                "native clipboard transfer exceeded its total two-second bound",
-            ))
-        } else {
-            Ok(())
-        }
-    }
-
-    fn failure(&self) -> Failure {
-        self.check().err().unwrap_or((
-            ErrorCode::NativeFailure,
-            "native X11 clipboard operation failed",
-        ))
-    }
-
-    fn input_allowance(&self) -> usize {
-        let remaining = MAX_INBOUND_BYTES.saturating_sub(self.inbound.load(Ordering::Relaxed));
-        if remaining == 0 {
-            self.inbound.store(MAX_INBOUND_BYTES + 1, Ordering::Relaxed);
-        }
-        remaining
-    }
 }
 
 struct Pending {
@@ -145,7 +94,7 @@ struct Inner {
     worker: RefCell<WorkerState>,
     stopping: Arc<AtomicBool>,
     events: EventSink,
-    config: Option<x11::Config>,
+    config: Option<selection::Config>,
 }
 
 impl Drop for Inner {
@@ -166,7 +115,7 @@ impl Clipboard {
             worker: RefCell::new(WorkerState::NotStarted),
             stopping: Arc::new(AtomicBool::new(false)),
             events,
-            config: x11::Config::from_app(cx),
+            config: selection::Config::from_app(cx),
         }))
     }
 
@@ -216,12 +165,7 @@ impl Clipboard {
         let job = Job {
             id,
             operation,
-            budget: Budget {
-                deadline: Instant::now() + TRANSFER_TIMEOUT,
-                cancelled: cancelled.clone(),
-                stopping: self.0.stopping.clone(),
-                inbound: Arc::new(AtomicUsize::new(0)),
-            },
+            budget: Budget::new(cancelled.clone(), self.0.stopping.clone()),
         };
         self.0
             .worker
@@ -375,7 +319,7 @@ impl Clipboard {
 }
 
 fn worker(
-    config: x11::Config,
+    config: selection::Config,
     jobs: Receiver<Job>,
     results: Sender<Completion>,
     stopping: Arc<AtomicBool>,
@@ -390,10 +334,12 @@ fn worker(
                 idle_budget = None;
                 let result = job.budget.check().and_then(|()| match job.operation {
                     Operation::Read => {
-                        x11::read(&config, &job.budget, &mut owner).map(Response::Read)
+                        selection::read(&config, &job.budget, &mut owner).map(Response::Read)
                     }
-                    Operation::Write(text) => x11::write(&config, &job.budget, &mut owner, text)
-                        .map(|()| Response::Written),
+                    Operation::Write(text) => {
+                        selection::write(&config, &job.budget, &mut owner, text)
+                            .map(|()| Response::Written)
+                    }
                 });
                 if !job.budget.cancelled.load(Ordering::Acquire) {
                     let mut completion = Completion { id: job.id, result };
@@ -413,13 +359,10 @@ fn worker(
             Err(async_channel::TryRecvError::Closed) => break,
             Err(async_channel::TryRecvError::Empty) => {
                 if owner.is_some() {
-                    let budget = idle_budget.get_or_insert_with(|| Budget {
-                        deadline: Instant::now() + TRANSFER_TIMEOUT,
-                        cancelled: idle_cancelled.clone(),
-                        stopping: stopping.clone(),
-                        inbound: Arc::new(AtomicUsize::new(0)),
+                    let budget = idle_budget.get_or_insert_with(|| {
+                        Budget::new(idle_cancelled.clone(), stopping.clone())
                     });
-                    match x11::serve(&mut owner, budget) {
+                    match selection::serve(&mut owner, budget) {
                         // x11rb can buffer events beyond the first bounded
                         // drain; check jobs again before draining the remainder.
                         Ok(true) => continue,
@@ -429,7 +372,7 @@ fn worker(
                 }
                 idle_budget = None;
                 if !matches!(
-                    notification.wait(owner.as_ref().map(x11::Owner::fd)),
+                    notification.wait(owner.as_ref().map(selection::Owner::fd)),
                     Ok(true)
                 ) {
                     break;
@@ -445,6 +388,7 @@ fn worker(
 mod tests {
     use super::*;
     use std::sync::mpsc;
+    use std::time::Duration;
 
     #[test]
     fn failed_notification_keeps_the_pending_join_for_shutdown() {

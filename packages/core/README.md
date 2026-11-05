@@ -144,8 +144,7 @@ No per-request option or protocol message can grant access. Both framework
 adapters use this same public window method.
 
 `app.serviceCapabilities.windowDisplay` reports implementation availability,
-the negotiated permission and `owned_window` scope. Shortcuts,
-menus, dialogs, notifications, drag/drop, filesystem grants and PTY/process
+the negotiated permission and `owned_window` scope. Menus, dialogs, notifications, drag/drop, filesystem grants and PTY/process
 entries explicitly report `unavailable` / `not_implemented`; they have no
 placeholder callable methods. This policy constrains the selected native
 host, not trusted Bun code's ordinary OS APIs.
@@ -191,10 +190,44 @@ bounded count. See [the full service contract](../../docs/native-services.md).
 This draft's source/contract tests do not yet qualify actual clipboard GUI/AOT
 execution; the existing display evidence describes its previous exact source.
 
+### Global shortcuts
+
+```ts
+const app = await createApplication({ executable, permissions: { globalShortcuts: 'allow' } })
+const window = await app.openWindow({ title: 'Launcher' })
+const shortcut = await window.registerGlobalShortcut(
+  { key: 'k', control: true, alt: true },
+  (event) => console.log('activated', event.sequence)
+)
+// Later: delivery stops at once; the promise resolves after the OS release.
+await shortcut.unregister()
+```
+
+`window.registerGlobalShortcut(options, listener)` registers an OS-wide
+combination that activates even while another window or application is
+focused. `key` is one of `a`-`z`, `0`-`9` or `f1`-`f12`; `control`, `alt`,
+`shift` and `platform` (Super) default to `false`, and at least one of control,
+alt or platform is required. Anything else rejects with `TypeError` before a
+native request. The `globalShortcuts` launch permission defaults to `deny`.
+On a local Linux X11 session `app.serviceCapabilities.globalShortcuts` reports
+`available`, the permission, `owned_window` scope and backend `x11`; other
+targets report `unavailable` / `unsupported_platform`.
+
+The returned frozen `NativeGlobalShortcut` exposes `key`, `modifiers`, `active`
+and an idempotent `unregister()`. Unregistration, owner window close and
+application shutdown revoke the handle synchronously and abort the
+`event.signal` passed to its listener; no later activation is delivered.
+Listeners run on the same serialized callback queue as UI listeners. A
+combination already grabbed by another X11 client, or already registered by
+this application, rejects with `NativeServiceError` code `conflict` and
+`service: 'global_shortcuts'`; denial, unavailable keys/modifiers and native
+failure have their own codes. At most 16 registrations exist per application.
+See [ADR 0008](../../docs/decisions/0008-native-global-shortcuts.md).
+
 ## Supported scope
 
 The initial elements are `box`, `text`, `button` and single-line `input`. `Style` explicitly supports `direction`, `gap`, `padding`, `width`, `height`, `min_width`, `max_width`, `min_height`, `max_height`, `flex_grow`, `flex_shrink`, `align_items`, `justify_content`, `overflow`, `background`, `color` and `font_size`. Dimensions are numeric logical native pixels, with `fill` available for width and height; colors are unsigned 24-bit RGB values. These fields are validated and bounded by the [shared layout contract](../../docs/native-layout.md). Scroll overflow is accepted only for `box` containers; leaf element types also enforce this restriction. Styles are shared by every framework adapter.
 
 There is no DOM, HTML, CSS parser, browser navigation, WebView, CEF, React DOM or automatic compatibility with web component libraries. Native service APIs for files, processes, notifications, menus and other desktop integrations remain separate roadmap work. The current renderer does not claim complete scrolling, IME, focus traversal or accessibility coverage. See [the native host limitations](../../native/gpui-host/README.md) and [testing evidence](../../docs/testing.md) before treating a platform as supported.
 
-Protocol 6 requires shared layout, interactions and immutable service policy and replaces protocol 5 without a compatibility layer. During this private experimental phase, pin the application packages and native host together at the tested source revision. A package build or type check is not native GUI acceptance; a bundled executable is not proof of Bun machine-code AOT. [ADR 0004](../../docs/decisions/0004-public-api.md) records the API boundary and its tradeoffs.
+Protocol 7 requires shared layout, interactions and immutable service policy and replaces protocol 6 without a compatibility layer. During this private experimental phase, pin the application packages and native host together at the tested source revision. A package build or type check is not native GUI acceptance; a bundled executable is not proof of Bun machine-code AOT. [ADR 0004](../../docs/decisions/0004-public-api.md) records the API boundary and its tradeoffs.

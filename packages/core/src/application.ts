@@ -16,6 +16,13 @@ import {
   type ServiceCapabilities,
   type ServiceRequestOptions,
 } from './services.ts'
+import {
+  shortcutRequest,
+  ShortcutRegistration,
+  type GlobalShortcutEvent,
+  type GlobalShortcutOptions,
+  type NativeGlobalShortcut,
+} from './shortcuts.ts'
 import { makeNode, own, Transaction, type NodeState } from './tree.ts'
 import {
   NativeStateError,
@@ -34,7 +41,9 @@ import {
 
 const MAX_QUEUED_TRANSACTIONS = 128
 const MAX_QUEUED_CALLBACKS = 128
-type Callback = { windowId: number; nodeId: number; plan: DispatchPlan }
+type Callback =
+  | { windowId: number; nodeId: number; plan: DispatchPlan }
+  | { windowId: number; shortcut: ShortcutRegistration; event: GlobalShortcutEvent }
 
 class Application implements NativeApplication {
   readonly closed: Promise<void>
@@ -43,6 +52,8 @@ class Application implements NativeApplication {
   readonly capabilities: readonly Capability[]
   readonly serviceCapabilities: Readonly<ServiceCapabilities>
   readonly windows = new Map<number, Window>()
+  readonly shortcuts = new Map<number, ShortcutRegistration>()
+  private nextShortcut = 1
   private tail: Promise<void> = Promise.resolve()
   private queued = 0
   private readonly services = new Set<Promise<void>>()
@@ -89,10 +100,21 @@ class Application implements NativeApplication {
     return this.nextNode++
   }
 
+  allocateShortcut(): number {
+    if (!Number.isSafeInteger(this.nextShortcut))
+      throw new NativeStateError('limit_exceeded', 'Global shortcut identity space exhausted')
+    return this.nextShortcut++
+  }
+
+  isAllocatedShortcut(id: number): boolean {
+    return id < this.nextShortcut
+  }
+
   cancelCallbacks(windowId: number): void {
     const window = this.windows.get(windowId)
     this.callbacks = this.callbacks.filter((callback) => {
       if (callback.windowId !== windowId) return true
+      if ('shortcut' in callback) return callback.shortcut.live
       if (window?.isTargetLive(callback.nodeId) && prunePlan(callback.plan)) return true
       window?.listeners.release(callback.plan)
       return false
@@ -128,7 +150,8 @@ class Application implements NativeApplication {
       if (!window) continue
       this.activeCallbacks = 1
       try {
-        await window.dispatch(callback.nodeId, callback.plan)
+        if ('shortcut' in callback) await dispatchShortcut(callback.shortcut, callback.event)
+        else await window.dispatch(callback.nodeId, callback.plan)
       } finally {
         this.activeCallbacks = 0
       }
@@ -218,6 +241,22 @@ class Application implements NativeApplication {
     return result
   }
 
+  /** Joins an operation at shutdown without consuming a new-request slot. */
+  track(operation: Promise<void>): Promise<void> {
+    const settled = operation
+      .then(
+        () => {},
+        () => {}
+      )
+      .finally(() => this.services.delete(settled))
+    this.services.add(settled)
+    return operation
+  }
+
+  get running(): boolean {
+    return this.phase === 'running'
+  }
+
   async shutdown(): Promise<void> {
     if (!this.stopping) {
       this.phase = 'stopping'
@@ -235,6 +274,8 @@ class Application implements NativeApplication {
   private async consume(): Promise<void> {
     try {
       for await (const event of this.host) {
+        if (event.type === 'global_shortcut' && !this.isAllocatedShortcut(event.shortcut_id))
+          throw new ProtocolError('Native event names an unallocated global shortcut')
         const window = this.windows.get(event.window_id)
         if (!window) {
           if (event.window_id >= this.nextWindow)
@@ -256,6 +297,36 @@ class Application implements NativeApplication {
     if (this.failure) throw this.failure
   }
 }
+
+async function dispatchShortcut(
+  registration: ShortcutRegistration,
+  event: GlobalShortcutEvent
+): Promise<void> {
+  const listener = registration.listener
+  if (!listener || !registration.live) return
+  const signal = registration.controller.signal
+  let cancel!: () => void
+  const cancelled = new Promise<void>((resolve) => {
+    cancel = resolve
+  })
+  signal.addEventListener('abort', cancel, { once: true })
+  try {
+    // Revocation releases an uncooperative listener without blocking ingestion.
+    await Promise.race([listener(event), cancelled])
+  } finally {
+    signal.removeEventListener('abort', cancel)
+  }
+}
+
+const SHORTCUT_ERRORS = [
+  'permission_denied',
+  'service_unavailable',
+  'conflict',
+  'cancelled',
+  'native_failure',
+  'operation_timed_out',
+  'limit_exceeded',
+] as const
 
 class Window implements NativeWindow {
   readonly root: NativeNode<'box'>
@@ -468,6 +539,103 @@ class Window implements NativeWindow {
     })
   }
 
+  async registerGlobalShortcut(
+    options: GlobalShortcutOptions,
+    listener: (event: GlobalShortcutEvent) => void | Promise<void>
+  ): Promise<NativeGlobalShortcut> {
+    const { key, modifiers } = shortcutRequest(options)
+    if (typeof listener !== 'function')
+      throw new TypeError('A global shortcut listener must be a function')
+    this.assertActive()
+    return this.application.service(async () => {
+      this.assertActive()
+      const registration = new ShortcutRegistration(
+        this.application.allocateShortcut(),
+        this.id,
+        key,
+        modifiers,
+        listener,
+        (item) => this.releaseShortcut(item)
+      )
+      this.application.shortcuts.set(registration.id, registration)
+      try {
+        await this.application.host.send({
+          type: 'register_global_shortcut',
+          window_id: this.id,
+          shortcut_id: registration.id,
+          key,
+          modifiers,
+        })
+        this.assertActive()
+        if (!registration.live)
+          throw new NativeServiceError(
+            'global_shortcuts',
+            'cancelled',
+            'Global shortcut was revoked during registration'
+          )
+        return registration.handle
+      } catch (error) {
+        registration.revoke()
+        this.application.shortcuts.delete(registration.id)
+        if (error instanceof ProtocolError) throw error
+        this.assertActive()
+        if (
+          error instanceof NativeCommandError &&
+          (SHORTCUT_ERRORS as readonly string[]).includes(error.code)
+        )
+          throw new NativeServiceError(
+            'global_shortcuts',
+            error.code as NativeServiceError['code'],
+            error.message
+          )
+        throw error
+      }
+    })
+  }
+
+  private releaseShortcut(registration: ShortcutRegistration): Promise<void> {
+    // Local revocation first: no activation is delivered after this call.
+    registration.revoke()
+    this.application.shortcuts.delete(registration.id)
+    // Window close and application shutdown release the native grab.
+    if (!this.active || !this.application.running) return Promise.resolve()
+    return this.application.track(
+      this.application.host
+        .send({
+          type: 'unregister_global_shortcut',
+          window_id: this.id,
+          shortcut_id: registration.id,
+        })
+        .then(
+          () => {},
+          (error: unknown) => {
+            // The owner window can close while the request is in flight.
+            if (error instanceof NativeCommandError && error.code === 'invalid_handle') return
+            if (!this.application.running) return
+            throw error
+          }
+        )
+    )
+  }
+
+  receiveShortcut(event: Extract<WindowEvent, { type: 'global_shortcut' }>): void {
+    if (!this.active) return
+    const registration = this.application.shortcuts.get(event.shortcut_id)
+    if (!registration) return // Released: the host may already have queued a press.
+    if (registration.windowId !== this.id)
+      throw new ProtocolError('Native event names a global shortcut outside its owner')
+    this.application.queueCallback({
+      windowId: this.id,
+      shortcut: registration,
+      event: Object.freeze({
+        type: 'global_shortcut',
+        sequence: event.sequence,
+        shortcut: registration.handle,
+        signal: registration.controller.signal,
+      }),
+    })
+  }
+
   async close(): Promise<void> {
     if (!this.active) {
       await this.closing
@@ -496,6 +664,11 @@ class Window implements NativeWindow {
     this.active = false
     this.listeners.clear()
     this.nodes.clear()
+    for (const registration of this.application.shortcuts.values())
+      if (registration.windowId === this.id) {
+        registration.revoke()
+        this.application.shortcuts.delete(registration.id)
+      }
     this.application.windows.delete(this.id)
     this.resolveClosed()
   }
@@ -507,6 +680,10 @@ class Window implements NativeWindow {
   receive(event: WindowEvent, nextNode: number): void {
     if (event.type === 'closed') {
       this.revoke()
+      return
+    }
+    if (event.type === 'global_shortcut') {
+      this.receiveShortcut(event)
       return
     }
     if (!this.active) return

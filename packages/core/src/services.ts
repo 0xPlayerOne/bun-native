@@ -1,7 +1,7 @@
 import type { Capability, ClipboardText, ServicePolicy } from '@bun-native/protocol'
 
 export type NativeClipboardText = Readonly<ClipboardText>
-type ServiceName = 'window_display' | 'clipboard_read' | 'clipboard_write'
+type ServiceName = 'window_display' | 'clipboard_read' | 'clipboard_write' | 'global_shortcuts'
 
 export type ServicePermissions = NonNullable<
   import('@bun-native/runtime').HostOptions['permissions']
@@ -35,7 +35,14 @@ export interface ServiceCapabilities {
         backend: 'x11'
       }>
     | Readonly<{ availability: 'unavailable'; reason: 'unsupported_platform' }>
-  readonly globalShortcuts: UnavailableService
+  readonly globalShortcuts:
+    | Readonly<{
+        availability: 'available'
+        permission: 'allow' | 'deny'
+        scope: 'owned_window'
+        backend: 'x11'
+      }>
+    | Readonly<{ availability: 'unavailable'; reason: 'unsupported_platform' }>
   readonly systemMenus: UnavailableService
   readonly dialogs: UnavailableService
   readonly notifications: UnavailableService
@@ -55,7 +62,8 @@ export class NativeServiceError extends Error {
       | 'native_failure'
       | 'operation_timed_out'
       | 'payload_too_large'
-      | 'limit_exceeded',
+      | 'limit_exceeded'
+      | 'conflict',
     message: string
   ) {
     super(message)
@@ -86,7 +94,14 @@ export function serviceCapabilities(
           backend: 'x11',
         })
       : Object.freeze({ availability: 'unavailable', reason: 'unsupported_platform' }),
-    globalShortcuts: unavailable,
+    globalShortcuts: capabilities.includes('global_shortcuts_v1')
+      ? Object.freeze({
+          availability: 'available',
+          permission: policy.global_shortcuts ? 'allow' : 'deny',
+          scope: 'owned_window',
+          backend: 'x11',
+        })
+      : Object.freeze({ availability: 'unavailable', reason: 'unsupported_platform' }),
     systemMenus: unavailable,
     dialogs: unavailable,
     notifications: unavailable,
