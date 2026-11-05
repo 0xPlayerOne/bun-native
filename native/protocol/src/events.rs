@@ -2,7 +2,7 @@
 
 use crate::{
     validate_text, Capability, ClipboardText, DisplaySnapshot, ErrorCode, EventSequence, Limits,
-    NodeId, RequestId, ServicePolicy, WindowId, MAX_DEPTH, MAX_ID,
+    NodeId, RequestId, ServicePolicy, ShortcutId, WindowId, MAX_DEPTH, MAX_ID,
 };
 use serde::{Deserialize, Serialize};
 
@@ -68,6 +68,22 @@ pub enum Event {
     ClipboardWritten {
         id: RequestId,
         window_id: WindowId,
+    },
+    GlobalShortcutRegistered {
+        id: RequestId,
+        window_id: WindowId,
+        shortcut_id: ShortcutId,
+    },
+    GlobalShortcutUnregistered {
+        id: RequestId,
+        window_id: WindowId,
+        shortcut_id: ShortcutId,
+    },
+    /// An OS-wide activation of a live registration owned by this window.
+    GlobalShortcut {
+        sequence: EventSequence,
+        window_id: WindowId,
+        shortcut_id: ShortcutId,
     },
     Click {
         sequence: EventSequence,

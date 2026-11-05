@@ -60,6 +60,7 @@ for await (const chunk of Bun.stdin.stream()) {
           window_display: process.argv.includes('--bun-native-allow-window-display'),
           clipboard_read: process.argv.includes('--bun-native-allow-clipboard-read'),
           clipboard_write: process.argv.includes('--bun-native-allow-clipboard-write'),
+          global_shortcuts: process.argv.includes('--bun-native-allow-global-shortcuts'),
         },
         protocol: PROTOCOL_VERSION,
         capabilities: [...REQUIRED_CAPABILITIES],

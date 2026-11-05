@@ -11,6 +11,12 @@ export type {
   ServiceRequestOptions,
 } from './services.ts'
 export type {
+  GlobalShortcutEvent,
+  GlobalShortcutKey,
+  GlobalShortcutOptions,
+  NativeGlobalShortcut,
+} from './shortcuts.ts'
+export type {
   ApplicationOptions,
   ClickEvent,
   Element,

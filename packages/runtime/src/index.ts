@@ -21,14 +21,32 @@ type WithoutId<T> = T extends { id: number } ? Omit<T, 'id'> : never
 export type WindowCommand = WithoutId<
   Extract<
     Command,
-    { type: 'open' | 'batch' | 'close' | 'display_snapshot' | 'clipboard_read' | 'clipboard_write' }
+    {
+      type:
+        | 'open'
+        | 'batch'
+        | 'close'
+        | 'display_snapshot'
+        | 'clipboard_read'
+        | 'clipboard_write'
+        | 'register_global_shortcut'
+        | 'unregister_global_shortcut'
+    }
   >
 >
 export type WindowEvent = Extract<NativeEvent, { sequence: number; window_id: number }>
 export type HostResponse = Extract<
   NativeEvent,
   {
-    type: 'ack' | 'opened' | 'applied' | 'display_snapshot' | 'clipboard_text' | 'clipboard_written'
+    type:
+      | 'ack'
+      | 'opened'
+      | 'applied'
+      | 'display_snapshot'
+      | 'clipboard_text'
+      | 'clipboard_written'
+      | 'global_shortcut_registered'
+      | 'global_shortcut_unregistered'
   }
 >
 
@@ -37,6 +55,8 @@ export interface ServicePermissions {
   readonly windowDisplay?: 'allow' | 'deny'
   readonly clipboardRead?: 'allow' | 'deny'
   readonly clipboardWrite?: 'allow' | 'deny'
+  /** OS-wide key grabs that deliver while another application is focused. */
+  readonly globalShortcuts?: 'allow' | 'deny'
 }
 
 export class NativeCommandError extends Error {
@@ -64,7 +84,8 @@ function launchPolicy(value: unknown = {}): Readonly<ServicePolicy> {
     throw new TypeError('Native permissions must be an object')
   if (
     Object.keys(value).some(
-      (key) => !['windowDisplay', 'clipboardRead', 'clipboardWrite'].includes(key)
+      (key) =>
+        !['windowDisplay', 'clipboardRead', 'clipboardWrite', 'globalShortcuts'].includes(key)
     )
   )
     throw new TypeError('Unknown native service permission')
@@ -78,6 +99,7 @@ function launchPolicy(value: unknown = {}): Readonly<ServicePolicy> {
     window_display: grant('windowDisplay'),
     clipboard_read: grant('clipboardRead'),
     clipboard_write: grant('clipboardWrite'),
+    global_shortcuts: grant('globalShortcuts'),
   })
 }
 
@@ -135,6 +157,7 @@ export class NativeHost implements AsyncIterable<WindowEvent> {
         ...(requestedPolicy.window_display ? ['--bun-native-allow-window-display'] : []),
         ...(requestedPolicy.clipboard_read ? ['--bun-native-allow-clipboard-read'] : []),
         ...(requestedPolicy.clipboard_write ? ['--bun-native-allow-clipboard-write'] : []),
+        ...(requestedPolicy.global_shortcuts ? ['--bun-native-allow-global-shortcuts'] : []),
       ],
       stdin: 'pipe',
       stdout: 'pipe',
@@ -209,6 +232,12 @@ export class NativeHost implements AsyncIterable<WindowEvent> {
   send(
     command: Extract<WindowCommand, { type: 'clipboard_write' }>
   ): Promise<Extract<HostResponse, { type: 'clipboard_written' }>>
+  send(
+    command: Extract<WindowCommand, { type: 'register_global_shortcut' }>
+  ): Promise<Extract<HostResponse, { type: 'global_shortcut_registered' }>>
+  send(
+    command: Extract<WindowCommand, { type: 'unregister_global_shortcut' }>
+  ): Promise<Extract<HostResponse, { type: 'global_shortcut_unregistered' }>>
   send(command: WindowCommand): Promise<HostResponse>
   send(command: WindowCommand): Promise<HostResponse> {
     if (this.phase !== 'running') return Promise.reject(this.closedError())
@@ -421,6 +450,8 @@ export class NativeHost implements AsyncIterable<WindowEvent> {
       event.type === 'display_snapshot' ||
       event.type === 'clipboard_text' ||
       event.type === 'clipboard_written' ||
+      event.type === 'global_shortcut_registered' ||
+      event.type === 'global_shortcut_unregistered' ||
       event.type === 'error'
     ) {
       if (event.type === 'error' && event.id === undefined)
@@ -463,6 +494,18 @@ export class NativeHost implements AsyncIterable<WindowEvent> {
         return response.type === 'clipboard_text' && response.window_id === command.window_id
       case 'clipboard_write':
         return response.type === 'clipboard_written' && response.window_id === command.window_id
+      case 'register_global_shortcut':
+        return (
+          response.type === 'global_shortcut_registered' &&
+          response.window_id === command.window_id &&
+          response.shortcut_id === command.shortcut_id
+        )
+      case 'unregister_global_shortcut':
+        return (
+          response.type === 'global_shortcut_unregistered' &&
+          response.window_id === command.window_id &&
+          response.shortcut_id === command.shortcut_id
+        )
       case 'open':
         return (
           response.type === 'opened' &&

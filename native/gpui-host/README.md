@@ -55,9 +55,9 @@ requests in flight while injecting OS input and checks that input and paint
 progress before the producer stops. Reports retain acknowledgement throughput
 alongside responsiveness; they do not equate acknowledgements with presentation.
 
-`bun-native-protocol` owns the [private v6 contract](../protocol/README.md).
-Protocol 6 requires shared layout, interaction and window-display service
-capabilities and replaces v5 outright. The
+`bun-native-protocol` owns the [private v7 contract](../protocol/README.md).
+Protocol 7 requires shared layout, interaction and window-display service
+capabilities and replaces v6 outright. The
 session owns up to 16 windows, each with one box root and at most 4,096 nodes.
 Atomic batches create, update, reparent, reorder and delete box, text, button
 and input elements. All adapters use this same model and renderer. Neither

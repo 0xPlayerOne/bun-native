@@ -43,11 +43,17 @@ describe('shared native service boundary', () => {
             window_display: allowed,
             clipboard_read: false,
             clipboard_write: false,
+            global_shortcuts: false,
           },
         })
       ).toEqual({
         ...ready,
-        service_policy: { window_display: allowed, clipboard_read: false, clipboard_write: false },
+        service_policy: {
+          window_display: allowed,
+          clipboard_read: false,
+          clipboard_write: false,
+          global_shortcuts: false,
+        },
       })
     for (const service_policy of [
       undefined,
@@ -62,7 +68,12 @@ describe('shared native service boundary', () => {
       parseEvent({
         ...ready,
         protocol: 4,
-        service_policy: { window_display: false, clipboard_read: false, clipboard_write: false },
+        service_policy: {
+          window_display: false,
+          clipboard_read: false,
+          clipboard_write: false,
+          global_shortcuts: false,
+        },
       })
     ).toThrow('version mismatch')
   })

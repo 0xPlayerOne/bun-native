@@ -1,7 +1,14 @@
 export { encodeFrame, FrameDecoder, MAX_FRAME_BYTES, ProtocolError } from './framing.ts'
 export { parseElement, type Element, type Style } from './elements.ts'
 export { MAX_TEXT_BYTES } from './values.ts'
-export { MAX_CLIPBOARD_BYTES, type ClipboardText, type ServicePolicy } from './services.ts'
+export {
+  GLOBAL_SHORTCUT_KEYS,
+  MAX_CLIPBOARD_BYTES,
+  MAX_GLOBAL_SHORTCUTS,
+  type ClipboardText,
+  type ServicePolicy,
+  type ShortcutModifiers,
+} from './services.ts'
 export {
   DEFAULT_LIMITS,
   ERROR_CODES,

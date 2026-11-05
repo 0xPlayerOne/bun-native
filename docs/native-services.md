@@ -62,16 +62,17 @@ try {
 ```
 
 The default permission is `deny`. The accepted keys are `windowDisplay`,
-`clipboardRead` and `clipboardWrite`, each independently `allow` or `deny`.
+`clipboardRead`, `clipboardWrite` and `globalShortcuts`, each independently
+`allow` or `deny`.
 The runtime translates each explicit grant into its reserved native launch argument. The Rust process
 parses that immutable policy before starting GPUI or its private channel.
 Unknown or duplicate native arguments fail startup. A wire message cannot
 grant, extend or change the policy.
 
-Protocol 6 replaces protocol 5 without a compatibility decoder. Readiness must
+Protocol 7 replaces protocol 6 without a compatibility decoder. Readiness must
 include `window_display_v1` alongside the existing rendering capabilities and
-explicit `window_display`, `clipboard_read` and `clipboard_write` booleans in
-`service_policy`. The runtime requires the
+explicit `window_display`, `clipboard_read`, `clipboard_write` and
+`global_shortcuts` booleans in `service_policy`. The runtime requires the
 reported policy to match its launch request exactly. Missing capabilities,
 missing policy, conflicting policy or an older protocol fail launch and clean
 up the child. Feature negotiation says what the host implements; permission
@@ -237,6 +238,44 @@ The codes are `permission_denied`, `service_unavailable`, `cancelled`,
 malformed transport data remains `ProtocolError`. An owner change during a
 read fails explicitly; it does not return a possibly mixed snapshot.
 
+## Global shortcuts
+
+`window.registerGlobalShortcut(options, listener)` registers an owned OS-wide
+combination under the separate `globalShortcuts` grant. The optional
+`global_shortcuts_v1` feature is advertised only for a local Linux X11 session.
+The worker holds passive grabs on the root window through its own X
+connection, resolving keycodes and the Alt, Super and Num Lock bits from the
+server's live keyboard and modifier maps. Each combination is grabbed with
+every Caps Lock/Num Lock state, so lock state never changes the shortcut.
+
+Keys are the closed set `a`-`z`, `0`-`9` and `f1`-`f12`; at least one of
+control, alt or platform (Super) is required. Unsupported combinations fail
+validation in both language implementations before any native request. A
+combination another X11 client already grabs returns `conflict`, and every
+variant this client acquired is released first. A duplicate within the
+application is also `conflict`. A key missing from the keyboard map or an
+unmapped modifier is `service_unavailable`. At most 16 registrations exist per
+session.
+
+Unregistration, owner close and shutdown remove a registration from the
+UI-thread registry before the worker ungrabs, so a press the X server already
+queued is never published. Unregistration resolves only after the ungrab and a
+server round trip. Owner close releases grabs without an application request.
+Shutdown joins the worker, and closing its connection releases any remaining
+grab. Core X11 autorepeat does not repeat an activation.
+
+The [Native Linux workflow](../.github/workflows/native-linux.yml) runs
+[`tests/native/global-shortcuts.ts`](../tests/native/global-shortcuts.ts) in
+development and inspected AOT on an isolated Xvfb with openbox. It requires
+default denial with no grab, XTEST delivery while a different owned window is
+focused, no activation for the unmodified key, Num Lock independence, a real
+`BadAccess` refusal for an independent X11 client
+([`shortcut-peer`](../native/gpui-host/examples/shortcut-peer.rs)), `conflict`
+for both a foreign and an in-session holder, and an independent client
+successfully grabbing the same combination after unregistration, owner close
+and shutdown. macOS, Windows, Wayland and remote X11 remain unavailable. See
+[ADR 0008](decisions/0008-native-global-shortcuts.md).
+
 ## Service and platform matrix
 
 All services listed here share the core's policy boundary. The unavailable rows
@@ -244,17 +283,17 @@ are requirements for future work, not promises that an exported function
 already exists. The linked follow-ups belong to
 [#255](https://github.com/0xPlayerOne/bun-native/issues/255).
 
-| Service           | Current public surface                                        | Linux X11                                           | macOS                        | Windows                      | Required scope before exposing more operations                                                                                                                                                          |
-| ----------------- | ------------------------------------------------------------- | --------------------------------------------------- | ---------------------------- | ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Window/display    | Existing owned open/close; permission-gated `displaySnapshot` | Core/Solid/React dev+AOT verified with release host | Service execution unverified | Service execution unverified | Display changes, physical-monitor/work-area semantics, placement and mixed-DPI evidence. [#299](https://github.com/0xPlayerOne/bun-native/issues/299).                                                  |
-| Clipboard text    | `readClipboardText` / `writeClipboardText`; separate grants   | X11 dev+AOT verified with release host              | Unavailable                  | Unavailable                  | Additional platforms/formats and extended lifecycle coverage. [#300](https://github.com/0xPlayerOne/bun-native/issues/300).                                                                             |
-| Global shortcuts  | Capability `globalShortcuts`; unavailable                     | Unavailable                                         | Unavailable                  | Unavailable                  | Explicit registration policy, conflict errors, revocable owned registrations and teardown. Window key listeners are not global shortcuts. [#301](https://github.com/0xPlayerOne/bun-native/issues/301). |
-| System menus      | Capability `systemMenus`; unavailable                         | Unavailable                                         | Unavailable                  | Unavailable                  | Typed action identities, owned menu lifetime, keyboard/accessibility behavior and safe action revocation. [#239](https://github.com/0xPlayerOne/bun-native/issues/239).                                 |
-| Dialogs           | Capability `dialogs`; unavailable                             | Unavailable                                         | Unavailable                  | Unavailable                  | Owned-window modality, explicit cancellation, shutdown and file selection distinct from a file grant. [#239](https://github.com/0xPlayerOne/bun-native/issues/239).                                     |
-| Notifications     | Capability `notifications`; unavailable                       | Unavailable                                         | Unavailable                  | Unavailable                  | OS permission outcome, bounded payload, activation routing and late-callback revocation. [#302](https://github.com/0xPlayerOne/bun-native/issues/302).                                                  |
-| Drag/drop         | Capability `dragDrop`; unavailable                            | Unavailable                                         | Unavailable                  | Unavailable                  | Bounded untrusted payload, owned target, native cancellation and explicit file-grant conversion. [#303](https://github.com/0xPlayerOne/bun-native/issues/303).                                          |
-| Filesystem grants | Capability `filesystemGrants`; unavailable                    | Unavailable                                         | Unavailable                  | Unavailable                  | Scoped file/directory handles, allowed operations, path/symlink policy, revocation and OS failure mapping. [#304](https://github.com/0xPlayerOne/bun-native/issues/304).                                |
-| PTY/process       | Capability `ptyProcess`; unavailable                          | Unavailable                                         | Unavailable                  | Unavailable                  | Executable/argument/environment policy, bounded streams, process identity, interruption and joined child cleanup. [#305](https://github.com/0xPlayerOne/bun-native/issues/305).                         |
+| Service           | Current public surface                                        | Linux X11                                           | macOS                        | Windows                      | Required scope before exposing more operations                                                                                                                                  |
+| ----------------- | ------------------------------------------------------------- | --------------------------------------------------- | ---------------------------- | ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Window/display    | Existing owned open/close; permission-gated `displaySnapshot` | Core/Solid/React dev+AOT verified with release host | Service execution unverified | Service execution unverified | Display changes, physical-monitor/work-area semantics, placement and mixed-DPI evidence. [#299](https://github.com/0xPlayerOne/bun-native/issues/299).                          |
+| Clipboard text    | `readClipboardText` / `writeClipboardText`; separate grants   | X11 dev+AOT verified with release host              | Unavailable                  | Unavailable                  | Additional platforms/formats and extended lifecycle coverage. [#300](https://github.com/0xPlayerOne/bun-native/issues/300).                                                     |
+| Global shortcuts  | `registerGlobalShortcut`; `globalShortcuts` grant             | X11 dev+AOT verified with release host              | Unavailable                  | Unavailable                  | macOS/Windows backends, Wayland portal design and keyboard-map change tracking. [#301](https://github.com/0xPlayerOne/bun-native/issues/301).                                   |
+| System menus      | Capability `systemMenus`; unavailable                         | Unavailable                                         | Unavailable                  | Unavailable                  | Typed action identities, owned menu lifetime, keyboard/accessibility behavior and safe action revocation. [#239](https://github.com/0xPlayerOne/bun-native/issues/239).         |
+| Dialogs           | Capability `dialogs`; unavailable                             | Unavailable                                         | Unavailable                  | Unavailable                  | Owned-window modality, explicit cancellation, shutdown and file selection distinct from a file grant. [#239](https://github.com/0xPlayerOne/bun-native/issues/239).             |
+| Notifications     | Capability `notifications`; unavailable                       | Unavailable                                         | Unavailable                  | Unavailable                  | OS permission outcome, bounded payload, activation routing and late-callback revocation. [#302](https://github.com/0xPlayerOne/bun-native/issues/302).                          |
+| Drag/drop         | Capability `dragDrop`; unavailable                            | Unavailable                                         | Unavailable                  | Unavailable                  | Bounded untrusted payload, owned target, native cancellation and explicit file-grant conversion. [#303](https://github.com/0xPlayerOne/bun-native/issues/303).                  |
+| Filesystem grants | Capability `filesystemGrants`; unavailable                    | Unavailable                                         | Unavailable                  | Unavailable                  | Scoped file/directory handles, allowed operations, path/symlink policy, revocation and OS failure mapping. [#304](https://github.com/0xPlayerOne/bun-native/issues/304).        |
+| PTY/process       | Capability `ptyProcess`; unavailable                          | Unavailable                                         | Unavailable                  | Unavailable                  | Executable/argument/environment policy, bounded streams, process identity, interruption and joined child cleanup. [#305](https://github.com/0xPlayerOne/bun-native/issues/305). |
 
 For the deferred rows, the exported typed contract is the frozen availability
 record in `ServiceCapabilities`. There is no callable operation, configurable

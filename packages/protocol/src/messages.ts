@@ -4,11 +4,15 @@ import {
   parseDisplaySnapshot,
   parseClipboardText,
   parseServicePolicy,
+  parseShortcutKey,
+  parseShortcutModifiers,
   MAX_CLIPBOARD_BYTES,
+  MAX_GLOBAL_SHORTCUTS,
   MAX_SERVICE_REQUESTS,
   type ClipboardText,
   type DisplaySnapshot,
   type ServicePolicy,
+  type ShortcutModifiers,
 } from './services.ts'
 import {
   id,
@@ -21,7 +25,7 @@ import {
   string,
 } from './values.ts'
 
-export const PROTOCOL_VERSION = 6
+export const PROTOCOL_VERSION = 7
 export const MAX_OPERATIONS = 256
 const MAX_NODES_PER_WINDOW = 4_096
 const MAX_WINDOWS = 16
@@ -38,6 +42,7 @@ export interface Limits {
   max_text_bytes_per_window: number
   max_clipboard_bytes: number
   max_service_requests: number
+  max_global_shortcuts: number
 }
 
 export const DEFAULT_LIMITS: Readonly<Limits> = Object.freeze({
@@ -50,6 +55,7 @@ export const DEFAULT_LIMITS: Readonly<Limits> = Object.freeze({
   max_text_bytes_per_window: MAX_TEXT_BYTES_PER_WINDOW,
   max_clipboard_bytes: MAX_CLIPBOARD_BYTES,
   max_service_requests: MAX_SERVICE_REQUESTS,
+  max_global_shortcuts: MAX_GLOBAL_SHORTCUTS,
 })
 
 export type Operation =
@@ -86,6 +92,15 @@ export type Command =
   | { id: number; type: 'display_snapshot'; window_id: number }
   | { id: number; type: 'clipboard_read'; window_id: number }
   | { id: number; type: 'clipboard_write'; window_id: number; text: string }
+  | {
+      id: number
+      type: 'register_global_shortcut'
+      window_id: number
+      shortcut_id: number
+      key: string
+      modifiers: ShortcutModifiers
+    }
+  | { id: number; type: 'unregister_global_shortcut'; window_id: number; shortcut_id: number }
   | { id: number; type: 'shutdown' }
 
 export const ERROR_CODES = [
@@ -101,6 +116,7 @@ export const ERROR_CODES = [
   'cancelled',
   'operation_timed_out',
   'payload_too_large',
+  'conflict',
 ] as const
 export type ErrorCode = (typeof ERROR_CODES)[number]
 export const REQUIRED_CAPABILITIES = Object.freeze([
@@ -110,7 +126,7 @@ export const REQUIRED_CAPABILITIES = Object.freeze([
   'interactions_v1',
   'window_display_v1',
 ] as const)
-const CAPABILITIES = [...REQUIRED_CAPABILITIES, 'clipboard_text_v1'] as const
+const CAPABILITIES = [...REQUIRED_CAPABILITIES, 'clipboard_text_v1', 'global_shortcuts_v1'] as const
 export type Capability = (typeof CAPABILITIES)[number]
 
 export interface KeyModifiers {
@@ -158,7 +174,10 @@ export type NativeEvent =
   | { type: 'display_snapshot'; id: number; window_id: number; snapshot: DisplaySnapshot }
   | { type: 'clipboard_text'; id: number; window_id: number; result: ClipboardText }
   | { type: 'clipboard_written'; id: number; window_id: number }
+  | { type: 'global_shortcut_registered'; id: number; window_id: number; shortcut_id: number }
+  | { type: 'global_shortcut_unregistered'; id: number; window_id: number; shortcut_id: number }
   | RoutedEvent
+  | { type: 'global_shortcut'; sequence: number; window_id: number; shortcut_id: number }
   | { type: 'closed'; sequence: number; window_id: number }
   | { type: 'error'; id?: number; code: ErrorCode; message: string }
 
@@ -259,6 +278,24 @@ export function parseCommand(value: unknown): Command {
         window_id: id(message['window_id']),
         text: string(message['text'], 'clipboard text', MAX_CLIPBOARD_BYTES),
       }
+    case 'register_global_shortcut':
+      keys(message, ['id', 'type', 'window_id', 'shortcut_id', 'key', 'modifiers'])
+      return {
+        id: request,
+        type: 'register_global_shortcut',
+        window_id: id(message['window_id']),
+        shortcut_id: id(message['shortcut_id']),
+        key: parseShortcutKey(message['key']),
+        modifiers: parseShortcutModifiers(message['modifiers']),
+      }
+    case 'unregister_global_shortcut':
+      keys(message, ['id', 'type', 'window_id', 'shortcut_id'])
+      return {
+        id: request,
+        type: 'unregister_global_shortcut',
+        window_id: id(message['window_id']),
+        shortcut_id: id(message['shortcut_id']),
+      }
     case 'shutdown':
       keys(message, ['id', 'type'])
       return { id: request, type: 'shutdown' }
@@ -281,6 +318,7 @@ function limits(value: unknown): Limits {
     max_text_bytes_per_window: parse('max_text_bytes_per_window'),
     max_clipboard_bytes: parse('max_clipboard_bytes'),
     max_service_requests: parse('max_service_requests'),
+    max_global_shortcuts: parse('max_global_shortcuts'),
   }
 }
 
@@ -385,6 +423,23 @@ export function parseEvent(value: unknown): NativeEvent {
         type: 'clipboard_written',
         id: id(message['id']),
         window_id: id(message['window_id']),
+      }
+    case 'global_shortcut_registered':
+    case 'global_shortcut_unregistered':
+      keys(message, ['type', 'id', 'window_id', 'shortcut_id'])
+      return {
+        type: message['type'],
+        id: id(message['id']),
+        window_id: id(message['window_id']),
+        shortcut_id: id(message['shortcut_id']),
+      }
+    case 'global_shortcut':
+      keys(message, ['type', 'sequence', 'window_id', 'shortcut_id'])
+      return {
+        type: 'global_shortcut',
+        sequence: id(message['sequence']),
+        window_id: id(message['window_id']),
+        shortcut_id: id(message['shortcut_id']),
       }
     case 'click':
     case 'focus':

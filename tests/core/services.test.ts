@@ -85,7 +85,7 @@ describe('owned desktop service lifecycle (headless subprocess)', () => {
       })
       for (const [name, value] of Object.entries(app.serviceCapabilities)) {
         expect(Object.isFrozen(value)).toBe(true)
-        if (name === 'clipboardText')
+        if (name === 'clipboardText' || name === 'globalShortcuts')
           expect(value).toEqual({ availability: 'unavailable', reason: 'unsupported_platform' })
         else if (name !== 'windowDisplay')
           expect(value).toEqual({ availability: 'unavailable', reason: 'not_implemented' })

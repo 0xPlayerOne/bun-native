@@ -5,10 +5,10 @@ use std::io::{self, Read, Write};
 use std::os::fd::{AsFd, BorrowedFd};
 use std::os::unix::net::UnixStream;
 
-pub(super) struct Sender(UnixStream);
-pub(super) struct Receiver(UnixStream);
+pub(crate) struct Sender(UnixStream);
+pub(crate) struct Receiver(UnixStream);
 
-pub(super) fn pair() -> io::Result<(Sender, Receiver)> {
+pub(crate) fn pair() -> io::Result<(Sender, Receiver)> {
     let (sender, receiver) = UnixStream::pair()?;
     sender.set_nonblocking(true)?;
     receiver.set_nonblocking(true)?;
@@ -16,7 +16,7 @@ pub(super) fn pair() -> io::Result<(Sender, Receiver)> {
 }
 
 impl Sender {
-    pub(super) fn notify(&self) -> io::Result<()> {
+    pub(crate) fn notify(&self) -> io::Result<()> {
         loop {
             match (&self.0).write(&[1]) {
                 Err(error) if error.kind() == io::ErrorKind::Interrupted => {}
@@ -32,7 +32,7 @@ impl Sender {
 }
 
 impl Receiver {
-    pub(super) fn wait(&self, selection: Option<BorrowedFd<'_>>) -> io::Result<bool> {
+    pub(crate) fn wait(&self, selection: Option<BorrowedFd<'_>>) -> io::Result<bool> {
         let mut sources = [
             PollFd::new(&self.0, PollFlags::IN),
             PollFd::from_borrowed_fd(selection.unwrap_or(self.0.as_fd()), PollFlags::IN),

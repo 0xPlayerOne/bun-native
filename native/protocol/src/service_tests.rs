@@ -30,6 +30,10 @@ fn service_commands_and_responses_share_the_checked_typescript_contract() {
             include_str!("../../../tests/fixtures/native-clipboard.json"),
             "clipboard_text_v1",
         ),
+        (
+            include_str!("../../../tests/fixtures/native-global-shortcuts.json"),
+            "global_shortcuts_v1",
+        ),
     ] {
         service_cases(source, capability);
     }
@@ -98,7 +102,7 @@ fn clipboard_payload_is_byte_bounded_even_after_json_escaping() {
 fn service_policy_requires_an_explicit_boolean_and_denies_unrecognized_grants() {
     for value in [false, true] {
         let policy: ServicePolicy =
-            serde_json::from_value(serde_json::json!({"window_display": value, "clipboard_read": false, "clipboard_write": false})).unwrap();
+            serde_json::from_value(serde_json::json!({"window_display": value, "clipboard_read": false, "clipboard_write": false, "global_shortcuts": false})).unwrap();
         assert_eq!(policy.window_display, value);
     }
     for wire in [
@@ -112,5 +116,42 @@ fn service_policy_requires_an_explicit_boolean_and_denies_unrecognized_grants() 
             serde_json::from_str::<ServicePolicy>(wire).is_err(),
             "{wire}"
         );
+    }
+}
+
+#[test]
+fn global_shortcuts_accept_only_the_closed_key_set_with_a_non_shift_modifier() {
+    use crate::{validate_global_shortcut, ShortcutModifiers};
+    let control = ShortcutModifiers {
+        control: true,
+        ..ShortcutModifiers::default()
+    };
+    for key in ["a", "z", "0", "9", "f1", "f9", "f10", "f12"] {
+        assert!(validate_global_shortcut(key, control).is_ok(), "{key}");
+    }
+    for key in ["", "A", "f0", "f13", "f01", "aa", "space", "\u{e9}", "-"] {
+        assert!(validate_global_shortcut(key, control).is_err(), "{key}");
+    }
+    for modifiers in [
+        ShortcutModifiers::default(),
+        ShortcutModifiers {
+            shift: true,
+            ..ShortcutModifiers::default()
+        },
+    ] {
+        assert!(validate_global_shortcut("k", modifiers).is_err());
+    }
+    for modifiers in [
+        ShortcutModifiers {
+            alt: true,
+            ..ShortcutModifiers::default()
+        },
+        ShortcutModifiers {
+            platform: true,
+            shift: true,
+            ..ShortcutModifiers::default()
+        },
+    ] {
+        assert!(validate_global_shortcut("k", modifiers).is_ok());
     }
 }
