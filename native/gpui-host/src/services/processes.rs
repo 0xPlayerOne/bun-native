@@ -4,7 +4,7 @@
 //! input, paint or the tree queue.
 
 use crate::channel::EventSink;
-use crate::services::files::{Directory, beneath, failure as path_failure};
+use crate::services::files::{Directory, directory_beneath, failure as path_failure};
 use async_channel::{Receiver, Sender};
 use base64::Engine as _;
 use base64::engine::general_purpose::STANDARD;
@@ -15,7 +15,7 @@ use bun_native_protocol::{
 };
 use gpui::{App, BackgroundExecutor, Task};
 use rustix::event::{EventfdFlags, PollFd, PollFlags, eventfd, poll};
-use rustix::fs::{Mode, OFlags, fcntl_getfl, fcntl_setfl};
+use rustix::fs::{OFlags, fcntl_getfl, fcntl_setfl};
 use rustix::io::Errno;
 use rustix::process::{
     Pid, PidfdFlags, Signal, WaitId, WaitIdOptions, kill_process_group, pidfd_open, waitid,
@@ -608,16 +608,16 @@ impl Job {
     fn start(self) -> Result<Running, Failure> {
         // The grant descriptor, not a path string, names the working directory.
         let directory = match &self.directory {
-            Some((root, path)) => Some(
-                beneath(root, path, OFlags::PATH | OFlags::DIRECTORY, Mode::empty()).map_err(
-                    |failure| match failure.0 {
+            Some((root, path)) => {
+                Some(
+                    directory_beneath(root, path).map_err(|failure| match failure.0 {
                         ErrorCode::NotFound | ErrorCode::WrongKind | ErrorCode::PathDenied => {
                             failure
                         }
                         _ => path_failure(Errno::ACCESS),
-                    },
-                )?,
-            ),
+                    })?,
+                )
+            }
             None => None,
         };
         let cwd = directory
@@ -1048,7 +1048,7 @@ mod tests {
                 rustix::fs::open(
                     base.join("root"),
                     OFlags::PATH | OFlags::DIRECTORY | OFlags::CLOEXEC,
-                    Mode::empty(),
+                    rustix::fs::Mode::empty(),
                 )
                 .unwrap(),
             )

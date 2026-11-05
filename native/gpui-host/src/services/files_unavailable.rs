@@ -1,5 +1,5 @@
 //! No filesystem grant implementation is advertised on these targets: they
-//! lack the `openat2` confinement the Linux worker relies on.
+//! have neither Linux `openat2` nor the macOS per-name `openat` walk.
 
 use crate::channel::EventSink;
 use bun_native_protocol::{

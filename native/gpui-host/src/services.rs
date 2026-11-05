@@ -12,9 +12,9 @@ pub(crate) mod clipboard;
 #[cfg(not(target_os = "linux"))]
 #[path = "services/clipboard_unavailable.rs"]
 pub(crate) mod clipboard;
-#[cfg(target_os = "linux")]
+#[cfg(any(target_os = "linux", target_os = "macos"))]
 pub(crate) mod files;
-#[cfg(not(target_os = "linux"))]
+#[cfg(not(any(target_os = "linux", target_os = "macos")))]
 #[path = "services/files_unavailable.rs"]
 pub(crate) mod files;
 #[cfg(target_os = "linux")]

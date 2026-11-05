@@ -281,12 +281,14 @@ await grant.close()
 named in the immutable `filesystemRoots` launch permission, at no more than its
 launch access (default `read`). Paths are relative `/`-joined names; `..`,
 absolute paths and empty or control-character names are rejected before any
-native request, and the Linux host resolves every path beneath the granted
-directory with `openat2` without following symbolic links. The frozen
+native request, and the host resolves every path beneath the granted
+directory without following symbolic links: Linux with `openat2`, macOS one
+name at a time with `openat(O_NOFOLLOW | O_NOFOLLOW_ANY)`. The frozen
 `NativeFileGrant` offers `stat`, `list` (pages of 64), `read` and `write`
 (16 KiB chunks), `createDirectory`, `remove` and an idempotent `close()`.
 Closing the grant, its window or the application revokes it and withholds
-late results. Other targets report `unavailable` / `unsupported_platform`.
+late results. Windows and other targets report `unavailable` /
+`unsupported_platform`.
 See the [service contract](../../docs/native-services.md#filesystem-grants).
 
 ### Owned processes

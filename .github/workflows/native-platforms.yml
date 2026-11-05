@@ -309,6 +309,31 @@ jobs:
             }
           }
           if ($failures.Count -gt 0) { throw ($failures -join '; ') }
+      - name: macOS development and AOT filesystem grants
+        if: ${{ runner.os == 'macOS' && !cancelled() && steps.native-build.outcome == 'success' }}
+        timeout-minutes: 6
+        run: |
+          $package = Join-Path $env:NATIVE_EVIDENCE 'filesystem-grants-package'
+          bun experiments/aot-gpui/build-window.ts --entry filesystem-grants `
+            --source $env:GITHUB_WORKSPACE --host $env:BUN_NATIVE_HOST `
+            --host-profile release --outdir $package
+          if ($LASTEXITCODE -ne 0) { throw 'The filesystem grants AOT compiler or inspection failed' }
+          foreach ($mode in @('development', 'aot')) {
+            $evidence = Join-Path $env:NATIVE_EVIDENCE "filesystem-grants-$mode"
+            New-Item -ItemType Directory $evidence | Out-Null
+            $env:BUN_NATIVE_FILESYSTEM_EVIDENCE = $evidence
+            $env:BUN_NATIVE_FILESYSTEM_MODE = $mode
+            if ($mode -eq 'development') {
+              bun tests/native/filesystem-grants.ts 2>&1 | Tee-Object -FilePath (Join-Path $evidence 'run.log')
+            } else {
+              & (Join-Path $package 'filesystem-grants') 2>&1 | Tee-Object -FilePath (Join-Path $evidence 'run.log')
+            }
+            if ($LASTEXITCODE -ne 0) { throw "macOS $mode filesystem grants were not verified" }
+            $report = Get-Content -Raw (Join-Path $evidence 'filesystem-grants.json') | ConvertFrom-Json
+            if ($report.platform -ne 'darwin' -or $report.backend -ne 'openat_walk' -or $report.mode -ne $mode) {
+              throw "macOS $mode filesystem grant evidence does not name the macOS backend"
+            }
+          }
       - name: Retain unsigned native host for reproducibility
         if: ${{ !cancelled() && steps.native-build.outcome == 'success' }}
         run: |
@@ -327,5 +352,6 @@ jobs:
             !${{ runner.temp }}/bun-native-platform-evidence/solid-platform-package/solid-platform.exe
             !${{ runner.temp }}/bun-native-platform-evidence/react-platform-package/react-platform
             !${{ runner.temp }}/bun-native-platform-evidence/react-platform-package/react-platform.exe
+            !${{ runner.temp }}/bun-native-platform-evidence/filesystem-grants-package/filesystem-grants
           if-no-files-found: error
           retention-days: 14

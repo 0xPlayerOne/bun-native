@@ -1,7 +1,14 @@
 //! Scoped filesystem grants. A grant holds a directory descriptor opened from
 //! an immutable launch root; every request resolves beneath that descriptor
-//! with `openat2(RESOLVE_BENEATH | RESOLVE_NO_SYMLINKS)`, on a worker thread
-//! so neither the UI thread nor the tree queue waits for filesystem I/O.
+//! without following any symbolic link, on a worker thread so neither the UI
+//! thread nor the tree queue waits for filesystem I/O. Linux resolves with
+//! `openat2(RESOLVE_BENEATH | RESOLVE_NO_SYMLINKS)`; macOS walks one validated
+//! name at a time with `openat(O_NOFOLLOW | O_NOFOLLOW_ANY)` (see `walk`).
+
+#[cfg(target_os = "linux")]
+mod openat2;
+#[cfg(any(target_os = "macos", test))]
+mod walk;
 
 use crate::channel::EventSink;
 use async_channel::{Receiver, Sender};
@@ -14,8 +21,7 @@ use bun_native_protocol::{
 };
 use gpui::{App, BackgroundExecutor, Task};
 use rustix::fs::{
-    AtFlags, CWD, FileType, Mode, OFlags, ResolveFlags, Stat, fstat, ftruncate, mkdirat, openat2,
-    statat, unlinkat,
+    AtFlags, FileType, Mode, OFlags, Stat, fstat, ftruncate, mkdirat, statat, unlinkat,
 };
 use rustix::io::Errno;
 use std::cell::{Cell, RefCell};
@@ -29,17 +35,39 @@ use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::thread::JoinHandle;
 
-type Failure = (ErrorCode, &'static str);
-
-/// A grant's directory descriptor, shared with a process start.
+/// A live grant's directory descriptor, shared with an owned process for its cwd.
 pub(crate) type Directory = Arc<OwnedFd>;
+
+type Failure = (ErrorCode, &'static str);
 
 /// A directory larger than this cannot be paged in sorted order.
 const MAX_SCANNED_ENTRIES: usize = 100_000;
 
-const RESOLVE: ResolveFlags = ResolveFlags::BENEATH
-    .union(ResolveFlags::NO_SYMLINKS)
-    .union(ResolveFlags::NO_MAGICLINKS);
+/// Kernel-enforced resolution beneath a grant descriptor. Paths are already
+/// validated: empty (the grant root) or `/`-joined names with no `.`, `..`,
+/// empty or control-character components.
+trait Confine {
+    /// Whether this kernel enforces the confinement; otherwise nothing is advertised.
+    fn probe() -> bool;
+    /// Opens a trusted launch root. The path may traverse links; the descriptor is the grant.
+    fn open_root(path: &str) -> Result<OwnedFd, Errno>;
+    /// Opens `path` beneath `root` with `flags` (plus `O_CLOEXEC | O_NOCTTY`),
+    /// failing with `ELOOP` or `EXDEV` rather than following any link.
+    fn beneath(root: &OwnedFd, path: &str, flags: OFlags, mode: Mode) -> Result<OwnedFd, Errno>;
+    /// A directory descriptor at `path` beneath `root`, usable as a `*at` base.
+    fn directory(root: &OwnedFd, path: &str) -> Result<OwnedFd, Errno>;
+}
+
+#[cfg(target_os = "linux")]
+type Native = openat2::Openat2;
+#[cfg(target_os = "macos")]
+type Native = walk::Walk;
+
+/// The reason grants are unavailable when the kernel lacks the confinement.
+#[cfg(target_os = "linux")]
+const UNAVAILABLE: &str = "filesystem grants require Linux openat2 confinement";
+#[cfg(target_os = "macos")]
+const UNAVAILABLE: &str = "filesystem grants require macOS openat O_NOFOLLOW confinement";
 
 enum Work {
     OpenRoot(String),
@@ -113,15 +141,7 @@ pub(crate) struct Files(Rc<Inner>);
 
 impl Files {
     pub(crate) fn new(events: EventSink, roots: Vec<FilesystemRoot>, _cx: &App) -> Self {
-        // openat2 arrived in Linux 5.6; without it confinement cannot be enforced.
-        let available = openat2(
-            CWD,
-            ".",
-            OFlags::PATH | OFlags::DIRECTORY | OFlags::CLOEXEC,
-            Mode::empty(),
-            RESOLVE,
-        )
-        .is_ok();
+        let available = Native::probe();
         Self(Rc::new(Inner {
             available,
             roots,
@@ -173,10 +193,7 @@ impl Files {
             ));
         }
         if !self.available() {
-            return Err((
-                ErrorCode::ServiceUnavailable,
-                "filesystem grants require Linux openat2 confinement",
-            ));
+            return Err((ErrorCode::ServiceUnavailable, UNAVAILABLE));
         }
         if grant.get() <= self.0.last_grant.get() {
             return Err((
@@ -240,6 +257,16 @@ impl Files {
         )
     }
 
+    /// The descriptor of a live grant owned by `window`, for a process cwd.
+    pub(crate) fn directory(&self, window: WindowId, grant: FileGrantId) -> Option<Directory> {
+        self.0
+            .grants
+            .borrow()
+            .get(&grant)
+            .filter(|entry| entry.window == window)
+            .map(|entry| entry.root.clone())
+    }
+
     pub(crate) fn close(
         &self,
         id: RequestId,
@@ -274,16 +301,6 @@ impl Files {
             cx,
         );
         Ok(())
-    }
-
-    /// The descriptor of a live grant owned by `window`, for a process cwd.
-    pub(crate) fn directory(&self, window: WindowId, grant: FileGrantId) -> Option<Directory> {
-        self.0
-            .grants
-            .borrow()
-            .get(&grant)
-            .filter(|entry| entry.window == window)
-            .map(|entry| entry.root.clone())
     }
 
     pub(crate) fn close_window(&self, window: WindowId, cx: &mut App) {
@@ -459,9 +476,11 @@ fn worker(jobs: Receiver<Job>, results: Sender<Completion>, stopping: Arc<Atomic
             continue;
         }
         let result = match job.work {
-            Work::OpenRoot(path) => open_root(&path).map(Output::Opened),
+            Work::OpenRoot(path) => Native::open_root(&path)
+                .map(Output::Opened)
+                .map_err(failure),
             Work::Request(root, path, operation) => {
-                perform(&root, &path, &operation).map(Output::Result)
+                perform::<Native>(&root, &path, &operation).map(Output::Result)
             }
         };
         if results
@@ -495,55 +514,21 @@ pub(crate) fn failure(error: Errno) -> Failure {
             "the operating system denied this file operation",
         ),
         Errno::NAMETOOLONG => (ErrorCode::LimitExceeded, "the native path is too long"),
-        Errno::NOSYS => (
-            ErrorCode::ServiceUnavailable,
-            "filesystem grants require Linux openat2 confinement",
-        ),
+        Errno::NOSYS => (ErrorCode::ServiceUnavailable, UNAVAILABLE),
         Errno::NOSPC | Errno::DQUOT => (ErrorCode::NativeFailure, "the filesystem is full"),
         _ => (ErrorCode::NativeFailure, "the native file operation failed"),
     }
 }
 
-fn open_root(path: &str) -> Result<OwnedFd, Failure> {
-    // The trusted launch path may traverse links; the opened directory is the grant.
-    rustix::fs::open(
-        path,
-        OFlags::PATH | OFlags::DIRECTORY | OFlags::CLOEXEC,
-        Mode::empty(),
-    )
-    .map_err(failure)
+/// A directory descriptor at `path` beneath a grant root, never following links.
+#[cfg_attr(not(target_os = "linux"), allow(dead_code))]
+pub(crate) fn directory_beneath(root: &OwnedFd, path: &str) -> Result<OwnedFd, Failure> {
+    Native::directory(root, path).map_err(failure)
 }
 
-pub(crate) fn beneath(
-    root: &OwnedFd,
-    path: &str,
-    flags: OFlags,
-    mode: Mode,
-) -> Result<OwnedFd, Failure> {
-    let path = if path.is_empty() { "." } else { path };
-    // openat2 rejects O_PATH combined with anything but these flags.
-    let flags = if flags.contains(OFlags::PATH) {
-        flags | OFlags::CLOEXEC
-    } else {
-        flags | OFlags::CLOEXEC | OFlags::NOCTTY
-    };
-    // A concurrent rename can make the kernel ask for a retry.
-    match openat2(root, path, flags, mode, RESOLVE) {
-        Err(Errno::AGAIN) => openat2(root, path, flags, mode, RESOLVE),
-        result => result,
-    }
-    .map_err(failure)
-}
-
-fn parent<'a>(root: &OwnedFd, path: &'a str) -> Result<(OwnedFd, &'a str), Failure> {
+fn parent<'a, C: Confine>(root: &OwnedFd, path: &'a str) -> Result<(OwnedFd, &'a str), Failure> {
     let (directory, name) = path.rsplit_once('/').unwrap_or(("", path));
-    let parent = beneath(
-        root,
-        directory,
-        OFlags::PATH | OFlags::DIRECTORY,
-        Mode::empty(),
-    )?;
-    Ok((parent, name))
+    Ok((C::directory(root, directory).map_err(failure)?, name))
 }
 
 fn kind(file_type: FileType) -> FileKind {
@@ -574,11 +559,22 @@ fn modified_ms(stat: &Stat) -> i64 {
     (seconds * 1_000 + nanoseconds.div_euclid(1_000_000)).clamp(-limit, limit) as i64
 }
 
-fn perform(root: &OwnedFd, path: &str, operation: &FileOperation) -> Result<FileResult, Failure> {
+fn perform<C: Confine>(
+    root: &OwnedFd,
+    path: &str,
+    operation: &FileOperation,
+) -> Result<FileResult, Failure> {
+    let beneath = |flags, mode| C::beneath(root, path, flags, mode).map_err(failure);
     match operation {
         FileOperation::Stat {} => {
-            let fd = beneath(root, path, OFlags::PATH | OFlags::NOFOLLOW, Mode::empty())?;
-            let stat = fstat(&fd).map_err(failure)?;
+            // The entry itself is examined: a link reports `symlink` and is not followed.
+            let stat = if path.is_empty() {
+                fstat(root)
+            } else {
+                let (parent, name) = parent::<C>(root, path)?;
+                statat(&parent, name, AtFlags::SYMLINK_NOFOLLOW)
+            }
+            .map_err(failure)?;
             Ok(FileResult::Stat {
                 file_kind: kind(FileType::from_raw_mode(stat.st_mode)),
                 size: u64::try_from(stat.st_size)
@@ -587,9 +583,12 @@ fn perform(root: &OwnedFd, path: &str, operation: &FileOperation) -> Result<File
                 modified_ms: modified_ms(&stat),
             })
         }
-        FileOperation::List { after } => list(root, path, after.as_deref()),
+        FileOperation::List { after } => list(
+            beneath(OFlags::RDONLY | OFlags::DIRECTORY, Mode::empty())?,
+            after.as_deref(),
+        ),
         FileOperation::Read { offset, length } => {
-            let fd = beneath(root, path, OFlags::RDONLY | OFlags::NONBLOCK, Mode::empty())?;
+            let fd = beneath(OFlags::RDONLY | OFlags::NONBLOCK, Mode::empty())?;
             let stat = regular(&fd)?;
             let file = File::from(fd);
             let mut buffer = vec![0; *length];
@@ -622,13 +621,13 @@ fn perform(root: &OwnedFd, path: &str, operation: &FileOperation) -> Result<File
                     WriteMode::Truncate => OFlags::CREATE,
                     WriteMode::Append => OFlags::APPEND,
                 };
-            // openat2 rejects a creation mode unless the open can create.
+            // A creation mode is passed only when the open can create.
             let creation = if flags.contains(OFlags::CREATE) {
                 Mode::from_raw_mode(0o666)
             } else {
                 Mode::empty()
             };
-            let fd = beneath(root, path, flags, creation)?;
+            let fd = beneath(flags, creation)?;
             // Special files are refused before any byte is written or truncated.
             regular(&fd)?;
             if *mode == WriteMode::Truncate {
@@ -640,12 +639,12 @@ fn perform(root: &OwnedFd, path: &str, operation: &FileOperation) -> Result<File
             Ok(FileResult::Written { bytes: bytes.len() })
         }
         FileOperation::CreateDirectory {} => {
-            let (parent, name) = parent(root, path)?;
+            let (parent, name) = parent::<C>(root, path)?;
             mkdirat(&parent, name, Mode::from_raw_mode(0o777)).map_err(failure)?;
             Ok(FileResult::Done {})
         }
         FileOperation::Remove {} => {
-            let (parent, name) = parent(root, path)?;
+            let (parent, name) = parent::<C>(root, path)?;
             let stat = statat(&parent, name, AtFlags::SYMLINK_NOFOLLOW).map_err(failure)?;
             let flags = if FileType::from_raw_mode(stat.st_mode) == FileType::Directory {
                 AtFlags::REMOVEDIR
@@ -659,13 +658,7 @@ fn perform(root: &OwnedFd, path: &str, operation: &FileOperation) -> Result<File
     }
 }
 
-fn list(root: &OwnedFd, path: &str, after: Option<&str>) -> Result<FileResult, Failure> {
-    let fd = beneath(
-        root,
-        path,
-        OFlags::RDONLY | OFlags::DIRECTORY,
-        Mode::empty(),
-    )?;
+fn list(fd: OwnedFd, after: Option<&str>) -> Result<FileResult, Failure> {
     let mut directory = rustix::fs::Dir::read_from(&fd).map_err(failure)?;
     let mut names = Vec::new();
     let mut omitted = 0;
@@ -720,9 +713,11 @@ mod tests {
     use std::os::unix::fs::symlink;
 
     fn temp() -> std::path::PathBuf {
+        static NEXT: std::sync::atomic::AtomicUsize = std::sync::atomic::AtomicUsize::new(0);
         let path = std::env::temp_dir().join(format!(
-            "bun-native-files-{}-{}",
+            "bun-native-files-{}-{}-{}",
             std::process::id(),
+            NEXT.fetch_add(1, Ordering::Relaxed),
             std::time::SystemTime::now()
                 .duration_since(std::time::UNIX_EPOCH)
                 .unwrap()
@@ -736,18 +731,47 @@ mod tests {
         result.unwrap_err().0
     }
 
+    /// Every backend this target compiles runs the same real-file suite. On
+    /// Linux that includes the macOS walk (without `O_NOFOLLOW_ANY`, which
+    /// Linux lacks), so its per-component logic is exercised on every run.
+    macro_rules! backends {
+        ($($suite:ident),*) => {
+            $(
+                mod $suite {
+                    #[cfg(target_os = "linux")]
+                    #[test]
+                    fn openat2() {
+                        assert!(<super::super::openat2::Openat2 as super::super::Confine>::probe());
+                        super::$suite::<super::super::openat2::Openat2>();
+                    }
+                    #[test]
+                    fn walk() {
+                        assert!(<super::super::walk::Walk as super::super::Confine>::probe());
+                        super::$suite::<super::super::walk::Walk>();
+                    }
+                }
+            )*
+        };
+    }
+    backends!(confinement, directory_links, special_files);
+
     #[test]
-    fn requests_stay_beneath_the_grant_without_following_links() {
+    fn the_native_backend_is_available() {
+        assert!(Native::probe());
+    }
+
+    /// Requests stay beneath the grant without following links.
+    fn confinement<C: Confine>() {
         let base = temp();
         let root_path = base.join("root");
         std::fs::create_dir(&root_path).unwrap();
         std::fs::write(base.join("secret"), b"outside").unwrap();
         symlink(base.join("secret"), root_path.join("link")).unwrap();
         symlink(&base, root_path.join("up")).unwrap();
-        let root = open_root(root_path.to_str().unwrap()).unwrap();
+        let root = C::open_root(root_path.to_str().unwrap()).unwrap();
 
         let write = |path: &str, mode, data: &[u8]| {
-            perform(
+            perform::<C>(
                 &root,
                 path,
                 &FileOperation::Write {
@@ -766,7 +790,7 @@ mod tests {
         );
         write("a.txt", WriteMode::Append, b" world").unwrap();
         assert_eq!(
-            perform(
+            perform::<C>(
                 &root,
                 "a.txt",
                 &FileOperation::Read {
@@ -786,7 +810,7 @@ mod tests {
         // Links are never followed, inside or out of the grant.
         for path in ["link", "up/secret"] {
             assert_eq!(
-                code(perform(
+                code(perform::<C>(
                     &root,
                     path,
                     &FileOperation::Read {
@@ -804,21 +828,21 @@ mod tests {
         );
         assert_eq!(std::fs::read(base.join("secret")).unwrap(), b"outside");
         assert!(matches!(
-            perform(&root, "link", &FileOperation::Stat {}).unwrap(),
+            perform::<C>(&root, "link", &FileOperation::Stat {}).unwrap(),
             FileResult::Stat {
                 file_kind: FileKind::Symlink,
                 ..
             }
         ));
 
-        perform(&root, "dir", &FileOperation::CreateDirectory {}).unwrap();
+        perform::<C>(&root, "dir", &FileOperation::CreateDirectory {}).unwrap();
         write("dir/b", WriteMode::Create, b"").unwrap();
         assert_eq!(
-            code(perform(&root, "dir", &FileOperation::Remove {})),
+            code(perform::<C>(&root, "dir", &FileOperation::Remove {})),
             ErrorCode::NotEmpty
         );
         assert_eq!(
-            code(perform(&root, "a.txt/x", &FileOperation::Stat {})),
+            code(perform::<C>(&root, "a.txt/x", &FileOperation::Stat {})),
             ErrorCode::WrongKind
         );
         assert_eq!(
@@ -826,13 +850,13 @@ mod tests {
             ErrorCode::WrongKind
         );
         assert_eq!(
-            code(perform(&root, "missing", &FileOperation::Stat {})),
+            code(perform::<C>(&root, "missing", &FileOperation::Stat {})),
             ErrorCode::NotFound
         );
 
         let FileResult::List {
             entries, complete, ..
-        } = perform(&root, "", &FileOperation::List { after: None }).unwrap()
+        } = perform::<C>(&root, "", &FileOperation::List { after: None }).unwrap()
         else {
             panic!("list result")
         };
@@ -849,7 +873,7 @@ mod tests {
                 ("up", FileKind::Symlink),
             ]
         );
-        let FileResult::List { entries, .. } = perform(
+        let FileResult::List { entries, .. } = perform::<C>(
             &root,
             "",
             &FileOperation::List {
@@ -862,29 +886,89 @@ mod tests {
         assert_eq!(entries[0].name, "link");
 
         // Removing a link removes the entry, not its target.
-        perform(&root, "link", &FileOperation::Remove {}).unwrap();
+        perform::<C>(&root, "link", &FileOperation::Remove {}).unwrap();
         assert!(base.join("secret").exists());
-        perform(&root, "dir/b", &FileOperation::Remove {}).unwrap();
-        perform(&root, "dir", &FileOperation::Remove {}).unwrap();
+        perform::<C>(&root, "dir/b", &FileOperation::Remove {}).unwrap();
+        perform::<C>(&root, "dir", &FileOperation::Remove {}).unwrap();
 
         // A renamed root keeps its grant; the descriptor names the directory.
         let moved = base.join("moved");
         std::fs::rename(&root_path, &moved).unwrap();
         assert!(matches!(
-            perform(&root, "a.txt", &FileOperation::Stat {}).unwrap(),
+            perform::<C>(&root, "a.txt", &FileOperation::Stat {}).unwrap(),
             FileResult::Stat { size: 3, .. }
         ));
         std::fs::remove_dir_all(&base).unwrap();
     }
 
-    #[test]
-    fn special_files_are_refused_before_io() {
+    /// Links to directories are refused as the final name and mid-path, for
+    /// every operation, and nothing is created outside the grant.
+    fn directory_links<C: Confine>() {
+        let base = temp();
+        let root_path = base.join("root");
+        std::fs::create_dir_all(root_path.join("inner")).unwrap();
+        symlink(&base, root_path.join("up")).unwrap();
+        symlink(root_path.join("inner"), root_path.join("inner-link")).unwrap();
+        let root = C::open_root(root_path.to_str().unwrap()).unwrap();
+        let operations = [
+            FileOperation::List { after: None },
+            FileOperation::CreateDirectory {},
+            FileOperation::Remove {},
+            FileOperation::Write {
+                mode: WriteMode::Create,
+                data: STANDARD.encode(b"x"),
+            },
+        ];
+        for link in ["up", "inner-link"] {
+            assert_eq!(
+                code(perform::<C>(&root, link, &operations[0])),
+                ErrorCode::PathDenied,
+                "list {link}"
+            );
+            for operation in &operations {
+                let path = format!("{link}/new");
+                assert_eq!(
+                    code(perform::<C>(&root, &path, operation)),
+                    ErrorCode::PathDenied,
+                    "{path} {operation:?}"
+                );
+            }
+        }
+        assert!(!base.join("new").exists());
+        assert!(!root_path.join("inner/new").exists());
+        assert!(matches!(
+            perform::<C>(&root, "", &FileOperation::Stat {}).unwrap(),
+            FileResult::Stat {
+                file_kind: FileKind::Directory,
+                ..
+            }
+        ));
+        assert_eq!(
+            code(perform::<C>(
+                &root,
+                "inner",
+                &FileOperation::Read {
+                    offset: 0,
+                    length: 1
+                }
+            )),
+            ErrorCode::WrongKind
+        );
+        std::fs::remove_dir_all(&base).unwrap();
+    }
+
+    /// Special files are refused before I/O.
+    fn special_files<C: Confine>() {
         let base = temp();
         let fifo = base.join("fifo");
-        rustix::fs::mknodat(CWD, &fifo, FileType::Fifo, Mode::from_raw_mode(0o600), 0).unwrap();
-        let root = open_root(base.to_str().unwrap()).unwrap();
+        let made = std::process::Command::new("mkfifo")
+            .arg(&fifo)
+            .status()
+            .unwrap();
+        assert!(made.success());
+        let root = C::open_root(base.to_str().unwrap()).unwrap();
         assert_eq!(
-            code(perform(
+            code(perform::<C>(
                 &root,
                 "fifo",
                 &FileOperation::Read {
@@ -895,7 +979,7 @@ mod tests {
             ErrorCode::WrongKind
         );
         assert_eq!(
-            code(perform(
+            code(perform::<C>(
                 &root,
                 "fifo",
                 &FileOperation::Write {
