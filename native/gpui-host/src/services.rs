@@ -22,9 +22,9 @@ pub(crate) mod notifications;
 #[cfg(not(target_os = "linux"))]
 #[path = "services/notifications_unavailable.rs"]
 pub(crate) mod notifications;
-#[cfg(target_os = "linux")]
+#[cfg(any(target_os = "linux", target_os = "macos"))]
 pub(crate) mod processes;
-#[cfg(not(target_os = "linux"))]
+#[cfg(not(any(target_os = "linux", target_os = "macos")))]
 #[path = "services/processes_unavailable.rs"]
 pub(crate) mod processes;
 #[cfg(target_os = "linux")]

@@ -2,8 +2,10 @@
 
 Status: accepted; Linux implementation verified locally in development and
 inspected AOT with a development-profile host on an isolated Xvfb display.
-Hosted release-host qualification runs in Native Linux. Other platforms report
-the service unavailable.
+Hosted release-host qualification runs in Native Linux. A macOS backend
+(below) is compile-checked locally for `aarch64-apple-darwin` and runs only in
+the hosted Native Platforms macOS 15 job; its evidence comes from that CI job
+alone. Windows reports the service unavailable.
 
 Date: 2026-11-05.
 
@@ -67,6 +69,38 @@ window or shutting down kills the group and reaps it on the supervising
 thread; no event is delivered after release, and signals are refused once the
 leader is reaped, so a recycled PID is never signalled.
 
+### macOS
+
+macOS has no pidfd, eventfd, `openat2` or `/proc/self/fd`, so its backend keeps
+the same supervisor and semantics with different primitives:
+
+- **Wake.** A nonblocking close-on-exec pipe replaces the eventfd.
+- **Exit.** A watcher thread per process blocks in
+  `waitid(P_PID, WEXITED | WNOWAIT)` and closes a pipe the supervisor polls.
+  `WNOWAIT` leaves the zombie unreaped, so the leader's PID and group ID stay
+  reserved; the supervisor joins the watcher before it reaps, so no thread ever
+  waits on a PID that could have been reused. `kqueue` `EVFILT_PROC
+  NOTE_EXIT` would need no thread, but rustix's `kevent` is `unsafe` and the
+  crate forbids `unsafe`. Exit codes and signals come from the reaping
+  `waitpid` on both platforms, not from the `waitid` notification.
+- **Groups.** Pipes mode uses `process_group(0)` and terminal mode uses
+  `pty-process` 0.5.4, which supports macOS (`posix_openpt`, `setsid`,
+  `TIOCSCTTY`). On exit the group is killed with `killpg` while the zombie
+  leader still holds the group ID, exactly as on Linux. A signal racing the
+  exit may find a group of only the zombie, which macOS can report as
+  `ESRCH`; that is answered `invalid_state` ("the process has exited") on
+  both platforms, and no other process can be reached.
+- **Working directory.** Not supported on macOS. Filesystem grants have no
+  macOS backend, so no grant descriptor exists, and there is no safe way to
+  start a child in a descriptor: std offers no `fchdir` in the child without
+  `unsafe` `pre_exec`, and there is no `/proc/self/fd`. Recovering the
+  grant's path with `F_GETPATH` and passing it as a path would reintroduce the
+  check-then-use race a grant descriptor exists to remove (a directory renamed
+  or replaced by a link between the lookup and `chdir`), so it was rejected.
+  A `cwd` is refused (`invalid_handle` because no grant of that ID exists;
+  `service_unavailable` if one ever reached the backend); the child starts in
+  the host's working directory.
+
 Errors are typed: `permission_denied` (policy), `not_found` (missing
 executable or directory), `invalid_handle` (a grant from another window or
 already closed), `invalid_state` (a finished or released process),
@@ -86,6 +120,10 @@ already closed), `invalid_state` (a finished or released process),
   escape is documented as out of scope.
 - **`unsafe` `pre_exec` for session setup.** Equivalent at runtime but would
   lift the crate's `forbid(unsafe_code)`; `pty-process` is pinned instead.
+- **macOS `kqueue` for exit.** No watcher thread, but `kevent` is `unsafe` in
+  rustix. A watcher thread per process (at most eight) is the safe cost.
+- **macOS working directory through `F_GETPATH`.** A path again, with the race
+  described above; refused rather than claimed as descriptor-confined.
 
 ## Consequences and verification
 
@@ -104,5 +142,14 @@ policy mismatch. The native test
 host in development and AOT on an isolated display and checks default denial,
 pipes with environment and grant directory, typed failures, terminal size,
 resize and input, group signals stopping descendants, complete credited output
-and release, close and shutdown stopping groups. macOS and Windows remain
-unavailable until they have equivalent descriptor-based spawning.
+and release, close and shutdown stopping groups.
+
+On macOS the same unit tests run on real children in the Native Platforms
+macOS 15 job (session leadership is checked with `ps` group and state flags
+because macOS `ps` has no session ID; the grant directory test is replaced by
+a test that a `cwd` is refused), plus a test that a leader's exit stops a
+descendant still holding its output open. The same native test runs in
+development and inspected AOT there, without filesystem roots, checking group
+teardown through `ps` and that a `cwd` is refused. None of this was run
+locally: macOS behavior is claimed only from that CI evidence. Windows remains
+unavailable until it has an equivalent (ConPTY, job objects).

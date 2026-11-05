@@ -14,12 +14,12 @@ gpui_platform = { git = "https://github.com/zed-industries/zed", rev = "ba63a022
   "x11",
 ] }
 async-channel = "=2.5.0"
+base64 = "=0.22.1"
 log = { version = "=0.4.35", features = ["std"] }
 serde_json.workspace = true
 unicode-segmentation = "=1.13.3"
 
 [target.'cfg(target_os = "linux")'.dependencies]
-base64 = "=0.22.1"
 raw-window-handle = "=0.6.2"
 pty-process = "=0.5.4"
 rustix = { version = "=1.1.6", features = ["event", "fs", "net", "process", "termios"] }
@@ -30,7 +30,9 @@ zbus = { version = "=5.19.0", default-features = false, features = ["async-io"] 
 
 [target.'cfg(target_os = "macos")'.dependencies]
 bun-native-macos-surface = { path = "../macos-surface" }
+pty-process = "=0.5.4"
 raw-window-handle = "=0.6.2"
+rustix = { version = "=1.1.6", features = ["event", "fs", "process", "termios"] }
 
 [lints]
 workspace = true

@@ -268,6 +268,34 @@ jobs:
             --mode aot --host-profile release --os-input @telemetry -- `
             (Join-Path $env:NATIVE_EVIDENCE 'aot-package/${{ matrix.application }}')
           if ($LASTEXITCODE -ne 0) { throw 'Actual AOT window/pointer/keyboard input was not verified; inspect the precise unsupported or failed report' }
+      - name: Owned process unit tests on real macOS children
+        if: ${{ runner.os == 'macOS' && !cancelled() && steps.native-build.outcome == 'success' }}
+        timeout-minutes: 5
+        run: |
+          cargo test --locked --release -p bun-native-host services::processes -- --test-threads=1 2>&1 |
+            Tee-Object -FilePath (Join-Path $env:NATIVE_EVIDENCE 'processes-unit.log')
+          if ($LASTEXITCODE -ne 0) { throw 'macOS owned process unit tests failed' }
+      - name: Development and AOT owned processes
+        if: ${{ runner.os == 'macOS' && !cancelled() && steps.native-build.outcome == 'success' }}
+        timeout-minutes: 6
+        run: |
+          $package = Join-Path $env:NATIVE_EVIDENCE 'processes-package'
+          bun experiments/aot-gpui/build-window.ts --entry processes `
+            --source $env:GITHUB_WORKSPACE --host $env:BUN_NATIVE_HOST `
+            --host-profile release --outdir $package
+          if ($LASTEXITCODE -ne 0) { throw 'The owned process AOT compiler or inspection failed' }
+          foreach ($mode in @('development', 'aot')) {
+            $evidence = Join-Path $env:NATIVE_EVIDENCE "processes-$mode"
+            New-Item -ItemType Directory $evidence | Out-Null
+            $env:BUN_NATIVE_PROCESS_EVIDENCE = $evidence
+            $env:BUN_NATIVE_PROCESS_MODE = $mode
+            if ($mode -eq 'development') {
+              bun tests/native/processes.ts 2>&1 | Tee-Object -FilePath (Join-Path $evidence 'run.log')
+            } else {
+              & (Join-Path $package 'processes') 2>&1 | Tee-Object -FilePath (Join-Path $evidence 'run.log')
+            }
+            if ($LASTEXITCODE -ne 0) { throw "macOS owned processes were not verified in $mode" }
+          }
       - name: Solid and React development/AOT owned native input and cleanup
         if: ${{ !cancelled() && steps.native-build.outcome == 'success' }}
         timeout-minutes: 8
@@ -323,6 +351,7 @@ jobs:
             ${{ runner.temp }}/bun-native-platform-evidence/
             !${{ runner.temp }}/bun-native-platform-evidence/aot-package/platform-smoke
             !${{ runner.temp }}/bun-native-platform-evidence/aot-package/platform-smoke.exe
+            !${{ runner.temp }}/bun-native-platform-evidence/processes-package/processes
             !${{ runner.temp }}/bun-native-platform-evidence/solid-platform-package/solid-platform
             !${{ runner.temp }}/bun-native-platform-evidence/solid-platform-package/solid-platform.exe
             !${{ runner.temp }}/bun-native-platform-evidence/react-platform-package/react-platform
