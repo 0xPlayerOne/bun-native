@@ -18,6 +18,7 @@ import type {
   GlobalShortcutOptions,
   NativeGlobalShortcut,
 } from './shortcuts.ts'
+import type { NativeNotification, NotificationEvent, NotificationOptions } from './notifications.ts'
 
 export type { Element, KeyModifiers, PointerButton, Style }
 export type ApplicationOptions = HostOptions
@@ -161,6 +162,16 @@ export interface NativeWindow {
     options: GlobalShortcutOptions,
     listener: (event: GlobalShortcutEvent) => void | Promise<void>
   ): Promise<NativeGlobalShortcut>
+  /**
+   * Post a plain-text desktop notification owned by this window. Requires the
+   * immutable notifications launch grant. Withdrawal, window close and
+   * shutdown close it on the server; the listener receives activations and a
+   * final dismissal when the server removes it first.
+   */
+  postNotification(
+    options: NotificationOptions,
+    listener: (event: NotificationEvent) => void | Promise<void>
+  ): Promise<NativeNotification>
   /** Idempotent. Revokes listeners before requesting native window removal. */
   close(): Promise<void>
 }

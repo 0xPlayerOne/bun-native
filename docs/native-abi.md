@@ -1,16 +1,16 @@
-# Native host protocol 7
+# Native host protocol 8
 
 This is the implemented private Bun-to-GPUI contract for BN1, shared native interactions and the initial BN4 layout primitives. Application code
 uses [`@bun-native/core`](../packages/core/README.md); Solid and React adapters
 must target that same public API. They do not import this transport or construct
-numeric handles. Protocols 1–6 are superseded without a compatibility fallback.
-Protocol 7 requires `tree`, `input_revisions`, `layout_v1`, `interactions_v1` and `window_display_v1`; missing features or
+numeric handles. Protocols 1–7 are superseded without a compatibility fallback.
+Protocol 8 requires `tree`, `input_revisions`, `layout_v1`, `interactions_v1` and `window_display_v1`; missing features or
 older versions fail launch before a window is opened. The [layout contract](native-layout.md)
 defines the supported style subset; the [interaction contract](native-events.md)
 defines native event observations and public propagation. The
 [service contract](native-services.md) defines immutable launch policy and
-owned-window display reads, bounded clipboard transfers and owned global
-shortcut registrations.
+owned-window display reads, bounded clipboard transfers, owned global
+shortcut registrations and owned desktop notifications.
 
 The authoritative schemas and validators are
 [`packages/protocol/src/messages.ts`](../packages/protocol/src/messages.ts),
@@ -227,8 +227,8 @@ and releases readers. Shutdown cannot wait forever for inherited pipes.
 
 Native errors are `invalid_command`, `version_mismatch`, `invalid_state`,
 `invalid_handle`, `stale_revision`, `limit_exceeded`, `native_failure`,
-`permission_denied`, `service_unavailable`, `cancelled`, `operation_timed_out` and
-`payload_too_large`.
+`permission_denied`, `service_unavailable`, `cancelled`, `operation_timed_out`,
+`payload_too_large` and `conflict`.
 A correlated recoverable command error becomes public `NativeCommandError`.
 Malformed protocol, invalid sequence/reply or fatal transport failure ends the
 session. Public preflight/ownership errors use `NativeStateError`, malformed
@@ -237,7 +237,7 @@ values use `ProtocolError`, and unsupported element kinds use
 for consumer handling and experimental compatibility policy.
 
 The negotiated flags describe implemented features, not OS permission grants.
-Protocol 7's services additionally require their immutable explicit
+Protocol 8's services additionally require their immutable explicit
 launch policy; there is no wire grant or general service selector. No file,
 shell, process, network, update or browser service command exists. The
 [security ADR](decisions/0003-bridge-security.md) defines the trusted

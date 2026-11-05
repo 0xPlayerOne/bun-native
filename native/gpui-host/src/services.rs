@@ -10,6 +10,11 @@ pub(crate) mod clipboard;
 #[path = "services/clipboard_unavailable.rs"]
 pub(crate) mod clipboard;
 #[cfg(target_os = "linux")]
+pub(crate) mod notifications;
+#[cfg(not(target_os = "linux"))]
+#[path = "services/notifications_unavailable.rs"]
+pub(crate) mod notifications;
+#[cfg(target_os = "linux")]
 pub(crate) mod shortcuts;
 #[cfg(not(target_os = "linux"))]
 #[path = "services/shortcuts_unavailable.rs"]
@@ -21,6 +26,7 @@ pub(crate) const DISPLAY_PERMISSION_ARGUMENT: &str = "--bun-native-allow-window-
 pub(crate) const CLIPBOARD_READ_ARGUMENT: &str = "--bun-native-allow-clipboard-read";
 pub(crate) const CLIPBOARD_WRITE_ARGUMENT: &str = "--bun-native-allow-clipboard-write";
 pub(crate) const GLOBAL_SHORTCUTS_ARGUMENT: &str = "--bun-native-allow-global-shortcuts";
+pub(crate) const NOTIFICATIONS_ARGUMENT: &str = "--bun-native-allow-notifications";
 
 pub(crate) fn policy(
     arguments: impl IntoIterator<Item = OsString>,
@@ -35,6 +41,8 @@ pub(crate) fn policy(
             &mut policy.clipboard_write
         } else if argument == GLOBAL_SHORTCUTS_ARGUMENT {
             &mut policy.global_shortcuts
+        } else if argument == NOTIFICATIONS_ARGUMENT {
+            &mut policy.notifications
         } else {
             return Err("unknown native host argument");
         };
@@ -98,6 +106,7 @@ mod tests {
                 clipboard_read: true,
                 clipboard_write: true,
                 global_shortcuts: false,
+                notifications: false,
             }
         );
         assert_eq!(
@@ -107,10 +116,18 @@ mod tests {
                 ..ServicePolicy::default()
             }
         );
+        assert_eq!(
+            policy([OsString::from(NOTIFICATIONS_ARGUMENT)]).unwrap(),
+            ServicePolicy {
+                notifications: true,
+                ..ServicePolicy::default()
+            }
+        );
         for argument in [
             CLIPBOARD_READ_ARGUMENT,
             CLIPBOARD_WRITE_ARGUMENT,
             GLOBAL_SHORTCUTS_ARGUMENT,
+            NOTIFICATIONS_ARGUMENT,
         ] {
             assert!(policy([argument, argument].map(OsString::from)).is_err());
         }

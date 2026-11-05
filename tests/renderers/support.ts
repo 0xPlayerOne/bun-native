@@ -52,6 +52,7 @@ export function observeWindow(window: NativeWindow) {
     readClipboardText: window.readClipboardText.bind(window),
     writeClipboardText: window.writeClipboardText.bind(window),
     registerGlobalShortcut: window.registerGlobalShortcut.bind(window),
+    postNotification: window.postNotification.bind(window),
     input: window.input.bind(window),
     on(node, type, listener, options) {
       if (type === 'input' && node.kind === 'input')

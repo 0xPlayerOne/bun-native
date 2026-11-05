@@ -39,7 +39,7 @@ the matching native contract. WebView/CEF is not a fallback.
 - **React:** the implemented `react-reconciler` host uses native primitives. Logic without browser assumptions may be reusable; `react-dom` components do not become native components automatically.
 - **Tailwind/CSS:** native layout/styling primitives are defined explicitly; arbitrary CSS selectors, cascade and browser painting effects are not promised.
 - **shadcn, Radix, Kobalte and browser-oriented UI libraries:** some source-level patterns may be reusable, but DOM-dependent components generally require native ports. No universal import compatibility claim.
-- **Native OS services:** display, clipboard and Linux X11 global shortcut access use explicit grants. Filesystem grants, PTY/process services, dialogs, menus and notifications remain outside the available native service set. Grants do not sandbox ordinary Bun filesystem or process APIs; applications are trusted programs.
+- **Native OS services:** display, clipboard, Linux X11 global shortcut and Linux freedesktop notification access use explicit grants. Filesystem grants, PTY/process services, dialogs and menus remain outside the available native service set. Grants do not sandbox ordinary Bun filesystem or process APIs; applications are trusted programs.
 - **Untrusted webpages:** there is no hidden browser sandbox. Displaying untrusted content requires a deliberately scoped, safe native content model.
 
 ## Evidence procedure

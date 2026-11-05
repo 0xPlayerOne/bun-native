@@ -23,6 +23,13 @@ import {
   type GlobalShortcutOptions,
   type NativeGlobalShortcut,
 } from './shortcuts.ts'
+import {
+  notificationRequest,
+  NotificationRegistration,
+  type NativeNotification,
+  type NotificationEvent,
+  type NotificationOptions,
+} from './notifications.ts'
 import { makeNode, own, Transaction, type NodeState } from './tree.ts'
 import {
   NativeStateError,
@@ -44,6 +51,7 @@ const MAX_QUEUED_CALLBACKS = 128
 type Callback =
   | { windowId: number; nodeId: number; plan: DispatchPlan }
   | { windowId: number; shortcut: ShortcutRegistration; event: GlobalShortcutEvent }
+  | { windowId: number; notification: NotificationRegistration; event: NotificationEvent }
 
 class Application implements NativeApplication {
   readonly closed: Promise<void>
@@ -54,6 +62,8 @@ class Application implements NativeApplication {
   readonly windows = new Map<number, Window>()
   readonly shortcuts = new Map<number, ShortcutRegistration>()
   private nextShortcut = 1
+  readonly notifications = new Map<number, NotificationRegistration>()
+  private nextNotification = 1
   private tail: Promise<void> = Promise.resolve()
   private queued = 0
   private readonly services = new Set<Promise<void>>()
@@ -110,11 +120,22 @@ class Application implements NativeApplication {
     return id < this.nextShortcut
   }
 
+  allocateNotification(): number {
+    if (!Number.isSafeInteger(this.nextNotification))
+      throw new NativeStateError('limit_exceeded', 'Notification identity space exhausted')
+    return this.nextNotification++
+  }
+
+  isAllocatedNotification(id: number): boolean {
+    return id < this.nextNotification
+  }
+
   cancelCallbacks(windowId: number): void {
     const window = this.windows.get(windowId)
     this.callbacks = this.callbacks.filter((callback) => {
       if (callback.windowId !== windowId) return true
       if ('shortcut' in callback) return callback.shortcut.live
+      if ('notification' in callback) return callback.notification.deliverable
       if (window?.isTargetLive(callback.nodeId) && prunePlan(callback.plan)) return true
       window?.listeners.release(callback.plan)
       return false
@@ -151,6 +172,8 @@ class Application implements NativeApplication {
       this.activeCallbacks = 1
       try {
         if ('shortcut' in callback) await dispatchShortcut(callback.shortcut, callback.event)
+        else if ('notification' in callback)
+          await dispatchNotification(callback.notification, callback.event)
         else await window.dispatch(callback.nodeId, callback.plan)
       } finally {
         this.activeCallbacks = 0
@@ -276,6 +299,11 @@ class Application implements NativeApplication {
       for await (const event of this.host) {
         if (event.type === 'global_shortcut' && !this.isAllocatedShortcut(event.shortcut_id))
           throw new ProtocolError('Native event names an unallocated global shortcut')
+        if (
+          (event.type === 'notification_activated' || event.type === 'notification_dismissed') &&
+          !this.isAllocatedNotification(event.notification_id)
+        )
+          throw new ProtocolError('Native event names an unallocated notification')
         const window = this.windows.get(event.window_id)
         if (!window) {
           if (event.window_id >= this.nextWindow)
@@ -304,7 +332,29 @@ async function dispatchShortcut(
 ): Promise<void> {
   const listener = registration.listener
   if (!listener || !registration.live) return
-  const signal = registration.controller.signal
+  await dispatchOwned(listener, event, registration.controller.signal)
+}
+
+async function dispatchNotification(
+  registration: NotificationRegistration,
+  event: NotificationEvent
+): Promise<void> {
+  const listener = registration.listener
+  if (!listener) return
+  try {
+    await dispatchOwned(listener, event, registration.controller.signal)
+  } finally {
+    // The dismissal is the last delivery for its registration.
+    if (event.type === 'notification_dismissed') registration.revoke()
+  }
+}
+
+async function dispatchOwned<T>(
+  listener: (event: T) => void | Promise<void>,
+  event: T,
+  signal: AbortSignal
+): Promise<void> {
+  if (signal.aborted) return
   let cancel!: () => void
   const cancelled = new Promise<void>((resolve) => {
     cancel = resolve
@@ -317,6 +367,15 @@ async function dispatchShortcut(
     signal.removeEventListener('abort', cancel)
   }
 }
+
+const NOTIFICATION_ERRORS = [
+  'permission_denied',
+  'service_unavailable',
+  'cancelled',
+  'native_failure',
+  'operation_timed_out',
+  'limit_exceeded',
+] as const
 
 const SHORTCUT_ERRORS = [
   'permission_denied',
@@ -618,6 +677,114 @@ class Window implements NativeWindow {
     )
   }
 
+  async postNotification(
+    options: NotificationOptions,
+    listener: (event: NotificationEvent) => void | Promise<void>
+  ): Promise<NativeNotification> {
+    const { title, body } = notificationRequest(options)
+    if (typeof listener !== 'function')
+      throw new TypeError('A notification listener must be a function')
+    this.assertActive()
+    return this.application.service(async () => {
+      this.assertActive()
+      const registration = new NotificationRegistration(
+        this.application.allocateNotification(),
+        this.id,
+        title,
+        body,
+        listener,
+        (item) => this.withdrawNotification(item)
+      )
+      this.application.notifications.set(registration.id, registration)
+      try {
+        const posted = await this.application.host.send({
+          type: 'post_notification',
+          window_id: this.id,
+          notification_id: registration.id,
+          title,
+          body,
+        })
+        registration.activatable = posted.activatable
+        this.assertActive()
+        if (!registration.deliverable)
+          throw new NativeServiceError(
+            'notifications',
+            'cancelled',
+            'Notification was revoked while it was posted'
+          )
+        return registration.handle
+      } catch (error) {
+        registration.revoke()
+        this.application.notifications.delete(registration.id)
+        if (error instanceof ProtocolError) throw error
+        this.assertActive()
+        if (
+          error instanceof NativeCommandError &&
+          (NOTIFICATION_ERRORS as readonly string[]).includes(error.code)
+        )
+          throw new NativeServiceError(
+            'notifications',
+            error.code as NativeServiceError['code'],
+            error.message
+          )
+        throw error
+      }
+    })
+  }
+
+  private withdrawNotification(registration: NotificationRegistration): Promise<void> {
+    // Local revocation first: no activation is delivered after this call.
+    registration.revoke()
+    this.application.notifications.delete(registration.id)
+    // Window close and application shutdown withdraw it natively.
+    if (!this.active || !this.application.running) return Promise.resolve()
+    return this.application.track(
+      this.application.host
+        .send({
+          type: 'withdraw_notification',
+          window_id: this.id,
+          notification_id: registration.id,
+        })
+        .then(
+          () => {},
+          (error: unknown) => {
+            // The server or the owner can end it while the request is in flight.
+            if (error instanceof NativeCommandError && error.code === 'invalid_handle') return
+            if (!this.application.running) return
+            throw error
+          }
+        )
+    )
+  }
+
+  receiveNotification(
+    event: Extract<WindowEvent, { type: 'notification_activated' | 'notification_dismissed' }>
+  ): void {
+    if (!this.active) return
+    const registration = this.application.notifications.get(event.notification_id)
+    if (!registration?.live) return // Withdrawn: the host may already have queued an event.
+    if (registration.windowId !== this.id)
+      throw new ProtocolError('Native event names a notification outside its owner')
+    const common = {
+      sequence: event.sequence,
+      notification: registration.handle,
+      signal: registration.controller.signal,
+    }
+    if (event.type === 'notification_dismissed') {
+      registration.end()
+      this.application.notifications.delete(registration.id)
+    }
+    this.application.queueCallback({
+      windowId: this.id,
+      notification: registration,
+      event: Object.freeze(
+        event.type === 'notification_activated'
+          ? { type: 'notification_activated', ...common }
+          : { type: 'notification_dismissed', reason: event.reason, ...common }
+      ),
+    })
+  }
+
   receiveShortcut(event: Extract<WindowEvent, { type: 'global_shortcut' }>): void {
     if (!this.active) return
     const registration = this.application.shortcuts.get(event.shortcut_id)
@@ -669,6 +836,11 @@ class Window implements NativeWindow {
         registration.revoke()
         this.application.shortcuts.delete(registration.id)
       }
+    for (const registration of this.application.notifications.values())
+      if (registration.windowId === this.id) {
+        registration.revoke()
+        this.application.notifications.delete(registration.id)
+      }
     this.application.windows.delete(this.id)
     this.resolveClosed()
   }
@@ -684,6 +856,10 @@ class Window implements NativeWindow {
     }
     if (event.type === 'global_shortcut') {
       this.receiveShortcut(event)
+      return
+    }
+    if (event.type === 'notification_activated' || event.type === 'notification_dismissed') {
+      this.receiveNotification(event)
       return
     }
     if (!this.active) return

@@ -1,7 +1,12 @@
 import type { Capability, ClipboardText, ServicePolicy } from '@bun-native/protocol'
 
 export type NativeClipboardText = Readonly<ClipboardText>
-type ServiceName = 'window_display' | 'clipboard_read' | 'clipboard_write' | 'global_shortcuts'
+type ServiceName =
+  | 'window_display'
+  | 'clipboard_read'
+  | 'clipboard_write'
+  | 'global_shortcuts'
+  | 'notifications'
 
 export type ServicePermissions = NonNullable<
   import('@bun-native/runtime').HostOptions['permissions']
@@ -45,7 +50,14 @@ export interface ServiceCapabilities {
     | Readonly<{ availability: 'unavailable'; reason: 'unsupported_platform' }>
   readonly systemMenus: UnavailableService
   readonly dialogs: UnavailableService
-  readonly notifications: UnavailableService
+  readonly notifications:
+    | Readonly<{
+        availability: 'available'
+        permission: 'allow' | 'deny'
+        scope: 'owned_window'
+        backend: 'freedesktop'
+      }>
+    | Readonly<{ availability: 'unavailable'; reason: 'unsupported_platform' }>
   readonly dragDrop: UnavailableService
   readonly filesystemGrants: UnavailableService
   readonly ptyProcess: UnavailableService
@@ -104,7 +116,14 @@ export function serviceCapabilities(
       : Object.freeze({ availability: 'unavailable', reason: 'unsupported_platform' }),
     systemMenus: unavailable,
     dialogs: unavailable,
-    notifications: unavailable,
+    notifications: capabilities.includes('notifications_v1')
+      ? Object.freeze({
+          availability: 'available',
+          permission: policy.notifications ? 'allow' : 'deny',
+          scope: 'owned_window',
+          backend: 'freedesktop',
+        })
+      : Object.freeze({ availability: 'unavailable', reason: 'unsupported_platform' }),
     dragDrop: unavailable,
     filesystemGrants: unavailable,
     ptyProcess: unavailable,

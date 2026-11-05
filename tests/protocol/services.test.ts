@@ -44,6 +44,7 @@ describe('shared native service boundary', () => {
             clipboard_read: false,
             clipboard_write: false,
             global_shortcuts: false,
+            notifications: false,
           },
         })
       ).toEqual({
@@ -53,6 +54,7 @@ describe('shared native service boundary', () => {
           clipboard_read: false,
           clipboard_write: false,
           global_shortcuts: false,
+          notifications: false,
         },
       })
     for (const service_policy of [
@@ -73,6 +75,7 @@ describe('shared native service boundary', () => {
           clipboard_read: false,
           clipboard_write: false,
           global_shortcuts: false,
+          notifications: false,
         },
       })
     ).toThrow('version mismatch')

@@ -1,0 +1,153 @@
+{
+  "protocol": 8,
+  "capability": "notifications_v1",
+  "commands": [
+    {
+      "name": "plain notification",
+      "wire": "{\"type\":\"post_notification\",\"id\":3,\"window_id\":1,\"notification_id\":1,\"title\":\"Build finished\",\"body\":\"All 808 tests passed\"}",
+      "valid": true
+    },
+    {
+      "name": "empty body",
+      "wire": "{\"type\":\"post_notification\",\"id\":3,\"window_id\":1,\"notification_id\":1,\"title\":\"Ping\",\"body\":\"\"}",
+      "valid": true
+    },
+    {
+      "name": "body with line feeds",
+      "wire": "{\"type\":\"post_notification\",\"id\":3,\"window_id\":1,\"notification_id\":1,\"title\":\"Report\",\"body\":\"one\\ntwo\"}",
+      "valid": true
+    },
+    {
+      "name": "multibyte title at the byte bound",
+      "wire": "{\"type\":\"post_notification\",\"id\":3,\"window_id\":1,\"notification_id\":1,\"title\":\"éééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééé\",\"body\":\"\"}",
+      "valid": true
+    },
+    {
+      "name": "markup-looking text is plain text",
+      "wire": "{\"type\":\"post_notification\",\"id\":3,\"window_id\":1,\"notification_id\":1,\"title\":\"<b>x</b>\",\"body\":\"a & <i>b</i>\"}",
+      "valid": true
+    },
+    {
+      "name": "owned withdrawal",
+      "wire": "{\"type\":\"withdraw_notification\",\"id\":4,\"window_id\":1,\"notification_id\":1}",
+      "valid": true
+    },
+    {
+      "name": "empty title",
+      "wire": "{\"type\":\"post_notification\",\"id\":3,\"window_id\":1,\"notification_id\":1,\"title\":\"\",\"body\":\"x\"}",
+      "valid": false
+    },
+    {
+      "name": "title over 256 bytes",
+      "wire": "{\"type\":\"post_notification\",\"id\":3,\"window_id\":1,\"notification_id\":1,\"title\":\"ttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttt\",\"body\":\"\"}",
+      "valid": false
+    },
+    {
+      "name": "multibyte title over the byte bound",
+      "wire": "{\"type\":\"post_notification\",\"id\":3,\"window_id\":1,\"notification_id\":1,\"title\":\"ééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééé\",\"body\":\"\"}",
+      "valid": false
+    },
+    {
+      "name": "line feed in title",
+      "wire": "{\"type\":\"post_notification\",\"id\":3,\"window_id\":1,\"notification_id\":1,\"title\":\"a\\nb\",\"body\":\"\"}",
+      "valid": false
+    },
+    {
+      "name": "tab in body",
+      "wire": "{\"type\":\"post_notification\",\"id\":3,\"window_id\":1,\"notification_id\":1,\"title\":\"a\",\"body\":\"x\\ty\"}",
+      "valid": false
+    },
+    {
+      "name": "carriage return in body",
+      "wire": "{\"type\":\"post_notification\",\"id\":3,\"window_id\":1,\"notification_id\":1,\"title\":\"a\",\"body\":\"x\\r\\ny\"}",
+      "valid": false
+    },
+    {
+      "name": "body over 2048 bytes",
+      "wire": "{\"type\":\"post_notification\",\"id\":3,\"window_id\":1,\"notification_id\":1,\"title\":\"a\",\"body\":\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\"}",
+      "valid": false
+    },
+    {
+      "name": "missing body",
+      "wire": "{\"type\":\"post_notification\",\"id\":3,\"window_id\":1,\"notification_id\":1,\"title\":\"a\"}",
+      "valid": false
+    },
+    {
+      "name": "action strings are not accepted",
+      "wire": "{\"type\":\"post_notification\",\"id\":3,\"window_id\":1,\"notification_id\":1,\"title\":\"a\",\"body\":\"\",\"actions\":[\"open\"]}",
+      "valid": false
+    },
+    {
+      "name": "zero notification id",
+      "wire": "{\"type\":\"post_notification\",\"id\":3,\"window_id\":1,\"notification_id\":0,\"title\":\"a\",\"body\":\"\"}",
+      "valid": false
+    },
+    {
+      "name": "withdrawal without notification id",
+      "wire": "{\"type\":\"withdraw_notification\",\"id\":4,\"window_id\":1}",
+      "valid": false
+    }
+  ],
+  "events": [
+    {
+      "name": "posted activatable",
+      "wire": "{\"type\":\"notification_posted\",\"id\":3,\"window_id\":1,\"notification_id\":1,\"activatable\":true}",
+      "valid": true
+    },
+    {
+      "name": "posted without actions",
+      "wire": "{\"type\":\"notification_posted\",\"id\":3,\"window_id\":1,\"notification_id\":1,\"activatable\":false}",
+      "valid": true
+    },
+    {
+      "name": "withdrawn",
+      "wire": "{\"type\":\"notification_withdrawn\",\"id\":4,\"window_id\":1,\"notification_id\":1}",
+      "valid": true
+    },
+    {
+      "name": "activated",
+      "wire": "{\"type\":\"notification_activated\",\"sequence\":5,\"window_id\":1,\"notification_id\":1}",
+      "valid": true
+    },
+    {
+      "name": "dismissed by the user",
+      "wire": "{\"type\":\"notification_dismissed\",\"sequence\":6,\"window_id\":1,\"notification_id\":1,\"reason\":\"dismissed\"}",
+      "valid": true
+    },
+    {
+      "name": "expired",
+      "wire": "{\"type\":\"notification_dismissed\",\"sequence\":6,\"window_id\":1,\"notification_id\":1,\"reason\":\"expired\"}",
+      "valid": true
+    },
+    {
+      "name": "closed by the server",
+      "wire": "{\"type\":\"notification_dismissed\",\"sequence\":6,\"window_id\":1,\"notification_id\":1,\"reason\":\"closed\"}",
+      "valid": true
+    },
+    {
+      "name": "posted without activatable",
+      "wire": "{\"type\":\"notification_posted\",\"id\":3,\"window_id\":1,\"notification_id\":1}",
+      "valid": false
+    },
+    {
+      "name": "activatable must be boolean",
+      "wire": "{\"type\":\"notification_posted\",\"id\":3,\"window_id\":1,\"notification_id\":1,\"activatable\":1}",
+      "valid": false
+    },
+    {
+      "name": "activation names no executable action",
+      "wire": "{\"type\":\"notification_activated\",\"sequence\":5,\"window_id\":1,\"notification_id\":1,\"action\":\"open\"}",
+      "valid": false
+    },
+    {
+      "name": "unknown dismissal reason",
+      "wire": "{\"type\":\"notification_dismissed\",\"sequence\":6,\"window_id\":1,\"notification_id\":1,\"reason\":\"undefined\"}",
+      "valid": false
+    },
+    {
+      "name": "dismissal without sequence",
+      "wire": "{\"type\":\"notification_dismissed\",\"window_id\":1,\"notification_id\":1,\"reason\":\"expired\"}",
+      "valid": false
+    }
+  ]
+}
