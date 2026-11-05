@@ -33,7 +33,9 @@ export function standaloneFiles(
       packageManager: `bun@${set.manifest.toolchain.bun.version}`,
       engines: { bun: set.manifest.toolchain.bun.version },
       scripts: {
-        dev: `${cli} dev .`,
+        // The persistent watch controller returns freed bundler pages promptly;
+        // see docs/developer-tooling.md "Controller memory".
+        dev: `MIMALLOC_PURGE_DELAY=0 ${cli} dev .`,
         build: `${cli} build .`,
         check: 'bun --no-install check --no-script --no-pretty',
       },
