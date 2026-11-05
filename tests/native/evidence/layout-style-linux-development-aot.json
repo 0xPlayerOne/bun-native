@@ -1,0 +1,624 @@
+{
+  "schemaVersion": 1,
+  "issue": "https://github.com/0xPlayerOne/bun-native/issues/237",
+  "source": {
+    "commit": "3226e7ee6d6b516016000f09bc4b12667d5e93e4",
+    "dirty": false
+  },
+  "host": {
+    "profile": "dev",
+    "sha256": "5cecb3a0349c735ac69ab83bb56df251909d235b166ab99ef8566722028bd871"
+  },
+  "environment": {
+    "os": "Linux",
+    "kernel": "6.18.44-fc-v236",
+    "display": "isolated Xvfb 1280x800 with openbox",
+    "renderer": "Mesa lavapipe (software Vulkan)",
+    "input": "XTEST via xdotool",
+    "scaleFactors": "GPUI_X11_SCALE_FACTOR 1 and 2"
+  },
+  "comparison": {
+    "compared": [
+      "core/development/scale-1",
+      "core/aot/scale-1",
+      "core/development/scale-2",
+      "core/aot/scale-2",
+      "solid/development/scale-1",
+      "solid/aot/scale-1",
+      "solid/development/scale-2",
+      "solid/aot/scale-2",
+      "react/development/scale-1",
+      "react/aot/scale-1",
+      "react/development/scale-2",
+      "react/aot/scale-2"
+    ],
+    "checkpoints": ["declared", "initial", "resized"],
+    "status": "identical"
+  },
+  "runs": [
+    {
+      "adapter": "core",
+      "mode": "aot",
+      "scale": 1,
+      "bunRevision": "da867c60bf0bcbf9d6d36994f8ca0efa42075115",
+      "reportSha256": "bee5a5ee1c9aabc2978576c5628722fd491daa330d137f09fadcfcf9898200a9",
+      "outcomes": {
+        "splitRatio": {
+          "split": [12, 52, 456, 200],
+          "paneA": [13, 53, 224, 198],
+          "paneB": [243, 53, 224, 198]
+        },
+        "paneClipping": {
+          "wide": [21, 105, 420, 28],
+          "paneB": [243, 53, 224, 198],
+          "pixels": ["f9c8c8", "dbeafe"]
+        },
+        "focusOrder": ["A1", "A2", "input", "B1", "Done", "A1", "Done"],
+        "paneScroll": {
+          "offset": -182
+        },
+        "dividerDrag": {
+          "dragged": 304,
+          "minimum": 80,
+          "userWidth": 304
+        },
+        "themeSwitch": {
+          "pixel": "101418",
+          "paneA": [13, 53, 304, 198]
+        },
+        "declaredRatio": {
+          "paneA": [13, 53, 112, 198]
+        },
+        "resize": {
+          "wider": [13, 53, 152, 198],
+          "restored": [13, 53, 112, 198]
+        },
+        "ownershipReleased": {
+          "windows": 0,
+          "nodes": 0,
+          "callbacks": 0,
+          "queuedTransactions": 0,
+          "queuedCallbacks": 0,
+          "activeCallbacks": 0,
+          "serviceRequests": 0
+        }
+      }
+    },
+    {
+      "adapter": "core",
+      "mode": "aot",
+      "scale": 2,
+      "bunRevision": "da867c60bf0bcbf9d6d36994f8ca0efa42075115",
+      "reportSha256": "6aa734e1494c9e76b4f99ede5b559e8773f2f35fcd1792b168534ea5896080b1",
+      "outcomes": {
+        "splitRatio": {
+          "split": [12, 52, 456, 200],
+          "paneA": [13, 53, 224, 198],
+          "paneB": [243, 53, 224, 198]
+        },
+        "paneClipping": {
+          "wide": [21, 105, 420, 28],
+          "paneB": [243, 53, 224, 198],
+          "pixels": ["f9c8c8", "dbeafe"]
+        },
+        "focusOrder": ["A1", "A2", "input", "B1", "Done", "A1", "Done"],
+        "paneScroll": {
+          "offset": -182
+        },
+        "dividerDrag": {
+          "dragged": 304,
+          "minimum": 80,
+          "userWidth": 304
+        },
+        "themeSwitch": {
+          "pixel": "101418",
+          "paneA": [13, 53, 304, 198]
+        },
+        "declaredRatio": {
+          "paneA": [13, 53, 112, 198]
+        },
+        "resize": {
+          "wider": [13, 53, 152, 198],
+          "restored": [13, 53, 112, 198]
+        },
+        "ownershipReleased": {
+          "windows": 0,
+          "nodes": 0,
+          "callbacks": 0,
+          "queuedTransactions": 0,
+          "queuedCallbacks": 0,
+          "activeCallbacks": 0,
+          "serviceRequests": 0
+        }
+      }
+    },
+    {
+      "adapter": "core",
+      "mode": "development",
+      "scale": 1,
+      "bunRevision": "da867c60bf0bcbf9d6d36994f8ca0efa42075115",
+      "reportSha256": "be2af90a4d3cc48fcc422ce6290fc18892fce0ad5c9fb9cde33384badb4872a9",
+      "outcomes": {
+        "splitRatio": {
+          "split": [12, 52, 456, 200],
+          "paneA": [13, 53, 224, 198],
+          "paneB": [243, 53, 224, 198]
+        },
+        "paneClipping": {
+          "wide": [21, 105, 420, 28],
+          "paneB": [243, 53, 224, 198],
+          "pixels": ["f9c8c8", "dbeafe"]
+        },
+        "focusOrder": ["A1", "A2", "input", "B1", "Done", "A1", "Done"],
+        "paneScroll": {
+          "offset": -182
+        },
+        "dividerDrag": {
+          "dragged": 304,
+          "minimum": 80,
+          "userWidth": 304
+        },
+        "themeSwitch": {
+          "pixel": "101418",
+          "paneA": [13, 53, 304, 198]
+        },
+        "declaredRatio": {
+          "paneA": [13, 53, 112, 198]
+        },
+        "resize": {
+          "wider": [13, 53, 152, 198],
+          "restored": [13, 53, 112, 198]
+        },
+        "ownershipReleased": {
+          "windows": 0,
+          "nodes": 0,
+          "callbacks": 0,
+          "queuedTransactions": 0,
+          "queuedCallbacks": 0,
+          "activeCallbacks": 0,
+          "serviceRequests": 0
+        }
+      }
+    },
+    {
+      "adapter": "core",
+      "mode": "development",
+      "scale": 2,
+      "bunRevision": "da867c60bf0bcbf9d6d36994f8ca0efa42075115",
+      "reportSha256": "712a673a3a3ff05b9612e6a7620691054cc73fe20363b2c280fcd7e3ba42df08",
+      "outcomes": {
+        "splitRatio": {
+          "split": [12, 52, 456, 200],
+          "paneA": [13, 53, 224, 198],
+          "paneB": [243, 53, 224, 198]
+        },
+        "paneClipping": {
+          "wide": [21, 105, 420, 28],
+          "paneB": [243, 53, 224, 198],
+          "pixels": ["f9c8c8", "dbeafe"]
+        },
+        "focusOrder": ["A1", "A2", "input", "B1", "Done", "A1", "Done"],
+        "paneScroll": {
+          "offset": -182
+        },
+        "dividerDrag": {
+          "dragged": 304,
+          "minimum": 80,
+          "userWidth": 304
+        },
+        "themeSwitch": {
+          "pixel": "101418",
+          "paneA": [13, 53, 304, 198]
+        },
+        "declaredRatio": {
+          "paneA": [13, 53, 112, 198]
+        },
+        "resize": {
+          "wider": [13, 53, 152, 198],
+          "restored": [13, 53, 112, 198]
+        },
+        "ownershipReleased": {
+          "windows": 0,
+          "nodes": 0,
+          "callbacks": 0,
+          "queuedTransactions": 0,
+          "queuedCallbacks": 0,
+          "activeCallbacks": 0,
+          "serviceRequests": 0
+        }
+      }
+    },
+    {
+      "adapter": "react",
+      "mode": "aot",
+      "scale": 1,
+      "bunRevision": "da867c60bf0bcbf9d6d36994f8ca0efa42075115",
+      "reportSha256": "bdd06eff6fd681959ecbb2d66def63b5228a92ba84f5d2896c6a3a7210d2c4b2",
+      "outcomes": {
+        "splitRatio": {
+          "split": [12, 52, 456, 200],
+          "paneA": [13, 53, 224, 198],
+          "paneB": [243, 53, 224, 198]
+        },
+        "paneClipping": {
+          "wide": [21, 105, 420, 28],
+          "paneB": [243, 53, 224, 198],
+          "pixels": ["f9c8c8", "dbeafe"]
+        },
+        "focusOrder": ["A1", "A2", "input", "B1", "Done", "A1", "Done"],
+        "paneScroll": {
+          "offset": -182
+        },
+        "dividerDrag": {
+          "dragged": 304,
+          "minimum": 80,
+          "userWidth": 304
+        },
+        "themeSwitch": {
+          "pixel": "101418",
+          "paneA": [13, 53, 304, 198]
+        },
+        "declaredRatio": {
+          "paneA": [13, 53, 112, 198]
+        },
+        "resize": {
+          "wider": [13, 53, 152, 198],
+          "restored": [13, 53, 112, 198]
+        },
+        "ownershipReleased": {
+          "windows": 0,
+          "nodes": 0,
+          "callbacks": 0,
+          "queuedTransactions": 0,
+          "queuedCallbacks": 0,
+          "activeCallbacks": 0,
+          "serviceRequests": 0
+        }
+      }
+    },
+    {
+      "adapter": "react",
+      "mode": "aot",
+      "scale": 2,
+      "bunRevision": "da867c60bf0bcbf9d6d36994f8ca0efa42075115",
+      "reportSha256": "6f4916080eaa605ec08522c9b08ba442da3e85ce1b6eda2165a54a0545f47180",
+      "outcomes": {
+        "splitRatio": {
+          "split": [12, 52, 456, 200],
+          "paneA": [13, 53, 224, 198],
+          "paneB": [243, 53, 224, 198]
+        },
+        "paneClipping": {
+          "wide": [21, 105, 420, 28],
+          "paneB": [243, 53, 224, 198],
+          "pixels": ["f9c8c8", "dbeafe"]
+        },
+        "focusOrder": ["A1", "A2", "input", "B1", "Done", "A1", "Done"],
+        "paneScroll": {
+          "offset": -182
+        },
+        "dividerDrag": {
+          "dragged": 304,
+          "minimum": 80,
+          "userWidth": 304
+        },
+        "themeSwitch": {
+          "pixel": "101418",
+          "paneA": [13, 53, 304, 198]
+        },
+        "declaredRatio": {
+          "paneA": [13, 53, 112, 198]
+        },
+        "resize": {
+          "wider": [13, 53, 152, 198],
+          "restored": [13, 53, 112, 198]
+        },
+        "ownershipReleased": {
+          "windows": 0,
+          "nodes": 0,
+          "callbacks": 0,
+          "queuedTransactions": 0,
+          "queuedCallbacks": 0,
+          "activeCallbacks": 0,
+          "serviceRequests": 0
+        }
+      }
+    },
+    {
+      "adapter": "react",
+      "mode": "development",
+      "scale": 1,
+      "bunRevision": "da867c60bf0bcbf9d6d36994f8ca0efa42075115",
+      "reportSha256": "512484def090eef5efb7cf0b8da7e5f158980751786978e85187e6038777fc80",
+      "outcomes": {
+        "splitRatio": {
+          "split": [12, 52, 456, 200],
+          "paneA": [13, 53, 224, 198],
+          "paneB": [243, 53, 224, 198]
+        },
+        "paneClipping": {
+          "wide": [21, 105, 420, 28],
+          "paneB": [243, 53, 224, 198],
+          "pixels": ["f9c8c8", "dbeafe"]
+        },
+        "focusOrder": ["A1", "A2", "input", "B1", "Done", "A1", "Done"],
+        "paneScroll": {
+          "offset": -182
+        },
+        "dividerDrag": {
+          "dragged": 304,
+          "minimum": 80,
+          "userWidth": 304
+        },
+        "themeSwitch": {
+          "pixel": "101418",
+          "paneA": [13, 53, 304, 198]
+        },
+        "declaredRatio": {
+          "paneA": [13, 53, 112, 198]
+        },
+        "resize": {
+          "wider": [13, 53, 152, 198],
+          "restored": [13, 53, 112, 198]
+        },
+        "ownershipReleased": {
+          "windows": 0,
+          "nodes": 0,
+          "callbacks": 0,
+          "queuedTransactions": 0,
+          "queuedCallbacks": 0,
+          "activeCallbacks": 0,
+          "serviceRequests": 0
+        }
+      }
+    },
+    {
+      "adapter": "react",
+      "mode": "development",
+      "scale": 2,
+      "bunRevision": "da867c60bf0bcbf9d6d36994f8ca0efa42075115",
+      "reportSha256": "b80d7cd10a37269b0d2ee2edec0e086e0741069e1a99a5261762188633a5ff79",
+      "outcomes": {
+        "splitRatio": {
+          "split": [12, 52, 456, 200],
+          "paneA": [13, 53, 224, 198],
+          "paneB": [243, 53, 224, 198]
+        },
+        "paneClipping": {
+          "wide": [21, 105, 420, 28],
+          "paneB": [243, 53, 224, 198],
+          "pixels": ["f9c8c8", "dbeafe"]
+        },
+        "focusOrder": ["A1", "A2", "input", "B1", "Done", "A1", "Done"],
+        "paneScroll": {
+          "offset": -182
+        },
+        "dividerDrag": {
+          "dragged": 304,
+          "minimum": 80,
+          "userWidth": 304
+        },
+        "themeSwitch": {
+          "pixel": "101418",
+          "paneA": [13, 53, 304, 198]
+        },
+        "declaredRatio": {
+          "paneA": [13, 53, 112, 198]
+        },
+        "resize": {
+          "wider": [13, 53, 152, 198],
+          "restored": [13, 53, 112, 198]
+        },
+        "ownershipReleased": {
+          "windows": 0,
+          "nodes": 0,
+          "callbacks": 0,
+          "queuedTransactions": 0,
+          "queuedCallbacks": 0,
+          "activeCallbacks": 0,
+          "serviceRequests": 0
+        }
+      }
+    },
+    {
+      "adapter": "solid",
+      "mode": "aot",
+      "scale": 1,
+      "bunRevision": "da867c60bf0bcbf9d6d36994f8ca0efa42075115",
+      "reportSha256": "3bf4781024bf3c48eba5c2afe1b51aaec04bdd87d1531fdce14ec76f439fa9b9",
+      "outcomes": {
+        "splitRatio": {
+          "split": [12, 52, 456, 200],
+          "paneA": [13, 53, 224, 198],
+          "paneB": [243, 53, 224, 198]
+        },
+        "paneClipping": {
+          "wide": [21, 105, 420, 28],
+          "paneB": [243, 53, 224, 198],
+          "pixels": ["f9c8c8", "dbeafe"]
+        },
+        "focusOrder": ["A1", "A2", "input", "B1", "Done", "A1", "Done"],
+        "paneScroll": {
+          "offset": -182
+        },
+        "dividerDrag": {
+          "dragged": 304,
+          "minimum": 80,
+          "userWidth": 304
+        },
+        "themeSwitch": {
+          "pixel": "101418",
+          "paneA": [13, 53, 304, 198]
+        },
+        "declaredRatio": {
+          "paneA": [13, 53, 112, 198]
+        },
+        "resize": {
+          "wider": [13, 53, 152, 198],
+          "restored": [13, 53, 112, 198]
+        },
+        "ownershipReleased": {
+          "windows": 0,
+          "nodes": 0,
+          "callbacks": 0,
+          "queuedTransactions": 0,
+          "queuedCallbacks": 0,
+          "activeCallbacks": 0,
+          "serviceRequests": 0
+        }
+      }
+    },
+    {
+      "adapter": "solid",
+      "mode": "aot",
+      "scale": 2,
+      "bunRevision": "da867c60bf0bcbf9d6d36994f8ca0efa42075115",
+      "reportSha256": "3e530db3adddb95325cccfcd7b6588a3879c605ea518a2f4f1ba3444cab57015",
+      "outcomes": {
+        "splitRatio": {
+          "split": [12, 52, 456, 200],
+          "paneA": [13, 53, 224, 198],
+          "paneB": [243, 53, 224, 198]
+        },
+        "paneClipping": {
+          "wide": [21, 105, 420, 28],
+          "paneB": [243, 53, 224, 198],
+          "pixels": ["f9c8c8", "dbeafe"]
+        },
+        "focusOrder": ["A1", "A2", "input", "B1", "Done", "A1", "Done"],
+        "paneScroll": {
+          "offset": -182
+        },
+        "dividerDrag": {
+          "dragged": 304,
+          "minimum": 80,
+          "userWidth": 304
+        },
+        "themeSwitch": {
+          "pixel": "101418",
+          "paneA": [13, 53, 304, 198]
+        },
+        "declaredRatio": {
+          "paneA": [13, 53, 112, 198]
+        },
+        "resize": {
+          "wider": [13, 53, 152, 198],
+          "restored": [13, 53, 112, 198]
+        },
+        "ownershipReleased": {
+          "windows": 0,
+          "nodes": 0,
+          "callbacks": 0,
+          "queuedTransactions": 0,
+          "queuedCallbacks": 0,
+          "activeCallbacks": 0,
+          "serviceRequests": 0
+        }
+      }
+    },
+    {
+      "adapter": "solid",
+      "mode": "development",
+      "scale": 1,
+      "bunRevision": "da867c60bf0bcbf9d6d36994f8ca0efa42075115",
+      "reportSha256": "945f0968eae0c0002a5db1f48dcedb60df0c2bd6beaae3fb81d7db35c2097070",
+      "outcomes": {
+        "splitRatio": {
+          "split": [12, 52, 456, 200],
+          "paneA": [13, 53, 224, 198],
+          "paneB": [243, 53, 224, 198]
+        },
+        "paneClipping": {
+          "wide": [21, 105, 420, 28],
+          "paneB": [243, 53, 224, 198],
+          "pixels": ["f9c8c8", "dbeafe"]
+        },
+        "focusOrder": ["A1", "A2", "input", "B1", "Done", "A1", "Done"],
+        "paneScroll": {
+          "offset": -182
+        },
+        "dividerDrag": {
+          "dragged": 304,
+          "minimum": 80,
+          "userWidth": 304
+        },
+        "themeSwitch": {
+          "pixel": "101418",
+          "paneA": [13, 53, 304, 198]
+        },
+        "declaredRatio": {
+          "paneA": [13, 53, 112, 198]
+        },
+        "resize": {
+          "wider": [13, 53, 152, 198],
+          "restored": [13, 53, 112, 198]
+        },
+        "ownershipReleased": {
+          "windows": 0,
+          "nodes": 0,
+          "callbacks": 0,
+          "queuedTransactions": 0,
+          "queuedCallbacks": 0,
+          "activeCallbacks": 0,
+          "serviceRequests": 0
+        }
+      }
+    },
+    {
+      "adapter": "solid",
+      "mode": "development",
+      "scale": 2,
+      "bunRevision": "da867c60bf0bcbf9d6d36994f8ca0efa42075115",
+      "reportSha256": "db2fd5d91052c26aacf7b2fc823e3d3774de47a647affba339d89533bd7524a2",
+      "outcomes": {
+        "splitRatio": {
+          "split": [12, 52, 456, 200],
+          "paneA": [13, 53, 224, 198],
+          "paneB": [243, 53, 224, 198]
+        },
+        "paneClipping": {
+          "wide": [21, 105, 420, 28],
+          "paneB": [243, 53, 224, 198],
+          "pixels": ["f9c8c8", "dbeafe"]
+        },
+        "focusOrder": ["A1", "A2", "input", "B1", "Done", "A1", "Done"],
+        "paneScroll": {
+          "offset": -182
+        },
+        "dividerDrag": {
+          "dragged": 304,
+          "minimum": 80,
+          "userWidth": 304
+        },
+        "themeSwitch": {
+          "pixel": "101418",
+          "paneA": [13, 53, 304, 198]
+        },
+        "declaredRatio": {
+          "paneA": [13, 53, 112, 198]
+        },
+        "resize": {
+          "wider": [13, 53, 152, 198],
+          "restored": [13, 53, 112, 198]
+        },
+        "ownershipReleased": {
+          "windows": 0,
+          "nodes": 0,
+          "callbacks": 0,
+          "queuedTransactions": 0,
+          "queuedCallbacks": 0,
+          "activeCallbacks": 0,
+          "serviceRequests": 0
+        }
+      }
+    }
+  ],
+  "notQualified": [
+    "fractional or real-monitor HiDPI",
+    "Wayland, macOS, Windows",
+    "physical GPU and input",
+    "keyboard divider control and resize events",
+    "font_weight face rendering (system UI family not installed)",
+    "IME and accessibility"
+  ]
+}
