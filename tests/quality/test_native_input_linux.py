@@ -232,6 +232,39 @@ class EvidenceTests(unittest.TestCase):
         self.assertEqual(observed, {10: 100, 11: 101, 12: 102})
         self.assertEqual(table, original_table)
 
+    def test_close_thread_sample_reads_only_observed_identities(self):
+        own = DRIVER.process_table()[os.getpid()]
+        result = DRIVER.close_thread_sample({os.getpid(): own["start_ticks"], 1: -1}, 0)
+        self.assertEqual([item["pid"] for item in result["processes"]], [os.getpid()])
+        threads = result["processes"][0]["threads"]
+        self.assertTrue(threads)
+        self.assertEqual(threads[0]["tid"], os.getpid())
+        for thread in threads:
+            self.assertEqual(set(thread), {"tid", "comm", "state", "wchan", "syscall"})
+        # A reused PID (different start ticks) is never read.
+        self.assertEqual(
+            DRIVER.close_thread_sample({os.getpid(): own["start_ticks"] + 1}, 0)[
+                "processes"
+            ],
+            [],
+        )
+
+    def test_close_window_manager_state_reports_listing_and_focus(self):
+        output = (
+            "_NET_ACTIVE_WINDOW(WINDOW): window id # 0x400001\n"
+            "_NET_CLIENT_LIST(WINDOW): window id # 0x200003, 0x400001\n"
+        )
+        completed = subprocess.CompletedProcess([], 0, stdout=output, stderr="")
+        with patch.object(DRIVER.subprocess, "run", return_value=completed):
+            self.assertEqual(
+                DRIVER.close_window_manager_state(str(0x400001)),
+                {"command_returncode": 0, "active": True, "managed": True},
+            )
+            self.assertEqual(
+                DRIVER.close_window_manager_state(str(0x500001)),
+                {"command_returncode": 0, "active": False, "managed": False},
+            )
+
     def test_event_stress_is_explicit_fixed_and_does_not_relax_smoke_limits(self):
         DRIVER.validate_input_request(
             False, "ordinary", "x" * 200, ["Return"] * 16, None
