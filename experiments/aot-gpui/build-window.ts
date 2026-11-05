@@ -43,6 +43,7 @@ const entries = {
   layout: 'tests/native/layout.ts',
   interactions: 'tests/native/interactions.ts',
   services: 'tests/native/services.ts',
+  'display-semantics': 'tests/native/display-semantics.ts',
   clipboard: 'tests/native/clipboard.ts',
   'global-shortcuts': 'tests/native/global-shortcuts.ts',
   notifications: 'tests/native/notifications.ts',
@@ -113,6 +114,7 @@ if (
     entry === 'layout' ||
     entry === 'interactions' ||
     entry === 'services' ||
+    entry === 'display-semantics' ||
     entry === 'clipboard' ||
     entry === 'global-shortcuts' ||
     entry === 'notifications' ||

@@ -123,9 +123,8 @@ The pinned X11 backend represents an **X screen spanning its monitors**, not a
 physical monitor selected by the window's overlap. Its bounds originate at
 zero and divide X screen pixels by the configured scale. The current API does
 not promise physical monitor identity, refresh rate, work area, DPI, display
-enumeration, display-change events or automatic window placement. Moving a
-window after a read can make the snapshot stale. The isolated Xvfb check uses
-one scale-1 screen; it cannot establish mixed-DPI or multi-monitor behavior.
+enumeration, display-change events or automatic window placement. On other
+backends, moving a window after a read can make the snapshot stale.
 These semantics follow the pinned
 [X11 display implementation](https://github.com/zed-industries/zed/blob/ba63a022c9a22ca66d68ef2a8f0bb9b5b0a9984d/crates/gpui_linux/src/linux/x11/display.rs#L14-L55)
 and [GPUI window accessors](https://github.com/zed-industries/zed/blob/ba63a022c9a22ca66d68ef2a8f0bb9b5b0a9984d/crates/gpui/src/window.rs#L3144-L3162).
@@ -133,8 +132,59 @@ The pinned [macOS implementation](https://github.com/zed-industries/zed/blob/ba6
 also returns a zero origin, retaining the size from `CGDisplayBounds` but not
 its global origin. This API therefore does not promise a global monitor
 arrangement or suitable coordinates for cross-display window placement.
-The follow-up must qualify those semantics instead of inferring them from
-the field names.
+
+### Qualified X11 display semantics (#299)
+
+[`tests/native/display-semantics.ts`](../tests/native/display-semantics.ts)
+qualifies the snapshot against independent X clients in an isolated
+**two-screen** Xvfb (1280×800 and 1024×768) with openbox. `xdpyinfo` and
+`xwininfo -root` supply every expected geometry; window movement, resizing,
+OS close and resource changes are real X requests (`xdotool`, `xrdb`). Each
+scenario launches the same prebuilt host through an `exec` wrapper that fixes
+only `DISPLAY` / `GPUI_X11_SCALE_FACTOR`. The fixture requires, in development
+and inspected AOT:
+
+| Semantic                  | Observed native result                                                                                                                                                              |
+| ------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Whole X screen            | Two windows of different sizes report the same `{0, 0, 1280, 800} @1`. An X server move to the opposite corner and resize leaves the snapshot unchanged.                            |
+| Logical pixels            | `GPUI_X11_SCALE_FACTOR=2` reports `640×400 @2`: X screen pixels divided by the scale.                                                                                               |
+| Scale source and lifetime | With the override unset, `Xft.dpi: 144` reports `853.33×533.33 @1.5`. Changing it to 192 at runtime changes neither an existing nor a newly opened window; a new host reports `@2`. |
+| Window's X screen         | A host connected to `:N.1` reports the 1024×768 second screen, not screen 0.                                                                                                        |
+| Revocation                | Default denial, `close()`, window-manager close (`WM_DELETE_WINDOW`) and shutdown each end the capability; every application returns all ownership counters to zero.                |
+
+So on X11 a snapshot is a property of the host's X connection: the X screen
+size from the connection setup and one process-wide scale factor resolved at
+connection time from `GPUI_X11_SCALE_FACTOR`, `Xft.dpi` or RandR. The
+[client](https://github.com/zed-industries/zed/blob/ba63a022c9a22ca66d68ef2a8f0bb9b5b0a9984d/crates/gpui_linux/src/linux/x11/client.rs#L478-L480)
+reads the resource database and scale once; each
+[window](https://github.com/zed-industries/zed/blob/ba63a022c9a22ca66d68ef2a8f0bb9b5b0a9984d/crates/gpui_linux/src/linux/x11/window.rs#L826)
+stores an `X11Display` built from that setup. A window cannot migrate to
+another X screen, and moving it within a screen cannot change its snapshot.
+
+**No display-change subscription is added.** The pinned X11 window's
+[`on_display_changed`](https://github.com/zed-industries/zed/blob/ba63a022c9a22ca66d68ef2a8f0bb9b5b0a9984d/crates/gpui_linux/src/linux/x11/window.rs#L1728-L1730)
+is a no-op and the X11 platform reports `displays_changed` only when the
+backend connection is
+[replaced](https://github.com/zed-industries/zed/blob/ba63a022c9a22ca66d68ef2a8f0bb9b5b0a9984d/crates/gpui_linux/src/linux/platform.rs#L442-L470),
+not on RandR changes. A subscription on this backend would never fire for a
+real monitor change, so exposing one would overstate the platform. The
+following remain **unavailable** and are not part of the public result:
+
+- Display-change events and runtime geometry changes: Xvfb's RandR exposes a
+  single fixed mode and silently ignores `--setmonitor`, so no actual change
+  can be produced here; GPUI would not observe one anyway.
+- Monitor hotplug: Xvfb has no physical outputs.
+- Work area: the X11 display does not override
+  [`visible_bounds`](https://github.com/zed-industries/zed/blob/ba63a022c9a22ca66d68ef2a8f0bb9b5b0a9984d/crates/gpui/src/platform.rs#L655-L661),
+  which therefore equals `bounds`; `_NET_WORKAREA` is not read.
+- Monitor identity: the X11 display id is the X screen index and its UUID is
+  all zeros, so there is no persistent identity to expose.
+- Mixed DPI: one scale factor per host process; per-monitor scale is not
+  exposed by the X11 backend.
+- Wayland, macOS and Windows: not qualified by this fixture. Wayland's GPUI
+  backend does report output changes, but no compositor session is available
+  in the Linux CI lane; macOS and Windows display service execution remains
+  unverified.
 
 Reads share the public application's bounded serialized transaction queue.
 `displaySnapshot({ signal })` accepts a real `AbortSignal`; unknown options or
@@ -329,17 +379,17 @@ are requirements for future work, not promises that an exported function
 already exists. The linked follow-ups belong to
 [#255](https://github.com/0xPlayerOne/bun-native/issues/255).
 
-| Service           | Current public surface                                        | Linux X11                                           | macOS                        | Windows                      | Required scope before exposing more operations                                                                                                                                  |
-| ----------------- | ------------------------------------------------------------- | --------------------------------------------------- | ---------------------------- | ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Window/display    | Existing owned open/close; permission-gated `displaySnapshot` | Core/Solid/React dev+AOT verified with release host | Service execution unverified | Service execution unverified | Display changes, physical-monitor/work-area semantics, placement and mixed-DPI evidence. [#299](https://github.com/0xPlayerOne/bun-native/issues/299).                          |
-| Clipboard text    | `readClipboardText` / `writeClipboardText`; separate grants   | X11 dev+AOT verified with release host              | Unavailable                  | Unavailable                  | Additional platforms/formats and extended lifecycle coverage. [#300](https://github.com/0xPlayerOne/bun-native/issues/300).                                                     |
-| Global shortcuts  | `registerGlobalShortcut`; `globalShortcuts` grant             | X11 dev+AOT verified with release host              | Unavailable                  | Unavailable                  | macOS/Windows backends, Wayland portal design and keyboard-map change tracking. [#301](https://github.com/0xPlayerOne/bun-native/issues/301).                                   |
-| System menus      | Capability `systemMenus`; unavailable                         | Unavailable                                         | Unavailable                  | Unavailable                  | Typed action identities, owned menu lifetime, keyboard/accessibility behavior and safe action revocation. [#239](https://github.com/0xPlayerOne/bun-native/issues/239).         |
-| Dialogs           | Capability `dialogs`; unavailable                             | Unavailable                                         | Unavailable                  | Unavailable                  | Owned-window modality, explicit cancellation, shutdown and file selection distinct from a file grant. [#239](https://github.com/0xPlayerOne/bun-native/issues/239).             |
-| Notifications     | `postNotification`; `notifications` grant                     | Freedesktop D-Bus (dunst) dev+AOT verified          | Unavailable                  | Unavailable                  | macOS/Windows backends, additional notification servers, named actions and replacement. [#302](https://github.com/0xPlayerOne/bun-native/issues/302).                           |
-| Drag/drop         | Capability `dragDrop`; unavailable                            | Unavailable                                         | Unavailable                  | Unavailable                  | Bounded untrusted payload, owned target, native cancellation and explicit file-grant conversion. [#303](https://github.com/0xPlayerOne/bun-native/issues/303).                  |
-| Filesystem grants | Capability `filesystemGrants`; unavailable                    | Unavailable                                         | Unavailable                  | Unavailable                  | Scoped file/directory handles, allowed operations, path/symlink policy, revocation and OS failure mapping. [#304](https://github.com/0xPlayerOne/bun-native/issues/304).        |
-| PTY/process       | Capability `ptyProcess`; unavailable                          | Unavailable                                         | Unavailable                  | Unavailable                  | Executable/argument/environment policy, bounded streams, process identity, interruption and joined child cleanup. [#305](https://github.com/0xPlayerOne/bun-native/issues/305). |
+| Service           | Current public surface                                        | Linux X11                                                                                           | macOS                        | Windows                      | Required scope before exposing more operations                                                                                                                                                    |
+| ----------------- | ------------------------------------------------------------- | --------------------------------------------------------------------------------------------------- | ---------------------------- | ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Window/display    | Existing owned open/close; permission-gated `displaySnapshot` | Core/Solid/React dev+AOT verified with release host; X11 semantics fixture dev+AOT verified locally | Service execution unverified | Service execution unverified | X11 semantics qualified; change events, work area, identity and mixed DPI unavailable on X11. Other platforms and placement remain. [#299](https://github.com/0xPlayerOne/bun-native/issues/299). |
+| Clipboard text    | `readClipboardText` / `writeClipboardText`; separate grants   | X11 dev+AOT verified with release host                                                              | Unavailable                  | Unavailable                  | Additional platforms/formats and extended lifecycle coverage. [#300](https://github.com/0xPlayerOne/bun-native/issues/300).                                                                       |
+| Global shortcuts  | `registerGlobalShortcut`; `globalShortcuts` grant             | X11 dev+AOT verified with release host                                                              | Unavailable                  | Unavailable                  | macOS/Windows backends, Wayland portal design and keyboard-map change tracking. [#301](https://github.com/0xPlayerOne/bun-native/issues/301).                                                     |
+| System menus      | Capability `systemMenus`; unavailable                         | Unavailable                                                                                         | Unavailable                  | Unavailable                  | Typed action identities, owned menu lifetime, keyboard/accessibility behavior and safe action revocation. [#239](https://github.com/0xPlayerOne/bun-native/issues/239).                           |
+| Dialogs           | Capability `dialogs`; unavailable                             | Unavailable                                                                                         | Unavailable                  | Unavailable                  | Owned-window modality, explicit cancellation, shutdown and file selection distinct from a file grant. [#239](https://github.com/0xPlayerOne/bun-native/issues/239).                               |
+| Notifications     | `postNotification`; `notifications` grant                     | Freedesktop D-Bus (dunst) dev+AOT verified                                                          | Unavailable                  | Unavailable                  | macOS/Windows backends, additional notification servers, named actions and replacement. [#302](https://github.com/0xPlayerOne/bun-native/issues/302).                                             |
+| Drag/drop         | Capability `dragDrop`; unavailable                            | Unavailable                                                                                         | Unavailable                  | Unavailable                  | Bounded untrusted payload, owned target, native cancellation and explicit file-grant conversion. [#303](https://github.com/0xPlayerOne/bun-native/issues/303).                                    |
+| Filesystem grants | Capability `filesystemGrants`; unavailable                    | Unavailable                                                                                         | Unavailable                  | Unavailable                  | Scoped file/directory handles, allowed operations, path/symlink policy, revocation and OS failure mapping. [#304](https://github.com/0xPlayerOne/bun-native/issues/304).                          |
+| PTY/process       | Capability `ptyProcess`; unavailable                          | Unavailable                                                                                         | Unavailable                  | Unavailable                  | Executable/argument/environment policy, bounded streams, process identity, interruption and joined child cleanup. [#305](https://github.com/0xPlayerOne/bun-native/issues/305).                   |
 
 For the deferred rows, the exported typed contract is the frozen availability
 record in `ServiceCapabilities`. There is no callable operation, configurable
