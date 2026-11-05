@@ -323,7 +323,7 @@ def qualify(framework, output, host, bun):
     def screenshot(current, name):
         require_window(current)
         path = output / name
-        DRIVER.run(["import", "-window", current["window"], "-strip", str(path)])
+        DRIVER.WINDOW_CAPTURE.capture_png(current["window"], path, timeout=3)
         report.setdefault("screenshots", {})[name] = TEMPLATES.artifact(path)
 
     try:
@@ -335,7 +335,7 @@ def qualify(framework, output, host, bun):
             raise DRIVER.Unsupported(
                 "A private Linux X11 display and matching /proc PID namespace are required"
             )
-        missing = [tool for tool in ("xdotool", "import") if not shutil.which(tool)]
+        missing = [tool for tool in ("xdotool",) if not shutil.which(tool)]
         if missing:
             raise DRIVER.Unsupported(f"Missing native input/capture tools: {missing}")
         DRIVER.enable_subreaper()
