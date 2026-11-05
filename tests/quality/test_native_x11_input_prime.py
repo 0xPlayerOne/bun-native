@@ -80,7 +80,7 @@ class PrimeTests(unittest.TestCase):
 
     def test_session_primes_after_wm_readiness_and_before_any_command(self):
         text = (ROOT / "scripts/quality/native-linux-session.sh").read_text()
-        ready = text.index("xprop -root _NET_SUPPORTING_WM_CHECK | grep -q")
+        ready = text.index('start_test_window_manager "$evidence_dir"')
         prime = text.index("scripts/quality/native-x11-input-prime.py")
         first_command = text.index('if [[ "$mode" == -- ]]; then')
         self.assertLess(ready, prime)
