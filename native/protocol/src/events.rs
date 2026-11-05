@@ -122,6 +122,39 @@ pub enum Event {
         grant_id: crate::FileGrantId,
         result: crate::FileResult,
     },
+    ProcessSpawned {
+        id: RequestId,
+        window_id: WindowId,
+        process_id: crate::ProcessId,
+    },
+    /// Reply to write, input close, resize, signal and acknowledgement.
+    ProcessUpdated {
+        id: RequestId,
+        window_id: WindowId,
+        process_id: crate::ProcessId,
+    },
+    ProcessReleased {
+        id: RequestId,
+        window_id: WindowId,
+        process_id: crate::ProcessId,
+    },
+    /// One chunk of output; `chunk` counts from 1 per process.
+    ProcessOutput {
+        sequence: EventSequence,
+        window_id: WindowId,
+        process_id: crate::ProcessId,
+        #[serde(deserialize_with = "crate::wire::safe_integer")]
+        chunk: u64,
+        stream: crate::ProcessStream,
+        data: String,
+    },
+    /// The direct child ended; its group was stopped and all output delivered.
+    ProcessExited {
+        sequence: EventSequence,
+        window_id: WindowId,
+        process_id: crate::ProcessId,
+        exit: crate::ProcessExit,
+    },
     NotificationDismissed {
         sequence: EventSequence,
         window_id: WindowId,
@@ -306,8 +339,16 @@ impl Event {
             Self::ClipboardText { result, .. } => result.validate()?,
             Self::FileResult { result, .. } => result.validate()?,
             Self::Ready { service_policy, .. } => {
-                crate::validate_filesystem_roots(&service_policy.filesystem_roots)?
+                crate::validate_filesystem_roots(&service_policy.filesystem_roots)?;
+                crate::validate_process_executables(&service_policy.processes)?
             }
+            Self::ProcessOutput { data, chunk, .. } => {
+                if *chunk == 0 || *chunk > MAX_ID {
+                    return Err("process output chunk must be a positive safe integer");
+                }
+                crate::validate_process_output(data)?
+            }
+            Self::ProcessExited { exit, .. } => exit.validate()?,
             Self::KeyDown { key, key_char, .. } | Self::KeyUp { key, key_char, .. } => {
                 validate_text(key)?;
                 if key.is_empty() || key.len() > MAX_KEY_BYTES {

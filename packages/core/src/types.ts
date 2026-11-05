@@ -20,6 +20,7 @@ import type {
 } from './shortcuts.ts'
 import type { NativeNotification, NotificationEvent, NotificationOptions } from './notifications.ts'
 import type { FileGrantOptions, NativeFileGrant } from './files.ts'
+import type { NativeProcess, ProcessEvent, ProcessOptions } from './processes.ts'
 
 export type { Element, KeyModifiers, PointerButton, Style }
 export type ApplicationOptions = HostOptions
@@ -179,6 +180,17 @@ export interface NativeWindow {
    * pathname or model text can create one. Closing the window revokes it.
    */
   openFileGrant(root: string, options?: FileGrantOptions): Promise<NativeFileGrant>
+  /**
+   * Start an owned child process from an executable the application named in
+   * its immutable `processes` launch permission, by ID. Arguments and the
+   * whole environment are explicit; a working directory comes only from a live
+   * file grant of this window. Closing the window stops its process group.
+   */
+  spawnProcess(
+    executable: string,
+    options: ProcessOptions,
+    listener: (event: ProcessEvent) => void | Promise<void>
+  ): Promise<NativeProcess>
   /** Idempotent. Revokes listeners before requesting native window removal. */
   close(): Promise<void>
 }

@@ -1,10 +1,10 @@
-# Private native protocol 9
+# Private native protocol 10
 
 This crate defines the shared host wire contract and atomic tree model. Public
 application APIs live in TypeScript packages; applications and framework
-adapters do not depend on Rust, GPUI types or raw JSON commands. Protocol 9
+adapters do not depend on Rust, GPUI types or raw JSON commands. Protocol 10
 requires shared `layout_v1`, `interactions_v1` and `window_display_v1` contracts
-and replaces protocol 8 outright.
+and replaces protocol 9 outright.
 Older hosts and applications must be rebuilt together; there is no fallback.
 
 ## Framing and errors

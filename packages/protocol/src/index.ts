@@ -22,6 +22,24 @@ export {
   type WriteMode,
 } from './files.ts'
 export {
+  MAX_PROCESS_ARGS,
+  MAX_PROCESS_ENV,
+  MAX_PROCESS_EXECUTABLES,
+  MAX_PROCESS_OUTPUT_CREDIT,
+  MAX_PROCESSES,
+  parseProcessExecutables,
+  parseProcessLaunch,
+  PROCESS_SIGNALS,
+  processArgument,
+  processesFromArguments,
+  type ProcessExecutable,
+  type ProcessExit,
+  type ProcessLaunch,
+  type ProcessSignal,
+  type ProcessStream,
+  type TerminalSize,
+} from './processes.ts'
+export {
   GLOBAL_SHORTCUT_KEYS,
   MAX_CLIPBOARD_BYTES,
   MAX_GLOBAL_SHORTCUTS,

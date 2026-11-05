@@ -3,6 +3,7 @@
 import {
   DEFAULT_LIMITS,
   filesystemRootsFromArguments,
+  processesFromArguments,
   encodeFrame,
   FrameDecoder,
   parseCommand,
@@ -22,6 +23,7 @@ const policy = {
   global_shortcuts: process.argv.includes('--bun-native-allow-global-shortcuts'),
   notifications: process.argv.includes('--bun-native-allow-notifications'),
   filesystem_roots: filesystemRootsFromArguments(process.argv),
+  processes: processesFromArguments(process.argv),
 }
 const windows = new Set<number>()
 const live = new Map<number, number>()

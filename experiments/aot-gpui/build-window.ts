@@ -47,6 +47,7 @@ const entries = {
   'global-shortcuts': 'tests/native/global-shortcuts.ts',
   notifications: 'tests/native/notifications.ts',
   'filesystem-grants': 'tests/native/filesystem-grants.ts',
+  processes: 'tests/native/processes.ts',
   'solid-services': 'tests/native/solid-services.tsx',
   'react-services': 'tests/native/react-services.tsx',
   'platform-smoke': 'tests/native/platform-smoke.ts',
@@ -118,6 +119,7 @@ if (
     entry === 'global-shortcuts' ||
     entry === 'notifications' ||
     entry === 'filesystem-grants' ||
+    entry === 'processes' ||
     entry === 'platform-smoke' ||
     solidEntry ||
     reactEntry) &&

@@ -1,6 +1,7 @@
 import { ProtocolError } from './framing.ts'
 import { keys, number, object, string } from './values.ts'
 import { parseFilesystemRoots, type FilesystemRoot } from './files.ts'
+import { parseProcessExecutables, type ProcessExecutable } from './processes.ts'
 
 // Worst-case JSON escaping still leaves room within the 64KiB frame.
 export const MAX_CLIPBOARD_BYTES = 8_192
@@ -18,6 +19,8 @@ export interface ServicePolicy {
   notifications: boolean
   /** Directories a window may open as scoped grants, in launch order. */
   filesystem_roots: FilesystemRoot[]
+  /** Executables a window may start as owned processes, in launch order. */
+  processes: ProcessExecutable[]
 }
 
 /** The closed set of layout-level keys a global shortcut may name. */
@@ -115,6 +118,7 @@ export function parseServicePolicy(value: unknown): ServicePolicy {
     'global_shortcuts',
     'notifications',
     'filesystem_roots',
+    'processes',
   ])
   const grant = (key: keyof ServicePolicy) => {
     if (typeof data[key] !== 'boolean')
@@ -128,6 +132,7 @@ export function parseServicePolicy(value: unknown): ServicePolicy {
     global_shortcuts: grant('global_shortcuts'),
     notifications: grant('notifications'),
     filesystem_roots: parseFilesystemRoots(data['filesystem_roots']),
+    processes: parseProcessExecutables(data['processes']),
   }
 }
 

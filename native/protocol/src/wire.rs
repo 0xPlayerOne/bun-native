@@ -3,7 +3,7 @@
 use serde::{de, Deserialize, Deserializer, Serialize};
 use std::fmt;
 
-pub const PROTOCOL_VERSION: u32 = 9;
+pub const PROTOCOL_VERSION: u32 = 10;
 pub const MAX_ID: u64 = 9_007_199_254_740_991;
 pub const MAX_FRAME_BYTES: usize = 65_536;
 pub const MAX_TEXT_BYTES: usize = 16_384;
@@ -58,6 +58,7 @@ identifier!(EventSequence);
 identifier!(ShortcutId);
 identifier!(NotificationId);
 identifier!(FileGrantId);
+identifier!(ProcessId);
 
 /// JSON has one number type. Match JavaScript's safe-integer validation even
 /// when a sender spells an integer as `1.0` or `1e0` instead of canonical `1`.
@@ -423,6 +424,49 @@ pub enum Command {
         path: String,
         operation: crate::FileOperation,
     },
+    SpawnProcess {
+        id: RequestId,
+        window_id: WindowId,
+        process_id: ProcessId,
+        launch: crate::ProcessLaunch,
+    },
+    WriteProcess {
+        id: RequestId,
+        window_id: WindowId,
+        process_id: ProcessId,
+        data: String,
+    },
+    CloseProcessInput {
+        id: RequestId,
+        window_id: WindowId,
+        process_id: ProcessId,
+    },
+    ResizeProcess {
+        id: RequestId,
+        window_id: WindowId,
+        process_id: ProcessId,
+        size: crate::TerminalSize,
+    },
+    SignalProcess {
+        id: RequestId,
+        window_id: WindowId,
+        process_id: ProcessId,
+        signal: crate::ProcessSignal,
+    },
+    /// Acknowledge output through `chunk`, returning that delivery credit.
+    AcknowledgeProcessOutput {
+        id: RequestId,
+        window_id: WindowId,
+        process_id: ProcessId,
+        #[serde(deserialize_with = "safe_integer")]
+        chunk: u64,
+    },
+    /// Stop the process group, reap it and release the identity.
+    ReleaseProcess {
+        id: RequestId,
+        window_id: WindowId,
+        process_id: ProcessId,
+    },
     Shutdown {
         id: RequestId,
     },
@@ -464,6 +508,7 @@ pub enum Capability {
     GlobalShortcutsV1,
     NotificationsV1,
     FilesystemGrantsV1,
+    ProcessesV1,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -482,6 +527,7 @@ pub struct Limits {
     pub max_notifications: usize,
     pub max_file_grants: usize,
     pub max_file_chunk_bytes: usize,
+    pub max_processes: usize,
 }
 
 impl Default for Limits {
@@ -500,6 +546,7 @@ impl Default for Limits {
             max_notifications: crate::MAX_NOTIFICATIONS,
             max_file_grants: crate::MAX_FILE_GRANTS,
             max_file_chunk_bytes: crate::MAX_FILE_CHUNK_BYTES,
+            max_processes: crate::MAX_PROCESSES,
         }
     }
 }
@@ -521,6 +568,13 @@ impl Command {
             | Self::OpenFileGrant { id, .. }
             | Self::CloseFileGrant { id, .. }
             | Self::FileRequest { id, .. }
+            | Self::SpawnProcess { id, .. }
+            | Self::WriteProcess { id, .. }
+            | Self::CloseProcessInput { id, .. }
+            | Self::ResizeProcess { id, .. }
+            | Self::SignalProcess { id, .. }
+            | Self::AcknowledgeProcessOutput { id, .. }
+            | Self::ReleaseProcess { id, .. }
             | Self::Shutdown { id } => *id,
         }
     }
@@ -599,6 +653,14 @@ impl Command {
             Self::FileRequest {
                 path, operation, ..
             } => operation.validate(path)?,
+            Self::SpawnProcess { launch, .. } => launch.validate()?,
+            Self::WriteProcess { data, .. } => crate::validate_process_output(data)?,
+            Self::ResizeProcess { size, .. } => size.validate()?,
+            Self::AcknowledgeProcessOutput { chunk, .. } => {
+                if *chunk == 0 || *chunk > MAX_ID {
+                    return Err("process output chunk must be a positive safe integer");
+                }
+            }
             Self::Hello { .. }
             | Self::Close { .. }
             | Self::DisplaySnapshot { .. }
@@ -606,6 +668,9 @@ impl Command {
             | Self::UnregisterGlobalShortcut { .. }
             | Self::WithdrawNotification { .. }
             | Self::CloseFileGrant { .. }
+            | Self::CloseProcessInput { .. }
+            | Self::SignalProcess { .. }
+            | Self::ReleaseProcess { .. }
             | Self::Shutdown { .. } => {}
         }
         Ok(())

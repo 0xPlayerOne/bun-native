@@ -24,6 +24,7 @@ export type {
   NativeFileGrant,
   NativeFileStat,
 } from './files.ts'
+export type { NativeProcess, NativeProcessExit, ProcessEvent, ProcessOptions } from './processes.ts'
 export type {
   ApplicationOptions,
   ClickEvent,

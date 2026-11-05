@@ -5,14 +5,15 @@ use crate::{
     services::clipboard::{Clipboard, Operation as ClipboardOperation},
     services::files::Files,
     services::notifications::Notifications,
+    services::processes::{Change, Processes, Spawn},
     services::shortcuts::Shortcuts,
     state::{SharedWindowState, WindowState},
     view::NativeView,
 };
 use bun_native_protocol::{
     Capability, Command, ErrorCode, Event, FileAccess, FileGrantId, FileOperation, Limits,
-    MAX_WINDOWS, NodeId, NotificationId, Operation, PROTOCOL_VERSION, RequestId, ServicePolicy,
-    ShortcutId, ShortcutModifiers, Tree, WindowId,
+    MAX_WINDOWS, NodeId, NotificationId, Operation, PROTOCOL_VERSION, ProcessId, ProcessLaunch,
+    RequestId, ServicePolicy, ShortcutId, ShortcutModifiers, Tree, WindowId,
 };
 use gpui::{
     App, Bounds, TitlebarOptions, WindowBounds, WindowHandle, WindowOptions, prelude::*, px, size,
@@ -49,6 +50,7 @@ pub(crate) struct Session {
     shortcuts: Shortcuts,
     notifications: Notifications,
     files: Files,
+    processes: Processes,
 }
 
 impl Session {
@@ -64,6 +66,7 @@ impl Session {
         let shortcuts = Shortcuts::new(events.clone(), cx);
         let notifications = Notifications::new(events.clone(), cx);
         let files = Files::new(events.clone(), policy.filesystem_roots.clone(), cx);
+        let processes = Processes::new(events.clone(), policy.processes.clone(), cx);
         cx.on_window_closed({
             let windows = windows.clone();
             let finishing = finishing.clone();
@@ -73,6 +76,7 @@ impl Session {
             let shortcuts = shortcuts.clone();
             let notifications = notifications.clone();
             let files = files.clone();
+            let processes = processes.clone();
             move |cx, closed| {
                 let id = windows
                     .borrow()
@@ -92,6 +96,7 @@ impl Session {
                     shortcuts.close_window(window_id, cx);
                     notifications.close_window(window_id, cx);
                     files.close_window(window_id, cx);
+                    processes.close_window(window_id, cx);
                     if !finishing.get() {
                         events.ui(
                             |sequence| Event::Closed {
@@ -119,6 +124,7 @@ impl Session {
             shortcuts,
             notifications,
             files,
+            processes,
         }
     }
 
@@ -184,6 +190,9 @@ impl Session {
                 }
                 if self.files.available() {
                     capabilities.push(Capability::FilesystemGrantsV1);
+                }
+                if self.processes.available() {
+                    capabilities.push(Capability::ProcessesV1);
                 }
                 self.events.send(
                     Event::Ready {
@@ -300,6 +309,61 @@ impl Session {
                 operation,
                 ..
             } => self.file_request((id, window_id, grant_id), path, operation, cx),
+            Command::SpawnProcess {
+                window_id,
+                process_id,
+                launch,
+                ..
+            } => self.spawn_process((id, window_id, process_id), launch, cx),
+            Command::WriteProcess {
+                window_id,
+                process_id,
+                data,
+                ..
+            } => match base64::Engine::decode(&base64::engine::general_purpose::STANDARD, data) {
+                Ok(bytes) => {
+                    self.update_process((id, window_id, process_id), Change::Write(bytes), cx)
+                }
+                Err(_) => self.error(
+                    id,
+                    ErrorCode::InvalidCommand,
+                    "process input is not base64",
+                    cx,
+                ),
+            },
+            Command::CloseProcessInput {
+                window_id,
+                process_id,
+                ..
+            } => self.update_process((id, window_id, process_id), Change::CloseInput, cx),
+            Command::ResizeProcess {
+                window_id,
+                process_id,
+                size,
+                ..
+            } => self.update_process((id, window_id, process_id), Change::Resize(size), cx),
+            Command::SignalProcess {
+                window_id,
+                process_id,
+                signal,
+                ..
+            } => self.update_process((id, window_id, process_id), Change::Signal(signal), cx),
+            Command::AcknowledgeProcessOutput {
+                window_id,
+                process_id,
+                chunk,
+                ..
+            } => self.update_process((id, window_id, process_id), Change::Acknowledge(chunk), cx),
+            Command::ReleaseProcess {
+                window_id,
+                process_id,
+                ..
+            } => {
+                if let Err((code, message)) = self.processes.release(id, window_id, process_id, cx)
+                {
+                    self.error(id, code, message, cx);
+                }
+            }
             Command::Shutdown { .. } => self.finish(Event::Ack { id }, cx),
             Command::Hello { .. } => unreachable!("hello handled before command dispatch"),
         }
@@ -514,6 +578,7 @@ impl Session {
             self.shortcuts.close_window(window_id, cx);
             self.notifications.close_window(window_id, cx);
             self.files.close_window(window_id, cx);
+            self.processes.close_window(window_id, cx);
             self.events.send(Event::Ack { id }, cx);
         } else {
             state.borrow_mut().active = true;
@@ -674,6 +739,68 @@ impl Session {
         }
     }
 
+    fn spawn_process(
+        &self,
+        request: (RequestId, WindowId, ProcessId),
+        launch: ProcessLaunch,
+        cx: &mut App,
+    ) {
+        let (id, window_id, _) = request;
+        if !self
+            .policy
+            .processes
+            .iter()
+            .any(|item| item.id == launch.executable)
+        {
+            self.error(
+                id,
+                ErrorCode::PermissionDenied,
+                "this process executable was not granted at native process launch",
+                cx,
+            );
+            return;
+        }
+        if self.window(id, window_id, cx).is_none() {
+            return;
+        }
+        let directory = match &launch.cwd {
+            Some(cwd) => match self.files.directory(window_id, cwd.grant_id) {
+                Some(root) => Some((root, cwd.path.clone())),
+                None => {
+                    self.error(
+                        id,
+                        ErrorCode::InvalidHandle,
+                        "process cwd names a file grant that is closed or not owned by this window",
+                        cx,
+                    );
+                    return;
+                }
+            },
+            None => None,
+        };
+        if let Err((code, message)) = self
+            .processes
+            .spawn(request, Spawn { launch, directory }, cx)
+        {
+            self.error(id, code, message, cx);
+        }
+    }
+
+    fn update_process(
+        &self,
+        request: (RequestId, WindowId, ProcessId),
+        change: Change,
+        cx: &mut App,
+    ) {
+        let (id, window_id, _) = request;
+        if self.window(id, window_id, cx).is_none() {
+            return;
+        }
+        if let Err((code, message)) = self.processes.update(request, change, cx) {
+            self.error(id, code, message, cx);
+        }
+    }
+
     fn revoke(&self) {
         self.finishing.set(true);
         for entry in self.windows.borrow().values() {
@@ -690,6 +817,7 @@ impl Session {
             self.shortcuts.stop(cx),
             self.notifications.stop(cx),
             self.files.stop(cx),
+            self.processes.stop(cx),
         ]
         .into_iter()
         .flatten()

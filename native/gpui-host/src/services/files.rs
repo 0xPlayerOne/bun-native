@@ -31,6 +31,9 @@ use std::thread::JoinHandle;
 
 type Failure = (ErrorCode, &'static str);
 
+/// A grant's directory descriptor, shared with a process start.
+pub(crate) type Directory = Arc<OwnedFd>;
+
 /// A directory larger than this cannot be paged in sorted order.
 const MAX_SCANNED_ENTRIES: usize = 100_000;
 
@@ -273,6 +276,16 @@ impl Files {
         Ok(())
     }
 
+    /// The descriptor of a live grant owned by `window`, for a process cwd.
+    pub(crate) fn directory(&self, window: WindowId, grant: FileGrantId) -> Option<Directory> {
+        self.0
+            .grants
+            .borrow()
+            .get(&grant)
+            .filter(|entry| entry.window == window)
+            .map(|entry| entry.root.clone())
+    }
+
     pub(crate) fn close_window(&self, window: WindowId, cx: &mut App) {
         self.revoke(
             |pending| pending.window == window,
@@ -460,7 +473,7 @@ fn worker(jobs: Receiver<Job>, results: Sender<Completion>, stopping: Arc<Atomic
     }
 }
 
-fn failure(error: Errno) -> Failure {
+pub(crate) fn failure(error: Errno) -> Failure {
     match error {
         Errno::NOENT => (ErrorCode::NotFound, "no file exists at this grant path"),
         Errno::EXIST => (
@@ -501,7 +514,12 @@ fn open_root(path: &str) -> Result<OwnedFd, Failure> {
     .map_err(failure)
 }
 
-fn beneath(root: &OwnedFd, path: &str, flags: OFlags, mode: Mode) -> Result<OwnedFd, Failure> {
+pub(crate) fn beneath(
+    root: &OwnedFd,
+    path: &str,
+    flags: OFlags,
+    mode: Mode,
+) -> Result<OwnedFd, Failure> {
     let path = if path.is_empty() { "." } else { path };
     // openat2 rejects O_PATH combined with anything but these flags.
     let flags = if flags.contains(OFlags::PATH) {

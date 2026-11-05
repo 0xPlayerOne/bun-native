@@ -37,6 +37,14 @@ import {
   type FileGrantOptions,
   type NativeFileGrant,
 } from './files.ts'
+import {
+  processRequest,
+  ProcessRegistration,
+  type NativeProcess,
+  type ProcessCall,
+  type ProcessEvent,
+  type ProcessOptions,
+} from './processes.ts'
 import { makeNode, own, Transaction, type NodeState } from './tree.ts'
 import {
   NativeStateError,
@@ -59,6 +67,7 @@ type Callback =
   | { windowId: number; nodeId: number; plan: DispatchPlan }
   | { windowId: number; shortcut: ShortcutRegistration; event: GlobalShortcutEvent }
   | { windowId: number; notification: NotificationRegistration; event: NotificationEvent }
+  | { windowId: number; process: ProcessRegistration; event: ProcessEvent; chunk: number }
 
 class Application implements NativeApplication {
   readonly closed: Promise<void>
@@ -73,6 +82,8 @@ class Application implements NativeApplication {
   private nextNotification = 1
   readonly fileGrants = new Map<number, FileGrantRegistration>()
   private nextFileGrant = 1
+  readonly processes = new Map<number, ProcessRegistration>()
+  private nextProcess = 1
   private tail: Promise<void> = Promise.resolve()
   private queued = 0
   private readonly services = new Set<Promise<void>>()
@@ -145,12 +156,23 @@ class Application implements NativeApplication {
     return this.nextFileGrant++
   }
 
+  allocateProcess(): number {
+    if (!Number.isSafeInteger(this.nextProcess))
+      throw new NativeStateError('limit_exceeded', 'Process identity space exhausted')
+    return this.nextProcess++
+  }
+
+  isAllocatedProcess(id: number): boolean {
+    return id < this.nextProcess
+  }
+
   cancelCallbacks(windowId: number): void {
     const window = this.windows.get(windowId)
     this.callbacks = this.callbacks.filter((callback) => {
       if (callback.windowId !== windowId) return true
       if ('shortcut' in callback) return callback.shortcut.live
       if ('notification' in callback) return callback.notification.deliverable
+      if ('process' in callback) return callback.process.live
       if (window?.isTargetLive(callback.nodeId) && prunePlan(callback.plan)) return true
       window?.listeners.release(callback.plan)
       return false
@@ -189,6 +211,8 @@ class Application implements NativeApplication {
         if ('shortcut' in callback) await dispatchShortcut(callback.shortcut, callback.event)
         else if ('notification' in callback)
           await dispatchNotification(callback.notification, callback.event)
+        else if ('process' in callback)
+          await window.dispatchProcess(callback.process, callback.event, callback.chunk)
         else await window.dispatch(callback.nodeId, callback.plan)
       } finally {
         this.activeCallbacks = 0
@@ -319,6 +343,11 @@ class Application implements NativeApplication {
           !this.isAllocatedNotification(event.notification_id)
         )
           throw new ProtocolError('Native event names an unallocated notification')
+        if (
+          (event.type === 'process_output' || event.type === 'process_exited') &&
+          !this.isAllocatedProcess(event.process_id)
+        )
+          throw new ProtocolError('Native event names an unallocated process')
         const window = this.windows.get(event.window_id)
         if (!window) {
           if (event.window_id >= this.nextWindow)
@@ -395,6 +424,19 @@ const FILE_ERRORS = [
   'wrong_kind',
   'not_empty',
   'access_denied',
+] as const
+
+const PROCESS_ERRORS = [
+  'permission_denied',
+  'service_unavailable',
+  'cancelled',
+  'native_failure',
+  'limit_exceeded',
+  'not_found',
+  'path_denied',
+  'wrong_kind',
+  'access_denied',
+  'invalid_state',
 ] as const
 
 const NOTIFICATION_ERRORS = [
@@ -866,6 +908,186 @@ class Window implements NativeWindow {
     )
   }
 
+  async spawnProcess(
+    executable: string,
+    options: ProcessOptions,
+    listener: (event: ProcessEvent) => void | Promise<void>
+  ): Promise<NativeProcess> {
+    const request = processRequest(executable, options)
+    if (typeof listener !== 'function') throw new TypeError('A process listener must be a function')
+    this.assertActive()
+    let cwd: { grant_id: number; path: string } | undefined
+    if (request.cwd) {
+      const grant = [...this.application.fileGrants.values()].find(
+        (registration) => registration.handle === request.cwd!.grant
+      )
+      if (!grant || grant.windowId !== this.id)
+        throw new TypeError('Process cwd must name a live file grant owned by this window')
+      cwd = { grant_id: grant.id, path: request.cwd.path }
+    }
+    return this.application.service(async () => {
+      this.assertActive()
+      const registration = new ProcessRegistration(
+        this.application.allocateProcess(),
+        this.id,
+        request.launch.executable,
+        request.launch.terminal !== undefined,
+        listener,
+        (item, call) => this.processCall(item, call),
+        (item) => this.releaseProcess(item)
+      )
+      this.application.processes.set(registration.id, registration)
+      try {
+        await this.application.host.send({
+          type: 'spawn_process',
+          window_id: this.id,
+          process_id: registration.id,
+          launch: cwd ? { ...request.launch, cwd } : request.launch,
+        })
+        this.assertActive()
+        if (!registration.live)
+          throw new NativeServiceError(
+            'processes',
+            'cancelled',
+            'Process was released while it started'
+          )
+        return registration.handle
+      } catch (error) {
+        registration.revoke()
+        this.application.processes.delete(registration.id)
+        throw this.processError(error)
+      }
+    })
+  }
+
+  private processError(error: unknown): unknown {
+    if (error instanceof ProtocolError) return error
+    this.assertActive()
+    if (
+      error instanceof NativeCommandError &&
+      (PROCESS_ERRORS as readonly string[]).includes(error.code)
+    )
+      return new NativeServiceError(
+        'processes',
+        error.code as NativeServiceError['code'],
+        error.message
+      )
+    return error
+  }
+
+  private processCall(registration: ProcessRegistration, call: ProcessCall): Promise<void> {
+    const revoked = () => new NativeServiceError('processes', 'cancelled', 'Process is released')
+    if (!registration.live) return Promise.reject(revoked())
+    this.assertActive()
+    return this.application.service(async () => {
+      this.assertActive()
+      if (!registration.live) throw revoked()
+      try {
+        await this.application.host.send({
+          ...call,
+          window_id: this.id,
+          process_id: registration.id,
+        })
+      } catch (error) {
+        if (error instanceof ProtocolError) throw error
+        this.assertActive()
+        if (!registration.live) throw revoked()
+        throw this.processError(error)
+      }
+    })
+  }
+
+  private releaseProcess(registration: ProcessRegistration): Promise<void> {
+    registration.revoke()
+    this.application.processes.delete(registration.id)
+    // Window close and application shutdown stop the process group natively.
+    if (!this.active || !this.application.running) return Promise.resolve()
+    return this.application.track(
+      this.application.host
+        .send({ type: 'release_process', window_id: this.id, process_id: registration.id })
+        .then(
+          () => {},
+          (error: unknown) => {
+            if (error instanceof NativeCommandError && error.code === 'invalid_handle') return
+            if (!this.application.running) return
+            throw error
+          }
+        )
+    )
+  }
+
+  receiveProcess(event: Extract<WindowEvent, { type: 'process_output' | 'process_exited' }>): void {
+    if (!this.active) return
+    const registration = this.application.processes.get(event.process_id)
+    if (!registration?.live) return // Released: the host may already have queued output.
+    if (registration.windowId !== this.id)
+      throw new ProtocolError('Native event names a process outside its owner')
+    if (registration.ended) throw new ProtocolError('Native process event follows its exit')
+    const common = {
+      sequence: event.sequence,
+      process: registration.handle,
+      signal: registration.controller.signal,
+    }
+    if (event.type === 'process_output') {
+      if (event.chunk !== registration.chunk + 1)
+        throw new ProtocolError('Native process output chunk is out of order')
+      if ((event.stream === 'terminal') !== registration.handle.terminal)
+        throw new ProtocolError('Native process output names the wrong stream kind')
+      registration.chunk = event.chunk
+      this.application.queueCallback({
+        windowId: this.id,
+        process: registration,
+        chunk: event.chunk,
+        event: Object.freeze({
+          type: 'process_output',
+          stream: event.stream,
+          bytes: Uint8Array.fromBase64(event.data),
+          ...common,
+        }),
+      })
+      return
+    }
+    registration.end()
+    registration.exit = Object.freeze({ ...event.exit })
+    this.application.queueCallback({
+      windowId: this.id,
+      process: registration,
+      chunk: 0,
+      event: Object.freeze({ type: 'process_exited', exit: registration.exit, ...common }),
+    })
+  }
+
+  async dispatchProcess(
+    registration: ProcessRegistration,
+    event: ProcessEvent,
+    chunk: number
+  ): Promise<void> {
+    const listener = registration.listener
+    if (!listener || !registration.live) return
+    await dispatchOwned(listener, event, registration.controller.signal)
+    // The settled callback returns one delivery credit to the host.
+    if (event.type !== 'process_output' || !registration.live) return
+    if (!this.active || !this.application.running) return
+    void this.application.track(
+      this.application.host
+        .send({
+          type: 'acknowledge_process_output',
+          window_id: this.id,
+          process_id: registration.id,
+          chunk,
+        })
+        .then(
+          () => {},
+          (error: unknown) => {
+            // Release or window close can race the acknowledgement.
+            if (error instanceof NativeCommandError && error.code === 'invalid_handle') return
+            if (!this.application.running) return
+            throw error
+          }
+        )
+    )
+  }
+
   private withdrawNotification(registration: NotificationRegistration): Promise<void> {
     // Local revocation first: no activation is delivered after this call.
     registration.revoke()
@@ -980,6 +1202,11 @@ class Window implements NativeWindow {
         registration.revoke()
         this.application.fileGrants.delete(registration.id)
       }
+    for (const registration of this.application.processes.values())
+      if (registration.windowId === this.id) {
+        registration.revoke()
+        this.application.processes.delete(registration.id)
+      }
     this.application.windows.delete(this.id)
     this.resolveClosed()
   }
@@ -999,6 +1226,10 @@ class Window implements NativeWindow {
     }
     if (event.type === 'notification_activated' || event.type === 'notification_dismissed') {
       this.receiveNotification(event)
+      return
+    }
+    if (event.type === 'process_output' || event.type === 'process_exited') {
+      this.receiveProcess(event)
       return
     }
     if (!this.active) return

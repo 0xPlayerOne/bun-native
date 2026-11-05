@@ -45,6 +45,7 @@ for await (const chunk of Bun.stdin.stream()) {
             global_shortcuts: false,
             notifications: false,
             filesystem_roots: [],
+            processes: [],
           },
         })
         await emit({ type: 'ack', id: command.id })

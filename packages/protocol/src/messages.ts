@@ -31,6 +31,20 @@ import {
   type FileResult,
 } from './files.ts'
 import {
+  MAX_PROCESSES,
+  parseProcessExit,
+  parseProcessLaunch,
+  parseProcessOutput,
+  parseProcessSignal,
+  parseProcessStream,
+  parseTerminalSize,
+  type ProcessExit,
+  type ProcessLaunch,
+  type ProcessSignal,
+  type ProcessStream,
+  type TerminalSize,
+} from './processes.ts'
+import {
   id,
   integer,
   keys,
@@ -41,7 +55,7 @@ import {
   string,
 } from './values.ts'
 
-export const PROTOCOL_VERSION = 9
+export const PROTOCOL_VERSION = 10
 export const MAX_OPERATIONS = 256
 const MAX_NODES_PER_WINDOW = 4_096
 const MAX_WINDOWS = 16
@@ -62,6 +76,7 @@ export interface Limits {
   max_notifications: number
   max_file_grants: number
   max_file_chunk_bytes: number
+  max_processes: number
 }
 
 export const DEFAULT_LIMITS: Readonly<Limits> = Object.freeze({
@@ -78,6 +93,7 @@ export const DEFAULT_LIMITS: Readonly<Limits> = Object.freeze({
   max_notifications: MAX_NOTIFICATIONS,
   max_file_grants: MAX_FILE_GRANTS,
   max_file_chunk_bytes: MAX_FILE_CHUNK_BYTES,
+  max_processes: MAX_PROCESSES,
 })
 
 export type Operation =
@@ -149,6 +165,37 @@ export type Command =
       path: string
       operation: FileOperation
     }
+  | {
+      id: number
+      type: 'spawn_process'
+      window_id: number
+      process_id: number
+      launch: ProcessLaunch
+    }
+  | { id: number; type: 'write_process'; window_id: number; process_id: number; data: string }
+  | { id: number; type: 'close_process_input'; window_id: number; process_id: number }
+  | {
+      id: number
+      type: 'resize_process'
+      window_id: number
+      process_id: number
+      size: TerminalSize
+    }
+  | {
+      id: number
+      type: 'signal_process'
+      window_id: number
+      process_id: number
+      signal: ProcessSignal
+    }
+  | {
+      id: number
+      type: 'acknowledge_process_output'
+      window_id: number
+      process_id: number
+      chunk: number
+    }
+  | { id: number; type: 'release_process'; window_id: number; process_id: number }
   | { id: number; type: 'shutdown' }
 
 export const ERROR_CODES = [
@@ -186,6 +233,7 @@ const CAPABILITIES = [
   'global_shortcuts_v1',
   'notifications_v1',
   'filesystem_grants_v1',
+  'processes_v1',
 ] as const
 export type Capability = (typeof CAPABILITIES)[number]
 
@@ -257,6 +305,25 @@ export type NativeEvent =
   | { type: 'file_grant_opened'; id: number; window_id: number; grant_id: number }
   | { type: 'file_grant_closed'; id: number; window_id: number; grant_id: number }
   | { type: 'file_result'; id: number; window_id: number; grant_id: number; result: FileResult }
+  | { type: 'process_spawned'; id: number; window_id: number; process_id: number }
+  | { type: 'process_updated'; id: number; window_id: number; process_id: number }
+  | { type: 'process_released'; id: number; window_id: number; process_id: number }
+  | {
+      type: 'process_output'
+      sequence: number
+      window_id: number
+      process_id: number
+      chunk: number
+      stream: ProcessStream
+      data: string
+    }
+  | {
+      type: 'process_exited'
+      sequence: number
+      window_id: number
+      process_id: number
+      exit: ProcessExit
+    }
   | { type: 'closed'; sequence: number; window_id: number }
   | { type: 'error'; id?: number; code: ErrorCode; message: string }
 
@@ -425,6 +492,60 @@ export function parseCommand(value: unknown): Command {
         operation: parseFileOperation(message['operation'], path),
       }
     }
+    case 'spawn_process':
+      keys(message, ['id', 'type', 'window_id', 'process_id', 'launch'])
+      return {
+        id: request,
+        type: 'spawn_process',
+        window_id: id(message['window_id']),
+        process_id: id(message['process_id']),
+        launch: parseProcessLaunch(message['launch']),
+      }
+    case 'write_process':
+      keys(message, ['id', 'type', 'window_id', 'process_id', 'data'])
+      return {
+        id: request,
+        type: 'write_process',
+        window_id: id(message['window_id']),
+        process_id: id(message['process_id']),
+        data: parseProcessOutput(message['data']),
+      }
+    case 'close_process_input':
+    case 'release_process':
+      keys(message, ['id', 'type', 'window_id', 'process_id'])
+      return {
+        id: request,
+        type: message['type'],
+        window_id: id(message['window_id']),
+        process_id: id(message['process_id']),
+      }
+    case 'resize_process':
+      keys(message, ['id', 'type', 'window_id', 'process_id', 'size'])
+      return {
+        id: request,
+        type: 'resize_process',
+        window_id: id(message['window_id']),
+        process_id: id(message['process_id']),
+        size: parseTerminalSize(message['size']),
+      }
+    case 'signal_process':
+      keys(message, ['id', 'type', 'window_id', 'process_id', 'signal'])
+      return {
+        id: request,
+        type: 'signal_process',
+        window_id: id(message['window_id']),
+        process_id: id(message['process_id']),
+        signal: parseProcessSignal(message['signal']),
+      }
+    case 'acknowledge_process_output':
+      keys(message, ['id', 'type', 'window_id', 'process_id', 'chunk'])
+      return {
+        id: request,
+        type: 'acknowledge_process_output',
+        window_id: id(message['window_id']),
+        process_id: id(message['process_id']),
+        chunk: id(message['chunk']),
+      }
     case 'shutdown':
       keys(message, ['id', 'type'])
       return { id: request, type: 'shutdown' }
@@ -451,6 +572,7 @@ function limits(value: unknown): Limits {
     max_notifications: parse('max_notifications'),
     max_file_grants: parse('max_file_grants'),
     max_file_chunk_bytes: parse('max_file_chunk_bytes'),
+    max_processes: parse('max_processes'),
   }
 }
 
@@ -626,6 +748,36 @@ export function parseEvent(value: unknown): NativeEvent {
         window_id: id(message['window_id']),
         grant_id: id(message['grant_id']),
         result: parseFileResult(message['result']),
+      }
+    case 'process_spawned':
+    case 'process_updated':
+    case 'process_released':
+      keys(message, ['type', 'id', 'window_id', 'process_id'])
+      return {
+        type: message['type'],
+        id: id(message['id']),
+        window_id: id(message['window_id']),
+        process_id: id(message['process_id']),
+      }
+    case 'process_output':
+      keys(message, ['type', 'sequence', 'window_id', 'process_id', 'chunk', 'stream', 'data'])
+      return {
+        type: 'process_output',
+        sequence: id(message['sequence']),
+        window_id: id(message['window_id']),
+        process_id: id(message['process_id']),
+        chunk: id(message['chunk']),
+        stream: parseProcessStream(message['stream']),
+        data: parseProcessOutput(message['data']),
+      }
+    case 'process_exited':
+      keys(message, ['type', 'sequence', 'window_id', 'process_id', 'exit'])
+      return {
+        type: 'process_exited',
+        sequence: id(message['sequence']),
+        window_id: id(message['window_id']),
+        process_id: id(message['process_id']),
+        exit: parseProcessExit(message['exit']),
       }
     case 'click':
     case 'focus':

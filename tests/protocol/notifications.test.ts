@@ -30,6 +30,7 @@ describe('shared notification wire contract (headless)', () => {
           global_shortcuts: false,
           notifications,
           filesystem_roots: [],
+          processes: [],
         },
       } satisfies NativeEvent
       expect(parseEvent(ready)).toEqual(ready)

@@ -1,10 +1,10 @@
-# Native host protocol 9
+# Native host protocol 10
 
 This is the implemented private Bun-to-GPUI contract for BN1, shared native interactions and the initial BN4 layout primitives. Application code
 uses [`@bun-native/core`](../packages/core/README.md); Solid and React adapters
 must target that same public API. They do not import this transport or construct
 numeric handles. Protocols 1–8 are superseded without a compatibility fallback.
-Protocol 9 requires `tree`, `input_revisions`, `layout_v1`, `interactions_v1` and `window_display_v1`; missing features or
+Protocol 10 requires `tree`, `input_revisions`, `layout_v1`, `interactions_v1` and `window_display_v1`; missing features or
 older versions fail launch before a window is opened. The [layout contract](native-layout.md)
 defines the supported style subset; the [interaction contract](native-events.md)
 defines native event observations and public propagation. The
@@ -58,7 +58,7 @@ disposed handles. The runtime cannot terminate arbitrary consumer JavaScript.
 - Each frame is one UTF-8 JSON object followed by a newline. The payload limit is
   65,536 bytes. Invalid UTF-8, oversize/truncated framing, malformed JSON, unknown
   fields or invalid message shapes fail the session rather than resynchronizing.
-- The first request is `hello` with protocol `6`. The host emits `ready` with the
+- The first request is `hello` with protocol `10`. The host emits `ready` with the
   same protocol, implemented capabilities, resource limits and explicit
   `service_policy`, then acknowledges the request. `tree`, `input_revisions`,
   `layout_v1`, `interactions_v1` and `window_display_v1` are mandatory. Missing features,
@@ -239,11 +239,15 @@ values use `ProtocolError`, and unsupported element kinds use
 for consumer handling and experimental compatibility policy.
 
 The negotiated flags describe implemented features, not OS permission grants.
-Protocol 9's services additionally require their immutable explicit
+Protocol 10's services additionally require their immutable explicit
 launch policy; there is no wire grant or general service selector. File
 commands (`open_file_grant`, `close_file_grant`, `file_request`) name a
 launch-policy root ID and relative paths only; no command accepts an absolute
-path. No shell, process, network, update or browser service command exists. The
+path. Process commands (`spawn_process` and its controls) name a
+launch-policy executable ID with an explicit argument array and environment
+map; no command accepts a program path or a command string, and a working
+directory comes only from a live file grant. No shell, network, update or
+browser service command exists. The
 [security ADR](decisions/0003-bridge-security.md) defines the trusted
 application/untrusted data boundary and default-deny requirements for future
 services. Neither AOT nor the child-process boundary sandboxes trusted Bun code.

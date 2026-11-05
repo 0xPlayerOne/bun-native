@@ -1,8 +1,8 @@
 //! Policy is fixed before the private channel starts. Wire messages cannot grant it.
 
 use bun_native_protocol::{
-    DisplayBounds, DisplaySnapshot, ErrorCode, FileAccess, FilesystemRoot, ServicePolicy,
-    validate_filesystem_roots,
+    DisplayBounds, DisplaySnapshot, ErrorCode, FileAccess, FilesystemRoot, ProcessExecutable,
+    ServicePolicy, validate_filesystem_roots, validate_process_executables,
 };
 use gpui::{App, Window};
 use std::ffi::OsString;
@@ -23,6 +23,11 @@ pub(crate) mod notifications;
 #[path = "services/notifications_unavailable.rs"]
 pub(crate) mod notifications;
 #[cfg(target_os = "linux")]
+pub(crate) mod processes;
+#[cfg(not(target_os = "linux"))]
+#[path = "services/processes_unavailable.rs"]
+pub(crate) mod processes;
+#[cfg(target_os = "linux")]
 pub(crate) mod shortcuts;
 #[cfg(not(target_os = "linux"))]
 #[path = "services/shortcuts_unavailable.rs"]
@@ -37,6 +42,20 @@ pub(crate) const GLOBAL_SHORTCUTS_ARGUMENT: &str = "--bun-native-allow-global-sh
 pub(crate) const NOTIFICATIONS_ARGUMENT: &str = "--bun-native-allow-notifications";
 /// `--bun-native-filesystem-root=<read|read_write>:<id>:<absolute path>`.
 pub(crate) const FILESYSTEM_ROOT_ARGUMENT: &str = "--bun-native-filesystem-root=";
+/// `--bun-native-process=<id>:<absolute executable path>`.
+pub(crate) const PROCESS_ARGUMENT: &str = "--bun-native-process=";
+
+fn process_executable(argument: &str) -> Result<ProcessExecutable, &'static str> {
+    let (id, executable) = argument
+        .split_once(':')
+        .ok_or("process argument must be <id>:<path>")?;
+    let entry = ProcessExecutable {
+        id: id.into(),
+        executable: executable.into(),
+    };
+    entry.validate()?;
+    Ok(entry)
+}
 
 fn filesystem_root(argument: &str) -> Result<FilesystemRoot, &'static str> {
     let mut parts = argument.splitn(3, ':');
@@ -68,6 +87,14 @@ pub(crate) fn policy(
         {
             policy.filesystem_roots.push(filesystem_root(root)?);
             validate_filesystem_roots(&policy.filesystem_roots)?;
+            continue;
+        }
+        if let Some(entry) = argument
+            .to_str()
+            .and_then(|value| value.strip_prefix(PROCESS_ARGUMENT))
+        {
+            policy.processes.push(process_executable(entry)?);
+            validate_process_executables(&policy.processes)?;
             continue;
         }
         let permission = if argument == DISPLAY_PERMISSION_ARGUMENT {
@@ -145,6 +172,7 @@ mod tests {
                 global_shortcuts: false,
                 notifications: false,
                 filesystem_roots: Vec::new(),
+                processes: Vec::new(),
             }
         );
         assert_eq!(
@@ -213,6 +241,49 @@ mod tests {
         }
         let many: Vec<_> = (0..9)
             .map(|index| OsString::from(format!("--bun-native-filesystem-root=read:r{index}:/r")))
+            .collect();
+        assert!(policy(many).is_err());
+    }
+
+    #[test]
+    fn process_executables_are_explicit_validated_and_ordered() {
+        let entries = policy(
+            [
+                "--bun-native-process=shell:/bin/sh",
+                "--bun-native-process=tool:/opt/a:b/tool",
+            ]
+            .map(OsString::from),
+        )
+        .unwrap()
+        .processes;
+        assert_eq!(
+            entries,
+            [
+                ProcessExecutable {
+                    id: "shell".into(),
+                    executable: "/bin/sh".into(),
+                },
+                ProcessExecutable {
+                    id: "tool".into(),
+                    executable: "/opt/a:b/tool".into(),
+                },
+            ]
+        );
+        for arguments in [
+            vec!["--bun-native-process=shell"],
+            vec!["--bun-native-process=Shell:/bin/sh"],
+            vec!["--bun-native-process=shell:sh"],
+            vec!["--bun-native-process=shell:/"],
+            vec!["--bun-native-process=shell:/bin/../sh"],
+            vec![
+                "--bun-native-process=shell:/bin/sh",
+                "--bun-native-process=shell:/bin/bash",
+            ],
+        ] {
+            assert!(policy(arguments.into_iter().map(OsString::from)).is_err());
+        }
+        let many: Vec<_> = (0..9)
+            .map(|index| OsString::from(format!("--bun-native-process=p{index}:/bin/sh")))
             .collect();
         assert!(policy(many).is_err());
     }

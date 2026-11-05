@@ -8,6 +8,7 @@ type ServiceName =
   | 'global_shortcuts'
   | 'notifications'
   | 'filesystem_grants'
+  | 'processes'
 
 export type ServicePermissions = NonNullable<
   import('@bun-native/runtime').HostOptions['permissions']
@@ -69,7 +70,15 @@ export interface ServiceCapabilities {
         backend: 'openat2'
       }>
     | Readonly<{ availability: 'unavailable'; reason: 'unsupported_platform' }>
-  readonly ptyProcess: UnavailableService
+  readonly ptyProcess:
+    | Readonly<{
+        availability: 'available'
+        /** Launch-policy executables by ID; nothing else can be started. */
+        executables: Readonly<Record<string, Readonly<{ executable: string }>>>
+        scope: 'owned_window'
+        backend: 'posix'
+      }>
+    | Readonly<{ availability: 'unavailable'; reason: 'unsupported_platform' }>
 }
 
 export class NativeServiceError extends Error {
@@ -90,7 +99,8 @@ export class NativeServiceError extends Error {
       | 'path_denied'
       | 'wrong_kind'
       | 'not_empty'
-      | 'access_denied',
+      | 'access_denied'
+      | 'invalid_state',
     message: string
   ) {
     super(message)
@@ -155,7 +165,21 @@ export function serviceCapabilities(
           backend: 'openat2',
         })
       : Object.freeze({ availability: 'unavailable', reason: 'unsupported_platform' }),
-    ptyProcess: unavailable,
+    ptyProcess: capabilities.includes('processes_v1')
+      ? Object.freeze({
+          availability: 'available',
+          executables: Object.freeze(
+            Object.fromEntries(
+              policy.processes.map((entry) => [
+                entry.id,
+                Object.freeze({ executable: entry.executable }),
+              ])
+            )
+          ),
+          scope: 'owned_window',
+          backend: 'posix',
+        })
+      : Object.freeze({ availability: 'unavailable', reason: 'unsupported_platform' }),
   })
 }
 

@@ -3,6 +3,7 @@
 import {
   DEFAULT_LIMITS,
   filesystemRootsFromArguments,
+  processesFromArguments,
   encodeFrame,
   FrameDecoder,
   parseCommand,
@@ -24,6 +25,7 @@ const policy = {
   notifications: process.argv.includes('--bun-native-allow-notifications'),
   filesystem_roots:
     mode === 'policy' ? roots.map((root) => ({ ...root, access: 'read_write' })) : roots,
+  processes: processesFromArguments(process.argv),
 }
 const grants = new Map<number, number>()
 const decoder = new FrameDecoder()

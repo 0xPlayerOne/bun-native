@@ -2,6 +2,8 @@ import {
   filesystemRootArgument,
   fileResultAnswers,
   parseFilesystemRoots,
+  parseProcessExecutables,
+  processArgument,
   encodeFrame,
   FrameDecoder,
   parseCommand,
@@ -40,6 +42,13 @@ export type WindowCommand = WithoutId<
         | 'open_file_grant'
         | 'close_file_grant'
         | 'file_request'
+        | 'spawn_process'
+        | 'write_process'
+        | 'close_process_input'
+        | 'resize_process'
+        | 'signal_process'
+        | 'acknowledge_process_output'
+        | 'release_process'
     }
   >
 >
@@ -61,6 +70,9 @@ export type HostResponse = Extract<
       | 'file_grant_opened'
       | 'file_grant_closed'
       | 'file_result'
+      | 'process_spawned'
+      | 'process_updated'
+      | 'process_released'
   }
 >
 
@@ -78,6 +90,11 @@ export interface ServicePermissions {
    * is absolute and normalized; `access` caps every grant on that root.
    */
   readonly filesystemRoots?: readonly Readonly<{ id: string; path: string; access: FileAccess }>[]
+  /**
+   * Executables an owned window may start as child processes, by ID. Each
+   * `executable` is an absolute normalized path; nothing else can be started.
+   */
+  readonly processes?: readonly Readonly<{ id: string; executable: string }>[]
 }
 
 export class NativeCommandError extends Error {
@@ -113,6 +130,7 @@ function launchPolicy(value: unknown = {}): Readonly<ServicePolicy> {
           'globalShortcuts',
           'notifications',
           'filesystemRoots',
+          'processes',
         ].includes(key)
     )
   )
@@ -130,7 +148,23 @@ function launchPolicy(value: unknown = {}): Readonly<ServicePolicy> {
     global_shortcuts: grant('globalShortcuts'),
     notifications: grant('notifications'),
     filesystem_roots: filesystemRoots(value),
+    processes: processes(value),
   })
+}
+
+function processes(value: object): ServicePolicy['processes'] {
+  const entries = Object.hasOwn(value, 'processes')
+    ? (value as Record<string, unknown>)['processes']
+    : []
+  try {
+    return Object.freeze(
+      parseProcessExecutables(entries).map((entry) => Object.freeze(entry))
+    ) as ServicePolicy['processes']
+  } catch (error) {
+    throw new TypeError(
+      'processes must list at most 8 unique { id, executable } entries: ' + (error as Error).message
+    )
+  }
 }
 
 function filesystemRoots(value: object): ServicePolicy['filesystem_roots'] {
@@ -162,6 +196,12 @@ function samePolicy(left: Readonly<ServicePolicy>, right: Readonly<ServicePolicy
         root.id === right.filesystem_roots[index]!.id &&
         root.path === right.filesystem_roots[index]!.path &&
         root.access === right.filesystem_roots[index]!.access
+    ) &&
+    left.processes.length === right.processes.length &&
+    left.processes.every(
+      (entry, index) =>
+        entry.id === right.processes[index]!.id &&
+        entry.executable === right.processes[index]!.executable
     )
   )
 }
@@ -223,6 +263,7 @@ export class NativeHost implements AsyncIterable<WindowEvent> {
         ...(requestedPolicy.global_shortcuts ? ['--bun-native-allow-global-shortcuts'] : []),
         ...(requestedPolicy.notifications ? ['--bun-native-allow-notifications'] : []),
         ...requestedPolicy.filesystem_roots.map(filesystemRootArgument),
+        ...requestedPolicy.processes.map(processArgument),
       ],
       stdin: 'pipe',
       stdout: 'pipe',
@@ -318,6 +359,25 @@ export class NativeHost implements AsyncIterable<WindowEvent> {
   send(
     command: Extract<WindowCommand, { type: 'file_request' }>
   ): Promise<Extract<HostResponse, { type: 'file_result' }>>
+  send(
+    command: Extract<WindowCommand, { type: 'spawn_process' }>
+  ): Promise<Extract<HostResponse, { type: 'process_spawned' }>>
+  send(
+    command: Extract<WindowCommand, { type: 'release_process' }>
+  ): Promise<Extract<HostResponse, { type: 'process_released' }>>
+  send(
+    command: Extract<
+      WindowCommand,
+      {
+        type:
+          | 'write_process'
+          | 'close_process_input'
+          | 'resize_process'
+          | 'signal_process'
+          | 'acknowledge_process_output'
+      }
+    >
+  ): Promise<Extract<HostResponse, { type: 'process_updated' }>>
   send(command: WindowCommand): Promise<HostResponse>
   send(command: WindowCommand): Promise<HostResponse> {
     if (this.phase !== 'running') return Promise.reject(this.closedError())
@@ -549,6 +609,9 @@ export class NativeHost implements AsyncIterable<WindowEvent> {
       event.type === 'file_grant_opened' ||
       event.type === 'file_grant_closed' ||
       event.type === 'file_result' ||
+      event.type === 'process_spawned' ||
+      event.type === 'process_updated' ||
+      event.type === 'process_released' ||
       event.type === 'error'
     ) {
       if (event.type === 'error' && event.id === undefined)
@@ -629,6 +692,23 @@ export class NativeHost implements AsyncIterable<WindowEvent> {
           response.window_id === command.window_id &&
           response.grant_id === command.grant_id &&
           fileResultAnswers(command.operation, response.result)
+        )
+      case 'spawn_process':
+      case 'write_process':
+      case 'close_process_input':
+      case 'resize_process':
+      case 'signal_process':
+      case 'acknowledge_process_output':
+      case 'release_process':
+        return (
+          response.type ===
+            (command.type === 'spawn_process'
+              ? 'process_spawned'
+              : command.type === 'release_process'
+                ? 'process_released'
+                : 'process_updated') &&
+          response.window_id === command.window_id &&
+          response.process_id === command.process_id
         )
       case 'open':
         return (

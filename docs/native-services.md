@@ -63,8 +63,10 @@ try {
 
 The default permission is `deny`. The accepted keys are `windowDisplay`,
 `clipboardRead`, `clipboardWrite`, `globalShortcuts` and `notifications`, each
-independently `allow` or `deny`, and `filesystemRoots`, a list of launch
-directories described under [filesystem grants](#filesystem-grants).
+independently `allow` or `deny`; `filesystemRoots`, a list of launch
+directories described under [filesystem grants](#filesystem-grants); and
+`processes`, a list of launch executables described under
+[owned processes](#owned-processes).
 The runtime translates each explicit grant into its reserved native launch argument. The Rust process
 parses that immutable policy before starting GPUI or its private channel.
 Unknown or duplicate native arguments fail startup. A wire message cannot
@@ -394,6 +396,99 @@ confirm that the host rejects foreign, stale and reused grant IDs. See
 [ADR 0010](decisions/0010-filesystem-grants.md). macOS and Windows remain
 unavailable.
 
+## Owned processes
+
+`window.spawnProcess(executable, options, listener)` starts a child process
+from an executable the application named in its immutable `processes` launch
+permission, by ID:
+
+```ts
+const app = await createApplication({
+  executable,
+  permissions: {
+    processes: [{ id: 'shell', executable: '/bin/sh' }],
+    filesystemRoots: [{ id: 'workspace', path: '/home/me/project', access: 'read' }],
+  },
+})
+const window = await app.openWindow({ title: 'Terminal' })
+const grant = await window.openFileGrant('workspace')
+const child = await window.spawnProcess(
+  'shell',
+  {
+    args: ['-i'],
+    env: { PATH: '/usr/bin:/bin', TERM: 'xterm-256color' },
+    cwd: { grant, path: 'src' },
+    terminal: { columns: 80, rows: 24 },
+  },
+  async (event) => {
+    if (event.type === 'process_output') await terminalView.write(event.bytes)
+    else console.log('exited', event.exit)
+  }
+)
+await child.write(new TextEncoder().encode('ls\n'))
+await child.resize({ columns: 120, rows: 40 })
+await child.release()
+```
+
+Each launch entry has an ID of lowercase letters, digits, `-` and `_` and an
+absolute normalized executable path; at most eight are accepted and readiness
+reports the same ordered list. No wire command names a program path, and there
+is no command string or shell: `args` is an explicit array (at most 64 strings
+of 4,096 bytes) and `env` is the **complete** environment (at most 64 entries;
+nothing is inherited from the host), with arguments and environment together
+at most 32,768 bytes. A working directory comes only from a live file grant of
+the same window; the host resolves `path` beneath the grant descriptor with the
+same `openat2` rules as file requests, so links are never followed.
+
+Without `terminal`, standard input, output and error are three pipes and output
+events name `stdout` or `stderr`. With `terminal: { columns, rows }` the child
+runs as a session leader on its own sized pseudo-terminal, which is its
+controlling terminal; output events name `terminal`, and `closeInput()` sends
+the terminal's end-of-file character. Either way the child leads its own
+process group.
+
+| Method / event              | Behavior                                                                                         |
+| --------------------------- | ------------------------------------------------------------------------------------------------ |
+| `process_output` event      | `{ stream, bytes }`, at most 16,384 bytes, in order; the next chunk waits for this callback      |
+| `process_exited` event      | `{ exit: { code } \| { signal } }`, always last, after the group is stopped and output delivered |
+| `write(bytes)`              | Queues 1–16,384 bytes of input; at most 64 KiB may wait unread                                   |
+| `closeInput()`              | Closes standard input, or sends end-of-file on a terminal                                        |
+| `resize({ columns, rows })` | Terminal processes only (1–1,000 each)                                                           |
+| `signal(name)`              | `interrupt`, `terminate`, `kill` or `hangup` to the whole process group                          |
+| `release()`                 | Idempotent; stops delivery, kills the group and reaps it                                         |
+
+Output is credited: the host reads at most four chunks a process has delivered
+but the core has not acknowledged, and the core acknowledges a chunk only after
+its callback settles, so a slow consumer pauses the child instead of growing a
+queue. When the direct child exits, the host stops the rest of its process
+group while the exited leader still holds the group ID, delivers the remaining
+output, reaps the leader and then reports the exit. A descendant that leaves
+the group (`setsid`) is outside this cleanup. An exited process stays
+`active` until released; later `write`, `signal` or `resize` calls reject with
+`invalid_state`.
+
+Failures are `NativeServiceError` with service `processes` and a code:
+`permission_denied` (not in the launch policy), `not_found` (missing executable
+or directory), `path_denied` (the directory crosses a link), `wrong_kind`,
+`access_denied`, `limit_exceeded` (at most eight live processes per session),
+`invalid_state`, `service_unavailable`, `native_failure` or `cancelled`.
+Releasing the process, closing its window or stopping the application kills
+and reaps its group; no later output or exit is delivered. The optional
+`processes_v1` feature is advertised only on Linux with pidfd support; the
+frozen `ptyProcess` capability record lists the executables by ID with
+`backend: 'posix'`, and other targets report `unavailable` /
+`unsupported_platform`.
+
+The [Native Linux workflow](../.github/workflows/native-linux.yml) runs
+[`tests/native/processes.ts`](../tests/native/processes.ts) in development and
+inspected AOT on an isolated display with real `/bin/sh` children. It checks
+outputs, exit statuses and the working directory independently, confirms
+through `/proc` that descendants stop with their group on exit, release, owner
+close and shutdown, and drives the private runtime to confirm that the host
+rejects foreign, stale and reused process IDs. See
+[ADR 0011](decisions/0011-owned-processes.md). macOS and Windows remain
+unavailable.
+
 ## Service and platform matrix
 
 All services listed here share the core's policy boundary. The unavailable rows
@@ -401,17 +496,17 @@ are requirements for future work, not promises that an exported function
 already exists. The linked follow-ups belong to
 [#255](https://github.com/0xPlayerOne/bun-native/issues/255).
 
-| Service           | Current public surface                                        | Linux X11                                           | macOS                        | Windows                      | Required scope before exposing more operations                                                                                                                                  |
-| ----------------- | ------------------------------------------------------------- | --------------------------------------------------- | ---------------------------- | ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Window/display    | Existing owned open/close; permission-gated `displaySnapshot` | Core/Solid/React dev+AOT verified with release host | Service execution unverified | Service execution unverified | Display changes, physical-monitor/work-area semantics, placement and mixed-DPI evidence. [#299](https://github.com/0xPlayerOne/bun-native/issues/299).                          |
-| Clipboard text    | `readClipboardText` / `writeClipboardText`; separate grants   | X11 dev+AOT verified with release host              | Unavailable                  | Unavailable                  | Additional platforms/formats and extended lifecycle coverage. [#300](https://github.com/0xPlayerOne/bun-native/issues/300).                                                     |
-| Global shortcuts  | `registerGlobalShortcut`; `globalShortcuts` grant             | X11 dev+AOT verified with release host              | Unavailable                  | Unavailable                  | macOS/Windows backends, Wayland portal design and keyboard-map change tracking. [#301](https://github.com/0xPlayerOne/bun-native/issues/301).                                   |
-| System menus      | Capability `systemMenus`; unavailable                         | Unavailable                                         | Unavailable                  | Unavailable                  | Typed action identities, owned menu lifetime, keyboard/accessibility behavior and safe action revocation. [#239](https://github.com/0xPlayerOne/bun-native/issues/239).         |
-| Dialogs           | Capability `dialogs`; unavailable                             | Unavailable                                         | Unavailable                  | Unavailable                  | Owned-window modality, explicit cancellation, shutdown and file selection distinct from a file grant. [#239](https://github.com/0xPlayerOne/bun-native/issues/239).             |
-| Notifications     | `postNotification`; `notifications` grant                     | Freedesktop D-Bus (dunst) dev+AOT verified          | Unavailable                  | Unavailable                  | macOS/Windows backends, additional notification servers, named actions and replacement. [#302](https://github.com/0xPlayerOne/bun-native/issues/302).                           |
-| Drag/drop         | Capability `dragDrop`; unavailable                            | Unavailable                                         | Unavailable                  | Unavailable                  | Bounded untrusted payload, owned target, native cancellation and explicit file-grant conversion. [#303](https://github.com/0xPlayerOne/bun-native/issues/303).                  |
-| Filesystem grants | `openFileGrant`; `filesystemRoots` launch roots               | openat2 dev+AOT verified locally                    | Unavailable                  | Unavailable                  | OS file selection and dropped files as explicit user grants, macOS/Windows confinement. [#304](https://github.com/0xPlayerOne/bun-native/issues/304).                           |
-| PTY/process       | Capability `ptyProcess`; unavailable                          | Unavailable                                         | Unavailable                  | Unavailable                  | Executable/argument/environment policy, bounded streams, process identity, interruption and joined child cleanup. [#305](https://github.com/0xPlayerOne/bun-native/issues/305). |
+| Service           | Current public surface                                        | Linux X11                                           | macOS                        | Windows                      | Required scope before exposing more operations                                                                                                                          |
+| ----------------- | ------------------------------------------------------------- | --------------------------------------------------- | ---------------------------- | ---------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Window/display    | Existing owned open/close; permission-gated `displaySnapshot` | Core/Solid/React dev+AOT verified with release host | Service execution unverified | Service execution unverified | Display changes, physical-monitor/work-area semantics, placement and mixed-DPI evidence. [#299](https://github.com/0xPlayerOne/bun-native/issues/299).                  |
+| Clipboard text    | `readClipboardText` / `writeClipboardText`; separate grants   | X11 dev+AOT verified with release host              | Unavailable                  | Unavailable                  | Additional platforms/formats and extended lifecycle coverage. [#300](https://github.com/0xPlayerOne/bun-native/issues/300).                                             |
+| Global shortcuts  | `registerGlobalShortcut`; `globalShortcuts` grant             | X11 dev+AOT verified with release host              | Unavailable                  | Unavailable                  | macOS/Windows backends, Wayland portal design and keyboard-map change tracking. [#301](https://github.com/0xPlayerOne/bun-native/issues/301).                           |
+| System menus      | Capability `systemMenus`; unavailable                         | Unavailable                                         | Unavailable                  | Unavailable                  | Typed action identities, owned menu lifetime, keyboard/accessibility behavior and safe action revocation. [#239](https://github.com/0xPlayerOne/bun-native/issues/239). |
+| Dialogs           | Capability `dialogs`; unavailable                             | Unavailable                                         | Unavailable                  | Unavailable                  | Owned-window modality, explicit cancellation, shutdown and file selection distinct from a file grant. [#239](https://github.com/0xPlayerOne/bun-native/issues/239).     |
+| Notifications     | `postNotification`; `notifications` grant                     | Freedesktop D-Bus (dunst) dev+AOT verified          | Unavailable                  | Unavailable                  | macOS/Windows backends, additional notification servers, named actions and replacement. [#302](https://github.com/0xPlayerOne/bun-native/issues/302).                   |
+| Drag/drop         | Capability `dragDrop`; unavailable                            | Unavailable                                         | Unavailable                  | Unavailable                  | Bounded untrusted payload, owned target, native cancellation and explicit file-grant conversion. [#303](https://github.com/0xPlayerOne/bun-native/issues/303).          |
+| Filesystem grants | `openFileGrant`; `filesystemRoots` launch roots               | openat2 dev+AOT verified locally                    | Unavailable                  | Unavailable                  | OS file selection and dropped files as explicit user grants, macOS/Windows confinement. [#304](https://github.com/0xPlayerOne/bun-native/issues/304).                   |
+| PTY/process       | `spawnProcess`; `processes` launch executables                | Pipes and PTY dev+AOT verified locally              | Unavailable                  | Unavailable                  | macOS/Windows backends (ConPTY), descendants that leave the group, resource limits. [#305](https://github.com/0xPlayerOne/bun-native/issues/305).                       |
 
 For the deferred rows, the exported typed contract is the frozen availability
 record in `ServiceCapabilities`. There is no callable operation, configurable
@@ -424,8 +519,8 @@ The Adea port [#250](https://github.com/0xPlayerOne/bun-native/issues/250) must
 gate terminal/file features on these explicit statuses.
 [Filesystem grants #304](https://github.com/0xPlayerOne/bun-native/issues/304)
 and [PTY/process #305](https://github.com/0xPlayerOne/bun-native/issues/305)
-define the implementation path. Its future broker
-should accept validated executable/argument arrays and scoped file handles;
+define the implementation path: the process service accepts validated
+executable IDs, argument arrays and scoped file handles;
 displayed terminal text, model output or a dropped pathname must never create
 authority by itself. An application choosing ordinary Bun process/filesystem
 APIs uses its own trusted authority and must not describe that as a native

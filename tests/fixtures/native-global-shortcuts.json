@@ -1,5 +1,5 @@
 {
-  "protocol": 9,
+  "protocol": 10,
   "capability": "global_shortcuts_v1",
   "commands": [
     {

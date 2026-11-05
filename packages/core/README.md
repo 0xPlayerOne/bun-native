@@ -144,7 +144,7 @@ No per-request option or protocol message can grant access. Both framework
 adapters use this same public window method.
 
 `app.serviceCapabilities.windowDisplay` reports implementation availability,
-the negotiated permission and `owned_window` scope. Menus, dialogs, notifications, drag/drop, filesystem grants and PTY/process
+the negotiated permission and `owned_window` scope. Menus, dialogs and drag/drop
 entries explicitly report `unavailable` / `not_implemented`; they have no
 placeholder callable methods. This policy constrains the selected native
 host, not trusted Bun code's ordinary OS APIs.
@@ -289,10 +289,41 @@ Closing the grant, its window or the application revokes it and withholds
 late results. Other targets report `unavailable` / `unsupported_platform`.
 See the [service contract](../../docs/native-services.md#filesystem-grants).
 
+### Owned processes
+
+```ts
+const app = await createApplication({
+  executable,
+  permissions: { processes: [{ id: 'git', executable: '/usr/bin/git' }] },
+})
+const window = await app.openWindow({ title: 'Status' })
+const child = await window.spawnProcess(
+  'git',
+  { args: ['status', '--short'], env: { PATH: '/usr/bin:/bin' } },
+  (event) => {
+    if (event.type === 'process_output') console.log(new TextDecoder().decode(event.bytes))
+    else console.log('exit', event.exit)
+  }
+)
+```
+
+`window.spawnProcess(id, options, listener)` starts an executable named in the
+immutable `processes` launch permission. Arguments are an explicit array and
+`env` is the complete environment; there is no shell or command string. A
+working directory comes only from a live file grant of the same window, and
+`terminal: { columns, rows }` runs the child on its own pseudo-terminal. Output
+arrives in order in chunks of at most 16 KiB, each acknowledged when its
+callback settles, and the exit event is always last. The frozen
+`NativeProcess` offers `write`, `closeInput`, `resize`, `signal` (to the whole
+process group) and an idempotent `release()`. Releasing it, closing its window
+or stopping the application kills and reaps its group. Other targets report
+`unavailable` / `unsupported_platform`. See the
+[service contract](../../docs/native-services.md#owned-processes).
+
 ## Supported scope
 
 The initial elements are `box`, `text`, `button` and single-line `input`. `Style` explicitly supports `direction`, `gap`, `padding`, `width`, `height`, `min_width`, `max_width`, `min_height`, `max_height`, `flex_grow`, `flex_shrink`, `align_items`, `justify_content`, `overflow`, `background`, `color` and `font_size`. Dimensions are numeric logical native pixels, with `fill` available for width and height; colors are unsigned 24-bit RGB values. These fields are validated and bounded by the [shared layout contract](../../docs/native-layout.md). Scroll overflow is accepted only for `box` containers; leaf element types also enforce this restriction. Styles are shared by every framework adapter.
 
-There is no DOM, HTML, CSS parser, browser navigation, WebView, CEF, React DOM or automatic compatibility with web component libraries. Native service APIs for files, processes, menus and other desktop integrations remain separate roadmap work. The current renderer does not claim complete scrolling, IME, focus traversal or accessibility coverage. See [the native host limitations](../../native/gpui-host/README.md) and [testing evidence](../../docs/testing.md) before treating a platform as supported.
+There is no DOM, HTML, CSS parser, browser navigation, WebView, CEF, React DOM or automatic compatibility with web component libraries. Native service APIs for menus, dialogs, drag/drop and other desktop integrations remain separate roadmap work. The current renderer does not claim complete scrolling, IME, focus traversal or accessibility coverage. See [the native host limitations](../../native/gpui-host/README.md) and [testing evidence](../../docs/testing.md) before treating a platform as supported.
 
-Protocol 9 requires shared layout, interactions and immutable service policy and replaces protocol 8 without a compatibility layer. During this private experimental phase, pin the application packages and native host together at the tested source revision. A package build or type check is not native GUI acceptance; a bundled executable is not proof of Bun machine-code AOT. [ADR 0004](../../docs/decisions/0004-public-api.md) records the API boundary and its tradeoffs.
+Protocol 10 requires shared layout, interactions and immutable service policy and replaces protocol 9 without a compatibility layer. During this private experimental phase, pin the application packages and native host together at the tested source revision. A package build or type check is not native GUI acceptance; a bundled executable is not proof of Bun machine-code AOT. [ADR 0004](../../docs/decisions/0004-public-api.md) records the API boundary and its tradeoffs.

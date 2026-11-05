@@ -20,6 +20,8 @@ pub struct ServicePolicy {
     pub notifications: bool,
     /// Directories a window may open as scoped grants, in launch order.
     pub filesystem_roots: Vec<crate::FilesystemRoot>,
+    /// Executables a window may start as owned processes, in launch order.
+    pub processes: Vec<crate::ProcessExecutable>,
 }
 
 /// OS-wide modifier state. Shift alone cannot form a global shortcut: at least
