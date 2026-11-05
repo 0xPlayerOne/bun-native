@@ -2,7 +2,7 @@
 
 Experimental SolidJS universal renderer over the shared `@bun-native/core` window and element API. The internal `@bun-native/renderer` package implements staged nodes, native transactions, input intents and render-root lifetime for both Solid and React. Solid keeps its own universal-renderer and reactive-owner integration. It creates no browser, DOM tree, WebView or second native backend. Solid `1.9.18`, `babel-preset-solid` `1.9.16` and Babel `7.29.7` are pinned with package integrity in the workspace lockfile.
 
-This implements the renderer in [BN2 #231](https://github.com/0xPlayerOne/bun-native/issues/231), using the shared BN1 core and protocol-4 native interactions. Signals/effects, keyed moves/removal, typed event phases, subscription replacement, unmount and OS-close cleanup are implemented. Native input observations and explicit value/revision intents cover controlled updates in [#234](https://github.com/0xPlayerOne/bun-native/issues/234). Actual Linux software-GPU keyboard, pointer, focus, caret and Shift-selection checks pass in development and machine-code AOT. The [integration record](../../docs/bn2-solid-integration.md) distinguishes each source/artifact snapshot and its limitations. Repeated performance comparisons, unresolved weak-target observations in [#287](https://github.com/0xPlayerOne/bun-native/issues/287), hosted release qualification and broader text/platform acceptance remain open.
+This implements the renderer in [BN2 #231](https://github.com/0xPlayerOne/bun-native/issues/231), using the shared BN1 core and the native interaction contract introduced in protocol 4 (the current host protocol is 8). Signals/effects, keyed moves/removal, typed event phases, subscription replacement, unmount and OS-close cleanup are implemented. Native input observations and explicit value/revision intents cover controlled updates in [#234](https://github.com/0xPlayerOne/bun-native/issues/234). Actual Linux software-GPU keyboard, pointer, focus, caret and Shift-selection checks pass in development and machine-code AOT. The [integration record](../../docs/bn2-solid-integration.md) distinguishes each source/artifact snapshot and its limitations. Repeated performance comparisons, unresolved weak-target observations in [#287](https://github.com/0xPlayerOne/bun-native/issues/287), hosted release qualification and broader text/platform acceptance remain open.
 
 ## Author and run native TSX
 
@@ -33,6 +33,17 @@ try {
 ```
 
 The official JSX preset uses `generate: 'universal'` and `moduleName: '@bun-native/solid'`. The build script applies it before Bun bundling and selects Solid's reactive package exports. Ordinary Bun resolution selects Solid's server runtime, whose effects are inert; `render` explicitly rejects that runtime. The `browser` export condition means client reactivity here, not browser rendering. The explicit `process.env.NODE_ENV` definition selects production Solid modules and production application branches independently of the caller's environment. The JSX preset's `dev: false` alone does not select production dependency exports. `solid-js/web`, HTML/CSS and DOM props are forbidden package edges.
+
+### Exports
+
+| Import path                     | Exports                                                                                                                                                                                                          |
+| ------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `@bun-native/solid`             | `render`, `inputState`; types `RenderRoot`, `RenderOptions`, `SolidNode`, `JSX`                                                                                                                                  |
+| `@bun-native/solid`             | `For`, `Show`, `Switch`, `Match`, `Index` and `ErrorBoundary`, re-exported from `solid-js`                                                                                                                       |
+| `@bun-native/solid`             | `effect`, `memo`, `createComponent`, `createElement`, `createTextNode`, `insertNode`, `insert`, `spread`, `setProp`, `mergeProps`, `use`: the helpers emitted by the universal JSX compiler, not application API |
+| `@bun-native/solid/jsx-runtime` | The native `JSX` namespace only (types for `jsxImportSource`); Solid JSX is compiled by the preset, not by runtime JSX functions                                                                                 |
+
+Signals, effects and other primitives are imported from `solid-js` itself.
 
 From the repository root, with the pinned Bun and an existing native host:
 
