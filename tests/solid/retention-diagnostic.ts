@@ -15,6 +15,7 @@ type Context = {
 
 const sourcePaths = [
   'tests/solid/renderer.test.ts',
+  'tests/renderers/collectability-scenarios.ts',
   'tests/solid/retention-diagnostic.ts',
   'tests/renderers/support.ts',
   'packages/renderer/src/root.ts',

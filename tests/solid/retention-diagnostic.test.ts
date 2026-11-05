@@ -94,7 +94,7 @@ test('retention metadata records survivor indexes and exact identity while rethr
     const current = readFileSync(resolve(import.meta.dir, 'renderer.test.ts'))
     assert.equal(source.bytes, current.length)
     assert.equal(source.sha256, createHash('sha256').update(current).digest('hex'))
-    assert.equal(report.source.files.length, 12)
+    assert.equal(report.source.files.length, 13)
     assert(
       !bytes.includes(Buffer.from(original.message)),
       'Do not persist arbitrary error contents'
