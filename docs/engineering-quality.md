@@ -35,7 +35,7 @@ Every change must leave the touched area cleaner or demonstrably no worse.
 ### Bun AOT and TypeScript
 
 - Use the current official Bun AOT compiler docs; pin exact version and target host. AOT compiles known code and omits its JIT, but includes a trimmed runtime and garbage collection.
-- Inspect `bun compile --explain` output (when supported by the pinned version) for dynamic property lookups/slow paths and profile hot code rather than optimizing everything indiscriminately.
+- Inspect `bun compile --explain` output for dynamic property lookups/slow paths and profile hot code rather than optimizing everything indiscriminately. The pinned `1.4.4-canary.1` compiler in [`toolchain.json`](../toolchain.json) supports it; retain `--explain=json` reports as described in [toolchain](toolchain.md).
 - Keep frequently executed data shapes stable and strongly typed. Avoid unnecessary `any`, broad assertions, unpredictable object shape changes, repeated serialization and runtime-generated hot code (`eval`, `new Function`, `node:vm`) when alternatives are viable. Confirm behavior in both dev Bun and compiled AOT.
 - Measure GC/allocations, event-loop stalls, startup-to-interactive, idle CPU/RSS and bridge latency. AOT is not automatically faster for all workloads.
 
@@ -67,6 +67,8 @@ These are **automatic agent-owned** checks, never questions for the owner.
 **Regression policy:** establish budgets from the _first correct native baseline_, not guessed competitor numbers. Trend medians and tails with repeated runs and environment metadata. Treat a reproducible unexplained regression around **10% or more** in critical startup, interactive latency, RSS, binary size or edit-loop metrics as an investigation trigger; particularly severe regressions should block the affected release claim until fixed or documented with a justified tradeoff. Noise, tiny absolute changes and benchmark methodology differences are not automatic failures. The agent may revise budgets with evidence and an ADR—no human sign-off needed.
 
 Prefer a fast PR quality lane (target roughly five minutes when practical) with focused checks. Run heavier GPU/soak/benchmark cases on scheduled or release-triggered hosted jobs so ordinary iteration remains quick.
+
+**Implementation note (2026-11-05):** the cadence above is now wired as follows. Locally, `bun run check` runs `format:check`, `lint` (`oxlint --deny-warnings`), `typecheck`, `check:boundaries` (`scripts/quality/boundaries.ts`), `check:health` (`scripts/quality/source-health.ts`), `test` and `build`; native code uses `bun run native:check`, `native:test`, `format:native:check` and `lint:native`. In CI, [`bun-native.yml`](../.github/workflows/bun-native.yml) runs the PR/main lane: the five-minute `Source quality` job (the same source checks plus `bun test tests --coverage` against the `bunfig.toml` thresholds of 80% lines and 90% functions, actionlint and the Python harness checks), then `protocol`, `aot`, `native`, `native-platforms` and `security`, all required by the `Validation / Gate` job. [`native-audit.yml`](../.github/workflows/native-audit.yml) re-runs that full graph every Tuesday at 05:23 UTC. [`security.yml`](../.github/workflows/security.yml) and [`codeql.yml`](../.github/workflows/codeql.yml) run weekly on Mondays. See [testing](testing.md) for the exact scope of each lane.
 
 ## 5. Milestone-specific technical audits
 
