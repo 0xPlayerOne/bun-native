@@ -62,6 +62,7 @@ impl Session {
         let finishing = Rc::new(Cell::new(false));
         let clipboard = Clipboard::new(events.clone(), cx);
         let shortcuts = Shortcuts::new(events.clone(), cx);
+        evidence.observe_keys(cx);
         let notifications = Notifications::new(events.clone(), cx);
         let files = Files::new(events.clone(), policy.filesystem_roots.clone(), cx);
         cx.on_window_closed({
@@ -365,6 +366,15 @@ impl Session {
         self.evidence.startup("open_window_returned", id, window_id);
         match result {
             Ok(handle) => {
+                if self.evidence.enabled() {
+                    let evidence = self.evidence.clone();
+                    let _ = handle.update(cx, |_, window, cx| {
+                        window.on_window_should_close(cx, move |_, _| {
+                            evidence.close_requested(window_id);
+                            true
+                        });
+                    });
+                }
                 self.windows
                     .borrow_mut()
                     .insert(window_id, WindowEntry { handle, state });

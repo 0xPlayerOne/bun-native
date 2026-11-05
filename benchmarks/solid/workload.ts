@@ -206,12 +206,25 @@ export async function runWorkload(adapter: 'solid' | 'core' | 'react', mount: Mo
       delete process.env['BUN_NATIVE_EVIDENCE_NONCE']
     }
     application = await createApplication({ executable: values.host, requestTimeoutMs: 10_000 })
+    const applicationReadyMs = performance.now()
     const window = await application.openWindow({
       title: 'Bun Native matched renderer workload',
       width: 640,
       height: 720,
     })
+    const windowOpenedMs = performance.now()
     active = await mount(window, initial)
+    // In-process startup milestones relative to the runtime time origin. The
+    // controller combines timeOriginEpochMs with its own spawn time.
+    result['startup'] = {
+      timeOriginEpochMs: performance.timeOrigin,
+      workloadEntryMs: started,
+      applicationReadyMs,
+      windowOpenedMs,
+      viewMountedMs: performance.now(),
+      meaning:
+        'acknowledged native window and mounted view; not display presentation or time to first frame',
+    }
     if (values.calibration)
       result['initialNativePaint'] = await observedPaint(
         evidence!,
