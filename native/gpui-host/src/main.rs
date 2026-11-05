@@ -1,6 +1,7 @@
 mod channel;
 mod evidence;
 mod input;
+mod phases;
 mod services;
 mod session;
 mod startup_log;
@@ -27,6 +28,7 @@ fn main() {
         }
     };
     startup_log::install_from_environment();
+    phases::install_from_environment();
     let (commands, events) = channel::connect();
     let evidence = evidence::Evidence::from_environment();
     gpui_platform::application()
@@ -68,6 +70,7 @@ fn main() {
                         commands_in_turn = 0;
                     }
                 }
+                phases::write();
             })
             .detach();
         });
