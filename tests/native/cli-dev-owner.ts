@@ -1,26 +1,17 @@
-import { createHash } from 'node:crypto'
-import { constants, copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync } from 'node:fs'
+import { constants, existsSync, readFileSync } from 'node:fs'
 import { chmod, copyFile, mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { delimiter, dirname, join, resolve } from 'node:path'
 import { parseArgs } from 'node:util'
 import { observeTemplate } from './cli-template-owner.ts'
+import {
+  captureDevelopmentModule,
+  developmentModuleCleanup,
+  fingerprint,
+  regularFiles,
+} from './cli-module-evidence.ts'
 
 const repository = resolve(import.meta.dir, '../..')
 const nativeTools = ['cargo', 'rustc', 'rustup'] as const
-
-function files(directory: string): string[] {
-  return readdirSync(directory, { withFileTypes: true })
-    .map((entry) => {
-      if (!entry.isFile()) throw new Error(`Expected a regular generated file: ${entry.name}`)
-      return entry.name
-    })
-    .sort()
-}
-
-function fingerprint(path: string) {
-  const bytes = readFileSync(path)
-  return { path, bytes: bytes.length, sha256: createHash('sha256').update(bytes).digest('hex') }
-}
 
 /** The X11 supervisor launches this owner before it creates any temporary project. */
 export async function observeDevelopmentTemplate(
@@ -38,12 +29,9 @@ export async function observeDevelopmentTemplate(
   // Preserve the original generated project's checkout depth and every byte,
   // including its relative check/dev paths. Never add a template test callback.
   const project = join(owned, 'project')
-  const bundles = join(project, '.bun-native')
   const tools = join(owned, 'native-tool-sentinels')
   const invocationLog = join(owned, 'native-tool-invocations.txt')
-  let module:
-    | { directory: string; artifacts: (ReturnType<typeof fingerprint> & { retained: string })[] }
-    | undefined
+  let module: ReturnType<typeof captureDevelopmentModule> | undefined
   let report: Awaited<ReturnType<typeof observeTemplate>>
   let remainingBundles: string[]
   let invocations: string
@@ -52,7 +40,7 @@ export async function observeDevelopmentTemplate(
   let sentinels: ReturnType<typeof fingerprint>[]
   try {
     await mkdir(project)
-    const names = files(source)
+    const names = regularFiles(source)
     if (!names.includes('bun-native.json')) throw new Error('Generated project config is missing')
     sourceFiles = names.map((name) => fingerprint(join(source, name)))
     for (const name of names)
@@ -92,29 +80,13 @@ export async function observeDevelopmentTemplate(
       ],
       timeoutMs,
       () => {
-        const entries = readdirSync(bundles, { withFileTypes: true })
-        const entry = entries[0]
-        if (entries.length !== 1 || !entry?.isDirectory() || !entry.name.startsWith('dev-'))
-          throw new Error('native dev must own one temporary module at readiness')
-        const directory = join(bundles, entry.name)
-        const names = files(directory)
-        if (!names.includes('application.js')) throw new Error('native dev module is missing')
-        mkdirSync(retainedModule)
-        const captured = names.map((name) => {
-          const path = join(directory, name)
-          const before = fingerprint(path)
-          const retained = join(retainedModule, name)
-          copyFileSync(path, retained, constants.COPYFILE_EXCL)
-          if (fingerprint(retained).sha256 !== before.sha256)
-            throw new Error('Retained dev module differs from the running module')
-          return { ...before, retained }
-        })
-        module = { directory, artifacts: captured }
+        module = captureDevelopmentModule(project, retainedModule)
       }
     )
-    remainingBundles = existsSync(bundles) ? readdirSync(bundles).sort() : []
+    const cleanup = developmentModuleCleanup(project, module)
+    remainingBundles = cleanup.remaining
     invocations = readFileSync(invocationLog, 'utf8')
-    if (!module || existsSync(module.directory) || remainingBundles.length !== 0) {
+    if (!cleanup.removed) {
       report.status = 'failed'
       report.error ??= 'native dev did not remove its temporary module before process exit'
     }

@@ -1,0 +1,21 @@
+{
+  "scope": "Raw installer metadata from the failed 7e cohort, not a passing installed-consumer qualification. The surrounding source files used by tests remain explicitly inert.",
+  "source": {
+    "commit": "7e102937bb7af362db59bddd1ab92b664386cd52",
+    "tree": "1dea214842f25d93c8c03c61a7fce66ad7d540d5"
+  },
+  "bun_revision": "da867c60bf0bcbf9d6d36994f8ca0efa42075115",
+  "package": "@bun-native/cli",
+  "archive": {
+    "file": "archives/bun-native-cli-0.16.1-7e102937bb7a.tgz",
+    "bytes": 29807,
+    "sha256": "fffe90c933575f091e4e43e7365722ed9a391cddf607ee57a692386ae2072fe0"
+  },
+  "tag": {
+    "text": "sha256-//6QyTNXXwkeTkPnNlci7Zo5HN32B+5XppI4auIHL+A==",
+    "bytes": 52,
+    "sha256": "ee9ffef500d7fe8e964b2cc873e2c511980d8d2cbbdbbcd9084c6a0e929b2130"
+  },
+  "canonical_lock_sri": "sha256-//6QyTNXXwkeTkPnNlci7Zo5HN32B+5XppI4auIHL+A=",
+  "formatter_source": "https://github.com/oven-sh/bun/blob/da867c60bf0bcbf9d6d36994f8ca0efa42075115/src/install/integrity.rs#L235-L255"
+}

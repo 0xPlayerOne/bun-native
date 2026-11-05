@@ -9,6 +9,7 @@ export function compileApplication(input: string, output: string, cwd: string, t
   if (Bun.revision !== toolchain.bun.revision) throw new Error('Use the pinned Bun AOT compiler')
   const compileCommand = [
     process.execPath,
+    '--no-install',
     'compile',
     '--no-script',
     '--production',

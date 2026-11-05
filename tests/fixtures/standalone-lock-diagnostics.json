@@ -1,0 +1,15 @@
+{
+  "source_commit": "c90804933034ccc942467de8eb47379d8ee47e71",
+  "source_tree": "4e944901d40ee3761d163cfc157e75d8f786469b",
+  "bun_revision": "da867c60bf0bcbf9d6d36994f8ca0efa42075115",
+  "bytes": 869,
+  "sha256": "9b727e957052e18873e6514fd93e6a958337b53eb2f062213e0b3e39a56b8c61",
+  "stderr": "5 |     \"\": {\n            ^\nerror: Failed to resolve root dev dependency '@bun-native/cli'\n    at bun.lock:5:9\nInvalidLockfile: failed to parse lockfile: 'bun.lock'\n\nwarn: Ignoring lockfile\nResolving dependencies\nResolved, downloaded and extracted [6]\nerror: --offline: no cached manifest for \"@types/bun\" (run once online, or use --prefer-offline)\n\nerror: --offline: no cached manifest for \"solid-js\" (run once online, or use --prefer-offline)\n\nerror: --offline: no cached manifest for \"@babel/core\" (run once online, or use --prefer-offline)\n\nerror: --offline: no cached manifest for \"babel-preset-solid\" (run once online, or use --prefer-offline)\nerror: @types/bun@1.4.4 failed to resolve\nerror: solid-js@1.9.18 failed to resolve\nerror: solid-js@1.9.18 failed to resolve\nerror: @babel/core@7.29.7 failed to resolve\nerror: babel-preset-solid@1.9.16 failed to resolve\n",
+  "registry_versions": {
+    "@types/bun": "1.4.4",
+    "solid-js": "1.9.18",
+    "@babel/core": "7.29.7",
+    "babel-preset-solid": "1.9.16"
+  },
+  "scope": "Recorded actual mixed invalid-lock/cache error; no corrected installation outcome is implied."
+}
