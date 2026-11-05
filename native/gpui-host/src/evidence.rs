@@ -206,6 +206,26 @@ impl Evidence {
         }
     }
 
+    /// GPUI received the window manager's close request (WM_DELETE_WINDOW on
+    /// X11) for an owned window. Observation only: the request still closes.
+    pub(crate) fn close_requested(&self, window_id: WindowId) {
+        if let Some(log) = &self.0 {
+            let mut log = log.borrow_mut();
+            let record = json!({
+                "nonce": log.nonce,
+                "type": "native_close_requested",
+                "stage": "native-lifecycle",
+                "pid": std::process::id(),
+                "window_id": window_id,
+                "clock": "native_evidence_initialization_relative",
+                "elapsed_ns": log.started.elapsed().as_nanos().to_string(),
+            });
+            if let Err(error) = append(&mut log.file, &record) {
+                eprintln!("Bun Native close evidence unavailable: {error}");
+            }
+        }
+    }
+
     pub(crate) fn closed(&self, window_id: WindowId) {
         if let Some(log) = &self.0 {
             let mut log = log.borrow_mut();

@@ -1288,7 +1288,13 @@ def main():
             phases = [
                 event
                 for event in read_events(evidence_path, nonce, 0)
-                if event.get("type") in ["native_window_closed", "lifecycle_phase"]
+                if event.get("type")
+                in [
+                    "native_close_requested",
+                    "native_window_closed",
+                    "lifecycle_phase",
+                    "key_trace",
+                ]
             ]
             report["close_diagnostics"]["phases"] = phases[:32]
             report["close_diagnostics"]["phases_truncated"] = len(phases) > 32
