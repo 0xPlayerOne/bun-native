@@ -19,6 +19,9 @@ const TARGETS: [&str; 3] = [
     "gpui_wgpu::wgpu_context",
     "gpui_wgpu::wgpu_renderer",
 ];
+/// HAL instance construction, captured at debug level so the one-time Vulkan
+/// loader and EGL display setup inside GPU instance creation can be told apart.
+const DEBUG_TARGETS: [&str; 2] = ["wgpu_hal::vulkan::instance", "wgpu_hal::gles::egl"];
 static LOGGER: OnceLock<StartupLog> = OnceLock::new();
 
 struct Configuration {
@@ -85,12 +88,12 @@ pub(crate) fn install_from_environment() {
         report_error();
         return;
     }
-    log::set_max_level(LevelFilter::Info);
+    log::set_max_level(LevelFilter::Debug);
     if let Ok(mut output) = logger.0.lock()
         && output
             .emit(json!({
                 "phase": "logger_installed", "targets": TARGETS,
-                "maximum_level": "INFO", "max_records": MAX_RECORDS,
+                "maximum_level": "INFO", "debug_targets": DEBUG_TARGETS, "max_records": MAX_RECORDS,
                 "max_record_bytes": MAX_RECORD_BYTES, "max_total_bytes": MAX_TOTAL_BYTES,
                 "max_message_bytes": MAX_MESSAGE_BYTES,
             }))
@@ -106,7 +109,9 @@ fn report_error() {
 }
 
 fn allowed(metadata: &Metadata<'_>) -> bool {
-    metadata.level() <= Level::Info && TARGETS.contains(&metadata.target())
+    let target = metadata.target();
+    (metadata.level() <= Level::Info && TARGETS.contains(&target))
+        || (metadata.level() <= Level::Debug && DEBUG_TARGETS.contains(&target))
 }
 
 struct StartupLog(Mutex<Output<File>>);
