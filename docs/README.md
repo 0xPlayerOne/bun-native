@@ -22,7 +22,7 @@ The initial [shared native layout contract](native-layout.md) extends this tree 
 7. [Development workflow](development.md) — current and intended edit loop; [checkout CLI](developer-tooling.md) — implemented create/dev/build commands and limitations
 8. [Testing and validation](testing.md) — hosted CI, connected Mac native checks and evidence
 9. [Benchmark design](../benchmarks/README.md) — performance fixtures, comparators and raw measurements
-10. [Releasing](releasing.md) — native AOT targets, installers, signing, updates and rollback
+10. [Releasing](releasing.md) — native AOT targets, installers, signing, updates and rollback; [experimental updates](updates.md) — verified manifest, atomic install and rollback
 
 ## Code quality and project operations
 
