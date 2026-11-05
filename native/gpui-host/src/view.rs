@@ -239,51 +239,28 @@ impl NativeView {
         let node = tree
             .node(node_id)
             .expect("validated tree contains every child");
-        let mut base = div().flex_shrink_0();
+        let mut base = div();
         if let Some(layout) = layout {
             base = layout.children(base, node.children(), 0, self.scrolls.get(&node_id));
         }
-        let base = pointer.target(base, node_id).id(node_id.get());
+        pointer.target(&mut base, node_id);
+        let mut base = base.id(node_id.get());
+        style::element(base.style(), node.element(), node_id == tree.root_id());
         match node.element() {
-            NativeElement::Box { style: properties } => {
-                let base = if node_id == tree.root_id() {
-                    base.size_full()
-                } else {
-                    base
-                };
-                let mut container = style::apply(base.flex().flex_col(), properties);
+            NativeElement::Box { .. } => {
                 if let Some(handle) = self.scrolls.get(&node_id) {
-                    container = container.track_scroll(handle);
+                    base = base.track_scroll(handle);
                 }
-                container
-                    .children(
-                        node.children()
-                            .iter()
-                            .map(|child| self.render_node(tree, *child, layout, pointer, cx)),
-                    )
-                    .into_any_element()
-            }
-            NativeElement::Text {
-                style: properties, ..
-            } => style::apply(base, properties)
-                .child(self.label(node_id))
-                .into_any_element(),
-            NativeElement::Button {
-                disabled,
-                style: properties,
-                ..
-            } => {
-                let mut button = style::apply(
-                    base.flex()
-                        .items_center()
-                        .justify_center()
-                        .h(px(44.))
-                        .px(px(12.))
-                        .bg(rgb(if *disabled { 0x7a8396 } else { 0x2255cc }))
-                        .text_color(rgb(0xffffff)),
-                    properties,
+                base.children(
+                    node.children()
+                        .iter()
+                        .map(|child| self.render_node(tree, *child, layout, pointer, cx)),
                 )
-                .child(self.label(node_id));
+                .into_any_element()
+            }
+            NativeElement::Text { .. } => base.child(self.label(node_id)).into_any_element(),
+            NativeElement::Button { disabled, .. } => {
+                let mut button = base.child(self.label(node_id));
                 if !disabled {
                     let focus = self
                         .buttons
@@ -304,9 +281,7 @@ impl NativeView {
                 }
                 button.into_any_element()
             }
-            NativeElement::Input {
-                style: properties, ..
-            } => style::apply(base.bg(rgb(0xffffff)), properties)
+            NativeElement::Input { .. } => base
                 .child(
                     self.inputs
                         .get(&node_id)
