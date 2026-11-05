@@ -628,6 +628,45 @@ jobs:
           done
           python3 tests/native/streaming-list.py summarize \
             --output "$NATIVE_EVIDENCE/streaming-list-baseline.json" "${reports[@]}"
+      - name: Shared layout, split panes and theme tokens through core, Solid and React at scale 1 and 2 in development and AOT
+        if: ${{ !cancelled() && steps.native-build.outcome == 'success' }}
+        timeout-minutes: 8
+        env:
+          BUN_NATIVE_HOST: ${{ github.workspace }}/target/release/bun-native-host
+        run: |
+          reports=()
+          for entry in layout-style solid-layout-style react-layout-style; do
+            package="$NATIVE_EVIDENCE/$entry-package"
+            bun experiments/aot-gpui/build-window.ts \
+              --source "$GITHUB_WORKSPACE" --host "$BUN_NATIVE_HOST" \
+              --host-profile release --entry "$entry" --outdir "$package"
+            for scale in 1 2; do
+              for mode in development aot; do
+                command=(bun "$package/development/application.js")
+                if [[ "$entry" == layout-style ]]; then
+                  command=(bun tests/native/layout-style.ts)
+                fi
+                if [[ "$mode" == aot ]]; then
+                  command=("$package/$entry")
+                fi
+                evidence="$NATIVE_EVIDENCE/diagnostics-$mode-$entry-scale-$scale"
+                mkdir "$evidence"
+                BUN_NATIVE_LAYOUT_EVIDENCE="$evidence" BUN_NATIVE_LAYOUT_MODE="$mode" \
+                  BUN_NATIVE_TEST_SCALE_FACTOR="$scale" \
+                  BUN_NATIVE_EVIDENCE_LOG="$evidence/native-evidence.jsonl" \
+                  BUN_NATIVE_EVIDENCE_NONCE="$(python3 -c 'import secrets; print(secrets.token_hex(16))')" \
+                  xvfb-run --auto-servernum --server-args='-screen 0 1280x800x24 -nolisten tcp' \
+                  dbus-run-session -- bash scripts/quality/native-linux-session.sh \
+                  "$evidence-session" -- "${command[@]}" 2>&1 | tee "$evidence/run.log"
+                reports+=("$evidence"/layout-style-*.json)
+              done
+            done
+          done
+          # Every adapter, mode and scale must commit one element tree and
+          # paint it at the same logical geometry.
+          mkdir "$NATIVE_EVIDENCE/diagnostics-layout-style-comparison"
+          bun tests/native/layout-style-compare.ts "${reports[@]}" |
+            tee "$NATIVE_EVIDENCE/diagnostics-layout-style-comparison/report.json"
       - name: Retain unsigned native host for reproducibility
         if: ${{ !cancelled() && steps.native-build.outcome == 'success' }}
         run: |

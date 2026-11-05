@@ -1,5 +1,5 @@
 use bun_native_protocol::{AlignItems, Dimension, Direction, JustifyContent, Overflow, Style};
-use gpui::{Overflow as NativeOverflow, Styled, px, relative, rgb};
+use gpui::{AbsoluteLength, FontWeight, Overflow as NativeOverflow, Styled, px, relative, rgb};
 
 /// Values have already passed protocol bounds. Convert to GPUI pixels only
 /// here, after f64 validation, so rounding cannot admit out-of-range values.
@@ -85,6 +85,31 @@ pub(crate) fn apply<T: Styled>(mut element: T, style: &Style) -> T {
     }
     if let Some(size) = style.font_size {
         element = element.text_size(px(size as f32));
+    }
+    if let Some(width) = style.border_width {
+        let width = AbsoluteLength::from(px(width as f32));
+        let edges = &mut element.style().border_widths;
+        edges.top = Some(width);
+        edges.right = Some(width);
+        edges.bottom = Some(width);
+        edges.left = Some(width);
+    }
+    if let Some(color) = style.border_color {
+        element.style().border_color = Some(rgb(color).into());
+    }
+    if let Some(radius) = style.corner_radius {
+        let radius = AbsoluteLength::from(px(radius as f32));
+        let corners = &mut element.style().corner_radii;
+        corners.top_left = Some(radius);
+        corners.top_right = Some(radius);
+        corners.bottom_right = Some(radius);
+        corners.bottom_left = Some(radius);
+    }
+    if let Some(opacity) = style.opacity {
+        element = element.opacity(opacity as f32);
+    }
+    if let Some(weight) = style.font_weight {
+        element = element.font_weight(FontWeight(weight as f32));
     }
     element
 }

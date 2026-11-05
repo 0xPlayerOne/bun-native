@@ -41,6 +41,7 @@ const entries = {
   fault: 'tests/native/fault.ts',
   scheduling: 'tests/native/scheduling.ts',
   layout: 'tests/native/layout.ts',
+  'layout-style': 'tests/native/layout-style.ts',
   interactions: 'tests/native/interactions.ts',
   services: 'tests/native/services.ts',
   clipboard: 'tests/native/clipboard.ts',
@@ -60,12 +61,14 @@ const entries = {
   'solid-interactions': 'tests/native/solid-interactions.tsx',
   'solid-input-viewport': 'tests/native/solid-input-viewport.tsx',
   'solid-streaming-list': 'tests/native/solid-streaming-list.tsx',
+  'solid-layout-style': 'tests/native/solid-layout-style.tsx',
   react: 'examples/react-counter/main.tsx',
   'react-workspace': 'examples/react-workspace/main.tsx',
   'react-workspace-flow': 'tests/native/react-workspace.tsx',
   'react-interactions': 'tests/native/react-interactions.tsx',
   'react-input-viewport': 'tests/native/react-input-viewport.tsx',
   'react-streaming-list': 'tests/native/react-streaming-list.tsx',
+  'react-layout-style': 'tests/native/react-layout-style.tsx',
   'react-behavior': 'tests/native/react-behavior.tsx',
   'react-workload': 'benchmarks/solid/react.tsx',
 } as const
@@ -83,6 +86,7 @@ const solidEntry =
   entry === 'solid-interactions' ||
   entry === 'solid-input-viewport' ||
   entry === 'solid-streaming-list' ||
+  entry === 'solid-layout-style' ||
   entry === 'solid-platform' ||
   entry === 'solid-services'
 const reactEntry =
@@ -92,6 +96,7 @@ const reactEntry =
   entry === 'react-interactions' ||
   entry === 'react-input-viewport' ||
   entry === 'react-streaming-list' ||
+  entry === 'react-layout-style' ||
   entry === 'react-behavior' ||
   entry === 'react-services' ||
   entry === 'react-platform' ||
@@ -117,6 +122,7 @@ if (
     entry === 'fault' ||
     entry === 'scheduling' ||
     entry === 'layout' ||
+    entry === 'layout-style' ||
     entry === 'interactions' ||
     entry === 'services' ||
     entry === 'clipboard' ||
@@ -210,6 +216,8 @@ async function sourceHashes() {
       'benchmarks/streaming-list-fixture.ts',
     ])
       sources.add(path)
+  if (entry === 'layout-style' || entry === 'solid-layout-style' || entry === 'react-layout-style')
+    sources.add('tests/native/layout-style-scene.ts')
   if (solidEntry) {
     for (const path of [
       'packages/solid/package.json',

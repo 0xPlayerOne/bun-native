@@ -283,6 +283,55 @@ pub struct Style {
         deserialize_with = "non_null"
     )]
     pub font_size: Option<f64>,
+    /// `style_decoration_v1`: one uniform border, in logical pixels.
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "non_null"
+    )]
+    pub border_width: Option<f64>,
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "non_null_color"
+    )]
+    pub border_color: Option<u32>,
+    /// `style_decoration_v1`: one radius for all four corners.
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "non_null"
+    )]
+    pub corner_radius: Option<f64>,
+    /// `style_decoration_v1`: multiplies this element and its descendants.
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "non_null"
+    )]
+    pub opacity: Option<f64>,
+    /// `style_decoration_v1`: an inherited 100-900 weight in steps of 100.
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "non_null"
+    )]
+    pub font_weight: Option<f64>,
+}
+
+impl Style {
+    /// Fields an older host rejects as unknown; gated by `style_decoration_v1`.
+    pub fn uses_decoration(&self) -> bool {
+        self.border_width.is_some()
+            || self.border_color.is_some()
+            || self.corner_radius.is_some()
+            || self.opacity.is_some()
+            || self.font_weight.is_some()
+    }
+}
+
+fn half() -> f64 {
+    0.5
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -311,7 +360,22 @@ pub enum Element {
         #[serde(default)]
         style: Style,
     },
+    /// `split_v1`: at most two panes separated by a host-owned draggable
+    /// divider. `style.direction` chooses the axis (row by default).
+    Split {
+        /// The leading pane's share of the space left after the divider.
+        #[serde(default = "half")]
+        ratio: f64,
+        /// The smallest main-axis size of each pane, in logical pixels.
+        #[serde(default)]
+        min_size: f64,
+        #[serde(default)]
+        style: Style,
+    },
 }
+
+/// Main-axis thickness of a split divider, in logical pixels.
+pub const SPLIT_DIVIDER: f64 = 6.;
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(tag = "type", rename_all = "snake_case", deny_unknown_fields)]
@@ -509,6 +573,8 @@ pub enum Capability {
     NotificationsV1,
     FilesystemGrantsV1,
     ProcessesV1,
+    SplitV1,
+    StyleDecorationV1,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -684,7 +750,21 @@ impl Element {
             Self::Input {
                 value, placeholder, ..
             } => value.len() + placeholder.len(),
-            Self::Box { .. } => 0,
+            Self::Box { .. } | Self::Split { .. } => 0,
+        }
+    }
+
+    /// Boxes and splits own ordered children.
+    pub fn is_container(&self) -> bool {
+        matches!(self, Self::Box { .. } | Self::Split { .. })
+    }
+
+    /// The most children this element may own.
+    pub fn max_children(&self) -> usize {
+        match self {
+            Self::Box { .. } => MAX_NODES_PER_WINDOW,
+            Self::Split { .. } => 2,
+            Self::Text { .. } | Self::Button { .. } | Self::Input { .. } => 0,
         }
     }
 
@@ -693,7 +773,8 @@ impl Element {
             Self::Box { style }
             | Self::Text { style, .. }
             | Self::Button { style, .. }
-            | Self::Input { style, .. } => style,
+            | Self::Input { style, .. }
+            | Self::Split { style, .. } => style,
         }
     }
 
@@ -713,6 +794,25 @@ impl Element {
             } => {
                 validate_text(value)?;
                 validate_text(placeholder)?;
+            }
+            Self::Split {
+                ratio,
+                min_size,
+                style,
+            } => {
+                bounded(*ratio, 0., 1., "split ratio must be between 0 and 1")?;
+                bounded(
+                    *min_size,
+                    0.,
+                    16_384.,
+                    "split min_size must be between 0 and 16384 pixels",
+                )?;
+                if style.gap.is_some()
+                    || style.align_items.is_some()
+                    || style.justify_content.is_some()
+                {
+                    return Err("split panes do not accept gap or alignment");
+                }
             }
             Self::Box { .. } => {}
         }
@@ -778,7 +878,37 @@ impl Style {
                 "font_size must be between 1 and 512 pixels",
             )?;
         }
-        if [self.background, self.color]
+        if let Some(value) = self.border_width {
+            bounded(
+                value,
+                0.,
+                64.,
+                "border_width must be between 0 and 64 pixels",
+            )?;
+        }
+        if let Some(value) = self.corner_radius {
+            bounded(
+                value,
+                0.,
+                4_096.,
+                "corner_radius must be between 0 and 4096 pixels",
+            )?;
+        }
+        if let Some(value) = self.opacity {
+            bounded(value, 0., 1., "opacity must be between 0 and 1")?;
+        }
+        if let Some(value) = self.font_weight {
+            bounded(
+                value,
+                100.,
+                900.,
+                "font_weight must be 100-900 in steps of 100",
+            )?;
+            if value % 100. != 0. {
+                return Err("font_weight must be 100-900 in steps of 100");
+            }
+        }
+        if [self.background, self.color, self.border_color]
             .into_iter()
             .flatten()
             .any(|value| value > 0xff_ffff)

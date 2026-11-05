@@ -1175,11 +1175,21 @@ mod tests {
             }
         );
         let _ = group;
-        // The group was stopped on exit: the descendant is gone or a zombie
-        // awaiting its new parent, never still running.
-        let state = std::fs::read_to_string(format!("/proc/{}/stat", grandchild.as_raw_nonzero()))
-            .map(|stat| stat.rsplit_once(") ").map(|(_, rest)| rest.as_bytes()[0]))
-            .unwrap_or(Some(b'Z'));
+        // The group was killed on exit: the descendant is gone or a zombie
+        // awaiting its new parent. Signal delivery is asynchronous, so a
+        // killed process may still be running its exit path (state R) for a
+        // moment under load; it must finish dying within the bound.
+        let stat = || {
+            std::fs::read_to_string(format!("/proc/{}/stat", grandchild.as_raw_nonzero()))
+                .map(|stat| stat.rsplit_once(") ").map(|(_, rest)| rest.as_bytes()[0]))
+                .unwrap_or(Some(b'Z'))
+        };
+        let deadline = std::time::Instant::now() + Duration::from_secs(5);
+        let mut state = stat();
+        while state != Some(b'Z') && std::time::Instant::now() < deadline {
+            std::thread::sleep(Duration::from_millis(10));
+            state = stat();
+        }
         assert_eq!(state, Some(b'Z'));
     }
 

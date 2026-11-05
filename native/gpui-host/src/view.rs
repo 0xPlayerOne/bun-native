@@ -35,6 +35,7 @@ pub(crate) struct NativeView {
     /// Text and button labels as shared strings, reused across batches while
     /// unchanged, so each render bumps a refcount instead of copying text.
     labels: BTreeMap<NodeId, SharedString>,
+    splits: Splits,
     focus_subscriptions: BTreeMap<NodeId, [Subscription; 2]>,
     reported_focus: Option<NodeId>,
     _subscriptions: [Subscription; 2],
@@ -66,6 +67,7 @@ impl NativeView {
             buttons: BTreeMap::new(),
             scrolls: BTreeMap::new(),
             labels: BTreeMap::new(),
+            splits: Splits::default(),
             focus_subscriptions: BTreeMap::new(),
             reported_focus: None,
             _subscriptions: [keyboard, focus_lost],
@@ -78,6 +80,7 @@ impl NativeView {
     /// does not yield or dispatch native input between model and entity updates.
     pub(crate) fn apply(&mut self, tree: Tree, window: &mut Window, cx: &mut Context<Self>) {
         self.state.borrow_mut().tree = tree;
+        self.splits.reconcile(&self.state.borrow().tree);
         // Snapshot cheap Arc-backed properties before focus/IME notifications:
         // native callbacks must never run while the shared model is borrowed.
         let (controls, scroll_modes) = {
@@ -179,7 +182,9 @@ impl NativeView {
                         .entry(node_id)
                         .or_insert_with(|| cx.focus_handle().tab_stop(true));
                 }
-                NativeElement::Box { .. } | NativeElement::Text { .. } => {}
+                NativeElement::Box { .. }
+                | NativeElement::Text { .. }
+                | NativeElement::Split { .. } => {}
             }
         }
         self.reconcile_focus(window, cx);
@@ -251,7 +256,10 @@ impl NativeView {
             .node(node_id)
             .expect("validated tree contains every child");
         let mut base = div().flex_shrink_0();
-        if let Some(layout) = layout {
+        // A split reports each pane's child from inside its pane wrapper.
+        if let Some(layout) = layout
+            && !matches!(node.element(), NativeElement::Split { .. })
+        {
             base = layout.children(base, node.children(), 0, self.scrolls.get(&node_id));
         }
         let base = pointer.target(base, node_id).id(node_id.get());
@@ -274,6 +282,13 @@ impl NativeView {
                     )
                     .into_any_element()
             }
+            NativeElement::Split {
+                min_size,
+                style: properties,
+                ..
+            } => self.split(
+                tree, node_id, base, *min_size, properties, layout, pointer, cx,
+            ),
             NativeElement::Text {
                 style: properties, ..
             } => style::apply(base, properties)
@@ -424,5 +439,7 @@ impl Render for NativeView {
     }
 }
 mod interactions;
+mod split;
 
 use interactions::PointerFrame;
+use split::Splits;

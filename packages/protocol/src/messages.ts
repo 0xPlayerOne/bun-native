@@ -234,6 +234,8 @@ const CAPABILITIES = [
   'notifications_v1',
   'filesystem_grants_v1',
   'processes_v1',
+  'split_v1',
+  'style_decoration_v1',
 ] as const
 export type Capability = (typeof CAPABILITIES)[number]
 

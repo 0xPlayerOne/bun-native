@@ -26,5 +26,7 @@ export namespace JSX {
       value?: string | InputState
       placeholder?: string
     }
+    /** At most two pane children; the host owns the divider drag. */
+    split: Base<'split'> & { children?: ReactNode; ratio?: number; min_size?: number }
   }
 }

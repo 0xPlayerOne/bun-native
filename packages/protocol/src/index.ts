@@ -1,5 +1,12 @@
 export { encodeFrame, FrameDecoder, MAX_FRAME_BYTES, ProtocolError } from './framing.ts'
-export { parseElement, type Element, type Style } from './elements.ts'
+export {
+  DECORATION_FIELDS,
+  parseElement,
+  SPLIT_DIVIDER,
+  type Element,
+  type SplitStyle,
+  type Style,
+} from './elements.ts'
 export { MAX_TEXT_BYTES } from './values.ts'
 export {
   FILE_ACCESS,
