@@ -362,3 +362,58 @@ export function summarize(launches: readonly Launch[], { seed = 244 } = {}) {
   }
   return { equivalentWorkload: signature, groups: summary, comparisons }
 }
+
+export type InputLaunch = {
+  name: string
+  adapter: string
+  mode: string
+  trial: number
+  status: 'passed' | 'failed'
+  /** Driver input command start to the validated matching native paint record. */
+  commandStartToPaintObservedMs: number | null
+  error: string | null
+}
+
+/** Per-launch click-to-paint distributions; each fresh launch contributes one sample. */
+export function summarizeInputLatency(launches: readonly InputLaunch[], { seed = 244 } = {}) {
+  const groups = new Map<string, InputLaunch[]>()
+  for (const launch of launches) {
+    const key = groupKey(launch)
+    if (!groups.has(key)) groups.set(key, [])
+    groups.get(key)!.push(launch)
+  }
+  const samples = new Map<string, number[]>()
+  const summary: Record<string, unknown> = {}
+  for (const [key, items] of groups) {
+    const values = items.flatMap((launch) =>
+      launch.status === 'passed' && launch.commandStartToPaintObservedMs !== null
+        ? [launch.commandStartToPaintObservedMs]
+        : []
+    )
+    samples.set(key, values)
+    summary[key] = {
+      launches: items.length,
+      passed: values.length,
+      failed: items.filter((launch) => launch.status === 'failed').map((launch) => launch.name),
+      commandStartToPaintObservedMs: {
+        ...describe(values),
+        medianInterval: bootstrapMedian(values, { seed }),
+      },
+    }
+  }
+  const comparisons: Record<string, unknown>[] = []
+  for (const key of [...samples.keys()].sort()) {
+    const [adapter, mode] = key.split('/') as [string, string]
+    const references = [
+      ...(mode === 'aot' ? [`${adapter}/development`] : []),
+      ...(adapter !== 'core' ? [`core/${mode}`] : []),
+    ].filter((reference) => samples.has(reference))
+    for (const reference of references)
+      comparisons.push({
+        candidate: key,
+        reference,
+        medianRatio: bootstrapMedianRatio(samples.get(key)!, samples.get(reference)!, { seed }),
+      })
+  }
+  return { groups: summary, comparisons }
+}
