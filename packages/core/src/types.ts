@@ -8,6 +8,7 @@ import type {
 } from '@bun-native/protocol'
 import type { HostOptions } from '@bun-native/runtime'
 import type {
+  DisplayChangeEvent,
   NativeDisplaySnapshot,
   NativeClipboardText,
   ServiceCapabilities,
@@ -149,6 +150,13 @@ export interface NativeWindow {
   input(node: NativeNode<'input'>): InputState
   /** Requires an immutable launch grant; cancellation never publishes a late snapshot. */
   displaySnapshot(options?: ServiceRequestOptions): Promise<NativeDisplaySnapshot>
+  /**
+   * Reports when the window moves to another display or the OS reconfigures its
+   * display, with the new snapshot. Requires the windowDisplay launch grant and
+   * `serviceCapabilities.windowDisplay.changes` (macOS and Windows). Returns an
+   * idempotent remover; window close and shutdown remove every listener.
+   */
+  onDisplayChange(listener: (event: DisplayChangeEvent) => void | Promise<void>): () => void
   /** Fixed native deadline; cancellation after dispatch drains but withholds the result. */
   readClipboardText(options?: ServiceRequestOptions): Promise<NativeClipboardText>
   /** A submitted write can change the OS clipboard even if ownership is subsequently revoked. */

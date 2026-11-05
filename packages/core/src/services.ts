@@ -1,4 +1,10 @@
-import type { Capability, ClipboardText, ServicePolicy } from '@bun-native/protocol'
+import {
+  ProtocolError,
+  type Capability,
+  type ClipboardText,
+  type DisplaySnapshot,
+  type ServicePolicy,
+} from '@bun-native/protocol'
 
 export type NativeClipboardText = Readonly<ClipboardText>
 type ServiceName =
@@ -21,6 +27,28 @@ export interface NativeDisplaySnapshot {
   /** GPUI-reported logical display bounds; coordinate origins depend on the backend. */
   readonly bounds: Readonly<{ x: number; y: number; width: number; height: number }>
   readonly scaleFactor: number
+  /**
+   * The display's work area (excluding the menu bar, Dock or taskbar), in the
+   * same logical coordinates as `bounds`. Only when `windowDisplay.details`
+   * is available (macOS and Windows).
+   */
+  readonly visibleBounds?: Readonly<{ x: number; y: number; width: number; height: number }>
+  /**
+   * The platform's display identifier when `windowDisplay.details` is
+   * available and the OS reports one. macOS: the CoreGraphics display UUID.
+   * Windows: derived from the GDI device name (for example `\\.\DISPLAY1`),
+   * so it names an adapter output rather than a physical monitor.
+   */
+  readonly displayId?: string
+}
+
+export interface DisplayChangeEvent {
+  readonly type: 'display_change'
+  readonly sequence: number
+  /** The window's display after the change. */
+  readonly snapshot: NativeDisplaySnapshot
+  /** Aborted when the listener is removed, its window closes or the app stops. */
+  readonly signal: AbortSignal
 }
 
 type UnavailableService = Readonly<{ availability: 'unavailable'; reason: 'not_implemented' }>
@@ -30,6 +58,10 @@ export interface ServiceCapabilities {
     availability: 'available'
     permission: 'allow' | 'deny'
     scope: 'owned_window'
+    /** Snapshots include `visibleBounds` and, when the OS reports it, `displayId`. */
+    details: 'available' | 'unavailable'
+    /** `onDisplayChange` reports display moves and OS display reconfiguration. */
+    changes: 'available' | 'unavailable'
   }>
   readonly clipboardText:
     | Readonly<{
@@ -96,6 +128,8 @@ export function serviceCapabilities(
       availability: 'available',
       permission: policy.window_display ? 'allow' : 'deny',
       scope: 'owned_window',
+      details: capabilities.includes('display_details_v1') ? 'available' : 'unavailable',
+      changes: capabilities.includes('display_changes_v1') ? 'available' : 'unavailable',
     }),
     clipboardText: capabilities.includes('clipboard_text_v1')
       ? Object.freeze({
@@ -127,6 +161,24 @@ export function serviceCapabilities(
     dragDrop: unavailable,
     filesystemGrants: unavailable,
     ptyProcess: unavailable,
+  })
+}
+
+/** A frozen public snapshot; details are accepted only from a host that advertised them. */
+export function publicDisplaySnapshot(
+  snapshot: DisplaySnapshot,
+  capabilities: readonly Capability[]
+): NativeDisplaySnapshot {
+  const details = capabilities.includes('display_details_v1')
+  if (details ? !snapshot.visible_bounds : snapshot.visible_bounds || snapshot.display_uuid)
+    throw new ProtocolError('Native display details do not match the negotiated capabilities')
+  return Object.freeze({
+    bounds: Object.freeze({ ...snapshot.bounds }),
+    scaleFactor: snapshot.scale_factor,
+    ...(snapshot.visible_bounds
+      ? { visibleBounds: Object.freeze({ ...snapshot.visible_bounds }) }
+      : {}),
+    ...(snapshot.display_uuid ? { displayId: snapshot.display_uuid } : {}),
   })
 }
 

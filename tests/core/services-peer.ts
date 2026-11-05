@@ -13,6 +13,8 @@ import { join } from 'node:path'
 const directory = process.argv[2]
 if (!directory) throw new Error('Service peer needs its owned control directory')
 const mode = process.argv[3] ?? 'normal'
+// Advertises the macOS/Windows display capabilities.
+const detailed = mode === 'details' || mode === 'details-missing'
 const allowed = process.argv.includes('--bun-native-allow-window-display')
 const windows = new Set<number>()
 const output = Bun.stdout.writer()
@@ -36,7 +38,9 @@ for await (const chunk of Bun.stdin.stream()) {
           capabilities:
             mode === 'missing-service'
               ? REQUIRED_CAPABILITIES.filter((value) => value !== 'window_display_v1')
-              : REQUIRED_CAPABILITIES,
+              : detailed
+                ? [...REQUIRED_CAPABILITIES, 'display_details_v1', 'display_changes_v1']
+                : REQUIRED_CAPABILITIES,
           limits: DEFAULT_LIMITS,
           service_policy: {
             window_display: mode === 'wrong-policy' ? !allowed : allowed,
@@ -90,14 +94,33 @@ for await (const chunk of Bun.stdin.stream()) {
             code,
             message: 'Explicit headless service outcome',
           })
-        else
+        else {
+          const snapshot = {
+            bounds: { x: -1920, y: 0, width: 1920, height: 1080 },
+            scale_factor: 1.5,
+            ...(mode === 'details' || mode === 'undeclared-details'
+              ? {
+                  visible_bounds: { x: -1920, y: 25, width: 1920, height: 1055 },
+                  display_uuid: '37d8832a-2d66-02ca-b9f7-8f30a301b230',
+                }
+              : {}),
+          }
+          // The read itself stands in for an OS display reconfiguration.
+          if (mode === 'details' || mode === 'details-missing' || mode === 'undeclared-change')
+            await emit({
+              type: 'display_changed',
+              sequence: ++sequence,
+              window_id: command.window_id,
+              snapshot,
+            })
           await emit({
             type: 'display_snapshot',
             id: command.id,
             window_id:
               command.window_id + (mode === 'wrong-owner' || mode === 'hold-wrong-owner' ? 1 : 0),
-            snapshot: { bounds: { x: -1920, y: 0, width: 1920, height: 1080 }, scale_factor: 1.5 },
+            snapshot,
           })
+        }
         break
       }
       case 'close':

@@ -92,3 +92,19 @@ screen index with an all-zero UUID, and has a single scale per process. Adding
 those fields would publish values the platform layer cannot supply. They
 remain unavailable until a backend that reports them (for example GPUI's
 Wayland output events, macOS or Windows) can be exercised natively.
+
+### macOS and Windows (#299)
+
+GPUI's macOS and Windows backends do supply a work area, an OS display
+identifier and window display notifications, so they are added there as two
+optional capabilities instead of a protocol version change:
+`display_details_v1` (optional `visible_bounds` / `display_uuid` snapshot
+fields) and `display_changes_v1` (a sequenced `display_changed` event per
+owned window). Both sit under the existing `window_display` launch grant, so
+no new permission or wire command exists; the host observes a window only
+when that grant is present, and drops the observation with the window. The
+core rejects either from a host that did not advertise it. Linux keeps the
+two-field snapshot. Native acceptance is the hosted macOS/Windows workflow run
+only ([contract](../native-services.md#macos-and-windows-display-semantics-299));
+window migration, hotplug and mixed DPI remain unverified there because the
+hosted runners have one virtual display.

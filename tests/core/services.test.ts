@@ -4,6 +4,7 @@ import {
   NativeServiceError,
   NativeStateError,
   ProtocolError,
+  type DisplayChangeEvent,
   type NativeApplication,
   type ServicePermissions,
 } from '@bun-native/core'
@@ -82,6 +83,8 @@ describe('owned desktop service lifecycle (headless subprocess)', () => {
         availability: 'available',
         permission: 'deny',
         scope: 'owned_window',
+        details: 'unavailable',
+        changes: 'unavailable',
       })
       for (const [name, value] of Object.entries(app.serviceCapabilities)) {
         expect(Object.isFrozen(value)).toBe(true)
@@ -254,4 +257,113 @@ describe('owned desktop service lifecycle (headless subprocess)', () => {
       )
       expect(requests(directory)).toHaveLength(0)
     }))
+})
+
+describe('display details and owned display changes (headless subprocess)', () => {
+  test('a backend without the display capabilities reports neither', () =>
+    withService(
+      async (app) => {
+        expect(app.serviceCapabilities.windowDisplay).toMatchObject({
+          details: 'unavailable',
+          changes: 'unavailable',
+        })
+        const window = await app.openWindow({ title: 'No display changes' })
+        expect(Object.keys(await window.displaySnapshot()).sort()).toEqual([
+          'bounds',
+          'scaleFactor',
+        ])
+        expect(() => window.onDisplayChange(() => {})).toThrow(
+          expect.objectContaining({ name: 'NativeServiceError', code: 'service_unavailable' })
+        )
+      },
+      'normal',
+      { windowDisplay: 'allow' }
+    ))
+
+  test('display changes require the immutable launch grant', () =>
+    withService(async (app) => {
+      expect(app.serviceCapabilities.windowDisplay).toEqual({
+        availability: 'available',
+        permission: 'deny',
+        scope: 'owned_window',
+        details: 'available',
+        changes: 'available',
+      })
+      const window = await app.openWindow({ title: 'Denied display changes' })
+      expect(() => window.onDisplayChange(() => {})).toThrow(
+        expect.objectContaining({ name: 'NativeServiceError', code: 'permission_denied' })
+      )
+      expect(() => window.onDisplayChange(1 as never)).toThrow(TypeError)
+    }, 'details'))
+
+  test('owned listeners receive frozen detailed snapshots until removed or revoked', () =>
+    withService(
+      async (app) => {
+        const window = await app.openWindow({ title: 'Display changes' })
+        const other = await app.openWindow({ title: 'Other display owner' })
+        const first: DisplayChangeEvent[] = []
+        const otherEvents: DisplayChangeEvent[] = []
+        const remove = window.onDisplayChange((event) => {
+          first.push(event)
+        })
+        other.onDisplayChange((event) => {
+          otherEvents.push(event)
+        })
+        expect(app.diagnostics.callbacks).toBe(2)
+        const snapshot = await window.displaySnapshot()
+        expect(snapshot).toEqual({
+          bounds: { x: -1920, y: 0, width: 1920, height: 1080 },
+          scaleFactor: 1.5,
+          visibleBounds: { x: -1920, y: 25, width: 1920, height: 1055 },
+          displayId: '37d8832a-2d66-02ca-b9f7-8f30a301b230',
+        })
+        expect(Object.isFrozen(snapshot.visibleBounds)).toBe(true)
+        for (let attempt = 0; attempt < 100 && !first.length; attempt++) await Bun.sleep(5)
+        expect(first).toHaveLength(1)
+        const event = first[0]!
+        expect(Object.isFrozen(event) && Object.isFrozen(event.snapshot)).toBe(true)
+        expect(event.type).toBe('display_change')
+        expect(event.snapshot).toEqual(snapshot)
+        expect(event.signal.aborted).toBe(false)
+        expect(otherEvents).toHaveLength(0) // Owned by the window it names.
+        remove()
+        remove()
+        expect(event.signal.aborted).toBe(true)
+        expect(app.diagnostics.callbacks).toBe(1)
+        await window.displaySnapshot()
+        await Bun.sleep(20)
+        expect(first).toHaveLength(1)
+        let closedSignal: AbortSignal | undefined
+        other.onDisplayChange((change) => {
+          closedSignal = change.signal
+        })
+        await other.displaySnapshot()
+        for (let attempt = 0; attempt < 100 && !closedSignal; attempt++) await Bun.sleep(5)
+        expect(closedSignal?.aborted).toBe(false)
+        await other.close()
+        expect(closedSignal?.aborted).toBe(true)
+        expect(() => other.onDisplayChange(() => {})).toThrow(NativeStateError)
+        await window.close()
+        expect(app.diagnostics.callbacks).toBe(0)
+      },
+      'details',
+      { windowDisplay: 'allow' }
+    ))
+
+  test.each(['details-missing', 'undeclared-change', 'undeclared-details'])(
+    'details and changes must match the negotiated capabilities: %s',
+    (mode) =>
+      withService(
+        async (app) => {
+          const window = await app.openWindow({ title: 'Mismatched display capability' })
+          const read = window.displaySnapshot()
+          // The valid response can settle before the event loop rejects the stray change.
+          if (mode === 'undeclared-change') await read.catch(() => {})
+          else await assert.rejects(read, ProtocolError)
+          if (mode !== 'undeclared-details') await assert.rejects(app.closed, ProtocolError)
+        },
+        mode,
+        { windowDisplay: 'allow' }
+      )
+  )
 })

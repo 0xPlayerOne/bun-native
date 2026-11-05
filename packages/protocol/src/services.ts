@@ -101,6 +101,23 @@ interface DisplayBounds {
 export interface DisplaySnapshot {
   bounds: DisplayBounds
   scale_factor: number
+  /** Work area in the logical coordinates of `bounds` (`display_details_v1` only). */
+  visible_bounds?: DisplayBounds
+  /** Platform display identifier, lowercase hyphenated (`display_details_v1` only). */
+  display_uuid?: string
+}
+
+const DISPLAY_UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
+
+function displayBounds(value: unknown, name: string): DisplayBounds {
+  const bounds = object(value)
+  keys(bounds, ['x', 'y', 'width', 'height'])
+  return {
+    x: number(bounds['x'], name + ' x', -1_048_576, 1_048_576),
+    y: number(bounds['y'], name + ' y', -1_048_576, 1_048_576),
+    width: number(bounds['width'], name + ' width', Number.MIN_VALUE, 1_048_576),
+    height: number(bounds['height'], name + ' height', Number.MIN_VALUE, 1_048_576),
+  }
 }
 
 export function parseServicePolicy(value: unknown): ServicePolicy {
@@ -128,16 +145,18 @@ export function parseServicePolicy(value: unknown): ServicePolicy {
 
 export function parseDisplaySnapshot(value: unknown): DisplaySnapshot {
   const data = object(value)
-  keys(data, ['bounds', 'scale_factor'])
-  const bounds = object(data['bounds'])
-  keys(bounds, ['x', 'y', 'width', 'height'])
-  return {
-    bounds: {
-      x: number(bounds['x'], 'display x', -1_048_576, 1_048_576),
-      y: number(bounds['y'], 'display y', -1_048_576, 1_048_576),
-      width: number(bounds['width'], 'display width', Number.MIN_VALUE, 1_048_576),
-      height: number(bounds['height'], 'display height', Number.MIN_VALUE, 1_048_576),
-    },
+  keys(data, ['bounds', 'scale_factor', 'visible_bounds', 'display_uuid'])
+  const snapshot: DisplaySnapshot = {
+    bounds: displayBounds(data['bounds'], 'display'),
     scale_factor: number(data['scale_factor'], 'display scale factor', 0.125, 16),
   }
+  if ('visible_bounds' in data)
+    snapshot.visible_bounds = displayBounds(data['visible_bounds'], 'display work area')
+  if ('display_uuid' in data) {
+    const uuid = string(data['display_uuid'], 'display UUID', 36)
+    if (!DISPLAY_UUID.test(uuid))
+      throw new ProtocolError('Native display identity must be a lowercase hyphenated UUID')
+    snapshot.display_uuid = uuid
+  }
+  return snapshot
 }

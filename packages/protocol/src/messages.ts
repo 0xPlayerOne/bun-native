@@ -146,6 +146,8 @@ const CAPABILITIES = [
   'clipboard_text_v1',
   'global_shortcuts_v1',
   'notifications_v1',
+  'display_details_v1',
+  'display_changes_v1',
 ] as const
 export type Capability = (typeof CAPABILITIES)[number]
 
@@ -197,6 +199,7 @@ export type NativeEvent =
   | { type: 'global_shortcut_registered'; id: number; window_id: number; shortcut_id: number }
   | { type: 'global_shortcut_unregistered'; id: number; window_id: number; shortcut_id: number }
   | RoutedEvent
+  | { type: 'display_changed'; sequence: number; window_id: number; snapshot: DisplaySnapshot }
   | { type: 'global_shortcut'; sequence: number; window_id: number; shortcut_id: number }
   | {
       type: 'notification_posted'
@@ -489,6 +492,14 @@ export function parseEvent(value: unknown): NativeEvent {
         id: id(message['id']),
         window_id: id(message['window_id']),
         shortcut_id: id(message['shortcut_id']),
+      }
+    case 'display_changed':
+      keys(message, ['type', 'sequence', 'window_id', 'snapshot'])
+      return {
+        type: 'display_changed',
+        sequence: id(message['sequence']),
+        window_id: id(message['window_id']),
+        snapshot: parseDisplaySnapshot(message['snapshot']),
       }
     case 'global_shortcut':
       keys(message, ['type', 'sequence', 'window_id', 'shortcut_id'])

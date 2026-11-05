@@ -105,8 +105,18 @@ The result is a deeply frozen object:
 interface NativeDisplaySnapshot {
   readonly bounds: Readonly<{ x: number; y: number; width: number; height: number }>
   readonly scaleFactor: number
+  // Only when serviceCapabilities.windowDisplay.details is 'available' (macOS, Windows):
+  readonly visibleBounds?: Readonly<{ x: number; y: number; width: number; height: number }>
+  readonly displayId?: string
 }
 ```
+
+`visibleBounds` and `displayId` exist only where the host advertises the
+optional `display_details_v1` capability, and `window.onDisplayChange()` only
+where it advertises `display_changes_v1`; see
+[macOS and Windows display semantics](#macos-and-windows-display-semantics-299).
+Neither changes `PROTOCOL_VERSION`; a host that sends a detail or a change
+without advertising it fails the session as a protocol error.
 
 Bounds are the GPUI platform display's reported logical pixels; coordinate
 origins depend on its backend. `scaleFactor` is the owning window's current
@@ -121,10 +131,12 @@ clamped into an invented result.
 
 The pinned X11 backend represents an **X screen spanning its monitors**, not a
 physical monitor selected by the window's overlap. Its bounds originate at
-zero and divide X screen pixels by the configured scale. The current API does
-not promise physical monitor identity, refresh rate, work area, DPI, display
-enumeration, display-change events or automatic window placement. On other
-backends, moving a window after a read can make the snapshot stale.
+zero and divide X screen pixels by the configured scale. The API does not
+promise refresh rate, raw DPI, display enumeration or automatic window
+placement anywhere, and offers a work area, display identifier and
+display-change events only through the macOS/Windows capabilities below. A
+snapshot is a read at one instant: moving a window afterwards can make it
+stale.
 These semantics follow the pinned
 [X11 display implementation](https://github.com/zed-industries/zed/blob/ba63a022c9a22ca66d68ef2a8f0bb9b5b0a9984d/crates/gpui_linux/src/linux/x11/display.rs#L14-L55)
 and [GPUI window accessors](https://github.com/zed-industries/zed/blob/ba63a022c9a22ca66d68ef2a8f0bb9b5b0a9984d/crates/gpui/src/window.rs#L3144-L3162).
@@ -181,10 +193,69 @@ following remain **unavailable** and are not part of the public result:
   all zeros, so there is no persistent identity to expose.
 - Mixed DPI: one scale factor per host process; per-monitor scale is not
   exposed by the X11 backend.
-- Wayland, macOS and Windows: not qualified by this fixture. Wayland's GPUI
-  backend does report output changes, but no compositor session is available
-  in the Linux CI lane; macOS and Windows display service execution remains
-  unverified.
+- Wayland: not qualified. Its GPUI backend does report output changes, but no
+  compositor session is available in the Linux CI lane. macOS and Windows have
+  their own fixture, below.
+
+### macOS and Windows display semantics (#299)
+
+On macOS and Windows the host advertises two optional capabilities, behind the
+same `windowDisplay` launch grant; Linux advertises neither, and
+`serviceCapabilities.windowDisplay.details` / `.changes` report
+`'unavailable'` there:
+
+| Capability           | Public result                                | GPUI source (pinned)                                                                                                                                                                                                                                                                                                          |
+| -------------------- | -------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `display_details_v1` | `visibleBounds` (work area) and `displayId`  | macOS [`visible_bounds`/`uuid`](https://github.com/zed-industries/zed/blob/ba63a022c9a22ca66d68ef2a8f0bb9b5b0a9984d/crates/gpui_macos/src/display.rs#L85-L149), Windows [`rcWork`/`szDevice`](https://github.com/zed-industries/zed/blob/ba63a022c9a22ca66d68ef2a8f0bb9b5b0a9984d/crates/gpui_windows/src/display.rs#L39-L77) |
+| `display_changes_v1` | `window.onDisplayChange(listener) => remove` | [`observe_window_display`](https://github.com/zed-industries/zed/blob/ba63a022c9a22ca66d68ef2a8f0bb9b5b0a9984d/crates/gpui/src/window.rs#L2867-L2918), fed by [App `displays_changed`](https://github.com/zed-industries/zed/blob/ba63a022c9a22ca66d68ef2a8f0bb9b5b0a9984d/crates/gpui/src/app.rs#L1699-L1721)                |
+
+- **Work area.** macOS: `NSScreen.visibleFrame` relative to the screen's
+  top-left, so the menu bar and Dock are excluded. Windows: `rcWork` from
+  `GetMonitorInfoW` divided by the monitor's effective DPI scale, in the same
+  global logical coordinates as `bounds`.
+- **Identity.** macOS: `CGDisplayCreateUUIDFromDisplayID`, lowercased.
+  Windows: GPUI derives a v5 UUID from the GDI device name (`\\.\DISPLAYn`,
+  the whole 32-unit `szDevice` buffer), so it identifies an adapter output,
+  not a physical monitor, and can follow a different monitor after
+  reconfiguration. `displayId` is omitted if the OS returns no identifier.
+- **Display changes.** The host observes each owned window, only with the
+  launch grant, and sends `display_changed { sequence, window_id, snapshot }`
+  when GPUI reports that the window moved to another display or that its
+  display's bounds or refresh interval changed (`windowDidChangeScreen` and
+  `NSApplicationDidChangeScreenParametersNotification` on macOS;
+  `WM_DISPLAYCHANGE` on Windows). A change of only the work area or only the
+  scale factor is **not** reported by the pinned GPUI. The subscription
+  belongs to the window entry: closing the window (by `close()` or the OS)
+  drops it in the host, and `close()`, OS close and shutdown revoke every
+  listener in the core, aborting its event `signal`. Removing a listener is
+  immediate and idempotent; queued deliveries for it are dropped.
+
+[`tests/native/display-platform.ts`](../tests/native/display-platform.ts) runs
+in the **Native Platforms** workflow on the hosted `macos-15` and
+`windows-2022` runners, in development and inspected AOT, against the release
+host. Expected values come from oracles that never load GPUI:
+[`macos-display-oracle.m`](../tests/native/macos-display-oracle.m) (NSScreen
+and CoreGraphics), cross-checked by an `osascript` JXA NSScreen read, with
+`system_profiler SPDisplaysDataType` recorded; and
+[`windows-display-oracle.ps1`](../tests/native/windows-display-oracle.ps1)
+(`System.Windows.Forms.Screen` in a per-monitor-DPI-aware process and
+`GetDpiForMonitor`). The fixture asserts the default denial, bounds, work
+area, scale, identity, identical snapshots for two windows on one display,
+then makes a **real display-mode change** (`CGConfigureDisplayWithDisplayMode`
+for the session; `ChangeDisplaySettingsExW`), requires a `display_change`
+matching the OS's new geometry for both owned windows, removes one listener,
+restores the original mode, requires a change back for the other, and checks
+close and shutdown revocation and zero ownership counters.
+
+**This evidence is CI-only.** It was written on Linux, where only the shared
+protocol, core and host code compile and run; the macOS/Windows paths are
+selected by `cfg!` constants rather than separate code, but their native
+behavior is established only by the hosted run's `display-platform.json`
+artifact. If a hosted display offers no other desktop mode or refuses every
+change, the fixture records `displayChange` as unavailable with the mode list
+instead of claiming it. Always unavailable on hosted runners: window migration
+between displays and mixed DPI (one virtual display) and hotplug (no physical
+output).
 
 Reads share the public application's bounded serialized transaction queue.
 `displaySnapshot({ signal })` accepts a real `AbortSignal`; unknown options or

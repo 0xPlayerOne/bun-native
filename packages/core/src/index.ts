@@ -4,6 +4,7 @@ export { ProtocolError } from '@bun-native/protocol'
 export { NativeCommandError } from '@bun-native/runtime'
 export { NativeServiceError } from './services.ts'
 export type {
+  DisplayChangeEvent,
   NativeDisplaySnapshot,
   NativeClipboardText,
   ServiceCapabilities,

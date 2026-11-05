@@ -22,6 +22,8 @@ use std::rc::Rc;
 struct WindowEntry {
     handle: WindowHandle<NativeView>,
     state: SharedWindowState,
+    /// Dropped with the entry, so a closed window reports no display change.
+    _display: Option<gpui::Subscription>,
 }
 
 struct OpenWindow {
@@ -166,6 +168,12 @@ impl Session {
                     Capability::InteractionsV1,
                     Capability::WindowDisplayV1,
                 ];
+                if services::DISPLAY_DETAILS {
+                    capabilities.push(Capability::DisplayDetailsV1);
+                }
+                if services::DISPLAY_CHANGES {
+                    capabilities.push(Capability::DisplayChangesV1);
+                }
                 if self.clipboard.available() {
                     capabilities.push(Capability::ClipboardTextV1);
                 }
@@ -332,9 +340,25 @@ impl Session {
         self.evidence.startup("open_window_returned", id, window_id);
         match result {
             Ok(handle) => {
-                self.windows
-                    .borrow_mut()
-                    .insert(window_id, WindowEntry { handle, state });
+                let display = (services::DISPLAY_CHANGES && self.policy.window_display)
+                    .then(|| {
+                        services::observe_display(
+                            handle.into(),
+                            window_id,
+                            state.clone(),
+                            self.events.clone(),
+                            cx,
+                        )
+                    })
+                    .flatten();
+                self.windows.borrow_mut().insert(
+                    window_id,
+                    WindowEntry {
+                        handle,
+                        state,
+                        _display: display,
+                    },
+                );
                 self.last_window_id = window_id.get();
                 self.last_node_id = root_id.get();
                 cx.activate(true);

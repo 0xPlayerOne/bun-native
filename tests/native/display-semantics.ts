@@ -190,6 +190,15 @@ record('independentScreens', { source: 'xdpyinfo + xwininfo -root', screens })
     const first = await open(app, 'Display semantics first', 480, 320)
     const second = await open(app, 'Display semantics second', 300, 200)
     const want = expected(screens[0]!, 1)
+    // X11 advertises neither the work area/identity nor display changes.
+    assert.equal(app.serviceCapabilities.windowDisplay.details, 'unavailable')
+    assert.equal(app.serviceCapabilities.windowDisplay.changes, 'unavailable')
+    assert(!app.capabilities.some((value) => value.startsWith('display_')))
+    assert.throws(
+      () => first.onDisplayChange(() => {}),
+      (error: unknown) =>
+        error instanceof NativeServiceError && error.code === 'service_unavailable'
+    )
     assertSnapshot(await first.displaySnapshot(), want, 'first window')
     assertSnapshot(await second.displaySnapshot(), want, 'second window')
     const before = await xWindow('Display semantics first')
