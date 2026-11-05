@@ -3,7 +3,7 @@
 use serde::{de, Deserialize, Deserializer, Serialize};
 use std::fmt;
 
-pub const PROTOCOL_VERSION: u32 = 7;
+pub const PROTOCOL_VERSION: u32 = 8;
 pub const MAX_ID: u64 = 9_007_199_254_740_991;
 pub const MAX_FRAME_BYTES: usize = 65_536;
 pub const MAX_TEXT_BYTES: usize = 16_384;
@@ -56,6 +56,7 @@ identifier!(WindowId);
 identifier!(NodeId);
 identifier!(EventSequence);
 identifier!(ShortcutId);
+identifier!(NotificationId);
 
 /// JSON has one number type. Match JavaScript's safe-integer validation even
 /// when a sender spells an integer as `1.0` or `1e0` instead of canonical `1`.
@@ -390,6 +391,18 @@ pub enum Command {
         window_id: WindowId,
         shortcut_id: ShortcutId,
     },
+    PostNotification {
+        id: RequestId,
+        window_id: WindowId,
+        notification_id: NotificationId,
+        title: String,
+        body: String,
+    },
+    WithdrawNotification {
+        id: RequestId,
+        window_id: WindowId,
+        notification_id: NotificationId,
+    },
     Shutdown {
         id: RequestId,
     },
@@ -423,6 +436,7 @@ pub enum Capability {
     WindowDisplayV1,
     ClipboardTextV1,
     GlobalShortcutsV1,
+    NotificationsV1,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -438,6 +452,7 @@ pub struct Limits {
     pub max_clipboard_bytes: usize,
     pub max_service_requests: usize,
     pub max_global_shortcuts: usize,
+    pub max_notifications: usize,
 }
 
 impl Default for Limits {
@@ -453,6 +468,7 @@ impl Default for Limits {
             max_clipboard_bytes: crate::MAX_CLIPBOARD_BYTES,
             max_service_requests: crate::MAX_SERVICE_REQUESTS,
             max_global_shortcuts: crate::MAX_GLOBAL_SHORTCUTS,
+            max_notifications: crate::MAX_NOTIFICATIONS,
         }
     }
 }
@@ -469,6 +485,8 @@ impl Command {
             | Self::ClipboardWrite { id, .. }
             | Self::RegisterGlobalShortcut { id, .. }
             | Self::UnregisterGlobalShortcut { id, .. }
+            | Self::PostNotification { id, .. }
+            | Self::WithdrawNotification { id, .. }
             | Self::Shutdown { id } => *id,
         }
     }
@@ -540,11 +558,15 @@ impl Command {
             Self::RegisterGlobalShortcut { key, modifiers, .. } => {
                 crate::validate_global_shortcut(key, *modifiers)?
             }
+            Self::PostNotification { title, body, .. } => {
+                crate::validate_notification(title, body)?
+            }
             Self::Hello { .. }
             | Self::Close { .. }
             | Self::DisplaySnapshot { .. }
             | Self::ClipboardRead { .. }
             | Self::UnregisterGlobalShortcut { .. }
+            | Self::WithdrawNotification { .. }
             | Self::Shutdown { .. } => {}
         }
         Ok(())

@@ -43,6 +43,7 @@ for await (const chunk of Bun.stdin.stream()) {
             clipboard_read: false,
             clipboard_write: false,
             global_shortcuts: false,
+            notifications: false,
           },
         })
         await emit({ type: 'ack', id: command.id })

@@ -2,7 +2,8 @@
 
 use crate::{
     validate_text, Capability, ClipboardText, DisplaySnapshot, ErrorCode, EventSequence, Limits,
-    NodeId, RequestId, ServicePolicy, ShortcutId, WindowId, MAX_DEPTH, MAX_ID,
+    NodeId, NotificationDismissal, NotificationId, RequestId, ServicePolicy, ShortcutId, WindowId,
+    MAX_DEPTH, MAX_ID,
 };
 use serde::{Deserialize, Serialize};
 
@@ -84,6 +85,32 @@ pub enum Event {
         sequence: EventSequence,
         window_id: WindowId,
         shortcut_id: ShortcutId,
+    },
+    /// The server displays the notification. `activatable` is false when the
+    /// server does not offer actions, so no activation can arrive.
+    NotificationPosted {
+        id: RequestId,
+        window_id: WindowId,
+        notification_id: NotificationId,
+        activatable: bool,
+    },
+    NotificationWithdrawn {
+        id: RequestId,
+        window_id: WindowId,
+        notification_id: NotificationId,
+    },
+    /// The user activated a live notification owned by this window.
+    NotificationActivated {
+        sequence: EventSequence,
+        window_id: WindowId,
+        notification_id: NotificationId,
+    },
+    /// The server removed a live notification; it is no longer owned.
+    NotificationDismissed {
+        sequence: EventSequence,
+        window_id: WindowId,
+        notification_id: NotificationId,
+        reason: NotificationDismissal,
     },
     Click {
         sequence: EventSequence,
