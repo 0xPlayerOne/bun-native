@@ -12,9 +12,16 @@ import { stableChildren } from './order.ts'
 export type Counts = { create: number; set: number; insert: number; remove: number }
 export type Committed = Snapshot & { handle: NativeNode }
 
+// Unchanged nodes share one immutable element across commits; memoize its
+// serialization instead of restringifying the committed side every commit.
+const keys = new WeakMap<Element, string>()
 function key(element: Element): string {
-  return JSON.stringify(element)
+  let value = keys.get(element)
+  if (value === undefined) keys.set(element, (value = JSON.stringify(element)))
+  return value
 }
+
+const noChildren: readonly Node[] = Object.freeze([])
 
 function updateInput(
   window: NativeWindow,
@@ -64,26 +71,39 @@ export async function commitNativeTree(
 ): Promise<{ nodes: Map<Node, Committed>; counts: Counts }> {
   const counts: Counts = { create: 0, set: 0, insert: 0, remove: 0 }
   const next = await window.batch((batch) => {
-    const handles = new Map([...previous].map(([node, state]) => [node, state.handle]))
-    const parents = new Map([...previous].map(([node, state]) => [node, state.parent]))
-    const children = new Map([...previous].map(([node, state]) => [node, [...state.children]]))
+    // Working state overlays `previous` and records only what this batch
+    // changes, instead of copying every committed handle, parent and child list.
+    const created = new Map<Node, NativeNode>()
+    const parents = new Map<Node, Node>()
+    const edited = new Map<Node, Node[]>()
+    const handle = (node: Node) => created.get(node) ?? previous.get(node)!.handle
+    const parentOf = (node: Node) =>
+      parents.has(node) ? parents.get(node) : previous.get(node)?.parent
+    const childrenOf = (node: Node): readonly Node[] =>
+      edited.get(node) ?? previous.get(node)?.children ?? noChildren
+    const editChildren = (node: Node): Node[] => {
+      let list = edited.get(node)
+      if (!list) edited.set(node, (list = [...childrenOf(node)]))
+      return list
+    }
     const attach = (parent: Node, child: Node, index: number) => {
-      const oldParent = parents.get(child)
-      const oldChildren = oldParent && children.get(oldParent)
-      if (oldChildren) oldChildren.splice(oldChildren.indexOf(child), 1)
-      const siblings = children.get(parent)!
-      siblings.splice(index, 0, child)
+      const oldParent = parentOf(child)
+      if (oldParent) {
+        const oldChildren = editChildren(oldParent)
+        oldChildren.splice(oldChildren.indexOf(child), 1)
+      }
+      editChildren(parent).splice(index, 0, child)
       parents.set(child, parent)
-      batch.insert(handles.get(parent)! as NativeNode<'box'>, handles.get(child)!, index)
+      batch.insert(handle(parent) as NativeNode<'box'>, handle(child), index)
       counts.insert += 1
     }
     // Rescue retained keyed descendants before deleting an obsolete ancestor.
     // Moving them temporarily to this root also frees capacity before creations.
     const rescue = (node: Node): void => {
       // attach mutates the source sibling array, so traversal needs a snapshot.
-      const descendants = children.get(node)?.slice() ?? []
+      const descendants = childrenOf(node).slice()
       for (const child of descendants) {
-        if (desired.has(child)) attach(root, child, children.get(root)!.length)
+        if (desired.has(child)) attach(root, child, childrenOf(root).length)
         else rescue(child)
       }
     }
@@ -92,9 +112,12 @@ export async function commitNativeTree(
       rescue(node)
       batch.remove(state.handle)
       counts.remove += 1
-      const siblings = state.parent && children.get(state.parent)
-      if (siblings) siblings.splice(siblings.indexOf(node), 1)
+      if (state.parent) {
+        const siblings = editChildren(state.parent)
+        siblings.splice(siblings.indexOf(node), 1)
+      }
     }
+    const nodes = new Map<Node, Committed>()
     for (const [node, state] of desired) {
       const old = previous.get(node)
       if (!old) {
@@ -108,15 +131,24 @@ export async function commitNativeTree(
             'stale_revision',
             'New input value intent requires revision zero'
           )
-        const handle = batch.create(state.element)
-        handles.set(node, handle)
-        children.set(node, [])
+        const nativeNode = batch.create(state.element)
+        created.set(node, nativeNode)
+        edited.set(node, [])
         counts.create += 1
         if (node === root) {
-          batch.append(window.root, handle)
+          batch.append(window.root, nativeNode)
           counts.insert += 1
         }
-      } else if (state.element.kind === 'input') {
+        nodes.set(node, { ...state, handle: nativeNode })
+        continue
+      }
+      // Element identity means the same reused capture with an unchanged handle.
+      if (old.element === state.element) {
+        nodes.set(node, old)
+        continue
+      }
+      nodes.set(node, { ...state, handle: old.handle })
+      if (state.element.kind === 'input') {
         if (updateInput(window, batch, old, { ...state, element: state.element })) counts.set += 1
       } else if (key(old.element) !== key(state.element)) {
         batch.set(old.handle as NativeNode<Exclude<Element['kind'], 'input'>>, state.element)
@@ -125,28 +157,28 @@ export async function commitNativeTree(
     }
 
     for (const [parent, state] of desired) {
-      const siblings = children.get(parent)!
+      const current = childrenOf(parent)
       if (
-        siblings.length === state.children.length &&
-        siblings.every((child, index) => child === state.children[index])
+        current === state.children ||
+        (current.length === state.children.length &&
+          current.every((child, index) => child === state.children[index]))
       )
         continue
+      const siblings = editChildren(parent)
       const stable = stableChildren(siblings, state.children)
       let anchor: Node | undefined
       for (let index = state.children.length - 1; index >= 0; index -= 1) {
         const child = state.children[index]!
         if (!stable.has(child)) {
           const before = anchor === undefined ? siblings.length : siblings.indexOf(anchor)
-          const old = parents.get(child) === parent ? siblings.indexOf(child) : -1
+          const old = parentOf(child) === parent ? siblings.indexOf(child) : -1
           // Native insert indices are interpreted after detaching the child.
           attach(parent, child, before - (old >= 0 && old < before ? 1 : 0))
         }
         anchor = child
       }
     }
-    return new Map(
-      [...desired].map(([node, state]) => [node, { ...state, handle: handles.get(node)! }])
-    )
+    return nodes
   })
   return { nodes: next, counts }
 }

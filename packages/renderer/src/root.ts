@@ -5,7 +5,15 @@ import {
   type NativeWindow,
   type Style,
 } from '@bun-native/core'
-import { Node, setProperty, snapshot, visit, type Owner, type Snapshot } from './nodes.ts'
+import {
+  invalidate,
+  Node,
+  setProperty,
+  snapshot,
+  visit,
+  type Owner,
+  type Snapshot,
+} from './nodes.ts'
 import { commitNativeTree, type Committed, type Counts } from './native-tree.ts'
 import { observeInput } from './input-intent.ts'
 import { watchWindow } from './window-lifetime.ts'
@@ -237,6 +245,7 @@ class Root implements RenderRoot, Owner {
     }
     for (const node of this.registrations.keys()) this.revoke(node)
     visit(this.root, (node) => {
+      invalidate(node)
       node.owner = undefined
       for (const name of Object.keys(node.properties))
         if (isEventProperty(name)) delete node.properties[name]
@@ -250,6 +259,7 @@ class Root implements RenderRoot, Owner {
     this.unwatch = undefined
     this.committed.clear()
     this.root.children.length = 0
+    invalidate(this.root)
     if (this.failure) this.rejectClosed(this.failure)
     else this.resolveClosed()
   }
@@ -283,7 +293,10 @@ class Root implements RenderRoot, Owner {
     for (const node of this.registrations.keys())
       if (!next.has(node) || node.owner !== this) this.revoke(node)
     for (const [node, state] of next) {
-      if (node.owner !== this) continue
+      // A reused capture's registrations were reconciled by the previous commit.
+      // Detaching revokes them, but every reinsertion invalidates the subtree's
+      // captures, so an identical committed state still owns matching listeners.
+      if (state === previous.get(node) || node.owner !== this) continue
       for (const [name, registration] of this.registrations.get(node) ?? [])
         if (state.events[name] !== registration.listener) this.revoke(node, name)
       for (const [name, listener] of Object.entries(state.events)) {
