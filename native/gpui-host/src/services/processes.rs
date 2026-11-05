@@ -1,10 +1,18 @@
 //! Owned child processes. Each process has one thread that starts it, moves
-//! its output under a delivery credit and observes its exit through a pidfd.
-//! The UI thread holds only shared state, so a stalled child never blocks
-//! input, paint or the tree queue.
+//! its output under a delivery credit and observes its exit (a pidfd on
+//! Linux, a `waitid(WNOWAIT)` watcher on macOS). The UI thread holds only
+//! shared state, so a stalled child never blocks input, paint or the tree
+//! queue.
+
+#[cfg(target_os = "linux")]
+#[path = "processes/linux.rs"]
+mod platform;
+#[cfg(target_os = "macos")]
+#[path = "processes/macos.rs"]
+mod platform;
 
 use crate::channel::EventSink;
-use crate::services::files::{Directory, directory_beneath, failure as path_failure};
+use crate::services::files::Directory;
 use async_channel::{Receiver, Sender};
 use base64::Engine as _;
 use base64::engine::general_purpose::STANDARD;
@@ -14,18 +22,17 @@ use bun_native_protocol::{
     RequestId, TerminalSize, WindowId,
 };
 use gpui::{App, BackgroundExecutor, Task};
-use rustix::event::{EventfdFlags, PollFd, PollFlags, eventfd, poll};
+use platform::{ExitWatch, Wake};
+use rustix::event::{PollFd, PollFlags, poll};
 use rustix::fs::{OFlags, fcntl_getfl, fcntl_setfl};
 use rustix::io::Errno;
-use rustix::process::{
-    Pid, PidfdFlags, Signal, WaitId, WaitIdOptions, kill_process_group, pidfd_open, waitid,
-};
+use rustix::process::{Pid, Signal, kill_process_group};
 use std::cell::{Cell, RefCell};
 use std::collections::{BTreeMap, VecDeque};
 use std::io::{ErrorKind, Read as _, Write as _};
-use std::os::fd::{AsFd, AsRawFd as _, OwnedFd};
+use std::os::fd::{AsFd, OwnedFd};
 use std::os::unix::process::{CommandExt as _, ExitStatusExt as _};
-use std::process::{Child, Command, Stdio};
+use std::process::{Child, Command, ExitStatus, Stdio};
 use std::rc::Rc;
 use std::sync::{Arc, Mutex, MutexGuard};
 use std::thread::JoinHandle;
@@ -52,10 +59,17 @@ struct State {
 
 struct Control {
     state: Mutex<State>,
-    wake: OwnedFd,
+    wake: Wake,
 }
 
 impl Control {
+    fn new() -> std::io::Result<Self> {
+        Ok(Self {
+            state: Mutex::new(State::default()),
+            wake: Wake::new()?,
+        })
+    }
+
     fn lock(&self) -> MutexGuard<'_, State> {
         self.state
             .lock()
@@ -63,7 +77,7 @@ impl Control {
     }
 
     fn wake(&self) {
-        let _ = rustix::io::write(&self.wake, &1u64.to_ne_bytes());
+        self.wake.notify();
     }
 }
 
@@ -122,10 +136,8 @@ impl Processes {
         }))
     }
 
-    /// pidfd (Linux 5.3) observes exit without a signal handler; filesystem
-    /// grants already require 5.6.
     pub(crate) fn available(&self) -> bool {
-        pidfd_open(rustix::process::getpid(), PidfdFlags::empty()).is_ok()
+        platform::available()
     }
 
     pub(crate) fn spawn(
@@ -147,10 +159,7 @@ impl Processes {
             .executable
             .clone();
         if !self.available() {
-            return Err((
-                ErrorCode::ServiceUnavailable,
-                "owned processes require Linux pidfd support",
-            ));
+            return Err((ErrorCode::ServiceUnavailable, platform::UNAVAILABLE));
         }
         if self.0.stopping.get() {
             return Err((ErrorCode::Cancelled, "native processes are shutting down"));
@@ -164,16 +173,12 @@ impl Processes {
         if self.0.entries.borrow().len() >= MAX_PROCESSES {
             return Err((ErrorCode::LimitExceeded, "owned process limit exceeded"));
         }
-        let wake = eventfd(0, EventfdFlags::CLOEXEC | EventfdFlags::NONBLOCK).map_err(|_| {
+        let control = Arc::new(Control::new().map_err(|_| {
             (
                 ErrorCode::NativeFailure,
                 "cannot create a process wake event",
             )
-        })?;
-        let control = Arc::new(Control {
-            state: Mutex::new(State::default()),
-            wake,
-        });
+        })?);
         let (master, terminal) = match spawn.launch.terminal {
             Some(size) => {
                 let (master, pts) = open_terminal(size)?;
@@ -293,8 +298,15 @@ impl Processes {
                         .filter(|_| !state.reaped)
                         .ok_or((ErrorCode::InvalidState, "the process has exited"))?;
                     // The unreaped leader keeps its group ID from being reused.
-                    kill_process_group(group, native_signal(signal))
-                        .map_err(|_| (ErrorCode::NativeFailure, "cannot signal the process"))?;
+                    // macOS may count a group holding only that zombie as
+                    // empty: the process has exited either way.
+                    kill_process_group(group, native_signal(signal)).map_err(|error| {
+                        if error == Errno::SRCH {
+                            (ErrorCode::InvalidState, "the process has exited")
+                        } else {
+                            (ErrorCode::NativeFailure, "cannot signal the process")
+                        }
+                    })?;
                 }
                 Change::Acknowledge(_) => unreachable!(),
             }
@@ -577,7 +589,7 @@ struct Job {
     process: ProcessId,
     executable: String,
     launch: ProcessLaunch,
-    directory: Option<(Arc<OwnedFd>, String)>,
+    directory: Option<(Directory, String)>,
     terminal: Option<Terminal>,
     control: Arc<Control>,
     messages: Sender<Message>,
@@ -607,22 +619,7 @@ impl Job {
 
     fn start(self) -> Result<Running, Failure> {
         // The grant descriptor, not a path string, names the working directory.
-        let directory = match &self.directory {
-            Some((root, path)) => {
-                Some(
-                    directory_beneath(root, path).map_err(|failure| match failure.0 {
-                        ErrorCode::NotFound | ErrorCode::WrongKind | ErrorCode::PathDenied => {
-                            failure
-                        }
-                        _ => path_failure(Errno::ACCESS),
-                    })?,
-                )
-            }
-            None => None,
-        };
-        let cwd = directory
-            .as_ref()
-            .map(|fd| format!("/proc/self/fd/{}", fd.as_raw_fd()));
+        let (directory, cwd) = platform::working_directory(self.directory.as_ref())?.unzip();
         let env = self.launch.env.iter();
         let terminal = self.terminal.is_some();
         let (mut child, input, streams) = match self.terminal {
@@ -701,12 +698,8 @@ impl Job {
             ErrorCode::NativeFailure,
             "the operating system reported no process ID",
         ));
-        let pidfd = pid.and_then(|pid| {
-            pidfd_open(pid, PidfdFlags::empty())
-                .map(|fd| (pid, fd))
-                .map_err(|_| (ErrorCode::NativeFailure, "cannot observe the process"))
-        });
-        let (pid, pidfd) = match pidfd {
+        let watch = pid.and_then(|pid| ExitWatch::new(pid).map(|watch| (pid, watch)));
+        let (pid, watch) = match watch {
             Ok(value) => value,
             Err(failure) => {
                 let _ = child.kill();
@@ -721,11 +714,11 @@ impl Job {
         Ok(Running {
             child,
             group: pid,
-            pidfd,
+            watch,
             input,
             terminal,
             streams,
-            exit: None,
+            exited: false,
         })
     }
 }
@@ -733,11 +726,27 @@ impl Job {
 struct Running {
     child: Child,
     group: Pid,
-    pidfd: OwnedFd,
+    watch: ExitWatch,
     input: Option<OwnedFd>,
     terminal: bool,
     streams: Vec<Stream>,
-    exit: Option<ProcessExit>,
+    /// The leader has exited and its group was stopped; it is not yet reaped.
+    exited: bool,
+}
+
+/// The exit as the reaping `waitpid` reported it.
+fn exit_of(status: ExitStatus) -> Option<ProcessExit> {
+    match (status.code(), status.signal()) {
+        (Some(code), _) => Some(ProcessExit {
+            code: Some(code & 0xff),
+            signal: None,
+        }),
+        (None, Some(signal)) => Some(ProcessExit {
+            code: None,
+            signal: Some(signal),
+        }),
+        (None, None) => None,
+    }
 }
 
 enum Slot {
@@ -766,19 +775,17 @@ impl Running {
                     !state.input.is_empty() && self.input.is_some(),
                 )
             };
-            if self.exit.is_some() && self.streams.iter().all(|stream| !stream.open) {
-                let exit = self.exit.take();
-                self.reap(control);
-                if let Some(exit) = exit {
+            if self.exited && self.streams.iter().all(|stream| !stream.open) {
+                if let Some(exit) = self.reap(control) {
                     let _ = messages.send_blocking(Message::Exited(process, exit));
                 }
                 return;
             }
             let mut slots = vec![Slot::Wake];
             let mut fds = vec![PollFd::new(&control.wake, PollFlags::IN)];
-            if self.exit.is_none() {
+            if !self.exited {
                 slots.push(Slot::Exit);
-                fds.push(PollFd::new(&self.pidfd, PollFlags::IN));
+                fds.push(PollFd::new(&self.watch, PollFlags::IN));
             }
             if credit {
                 for (index, stream) in self.streams.iter().enumerate() {
@@ -805,10 +812,7 @@ impl Running {
             drop(fds);
             for index in ready {
                 match slots[index] {
-                    Slot::Wake => {
-                        let mut value = [0; 8];
-                        let _ = rustix::io::read(&control.wake, &mut value);
-                    }
+                    Slot::Wake => control.wake.drain(),
                     Slot::Exit => self.observe_exit(),
                     Slot::Stream(stream) => {
                         if !self.read(stream, &mut buffer, process, control, messages) {
@@ -819,41 +823,30 @@ impl Running {
                 }
             }
         }
-        // Released: stop the whole group, then reap the leader.
+        // Released: stop the whole group, then reap the leader once nothing
+        // else observes its PID.
         let _ = kill_process_group(self.group, Signal::KILL);
+        self.watch.finish();
         let _ = self.child.wait();
     }
 
     /// The leader has exited but is not reaped, so its group ID still names
     /// only its own descendants. Stop them so every output end closes.
     fn observe_exit(&mut self) {
-        let Ok(Some(status)) = waitid(
-            WaitId::PidFd(self.pidfd.as_fd()),
-            WaitIdOptions::EXITED | WaitIdOptions::NOWAIT | WaitIdOptions::NOHANG,
-        ) else {
+        if !self.watch.exited() {
             return;
-        };
-        let exit = match (status.exit_status(), status.terminating_signal()) {
-            (Some(code), _) => ProcessExit {
-                code: Some(code & 0xff),
-                signal: None,
-            },
-            (None, Some(signal)) => ProcessExit {
-                code: None,
-                signal: Some(signal),
-            },
-            (None, None) => return,
-        };
+        }
         let _ = kill_process_group(self.group, Signal::KILL);
         self.input = None;
-        self.exit = Some(exit);
+        self.exited = true;
     }
 
-    fn reap(&mut self, control: &Control) {
+    fn reap(&mut self, control: &Control) -> Option<ProcessExit> {
         control.lock().reaped = true;
-        if let Ok(status) = self.child.wait() {
-            debug_assert!(status.code().is_some() || status.signal().is_some());
-        }
+        self.watch.finish();
+        let exit = self.child.wait().ok().and_then(exit_of);
+        debug_assert!(exit.is_some(), "a reaped leader has exited or was killed");
+        exit
     }
 
     /// Returns false when the UI side is gone.
@@ -927,9 +920,11 @@ impl Running {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[cfg(target_os = "linux")]
     use std::os::unix::fs::symlink;
     use std::time::Duration;
 
+    #[cfg(target_os = "linux")]
     fn temp() -> std::path::PathBuf {
         let path = std::env::temp_dir().join(format!(
             "bun-native-processes-{}-{}",
@@ -956,10 +951,7 @@ mod tests {
         terminal: Option<TerminalSize>,
     ) -> Started {
         let (sender, messages) = async_channel::bounded(16);
-        let control = Arc::new(Control {
-            state: Mutex::new(State::default()),
-            wake: eventfd(0, EventfdFlags::CLOEXEC | EventfdFlags::NONBLOCK).unwrap(),
-        });
+        let control = Arc::new(Control::new().unwrap());
         let job = Job {
             process: ProcessId::try_from(1).unwrap(),
             executable: "/bin/sh".into(),
@@ -1038,6 +1030,7 @@ mod tests {
         );
     }
 
+    #[cfg(target_os = "linux")]
     #[test]
     fn the_working_directory_comes_from_a_grant_descriptor_without_links() {
         let base = temp();
@@ -1076,10 +1069,39 @@ mod tests {
         std::fs::remove_dir_all(base).unwrap();
     }
 
+    /// macOS cannot start a child in a grant descriptor, so a cwd is refused
+    /// before anything is spawned rather than replaced with a path.
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn a_working_directory_is_refused_rather_than_replaced_with_a_path() {
+        let root = std::sync::Arc::new(
+            rustix::fs::open(
+                "/tmp",
+                OFlags::DIRECTORY | OFlags::CLOEXEC,
+                rustix::fs::Mode::empty(),
+            )
+            .unwrap(),
+        );
+        let started = start("true", &[], Some((root, "")), None);
+        match started.messages.recv_blocking().unwrap() {
+            Message::Spawned(_, Err((code, _))) => assert_eq!(code, ErrorCode::ServiceUnavailable),
+            _ => panic!("a cwd must fail before the process starts"),
+        }
+        started.thread.join().unwrap();
+    }
+
     #[test]
     fn a_terminal_process_is_a_session_leader_on_a_sized_pseudo_terminal() {
+        // Linux ps reports the session ID; macOS ps has none, so there the
+        // group ID stands in and the state flags carry session leadership.
+        #[cfg(target_os = "linux")]
+        const LEADER: &str = "ps -o sid= -p $$ | tr -d ' '";
+        #[cfg(target_os = "macos")]
+        const LEADER: &str = "ps -o pgid= -p $$ | tr -d ' '";
         let (output, exit) = finish(start(
-            "stty size; test -t 0 && test -t 1 && echo tty; ps -o sid= -p $$ | tr -d ' '; echo $$",
+            &format!(
+                "stty size; test -t 0 && test -t 1 && echo tty; {LEADER}; echo $$; ps -o stat= -p $$"
+            ),
             &[("PATH", "/usr/bin:/bin")],
             None,
             Some(TerminalSize {
@@ -1098,6 +1120,11 @@ mod tests {
         assert_eq!(
             lines[2], lines[3],
             "the child leads its own session: {text:?}"
+        );
+        // `s`: a session leader; `+`: in its controlling terminal's foreground group.
+        assert!(
+            lines[4].contains('s') && lines[4].contains('+'),
+            "the terminal controls the child's session: {text:?}"
         );
         assert_eq!(exit.code, Some(0));
     }
@@ -1174,28 +1201,88 @@ mod tests {
                 signal: Some(15)
             }
         );
-        let _ = group;
-        // The group was killed on exit: the descendant is gone or a zombie
-        // awaiting its new parent. Signal delivery is asynchronous, so a
-        // killed process may still be running its exit path (state R) for a
-        // moment under load; it must finish dying within the bound.
-        let stat = || {
-            std::fs::read_to_string(format!("/proc/{}/stat", grandchild.as_raw_nonzero()))
-                .map(|stat| stat.rsplit_once(") ").map(|(_, rest)| rest.as_bytes()[0]))
-                .unwrap_or(Some(b'Z'))
-        };
+        // The group was stopped on exit: the descendant is gone or a zombie
+        // awaiting its new parent, never still running.
+        assert!(stopped(grandchild));
+    }
+
+    /// True once `pid` no longer runs. A SIGKILL is delivered asynchronously
+    /// and a dying process closes its files before it becomes a zombie, so
+    /// the state is polled briefly rather than read once.
+    fn stopped(pid: Pid) -> bool {
         let deadline = std::time::Instant::now() + Duration::from_secs(5);
-        let mut state = stat();
-        while state != Some(b'Z') && std::time::Instant::now() < deadline {
+        while !not_running(pid) {
+            if std::time::Instant::now() > deadline {
+                return false;
+            }
             std::thread::sleep(Duration::from_millis(10));
-            state = stat();
         }
-        assert_eq!(state, Some(b'Z'));
+        true
+    }
+
+    /// True when `pid` no longer runs: gone, or a zombie for init to reap.
+    #[cfg(target_os = "linux")]
+    fn not_running(pid: Pid) -> bool {
+        std::fs::read_to_string(format!("/proc/{}/stat", pid.as_raw_nonzero()))
+            .map(|stat| stat.rsplit_once(") ").map(|(_, rest)| rest.as_bytes()[0]))
+            .unwrap_or(Some(b'Z'))
+            == Some(b'Z')
+    }
+
+    /// True when `pid` no longer runs: gone, or a zombie for launchd to reap.
+    #[cfg(target_os = "macos")]
+    fn not_running(pid: Pid) -> bool {
+        let output = Command::new("/bin/ps")
+            .args(["-o", "stat=", "-p", &pid.as_raw_nonzero().to_string()])
+            .output()
+            .unwrap();
+        let state = String::from_utf8(output.stdout).unwrap();
+        state.trim().is_empty() || state.trim_start().starts_with('Z')
+    }
+
+    #[test]
+    fn the_leader_exit_stops_descendants_that_hold_its_output_open() {
+        let begun = std::time::Instant::now();
+        let started = start(
+            "sleep 30 & echo $!; exit 4",
+            &[("PATH", "/usr/bin:/bin")],
+            None,
+            None,
+        );
+        let mut descendant = String::new();
+        let exit = loop {
+            match started.messages.recv_blocking().unwrap() {
+                Message::Output(_, _, data) => {
+                    descendant.push_str(std::str::from_utf8(&data).unwrap());
+                    started.control.lock().acknowledged += 1;
+                    started.control.wake();
+                }
+                Message::Spawned(_, result) => assert!(result.is_ok()),
+                Message::Exited(_, exit) => break exit,
+            }
+        };
+        started.thread.join().unwrap();
+        // The background sleep shares stdout: output could only end this soon
+        // because the group was killed while the exited leader held its ID.
+        assert!(begun.elapsed() < Duration::from_secs(20));
+        assert_eq!(
+            exit,
+            ProcessExit {
+                code: Some(4),
+                signal: None
+            }
+        );
+        let descendant = Pid::from_raw(descendant.trim().parse().unwrap()).unwrap();
+        assert!(stopped(descendant));
+        assert!(started.control.lock().reaped);
     }
 
     #[test]
     fn release_kills_and_reaps_without_reporting_an_exit() {
-        let started = start("sleep 30", &[("PATH", "/usr/bin:/bin")], None, None);
+        // exec: a forked sleep would be orphaned to init on the kill and stay
+        // in the group as a zombie until init reaps it, which a container
+        // init may never do, so the group check below would race it.
+        let started = start("exec sleep 30", &[("PATH", "/usr/bin:/bin")], None, None);
         assert!(matches!(
             started.messages.recv_blocking().unwrap(),
             Message::Spawned(_, Ok(()))
@@ -1224,10 +1311,7 @@ mod tests {
             },
             directory: None,
             terminal: None,
-            control: Arc::new(Control {
-                state: Mutex::new(State::default()),
-                wake: eventfd(0, EventfdFlags::CLOEXEC).unwrap(),
-            }),
+            control: Arc::new(Control::new().unwrap()),
             messages: sender,
         };
         job.run();

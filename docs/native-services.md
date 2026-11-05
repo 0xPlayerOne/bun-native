@@ -569,7 +569,9 @@ of 4,096 bytes) and `env` is the **complete** environment (at most 64 entries;
 nothing is inherited from the host), with arguments and environment together
 at most 32,768 bytes. A working directory comes only from a live file grant of
 the same window; the host resolves `path` beneath the grant descriptor with the
-same `openat2` rules as file requests, so links are never followed.
+same `openat2` rules as file requests, so links are never followed. macOS
+has no filesystem grants, so a process there cannot be given a working
+directory and starts in the host's.
 
 Without `terminal`, standard input, output and error are three pipes and output
 events name `stdout` or `stderr`. With `terminal: { columns, rows }` the child
@@ -605,7 +607,7 @@ or directory), `path_denied` (the directory crosses a link), `wrong_kind`,
 `invalid_state`, `service_unavailable`, `native_failure` or `cancelled`.
 Releasing the process, closing its window or stopping the application kills
 and reaps its group; no later output or exit is delivered. The optional
-`processes_v1` feature is advertised only on Linux with pidfd support; the
+`processes_v1` feature is advertised on Linux with pidfd support and on macOS; the
 frozen `ptyProcess` capability record lists the executables by ID with
 `backend: 'posix'`, and other targets report `unavailable` /
 `unsupported_platform`.
@@ -617,8 +619,14 @@ outputs, exit statuses and the working directory independently, confirms
 through `/proc` that descendants stop with their group on exit, release, owner
 close and shutdown, and drives the private runtime to confirm that the host
 rejects foreign, stale and reused process IDs. See
-[ADR 0011](decisions/0011-owned-processes.md). macOS and Windows remain
-unavailable.
+[ADR 0011](decisions/0011-owned-processes.md).
+
+The macOS backend (a pipe wake and a `waitid(WNOWAIT)` exit watcher in place of
+eventfd and pidfd; the same process groups and `pty-process` terminals) runs the
+host unit tests and the same native test in development and AOT in the
+[Native Platforms](../.github/workflows/native-platforms.yml) macOS 15 job,
+checking groups through `ps`. It is compile-checked locally only; macOS
+behavior is claimed from that CI job. Windows remains unavailable.
 
 ## Service and platform matrix
 
@@ -637,7 +645,7 @@ already exists. The linked follow-ups belong to
 | Notifications     | `postNotification`; `notifications` grant                     | Freedesktop D-Bus (dunst) dev+AOT verified                                                          | Unavailable                  | Unavailable                  | macOS/Windows backends, additional notification servers, named actions and replacement. [#302](https://github.com/0xPlayerOne/bun-native/issues/302).                                             |
 | Drag/drop         | Capability `dragDrop`; unavailable                            | Unavailable                                                                                         | Unavailable                  | Unavailable                  | Bounded untrusted payload, owned target, native cancellation and explicit file-grant conversion. [#303](https://github.com/0xPlayerOne/bun-native/issues/303).                                    |
 | Filesystem grants | `openFileGrant`; `filesystemRoots` launch roots               | openat2 dev+AOT verified locally                                                                    | `openat` walk; CI-only       | Unavailable                  | OS file selection and dropped files as explicit user grants, Windows confinement. [#304](https://github.com/0xPlayerOne/bun-native/issues/304).                                                   |
-| PTY/process       | `spawnProcess`; `processes` launch executables                | Pipes and PTY dev+AOT verified locally                                                              | Unavailable                  | Unavailable                  | macOS/Windows backends (ConPTY), descendants that leave the group, resource limits. [#305](https://github.com/0xPlayerOne/bun-native/issues/305).                                                 |
+| PTY/process       | `spawnProcess`; `processes` launch executables                | Pipes and PTY dev+AOT verified locally                                                              | Dev+AOT in CI only; no `cwd` | Unavailable                  | macOS `cwd`, Windows backend (ConPTY), descendants that leave the group, resource limits. [#305](https://github.com/0xPlayerOne/bun-native/issues/305).                                           |
 
 For the deferred rows, the exported typed contract is the frozen availability
 record in `ServiceCapabilities`. There is no callable operation, configurable
