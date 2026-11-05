@@ -67,7 +67,8 @@ export interface ServiceCapabilities {
         scope: 'owned_target'
         /** Local files only, delivered as untrusted display names. */
         payload: 'files'
-        backend: 'x11'
+        /** GPUI's X11 XDND target, AppKit dragging destination or OLE drop target. */
+        backend: DropBackend
       }>
     | Readonly<{ availability: 'unavailable'; reason: 'unsupported_platform' }>
   readonly filesystemGrants:
@@ -80,6 +81,15 @@ export interface ServiceCapabilities {
       }>
     | Readonly<{ availability: 'unavailable'; reason: 'unsupported_platform' }>
   readonly ptyProcess: UnavailableService
+}
+
+type DropBackend = 'x11' | 'appkit' | 'ole'
+
+/** The host runs beside the core, so its platform names the drop backend. */
+function dropBackend(): DropBackend {
+  if (process.platform === 'darwin') return 'appkit'
+  if (process.platform === 'win32') return 'ole'
+  return 'x11'
 }
 
 export class NativeServiceError extends Error {
@@ -155,7 +165,7 @@ export function serviceCapabilities(
           permission: policy.drag_drop ? 'allow' : 'deny',
           scope: 'owned_target',
           payload: 'files',
-          backend: 'x11',
+          backend: dropBackend(),
         })
       : Object.freeze({ availability: 'unavailable', reason: 'unsupported_platform' }),
     filesystemGrants: capabilities.includes('filesystem_grants_v1')

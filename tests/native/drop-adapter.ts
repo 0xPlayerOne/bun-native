@@ -1,6 +1,6 @@
 /**
  * One real drag-and-drop oracle shared by the Solid and React fixtures. The
- * independent `xdnd-source` X11 client performs every drag; the frameworks
+ * independent OS drag source (`drag-source.ts`) performs every drag; the frameworks
  * only mount, register through their public `registerDropTarget` export and
  * unmount the zone in the middle of a drag.
  */
@@ -13,10 +13,10 @@ import {
 } from '@bun-native/core'
 import type { RenderRoot } from '@bun-native/renderer'
 import assert from 'node:assert/strict'
-import { mkdirSync, mkdtempSync, rmSync, statSync, writeFileSync } from 'node:fs'
+import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
-import { isAbsolute, join } from 'node:path'
-import { accepted, until, uris, XdndSource } from './xdnd-source.ts'
+import { join } from 'node:path'
+import { dragBackend, dragEnvironment, DragSource, until } from './drag-source.ts'
 
 export type DropAdapterMount = (
   window: NativeWindow,
@@ -35,27 +35,8 @@ export async function runDropAdapter(
   framework: 'solid' | 'react',
   mount: DropAdapterMount
 ): Promise<void> {
-  const output = process.env['BUN_NATIVE_DRAG_DROP_EVIDENCE']
-  const executable = process.env['BUN_NATIVE_HOST']
-  const source = process.env['BUN_NATIVE_XDND_SOURCE']
-  const mode = process.env['BUN_NATIVE_DRAG_DROP_MODE']
-  if (
-    !output ||
-    !isAbsolute(output) ||
-    !statSync(output).isDirectory() ||
-    !executable ||
-    !isAbsolute(executable) ||
-    !source ||
-    !isAbsolute(source) ||
-    (mode !== 'development' && mode !== 'aot') ||
-    !process.env['DISPLAY'] ||
-    process.env['WAYLAND_DISPLAY']
-  )
-    throw new Error(
-      'An isolated X11 display, evidence directory, host, XDND source and mode are required'
-    )
-
-  const base = mkdtempSync(join(tmpdir(), 'bun-native-drop-' + framework + '-'))
+  const { output, host: executable, source, mode } = dragEnvironment()
+  const base = realpathSync(mkdtempSync(join(tmpdir(), 'bun-native-drop-' + framework + '-')))
   const work = join(base, 'work')
   mkdirSync(work)
   writeFileSync(join(work, 'a.txt'), 'alpha')
@@ -80,10 +61,11 @@ export async function runDropAdapter(
     executable,
     permissions: {
       dragDrop: 'allow',
-      filesystemRoots: [{ id: 'work', path: work, access: 'read' }],
+      // Launch roots are POSIX paths; none can be declared on Windows.
+      filesystemRoots: dragBackend === 'ole' ? [] : [{ id: 'work', path: work, access: 'read' }],
     },
   })
-  const xdnd = new XdndSource(source)
+  const xdnd = new DragSource(source)
   try {
     const title = `Bun Native ${framework} drop`
     const window = await app.openWindow({ title, width: 560, height: 380 })
@@ -92,14 +74,19 @@ export async function runDropAdapter(
     await view.ready
     assert.equal(mounted.mounted(), true)
     const first = await mounted.register(listener)
-    assert.deepEqual(await xdnd.send('find ' + title), { found: true })
+    await xdnd.find(title, 560, 380)
 
     // A real drop through the adapter-registered target, then explicit resolution.
-    await xdnd.send('offer uri ' + JSON.stringify(uris(join(work, 'a.txt'))))
+    await xdnd.offerFiles([join(work, 'a.txt')])
     let mark = log.length
-    assert.deepEqual(await xdnd.send('enter 130 150'), { status: accepted, conversions: 1 })
+    await xdnd.enter(130, 150)
+    // As below: hover needs a painted frame holding the registered element.
+    for (let step = 1; log.length === mark && step <= 40; step++) {
+      await Bun.sleep(25)
+      await xdnd.move(130 + (step % 2), 150 + (step % 2))
+    }
     await until('adapter drag entry', () => log.length > mark)
-    assert.deepEqual(await xdnd.send('drop'), { finished: accepted })
+    await xdnd.drop()
     await until('adapter drop', () => log.length > mark + 1)
     assert.deepEqual(await since(mark), [
       { type: 'drag_entered' },
@@ -108,16 +95,29 @@ export async function runDropAdapter(
     const drop = events.at(-1)
     assert(drop?.type === 'drop')
     assert.equal(drop.target, first)
-    const resolved = await drop.items[0]!.resolve('work')
-    assert.deepEqual(resolved, { root: 'work', path: 'a.txt' })
-    const grant = await window.openFileGrant(resolved.root)
-    assert.equal(new TextDecoder().decode((await grant.read(resolved.path)).bytes), 'alpha')
-    await grant.close()
-    outcomes['adapterDrop'] = { items: ['a.txt'], resolved, grantRead: 'alpha' }
+    if (dragBackend === 'ole') {
+      await assert.rejects(
+        drop.items[0]!.resolve('work'),
+        (error: unknown) =>
+          error instanceof NativeServiceError && error.code === 'permission_denied'
+      )
+      outcomes['adapterDrop'] = { items: ['a.txt'], resolved: 'permission_denied' }
+    } else {
+      const resolved = await drop.items[0]!.resolve('work')
+      assert.deepEqual(resolved, { root: 'work', path: 'a.txt' })
+      let grantRead = 'unavailable'
+      if (app.serviceCapabilities.filesystemGrants.availability === 'available') {
+        const grant = await window.openFileGrant(resolved.root)
+        grantRead = new TextDecoder().decode((await grant.read(resolved.path)).bytes)
+        assert.equal(grantRead, 'alpha')
+        await grant.close()
+      }
+      outcomes['adapterDrop'] = { items: ['a.txt'], resolved, grantRead }
+    }
 
     // Unmounting the zone through framework state mid-drag revokes the target.
     mark = log.length
-    assert.deepEqual(await xdnd.send('enter 130 150'), { status: accepted, conversions: 1 })
+    await xdnd.enter(130, 150)
     await until('drag entry before unmount', () => log.length > mark)
     const entered = events.at(-1)!
     mounted.show(false)
@@ -125,8 +125,8 @@ export async function runDropAdapter(
     assert.equal(mounted.mounted(), false)
     assert.equal(first.active, false)
     assert.equal(entered.signal.aborted, true)
-    assert.deepEqual(await xdnd.send('move 131 151'), { status: accepted, conversions: 1 })
-    assert.deepEqual(await xdnd.send('drop'), { finished: accepted })
+    await xdnd.move(131, 151)
+    await xdnd.drop()
     assert.deepEqual(await since(mark), [{ type: 'drag_entered' }])
     await assert.rejects(
       drop.items[0]!.resolve('work'),
@@ -140,17 +140,16 @@ export async function runDropAdapter(
     assert.equal(mounted.mounted(), true)
     const second = await mounted.register(listener)
     mark = log.length
-    assert.deepEqual(await xdnd.send('enter 130 150'), { status: accepted, conversions: 1 })
+    await xdnd.enter(130, 150)
     // GPUI evaluates drag hover against its last painted frame, and only on
     // pointer motion. Like any real drag, keep moving until a frame that
     // contains the freshly registered element has been painted.
     for (let step = 1; log.length === mark && step <= 40; step++) {
       await Bun.sleep(25)
-      const position = `${130 + (step % 2)} ${150 + (step % 2)}`
-      assert.deepEqual(await xdnd.send('move ' + position), { status: accepted, conversions: 1 })
+      await xdnd.move(130 + (step % 2), 150 + (step % 2))
     }
     await until('remounted entry', () => log.length > mark)
-    assert.deepEqual(await xdnd.send('leave'), { left: true })
+    await xdnd.leave()
     await until('remounted exit', () => log.length > mark + 1)
     assert.deepEqual(await since(mark), [{ type: 'drag_entered' }, { type: 'drag_left' }])
     assert.notEqual(second, first)
@@ -162,8 +161,8 @@ export async function runDropAdapter(
     assert.equal(view.diagnostics.nodes, 0)
     assert.equal(view.diagnostics.listeners, 0)
     mark = log.length
-    assert.deepEqual(await xdnd.send('enter 130 150'), { status: accepted, conversions: 1 })
-    assert.deepEqual(await xdnd.send('drop'), { finished: accepted })
+    await xdnd.enter(130, 150)
+    await xdnd.drop()
     assert.deepEqual(await since(mark), [])
     outcomes['disposeRevokes'] = { remounted: ['drag_entered', 'drag_left'], afterDispose: 0 }
   } finally {
@@ -177,7 +176,14 @@ export async function runDropAdapter(
   writeFileSync(
     join(output, `${framework}-drag-drop.json`),
     JSON.stringify(
-      { status: 'passed', framework, mode, outcomes, ownership: app.diagnostics },
+      {
+        status: 'passed',
+        framework,
+        mode,
+        backend: dragBackend,
+        outcomes,
+        ownership: app.diagnostics,
+      },
       null,
       2
     ) + '\n'

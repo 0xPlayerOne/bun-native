@@ -3,8 +3,10 @@
 Status: accepted. The Linux X11 implementation is verified locally in
 development and inspected AOT, through core, Solid and React, on an isolated
 Xvfb display with a development-profile host. Hosted release-host
-qualification runs in Native Linux. Other platforms and Wayland report the
-service unavailable.
+qualification runs in Native Linux. The macOS (AppKit) and Windows (OLE)
+backends are enabled and qualified only in hosted CI (Native macOS and
+Windows), with independent real-drag source processes; they were never run
+locally. Wayland and other platforms report the service unavailable.
 
 Date: 2026-11-05.
 
@@ -44,7 +46,10 @@ constrains the design:
 
 Protocol 11 adds a separate, default-denied `dragDrop` launch permission
 (`--bun-native-allow-drag-drop`) and an optional `drag_drop_files_v1`
-capability, advertised only on Linux under the GPUI X11 backend. Protocol 10 is
+capability, advertised on Linux under the GPUI X11 backend, on macOS and on
+Windows (see "Platform backends" below). The core reports the backend as
+`x11`, `appkit` or `ole` from the platform it shares with the host; the wire
+is unchanged. Protocol 10 is
 reserved for the process service that stacks on the same base.
 
 `NativeWindow.registerDropTarget(node, listener)` makes a committed node an
@@ -90,6 +95,39 @@ non-increasing drop IDs or another window's target as protocol errors. If a
 window closes mid-drag, the host suspends drop delivery and stops GPUI's stale
 active drag in a surviving window. It resumes once no drag is active.
 
+## Platform backends
+
+The pinned GPUI revision delivers the same `FileDropEvent` sequence on macOS
+and Windows, and the host's registry, bounds, revocation and late-event
+suppression are platform-independent. Each backend's own behavior:
+
+- **AppKit** (`gpui_macos/src/window.rs`). The window registers only
+  `NSFilenamesPboardType` and reads it as one property list of UTF-8 paths,
+  in full; there is no read bound, so the 4,096-byte truncation rule applies
+  only to X11. `draggingEntered:` returns copy when the pasteboard holds that
+  list and none otherwise, so a drag without files (text, file promises) never
+  starts a GPUI drag. `draggingUpdated:` and `performDragOperation:` still
+  answer copy and synthesize a left release, and `concludeDragOperation:`
+  sends an exit after every drop. A drop also activates the application.
+- **OLE** (`gpui_windows/src/window.rs`). `IDropTarget::DragEnter` converts
+  only `CF_HDROP`, reading each `DragQueryFileW` name at its queried length
+  (no truncation). A name that is not valid UTF-16 is skipped silently, so a
+  drop can carry fewer items than the source offered; an all-invalid list is
+  rejected `empty`. `DragOver` and `Drop` always answer copy, even for a drag
+  without files, and `Drop` synthesizes a left release; there is no exit
+  after a drop. A closing window revokes its target before it is destroyed.
+- In both, the source is told copy for any drop GPUI received, whatever the
+  application did, as on X11.
+
+The synthesized release for a drag without files arrives with no GPUI drag
+active, so the active-drag check does not hide it. The host therefore reports
+a `pointer_up` only for a button it saw pressed in that window; a drop's
+release never has one. Launch roots are POSIX paths (ADR 0010), so on Windows
+no dropped path resolves, and filesystem grants are Linux-only, so on macOS a
+resolved path cannot yet be opened. The stale-XDND-state limitation after a
+mid-drag window close is X11-only; AppKit and OLE start the next drag afresh
+once the host has stopped GPUI's stale drag.
+
 ## Alternatives
 
 - **Deliver paths to the application.** That makes any process that can
@@ -106,6 +144,12 @@ active drag in a surviving window. It resumes once no drag is active.
 - **Synthesized drag events in tests.** These would test our own model of
   XDND. The native test uses an independent x11rb XDND source process that
   grabs and warps the real pointer and serves the selection conversion itself.
+  On macOS an independent AppKit process starts an `NSDraggingSession` from a
+  real CoreGraphics mouse-down on its own window and moves the pointer with
+  posted CoreGraphics drag events (Escape cancels); on Windows an independent
+  WinForms process enters OLE `DoDragDrop` from a real `SendInput` press and
+  moves the cursor with `SendInput` (its `QueryContinueDrag` cancels). Neither
+  calls into the host or GPUI.
 
 ## Consequences and verification
 
@@ -131,5 +175,12 @@ closing the window mid-drag, and raw protocol handle checks.
 [`tests/native/solid-drag-drop.tsx`](../../tests/native/solid-drag-drop.tsx) and
 [`tests/native/react-drag-drop.tsx`](../../tests/native/react-drag-drop.tsx)
 register through the adapter exports, unmount the zone mid-drag, remount it and
-dispose with zero remaining resources. Physical pointer devices, real file
-managers, Wayland, macOS and Windows are unverified.
+dispose with zero remaining resources. The same three fixtures run in Native
+macOS and Windows, in development and AOT, through
+[`tests/native/macos-drag-source.m`](../../tests/native/macos-drag-source.m)
+and [`tests/native/windows-drag-source.cs`](../../tests/native/windows-drag-source.cs);
+there plain text is expected to deliver nothing (not `empty`), the source
+cancels instead of dropping after a mid-drag window close, Windows resolves
+nothing and macOS cannot open a grant. Physical pointer devices, real file
+managers (Finder, Explorer), file promises, Wayland and local macOS/Windows
+runs are unverified.

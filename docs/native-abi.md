@@ -12,7 +12,7 @@ defines native event observations and public propagation. The
 owned-window display reads, bounded clipboard transfers, owned global
 shortcut registrations, owned desktop notifications and scoped filesystem
 grants on launch-policy roots ([ADR 0010](decisions/0010-filesystem-grants.md))
-and owned drop targets on Linux X11 ([ADR 0012](decisions/0012-native-drag-drop.md)).
+and owned drop targets on Linux X11, macOS and Windows ([ADR 0012](decisions/0012-native-drag-drop.md)).
 
 The authoritative schemas and validators are
 [`packages/protocol/src/messages.ts`](../packages/protocol/src/messages.ts),

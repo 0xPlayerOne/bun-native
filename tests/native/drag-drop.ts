@@ -1,10 +1,11 @@
 /**
- * Real drag-and-drop qualification against the native host on an isolated
- * X11 display. An independent XDND source process (`xdnd-source`) grabs the
- * pointer, warps it over the window and speaks XDND to GPUI's own X11 target
- * code, answering the selection conversion itself. Nothing synthesizes a GPUI
- * event. Dropped files live in a private temporary tree; resolution is checked
- * by reading the resolved path through a real filesystem grant.
+ * Real drag-and-drop qualification against the native host. An independent OS
+ * drag source process (see `drag-source.ts`) starts a platform drag and moves
+ * the real pointer over the window: XDND on an isolated X11 display, an
+ * AppKit dragging session on macOS, OLE `DoDragDrop` on Windows. Nothing
+ * synthesizes a GPUI event. Dropped files live in a private temporary tree;
+ * where filesystem grants exist, resolution is checked by reading the
+ * resolved path through a real grant.
  */
 import {
   createApplication,
@@ -16,32 +17,19 @@ import {
 } from '@bun-native/core'
 import { NativeCommandError, NativeHost } from '@bun-native/runtime'
 import assert from 'node:assert/strict'
-import { mkdirSync, mkdtempSync, rmSync, statSync, writeFileSync } from 'node:fs'
+import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
-import { isAbsolute, join } from 'node:path'
-import { accepted, until as waitUntil, uris, XdndSource } from './xdnd-source.ts'
+import { join } from 'node:path'
+import {
+  dragBackend,
+  dragEnvironment,
+  DragSource,
+  sourceDescription,
+  until as waitUntil,
+} from './drag-source.ts'
 
-const output = process.env['BUN_NATIVE_DRAG_DROP_EVIDENCE']
-const executable = process.env['BUN_NATIVE_HOST']
-const peer = process.env['BUN_NATIVE_XDND_SOURCE']
-const mode = process.env['BUN_NATIVE_DRAG_DROP_MODE']
-if (
-  !output ||
-  !isAbsolute(output) ||
-  !statSync(output).isDirectory() ||
-  !executable ||
-  !isAbsolute(executable) ||
-  !peer ||
-  !isAbsolute(peer) ||
-  (mode !== 'development' && mode !== 'aot') ||
-  !process.env['DISPLAY'] ||
-  process.env['WAYLAND_DISPLAY']
-)
-  throw new Error(
-    'An isolated X11 display, evidence directory, host, XDND source and mode are required'
-  )
-const host = executable
-const source = peer
+const { output, host, source, mode } = dragEnvironment()
+const backend = dragBackend
 
 const started = performance.now()
 const outcomes: Record<string, unknown> = {}
@@ -52,7 +40,8 @@ const record = (name: string, value: unknown) => {
 const denied = (code: string) => (error: unknown) =>
   error instanceof NativeServiceError && error.service === 'drag_drop' && error.code === code
 
-const base = mkdtempSync(join(tmpdir(), 'bun-native-drop-'))
+// Real paths: AppKit and the launch roots must name the same directories.
+const base = realpathSync(mkdtempSync(join(tmpdir(), 'bun-native-drop-')))
 const work = join(base, 'work')
 const docs = join(base, 'docs')
 const outside = join(base, 'outside')
@@ -61,6 +50,17 @@ writeFileSync(join(work, 'a.txt'), 'alpha')
 writeFileSync(join(work, 'b c.txt'), 'bravo')
 writeFileSync(join(docs, 'readme.txt'), 'docs')
 writeFileSync(join(outside, 'secret'), 'outside')
+const many = Array.from({ length: 65 }, (_, index) => join(work, 'f' + index))
+for (const path of many) writeFileSync(path, '')
+// Launch roots are POSIX paths; no Windows drop can resolve beneath one.
+const roots =
+  backend === 'ole'
+    ? []
+    : [
+        { id: 'work', path: work, access: 'read' as const },
+        { id: 'docs', path: docs, access: 'read' as const },
+      ]
+const sourceViews: Record<string, unknown> = {}
 type Logged = { target: string; type: DropTargetEvent['type']; detail?: unknown }
 const log: Logged[] = []
 const drops = new Map<string, Extract<DropTargetEvent, { type: 'drop' }>>()
@@ -98,7 +98,7 @@ async function deniedByDefault() {
       permission: 'deny',
       scope: 'owned_target',
       payload: 'files',
-      backend: 'x11',
+      backend,
     })
     const window = await app.openWindow({ title: 'Drop denial' })
     await assert.rejects(
@@ -136,25 +136,20 @@ function layout(window: NativeWindow): Promise<Layout> {
 async function qualification() {
   const app = await createApplication({
     executable: host,
-    permissions: {
-      dragDrop: 'allow',
-      filesystemRoots: [
-        { id: 'work', path: work, access: 'read' },
-        { id: 'docs', path: docs, access: 'read' },
-      ],
-    },
+    permissions: { dragDrop: 'allow', filesystemRoots: roots },
   })
-  const xdnd = new XdndSource(source)
+  const xdnd = new DragSource(source)
   try {
     assert.deepEqual(app.serviceCapabilities.dragDrop, {
       availability: 'available',
       permission: 'allow',
       scope: 'owned_target',
       payload: 'files',
-      backend: 'x11',
+      backend,
     })
     const title = 'Bun Native drop qualification'
     const window = await app.openWindow({ title, width: 560, height: 380 })
+    const grants = app.serviceCapabilities.filesystemGrants.availability === 'available'
     const nodes = await layout(window)
     const pointerEvents: string[] = []
     window.on(window.root, 'pointer_down', () => void pointerEvents.push('down'), { capture: true })
@@ -166,19 +161,25 @@ async function qualification() {
       window.registerDropTarget(nodes.left, () => {}),
       denied('conflict')
     )
-    assert.deepEqual(await xdnd.send('find ' + title), { found: true })
+    await xdnd.find(title, 560, 380)
     record('ownedTargets', { registered: 3, duplicate: 'conflict' })
 
     // 1. Accept: a real drop of four files onto the left target.
     let mark = log.length
     const files = [join(work, 'a.txt'), join(work, 'b c.txt'), join(docs, 'readme.txt')]
-    await xdnd.send('offer uri ' + JSON.stringify(uris(...files, join(outside, 'secret'))))
-    const entered = await xdnd.send('enter 130 150')
-    assert.deepEqual(entered, { status: accepted, conversions: 1 })
+    await xdnd.offerFiles([...files, join(outside, 'secret')])
+    const entered = await xdnd.enter(130, 150)
+    // GPUI evaluates drag hover against its last painted frame, and only on
+    // pointer motion. Keep moving until the newly registered targets' frame
+    // has been painted, as a real drag would.
+    for (let step = 1; log.length === mark && step <= 40; step++) {
+      await Bun.sleep(25)
+      await xdnd.move(130 + (step % 2), 150 + (step % 2))
+    }
     await until('left drag entry', () => log.length > mark)
     assert.deepEqual(log.slice(mark), [{ target: 'left', type: 'drag_entered' }])
-    assert.deepEqual(await xdnd.send('move 140 160'), { status: accepted, conversions: 1 })
-    assert.deepEqual(await xdnd.send('drop'), { finished: accepted })
+    await xdnd.move(140, 160)
+    sourceViews['acceptedDrop'] = await xdnd.drop()
     await until('left drop', () => drops.has('left'))
     assert.deepEqual(await since(mark), [
       { target: 'left', type: 'drag_entered' },
@@ -189,59 +190,76 @@ async function qualification() {
 
     // Names are display data; only the host maps an item beneath a launch root.
     const items = drops.get('left')!.items
-    const first = await items[0]!.resolve('work')
-    assert.deepEqual(first, { root: 'work', path: 'a.txt' })
-    assert.deepEqual(await items[1]!.resolve('work'), { root: 'work', path: 'b c.txt' })
-    assert.deepEqual(await items[2]!.resolve('docs'), { root: 'docs', path: 'readme.txt' })
-    await assert.rejects(items[2]!.resolve('work'), denied('path_denied'))
-    await assert.rejects(items[3]!.resolve('work'), denied('path_denied'))
-    await assert.rejects(items[3]!.resolve('docs'), denied('path_denied'))
     await assert.rejects(items[0]!.resolve('other'), denied('permission_denied'))
     await assert.rejects(items[0]!.resolve('../work'), TypeError)
-    const grant = await window.openFileGrant(first.root)
-    assert.equal(new TextDecoder().decode((await grant.read(first.path)).bytes), 'alpha')
-    await grant.close()
-    record('explicitResolution', {
-      work: ['a.txt', 'b c.txt'],
-      docs: 'readme.txt',
-      outside: 'path_denied',
-      grantRead: 'alpha',
-    })
+    if (backend === 'ole') {
+      // No POSIX launch root can be declared, so no item resolves.
+      await assert.rejects(items[0]!.resolve('work'), denied('permission_denied'))
+      record('explicitResolution', { roots: 0, work: 'permission_denied' })
+    } else {
+      const first = await items[0]!.resolve('work')
+      assert.deepEqual(first, { root: 'work', path: 'a.txt' })
+      assert.deepEqual(await items[1]!.resolve('work'), { root: 'work', path: 'b c.txt' })
+      assert.deepEqual(await items[2]!.resolve('docs'), { root: 'docs', path: 'readme.txt' })
+      await assert.rejects(items[2]!.resolve('work'), denied('path_denied'))
+      await assert.rejects(items[3]!.resolve('work'), denied('path_denied'))
+      await assert.rejects(items[3]!.resolve('docs'), denied('path_denied'))
+      let grantRead = 'unavailable'
+      if (grants) {
+        const grant = await window.openFileGrant(first.root)
+        grantRead = new TextDecoder().decode((await grant.read(first.path)).bytes)
+        assert.equal(grantRead, 'alpha')
+        await grant.close()
+      } else
+        await assert.rejects(
+          window.openFileGrant(first.root),
+          (error: unknown) =>
+            error instanceof NativeServiceError &&
+            error.service === 'filesystem_grants' &&
+            error.code === 'service_unavailable'
+        )
+      record('explicitResolution', {
+        work: ['a.txt', 'b c.txt'],
+        docs: 'readme.txt',
+        outside: 'path_denied',
+        grantRead,
+      })
+    }
 
     // 2. Cancel by moving off the target, then the source leaves.
     mark = log.length
-    await xdnd.send('offer uri ' + JSON.stringify(uris(join(work, 'a.txt'))))
-    assert.deepEqual(await xdnd.send('enter 130 150'), { status: accepted, conversions: 1 })
+    await xdnd.offerFiles([join(work, 'a.txt')])
+    await xdnd.enter(130, 150)
     await until('drag entry', () => log.length > mark)
-    assert.deepEqual(await xdnd.send('move 540 300'), { status: accepted, conversions: 1 })
+    await xdnd.move(540, 300)
     await until('drag exit', () => log.length > mark + 1)
-    assert.deepEqual(await xdnd.send('leave'), { left: true })
+    await xdnd.leave()
     assert.deepEqual(await since(mark), [
       { target: 'left', type: 'drag_entered' },
       { target: 'left', type: 'drag_left' },
     ])
     // 3. The source cancels (XdndLeave) while over the target.
     mark = log.length
-    assert.deepEqual(await xdnd.send('enter 130 150'), { status: accepted, conversions: 1 })
+    await xdnd.enter(130, 150)
     await until('drag entry', () => log.length > mark)
-    assert.deepEqual(await xdnd.send('leave'), { left: true })
+    await xdnd.leave()
     assert.deepEqual(await since(mark), [
       { target: 'left', type: 'drag_entered' },
       { target: 'left', type: 'drag_left' },
     ])
     // 4. Dropping on bare root delivers nothing; GPUI still reports a copy.
     mark = log.length
-    assert.deepEqual(await xdnd.send('enter 540 300'), { status: accepted, conversions: 1 })
-    assert.deepEqual(await xdnd.send('drop'), { finished: accepted })
+    await xdnd.enter(540, 300)
+    sourceViews['bareDrop'] = await xdnd.drop()
     assert.deepEqual(await since(mark), [])
     record('cancellation', { movedOff: 'drag_left', sourceLeave: 'drag_left', bareDrop: 'none' })
 
     // 5. Nested targets: hit testing gives the drop to the innermost target.
     mark = log.length
     drops.clear()
-    assert.deepEqual(await xdnd.send('enter 320 60'), { status: accepted, conversions: 1 })
+    await xdnd.enter(320, 60)
     await until('nested entry', () => log.length >= mark + 2)
-    assert.deepEqual(await xdnd.send('drop'), { finished: accepted })
+    await xdnd.drop()
     await until('nested drop', () => drops.has('inner'))
     const nested = await since(mark)
     assert.deepEqual(
@@ -255,47 +273,63 @@ async function qualification() {
     record('nestedHitTest', { drop: 'inner', outer: ['drag_entered', 'drag_left'] })
 
     // 6. Untyped text and oversized lists are typed rejections, not data.
+    // GPUI's X11 target turns plain text into an empty file drag. Its AppKit
+    // and OLE targets start no GPUI drag for a drag without files, and the
+    // release they still synthesize is not reported as a pointer event.
     mark = log.length
-    await xdnd.send('offer text ' + JSON.stringify('plain text, not a file'))
-    assert.deepEqual(await xdnd.send('enter 130 150'), { status: accepted, conversions: 1 })
-    await until('text entry', () => log.length > mark)
-    assert.deepEqual(await xdnd.send('drop'), { finished: accepted })
-    await until('text rejection', () => log.length > mark + 1)
-    const many = Array.from({ length: 65 }, (_, index) => join(work, 'f' + index))
-    await xdnd.send('offer uri ' + JSON.stringify(uris(...many)))
-    assert.deepEqual(await xdnd.send('enter 130 150'), { status: accepted, conversions: 1 })
-    await until('list entry', () => log.length > mark + 2)
-    assert.deepEqual(await xdnd.send('drop'), { finished: accepted })
+    await xdnd.offerText('plain text, not a file')
+    await xdnd.enter(130, 150)
+    if (backend === 'x11') await until('text entry', () => log.length > mark)
+    sourceViews['textDrop'] = await xdnd.drop()
+    if (backend === 'x11') await until('text rejection', () => log.length > mark + 1)
+    const text = await since(mark)
+    assert.deepEqual(
+      text,
+      backend === 'x11'
+        ? [
+            { target: 'left', type: 'drag_entered' },
+            { target: 'left', type: 'drop_rejected', detail: 'empty' },
+          ]
+        : []
+    )
+    assert.deepEqual(pointerEvents, [])
+    mark = log.length
+    await xdnd.offerFiles(many)
+    await xdnd.enter(130, 150)
+    await until('list entry', () => log.length > mark)
+    await xdnd.drop()
     assert.deepEqual(await since(mark), [
-      { target: 'left', type: 'drag_entered' },
-      { target: 'left', type: 'drop_rejected', detail: 'empty' },
       { target: 'left', type: 'drag_entered' },
       { target: 'left', type: 'drop_rejected', detail: 'limit_exceeded' },
     ])
     // A newer drop on the same target replaces the retained paths.
     await assert.rejects(items[0]!.resolve('work'), denied('cancelled'))
-    record('typedRejections', { text: 'empty', items65: 'limit_exceeded', replaced: 'cancelled' })
+    record('typedRejections', {
+      text: backend === 'x11' ? 'empty' : 'not delivered',
+      items65: 'limit_exceeded',
+      replaced: 'cancelled',
+    })
 
     // 7. Disposal during a drag: closing the target mid-drag delivers nothing.
-    await xdnd.send('offer uri ' + JSON.stringify(uris(join(work, 'a.txt'))))
+    await xdnd.offerFiles([join(work, 'a.txt')])
     mark = log.length
-    assert.deepEqual(await xdnd.send('enter 130 150'), { status: accepted, conversions: 1 })
+    await xdnd.enter(130, 150)
     await until('drag entry', () => log.length > mark)
     await left.close()
     assert.equal(left.active, false)
-    assert.deepEqual(await xdnd.send('drop'), { finished: accepted })
+    await xdnd.drop()
     assert.deepEqual(await since(mark), [{ target: 'left', type: 'drag_entered' }])
     await left.close() // Idempotent.
 
     // Removing a target's node mid-drag revokes it; the drop falls to its parent.
     mark = log.length
     drops.clear()
-    assert.deepEqual(await xdnd.send('enter 320 60'), { status: accepted, conversions: 1 })
+    await xdnd.enter(320, 60)
     await until('nested entry', () => log.length >= mark + 2)
     await window.batch((batch) => batch.remove(nodes.inner))
     assert.equal(inner.active, false)
-    assert.deepEqual(await xdnd.send('move 321 61'), { status: accepted, conversions: 1 })
-    assert.deepEqual(await xdnd.send('drop'), { finished: accepted })
+    await xdnd.move(321, 61)
+    await xdnd.drop()
     await until('parent drop', () => drops.has('right'))
     const removed = await since(mark)
     assert.deepEqual(
@@ -316,31 +350,44 @@ async function qualification() {
     })
     let closingEvents = 0
     const closingTarget = await closing.registerDropTarget(closing.root, () => void closingEvents++)
-    assert.deepEqual(await xdnd.send('find Bun Native drop closing'), { found: true })
-    assert.deepEqual(await xdnd.send('enter 100 100'), { status: accepted, conversions: 1 })
+    await xdnd.find('Bun Native drop closing', 300, 200)
+    await xdnd.enter(100, 100)
+    for (let step = 1; closingEvents === 0 && step <= 40; step++) {
+      await Bun.sleep(25)
+      await xdnd.move(100 + (step % 2), 100 + (step % 2))
+    }
     await until('closing entry', () => closingEvents === 1)
     await closing.close()
     assert.equal(closingTarget.active, false)
-    const late = await xdnd.send('drop')
+    // XDND still addresses the closed window. AppKit and OLE would deliver to
+    // whatever lies beneath the pointer now, so their source cancels instead.
+    // X11's reply is unchecked: GPUI no longer answers for the closed window.
+    const late = backend === 'x11' ? await xdnd.send('drop') : await xdnd.leave()
     await Bun.sleep(150)
     assert.equal(closingEvents, 1)
     record('windowCloseDuringDrag', { lateEvents: closingEvents - 1, sourceFinished: late })
 
-    // The pinned GPUI X11 backend keeps one XDND state per connection and
-    // resets it only on a Leave or Drop that reaches a live window. After the
-    // owner closed mid-drag, the next drag is never converted, so GPUI starts
-    // no drag and nothing is delivered; its Leave resets the backend.
-    await xdnd.send('find ' + title)
+    await xdnd.find(title, 560, 380)
     mark = log.length
-    assert.deepEqual(await xdnd.send('enter 400 250'), { status: accepted, conversions: 0 })
-    assert.deepEqual(await xdnd.send('leave'), { left: true })
-    assert.deepEqual(await since(mark), [])
-    record('backendStaleAfterClose', { nextDragConversions: 0, delivered: 0 })
+    if (backend === 'x11') {
+      // The pinned GPUI X11 backend keeps one XDND state per connection and
+      // resets it only on a Leave or Drop that reaches a live window. After
+      // the owner closed mid-drag, the next drag is never converted, so GPUI
+      // starts no drag and nothing is delivered; its Leave resets the backend.
+      assert.deepEqual(await xdnd.send('enter 400 250'), {
+        status: { accepted: true, copy: true },
+        conversions: 0,
+      })
+      assert.deepEqual(await xdnd.send('leave'), { left: true })
+      assert.deepEqual(await since(mark), [])
+      record('backendStaleAfterClose', { nextDragConversions: 0, delivered: 0 })
+    }
 
     // The application and remaining target are healthy again afterwards.
-    assert.deepEqual(await xdnd.send('enter 400 250'), { status: accepted, conversions: 1 })
+    mark = log.length
+    await xdnd.enter(400, 250)
     await until('healthy entry', () => log.length > mark)
-    assert.deepEqual(await xdnd.send('leave'), { left: true })
+    await xdnd.leave()
     await until('healthy exit', () => log.length > mark + 1)
     assert.deepEqual(pointerEvents, [])
     await right.close()
@@ -357,10 +404,7 @@ async function qualification() {
 async function rawHandles() {
   const native = await NativeHost.launch({
     executable: host,
-    permissions: {
-      dragDrop: 'allow',
-      filesystemRoots: [{ id: 'work', path: work, access: 'read' }],
-    },
+    permissions: { dragDrop: 'allow', filesystemRoots: roots.slice(0, 1) },
   })
   const code = (operation: Promise<unknown>) =>
     operation.then(
@@ -422,7 +466,8 @@ async function rawHandles() {
       reusedId: 'invalid_handle',
       lowerId: 'invalid_handle',
       foreignUnregister: 'invalid_handle',
-      unknownDrop: 'invalid_handle',
+      // Without a declared root (Windows), the root check comes first.
+      unknownDrop: backend === 'ole' ? 'permission_denied' : 'invalid_handle',
       ungrantedRoot: 'permission_denied',
       staleUnregister: 'invalid_handle',
     })
@@ -449,12 +494,18 @@ writeFileSync(
   join(output, 'drag-drop.json'),
   JSON.stringify(
     {
-      schemaVersion: 1,
+      schemaVersion: 2,
       mode,
+      backend,
+      platform: process.platform,
       bun: process.versions.bun,
       revision: Bun.revision,
-      display: 'isolated Xvfb with openbox',
-      source: 'independent x11rb XDND v5 source process (xdnd-source), pointer grab and warp',
+      display:
+        backend === 'x11' ? 'isolated Xvfb with openbox' : 'hosted runner interactive session',
+      source: sourceDescription[backend],
+      // GPUI answers every converted drag with copy; recorded, never asserted
+      // beyond X11, where the source protocol reply is checked exactly.
+      sourceViews,
       outcomes,
     },
     null,

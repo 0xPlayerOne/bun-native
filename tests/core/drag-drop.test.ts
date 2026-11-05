@@ -114,7 +114,8 @@ describe('drag and drop through the public core (headless subprocess)', () => {
           permission: 'deny',
           scope: 'owned_target',
           payload: 'files',
-          backend: 'x11',
+          backend:
+            process.platform === 'darwin' ? 'appkit' : process.platform === 'win32' ? 'ole' : 'x11',
         })
         expect(Object.isFrozen(app.serviceCapabilities.dragDrop)).toBe(true)
         const { window, zone } = await fixture(app)
