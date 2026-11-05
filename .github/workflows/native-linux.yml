@@ -486,7 +486,7 @@ jobs:
             --bun "$(command -v bun)" --cache "$HOME/.bun/install/cache" \
             --host "$GITHUB_WORKSPACE/target/release/bun-native-host" \
             --host-sha256-file "$NATIVE_EVIDENCE/binary-sha256.txt" \
-            --source-commit "$(git rev-parse HEAD)" --source-tree "$(git rev-parse HEAD^{tree})"
+            --source-commit "$(git rev-parse HEAD)" --source-tree "$(git rev-parse 'HEAD^{tree}')"
       - name: Installed external consumers in development and inspected AOT
         if: ${{ !cancelled() && steps.standalone-prepare.outcome == 'success' }}
         timeout-minutes: 6
