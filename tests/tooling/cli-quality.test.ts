@@ -15,6 +15,7 @@ import { join, resolve } from 'node:path'
 import { createProject, readProject } from '../../scripts/native/project.ts'
 import { cliSourceClosure } from '../../scripts/native/package-source.ts'
 import {
+  checkProject,
   formatArguments,
   formatProject,
   templateFormatterConfig,
@@ -209,4 +210,17 @@ describe('native doctor (no host is launched)', () => {
       expect(bare.stdout).toContain('skipped host')
     })
   }, 30_000)
+})
+
+describe('checkProject (in process)', () => {
+  test('runs type checking then formatting and reports both steps', async () => {
+    await fixture(async (directory) => {
+      const project = join(directory, 'in process')
+      await createProject(repository, project, 'solid', 'typescript')
+      const steps = checkProject(await readProject(repository, project))
+      expect(steps.map((step) => step.name)).toEqual(['typecheck', 'format'])
+      expect(steps.map((step) => step.exitCode)).toEqual([0, 0])
+      expect(steps[0]!.command).toContain('check')
+    })
+  }, 60_000)
 })

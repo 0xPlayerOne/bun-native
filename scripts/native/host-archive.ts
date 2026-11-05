@@ -71,7 +71,7 @@ export function hostArchive(members: { name: string; data: Uint8Array }[], mtime
   return archive
 }
 
-async function main(args: string[]): Promise<void> {
+export async function main(args: string[]): Promise<void> {
   const { values, positionals } = parseArgs({
     args,
     allowPositionals: true,

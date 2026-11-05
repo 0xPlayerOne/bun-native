@@ -13,7 +13,7 @@ import {
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 import { gunzipSync } from 'node:zlib'
-import { hostArchive, sourceDateEpoch } from '../../scripts/native/host-archive.ts'
+import { hostArchive, main, sourceDateEpoch } from '../../scripts/native/host-archive.ts'
 
 const script = resolve(import.meta.dir, '../../scripts/native/host-archive.ts')
 const sha256 = (data: Uint8Array) => createHash('sha256').update(data).digest('hex')
@@ -135,5 +135,39 @@ describe('reproducible native host archive', () => {
     const member = [{ name: 'bun-native-host', data: new Uint8Array([7]) }]
     expect(Buffer.compare(hostArchive(member, 1), hostArchive(member, 1))).toBe(0)
     expect(Buffer.compare(hostArchive(member, 1), hostArchive(member, 2))).not.toBe(0)
+  })
+})
+
+describe('host archive command (in process)', () => {
+  test('writes the same bytes as hostArchive and refuses to overwrite', async () => {
+    const directory = mkdtempSync(join(tmpdir(), 'bun-native-host-archive-main-'))
+    try {
+      const input = join(directory, 'bun-native-host')
+      writeFileSync(input, 'host bytes')
+      const output = join(directory, 'host.tar.gz')
+      await main(['--output', output, input])
+      expect(sha256(readFileSync(output))).toBe(
+        sha256(
+          hostArchive([{ name: 'bun-native-host', data: readFileSync(input) }], sourceDateEpoch())
+        )
+      )
+      await expect(main(['--output', output, input])).rejects.toThrow()
+    } finally {
+      rmSync(directory, { recursive: true, force: true })
+    }
+  })
+
+  test('rejects a relative output, missing inputs and directory inputs', async () => {
+    const directory = mkdtempSync(join(tmpdir(), 'bun-native-host-archive-main-'))
+    try {
+      await expect(main(['--output', 'relative.tar.gz', directory])).rejects.toThrow('Usage:')
+      await expect(main([join(directory, 'input')])).rejects.toThrow('Usage:')
+      await expect(main(['--output', join(directory, 'out.tar.gz')])).rejects.toThrow('Usage:')
+      await expect(main(['--output', join(directory, 'out.tar.gz'), directory])).rejects.toThrow(
+        'Host archive input is not a file'
+      )
+    } finally {
+      rmSync(directory, { recursive: true, force: true })
+    }
   })
 })
