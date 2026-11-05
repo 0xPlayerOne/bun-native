@@ -217,6 +217,30 @@
       "category": "revision",
       "wire": "{\"id\":1,\"type\":\"batch\",\"window_id\":1,\"base_revision\":0,\"operations\":[{\"type\":\"set\",\"node_id\":2,\"element\":{\"kind\":\"input\",\"value\":\"stale\"}}]}",
       "outcome": "reject"
+    },
+    {
+      "name": "duplicate-keys-last-member-wins",
+      "category": "schema",
+      "wire": "{\"type\":\"file_read\",\"id\":0,\"id\":3,\"type\":\"shutdown\"}",
+      "outcome": "accept"
+    },
+    {
+      "name": "duplicate-keys-last-member-is-validated",
+      "category": "schema",
+      "wire": "{\"id\":3,\"type\":\"shutdown\",\"type\":\"file_read\"}",
+      "outcome": "reject"
+    },
+    {
+      "name": "nested-duplicate-keys-last-member-wins",
+      "category": "schema",
+      "wire": "{\"id\":3,\"type\":\"batch\",\"window_id\":1,\"base_revision\":0,\"operations\":[{\"type\":\"delete\",\"node_id\":2,\"type\":\"create\",\"element\":{\"kind\":\"box\",\"kind\":\"text\",\"text\":\"a\",\"style\":{\"gap\":-1,\"gap\":4}}}]}",
+      "outcome": "accept"
+    },
+    {
+      "name": "nested-duplicate-keys-last-member-is-validated",
+      "category": "schema",
+      "wire": "{\"id\":3,\"type\":\"batch\",\"window_id\":1,\"base_revision\":0,\"operations\":[{\"type\":\"create\",\"node_id\":2,\"element\":{\"kind\":\"text\",\"text\":\"a\",\"style\":{\"gap\":4,\"gap\":-1}}}]}",
+      "outcome": "reject"
     }
   ]
 }
