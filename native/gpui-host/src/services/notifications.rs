@@ -88,27 +88,13 @@ impl Notifications {
         cx: &mut App,
     ) -> Result<(), Failure> {
         let (id, window, notification) = request;
-        if !self.available() {
-            return Err((
-                ErrorCode::ServiceUnavailable,
-                "notifications require a D-Bus session bus",
-            ));
-        }
-        if notification.get() <= self.0.last_notification.get() {
-            return Err((
-                ErrorCode::InvalidHandle,
-                "notification IDs must increase across the session",
-            ));
-        }
-        if self.0.entries.borrow().len() >= MAX_NOTIFICATIONS {
-            return Err((ErrorCode::LimitExceeded, "live notification limit exceeded"));
-        }
-        if self.0.stopping.get() {
-            return Err((
-                ErrorCode::Cancelled,
-                "notification service is shutting down",
-            ));
-        }
+        check_post(
+            self.available(),
+            self.0.last_notification.get(),
+            notification,
+            self.0.entries.borrow().len(),
+            self.0.stopping.get(),
+        )?;
         let link = self.link(cx);
         self.0.last_notification.set(notification.get());
         self.0.entries.borrow_mut().insert(
@@ -633,6 +619,38 @@ fn escape_markup(text: &str) -> String {
     escaped
 }
 
+/// The argument and capacity checks for a new notification, in reply order.
+fn check_post(
+    available: bool,
+    last_notification: u64,
+    notification: NotificationId,
+    live: usize,
+    stopping: bool,
+) -> Result<(), Failure> {
+    if !available {
+        return Err((
+            ErrorCode::ServiceUnavailable,
+            "notifications require a D-Bus session bus",
+        ));
+    }
+    if notification.get() <= last_notification {
+        return Err((
+            ErrorCode::InvalidHandle,
+            "notification IDs must increase across the session",
+        ));
+    }
+    if live >= MAX_NOTIFICATIONS {
+        return Err((ErrorCode::LimitExceeded, "live notification limit exceeded"));
+    }
+    if stopping {
+        return Err((
+            ErrorCode::Cancelled,
+            "notification service is shutting down",
+        ));
+    }
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -742,5 +760,64 @@ mod tests {
             "&lt;b&gt;a&lt;/b&gt; &amp; &lt;a href=\"x\"&gt;"
         );
         assert_eq!(escape_markup("line\nnext"), "line\nnext");
+    }
+
+    fn check(
+        available: bool,
+        last: u64,
+        notification: u64,
+        live: usize,
+        stopping: bool,
+    ) -> Result<(), Failure> {
+        let notification = NotificationId::try_from(notification).unwrap();
+        check_post(available, last, notification, live, stopping)
+    }
+
+    #[test]
+    fn accepts_a_new_notification_below_the_limit() {
+        assert_eq!(check(true, 0, 1, 0, false), Ok(()));
+        assert_eq!(check(true, 7, 8, MAX_NOTIFICATIONS - 1, false), Ok(()));
+    }
+
+    #[test]
+    fn unavailable_bus_is_reported_before_any_other_check() {
+        assert_eq!(
+            check(false, 9, 1, usize::MAX, true),
+            Err((
+                ErrorCode::ServiceUnavailable,
+                "notifications require a D-Bus session bus"
+            ))
+        );
+    }
+
+    #[test]
+    fn notification_ids_must_strictly_increase() {
+        for (last, notification) in [(5, 5), (5, 4), (u64::from(u32::MAX), 1)] {
+            assert_eq!(
+                check(true, last, notification, usize::MAX, true),
+                Err((
+                    ErrorCode::InvalidHandle,
+                    "notification IDs must increase across the session"
+                )),
+                "{last} -> {notification}"
+            );
+        }
+    }
+
+    #[test]
+    fn live_notifications_are_limited_before_shutdown_is_reported() {
+        for live in [MAX_NOTIFICATIONS, MAX_NOTIFICATIONS + 1] {
+            assert_eq!(
+                check(true, 0, 1, live, true),
+                Err((ErrorCode::LimitExceeded, "live notification limit exceeded"))
+            );
+        }
+        assert_eq!(
+            check(true, 0, 1, MAX_NOTIFICATIONS - 1, true),
+            Err((
+                ErrorCode::Cancelled,
+                "notification service is shutting down"
+            ))
+        );
     }
 }
