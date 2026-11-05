@@ -6,9 +6,14 @@ import {
   createWorkspace,
   MAX_TASKS,
   MAX_TITLE_LENGTH,
+  PLAN_STEPS,
+  schedulePlanStep,
+  selectedPlan,
   taskTitle,
   visibleTasks,
   workspaceReducer,
+  type Plan,
+  type PlanScheduler,
   type Task,
   type TaskFilter,
   type WorkspaceAction,
@@ -38,15 +43,25 @@ const filters: readonly { value: TaskFilter; label: string }[] = [
   { value: 'completed', label: 'Completed' },
 ]
 
+function planStatus(plan: Plan | null): string {
+  if (!plan) return 'Draft a local plan. Nothing is sent anywhere.'
+  const progress = `${plan.steps.length} of ${PLAN_STEPS.length} steps`
+  if (plan.status === 'streaming') return `Drafting locally · ${progress}`
+  return plan.status === 'complete' ? `Plan ready · ${progress}` : `Plan stopped · ${progress}`
+}
+
 function TaskDetails({
   task,
+  plan,
   palette,
   dispatch,
 }: {
   task: Task
+  plan: Plan | null
   palette: Palette
   dispatch: Dispatch<WorkspaceAction>
 }): JSX.Element {
+  const streaming = plan?.status === 'streaming'
   const reference = useRef<NativeRef>(null)
   const [title, setTitle] = useState<InputState>({ value: task.title, revision: 0 })
   const validTitle = taskTitle(title.value)
@@ -93,15 +108,39 @@ function TaskDetails({
         style={{ height: 40, color: palette.text, background: palette.background }}
         onClick={() => dispatch({ type: 'remove', id: task.id })}
       />
+      <text style={{ color: palette.text, font_size: 18 }}>Plan</text>
+      <button
+        text={streaming ? 'Stop plan' : plan ? 'Draft a new plan' : 'Draft a plan'}
+        style={{
+          height: 40,
+          color: palette.text,
+          background: streaming ? palette.background : palette.accent,
+        }}
+        onClick={() => dispatch({ type: streaming ? 'plan-stop' : 'plan-start' })}
+      />
+      <text style={{ color: palette.muted }}>{planStatus(plan)}</text>
+      <box style={{ direction: 'column', gap: 6 }}>
+        {plan?.steps.map((step, index) => (
+          // Steps are append-only, so the position is a stable identity.
+          <text key={index} style={{ color: palette.text }}>
+            {`${index + 1}. ${step}`}
+          </text>
+        ))}
+      </box>
     </box>
   )
 }
 
-/** The same component runs in development, AOT, and the public-adapter contract tests. */
+/**
+ * The same component runs in development, AOT, and the public-adapter contract
+ * tests. `schedule` defaults to a real timer; tests may observe its ownership.
+ */
 export function Workspace({
   onChange,
+  schedule = schedulePlanStep,
 }: {
   onChange?: (state: WorkspaceState) => void
+  schedule?: PlanScheduler
 }): JSX.Element {
   const [state, dispatch] = useReducer(workspaceReducer, undefined, createWorkspace)
   const [draft, setDraft] = useState<InputState>({ value: '', revision: 0 })
@@ -113,7 +152,16 @@ export function Workspace({
   const selected = state.tasks.find((task) => task.id === state.selectedId)
   const completed = state.tasks.filter((task) => task.completed).length
   const canAdd = state.tasks.length < MAX_TASKS && taskTitle(draft.value) !== undefined
+  const plan = selectedPlan(state)
+  const streamingPlan = state.plan?.status === 'streaming' ? state.plan : null
   useEffect(() => onChange?.(state), [onChange, state])
+  // At most one timer is live. Every step, stop, selection change or unmount
+  // cancels it through this cleanup; the reducer also ignores stale plan IDs.
+  useEffect(() => {
+    if (!streamingPlan) return
+    const id = streamingPlan.id
+    return schedule(() => dispatch({ type: 'plan-step', id }))
+  }, [streamingPlan, schedule])
 
   function addTask() {
     if (!composer.current || state.tasks.length >= MAX_TASKS) return
@@ -266,7 +314,13 @@ export function Workspace({
           }}
         >
           {selected ? (
-            <TaskDetails key={selected.id} task={selected} palette={palette} dispatch={dispatch} />
+            <TaskDetails
+              key={selected.id}
+              task={selected}
+              plan={plan}
+              palette={palette}
+              dispatch={dispatch}
+            />
           ) : (
             <text style={{ padding: 20, color: palette.muted }}>Add a task to get started.</text>
           )}

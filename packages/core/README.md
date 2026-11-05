@@ -129,6 +129,7 @@ The public package exports the error classes needed to distinguish failures:
 | ------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
 | `NativeStateError`        | Invalid local handles/state, stale input revisions or public queue/model limits; inspect `code`.                                |
 | `NativeCommandError`      | A native semantic rejection; inspect its native `code`.                                                                         |
+| `NativeHostExitError`     | The native host exited unexpectedly; `diagnostic` is a bounded, redacted exit record (see the qualification matrix).            |
 | `ProtocolError`           | A malformed value or broken protocol/channel invariant. Malformed received messages and invalid native events fail the session. |
 | `UnsupportedFeatureError` | An unknown native element kind; `feature` is `element:` followed by that kind. It does not trigger a fallback renderer.         |
 
@@ -261,10 +262,38 @@ notification on the server; none outlives its window. At most 32 notifications
 are live per application. See
 [ADR 0009](../../docs/decisions/0009-native-notifications.md).
 
+### Filesystem grants
+
+```ts
+const app = await createApplication({
+  executable,
+  permissions: {
+    filesystemRoots: [{ id: 'workspace', path: '/home/me/project', access: 'read_write' }],
+  },
+})
+const window = await app.openWindow({ title: 'Workspace' })
+const grant = await window.openFileGrant('workspace', { access: 'read_write' })
+await grant.write('notes/today.md', new TextEncoder().encode('# Today\n'), { mode: 'truncate' })
+const { bytes } = await grant.read('notes/today.md')
+await grant.close()
+```
+
+`window.openFileGrant(root, { access })` opens a scoped grant on a directory
+named in the immutable `filesystemRoots` launch permission, at no more than its
+launch access (default `read`). Paths are relative `/`-joined names; `..`,
+absolute paths and empty or control-character names are rejected before any
+native request, and the Linux host resolves every path beneath the granted
+directory with `openat2` without following symbolic links. The frozen
+`NativeFileGrant` offers `stat`, `list` (pages of 64), `read` and `write`
+(16 KiB chunks), `createDirectory`, `remove` and an idempotent `close()`.
+Closing the grant, its window or the application revokes it and withholds
+late results. Other targets report `unavailable` / `unsupported_platform`.
+See the [service contract](../../docs/native-services.md#filesystem-grants).
+
 ## Supported scope
 
 The initial elements are `box`, `text`, `button` and single-line `input`. `Style` explicitly supports `direction`, `gap`, `padding`, `width`, `height`, `min_width`, `max_width`, `min_height`, `max_height`, `flex_grow`, `flex_shrink`, `align_items`, `justify_content`, `overflow`, `background`, `color` and `font_size`. Dimensions are numeric logical native pixels, with `fill` available for width and height; colors are unsigned 24-bit RGB values. These fields are validated and bounded by the [shared layout contract](../../docs/native-layout.md). Scroll overflow is accepted only for `box` containers; leaf element types also enforce this restriction. Styles are shared by every framework adapter.
 
 There is no DOM, HTML, CSS parser, browser navigation, WebView, CEF, React DOM or automatic compatibility with web component libraries. Native service APIs for files, processes, menus and other desktop integrations remain separate roadmap work. The current renderer does not claim complete scrolling, IME, focus traversal or accessibility coverage. See [the native host limitations](../../native/gpui-host/README.md) and [testing evidence](../../docs/testing.md) before treating a platform as supported.
 
-Protocol 8 requires shared layout, interactions and immutable service policy and replaces protocol 7 without a compatibility layer. During this private experimental phase, pin the application packages and native host together at the tested source revision. A package build or type check is not native GUI acceptance; a bundled executable is not proof of Bun machine-code AOT. [ADR 0004](../../docs/decisions/0004-public-api.md) records the API boundary and its tradeoffs.
+Protocol 9 requires shared layout, interactions and immutable service policy and replaces protocol 8 without a compatibility layer. During this private experimental phase, pin the application packages and native host together at the tested source revision. A package build or type check is not native GUI acceptance; a bundled executable is not proof of Bun machine-code AOT. [ADR 0004](../../docs/decisions/0004-public-api.md) records the API boundary and its tradeoffs.

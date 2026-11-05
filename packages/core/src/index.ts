@@ -1,7 +1,8 @@
 export { createApplication } from './application.ts'
 export { NativeStateError, UnsupportedFeatureError } from './types.ts'
 export { ProtocolError } from '@bun-native/protocol'
-export { NativeCommandError } from '@bun-native/runtime'
+export { NativeCommandError, NativeHostExitError } from '@bun-native/runtime'
+export type { NativeHostExitDiagnostic, NativeHostExitReason } from '@bun-native/runtime'
 export { NativeServiceError } from './services.ts'
 export type {
   NativeDisplaySnapshot,
@@ -17,6 +18,13 @@ export type {
   NativeGlobalShortcut,
 } from './shortcuts.ts'
 export type { NativeNotification, NotificationEvent, NotificationOptions } from './notifications.ts'
+export type {
+  FileGrantOptions,
+  NativeDirectoryPage,
+  NativeFileChunk,
+  NativeFileGrant,
+  NativeFileStat,
+} from './files.ts'
 export type {
   ApplicationOptions,
   ClickEvent,

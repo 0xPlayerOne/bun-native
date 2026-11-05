@@ -3,6 +3,8 @@ import {
   createWorkspace,
   MAX_TASKS,
   MAX_TITLE_LENGTH,
+  PLAN_STEPS,
+  selectedPlan,
   visibleTasks,
   workspaceReducer,
 } from '../../examples/react-workspace/model.ts'
@@ -75,5 +77,67 @@ describe('React workspace task workflows', () => {
     expect(state.selectedId).toBeNull()
     state = workspaceReducer(state, { type: 'add', title: 'Start again' })
     expect(state.selectedId).toBe(state.tasks[0]!.id)
+  })
+  test('plans stream in order, complete once, and ignore stale or duplicate steps', () => {
+    let state = workspaceReducer(createWorkspace(), { type: 'plan-start' })
+    expect(state.plan).toEqual({
+      id: 1,
+      taskId: 2,
+      steps: [],
+      status: 'streaming',
+    })
+    expect(workspaceReducer(state, { type: 'plan-start' })).toBe(state)
+    expect(workspaceReducer(state, { type: 'plan-step', id: 2 })).toBe(state)
+    for (let index = 0; index < PLAN_STEPS.length; index++)
+      state = workspaceReducer(state, { type: 'plan-step', id: 1 })
+    expect(state.plan).toEqual({
+      id: 1,
+      taskId: 2,
+      steps: [...PLAN_STEPS],
+      status: 'complete',
+    })
+    expect(workspaceReducer(state, { type: 'plan-step', id: 1 })).toBe(state)
+    expect(workspaceReducer(state, { type: 'plan-stop' })).toBe(state)
+    state = workspaceReducer(state, { type: 'plan-start' })
+    expect(state.plan).toEqual({
+      id: 2,
+      taskId: 2,
+      steps: [],
+      status: 'streaming',
+    })
+  })
+
+  test('stop, selection, and additions keep partial steps while deleting a task drops its plan', () => {
+    let state = workspaceReducer(createWorkspace(), { type: 'plan-start' })
+    state = workspaceReducer(state, { type: 'plan-step', id: 1 })
+    state = workspaceReducer(state, { type: 'plan-stop' })
+    expect(state.plan).toEqual({
+      id: 1,
+      taskId: 2,
+      steps: [PLAN_STEPS[0]],
+      status: 'stopped',
+    })
+    expect(workspaceReducer(state, { type: 'plan-step', id: 1 })).toBe(state)
+
+    state = workspaceReducer(state, { type: 'plan-start' })
+    state = workspaceReducer(state, { type: 'select', id: 3 })
+    expect(state.plan).toMatchObject({ id: 2, taskId: 2, status: 'stopped' })
+    expect(selectedPlan(state)).toBeNull()
+    state = workspaceReducer(state, { type: 'select', id: 2 })
+    expect(selectedPlan(state)?.id).toBe(2)
+
+    state = workspaceReducer(state, { type: 'plan-start' })
+    state = workspaceReducer(state, { type: 'add', title: 'New work' })
+    expect(state.plan).toMatchObject({ id: 3, taskId: 2, status: 'stopped' })
+
+    // Deleting an unrelated, unselected task leaves a streaming plan running.
+    state = workspaceReducer(state, { type: 'select', id: 2 })
+    state = workspaceReducer(state, { type: 'plan-start' })
+    state = workspaceReducer(state, { type: 'remove', id: 5 })
+    expect(state.plan).toMatchObject({ id: 4, taskId: 2, status: 'streaming' })
+    state = workspaceReducer(state, { type: 'remove', id: 2 })
+    expect(state.plan).toBeNull()
+    expect(state.selectedId).toBe(3)
+    expect(workspaceReducer(state, { type: 'plan-step', id: 4 })).toBe(state)
   })
 })

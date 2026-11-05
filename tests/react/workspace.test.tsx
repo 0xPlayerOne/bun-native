@@ -2,7 +2,12 @@
 import { expect, test } from 'bun:test'
 import { render } from '@bun-native/react'
 import { Workspace } from '../../examples/react-workspace/app.tsx'
-import { visibleTasks, type WorkspaceState } from '../../examples/react-workspace/model.ts'
+import {
+  PLAN_STEPS,
+  visibleTasks,
+  type PlanScheduler,
+  type WorkspaceState,
+} from '../../examples/react-workspace/model.ts'
 import { observeWindow, withApp } from '../renderers/support.ts'
 import { until } from './support.ts'
 
@@ -164,6 +169,130 @@ test('workspace submits one task when Enter is queued during the native input cl
       expect(actual.input(observations.inputs[0]!).value).toBe('')
     } finally {
       release.resolve()
+      await root.dispose()
+    }
+  }, 'events-peer.ts'))
+
+test('workspace plan stream owns one timer through stop, selection, and window close', () =>
+  withApp(async (app) => {
+    const actual = await app.openWindow({ title: 'Workspace plan stream' })
+    const marker = await actual.batch((batch) => {
+      const node = batch.create({ kind: 'text', text: 'Marker' })
+      batch.append(actual.root, node)
+      return node
+    })
+    const pending = new Set<() => void>()
+    const timers = { scheduled: 0, fired: 0, cancelled: 0 }
+    const schedule: PlanScheduler = (callback) => {
+      timers.scheduled++
+      pending.add(callback)
+      return () => {
+        if (pending.delete(callback)) timers.cancelled++
+      }
+    }
+    let state: WorkspaceState | undefined
+    let changes = 0
+    const root = render(
+      <Workspace
+        schedule={schedule}
+        onChange={(next) => {
+          state = next
+          changes++
+        }}
+      />,
+      actual,
+      { style: { width: 'fill', height: 'fill' } }
+    )
+    async function click(target: string) {
+      const before = changes
+      await actual.batch((batch) =>
+        batch.set(marker, {
+          kind: 'text',
+          text: `event:${JSON.stringify({ type: 'click', target })}`,
+        })
+      )
+      await until(() => changes > before)
+      await root.flush()
+    }
+    async function step() {
+      const [callback] = pending
+      expect(pending.size).toBe(1)
+      pending.delete(callback!)
+      timers.fired++
+      callback!()
+      await root.flush()
+      await until(() => state?.plan?.status !== 'streaming' || pending.size === 1)
+    }
+    try {
+      await root.ready
+      expect(state?.selectedId).toBe(2)
+      await click('Draft a plan')
+      expect(state?.plan).toEqual({
+        id: 1,
+        taskId: 2,
+        steps: [],
+        status: 'streaming',
+      })
+      for (let index = 0; index < PLAN_STEPS.length; index++) await step()
+      expect(state?.plan).toEqual({
+        id: 1,
+        taskId: 2,
+        steps: [...PLAN_STEPS],
+        status: 'complete',
+      })
+      expect(pending.size).toBe(0)
+
+      await click('Draft a new plan')
+      await step()
+      await step()
+      await click('Stop plan')
+      expect(state?.plan).toMatchObject({
+        id: 2,
+        status: 'stopped',
+        steps: PLAN_STEPS.slice(0, 2),
+      })
+      expect(pending.size).toBe(0)
+
+      await click('Draft a new plan')
+      await step()
+      await click('Write the project brief')
+      expect(state?.selectedId).toBe(1)
+      expect(state?.plan).toMatchObject({
+        id: 3,
+        taskId: 2,
+        status: 'stopped',
+      })
+      expect(pending.size).toBe(0)
+
+      // A callback that was already queued when its plan stopped cannot write.
+      await click('Draft a plan')
+      const [stale] = pending
+      await click('Stop plan')
+      stale!()
+      await root.flush()
+      expect(state?.plan).toMatchObject({
+        id: 4,
+        taskId: 1,
+        steps: [],
+        status: 'stopped',
+      })
+
+      await click('Draft a new plan')
+      await step()
+      expect(state?.plan).toMatchObject({
+        id: 5,
+        status: 'streaming',
+        steps: [PLAN_STEPS[0]],
+      })
+      await actual.close()
+      await root.closed
+      expect(pending.size).toBe(0)
+      expect(timers.scheduled).toBe(timers.fired + timers.cancelled)
+      expect(timers.cancelled).toBe(4)
+      expect(root.diagnostics.nodes).toBe(0)
+      expect(root.diagnostics.listeners).toBe(0)
+      expect(app.diagnostics.callbacks).toBe(0)
+    } finally {
       await root.dispose()
     }
   }, 'events-peer.ts'))

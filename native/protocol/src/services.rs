@@ -10,7 +10,7 @@ pub const MAX_NOTIFICATIONS: usize = 32;
 pub const MAX_NOTIFICATION_TITLE_BYTES: usize = 256;
 pub const MAX_NOTIFICATION_BODY_BYTES: usize = 2_048;
 
-#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Default, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct ServicePolicy {
     pub window_display: bool,
@@ -18,6 +18,8 @@ pub struct ServicePolicy {
     pub clipboard_write: bool,
     pub global_shortcuts: bool,
     pub notifications: bool,
+    /// Directories a window may open as scoped grants, in launch order.
+    pub filesystem_roots: Vec<crate::FilesystemRoot>,
 }
 
 /// OS-wide modifier state. Shift alone cannot form a global shortcut: at least

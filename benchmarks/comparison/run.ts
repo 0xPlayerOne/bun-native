@@ -17,9 +17,15 @@ import { parseArgs } from 'node:util'
 import { buildSolid } from '../../scripts/solid-build.ts'
 import { inspectBunExecutable } from '../../experiments/aot-gpui/inspect.ts'
 import { inspectBunRuntime } from '../../experiments/aot-gpui/inspect-runtime.ts'
-import { count } from '../solid/workload.ts'
+import { count, expectedNodes, INPUT_LABEL, WINDOW_TITLE } from '../solid/workload.ts'
 import { sharedWorkloadSources } from '../solid/sources.ts'
-import { assertEquivalentPaint, summarize, type Launch } from './stats.ts'
+import {
+  assertEquivalentPaint,
+  summarize,
+  summarizeInputLatency,
+  type InputLaunch,
+  type Launch,
+} from './stats.ts'
 import toolchain from '../../toolchain.json'
 
 const ADAPTERS = ['core', 'solid', 'react'] as const
@@ -44,6 +50,8 @@ const { values } = parseArgs({
     mounts: { type: 'string', default: '100' },
     rows: { type: 'string', default: '32' },
     'rss-interval-ms': { type: 'string', default: '20' },
+    // Separate fresh launches with one real XTest click each; 0 skips them.
+    'input-trials': { type: 'string', default: '0' },
   },
   strict: true,
   allowPositionals: false,
@@ -66,6 +74,11 @@ count(values.rotations, 'rotations', 10_000)
 count(values.mounts, 'mounts', 1_000)
 count(values.rows, 'rows', 128)
 const rssInterval = count(values['rss-interval-ms'], 'rss-interval-ms', 1_000)
+const inputTrials =
+  values['input-trials'] === '0' ? 0 : count(values['input-trials'], 'input-trials', 30)
+if (inputTrials && inputTrials < 3) throw new Error('input-trials must be 0 or at least 3')
+if (inputTrials && (platform() !== 'linux' || !process.env['DISPLAY']))
+  throw new Error('--input-trials requires the isolated Linux X11 session (XTest)')
 if (iterations % 10 !== 0) throw new Error('iterations must be a multiple of 10')
 assert.equal(Bun.revision, toolchain.bun.revision, 'Use the checksum-pinned Bun compiler')
 const source = resolve(import.meta.dir, '../..')
@@ -75,6 +88,11 @@ if (!statSync(host).isFile()) throw new Error('The native host must be an existi
 mkdirSync(output) // Refuse to overwrite any previous comparison directory.
 const launchesDirectory = join(output, 'launches')
 mkdirSync(launchesDirectory)
+const inputDirectory = join(output, 'input')
+if (inputTrials) mkdirSync(inputDirectory)
+const INPUT_DRIVER = join(source, 'scripts/quality/native-input-linux.py')
+// The fixture button's native layout bounds are x 16..624, y 53..97 at scale 1.
+const INPUT_CLICK = ['100', '75'] as const
 
 async function digest(path: string) {
   const hash = createHash('sha256')
@@ -271,7 +289,13 @@ function childReport(build: Built, path: string, nonce: string) {
   return { item }
 }
 
-function workloadArguments(path: string, nonce: string, mode: Mode, calibration: boolean) {
+function workloadArguments(
+  path: string,
+  nonce: string,
+  mode: Mode,
+  calibration: boolean,
+  input = false
+) {
   return [
     '--host',
     host,
@@ -290,6 +314,7 @@ function workloadArguments(path: string, nonce: string, mode: Mode, calibration:
     '--rows',
     values.rows!,
     ...(calibration ? ['--calibration'] : []),
+    ...(input ? ['--input-latency'] : []),
   ]
 }
 
@@ -366,10 +391,24 @@ const report: Record<string, unknown> = {
       'controller inspects and hashes the exact executable it launches; child mode is only a declaration',
     developmentCalibration:
       'BUN_JSC_useDFGJIT=0 for development calibration only, as in native CI (#287); timed launches keep default tiers',
+    inputLatency: inputTrials
+      ? {
+          trials: inputTrials,
+          driver: 'scripts/quality/native-input-linux.py',
+          click: INPUT_CLICK.map(Number),
+          metric:
+            'command_start_to_paint_observed_ms: immediately before the XTest click command to the validated complete native paint record of the clicked label (benchmarks/NATIVE_PAINT.md)',
+          scope:
+            'one click per fresh launch, after the expected initial paint; includes xdotool, X server delivery, adapter update, native scheduling, paint instrumentation and log I/O; not display presentation',
+          ordering: 'separate launches after the timed trials, with the same rotated order',
+          evidence: 'native paint evidence is enabled for these launches only',
+        }
+      : null,
     unsupported: [
       'direct Rust GPUI baseline (no equivalent Rust workload exists yet)',
       'Electrobun/WebView baselines',
-      'display presentation and input-to-paint latency',
+      'display presentation (input latency ends at the validated native paint record)',
+      ...(inputTrials ? [] : ['input-to-paint latency (run with --input-trials)']),
       'GPU/CPU utilization',
       'controlled cold-cache startup',
       'hardware GPU (this runner uses the session renderer, recorded per calibration)',
@@ -382,6 +421,96 @@ const builds: Record<string, unknown> = {}
 const launches: Launch[] = []
 const calibrations: Record<string, unknown>[] = []
 const loads: Record<string, string> = {}
+const inputLaunches: InputLaunch[] = []
+
+function paintExpectation(label: string, revision?: number) {
+  const rows = Array.from({ length: Number(values.rows) }, (_, id) => ({ id, text: `Row ${id}` }))
+  return {
+    type: 'rendered',
+    stage: 'native-paint',
+    window_id: 1,
+    ...(revision === undefined ? {} : { tree_revision: revision }),
+    nodes: expectedNodes(rows, label),
+  }
+}
+
+/** One fresh launch driven by real XTest input; the driver owns the latency clock. */
+async function runInput(build: Built, name: string, trial: number) {
+  assert.deepEqual(await digest(build.argv.at(-1)!), build.artifact, 'Artifact changed')
+  const path = join(inputDirectory, `${name}.json`)
+  const evidence = join(inputDirectory, name)
+  const nonce = crypto.randomUUID()
+  loads[name] = readFileSync('/proc/loadavg', 'utf8').trim()
+  const argv = [
+    'python3',
+    INPUT_DRIVER,
+    '--output',
+    evidence,
+    '--mode',
+    build.mode,
+    '--title',
+    WINDOW_TITLE,
+    '--timeout',
+    '30',
+    '--require-unforced-cleanup',
+    '--expect-initial-render',
+    JSON.stringify(paintExpectation('Initial', 1)),
+    '--expect-render',
+    JSON.stringify(paintExpectation(INPUT_LABEL)),
+    '--expect-event',
+    JSON.stringify({
+      type: 'click',
+      stage: 'bun-application',
+      target: 'benchmark-fixture',
+      adapter: build.adapter,
+    }),
+    '--click',
+    ...INPUT_CLICK,
+    '--',
+    ...build.argv,
+    ...workloadArguments(path, nonce, build.mode, false, true),
+  ]
+  const env: Record<string, string> = {}
+  for (const [key, value] of Object.entries(process.env))
+    if (value !== undefined && !key.startsWith('BUN_NATIVE_EVIDENCE_')) env[key] = value
+  env['BUN_NATIVE_HOST'] = host
+  env['BUN_NATIVE_HOST_PROFILE'] = values['host-profile']!
+  // No RSS polling here: it would compete with the measured input interval.
+  const child = Bun.spawn(argv, {
+    cwd: source,
+    stdout: Bun.file(join(inputDirectory, `${name}.driver.stdout.log`)),
+    stderr: Bun.file(join(inputDirectory, `${name}.driver.stderr.log`)),
+    env,
+  })
+  const timer = setTimeout(() => child.kill('SIGKILL'), 120_000)
+  const exitCode = await child.exited
+  clearTimeout(timer)
+  let error: string | null = null
+  let latency: number | null = null
+  try {
+    const result = JSON.parse(readFileSync(join(evidence, 'result.json'), 'utf8'))
+    assert.equal(result.status, 'passed', `driver status ${result.status}: ${result.error ?? ''}`)
+    assert.equal(exitCode, 0, `driver exit ${exitCode}`)
+    const observation = result.measurements.native_paint_file_observation
+    latency = observation.command_start_to_paint_observed_ms
+    assert(typeof latency === 'number' && Number.isFinite(latency) && latency >= 0)
+    const checked = childReport(build, path, nonce)
+    if (checked.error) throw new Error(`child report: ${checked.error}`)
+  } catch (failure) {
+    error = failure instanceof Error ? failure.message : String(failure)
+    latency = null
+  }
+  inputLaunches.push({
+    name,
+    adapter: build.adapter,
+    mode: build.mode,
+    trial,
+    status: error ? 'failed' : 'passed',
+    commandStartToPaintObservedMs: latency,
+    error,
+  })
+  console.log(JSON.stringify({ name, status: error ? 'failed' : 'passed', error, latency }))
+}
 
 async function run(build: Built, name: string, trial: number, warmup: boolean) {
   assert.deepEqual(await digest(build.argv.at(-1)!), build.artifact, 'Artifact changed')
@@ -531,6 +660,13 @@ try {
     for (const build of ordered)
       await run(build, `${build.adapter}-${build.mode}-${trial}`, trial, false)
   }
+  for (let trial = 1; trial <= inputTrials; trial++) {
+    const offset = trial % built.length
+    const rotated = [...built.slice(offset), ...built.slice(0, offset)]
+    const ordered = trial % 2 ? rotated.reverse() : rotated
+    for (const build of ordered)
+      await runInput(build, `${build.adapter}-${build.mode}-input-${trial}`, trial)
+  }
   assert.deepEqual(await sourceFiles(), sourceBefore, 'Source changed during trials')
   assert.deepEqual(
     await digest(host),
@@ -538,7 +674,10 @@ try {
     'Native host changed during trials'
   )
   report['summary'] = summarize(launches)
-  const failed = launches.filter((item) => item.status === 'failed').map((item) => item.name)
+  if (inputTrials) report['inputLatency'] = summarizeInputLatency(inputLaunches)
+  const failed = [...launches, ...inputLaunches]
+    .filter((item) => item.status === 'failed')
+    .map((item) => item.name)
   report['failedLaunches'] = failed
   report['status'] = failed.length ? 'completed-with-failures' : 'passed'
 } catch (error) {
@@ -550,6 +689,17 @@ try {
   report['builds'] = builds
   report['calibrations'] = calibrations
   report['loadAverageBeforeLaunch'] = loads
+  report['inputLaunches'] = await Promise.all(
+    inputLaunches.map(async (item) => {
+      const path = join(inputDirectory, `${item.name}.json`)
+      const driver = join(inputDirectory, item.name, 'result.json')
+      return {
+        ...item,
+        childReport: existsSync(path) ? await digest(path) : null,
+        driverReport: existsSync(driver) ? await digest(driver) : null,
+      }
+    })
+  )
   // Raw per-launch records: process observations plus each child's full report digest.
   report['launches'] = await Promise.all(
     launches.map(async ({ report: child, ...rest }) => {
