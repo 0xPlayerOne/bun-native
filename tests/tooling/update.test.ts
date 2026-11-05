@@ -397,7 +397,7 @@ test('replayed or lower-sequence updates and foreign products are refused', asyn
   await installed(root, 'two')
 })
 
-test('rollback refuses a modified retained release and a live lock blocks writers', async () => {
+test('rollback refuses a modified retained release; corrupt state and live locks fail safely', async () => {
   const root = join(await temporary(), 'install')
   for (const [label, sequence] of [
     ['one', 1],
@@ -415,6 +415,21 @@ test('rollback refuses a modified retained release and a live lock blocks writer
   await writeFile(join(root, state.previous!.directory, 'development/application.js'), 'evil\n')
   await rejects(rollback(root), 'integrity')
   await installed(root, 'two')
+  // An empty lock left by a writer that died before recording its process is stale.
+  await writeFile(join(root, 'lock'), '')
+  expect(await recover(root)).toEqual([])
+  expect(existsSync(join(root, 'lock'))).toBe(false)
+
+  await rm(join(root, state.current.directory), { recursive: true })
+  await rejects(currentRelease(root), 'integrity')
+  await writeFile(join(root, 'state.json'), '{not json')
+  await rejects(readState(root), 'state')
+  await rejects(currentRelease(join(await temporary(), 'none')), 'state')
+  await writeFile(
+    join(root, 'state.json'),
+    JSON.stringify({ ...state, current: { directory: '../x' } })
+  )
+  await rejects(rollback(root), 'state')
 
   await writeFile(join(root, 'lock'), `${process.pid}\n`)
   await rejects(rollback(root), 'busy')

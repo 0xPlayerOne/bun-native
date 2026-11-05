@@ -104,7 +104,8 @@ async function lock(root: string): Promise<() => Promise<void>> {
       return () => rm(path, { force: true })
     } catch (error) {
       if (code(error) !== 'EEXIST') throw error
-      const owner = Number.parseInt(await readFile(path, 'utf8').catch(() => ''), 10)
+      // A lock removed by its owner meanwhile reads as an error message, i.e. no owner.
+      const owner = Number.parseInt(await readFile(path, 'utf8').catch(String), 10)
       if (Number.isSafeInteger(owner) && owner > 0 && alive(owner))
         throw new UpdateError('busy', `Installation is locked by process ${owner}`)
       // The writer died (or wrote nothing); its uncommitted work is discarded below.
@@ -183,11 +184,11 @@ async function writeState(root: string, state: InstallationState): Promise<void>
 async function sweep(root: string, state: InstallationState | null): Promise<string[]> {
   const removed: string[] = []
   const keep = new Set([state?.current.directory, state?.previous?.directory])
-  for (const name of await readdir(join(root, 'staging')).catch(() => [])) {
+  for (const name of await readdir(join(root, 'staging'))) {
     await rm(join(root, 'staging', name), { recursive: true, force: true })
     removed.push(`staging/${name}`)
   }
-  for (const name of await readdir(join(root, 'versions')).catch(() => []))
+  for (const name of await readdir(join(root, 'versions')))
     if (!keep.has(`versions/${name}`)) {
       await rm(join(root, 'versions', name), { recursive: true, force: true })
       removed.push(`versions/${name}`)
@@ -356,7 +357,12 @@ export async function currentRelease(
   const state = await readState(root)
   if (!state) throw new UpdateError('state', 'Nothing is installed')
   const path = join(resolve(root), state.current.directory)
-  if (!(await stat(path).catch(() => undefined))?.isDirectory())
-    throw new UpdateError('integrity', 'The current release directory is missing')
+  let directory = false
+  try {
+    directory = (await stat(path)).isDirectory()
+  } catch (error) {
+    if (code(error) !== 'ENOENT') throw error
+  }
+  if (!directory) throw new UpdateError('integrity', 'The current release directory is missing')
   return { directory: path, release: state.current }
 }
