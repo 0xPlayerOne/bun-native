@@ -189,6 +189,92 @@ def close_process_snapshot(observed, started):
     }
 
 
+MAX_SAMPLED_PROCESSES = 8
+MAX_SAMPLED_THREADS = 64
+
+
+def read_proc_text(path, limit=256):
+    try:
+        return path.read_text(errors="replace")[:limit].strip()
+    except OSError as error:
+        return f"unavailable: {type(error).__name__}"
+
+
+def close_thread_sample(observed, started):
+    """One read-only kernel view of each observed thread after a failed close.
+
+    It separates a host main thread blocked in a driver or futex wait from one
+    idle in its event-loop poll. It never signals, traces or adopts processes:
+    only PID/start-ticks identities already observed are read.
+    """
+    table = process_table()
+    processes = []
+    for pid, start_ticks in list(observed.items())[:MAX_SAMPLED_PROCESSES]:
+        row = table.get(pid)
+        if row is None or row["start_ticks"] != start_ticks:
+            continue
+        threads = []
+        try:
+            tasks = sorted(
+                (entry for entry in (Path("/proc") / str(pid) / "task").iterdir()),
+                key=lambda entry: int(entry.name),
+            )
+        except (OSError, ValueError):
+            tasks = []
+        for task in tasks[:MAX_SAMPLED_THREADS]:
+            stat = read_proc_text(task / "stat", 1024)
+            state = stat.rsplit(")", 1)[1].split()[0] if ")" in stat else "unknown"
+            threads.append(
+                {
+                    "tid": int(task.name),
+                    "comm": read_proc_text(task / "comm", 64),
+                    "state": state,
+                    "wchan": read_proc_text(task / "wchan", 64),
+                    # First field is the syscall number, "running" or -1.
+                    "syscall": read_proc_text(task / "syscall", 32).split(" ")[0],
+                }
+            )
+        processes.append(
+            {
+                "pid": pid,
+                "comm": read_proc_text(Path("/proc") / str(pid) / "comm", 64),
+                "threads": threads,
+                "threads_truncated": len(tasks) > MAX_SAMPLED_THREADS,
+            }
+        )
+    return {
+        "scope": "previously observed PID/start-ticks matches only; read-only /proc",
+        "clock": "driver_monotonic_relative",
+        "observed_at_ms": (time.monotonic() - started) * 1000,
+        "processes": processes,
+    }
+
+
+def close_window_manager_state(window):
+    """Whether the WM still lists and focuses the window; not WM close delivery."""
+    result = subprocess.run(
+        ["xprop", "-root", "_NET_ACTIVE_WINDOW", "_NET_CLIENT_LIST"],
+        check=False,
+        capture_output=True,
+        text=True,
+        timeout=3,
+    )
+    state = {"command_returncode": result.returncode}
+    if result.returncode == 0:
+        ids = {
+            line.split("(", 1)[0].strip(): {
+                int(value, 16) for value in re.findall(r"0x[0-9a-fA-F]+", line)
+            }
+            for line in result.stdout.splitlines()
+        }
+        target = int(window)
+        state["active"] = target in ids.get("_NET_ACTIVE_WINDOW", set())
+        state["managed"] = target in ids.get("_NET_CLIENT_LIST", set())
+    else:
+        state["stderr_tail"] = result.stderr[-500:]
+    return state
+
+
 def capture(stream, path, stats):
     with path.open("wb") as output:
         while chunk := stream.read(8192):
@@ -1192,6 +1278,13 @@ def main():
             report["close_diagnostics"]["process_snapshot"] = close_process_snapshot(
                 observed, started
             )
+            if report["checks"]["os_close"] == "failed":
+                report["close_diagnostics"]["window_manager"] = (
+                    close_window_manager_state(window)
+                )
+                report["close_diagnostics"]["thread_sample"] = close_thread_sample(
+                    observed, started
+                )
             phases = [
                 event
                 for event in read_events(evidence_path, nonce, 0)
@@ -1199,7 +1292,7 @@ def main():
             ]
             report["close_diagnostics"]["phases"] = phases[:32]
             report["close_diagnostics"]["phases_truncated"] = len(phases) > 32
-        except (OSError, ValueError, RuntimeError) as error:
+        except (OSError, ValueError, RuntimeError, subprocess.TimeoutExpired) as error:
             report["close_diagnostics"]["snapshot_error"] = str(error)[-2000:]
         if args.event_stress:
             # Re-read after process exit so a duplicate or late input cannot hide
