@@ -28,6 +28,7 @@ The initial [shared native layout contract](native-layout.md) extends this tree 
 
 - [Engineering quality and optimization](engineering-quality.md) — required audits every PR, every phase and before release
 - [Provenance](provenance.md) — licensing, copied code and attribution
+- [Security and crash qualification matrix](qualification-matrix.md) — native fault, malformed payload, version mismatch and offline cases with their deciding tests
 - [Agent contract](../AGENTS.md) and [Contributing](../.github/CONTRIBUTING.md)
 - [Roadmap issue #1](https://github.com/0xPlayerOne/bun-native/issues/1) and [BN0–BN7 epics](https://github.com/0xPlayerOne/bun-native/milestones)
 

@@ -129,6 +129,7 @@ The public package exports the error classes needed to distinguish failures:
 | ------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
 | `NativeStateError`        | Invalid local handles/state, stale input revisions or public queue/model limits; inspect `code`.                                |
 | `NativeCommandError`      | A native semantic rejection; inspect its native `code`.                                                                         |
+| `NativeHostExitError`     | The native host exited unexpectedly; `diagnostic` is a bounded, redacted exit record (see the qualification matrix).            |
 | `ProtocolError`           | A malformed value or broken protocol/channel invariant. Malformed received messages and invalid native events fail the session. |
 | `UnsupportedFeatureError` | An unknown native element kind; `feature` is `element:` followed by that kind. It does not trigger a fallback renderer.         |
 
