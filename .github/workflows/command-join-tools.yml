@@ -1,0 +1,46 @@
+name: Command join review inputs (transport only)
+
+on:
+  pull_request:
+    branches: [main]
+    types: [ready_for_review]
+
+permissions:
+  contents: read
+
+jobs:
+  inputs:
+    name: Transport pinned Python tool and tracked source
+    if: vars.CI_BILLING_PAUSED == 'false' && github.event.pull_request.draft == false && github.event.pull_request.head.repo.full_name == github.repository && github.head_ref == 'test/command-join-tools-20261105'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          ref: ${{ github.event.pull_request.head.sha }}
+      - name: Download the existing hash-pinned wheel and archive public source
+        shell: bash
+        run: |
+          set -euo pipefail
+          output="$RUNNER_TEMP/command-join-review-inputs"
+          mkdir "$output"
+          cp scripts/quality/requirements.txt "$output/requirements.txt"
+          python3 -m pip --isolated download --disable-pip-version-check \
+            --index-url https://pypi.org/simple --no-deps --only-binary=:all: \
+            --require-hashes -r scripts/quality/requirements.txt --dest "$output"
+          git archive --format=tar HEAD | gzip -n > "$output/source.tar.gz"
+          git rev-parse HEAD > "$output/source-commit.txt"
+          git rev-parse 'HEAD^{tree}' > "$output/source-tree.txt"
+          git ls-tree -r -z HEAD > "$output/source-files.z"
+          git cat-file commit HEAD > "$output/source-commit.raw"
+          git diff --exit-code
+          cd "$output"
+          sha256sum ./* > SHA256SUMS
+          sha256sum --check --strict SHA256SUMS
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: command-join-review-inputs-${{ github.event.pull_request.head.sha }}
+          path: ${{ runner.temp }}/command-join-review-inputs/
+          retention-days: 3
+          if-no-files-found: error
