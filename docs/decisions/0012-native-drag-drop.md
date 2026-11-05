@@ -1,4 +1,4 @@
-# ADR 0011 — Bounded native drag and drop with owned targets
+# ADR 0012 — Bounded native drag and drop with owned targets
 
 Status: accepted. The Linux X11 implementation is verified locally in
 development and inspected AOT, through core, Solid and React, on an isolated

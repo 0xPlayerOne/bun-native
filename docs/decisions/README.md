@@ -44,7 +44,7 @@ The implementation agent may accept an ADR autonomously within the owner's exper
 - [0008 — Owned native global shortcuts](0008-native-global-shortcuts.md)
 - [0009 — Owned desktop notifications](0009-native-notifications.md)
 - [0010 — Scoped filesystem grants](0010-filesystem-grants.md)
-- [0011 — Bounded native drag and drop](0011-native-drag-drop.md)
+- [0012 — Bounded native drag and drop](0012-native-drag-drop.md)
 - [Native host protocol 11](../native-abi.md)
 - [Active roadmap](https://github.com/0xPlayerOne/bun-native/issues/1)
 - [Architecture overview](../architecture.md)

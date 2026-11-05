@@ -12,7 +12,7 @@ defines native event observations and public propagation. The
 owned-window display reads, bounded clipboard transfers, owned global
 shortcut registrations, owned desktop notifications and scoped filesystem
 grants on launch-policy roots ([ADR 0010](decisions/0010-filesystem-grants.md))
-and owned drop targets on Linux X11 ([ADR 0011](decisions/0011-native-drag-drop.md)).
+and owned drop targets on Linux X11 ([ADR 0012](decisions/0012-native-drag-drop.md)).
 
 The authoritative schemas and validators are
 [`packages/protocol/src/messages.ts`](../packages/protocol/src/messages.ts),
@@ -247,7 +247,7 @@ launch-policy root ID and relative paths only; no command accepts an absolute
 path. Drop commands (`register_drop_target`, `unregister_drop_target`,
 `resolve_dropped_item`) name an owned node, target and drop; drop events carry
 display names only, and resolution returns a path relative to a launch root
-([ADR 0011](decisions/0011-native-drag-drop.md)). No shell, process, network, update or browser service command exists. The
+([ADR 0012](decisions/0012-native-drag-drop.md)). No shell, process, network, update or browser service command exists. The
 [security ADR](decisions/0003-bridge-security.md) defines the trusted
 application/untrusted data boundary and default-deny requirements for future
 services. Neither AOT nor the child-process boundary sandboxes trusted Bun code.

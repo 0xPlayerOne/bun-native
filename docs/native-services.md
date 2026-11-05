@@ -457,7 +457,7 @@ ignored. If the window under a drag closes before the drop, the next drag on
 that X connection is not converted until its source leaves. The
 `drag_drop_files_v1` capability is advertised only on Linux X11. Wayland,
 macOS and Windows report `unavailable` / `unsupported_platform`. See
-[ADR 0011](decisions/0011-native-drag-drop.md).
+[ADR 0012](decisions/0012-native-drag-drop.md).
 
 The [Native Linux workflow](../.github/workflows/native-linux.yml) runs
 [`tests/native/drag-drop.ts`](../tests/native/drag-drop.ts) and the Solid and
