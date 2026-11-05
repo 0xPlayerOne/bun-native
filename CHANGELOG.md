@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.18.0](https://github.com/0xPlayerOne/bun-native/compare/v0.17.3...v0.18.0) (2026-11-05)
+
+
+### Features
+
+* **quality:** sample owned threads and WM state after a failed OS close ([#419](https://github.com/0xPlayerOne/bun-native/issues/419)) ([e02edb0](https://github.com/0xPlayerOne/bun-native/commit/e02edb00538a2be0fd5f93a1b12ce42716358c02))
+* **services:** owned X11 global shortcuts ([#301](https://github.com/0xPlayerOne/bun-native/issues/301)) ([#422](https://github.com/0xPlayerOne/bun-native/issues/422)) ([1c42a4b](https://github.com/0xPlayerOne/bun-native/commit/1c42a4b04ca0fd250b61f1dac9f4f3fcac25b0df))
+
+
+### Tests
+
+* run collectability checks without the JSC DFG tier ([#287](https://github.com/0xPlayerOne/bun-native/issues/287)) ([#418](https://github.com/0xPlayerOne/bun-native/issues/418)) ([c9dc027](https://github.com/0xPlayerOne/bun-native/commit/c9dc027b8350b740722a6c75d9d80440675a4b30))
+
 ## [0.17.3](https://github.com/0xPlayerOne/bun-native/compare/v0.17.2...v0.17.3) (2026-11-05)
 
 
