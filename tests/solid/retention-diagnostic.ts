@@ -15,7 +15,9 @@ type Context = {
 
 const sourcePaths = [
   'tests/solid/renderer.test.ts',
+  'tests/renderers/collectability-scenarios.ts',
   'tests/solid/retention-diagnostic.ts',
+  'benchmarks/solid/collection.ts',
   'tests/renderers/support.ts',
   'packages/renderer/src/root.ts',
   'packages/renderer/src/window-lifetime.ts',
@@ -77,7 +79,7 @@ export function rethrowWithRetentionDiagnostic(
       const report = {
         schemaVersion: 1,
         scope:
-          'Failure-only metadata after the original ten-root WeakRef assertion; no extra collection, snapshot, await or retry.',
+          'Failure-only metadata after the settled ten-root WeakRef assertion; no further collection, snapshot or await.',
         limitation:
           'The original predicate and this diagnostic dereference keep observed targets alive for the current job. This is not a trace of their original marking roots or proof of framework leakage.',
         recordedAt: new Date().toISOString(),
