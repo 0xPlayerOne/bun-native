@@ -1,5 +1,35 @@
 # Changelog
 
+## [0.17.2](https://github.com/0xPlayerOne/bun-native/compare/v0.17.1...v0.17.2) (2026-11-05)
+
+
+### Bug Fixes
+
+* **renderer:** preserve the first reported initialization failure ([#415](https://github.com/0xPlayerOne/bun-native/issues/415)) ([85f6d1c](https://github.com/0xPlayerOne/bun-native/commit/85f6d1cbc571ac21dff4bad983beebaae7e521c9))
+
+
+### Tests
+
+* **toolchain:** make exact command output independent of forced color ([#416](https://github.com/0xPlayerOne/bun-native/issues/416)) ([764b50d](https://github.com/0xPlayerOne/bun-native/commit/764b50d09cc8bb06be1b0f1c2336d5d21f83ae7d))
+
+
+### CI
+
+* schedule protected-main native audits ([#396](https://github.com/0xPlayerOne/bun-native/issues/396)) ([1f012e9](https://github.com/0xPlayerOne/bun-native/commit/1f012e979f8ac0c515ec82a926a0382957c27e13))
+
+## [0.17.1](https://github.com/0xPlayerOne/bun-native/compare/v0.17.0...v0.17.1) (2026-11-05)
+
+
+### Bug Fixes
+
+* **native:** release EGL construction resources and per-owner pbuffers ([#374](https://github.com/0xPlayerOne/bun-native/issues/374)) ([b1ab723](https://github.com/0xPlayerOne/bun-native/commit/b1ab72388f7c0ee89cd5365b1b0481d42ca33892))
+* **renderer:** revoke terminal React callbacks and shared cleanup registration ([#331](https://github.com/0xPlayerOne/bun-native/issues/331)) ([3d60575](https://github.com/0xPlayerOne/bun-native/commit/3d60575be79282f9a517781b80de3e27a882562a))
+
+
+### Documentation
+
+* **services:** qualify native display foundation and Linux clipboard ([#353](https://github.com/0xPlayerOne/bun-native/issues/353)) ([64b8be1](https://github.com/0xPlayerOne/bun-native/commit/64b8be18969f76f311d1a86a90c3c8b25b1229ef))
+
 ## [0.17.0](https://github.com/0xPlayerOne/bun-native/compare/v0.16.1...v0.17.0) (2026-11-05)
 
 

@@ -28,6 +28,7 @@ function run(cwd: string, args: string[]) {
     cwd,
     env: {
       ...process.env,
+      FORCE_COLOR: '0',
       PATH: `${dirname(process.execPath)}${delimiter}${process.env['PATH'] ?? ''}`,
     },
     stdout: 'pipe',
