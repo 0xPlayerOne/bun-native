@@ -1,0 +1,380 @@
+{
+  "schemaVersion": 1,
+  "recordType": "hosted_release_host_clipboard_qualification",
+  "recordedAt": "2026-11-04",
+  "status": "Passed: local Linux X11 clipboard text in development and inspected machine-code AOT, both with the same release-profile native host.",
+  "workflow": {
+    "url": "https://github.com/0xPlayerOne/bun-native/actions/runs/41831891686",
+    "runId": 41831891686,
+    "jobId": 126580888949,
+    "jobUrl": "https://github.com/0xPlayerOne/bun-native/actions/runs/41831891686/job/126580888949",
+    "jobName": "Native Linux / GPUI release, native contracts and baselines",
+    "jobConclusion": "success",
+    "validationGateConclusion": "success",
+    "artifact": {
+      "id": 13324401782,
+      "name": "native-linux-X64",
+      "url": "https://github.com/0xPlayerOne/bun-native/actions/runs/41831891686/artifacts/13324401782",
+      "bytes": 11362053,
+      "sha256": "d2fe33c6a18ce7d8be79fa6c810104598cfd54ff3309f1bc10684c556a3a5a31",
+      "createdAt": "2026-11-04T12:59:16Z",
+      "expiresAt": "2026-11-18T12:59:13Z"
+    }
+  },
+  "source": {
+    "commit": "c9ada928eb86ee44abeb85ba13721a68af0057d6",
+    "dirty": false,
+    "scenarioFilesVerifiedAgainstCommit": 75,
+    "compilerFilesVerifiedAgainstCommit": 69,
+    "scenarioFilesIdenticalAcrossModes": true,
+    "sharedSourceFingerprintsAgree": true,
+    "sharedSourceFileCount": 66,
+    "compilerOnlySourcePaths": [
+      "examples/native-window/content.ts",
+      "examples/native-window/main.ts",
+      "experiments/aot-gpui/native-sources.ts"
+    ],
+    "scenarioOnlySourcePaths": [
+      "scripts/quality/native-clipboard-scenario.py",
+      "scripts/quality/native-diagnostics-linux.py",
+      "scripts/quality/native-input-linux.py",
+      "scripts/quality/native-interactions-scenario.py",
+      "scripts/quality/native-layout-scenario.py",
+      "tests/native/fault.ts",
+      "tests/native/interactions.ts",
+      "tests/native/layout.ts",
+      "tests/native/scheduling.ts"
+    ],
+    "scenarioFileManifest": {
+      "encoding": "UTF-8 JSON sourceFiles object, sorted keys, comma/colon separators, no trailing newline",
+      "bytes": 9380,
+      "sha256": "22d7f9216a0a331a5e38b16d4eb7668d4286c810daa4b567f7bda17d3d7a8f5f"
+    },
+    "workflowFile": {
+      "path": ".github/workflows/native-linux.yml",
+      "bytes": 29462,
+      "sha256": "e89a08cee09c4c9bf926cc9a596ae74c2e60cdca91768391e297ca034bdcfe08"
+    },
+    "rawCompilerManifest": {
+      "file": "clipboard-package/manifest.json",
+      "bytes": 18616,
+      "sha256": "9552791a76a1c56f60d9690c7aecb3581f64e1282b2381760a3ddd4a7895bf00"
+    }
+  },
+  "toolchain": {
+    "bunVersion": "1.4.4-canary.1",
+    "bunRevision": "da867c60bf0bcbf9d6d36994f8ca0efa42075115",
+    "rustVersion": "1.98.1",
+    "gpuiRevision": "ba63a022c9a22ca66d68ef2a8f0bb9b5b0a9984d",
+    "rawEnvironment": {
+      "file": "toolchain.txt",
+      "bytes": 1402,
+      "sha256": "3b62698d5113c1c5276973b17511a883a386ccc9e4a0740e90fc230110c68eb7"
+    }
+  },
+  "environment": {
+    "platform": "Linux-7.0.0-1017-azure-x86_64-with-glibc2.39",
+    "architecture": "x86_64",
+    "display": "Isolated task-owned Xvfb X11, 1280x800x24, TCP disabled",
+    "input": "XTest",
+    "windowManager": "Openbox 3.6.1",
+    "renderer": {
+      "is_software_emulated": true,
+      "device_name": "llvmpipe (LLVM 20.1.2, 256 bits)",
+      "driver_name": "llvmpipe",
+      "driver_info": "Mesa 25.2.8-0ubuntu0.24.04.4 (LLVM 20.1.2)"
+    }
+  },
+  "host": {
+    "profile": "release",
+    "bytes": 29475240,
+    "sha256": "71ace2bc859fbaa84ec0d9b5b796838b2245a340d62145027721a7c5d492b863"
+  },
+  "hostBuild": {
+    "command": [
+      "cargo",
+      "build",
+      "--locked",
+      "--release",
+      "--manifest-path",
+      "Cargo.toml",
+      "-p",
+      "bun-native-host",
+      "--bin",
+      "bun-native-host",
+      "--example",
+      "clipboard-peer"
+    ],
+    "rawBuildLog": {
+      "file": "build.log",
+      "bytes": 16891,
+      "sha256": "babeb78dd32f0d7e6a9b98d347d28b385d452997b6fa99b0ced85e17c6cedd26"
+    },
+    "hostHashLog": {
+      "file": "binary-sha256.txt",
+      "bytes": 97,
+      "sha256": "1daced103230c6cec95784672456ee52b1a8cbea86d8924f26fc424e17b9799f"
+    },
+    "peerHashLog": {
+      "file": "clipboard-peer-sha256.txt",
+      "bytes": 105,
+      "sha256": "418d429e41c5c3a7feed1aa89143664906df899eb3a1cc6055796aed12ccc365"
+    }
+  },
+  "clipboardPeer": {
+    "bytes": 797496,
+    "sha256": "e32f3fc85a163c89fdfb40c135f101b6454fe6a355a5eadd6b59784b8bbc808f"
+  },
+  "aotApplication": {
+    "bytes": 71613480,
+    "sha256": "a1cd396c7655027d06dede2768c5a5e2cd249dd74488984cc3314f99d0b60c3f",
+    "entrypoint": "tests/native/clipboard.ts",
+    "format": "elf",
+    "compiledProgram": "passed",
+    "jitOmission": "passed",
+    "jit": "unused",
+    "interpreter": "present",
+    "removedJitRanges": {
+      "count": 27,
+      "virtualBytes": 14297303
+    },
+    "hostPlacement": "external"
+  },
+  "requiredOutcomesPassedInBothModes": [
+    "nativeDefaultDenial",
+    "nativeStaleAndUnknownOwners",
+    "pendingShutdownJoined",
+    "emptySelection",
+    "stalledTransferDeadline",
+    "inputAndCommitDuringTransfer",
+    "ordinary",
+    "delayed",
+    "incremental",
+    "empty-text",
+    "oversize",
+    "incr-oversize",
+    "incr-header-large",
+    "invalid-utf8",
+    "nul",
+    "drop",
+    "slow-incr",
+    "flood",
+    "submittedReadCancellation",
+    "preDispatchCancellation",
+    "pendingWindowClose",
+    "externalReadOfWrite",
+    "malformedMultipleRejected",
+    "externalEmptyText",
+    "writeSurvivesWindowClose",
+    "shutdownPreservesNewExternalOwner"
+  ],
+  "peerLabelsJoinedInBothModes": [
+    "shutdown",
+    "responsive",
+    "ordinary",
+    "delayed",
+    "incremental",
+    "empty-text",
+    "oversize",
+    "incr-oversize",
+    "incr-header-large",
+    "invalid-utf8",
+    "nul",
+    "drop",
+    "slow-incr",
+    "flood",
+    "cancelled",
+    "closed-window",
+    "read-written",
+    "multiple-malformed",
+    "read-empty",
+    "read-after-close",
+    "read-after-shutdown",
+    "replacement"
+  ],
+  "runs": [
+    {
+      "mode": "development",
+      "status": "passed",
+      "rawResult": {
+        "file": "diagnostics-development-clipboard/result.json",
+        "bytes": 49627,
+        "sha256": "99dd64d9bd85eace8e4ac30fc00b538d8cf79f33a5252a67131836ccec7ae63f"
+      },
+      "applicationResult": {
+        "file": "diagnostics-development-clipboard/application-result.json",
+        "bytes": 30052,
+        "sha256": "66bd1bb17cb930dd16fbc91818d9479ae5f34d1e99854399227c1e494d04b774"
+      },
+      "nativeLog": {
+        "file": "diagnostics-development-clipboard/native.jsonl",
+        "bytes": 7720,
+        "sha256": "5390c607cb7702529e47502dc5fe3257937e44bab991e594a26770fddd07d99e"
+      },
+      "screenshot": {
+        "file": "diagnostics-development-clipboard/after.png",
+        "bytes": 12051,
+        "sha256": "30f17aa5bd62a786f2ca2845858a2f3e7908fcdfbdf182fbd83f842b11e17485"
+      },
+      "passedOutcomes": 26,
+      "joinedPeersWithExitZero": 22,
+      "publicOwnership": {
+        "windows": 0,
+        "nodes": 0,
+        "callbacks": 0,
+        "queuedTransactions": 0,
+        "queuedCallbacks": 0,
+        "activeCallbacks": 0,
+        "serviceRequests": 0
+      },
+      "nativeInput": {
+        "value": "x",
+        "revision": 1,
+        "sequence": 5,
+        "readPending": true,
+        "injectionDurationMs": 3.251609000017197,
+        "applicationLogObservedAfterInjectionMs": 11.116129000015462
+      },
+      "stalledReadApplicationElapsedMs": 2003.7328230000003,
+      "idle": {
+        "read": {
+          "observedIntervalMs": 214.07693100002234,
+          "beforeState": "S",
+          "afterState": "S",
+          "cpuTicks": 0,
+          "voluntarySwitches": 0,
+          "involuntarySwitches": 0
+        },
+        "write": {
+          "observedIntervalMs": 214.28568099997847,
+          "beforeState": "S",
+          "afterState": "S",
+          "cpuTicks": 0,
+          "voluntarySwitches": 0,
+          "involuntarySwitches": 0
+        },
+        "lost-owner": {
+          "observedIntervalMs": 213.8253140000188,
+          "beforeState": "S",
+          "afterState": "S",
+          "cpuTicks": 0,
+          "voluntarySwitches": 0,
+          "involuntarySwitches": 0
+        }
+      },
+      "finalNativePaint": {
+        "treeRevision": 3,
+        "nodeCount": 4,
+        "completeExpectedTreeMatched": true,
+        "inputValue": "x",
+        "inputRevision": 1
+      },
+      "cleanup": {
+        "forced_termination": false,
+        "remaining_observed_pids": [],
+        "unreaped_observed_pids": [],
+        "application_exit_code": 0
+      }
+    },
+    {
+      "mode": "aot",
+      "status": "passed",
+      "rawResult": {
+        "file": "diagnostics-aot-clipboard/result.json",
+        "bytes": 49637,
+        "sha256": "726f1c75a788bd23cc7c479695d3f63813ed6a8423992a46d776c1de462185ed"
+      },
+      "applicationResult": {
+        "file": "diagnostics-aot-clipboard/application-result.json",
+        "bytes": 30052,
+        "sha256": "673172dc193c7c626dd0d0e35f37fb0fde6414e42370557236e7ae27a606e97e"
+      },
+      "nativeLog": {
+        "file": "diagnostics-aot-clipboard/native.jsonl",
+        "bytes": 7720,
+        "sha256": "be73b21d466885b90735745622149f40853372118f89fbceaf69c6063fa300e2"
+      },
+      "screenshot": {
+        "file": "diagnostics-aot-clipboard/after.png",
+        "bytes": 12051,
+        "sha256": "30f17aa5bd62a786f2ca2845858a2f3e7908fcdfbdf182fbd83f842b11e17485"
+      },
+      "passedOutcomes": 26,
+      "joinedPeersWithExitZero": 22,
+      "publicOwnership": {
+        "windows": 0,
+        "nodes": 0,
+        "callbacks": 0,
+        "queuedTransactions": 0,
+        "queuedCallbacks": 0,
+        "activeCallbacks": 0,
+        "serviceRequests": 0
+      },
+      "nativeInput": {
+        "value": "x",
+        "revision": 1,
+        "sequence": 5,
+        "readPending": true,
+        "injectionDurationMs": 3.4490919999825564,
+        "applicationLogObservedAfterInjectionMs": 13.289647999954468
+      },
+      "stalledReadApplicationElapsedMs": 2001.935928,
+      "idle": {
+        "read": {
+          "observedIntervalMs": 213.3559100000184,
+          "beforeState": "S",
+          "afterState": "S",
+          "cpuTicks": 0,
+          "voluntarySwitches": 0,
+          "involuntarySwitches": 0
+        },
+        "write": {
+          "observedIntervalMs": 213.87345999994523,
+          "beforeState": "S",
+          "afterState": "S",
+          "cpuTicks": 0,
+          "voluntarySwitches": 0,
+          "involuntarySwitches": 0
+        },
+        "lost-owner": {
+          "observedIntervalMs": 213.95629699998153,
+          "beforeState": "S",
+          "afterState": "S",
+          "cpuTicks": 0,
+          "voluntarySwitches": 0,
+          "involuntarySwitches": 0
+        }
+      },
+      "finalNativePaint": {
+        "treeRevision": 3,
+        "nodeCount": 4,
+        "completeExpectedTreeMatched": true,
+        "inputValue": "x",
+        "inputRevision": 1
+      },
+      "cleanup": {
+        "forced_termination": false,
+        "remaining_observed_pids": [],
+        "unreaped_observed_pids": [],
+        "application_exit_code": 0
+      }
+    }
+  ],
+  "audit": [
+    "Downloaded ZIP byte count and SHA-256 match GitHub artifact metadata, whose workflow source is the recorded main commit.",
+    "Every scenario and compiler source fingerprint was recomputed from git show at the recorded commit; both scenario source maps are identical.",
+    "Release build completion, host and peer hash/size logs, compiler manifest and both executed scenarios agree on one immutable native host and peer.",
+    "Existing clipboard validate_result, verify_idle and complete paint expectations were reapplied to saved raw results without changing their assertions.",
+    "Both application-result files match their controller records. Every distinct peer identity, nonce, label and complete record list matches its separate raw JSONL log; every peer stderr log is empty.",
+    "Application logs contain the observed pending-transfer input and stalled-read rejection, and native logs contain the complete expected final paint.",
+    "AOT qualification combines the compiler manifest inspection with execution of that package path. The native driver alone reports aot_verified_by_driver=false."
+  ],
+  "limitations": [
+    "Local Linux X11 UTF-8 text only. macOS, Windows, Wayland and remote/TCP X11 clipboard services remain unavailable; richer formats, history and persistence after host exit are not implemented.",
+    "The task-owned isolated Xvfb session uses XTest and llvmpipe software rendering. This does not qualify physical input, hardware GPUs or other desktop sessions.",
+    "The total native transfer deadline is two seconds. Application-observed rejection also includes scheduling and response delivery; trusted local filesystem setup is byte-bounded, not a hard wall-clock guarantee.",
+    "Single native runs, three short idle observations and zero ownership counters do not establish sustained performance, power consumption, presentation latency or leak freedom.",
+    "The compiled application retains its interpreter and references an external prebuilt native host. This does not qualify bundled installation, signing or physical absence of all JIT-related code.",
+    "Raw logs and screenshots are retained in the linked GitHub artifact until its recorded expiration. Executables are not included; their compiler/build hashes and sizes are retained."
+  ]
+}

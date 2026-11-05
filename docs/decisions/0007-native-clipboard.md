@@ -1,6 +1,6 @@
 # ADR 0007 — Bounded native clipboard text worker
 
-Status: accepted; recovered Linux X11 implementation qualified locally in development and inspected AOT with a development-profile host. Hosted release-host and additional-platform acceptance remain separate.
+Status: accepted; local Linux X11 implementation qualified in development and inspected AOT with both development-profile and hosted release-profile native hosts. Additional platforms remain unavailable.
 
 Date: 2026-10-31.
 
@@ -118,4 +118,19 @@ outcomes, joined all 22 independent peers and returned seven public ownership
 counters to zero without forced cleanup. The three idle checkpoints in each
 run observed zero clipboard-worker CPU ticks and context switches. These are
 bounded correctness observations, not a sustained performance or leak claim.
-Broader platform and format support remains open under #300.
+The separate [hosted release-host record](../../tests/native/evidence/clipboard-linux-hosted-release.json)
+qualifies main `c9ada928eb86ee44abeb85ba13721a68af0057d6` on November 4, 2026.
+[Validation run 41831891686](https://github.com/0xPlayerOne/bun-native/actions/runs/41831891686)
+passed its native Linux job and aggregate gate. Its downloaded artifact matches
+the recorded SHA-256 and byte count. All 75 scenario source fingerprints and
+69 compiler fingerprints match that exact commit. Development and inspected
+AOT use the same 29,475,240-byte release host; each completes all 26 outcomes,
+joins all 22 peers, releases every public owner and exits without forced cleanup.
+The audit also checks each peer's raw log, the complete final native paint and
+the three sleeping-worker checkpoints, whose CPU/context-switch deltas are zero.
+
+This completes the bounded local Linux X11 text acceptance described in #300.
+It does not extend the backend or format contract: macOS, Windows, Wayland,
+remote X11 and richer formats remain unavailable, and the wider #255 service
+matrix remains open. The hosted observations are correctness evidence, not a
+performance budget, sustained power result or leak bound.

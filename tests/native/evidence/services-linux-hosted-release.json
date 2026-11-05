@@ -1,0 +1,767 @@
+{
+  "schemaVersion": 1,
+  "status": "passed",
+  "scope": "Six actual Linux X11 display-service cases through core, Solid and React in Bun development and inspected AOT modes with one release-profile host build; bounded #255 foundation acceptance only.",
+  "source": {
+    "commit": "c9ada928eb86ee44abeb85ba13721a68af0057d6",
+    "tree": "f70f6e123cfe0c1a32987749321149406496b152",
+    "dirty": false,
+    "filesSha256": {
+      ".bun-version": "8e88ab1b8c52566c35461f87112513119175f5c8f898e968f0684aabaa4e4e2b",
+      ".github/workflows/native-linux.yml": "e89a08cee09c4c9bf926cc9a596ae74c2e60cdca91768391e297ca034bdcfe08",
+      "Cargo.lock": "e9810fb670c6c5b384fcae08825a04a5a6ac856d02ca7451acb8d138a61c1484",
+      "Cargo.toml": "547f7e2cf9a35f5ff4e40c1b85636f7904491a1501c0ce840b3f2e77cd7d81b9",
+      "bun.lock": "b63cef0a497cb00c364ab2b9724179cd98061f35ce449c3aac036f6c54c0f684",
+      "bunfig.toml": "7fca72bcf6194c3438fe5717d91c3b7cbb680b5a0fc170ceb8314f93cf0c3a31",
+      "examples/native-window/content.ts": "59c1fe6ec2789798254d746ff3e52cd854eed0efe50848bf723b9170eb86630a",
+      "examples/native-window/main.ts": "962b9a3cb1e83ee7d2b68f5c4c56ffbab92c8eef004c27d8f95200c696afd7ec",
+      "experiments/aot-gpui/native-sources.ts": "d01654f8d7dd7e9f10f88f5216d1fc9e3504abfb6178c1a21a9ae52f2ff35025",
+      "native/gpui-host/Cargo.toml": "8ad6de9713d8ca3376b50617f7139f8d7e1992480b89797c2cafad7f152d0d88",
+      "native/gpui-host/src/channel.rs": "4a6a9e1be9a8b569977d3dc5e313dbc6511374a107cefe59e1d342ee14fb8329",
+      "native/gpui-host/src/evidence.rs": "27afd0cb0cda4c03d6fee107e463ce714eb81c372c8cd10ced319c6466003437",
+      "native/gpui-host/src/evidence/frame_schedule_tests.rs": "1b1eae76889a387bc5d4af32468a8414295d5112d8eaf02e443a46ef51cbd910",
+      "native/gpui-host/src/evidence/layout.rs": "087aaf6267d660f922855e8ef14cc59955523ef16253e2a67e29c3c2b5f5fe87",
+      "native/gpui-host/src/evidence/pointer.rs": "57a9d816a38877d3fd5cfa27f7fb21ac651025a08adeb72a4b5f3e4692440d1e",
+      "native/gpui-host/src/input.rs": "2e17883cb681de0cc467544c557c1991f8ec05f554fd118eb9644ef2167cc588",
+      "native/gpui-host/src/input/binding.rs": "52a53aa2c6f0fbc009d20e1bff3076d9e5cfbea0ef14e40ac63abf187fc958b0",
+      "native/gpui-host/src/input/paint.rs": "8c20773cf2e67b5edd34b5d341de875895b3ab2e1eb39055c040246d0285b470",
+      "native/gpui-host/src/main.rs": "baa13df424d298b0feb6644891ab7be8c5a44122264e407cee49d64ab9876dd8",
+      "native/gpui-host/src/services.rs": "d7e4d58362a5ae8aacc8d0958d4d599879793b89026f49141f634a2db52eac6d",
+      "native/gpui-host/src/services/clipboard.rs": "1c0da241472bfe4c91858f829cf317c7dbd71259e12367e0d648d1085fbd0ad2",
+      "native/gpui-host/src/services/clipboard/auth.rs": "501f63c8481db1aedf261c47fe5c1856fbe6b9a7cbaf5623ff95daf6e9998b52",
+      "native/gpui-host/src/services/clipboard/stream.rs": "55afb26d0fcaebd667b9d59c01961d5f6401ddc68404912c5ba551dac61959b5",
+      "native/gpui-host/src/services/clipboard/wake.rs": "33b3c14ebf0c77d0169b3b759c63181f928134f866ed395f5fd92727481b6737",
+      "native/gpui-host/src/services/clipboard/x11.rs": "507d87b395be0ec95ad7a0cf3c4f82d5fc4e94ba58a973d9fbd6a68c88523071",
+      "native/gpui-host/src/services/clipboard_unavailable.rs": "5a902bfe43afb82360a15c0607891769b46f06d47dfc91b38dd25fa8baa8ffcc",
+      "native/gpui-host/src/session.rs": "7e682c1f227e3fb522802d6ea12621d294a1baab9da5b9f98be55366f6118e72",
+      "native/gpui-host/src/startup_log.rs": "3605129bc1b7901c0bd1c00690db713cae408ef99bc8263b7d986675e5777fbe",
+      "native/gpui-host/src/startup_log/tests.rs": "1534a46a52fb070b5808bda8ec99686f2aeace1ab215bfba4cd4a02bc78b2269",
+      "native/gpui-host/src/state.rs": "dfc7c88ff0f9cf9d82a087ae4441d3239cef40f48e920ff706e46e75eaa39e15",
+      "native/gpui-host/src/style.rs": "c80da945707d34ccbfe8c7fb9c07765cdb1a093f84c2ccebc5526aeae7874961",
+      "native/gpui-host/src/view.rs": "86b2bd28ea96c3fbbfeb62d13c6322aec5aa7cb10d4a1124909937d1facac5d8",
+      "native/gpui-host/src/view/interactions.rs": "cfe3a563c15dffd7fc21a84be188ed99611f3e981efdf9efc09fae4bc30f4887",
+      "native/macos-surface/Cargo.toml": "b7c8e3a6f6aa0cc6b8c3108f719cd1b843ec30978bc3f3665a44f1ef739e2edd",
+      "native/macos-surface/src/lib.rs": "e538df9f08fe9495421ab35fe9e92f2d4495d5581c0724c0fc8b22683f2c1299",
+      "native/protocol/Cargo.toml": "b62ea91005cbca4eb770859bac2341e340693c9453ee877486285afc7de7c415",
+      "native/protocol/src/event_tests.rs": "f4c16c247fb781eee33d62b6bc3c2954dae7739ebbaa33943041a311c25ff388",
+      "native/protocol/src/events.rs": "87661f824ab9f730cc045000a14097bcbfa77e0237e7dab5cd8d7c81cbbd4870",
+      "native/protocol/src/framing.rs": "da536e4b911c9cbf7a92e411e711e0738406f2eff626dfbe0a22c035eb1ad0d3",
+      "native/protocol/src/lib.rs": "8155ec32f7f94d8c43ed2c37aef7964fa949b294e01a08cafe732bc974c190ff",
+      "native/protocol/src/security_tests.rs": "69e7c34e6f3819c4be09d501af3ff2fdf01a2ade9b63e59797ecd90635181868",
+      "native/protocol/src/service_tests.rs": "1ffacfb1a9ead0fc84bfdd4fbc8b64577862dcd1a2358a2ce929db0e0df18a75",
+      "native/protocol/src/services.rs": "02331b3786a311134e50435b59b1586b69a253f53d2e086802967919e8c0d4a3",
+      "native/protocol/src/tests.rs": "17eb133c665497a206091214c8705220cc634068a174da50daeff49afffa8233",
+      "native/protocol/src/tree.rs": "1453e9bd3d8c56627096cc18c58cbf4b42f80a51d350b499bae1fabccb499f73",
+      "native/protocol/src/tree/tests.rs": "65cdfa227e22f82d8b6a03ac901e6e990c3eaf29ec5bd1d13b320948f877866f",
+      "native/protocol/src/wire.rs": "df3d19258ea8beaffe16299caf223d7dabb366c05507909798a6192c3e6b0abe",
+      "package.json": "e8844213aa5f995aaa8b5f17057fd66aa05813d6442d8f3875350e6acc9cec5a",
+      "packages/core/package.json": "e3e6aabd2e22d892540bf5dc64630334307fcfebb9b9f05ef3034f51fa1d63fc",
+      "packages/core/src/application.ts": "b56e53f28c3dc61a2707591eba20ca67f087ae8486b02173dbf848854be232cc",
+      "packages/core/src/events.ts": "5ad24f8e4b0606405dbbbcff2df4b0424a70cd691fe8e8f36584ef98ec5f5f9f",
+      "packages/core/src/index.ts": "8800fc237dd84627a2dcf22368f40029a3331068903d6795b889e77c4e13a2f9",
+      "packages/core/src/services.ts": "e6cb7cef872eb06d5ab6c1dda35c16b770dd6fc9488505b95fc3404bf1a9856c",
+      "packages/core/src/tree.ts": "9b52cb3c0a37319a84d4d75082ae877ab92e95a91c30f9ded6d9e18f34cd617f",
+      "packages/core/src/types.ts": "0d63607618894fa1093eb70d60cec676b3c721f894f4a0f9ce348fc287799392",
+      "packages/protocol/package.json": "668f52c10a6db801c2d0c68c59998c489b50c0bb79cb7f60298dfbb83923b0ba",
+      "packages/protocol/src/elements.ts": "316676455045d5a9f3d8f4fc0fe92ac86cfab1ac6160180c216a9e79f4918c7a",
+      "packages/protocol/src/framing.ts": "91a8d348152ae987536549666612da76698220eaa21ead3d7969a3dc5155a664",
+      "packages/protocol/src/index.ts": "f8adda80742568813d6d3c342695e04132b275fce54de21e09b000fe840b4af7",
+      "packages/protocol/src/messages.ts": "6c9c12a5fdf37094257e73737bf5cb1c1c19ff2b2250303dc44a5f08c4e91800",
+      "packages/protocol/src/services.ts": "2f24e923d526a2f13f279bdd297d3088d6f901d54ed8c1a431e097155febf0c9",
+      "packages/protocol/src/values.ts": "02312ca77c065ec065523a2133abbc3209d58b949b3703367540c112b9874da0",
+      "packages/react/package.json": "18ac27eaf168a16c333e2b79e9aa7fa9ff9caf272fbf27523d865848946503ec",
+      "packages/react/src/commit-barrier.ts": "139f9f2827d3363642fee801e128dd1abf2a754d04550aca7d878493ef19bfd0",
+      "packages/react/src/index.ts": "8a4eed58230fc2353124329dc66a1a16e95f6c674ca7f2c920c1469e242b9b1a",
+      "packages/react/src/jsx-dev-runtime.ts": "bc127e1290abc7a6ba83fac0647b9f8ecca35c7aaa025a9ad25e35289a93bd85",
+      "packages/react/src/jsx-runtime.ts": "df1c78b5c254c4ccfa226d9b3d0c2b2a9dbf0733d40deac4f45cb47692a3763d",
+      "packages/react/src/jsx.ts": "0cb1d27d0e49ff376e78208e2c34077e4c901924c9a0765860c349bebd4af898",
+      "packages/react/src/mount.ts": "2c3a865c84a8d74775d79e5f1046e1de493351fd678ce9d25839596af2591978",
+      "packages/react/src/reconciler.ts": "ff36df62bc07d2f6b226227803907fe51b6a34709c972dcb811c25bdf25fb4d3",
+      "packages/renderer/package.json": "720be385eb972eff6dac08b77948e09166ca11aa1db0100312cf6b7f36f53ae3",
+      "packages/renderer/src/event-properties.ts": "807bd2fdcca47846f03db81deaece8b0ff293c501241989cf7f7deb9f199a58a",
+      "packages/renderer/src/index.ts": "d114f1ab7ee9066e4331547e13fb634a501bda84269dcf96fef7cd10cabdab4a",
+      "packages/renderer/src/input-intent.ts": "efe908fe1df1d14a7cbc1e3e30e8e76dc888fb865dca6b203bf91c18f3bb4d02",
+      "packages/renderer/src/native-tree.ts": "41dcecd4fadebbaf6b42b8646898186218e2d2bfc56ba60e0767b8c926cfac82",
+      "packages/renderer/src/nodes.ts": "80959ca5d1efffa122f75fffb34e7a99e0e69b600c3c160cae8f018e298d1d9c",
+      "packages/renderer/src/order.ts": "29a48517b697d00171768e8c6c4a81e0bfc5d63673cff6904c36cb6ae8a58e41",
+      "packages/renderer/src/root.ts": "c4ddde75c34be9ff04ee706d2f3abed94f2095e10c2515b1f8d06b41092bd2a8",
+      "packages/renderer/src/window-lifetime.ts": "e75cedfc7285f7b134bed4d1e861b125b29a5024b25188583eeb077ce545ad6b",
+      "packages/runtime/package.json": "30d8e6684ee94e266b3bc63d151f718a5d0a8804b2155c11f74de3e7189af63a",
+      "packages/runtime/src/index.ts": "6e3aa8ec634903594e33bde63ab35354f1278389427fc49ecc91ba1629defac7",
+      "packages/runtime/src/startup-trace.ts": "b34971a20cb541fa8cd97eb611d59923297844186b6653ecb607b4b29bf80b2d",
+      "packages/solid/package.json": "5da76ecbbb9ba781fc827191b33a42b25ddcfd8ba1838c0256f82ea1c6838b84",
+      "packages/solid/src/index.ts": "dff5b25e8c680c15904d91d6f67f496b66c05c11a3371fc80922148a24e4dfef",
+      "packages/solid/src/jsx.ts": "7bc5a81a65e508de176d113cab6f82efb4aac4ef0529e26e3feac1ee18417fb6",
+      "packages/solid/src/mount.ts": "0f57aab903183a92172c168b20ced25ffa63c3fea2d06cf41cb91d6eb041661f",
+      "packages/solid/src/renderer.ts": "e0418e0f4b4d5da2c12f2cebd9b9777f8fad8bab0f62528ea571f1f6bc2267d6",
+      "rust-toolchain.toml": "887f9be066a15585a2c583578e84b0fcb541126d81546276bad3d2ff00d61167",
+      "scripts/quality/native-input-linux.py": "7d3c924f13247e998c91c4463d2323b17ac9743eebf72dbd1739f347cf4ca576",
+      "scripts/quality/native-linux-session.sh": "8a764a05433d40e4d4e2e09d821fac2adbdffd90dcdbb53dd1050e5df1c7f4a5",
+      "scripts/quality/native-paint-observer.py": "fc365fbbe4127d2cdafecf18d71897173d4a16654606a8e4cca3847b3c6ed959",
+      "scripts/solid-build.ts": "5f263562cc299642e2971cce1dd913533ff092bc5543abd11d07048e8b3e5908",
+      "scripts/solid/preset.d.ts": "13ed7d2d8eb4deb50cdaa4ca50ec3156157e6c3f7da7cb4a8bbd96e06eaba228",
+      "scripts/solid/transform.ts": "281fdbd71b10e613d9080e0494320161e51cfaf9a1c7b9966707eba0dd24ef1c",
+      "tests/core/services.test.ts": "c7d2f8700c5dd2c47e152f03daff9604efa4944762d136d0526278d41a79e880",
+      "tests/native/display-service-policy.ts": "1c17b810b284b6bd01a133952eb89c72c86b6de8f3df9194c0691814284fd4d3",
+      "tests/native/react-services.tsx": "6448db6cb2595ca704a9bf26547669c0bbe73964ce734c62e7a9ad5181c88f39",
+      "tests/native/services-adapter.ts": "1e246467c48dbccf10e1c45fbb7cde4598a3a0be71b8a4ce773cd7625e68161b",
+      "tests/native/services.ts": "bb737dc85a54ff0be102eb1aa1d0f7963f0462699cbf7466391564aa6370895a",
+      "tests/native/solid-services.tsx": "408fd5ed9e2c0d640564774bb5b42032c30609925e0b0f47909130e3f087c531",
+      "toolchain.json": "de4e8c7004b516c6ed09d6929afb4bfb91e192631e9e1c0fd1edf9d43f9684a1",
+      "tsconfig.json": "9a54721332913cddb331e54eefe4279c859a08860896ce3c048c88815bf3ee30"
+    }
+  },
+  "run": {
+    "id": 41831891686,
+    "attempt": 1,
+    "event": "workflow_dispatch",
+    "branch": "main",
+    "url": "https://github.com/0xPlayerOne/bun-native/actions/runs/41831891686",
+    "jobId": 126580888949,
+    "jobUrl": "https://github.com/0xPlayerOne/bun-native/actions/runs/41831891686/job/126580888949",
+    "conclusion": "success",
+    "displayStep": {
+      "number": 21,
+      "name": "Development and AOT native display service through core, Solid and React",
+      "conclusion": "success"
+    },
+    "artifact": {
+      "id": 13324401782,
+      "name": "native-linux-X64",
+      "bytes": 11362053,
+      "sha256": "d2fe33c6a18ce7d8be79fa6c810104598cfd54ff3309f1bc10684c556a3a5a31"
+    }
+  },
+  "host": {
+    "profile": "release",
+    "bytes": 29475240,
+    "sha256": "71ace2bc859fbaa84ec0d9b5b796838b2245a340d62145027721a7c5d492b863",
+    "placement": "external",
+    "binaryRetainedInArchive": false
+  },
+  "environment": {
+    "platform": "Linux x86_64",
+    "display": "one private Xvfb X11 screen, 1280x800, forced GPUI scale 1",
+    "input": "XTest; no physical input",
+    "renderer": "Mesa llvmpipe software rendering",
+    "bunRevision": "da867c60bf0bcbf9d6d36994f8ca0efa42075115",
+    "rustVersion": "1.98.1",
+    "gpuiRevision": "ba63a022c9a22ca66d68ef2a8f0bb9b5b0a9984d",
+    "toolchainReceipt": {
+      "bytes": 1402,
+      "sha256": "3b62698d5113c1c5276973b17511a883a386ccc9e4a0740e90fc230110c68eb7"
+    }
+  },
+  "packages": [
+    {
+      "entry": "services",
+      "entrypoint": "tests/native/services.ts",
+      "manifest": "services-package/manifest.json",
+      "manifestReceipt": {
+        "bytes": 18601,
+        "sha256": "4ec6e88293a43cce617d2713126774ffc3044e88326e1ef2685e2b2b293f03da"
+      },
+      "sourceFilesVerified": 69,
+      "application": {
+        "bytes": 71547944,
+        "sha256": "746bf856130d260f508397b02056821e9263c51a9f329075b90981fc0c4cffff",
+        "compiledProgram": true,
+        "jit": "unused",
+        "jitRemovedRanges": {
+          "count": 27,
+          "virtualBytes": 14297303
+        },
+        "binaryRetainedInArchive": false
+      },
+      "developmentModule": null,
+      "compileCommand": [
+        "/home/runner/work/_temp/bun-native-bun/bun",
+        "compile",
+        "--no-script",
+        "--production",
+        "--explain=json",
+        "/home/runner/work/bun-native/bun-native/tests/native/services.ts",
+        "--outfile",
+        "/home/runner/work/_temp/native-evidence/services-package/services"
+      ]
+    },
+    {
+      "entry": "solid-services",
+      "entrypoint": "tests/native/solid-services.tsx",
+      "manifest": "solid-services-package/manifest.json",
+      "manifestReceipt": {
+        "bytes": 22362,
+        "sha256": "ba76f3ff2166b5374d414578db498876e745f46ea3dd48febe0c44bb4b56a5a6"
+      },
+      "sourceFilesVerified": 87,
+      "application": {
+        "bytes": 71744552,
+        "sha256": "667567272b2f8472754dc7e8057e2898112c11ac8d621dc5f4786b2e129e4452",
+        "compiledProgram": true,
+        "jit": "unused",
+        "jitRemovedRanges": {
+          "count": 27,
+          "virtualBytes": 14297303
+        },
+        "binaryRetainedInArchive": false
+      },
+      "developmentModule": {
+        "file": "development/application.js",
+        "bytes": 126898,
+        "sha256": "566adc0b839802661af5ea497fef1b3d3ca76a1c3a9ce1b80feb1aecc20cdcc0",
+        "transformCommand": [
+          "/home/runner/work/_temp/bun-native-bun/bun",
+          "/home/runner/work/bun-native/bun-native/scripts/solid-build.ts",
+          "/home/runner/work/bun-native/bun-native/tests/native/solid-services.tsx",
+          "/home/runner/work/_temp/native-evidence/solid-services-package/development"
+        ],
+        "buildMs": 228.049108
+      },
+      "compileCommand": [
+        "/home/runner/work/_temp/bun-native-bun/bun",
+        "compile",
+        "--no-script",
+        "--production",
+        "--explain=json",
+        "/home/runner/work/_temp/native-evidence/solid-services-package/development/application.js",
+        "--outfile",
+        "/home/runner/work/_temp/native-evidence/solid-services-package/solid-services"
+      ]
+    },
+    {
+      "entry": "react-services",
+      "entrypoint": "tests/native/react-services.tsx",
+      "manifest": "react-services-package/manifest.json",
+      "manifestReceipt": {
+        "bytes": 22586,
+        "sha256": "c46050e7e165a69197625e065bf962b4827896fc1aa31364cf566a0ddc0d237d"
+      },
+      "sourceFilesVerified": 87,
+      "application": {
+        "bytes": 72776744,
+        "sha256": "fb13f6d1c1b1aae99ad0059238506c1286a2b87239d3cfbb1c73e40ec416b49b",
+        "compiledProgram": true,
+        "jit": "unused",
+        "jitRemovedRanges": {
+          "count": 27,
+          "virtualBytes": 14297303
+        },
+        "binaryRetainedInArchive": false
+      },
+      "developmentModule": {
+        "file": "development/application.js",
+        "bytes": 199694,
+        "sha256": "ba755b8bfbc64bf2269f8bab04b7adc0d06c7e8f6cc362337d95ec45cfd27608",
+        "transformCommand": [
+          "/home/runner/work/_temp/bun-native-bun/bun",
+          "build",
+          "--no-script",
+          "--production",
+          "--define",
+          "process.env.NODE_ENV=\"production\"",
+          "--target=bun",
+          "--format=esm",
+          "--sourcemap=external",
+          "/home/runner/work/bun-native/bun-native/tests/native/react-services.tsx",
+          "--outdir",
+          "/home/runner/work/_temp/native-evidence/react-services-package/development",
+          "--entry-naming=application.js"
+        ],
+        "buildMs": 33.195433
+      },
+      "compileCommand": [
+        "/home/runner/work/_temp/bun-native-bun/bun",
+        "compile",
+        "--no-script",
+        "--production",
+        "--explain=json",
+        "/home/runner/work/_temp/native-evidence/react-services-package/development/application.js",
+        "--outfile",
+        "/home/runner/work/_temp/native-evidence/react-services-package/react-services"
+      ]
+    }
+  ],
+  "cases": [
+    {
+      "consumer": "core",
+      "mode": "development",
+      "status": "passed",
+      "directory": "desktop-services-services-development",
+      "nonce": "7dfe185937d798af61da00b291c03698",
+      "snapshot": {
+        "bounds": {
+          "x": 0,
+          "y": 0,
+          "width": 1280,
+          "height": 800
+        },
+        "scaleFactor": 1
+      },
+      "fixture": {
+        "status": "passed",
+        "outcomes": {
+          "deniedByNativePolicy": true,
+          "queuedCancellation": true,
+          "nativeStaleOwner": true,
+          "nativeUnknownOwner": true,
+          "shutdownBeforeDispatch": true,
+          "publicStaleHandle": true
+        },
+        "activations": 1,
+        "ownership": {
+          "windows": 0,
+          "nodes": 0,
+          "callbacks": 0,
+          "queuedTransactions": 0,
+          "queuedCallbacks": 0,
+          "activeCallbacks": 0,
+          "serviceRequests": 0
+        }
+      },
+      "paint": {
+        "initialRevision": 2,
+        "finalRevision": 3,
+        "completeNodesPerPaint": 6,
+        "finalRecordSha256": "20c83df1c7a88bb8c45ae8c7a3da48cdb1450e8460c6f000a6811502968b1a14",
+        "postInputByteOffset": 5040
+      },
+      "cleanup": {
+        "forced_termination": false,
+        "remaining_observed_pids": [],
+        "unreaped_observed_pids": [],
+        "application_exit_code": 0
+      },
+      "rawArtifacts": {
+        "result.json": {
+          "bytes": 19923,
+          "sha256": "a190d75f9233d5f1f56cc468e59b341c8e27b26b48d387e7d9a4fa0abe06c6db"
+        },
+        "services-result.json": {
+          "bytes": 442,
+          "sha256": "4312ac898930b51bebe1b21849289202b39180e9802f1892ad958402dc98f024"
+        },
+        "app-events.jsonl": {
+          "bytes": 7195,
+          "sha256": "7724832a23e82516197e89df7bf8ddf27d774c70294eae65b7f9fce1a654d688"
+        }
+      },
+      "displayOracleReceipt": {
+        "bytes": 223,
+        "sha256": "73d2146fcd577c971a732ec9d234bac7b3a849285ac23735162d966e1c202cdc"
+      }
+    },
+    {
+      "consumer": "core",
+      "mode": "aot",
+      "status": "passed",
+      "directory": "desktop-services-services-aot",
+      "nonce": "91121a84da9445eac10ab9883f8eaad5",
+      "snapshot": {
+        "bounds": {
+          "x": 0,
+          "y": 0,
+          "width": 1280,
+          "height": 800
+        },
+        "scaleFactor": 1
+      },
+      "fixture": {
+        "status": "passed",
+        "outcomes": {
+          "deniedByNativePolicy": true,
+          "queuedCancellation": true,
+          "nativeStaleOwner": true,
+          "nativeUnknownOwner": true,
+          "shutdownBeforeDispatch": true,
+          "publicStaleHandle": true
+        },
+        "activations": 1,
+        "ownership": {
+          "windows": 0,
+          "nodes": 0,
+          "callbacks": 0,
+          "queuedTransactions": 0,
+          "queuedCallbacks": 0,
+          "activeCallbacks": 0,
+          "serviceRequests": 0
+        }
+      },
+      "paint": {
+        "initialRevision": 2,
+        "finalRevision": 3,
+        "completeNodesPerPaint": 6,
+        "finalRecordSha256": "c83ffea859c2817caa6da559395c11b3b5dc57253ede5ee8059ecfda97c325c1",
+        "postInputByteOffset": 5039
+      },
+      "cleanup": {
+        "forced_termination": false,
+        "remaining_observed_pids": [],
+        "unreaped_observed_pids": [],
+        "application_exit_code": 0
+      },
+      "rawArtifacts": {
+        "result.json": {
+          "bytes": 20164,
+          "sha256": "b08a15abe4179021a0f158a3868942d4e827398397bfc22fa5aa3746e0d6ac3a"
+        },
+        "services-result.json": {
+          "bytes": 442,
+          "sha256": "4312ac898930b51bebe1b21849289202b39180e9802f1892ad958402dc98f024"
+        },
+        "app-events.jsonl": {
+          "bytes": 7194,
+          "sha256": "d46a8be90e72bd02f52c3461b04f44329d9c8d03b66ddc3d94879958ff600b7b"
+        }
+      },
+      "displayOracleReceipt": {
+        "bytes": 223,
+        "sha256": "73d2146fcd577c971a732ec9d234bac7b3a849285ac23735162d966e1c202cdc"
+      }
+    },
+    {
+      "consumer": "solid",
+      "mode": "development",
+      "status": "passed",
+      "directory": "desktop-services-solid-services-development",
+      "nonce": "0d68a14bd33b41eda8485d61aae38003",
+      "snapshot": {
+        "bounds": {
+          "x": 0,
+          "y": 0,
+          "width": 1280,
+          "height": 800
+        },
+        "scaleFactor": 1
+      },
+      "fixture": {
+        "status": "passed",
+        "framework": "solid",
+        "activations": 1,
+        "ownerDisposals": 1,
+        "staleOwnerRejected": true,
+        "snapshot": {
+          "bounds": {
+            "x": 0,
+            "y": 0,
+            "width": 1280,
+            "height": 800
+          },
+          "scaleFactor": 1
+        },
+        "ownership": {
+          "windows": 0,
+          "nodes": 0,
+          "callbacks": 0,
+          "queuedTransactions": 0,
+          "queuedCallbacks": 0,
+          "activeCallbacks": 0,
+          "serviceRequests": 0
+        },
+        "renderer": {
+          "nodes": 0,
+          "listeners": 0,
+          "pending": false,
+          "commits": 3,
+          "mutations": {
+            "create": 5,
+            "set": 2,
+            "insert": 5,
+            "remove": 0
+          }
+        }
+      },
+      "paint": {
+        "initialRevision": 2,
+        "finalRevision": 3,
+        "completeNodesPerPaint": 6,
+        "finalRecordSha256": "4b7064bffb6288c917312557825f5acdb24fabe20189e4735d444c7c500c2947",
+        "postInputByteOffset": 2826
+      },
+      "cleanup": {
+        "forced_termination": false,
+        "remaining_observed_pids": [],
+        "unreaped_observed_pids": [],
+        "application_exit_code": 0
+      },
+      "rawArtifacts": {
+        "result.json": {
+          "bytes": 17088,
+          "sha256": "19a06a5f2b5ad393e01fcc27be3966168fcf20bb4c6db509324fc986ddca6a75"
+        },
+        "service-adapter-result.json": {
+          "bytes": 632,
+          "sha256": "c29ba9bd8a1f6a64e9b33cfc090275082345a1bc7c13b045de7b05e736bd7c1a"
+        },
+        "app-events.jsonl": {
+          "bytes": 4685,
+          "sha256": "e23b6f6d162cb9cf2c5de518dcbc6e86d154d362c524867636a8cac2d3deaa84"
+        }
+      },
+      "displayOracleReceipt": {
+        "bytes": 223,
+        "sha256": "73d2146fcd577c971a732ec9d234bac7b3a849285ac23735162d966e1c202cdc"
+      }
+    },
+    {
+      "consumer": "solid",
+      "mode": "aot",
+      "status": "passed",
+      "directory": "desktop-services-solid-services-aot",
+      "nonce": "c5c9c5fcbbbe00b820f6b9f3837d7e87",
+      "snapshot": {
+        "bounds": {
+          "x": 0,
+          "y": 0,
+          "width": 1280,
+          "height": 800
+        },
+        "scaleFactor": 1
+      },
+      "fixture": {
+        "status": "passed",
+        "framework": "solid",
+        "activations": 1,
+        "ownerDisposals": 1,
+        "staleOwnerRejected": true,
+        "snapshot": {
+          "bounds": {
+            "x": 0,
+            "y": 0,
+            "width": 1280,
+            "height": 800
+          },
+          "scaleFactor": 1
+        },
+        "ownership": {
+          "windows": 0,
+          "nodes": 0,
+          "callbacks": 0,
+          "queuedTransactions": 0,
+          "queuedCallbacks": 0,
+          "activeCallbacks": 0,
+          "serviceRequests": 0
+        },
+        "renderer": {
+          "nodes": 0,
+          "listeners": 0,
+          "pending": false,
+          "commits": 3,
+          "mutations": {
+            "create": 5,
+            "set": 2,
+            "insert": 5,
+            "remove": 0
+          }
+        }
+      },
+      "paint": {
+        "initialRevision": 2,
+        "finalRevision": 3,
+        "completeNodesPerPaint": 6,
+        "finalRecordSha256": "e2daa4927fe480d0efc169e6c70d9d558c45ee01b39fb74948862e68ead566a4",
+        "postInputByteOffset": 2825
+      },
+      "cleanup": {
+        "forced_termination": false,
+        "remaining_observed_pids": [],
+        "unreaped_observed_pids": [],
+        "application_exit_code": 0
+      },
+      "rawArtifacts": {
+        "result.json": {
+          "bytes": 17271,
+          "sha256": "f5d203b92b5cbe5d0c306f27d2e49ddec3cd6ce446762737c824bd6f8f777066"
+        },
+        "service-adapter-result.json": {
+          "bytes": 632,
+          "sha256": "c29ba9bd8a1f6a64e9b33cfc090275082345a1bc7c13b045de7b05e736bd7c1a"
+        },
+        "app-events.jsonl": {
+          "bytes": 4684,
+          "sha256": "999375e820f4a89b8309e9b9216b6e66044f4c590f14821dc418b7061360efe7"
+        }
+      },
+      "displayOracleReceipt": {
+        "bytes": 223,
+        "sha256": "73d2146fcd577c971a732ec9d234bac7b3a849285ac23735162d966e1c202cdc"
+      }
+    },
+    {
+      "consumer": "react",
+      "mode": "development",
+      "status": "passed",
+      "directory": "desktop-services-react-services-development",
+      "nonce": "44600652d3e14ae4cda9956eb5f935e4",
+      "snapshot": {
+        "bounds": {
+          "x": 0,
+          "y": 0,
+          "width": 1280,
+          "height": 800
+        },
+        "scaleFactor": 1
+      },
+      "fixture": {
+        "status": "passed",
+        "framework": "react",
+        "activations": 1,
+        "ownerDisposals": 1,
+        "staleOwnerRejected": true,
+        "snapshot": {
+          "bounds": {
+            "x": 0,
+            "y": 0,
+            "width": 1280,
+            "height": 800
+          },
+          "scaleFactor": 1
+        },
+        "ownership": {
+          "windows": 0,
+          "nodes": 0,
+          "callbacks": 0,
+          "queuedTransactions": 0,
+          "queuedCallbacks": 0,
+          "activeCallbacks": 0,
+          "serviceRequests": 0
+        },
+        "renderer": {
+          "nodes": 0,
+          "listeners": 0,
+          "pending": false,
+          "commits": 3,
+          "mutations": {
+            "create": 5,
+            "set": 2,
+            "insert": 5,
+            "remove": 0
+          }
+        }
+      },
+      "paint": {
+        "initialRevision": 2,
+        "finalRevision": 3,
+        "completeNodesPerPaint": 6,
+        "finalRecordSha256": "0c81d1a8c35f623864280367392d09e47f765e2dff682bb64b1426fc2b687192",
+        "postInputByteOffset": 2825
+      },
+      "cleanup": {
+        "forced_termination": false,
+        "remaining_observed_pids": [],
+        "unreaped_observed_pids": [],
+        "application_exit_code": 0
+      },
+      "rawArtifacts": {
+        "result.json": {
+          "bytes": 17087,
+          "sha256": "61ebc1c84ac5cc10ab5b8cbc0d7f4ad87fd816be2167ff7914f801a762ed08d5"
+        },
+        "service-adapter-result.json": {
+          "bytes": 632,
+          "sha256": "971da077cde4522830d52e16e1564a6fdbafa9cdecbff690a4a85eba0274dac4"
+        },
+        "app-events.jsonl": {
+          "bytes": 4684,
+          "sha256": "8a1b6476d399327042608949b975d7dc34056dd8fe596d3caaceef2268b7c6aa"
+        }
+      },
+      "displayOracleReceipt": {
+        "bytes": 223,
+        "sha256": "73d2146fcd577c971a732ec9d234bac7b3a849285ac23735162d966e1c202cdc"
+      }
+    },
+    {
+      "consumer": "react",
+      "mode": "aot",
+      "status": "passed",
+      "directory": "desktop-services-react-services-aot",
+      "nonce": "b855027368a2e10fafa8e41359f3f9d5",
+      "snapshot": {
+        "bounds": {
+          "x": 0,
+          "y": 0,
+          "width": 1280,
+          "height": 800
+        },
+        "scaleFactor": 1
+      },
+      "fixture": {
+        "status": "passed",
+        "framework": "react",
+        "activations": 1,
+        "ownerDisposals": 1,
+        "staleOwnerRejected": true,
+        "snapshot": {
+          "bounds": {
+            "x": 0,
+            "y": 0,
+            "width": 1280,
+            "height": 800
+          },
+          "scaleFactor": 1
+        },
+        "ownership": {
+          "windows": 0,
+          "nodes": 0,
+          "callbacks": 0,
+          "queuedTransactions": 0,
+          "queuedCallbacks": 0,
+          "activeCallbacks": 0,
+          "serviceRequests": 0
+        },
+        "renderer": {
+          "nodes": 0,
+          "listeners": 0,
+          "pending": false,
+          "commits": 3,
+          "mutations": {
+            "create": 5,
+            "set": 2,
+            "insert": 5,
+            "remove": 0
+          }
+        }
+      },
+      "paint": {
+        "initialRevision": 2,
+        "finalRevision": 3,
+        "completeNodesPerPaint": 6,
+        "finalRecordSha256": "9d7fd6ea821fa671711d349f6f2e7bc45fb0fe5a4341e2d16baedf11e652626c",
+        "postInputByteOffset": 2825
+      },
+      "cleanup": {
+        "forced_termination": false,
+        "remaining_observed_pids": [],
+        "unreaped_observed_pids": [],
+        "application_exit_code": 0
+      },
+      "rawArtifacts": {
+        "result.json": {
+          "bytes": 17270,
+          "sha256": "e59db86ffed630fbdc6b10698bd7b0f0e6c0389691fc05ac709822cc14b90a5a"
+        },
+        "service-adapter-result.json": {
+          "bytes": 632,
+          "sha256": "971da077cde4522830d52e16e1564a6fdbafa9cdecbff690a4a85eba0274dac4"
+        },
+        "app-events.jsonl": {
+          "bytes": 4684,
+          "sha256": "f7bf02b05854094862c39401224daa7c38bbdb1c46d0c79211f41c204ac738ec"
+        }
+      },
+      "displayOracleReceipt": {
+        "bytes": 223,
+        "sha256": "73d2146fcd577c971a732ec9d234bac7b3a849285ac23735162d966e1c202cdc"
+      }
+    }
+  ],
+  "limitations": [
+    "This is an audit of one already-completed source-bound run, not a new native execution or a reliability/soak measurement.",
+    "The native input driver declares its execution mode; AOT verification is supplied separately by the exact compile/inspection manifests and workflow. AOT and host binaries were excluded from this artifact and cannot be independently rehashed from it.",
+    "Physical monitors, work areas, hotplug, display migration, mixed DPI, Wayland, macOS and Windows service execution remain unqualified under #299.",
+    "Deferred global shortcuts, system menus, dialogs, notifications, drag/drop, filesystem grants and PTY/process have typed unavailable capability records and linked design requirements, not callable service APIs.",
+    "Clipboard acceptance and additional clipboard scope remain separately tracked by #300; this display record does not close it.",
+    "First-open failure #296 and stress-close failure #358 remain open; this finite successful record does not supersede their failed evidence.",
+    "Screenshots are retained in the original artifact but are not asserted as pixel/presentation proof. Native full-tree paint is asserted."
+  ]
+}
