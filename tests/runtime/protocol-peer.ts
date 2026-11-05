@@ -73,7 +73,7 @@ for await (const chunk of Bun.stdin.stream()) {
     if (mode === 'exit') process.exit(23)
     if (
       command.type === 'open' &&
-      (mode === 'panic' || mode === 'abort' || mode === 'noisy-exit')
+      (mode === 'panic' || mode === 'signal' || mode === 'noisy-exit')
     ) {
       // Native-shaped failures while a request is awaiting acknowledgement.
       // The inherited secret must never reach the Bun-side diagnostic.
@@ -88,7 +88,9 @@ for await (const chunk of Bun.stdin.stream()) {
           'note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace\n'
       )
       await diagnostic.flush()
-      if (mode === 'abort') process.kill(process.pid, 'SIGABRT')
+      // Bun's own crash handler intercepts SIGABRT in this peer and can stall on
+      // hosted runners; an uncatchable signal models the abort deterministically.
+      if (mode === 'signal') process.kill(process.pid, 'SIGKILL')
       process.exit(mode === 'panic' ? 101 : 3)
     }
     if (command.type === 'hello') {

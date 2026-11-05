@@ -87,12 +87,12 @@ describe('native host exit diagnostics (headless protocol peer)', () => {
     expect(await host.exited).toBe(101)
   })
 
-  test('an abort reports its signal without an exit code', async () => {
-    const { host, error, iteratorError } = await crashDuringOpen('abort')
+  test('a signal-terminated host reports its signal without an exit code', async () => {
+    const { host, error, iteratorError } = await crashDuringOpen('signal')
     expect(error.diagnostic).toMatchObject({
       reason: 'panic',
       // Windows has no POSIX signals; a forced termination is an exit code.
-      ...(process.platform === 'win32' ? {} : { exitCode: null, signal: 'SIGABRT' }),
+      ...(process.platform === 'win32' ? {} : { exitCode: null, signal: 'SIGKILL' }),
       phase: 'running',
       pendingRequests: 1,
       panicLocation: 'native/gpui-host/src/session.rs:42:9',
