@@ -274,29 +274,31 @@ class Root implements RenderRoot, Owner {
     this.finish()
   }
 
-  private async commit(desired: ReadonlyMap<Node, Snapshot>): Promise<void> {
-    const previous = this.committed
-    const { nodes: next, counts } = await commitNativeTree(
+  private async commit(changes: ReadonlyMap<Node, Snapshot>): Promise<void> {
+    const { updates, removed, counts } = await commitNativeTree(
       this.window,
       this.root,
-      previous,
-      desired
+      this.committed,
+      changes
     )
     if (this.windowEnded) return
-    this.committed = next
+    // Publish in place only after acknowledgement; unchanged records stay shared.
+    for (const node of removed) this.committed.delete(node)
+    for (const [node, state] of updates) this.committed.set(node, state)
     if (Object.values(counts).some((count) => count > 0)) this.commits += 1
     for (const field of ['create', 'set', 'insert', 'remove'] as const)
       this.mutations[field] += counts[field]
     if (this.phase !== 'active') return
     // Native snapshots own immutable transaction state, never live unsubscribe
-    // functions. A detach during acknowledgement revokes this separate registry.
-    for (const node of this.registrations.keys())
-      if (!next.has(node) || node.owner !== this) this.revoke(node)
-    for (const [node, state] of next) {
-      // A reused capture's registrations were reconciled by the previous commit.
-      // Detaching revokes them, but every reinsertion invalidates the subtree's
-      // captures, so an identical committed state still owns matching listeners.
-      if (state === previous.get(node) || node.owner !== this) continue
+    // functions. A detach during acknowledgement revokes this separate registry,
+    // and every unchanged record's registrations were reconciled when it was
+    // published, so only removed and changed nodes need reconciliation.
+    for (const node of removed) this.revoke(node)
+    for (const [node, state] of updates) {
+      if (node.owner !== this) {
+        this.revoke(node)
+        continue
+      }
       for (const [name, registration] of this.registrations.get(node) ?? [])
         if (state.events[name] !== registration.listener) this.revoke(node, name)
       for (const [name, listener] of Object.entries(state.events)) {

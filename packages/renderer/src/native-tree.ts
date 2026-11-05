@@ -62,15 +62,28 @@ function updateInput(
   return true
 }
 
-/** Framework-independent native diff. Publish its handles only after atomic acknowledgement. */
+export type Commit = {
+  /** Committed records for every changed node, to publish over the previous ones. */
+  updates: Map<Node, Committed>
+  /** Previously committed nodes that left the tree, including removed descendants. */
+  removed: Node[]
+  counts: Counts
+}
+
+/**
+ * Framework-independent native diff from the changed captures alone. Publish
+ * its records only after atomic acknowledgement; `previous` is read, never
+ * mutated, so a rejected batch leaves committed state untouched.
+ */
 export async function commitNativeTree(
   window: NativeWindow,
   root: Node,
   previous: ReadonlyMap<Node, Committed>,
-  desired: ReadonlyMap<Node, Snapshot>
-): Promise<{ nodes: Map<Node, Committed>; counts: Counts }> {
+  changes: ReadonlyMap<Node, Snapshot>
+): Promise<Commit> {
   const counts: Counts = { create: 0, set: 0, insert: 0, remove: 0 }
-  const next = await window.batch((batch) => {
+  const [updates, removed] = await window.batch((batch) => {
+    const removed: Node[] = []
     // Working state overlays `previous` and records only what this batch
     // changes, instead of copying every committed handle, parent and child list.
     const created = new Map<Node, NativeNode>()
@@ -86,11 +99,12 @@ export async function commitNativeTree(
       if (!list) edited.set(node, (list = [...childrenOf(node)]))
       return list
     }
-    const attach = (parent: Node, child: Node, index: number) => {
+    // `from` is the child's known index among its current working siblings.
+    const attach = (parent: Node, child: Node, index: number, from?: number) => {
       const oldParent = parentOf(child)
       if (oldParent) {
         const oldChildren = editChildren(oldParent)
-        oldChildren.splice(oldChildren.indexOf(child), 1)
+        oldChildren.splice(from ?? oldChildren.indexOf(child), 1)
       }
       editChildren(parent).splice(index, 0, child)
       parents.set(child, parent)
@@ -99,26 +113,48 @@ export async function commitNativeTree(
     }
     // Rescue retained keyed descendants before deleting an obsolete ancestor.
     // Moving them temporarily to this root also frees capacity before creations.
+    // A retained descendant was reinserted, so its whole subtree was recaptured.
+    // Root children already removed natively but not yet dropped from its list.
+    let unlisted = 0
     const rescue = (node: Node): void => {
       // attach mutates the source sibling array, so traversal needs a snapshot.
       const descendants = childrenOf(node).slice()
       for (const child of descendants) {
-        if (desired.has(child)) attach(root, child, childrenOf(root).length)
+        if (changes.has(child)) attach(root, child, childrenOf(root).length - unlisted)
         else rescue(child)
       }
     }
-    for (const [node, state] of previous) {
-      if (desired.has(node) || (state.parent && !desired.has(state.parent))) continue
-      rescue(node)
-      batch.remove(state.handle)
-      counts.remove += 1
-      if (state.parent) {
-        const siblings = editChildren(state.parent)
-        siblings.splice(siblings.indexOf(node), 1)
-      }
+    const forget = (node: Node): void => {
+      removed.push(node)
+      for (const child of previous.get(node)!.children) if (!changes.has(child)) forget(child)
     }
-    const nodes = new Map<Node, Committed>()
-    for (const [node, state] of desired) {
+    // Only a recaptured parent can have lost a committed child. A lost child
+    // still in the tree was reinserted elsewhere and is therefore recaptured.
+    // Lost children leave their working list in one pass per parent, so
+    // clearing a keyed region costs O(children) rather than O(children²).
+    for (const [parent, state] of changes) {
+      const old = previous.get(parent)
+      if (!old?.children.length) continue
+      const retained = new Set(state.children)
+      const lost = new Set<Node>()
+      for (const node of old.children) {
+        if (changes.has(node) || retained.has(node)) continue
+        rescue(node)
+        batch.remove(previous.get(node)!.handle)
+        counts.remove += 1
+        lost.add(node)
+        if (parent === root) unlisted += 1
+        forget(node)
+      }
+      if (lost.size)
+        edited.set(
+          parent,
+          childrenOf(parent).filter((node) => !lost.has(node))
+        )
+      if (parent === root) unlisted = 0
+    }
+    const updates = new Map<Node, Committed>()
+    for (const [node, state] of changes) {
       const old = previous.get(node)
       if (!old) {
         if (state.inputIntent?.observedNode)
@@ -139,15 +175,10 @@ export async function commitNativeTree(
           batch.append(window.root, nativeNode)
           counts.insert += 1
         }
-        nodes.set(node, { ...state, handle: nativeNode })
+        updates.set(node, { ...state, handle: nativeNode })
         continue
       }
-      // Element identity means the same reused capture with an unchanged handle.
-      if (old.element === state.element) {
-        nodes.set(node, old)
-        continue
-      }
-      nodes.set(node, { ...state, handle: old.handle })
+      updates.set(node, { ...state, handle: old.handle })
       if (state.element.kind === 'input') {
         if (updateInput(window, batch, old, { ...state, element: state.element })) counts.set += 1
       } else if (key(old.element) !== key(state.element)) {
@@ -156,7 +187,8 @@ export async function commitNativeTree(
       }
     }
 
-    for (const [parent, state] of desired) {
+    // A clean node's children are unchanged, so only recaptured lists can differ.
+    for (const [parent, state] of changes) {
       const current = childrenOf(parent)
       if (
         current === state.children ||
@@ -166,19 +198,24 @@ export async function commitNativeTree(
         continue
       const siblings = editChildren(parent)
       const stable = stableChildren(siblings, state.children)
-      let anchor: Node | undefined
+      // `before` tracks the anchor's working index from the end; it only moves
+      // left, so locating stable anchors costs O(children) for the whole list.
+      let before = siblings.length
       for (let index = state.children.length - 1; index >= 0; index -= 1) {
         const child = state.children[index]!
-        if (!stable.has(child)) {
-          const before = anchor === undefined ? siblings.length : siblings.indexOf(anchor)
-          const old = parentOf(child) === parent ? siblings.indexOf(child) : -1
-          // Native insert indices are interpreted after detaching the child.
-          attach(parent, child, before - (old >= 0 && old < before ? 1 : 0))
+        if (stable.has(child)) {
+          do if (--before < 0) throw new Error('Stable native child is not in its parent')
+          while (siblings[before] !== child)
+          continue
         }
-        anchor = child
+        const old = parentOf(child) === parent ? siblings.indexOf(child) : -1
+        // Native insert indices are interpreted after detaching the child.
+        const at = before - (old >= 0 && old < before ? 1 : 0)
+        attach(parent, child, at, old >= 0 ? old : undefined)
+        before = at
       }
     }
-    return nodes
+    return [updates, removed] as const
   })
-  return { nodes: next, counts }
+  return { updates, removed, counts }
 }
