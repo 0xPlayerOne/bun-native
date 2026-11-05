@@ -218,7 +218,12 @@ class MacInputTests(unittest.TestCase):
         self.assertEqual(arguments[0][0], str(self.helper))
         self.assertEqual(
             json.loads(arguments[0][1]),
-            {"action": "identity", "app_pid": 42, "host": "/host", "title": ""},
+            {
+                "action": "identity",
+                "app_pid": 42,
+                "host": str(Path("/host")),
+                "title": "",
+            },
         )
         self.assertEqual(options["timeout"], 3)
         self.assertFalse(options["check"])
