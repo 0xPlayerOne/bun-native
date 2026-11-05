@@ -100,3 +100,6 @@ pub fn write_event(sink: &mut impl Write, event: &Event) -> Result<(), ProtocolE
     sink.write_all(&bytes).map_err(ProtocolError::Io)?;
     sink.flush().map_err(ProtocolError::Io)
 }
+
+#[cfg(test)]
+mod tests;

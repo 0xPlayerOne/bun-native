@@ -440,4 +440,6 @@ impl Tree {
 }
 
 #[cfg(test)]
+mod edge_tests;
+#[cfg(test)]
 mod tests;
