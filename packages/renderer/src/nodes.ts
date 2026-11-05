@@ -47,6 +47,11 @@ export class Node implements RendererNode {
   data = ''
   /** Last immutable capture; cleared by every mutation that can change it. */
   captured: Snapshot | undefined
+  /**
+   * This node or a staged descendant lacks a current capture. Every dirty node
+   * in a tree has dirty ancestors, so snapshot() walks only dirty paths.
+   */
+  dirty = false
 
   constructor(readonly kind: Element['kind'] | 'text-node') {
     nodes.add(this)
@@ -73,7 +78,10 @@ export function createTextNode(value: string): Node {
 
 /** Discard a cached capture after changing this node's own snapshot inputs. */
 export function invalidate(node: Node | undefined): void {
-  if (node) node.captured = undefined
+  if (!node) return
+  node.captured = undefined
+  // An already dirty ancestor's own ancestors are dirty too.
+  for (let path: Node | undefined = node; path && !path.dirty; path = path.parent) path.dirty = true
 }
 
 /** Solid detaches keyed regions from their end, so the tail is checked before scanning. */
@@ -226,62 +234,70 @@ function leafStyle(style: Style): NonNullable<Extract<Element, { kind: 'text' }>
 
 /**
  * Capture values before awaiting the core queue; later effects form another batch.
- * An unchanged node reuses its previous immutable capture, so the diff can skip
- * it by identity instead of reserializing its element.
+ *
+ * Returns only nodes captured anew: every other staged node keeps the immutable
+ * capture its acknowledged committed record already holds. The walk descends
+ * only dirty paths, so a clean subtree costs nothing. A node can leave its
+ * committed position only through a mutation that invalidates its old parent
+ * and, when it is reinserted, its whole subtree, so the diff finds removals
+ * and moves from the old and new child lists of recaptured nodes alone.
  */
 export function snapshot(root: Node): Map<Node, Snapshot> {
   const result = new Map<Node, Snapshot>()
-  const reuse = (node: Node, parent: Node | undefined): boolean => {
-    const captured = node.captured
-    if (!captured || captured.parent !== parent) return false
-    result.set(node, captured)
-    for (const child of captured.children) capture(child, node)
-    return true
-  }
-  const capture = (node: Node, parent?: Node): void => {
-    if (reuse(node, parent)) return
-    const props = node.properties
-    const style = props.style && node.kind !== 'box' ? { style: leafStyle(props.style) } : {}
-    let element: Element
-    if (node.kind === 'box')
-      element = { kind: 'box', ...(props.style ? { style: { ...props.style } } : {}) }
-    else if (node.kind === 'input')
-      element = {
-        kind: 'input',
-        value: typeof props.value === 'string' ? props.value : (props.value?.value ?? ''),
-        ...(props.placeholder === undefined ? {} : { placeholder: props.placeholder }),
-        ...style,
-      }
-    else {
-      if (props.text !== undefined && node.children.length)
-        throw new TypeError('Choose text properties or text children, not both')
-      const text =
-        node.kind === 'text-node'
-          ? node.data
-          : (props.text ?? node.children.map((child) => child.data).join(''))
-      element =
-        node.kind === 'button'
-          ? {
-              kind: 'button',
-              text,
-              ...(props.disabled === undefined ? {} : { disabled: props.disabled }),
-              ...style,
-            }
-          : { kind: 'text', text, ...style }
+  const current = (node: Node, parent: Node | undefined): boolean =>
+    !node.dirty && node.captured !== undefined && node.captured.parent === parent
+  const capture = (node: Node, parent: Node | undefined): void => {
+    node.dirty = false
+    let captured = node.captured
+    if (!captured || captured.parent !== parent) {
+      captured = build(node, parent)
+      node.captured = captured
+      result.set(node, captured)
     }
-    const children = node.kind === 'box' ? [...node.children] : []
-    const captured: Snapshot = {
-      element,
-      children,
-      parent,
-      events: listeners(props),
-      initialValue: typeof props.value === 'string' ? props.value : undefined,
-      inputIntent: typeof props.value === 'object' ? props.value : undefined,
-    }
-    node.captured = captured
-    result.set(node, captured)
-    for (const child of children) capture(child, node)
+    for (const child of captured.children) if (!current(child, node)) capture(child, node)
   }
-  capture(root)
+  if (!current(root, undefined)) capture(root, undefined)
   return result
+}
+
+function build(node: Node, parent: Node | undefined): Snapshot {
+  const props = node.properties
+  const style = props.style && node.kind !== 'box' ? { style: leafStyle(props.style) } : {}
+  let element: Element
+  if (node.kind === 'box')
+    element = { kind: 'box', ...(props.style ? { style: { ...props.style } } : {}) }
+  else if (node.kind === 'input')
+    element = {
+      kind: 'input',
+      value: typeof props.value === 'string' ? props.value : (props.value?.value ?? ''),
+      ...(props.placeholder === undefined ? {} : { placeholder: props.placeholder }),
+      ...style,
+    }
+  else {
+    if (props.text !== undefined && node.children.length)
+      throw new TypeError('Choose text properties or text children, not both')
+    // Joined text-node children are part of this capture, not native nodes.
+    for (const child of node.children) child.dirty = false
+    const text =
+      node.kind === 'text-node'
+        ? node.data
+        : (props.text ?? node.children.map((child) => child.data).join(''))
+    element =
+      node.kind === 'button'
+        ? {
+            kind: 'button',
+            text,
+            ...(props.disabled === undefined ? {} : { disabled: props.disabled }),
+            ...style,
+          }
+        : { kind: 'text', text, ...style }
+  }
+  return {
+    element,
+    children: node.kind === 'box' ? [...node.children] : [],
+    parent,
+    events: listeners(props),
+    initialValue: typeof props.value === 'string' ? props.value : undefined,
+    inputIntent: typeof props.value === 'object' ? props.value : undefined,
+  }
 }
