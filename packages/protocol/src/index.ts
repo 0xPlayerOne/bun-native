@@ -55,6 +55,7 @@ export {
   MAX_NOTIFICATIONS,
   NOTIFICATION_DISMISSALS,
   type ClipboardText,
+  type DisplaySnapshot,
   type NotificationDismissal,
   type ServicePolicy,
   type ShortcutModifiers,

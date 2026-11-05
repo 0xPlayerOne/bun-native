@@ -49,6 +49,7 @@ export function observeWindow(window: NativeWindow) {
     batch: window.batch.bind(window),
     close: window.close.bind(window),
     displaySnapshot: window.displaySnapshot.bind(window),
+    onDisplayChange: window.onDisplayChange.bind(window),
     readClipboardText: window.readClipboardText.bind(window),
     writeClipboardText: window.writeClipboardText.bind(window),
     registerGlobalShortcut: window.registerGlobalShortcut.bind(window),

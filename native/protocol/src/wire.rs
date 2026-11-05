@@ -170,7 +170,7 @@ pub enum Dimension {
     Fill(Fill),
 }
 
-fn non_null<'de, D, T>(deserializer: D) -> Result<Option<T>, D::Error>
+pub(crate) fn non_null<'de, D, T>(deserializer: D) -> Result<Option<T>, D::Error>
 where
     D: Deserializer<'de>,
     T: Deserialize<'de>,
@@ -575,6 +575,10 @@ pub enum Capability {
     ProcessesV1,
     SplitV1,
     StyleDecorationV1,
+    /// Snapshots carry the work area and platform display UUID (macOS, Windows).
+    DisplayDetailsV1,
+    /// Owned windows report `display_changed` (macOS, Windows).
+    DisplayChangesV1,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]

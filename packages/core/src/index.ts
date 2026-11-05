@@ -7,6 +7,7 @@ export { DECORATION_FIELDS, SPLIT_DIVIDER } from '@bun-native/protocol'
 export { defaultTheme, defineTheme } from './theme.ts'
 export type { ResolvedStyle, Theme, ThemedStyle, ThemeTokens } from './theme.ts'
 export type {
+  DisplayChangeEvent,
   NativeDisplaySnapshot,
   NativeClipboardText,
   ServiceCapabilities,

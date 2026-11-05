@@ -123,6 +123,66 @@
       "name": "native display can be unavailable",
       "wire": "{\"type\":\"error\",\"id\":1,\"code\":\"service_unavailable\",\"message\":\"No current display\"}",
       "valid": true
+    },
+    {
+      "name": "detailed snapshot carries a work area and lowercase display UUID",
+      "wire": "{\"type\":\"display_snapshot\",\"id\":1,\"window_id\":1,\"snapshot\":{\"bounds\":{\"x\":0,\"y\":0,\"width\":1512,\"height\":982},\"scale_factor\":2,\"visible_bounds\":{\"x\":0,\"y\":33,\"width\":1512,\"height\":949},\"display_uuid\":\"37d8832a-2d66-02ca-b9f7-8f30a301b230\"}}",
+      "valid": true
+    },
+    {
+      "name": "a work area without a UUID is valid",
+      "wire": "{\"type\":\"display_snapshot\",\"id\":1,\"window_id\":1,\"snapshot\":{\"bounds\":{\"x\":0,\"y\":0,\"width\":1512,\"height\":982},\"scale_factor\":2,\"visible_bounds\":{\"x\":0,\"y\":33,\"width\":1512,\"height\":949}}}",
+      "valid": true
+    },
+    {
+      "name": "display UUID must be lowercase",
+      "wire": "{\"type\":\"display_snapshot\",\"id\":1,\"window_id\":1,\"snapshot\":{\"bounds\":{\"x\":0,\"y\":0,\"width\":1512,\"height\":982},\"scale_factor\":2,\"visible_bounds\":{\"x\":0,\"y\":33,\"width\":1512,\"height\":949},\"display_uuid\":\"37D8832A-2D66-02CA-B9F7-8F30A301B230\"}}",
+      "valid": false
+    },
+    {
+      "name": "display UUID must be hyphenated",
+      "wire": "{\"type\":\"display_snapshot\",\"id\":1,\"window_id\":1,\"snapshot\":{\"bounds\":{\"x\":0,\"y\":0,\"width\":1512,\"height\":982},\"scale_factor\":2,\"visible_bounds\":{\"x\":0,\"y\":33,\"width\":1512,\"height\":949},\"display_uuid\":\"37d8832a2d6602cab9f78f30a301b230\"}}",
+      "valid": false
+    },
+    {
+      "name": "display UUID cannot be null",
+      "wire": "{\"type\":\"display_snapshot\",\"id\":1,\"window_id\":1,\"snapshot\":{\"bounds\":{\"x\":0,\"y\":0,\"width\":1512,\"height\":982},\"scale_factor\":2,\"display_uuid\":null}}",
+      "valid": false
+    },
+    {
+      "name": "work area cannot be null",
+      "wire": "{\"type\":\"display_snapshot\",\"id\":1,\"window_id\":1,\"snapshot\":{\"bounds\":{\"x\":0,\"y\":0,\"width\":1512,\"height\":982},\"scale_factor\":2,\"visible_bounds\":null}}",
+      "valid": false
+    },
+    {
+      "name": "work area must have a positive size",
+      "wire": "{\"type\":\"display_snapshot\",\"id\":1,\"window_id\":1,\"snapshot\":{\"bounds\":{\"x\":0,\"y\":0,\"width\":1512,\"height\":982},\"scale_factor\":2,\"visible_bounds\":{\"x\":0,\"y\":33,\"width\":1512,\"height\":0}}}",
+      "valid": false
+    },
+    {
+      "name": "work area cannot smuggle another field",
+      "wire": "{\"type\":\"display_snapshot\",\"id\":1,\"window_id\":1,\"snapshot\":{\"bounds\":{\"x\":0,\"y\":0,\"width\":1512,\"height\":982},\"scale_factor\":2,\"visible_bounds\":{\"x\":0,\"y\":33,\"width\":1512,\"height\":949,\"monitor\":\"DP-1\"}}}",
+      "valid": false
+    },
+    {
+      "name": "owned display change carries the new snapshot",
+      "wire": "{\"type\":\"display_changed\",\"sequence\":1,\"window_id\":1,\"snapshot\":{\"bounds\":{\"x\":0,\"y\":0,\"width\":1512,\"height\":982},\"scale_factor\":2,\"visible_bounds\":{\"x\":0,\"y\":33,\"width\":1512,\"height\":949},\"display_uuid\":\"37d8832a-2d66-02ca-b9f7-8f30a301b230\"}}",
+      "valid": true
+    },
+    {
+      "name": "display change is a sequenced event, not a response",
+      "wire": "{\"type\":\"display_changed\",\"id\":1,\"window_id\":1,\"snapshot\":{\"bounds\":{\"x\":0,\"y\":0,\"width\":1512,\"height\":982},\"scale_factor\":2}}",
+      "valid": false
+    },
+    {
+      "name": "display change must name its owning window",
+      "wire": "{\"type\":\"display_changed\",\"sequence\":1,\"snapshot\":{\"bounds\":{\"x\":0,\"y\":0,\"width\":1512,\"height\":982},\"scale_factor\":2}}",
+      "valid": false
+    },
+    {
+      "name": "display change validates its geometry",
+      "wire": "{\"type\":\"display_changed\",\"sequence\":1,\"window_id\":1,\"snapshot\":{\"bounds\":{\"x\":0,\"y\":0,\"width\":1512,\"height\":982},\"scale_factor\":0}}",
+      "valid": false
     }
   ]
 }

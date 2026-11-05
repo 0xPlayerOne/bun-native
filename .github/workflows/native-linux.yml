@@ -43,7 +43,7 @@ jobs:
           sudo apt-get install --no-install-recommends -y \
             pkg-config libfontconfig-dev libglib2.0-dev libssl-dev libwayland-dev \
             libx11-xcb-dev libxkbcommon-x11-dev libvulkan1 libzstd-dev \
-            mesa-vulkan-drivers xvfb xauth x11-utils openbox xdotool imagemagick \
+            mesa-vulkan-drivers xvfb xauth x11-utils x11-xserver-utils openbox xdotool imagemagick \
             dbus-x11 dunst fonts-dejavu-core heaptrack binutils
       - name: Pin the installed Mesa CPU Vulkan ICD for isolated Xvfb
         run: |
@@ -132,7 +132,7 @@ jobs:
             "$NATIVE_EVIDENCE/events-development" event-throughput bun tests/native/event-throughput.ts
       - name: Compile and inspect the actual AOT entries
         run: |
-          for entry in native-window input-race bridge javascript core-lifecycle event-throughput fault scheduling layout interactions services clipboard global-shortcuts notifications filesystem-grants processes solid-services react-services solid solid-input-intent solid-interactions react react-interactions react-behavior react-workload react-workspace react-workspace-flow; do
+          for entry in native-window input-race bridge javascript core-lifecycle event-throughput fault scheduling layout interactions services display-semantics clipboard global-shortcuts notifications filesystem-grants processes solid-services react-services solid solid-input-intent solid-interactions react react-interactions react-behavior react-workload react-workspace react-workspace-flow; do
             outdir="$NATIVE_EVIDENCE/$entry-package"
             if [[ "$entry" == native-window ]]; then
               outdir="$NATIVE_EVIDENCE/package"
@@ -192,6 +192,26 @@ jobs:
             mkdir "$evidence"
             BUN_NATIVE_NOTIFICATION_EVIDENCE="$evidence" BUN_NATIVE_NOTIFICATION_MODE="$mode" \
               xvfb-run --auto-servernum --server-args='-screen 0 1280x800x24 -nolisten tcp' \
+              dbus-run-session -- bash scripts/quality/native-linux-session.sh \
+              "$evidence-session" -- "${command[@]}" 2>&1 | tee "$evidence/run.log"
+          done
+      - name: Development and AOT X11 display snapshot semantics
+        timeout-minutes: 3
+        env:
+          BUN_NATIVE_HOST: ${{ github.workspace }}/target/release/bun-native-host
+        run: |
+          # Two independent X screens of different sizes; the fixture's oracle
+          # is xdpyinfo/xwininfo and its operations are real X requests.
+          for mode in development aot; do
+            command=(bun tests/native/display-semantics.ts)
+            if [[ "$mode" == aot ]]; then
+              command=("$NATIVE_EVIDENCE/display-semantics-package/display-semantics")
+            fi
+            evidence="$NATIVE_EVIDENCE/display-semantics-$mode"
+            mkdir "$evidence"
+            BUN_NATIVE_DISPLAY_EVIDENCE="$evidence" BUN_NATIVE_DISPLAY_MODE="$mode" \
+              xvfb-run --auto-servernum \
+              --server-args='-screen 0 1280x800x24 -screen 1 1024x768x24 -nolisten tcp' \
               dbus-run-session -- bash scripts/quality/native-linux-session.sh \
               "$evidence-session" -- "${command[@]}" 2>&1 | tee "$evidence/run.log"
           done
@@ -699,6 +719,7 @@ jobs:
             ${{ runner.temp }}/native-evidence/notifications-*/
             ${{ runner.temp }}/native-evidence/filesystem-grants-*/
             ${{ runner.temp }}/native-evidence/processes-*/
+            ${{ runner.temp }}/native-evidence/display-semantics-*/
             ${{ runner.temp }}/native-evidence/development/
             ${{ runner.temp }}/native-evidence/aot/
             ${{ runner.temp }}/native-evidence/input-race-aot/

@@ -80,6 +80,14 @@ pub enum Event {
         window_id: WindowId,
         shortcut_id: ShortcutId,
     },
+    /// The window moved to another display or its display's geometry changed.
+    /// Sent only by a host that advertises `display_changes_v1`, for a
+    /// granted `window_display` policy.
+    DisplayChanged {
+        sequence: EventSequence,
+        window_id: WindowId,
+        snapshot: DisplaySnapshot,
+    },
     /// An OS-wide activation of a live registration owned by this window.
     GlobalShortcut {
         sequence: EventSequence,
@@ -335,7 +343,9 @@ impl Event {
             _ => {}
         }
         match self {
-            Self::DisplaySnapshot { snapshot, .. } => snapshot.validate()?,
+            Self::DisplaySnapshot { snapshot, .. } | Self::DisplayChanged { snapshot, .. } => {
+                snapshot.validate()?
+            }
             Self::ClipboardText { result, .. } => result.validate()?,
             Self::FileResult { result, .. } => result.validate()?,
             Self::Ready { service_policy, .. } => {

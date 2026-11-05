@@ -6,11 +6,14 @@ import {
   type WindowEvent,
 } from '@bun-native/runtime'
 import { dispatchPlan, EventBindings, prunePlan, type DispatchPlan } from './events.ts'
+import { DisplaySubscription } from './display.ts'
 import {
   checkServiceCancellation,
   NativeServiceError,
+  publicDisplaySnapshot,
   serviceCapabilities,
   serviceSignal,
+  type DisplayChangeEvent,
   type NativeDisplaySnapshot,
   type NativeClipboardText,
   type ServiceCapabilities,
@@ -68,6 +71,7 @@ type Callback =
   | { windowId: number; shortcut: ShortcutRegistration; event: GlobalShortcutEvent }
   | { windowId: number; notification: NotificationRegistration; event: NotificationEvent }
   | { windowId: number; process: ProcessRegistration; event: ProcessEvent; chunk: number }
+  | { windowId: number; display: DisplaySubscription; event: DisplayChangeEvent }
 
 class Application implements NativeApplication {
   readonly closed: Promise<void>
@@ -111,7 +115,7 @@ class Application implements NativeApplication {
     let callbacks = 0
     for (const window of this.windows.values()) {
       nodes += window.nodes.size
-      callbacks += window.listeners.size
+      callbacks += window.listeners.size + window.displayChanges.size
     }
     return Object.freeze({
       windows: this.windows.size,
@@ -173,6 +177,7 @@ class Application implements NativeApplication {
       if ('shortcut' in callback) return callback.shortcut.live
       if ('notification' in callback) return callback.notification.deliverable
       if ('process' in callback) return callback.process.live
+      if ('display' in callback) return callback.display.live
       if (window?.isTargetLive(callback.nodeId) && prunePlan(callback.plan)) return true
       window?.listeners.release(callback.plan)
       return false
@@ -213,7 +218,11 @@ class Application implements NativeApplication {
           await dispatchNotification(callback.notification, callback.event)
         else if ('process' in callback)
           await window.dispatchProcess(callback.process, callback.event, callback.chunk)
-        else await window.dispatch(callback.nodeId, callback.plan)
+        else if ('display' in callback) {
+          const listener = callback.display.current
+          if (listener)
+            await dispatchOwned(listener, callback.event, callback.display.controller.signal)
+        } else await window.dispatch(callback.nodeId, callback.plan)
       } finally {
         this.activeCallbacks = 0
       }
@@ -467,6 +476,7 @@ class Window implements NativeWindow {
   private active = true
   private resolveClosed!: () => void
   private closing: Promise<void> | undefined
+  readonly displayChanges = new Set<DisplaySubscription>()
 
   constructor(
     private readonly application: Application,
@@ -589,14 +599,12 @@ class Window implements NativeWindow {
           type: 'display_snapshot',
           window_id: this.id,
         })
+        const snapshot = publicDisplaySnapshot(response.snapshot, this.application.capabilities)
         // Cancellation and owner revocation suppress data after a submitted
         // read, while the transport still drains and validates its response.
         this.assertActive()
         checkServiceCancellation(signal, 'window_display')
-        return Object.freeze({
-          bounds: Object.freeze({ ...response.snapshot.bounds }),
-          scaleFactor: response.snapshot.scale_factor,
-        })
+        return snapshot
       } catch (error) {
         if (error instanceof ProtocolError) throw error
         this.assertActive()
@@ -609,6 +617,54 @@ class Window implements NativeWindow {
         throw error
       }
     })
+  }
+
+  onDisplayChange(listener: (event: DisplayChangeEvent) => void | Promise<void>): () => void {
+    this.assertActive()
+    if (typeof listener !== 'function')
+      throw new TypeError('Display change listener must be a function')
+    if (this.application.serviceCapabilities.windowDisplay.changes !== 'available')
+      throw new NativeServiceError(
+        'window_display',
+        'service_unavailable',
+        'This native backend does not report display changes'
+      )
+    if (this.application.serviceCapabilities.windowDisplay.permission !== 'allow')
+      throw new NativeServiceError(
+        'window_display',
+        'permission_denied',
+        'window display access was not granted at native process launch'
+      )
+    const subscription = new DisplaySubscription(listener)
+    this.displayChanges.add(subscription)
+    return () => {
+      subscription.revoke()
+      if (this.displayChanges.delete(subscription)) this.application.cancelCallbacks(this.id)
+    }
+  }
+
+  private receiveDisplayChange(event: Extract<WindowEvent, { type: 'display_changed' }>): void {
+    if (!this.application.capabilities.includes('display_changes_v1'))
+      throw new ProtocolError('Native display change arrived without display_changes_v1')
+    // Validate even when nobody listens: a malformed frame is a host fault.
+    const snapshot = publicDisplaySnapshot(event.snapshot, this.application.capabilities)
+    if (!this.active) return
+    for (const subscription of this.displayChanges)
+      this.application.queueCallback({
+        windowId: this.id,
+        display: subscription,
+        event: Object.freeze({
+          type: 'display_change',
+          sequence: event.sequence,
+          snapshot,
+          signal: subscription.controller.signal,
+        }),
+      })
+  }
+
+  private revokeDisplayChanges(): void {
+    for (const subscription of this.displayChanges) subscription.revoke()
+    this.displayChanges.clear()
   }
 
   async readClipboardText(options: ServiceRequestOptions = {}): Promise<NativeClipboardText> {
@@ -1168,6 +1224,7 @@ class Window implements NativeWindow {
     this.active = false
     this.listeners.clear()
     this.nodes.clear()
+    this.revokeDisplayChanges()
     this.closing = this.application.enqueue(async () => {
       try {
         await this.application.host.send({ type: 'close', window_id: this.id })
@@ -1188,6 +1245,7 @@ class Window implements NativeWindow {
     this.active = false
     this.listeners.clear()
     this.nodes.clear()
+    this.revokeDisplayChanges()
     for (const registration of this.application.shortcuts.values())
       if (registration.windowId === this.id) {
         registration.revoke()
@@ -1219,6 +1277,10 @@ class Window implements NativeWindow {
   receive(event: WindowEvent, nextNode: number): void {
     if (event.type === 'closed') {
       this.revoke()
+      return
+    }
+    if (event.type === 'display_changed') {
+      this.receiveDisplayChange(event)
       return
     }
     if (event.type === 'global_shortcut') {

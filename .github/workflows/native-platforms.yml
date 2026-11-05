@@ -334,6 +334,46 @@ jobs:
               throw "macOS $mode filesystem grant evidence does not name the macOS backend"
             }
           }
+      - name: Display snapshot, work area, identity and display-change qualification (#299)
+        if: ${{ !cancelled() && steps.native-build.outcome == 'success' }}
+        timeout-minutes: 8
+        run: |
+          if ($IsMacOS) {
+            $oracle = Join-Path $env:NATIVE_EVIDENCE 'macos-display-oracle'
+            xcrun clang -fobjc-arc -Wall -Wextra -Werror -framework AppKit -framework CoreGraphics `
+              -framework ApplicationServices tests/native/macos-display-oracle.m -o $oracle
+            if ($LASTEXITCODE -ne 0) { throw 'The independent AppKit/CoreGraphics display oracle did not compile' }
+            $env:BUN_NATIVE_MACOS_DISPLAY_HELPER = $oracle
+          } else {
+            $env:BUN_NATIVE_WINDOWS_DISPLAY_ORACLE = (Resolve-Path 'tests/native/windows-display-oracle.ps1').Path
+          }
+          $package = Join-Path $env:NATIVE_EVIDENCE 'display-platform-package'
+          bun experiments/aot-gpui/build-window.ts --entry display-platform `
+            --source $env:GITHUB_WORKSPACE --host $env:BUN_NATIVE_HOST `
+            --host-profile release --outdir $package
+          if ($LASTEXITCODE -ne 0) { throw 'The display fixture AOT compiler or inspection failed' }
+          $manifest = Get-Content -Raw (Join-Path $package 'manifest.json') | ConvertFrom-Json
+          if ($manifest.application.inspection.hasCompiledProgram -ne $true -or `
+              !$manifest.application.runtimeFeatures -or `
+              $manifest.application.runtimeFeatures.jit -eq 'present') {
+            throw 'The display fixture lacks genuine compiled-program/JIT-removal evidence'
+          }
+          foreach ($mode in @('development', 'aot')) {
+            $evidence = Join-Path $env:NATIVE_EVIDENCE "display-platform-$mode"
+            New-Item -ItemType Directory $evidence | Out-Null
+            $env:BUN_NATIVE_DISPLAY_EVIDENCE = $evidence
+            $env:BUN_NATIVE_DISPLAY_MODE = $mode
+            if ($mode -eq 'development') {
+              bun tests/native/display-platform.ts 2>&1 | Tee-Object -FilePath (Join-Path $evidence 'run.log')
+            } else {
+              & (Join-Path $package $manifest.application.file) 2>&1 |
+                Tee-Object -FilePath (Join-Path $evidence 'run.log')
+            }
+            if ($LASTEXITCODE -ne 0) { throw "Display qualification failed in $mode" }
+            if (!(Test-Path -LiteralPath (Join-Path $evidence 'display-platform.json') -PathType Leaf)) {
+              throw "Display qualification wrote no $mode evidence"
+            }
+          }
       - name: Retain unsigned native host for reproducibility
         if: ${{ !cancelled() && steps.native-build.outcome == 'success' }}
         run: |
@@ -353,5 +393,7 @@ jobs:
             !${{ runner.temp }}/bun-native-platform-evidence/react-platform-package/react-platform
             !${{ runner.temp }}/bun-native-platform-evidence/react-platform-package/react-platform.exe
             !${{ runner.temp }}/bun-native-platform-evidence/filesystem-grants-package/filesystem-grants
+            !${{ runner.temp }}/bun-native-platform-evidence/display-platform-package/display-platform
+            !${{ runner.temp }}/bun-native-platform-evidence/display-platform-package/display-platform.exe
           if-no-files-found: error
           retention-days: 14

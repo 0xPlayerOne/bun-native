@@ -119,26 +119,66 @@ pub struct DisplayBounds {
     pub height: f64,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct DisplaySnapshot {
     pub bounds: DisplayBounds,
     pub scale_factor: f64,
+    /// The display's work area, in the same logical coordinates as `bounds`.
+    /// Sent only by a host that advertises `display_details_v1`.
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "crate::wire::non_null"
+    )]
+    pub visible_bounds: Option<DisplayBounds>,
+    /// The platform's display identifier as a lowercase hyphenated UUID.
+    /// Sent only by a host that advertises `display_details_v1`, and only when
+    /// the OS reports one.
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "crate::wire::non_null"
+    )]
+    pub display_uuid: Option<String>,
+}
+
+fn invalid_bounds(bounds: DisplayBounds) -> bool {
+    [bounds.x, bounds.y]
+        .into_iter()
+        .any(|value| !value.is_finite() || value.abs() > MAX_DISPLAY_COORDINATE)
+        || [bounds.width, bounds.height]
+            .into_iter()
+            .any(|value| !value.is_finite() || value <= 0. || value > MAX_DISPLAY_COORDINATE)
+}
+
+/// Lowercase 8-4-4-4-12 hexadecimal: the form the `uuid` crate displays.
+pub fn valid_display_uuid(value: &str) -> bool {
+    value.len() == 36
+        && value.bytes().enumerate().all(|(index, byte)| {
+            if matches!(index, 8 | 13 | 18 | 23) {
+                byte == b'-'
+            } else {
+                byte.is_ascii_digit() || (b'a'..=b'f').contains(&byte)
+            }
+        })
 }
 
 impl DisplaySnapshot {
     pub fn validate(&self) -> Result<(), &'static str> {
-        let bounds = self.bounds;
-        if [bounds.x, bounds.y]
-            .into_iter()
-            .any(|value| !value.is_finite() || value.abs() > MAX_DISPLAY_COORDINATE)
-            || [bounds.width, bounds.height]
-                .into_iter()
-                .any(|value| !value.is_finite() || value <= 0. || value > MAX_DISPLAY_COORDINATE)
+        if invalid_bounds(self.bounds)
+            || self.visible_bounds.is_some_and(invalid_bounds)
             || !self.scale_factor.is_finite()
             || !(0.125..=16.).contains(&self.scale_factor)
         {
             return Err("native display geometry exceeds its finite logical-pixel range");
+        }
+        if self
+            .display_uuid
+            .as_deref()
+            .is_some_and(|uuid| !valid_display_uuid(uuid))
+        {
+            return Err("native display identity must be a lowercase hyphenated UUID");
         }
         Ok(())
     }

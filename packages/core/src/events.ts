@@ -19,6 +19,7 @@ export type RoutedEvent = Exclude<
       | 'notification_dismissed'
       | 'process_output'
       | 'process_exited'
+      | 'display_changed'
   }
 >
 const eventTypes: readonly string[] = [

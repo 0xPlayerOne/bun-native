@@ -1,10 +1,12 @@
 //! Policy is fixed before the private channel starts. Wire messages cannot grant it.
 
+use crate::{channel::EventSink, state::SharedWindowState};
 use bun_native_protocol::{
-    DisplayBounds, DisplaySnapshot, ErrorCode, FileAccess, FilesystemRoot, ProcessExecutable,
-    ServicePolicy, validate_filesystem_roots, validate_process_executables,
+    DisplayBounds, DisplaySnapshot, ErrorCode, Event, FileAccess, FilesystemRoot,
+    ProcessExecutable, ServicePolicy, WindowId, validate_filesystem_roots,
+    validate_process_executables,
 };
-use gpui::{App, Window};
+use gpui::{AnyWindowHandle, App, Bounds, Pixels, Subscription, Window};
 use std::ffi::OsString;
 
 #[cfg(target_os = "linux")]
@@ -34,6 +36,14 @@ pub(crate) mod shortcuts;
 pub(crate) mod shortcuts;
 #[cfg(target_os = "linux")]
 pub(crate) mod x11;
+
+/// GPUI's macOS and Windows displays report a work area and an OS display
+/// identifier; the pinned X11 display reports neither.
+pub(crate) const DISPLAY_DETAILS: bool = cfg!(any(target_os = "macos", target_os = "windows"));
+/// GPUI's macOS and Windows windows notify display observers when the window
+/// changes display or the OS reconfigures its display; the pinned X11 window's
+/// `on_display_changed` is a no-op.
+pub(crate) const DISPLAY_CHANGES: bool = cfg!(any(target_os = "macos", target_os = "windows"));
 
 pub(crate) const DISPLAY_PERMISSION_ARGUMENT: &str = "--bun-native-allow-window-display";
 pub(crate) const CLIPBOARD_READ_ARGUMENT: &str = "--bun-native-allow-clipboard-read";
@@ -125,20 +135,60 @@ pub(crate) fn display_snapshot(
         ErrorCode::ServiceUnavailable,
         "the owned window has no current native display",
     ))?;
-    let bounds = display.bounds();
+    let logical = |bounds: Bounds<Pixels>| DisplayBounds {
+        x: f64::from(f32::from(bounds.origin.x)),
+        y: f64::from(f32::from(bounds.origin.y)),
+        width: f64::from(f32::from(bounds.size.width)),
+        height: f64::from(f32::from(bounds.size.height)),
+    };
     let snapshot = DisplaySnapshot {
-        bounds: DisplayBounds {
-            x: f64::from(f32::from(bounds.origin.x)),
-            y: f64::from(f32::from(bounds.origin.y)),
-            width: f64::from(f32::from(bounds.size.width)),
-            height: f64::from(f32::from(bounds.size.height)),
-        },
+        bounds: logical(display.bounds()),
         scale_factor: f64::from(window.scale_factor()),
+        // The X11 display has no work area (it repeats `bounds`) and an
+        // all-zero UUID, so only macOS and Windows report these details.
+        visible_bounds: DISPLAY_DETAILS.then(|| logical(display.visible_bounds())),
+        display_uuid: DISPLAY_DETAILS
+            .then(|| display.uuid().ok().map(|uuid| uuid.to_string()))
+            .flatten(),
     };
     snapshot
         .validate()
         .map_err(|message| (ErrorCode::NativeFailure, message))?;
     Ok(snapshot)
+}
+
+/// Reports each display change of a live owned window with a fresh snapshot.
+/// GPUI calls the observer when the window moves to another display or when
+/// the OS display configuration changes that display's bounds or refresh
+/// rate. The subscription is the window entry's; dropping it stops reports.
+pub(crate) fn observe_display(
+    handle: AnyWindowHandle,
+    window_id: WindowId,
+    state: SharedWindowState,
+    events: EventSink,
+    cx: &mut App,
+) -> Option<Subscription> {
+    handle
+        .update(cx, |_, window, _| {
+            window.observe_window_display(move |window, cx| {
+                if !state.borrow().active {
+                    return;
+                }
+                // A window between displays has no snapshot to report; the
+                // next change, or an explicit read, observes where it lands.
+                if let Ok(snapshot) = display_snapshot(window, cx) {
+                    events.ui(
+                        |sequence| Event::DisplayChanged {
+                            sequence,
+                            window_id,
+                            snapshot,
+                        },
+                        cx,
+                    );
+                }
+            })
+        })
+        .ok()
 }
 
 #[cfg(test)]
