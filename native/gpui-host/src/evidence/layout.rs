@@ -1,8 +1,9 @@
 //! Bounded opt-in geometry captured from GPUI's actual prepaint/paint pass.
 //! This adds no elements or layout nodes to the native tree.
 
+use crate::input::{InputViewportSnapshot, TextInput};
 use bun_native_protocol::NodeId;
-use gpui::{Bounds, Div, FocusHandle, Pixels, ScrollHandle, Window};
+use gpui::{App, Bounds, Div, FocusHandle, Pixels, ScrollHandle, WeakEntity, Window};
 use serde_json::{Value, json};
 use std::{cell::RefCell, collections::BTreeMap, rc::Rc};
 
@@ -30,6 +31,7 @@ pub(crate) struct LayoutSnapshot {
     focused: Option<NodeId>,
     nodes: BTreeMap<NodeId, NodeLayout>,
     scrolls: Vec<ScrollLayout>,
+    inputs: Option<BTreeMap<NodeId, InputViewportSnapshot>>,
 }
 
 #[derive(Clone)]
@@ -38,6 +40,7 @@ pub(crate) struct LayoutFrame {
     nodes: Rc<RefCell<BTreeMap<NodeId, NodeLayout>>>,
     scrolls: BTreeMap<NodeId, ScrollHandle>,
     focus: Vec<(NodeId, FocusHandle)>,
+    inputs: Option<Vec<(NodeId, WeakEntity<TextInput>)>>,
 }
 
 fn rectangle(bounds: Bounds<Pixels>) -> [f32; 4] {
@@ -65,7 +68,18 @@ impl LayoutFrame {
                 BTreeMap::new()
             },
             focus: if capture { focus.collect() } else { Vec::new() },
+            inputs: None,
         }
+    }
+
+    pub(crate) fn with_inputs(
+        mut self,
+        inputs: impl Iterator<Item = (NodeId, WeakEntity<TextInput>)>,
+    ) -> Self {
+        if self.node_count <= MAX_LAYOUT_NODES {
+            self.inputs = Some(inputs.collect());
+        }
+        self
     }
 
     pub(crate) fn children(
@@ -111,7 +125,7 @@ impl LayoutFrame {
         })
     }
 
-    pub(crate) fn snapshot(&self, window: &Window) -> LayoutSnapshot {
+    pub(crate) fn snapshot(&self, window: &Window, cx: &App) -> LayoutSnapshot {
         let viewport = window.viewport_size();
         LayoutSnapshot {
             viewport: [viewport.width.into(), viewport.height.into()],
@@ -136,6 +150,14 @@ impl LayoutFrame {
                     }
                 })
                 .collect(),
+            inputs: self.inputs.as_ref().map(|inputs| {
+                inputs
+                    .iter()
+                    .filter_map(|(id, input)| {
+                        Some((*id, input.upgrade()?.read(cx).painted_viewport()?))
+                    })
+                    .collect()
+            }),
         }
     }
 }
@@ -153,6 +175,24 @@ impl LayoutSnapshot {
         value["focused_node_id"] = json!(self.focused);
         value["nodes"] = self.nodes.iter().map(|(id, layout)| json!({"node_id":id,"bounds":layout.bounds,"ancestor_clip":layout.ancestor_clip})).collect();
         value["scrolls"] = self.scrolls.iter().map(|scroll| json!({"node_id":scroll.node_id,"offset":scroll.offset,"maximum":scroll.maximum,"viewport":scroll.viewport})).collect();
+        if let Some(inputs) = &self.inputs {
+            value["inputs"] = inputs
+                .iter()
+                .map(|(id, input)| {
+                    json!({
+                        "node_id": id,
+                        "viewport": rectangle(input.viewport),
+                        "offset": f32::from(input.offset),
+                        "line_width": f32::from(input.line_width),
+                        "clip": rectangle(input.decorations.clip),
+                        "caret": input.decorations.caret.map(rectangle),
+                        "selection": input.decorations.selection.map(rectangle),
+                        "selected_bytes": input.decorations.selected_bytes,
+                        "cursor_byte": input.decorations.cursor_byte,
+                    })
+                })
+                .collect();
+        }
         value
     }
 }

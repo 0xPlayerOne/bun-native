@@ -1,9 +1,10 @@
 // Adapted from Zed GPUI examples/input.rs, revision ba63a022c9a22ca66d68ef2a8f0bb9b5b0a9984d.
 // Copyright the Zed contributors. Licensed under Apache-2.0; see LICENSE-APACHE and NOTICE.
+use super::viewport::{CARET_WIDTH, TextViewport};
 use super::*;
 use gpui::{
-    ElementId, ElementInputHandler, Entity, GlobalElementId, LayoutId, PaintQuad, Style, TextRun,
-    UnderlineStyle, fill, relative, rgba, size,
+    ContentMask, ElementId, ElementInputHandler, Entity, GlobalElementId, LayoutId, PaintQuad,
+    ShapedLine, Style, TextRun, UnderlineStyle, fill, point, relative, rgba, size,
 };
 
 pub(super) struct TextElement {
@@ -14,6 +15,9 @@ pub(super) struct PrepaintState {
     line: Option<ShapedLine>,
     cursor: Option<PaintQuad>,
     selection: Option<PaintQuad>,
+    viewport: TextViewport,
+    selected_bytes: [usize; 2],
+    cursor_byte: usize,
 }
 
 impl IntoElement for TextElement {
@@ -111,13 +115,23 @@ impl Element for TextElement {
             .shape_line(display_text, font_size, &runs, None);
 
         let cursor_pos = line.x_for_index(cursor);
+        let cursor_byte = cursor;
+        let viewport = TextViewport::new(
+            bounds,
+            line.width(),
+            cursor_pos,
+            input
+                .last_paint
+                .as_ref()
+                .map_or(px(0.), |paint| paint.viewport.offset),
+        );
         let (selection, cursor) = if selected_range.is_empty() {
             (
                 None,
                 Some(fill(
                     Bounds::new(
-                        point(bounds.left() + cursor_pos, bounds.top()),
-                        size(px(2.), bounds.bottom() - bounds.top()),
+                        point(viewport.window_x(cursor_pos), bounds.top()),
+                        size(CARET_WIDTH, bounds.size.height),
                     ),
                     gpui::blue(),
                 )),
@@ -125,15 +139,9 @@ impl Element for TextElement {
         } else {
             (
                 Some(fill(
-                    Bounds::from_corners(
-                        point(
-                            bounds.left() + line.x_for_index(selected_range.start),
-                            bounds.top(),
-                        ),
-                        point(
-                            bounds.left() + line.x_for_index(selected_range.end),
-                            bounds.bottom(),
-                        ),
+                    viewport.range_bounds(
+                        line.x_for_index(selected_range.start),
+                        line.x_for_index(selected_range.end),
                     ),
                     rgba(0x3311ff30),
                 )),
@@ -144,6 +152,9 @@ impl Element for TextElement {
             line: Some(line),
             cursor,
             selection,
+            viewport,
+            selected_bytes: [selected_range.start, selected_range.end],
+            cursor_byte,
         }
     }
 
@@ -163,29 +174,44 @@ impl Element for TextElement {
             ElementInputHandler::new(bounds, self.input.clone()),
             cx,
         );
-        if let Some(selection) = prepaint.selection.take() {
-            window.paint_quad(selection)
-        }
         let line = prepaint.line.take().unwrap();
-        line.paint(
-            bounds.origin,
-            window.line_height(),
-            gpui::TextAlign::Left,
-            None,
-            window,
-            cx,
-        )
-        .unwrap();
+        let selection = prepaint.selection.as_ref().map(|quad| quad.bounds);
+        let mut caret = None;
+        let clip = window.with_content_mask(Some(ContentMask { bounds }), |window| {
+            if let Some(selection) = prepaint.selection.take() {
+                window.paint_quad(selection)
+            }
+            line.paint(
+                prepaint.viewport.origin(),
+                window.line_height(),
+                gpui::TextAlign::Left,
+                None,
+                window,
+                cx,
+            )
+            .unwrap();
 
-        if focus_handle.is_focused(window)
-            && let Some(cursor) = prepaint.cursor.take()
-        {
-            window.paint_quad(cursor);
-        }
+            if focus_handle.is_focused(window)
+                && let Some(cursor) = prepaint.cursor.take()
+            {
+                caret = Some(cursor.bounds);
+                window.paint_quad(cursor);
+            }
+            window.content_mask().bounds
+        });
 
         self.input.update(cx, |input, _cx| {
-            input.last_layout = Some(line);
-            input.last_bounds = Some(bounds);
+            input.last_paint = Some(InputPaint {
+                line,
+                viewport: prepaint.viewport,
+                decorations: PaintedInputDecorations {
+                    clip,
+                    caret,
+                    selection,
+                    selected_bytes: prepaint.selected_bytes,
+                    cursor_byte: prepaint.cursor_byte,
+                },
+            });
         });
     }
 }

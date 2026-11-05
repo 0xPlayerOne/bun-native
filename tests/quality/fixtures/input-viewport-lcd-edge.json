@@ -1,0 +1,62 @@
+{
+  "schemaVersion": 1,
+  "scope": "Exact RGB neighborhood from a failed native screenshot; tests compose it with synthetic geometry and caret controls. It is not a complete native qualification.",
+  "source": {
+    "repository": "0xPlayerOne/bun-native",
+    "head": "af956a154fff0c0afcc5e26adbe55f5af76f9f1b",
+    "testedMerge": "44334f79d05e8cdca9bb0298871f6aea9236b2b0",
+    "tree": "1a9d22268ed5e0c86b3e6fd5dfd5efe7f61995f2",
+    "workflowRun": 41907537790,
+    "job": 126846102655,
+    "artifact": 13361963848,
+    "artifactSha256": "d5deb1b7dc72b7aeb3ba6f2823cb4401d2236bed941b4108ae51878e6297592b"
+  },
+  "screenshot": {
+    "path": "diagnostics-development-solid-input-viewport/restyled-end.png",
+    "bytes": 18765,
+    "sha256": "7363de1916c5c7ff8af3939b1e7f81e96a11fd94c353d9a012e32c41a5167925",
+    "size": [680, 400]
+  },
+  "origin": [264, 131],
+  "misclassifiedPixel": {
+    "position": [266, 133],
+    "rgb": [32, 99, 183]
+  },
+  "rgb": [
+    [
+      [32, 44, 56],
+      [32, 44, 56],
+      [32, 44, 56],
+      [78, 170, 221],
+      [254, 255, 255]
+    ],
+    [
+      [32, 44, 56],
+      [32, 44, 56],
+      [32, 44, 89],
+      [181, 228, 253],
+      [255, 255, 255]
+    ],
+    [
+      [32, 44, 56],
+      [32, 44, 56],
+      [32, 99, 183],
+      [235, 255, 255],
+      [255, 255, 254]
+    ],
+    [
+      [32, 44, 56],
+      [32, 44, 56],
+      [115, 191, 234],
+      [255, 255, 255],
+      [255, 251, 225]
+    ],
+    [
+      [32, 44, 56],
+      [32, 46, 121],
+      [201, 240, 255],
+      [255, 255, 255],
+      [244, 211, 162]
+    ]
+  ]
+}
