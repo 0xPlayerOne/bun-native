@@ -7,8 +7,9 @@ import {
   PROTOCOL_VERSION,
   REQUIRED_CAPABILITIES,
 } from '@bun-native/protocol'
-import { existsSync, writeFileSync } from 'node:fs'
+import { existsSync } from 'node:fs'
 import { join } from 'node:path'
+import { publishHolderIdentity } from './pipe-holder-identity.ts'
 
 const mode = process.argv[2] ?? 'normal'
 if (mode === 'pipe-holder') {
@@ -16,7 +17,7 @@ if (mode === 'pipe-holder') {
   if (!directory) throw new Error('Pipe holder requires its private control directory')
   // Readiness belongs to the test's explicit setup barrier, not to hello.
   // Publish identity first so a failed negotiation can still release this child.
-  writeFileSync(join(directory, 'started'), String(process.pid))
+  publishHolderIdentity(directory, 'started')
   const deadline = performance.now() + 10_000
   if (process.argv[4] === 'delay-holder') await Bun.sleep(400)
   while (
@@ -26,11 +27,11 @@ if (mode === 'pipe-holder') {
   )
     await Bun.sleep(10)
   if (existsSync(join(directory, 'arm')) && !existsSync(join(directory, 'release'))) {
-    writeFileSync(join(directory, 'ready'), String(process.pid))
+    publishHolderIdentity(directory, 'ready')
     while (!existsSync(join(directory, 'release')) && performance.now() < deadline)
       await Bun.sleep(10)
   }
-  writeFileSync(join(directory, 'finished'), String(process.pid))
+  publishHolderIdentity(directory, 'finished')
   process.exit(0)
 }
 if (mode === 'inherited-pipe-shutdown' || mode === 'inherited-pipe-exit') {
