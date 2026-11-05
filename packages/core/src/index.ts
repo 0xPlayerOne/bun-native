@@ -18,6 +18,13 @@ export type {
 } from './shortcuts.ts'
 export type { NativeNotification, NotificationEvent, NotificationOptions } from './notifications.ts'
 export type {
+  FileGrantOptions,
+  NativeDirectoryPage,
+  NativeFileChunk,
+  NativeFileGrant,
+  NativeFileStat,
+} from './files.ts'
+export type {
   ApplicationOptions,
   ClickEvent,
   Element,

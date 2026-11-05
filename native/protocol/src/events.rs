@@ -106,6 +106,22 @@ pub enum Event {
         notification_id: NotificationId,
     },
     /// The server removed a live notification; it is no longer owned.
+    FileGrantOpened {
+        id: RequestId,
+        window_id: WindowId,
+        grant_id: crate::FileGrantId,
+    },
+    FileGrantClosed {
+        id: RequestId,
+        window_id: WindowId,
+        grant_id: crate::FileGrantId,
+    },
+    FileResult {
+        id: RequestId,
+        window_id: WindowId,
+        grant_id: crate::FileGrantId,
+        result: crate::FileResult,
+    },
     NotificationDismissed {
         sequence: EventSequence,
         window_id: WindowId,
@@ -288,6 +304,10 @@ impl Event {
         match self {
             Self::DisplaySnapshot { snapshot, .. } => snapshot.validate()?,
             Self::ClipboardText { result, .. } => result.validate()?,
+            Self::FileResult { result, .. } => result.validate()?,
+            Self::Ready { service_policy, .. } => {
+                crate::validate_filesystem_roots(&service_policy.filesystem_roots)?
+            }
             Self::KeyDown { key, key_char, .. } | Self::KeyUp { key, key_char, .. } => {
                 validate_text(key)?;
                 if key.is_empty() || key.len() > MAX_KEY_BYTES {

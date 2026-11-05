@@ -1,5 +1,6 @@
 import { ProtocolError } from './framing.ts'
 import { keys, number, object, string } from './values.ts'
+import { parseFilesystemRoots, type FilesystemRoot } from './files.ts'
 
 // Worst-case JSON escaping still leaves room within the 64KiB frame.
 export const MAX_CLIPBOARD_BYTES = 8_192
@@ -15,6 +16,8 @@ export interface ServicePolicy {
   clipboard_write: boolean
   global_shortcuts: boolean
   notifications: boolean
+  /** Directories a window may open as scoped grants, in launch order. */
+  filesystem_roots: FilesystemRoot[]
 }
 
 /** The closed set of layout-level keys a global shortcut may name. */
@@ -111,6 +114,7 @@ export function parseServicePolicy(value: unknown): ServicePolicy {
     'clipboard_write',
     'global_shortcuts',
     'notifications',
+    'filesystem_roots',
   ])
   const grant = (key: keyof ServicePolicy) => {
     if (typeof data[key] !== 'boolean')
@@ -123,6 +127,7 @@ export function parseServicePolicy(value: unknown): ServicePolicy {
     clipboard_write: grant('clipboard_write'),
     global_shortcuts: grant('global_shortcuts'),
     notifications: grant('notifications'),
+    filesystem_roots: parseFilesystemRoots(data['filesystem_roots']),
   }
 }
 

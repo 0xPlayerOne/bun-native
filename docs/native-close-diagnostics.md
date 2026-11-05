@@ -63,6 +63,28 @@ WM message delivery or exclude window-ID reuse by the same process. No action
 is taken against a foreign or unverified owner. Existing identity-checked
 process cleanup remains authoritative.
 
+## Additional observations after a failed close
+
+Only when that existing check records `os_close` as failed, and still before
+forced cleanup, the driver adds two read-only observations to
+`close_diagnostics`:
+
+- `window_manager` runs one `xprop -root _NET_ACTIVE_WINDOW _NET_CLIENT_LIST`
+  query under the same three-second bound. It reports whether the previously
+  owned window ID is still `active` and `managed`. This is window-manager state
+  at that instant, not WM close delivery.
+- `thread_sample` reads `/proc` for at most 8 previously observed processes whose
+  PID and start ticks still match, and at most 64 threads each. Each thread
+  records its `tid`, `comm`, scheduler `state`, `wchan` and the first `syscall`
+  field; `threads_truncated` marks a larger thread list. It distinguishes, for
+  example, a host main thread blocked in a driver or futex wait from one idle in
+  its event-loop poll. It never signals, traces or adopts a process.
+
+A successful close records neither field. Errors in these observations are kept
+as `snapshot_error` and never change the close result.
+
+## Clocks and unchanged gates
+
 Each clock's origin is explicit: driver start, fixture initialization, or native
 evidence initialization. Timestamps describe observation, not OS delivery or
 display presentation. Correlate records using nonce, process and window

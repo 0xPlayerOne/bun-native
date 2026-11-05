@@ -1,6 +1,7 @@
 // A real subprocess that exercises channel failures. It does not render UI.
 import {
   DEFAULT_LIMITS,
+  filesystemRootsFromArguments,
   encodeFrame,
   FrameDecoder,
   parseCommand,
@@ -85,6 +86,7 @@ for await (const chunk of Bun.stdin.stream()) {
           clipboard_write: process.argv.includes('--bun-native-allow-clipboard-write'),
           global_shortcuts: process.argv.includes('--bun-native-allow-global-shortcuts'),
           notifications: process.argv.includes('--bun-native-allow-notifications'),
+          filesystem_roots: filesystemRootsFromArguments(process.argv),
         },
         protocol:
           mode === 'wrong-version'
