@@ -3,6 +3,7 @@ import { createRenderRoot, type RenderOptions, type RenderRoot } from '@bun-nati
 import type { ErrorInfo, ReactNode } from 'react'
 import { ConcurrentRoot } from 'react-reconciler/constants'
 import { reconciler } from './reconciler.ts'
+import { createRootErrors } from './root-errors.ts'
 import { createCommitBarrier } from './commit-barrier.ts'
 
 type FiberRoot = ReturnType<typeof reconciler.createContainer>
@@ -22,6 +23,7 @@ class Root implements ReactRenderRoot {
   readonly closed: Promise<void>
   private readonly native: RenderRoot
   private fiber!: FiberRoot
+  private errors: ReturnType<typeof createRootErrors> | undefined
   private element: ReactNode
   private phase: 'active' | 'disposing' | 'closed' = 'active'
   private failure: Error | undefined
@@ -44,6 +46,7 @@ class Root implements ReactRenderRoot {
           // stack returns, rather than recursively entering Fiber's commit.
           queueMicrotask(() => fail(this.failure))
         }
+        this.errors = createRootErrors({ terminate, report: onRecoverableError })
         this.fiber = reconciler.createContainer(
           container,
           ConcurrentRoot,
@@ -51,27 +54,28 @@ class Root implements ReactRenderRoot {
           false,
           null,
           '',
-          terminate,
-          () => {},
-          (error, info) => {
-            try {
-              onRecoverableError(error, Object.freeze({ ...info }))
-            } catch (reporterError) {
-              terminate(reporterError)
-            }
-          },
-          () => {},
+          this.errors.uncaught,
+          this.errors.caught,
+          this.errors.recoverable,
+          this.errors.transition,
           null
         )
         onCleanup(() => {
           this.phase = 'disposing'
-          reconciler.updateContainerSync(null, this.fiber, null)
-          reconciler.flushSyncWork()
-          reconciler.flushPassiveEffects()
-          // React reports unmount effect/ref errors through onUncaughtError.
-          // The shared root is already disposing, so forward the synchronous
-          // result here instead of relying on a later terminal-error request.
-          if (this.failure) throw this.failure
+          try {
+            reconciler.updateContainerSync(null, this.fiber, null)
+            reconciler.flushSyncWork()
+            reconciler.flushPassiveEffects()
+            // React reports unmount effect/ref errors through onUncaughtError.
+            // The shared root is already disposing, so forward the synchronous
+            // result here instead of relying on a later terminal-error request.
+            if (this.failure) throw this.failure
+          } finally {
+            // Framework teardown is terminal even while native removal awaits
+            // acknowledgement. Keep unmount errors active until this boundary.
+            this.errors?.release()
+            this.errors = undefined
+          }
         })
         reconciler.updateContainerSync(children, this.fiber, null)
         reconciler.flushSyncWork()
@@ -104,6 +108,8 @@ class Root implements ReactRenderRoot {
 
   private finish(): void {
     this.phase = 'closed'
+    this.errors?.release()
+    this.errors = undefined
     const error = this.failure ?? new NativeStateError('invalid_state', 'React root is closed')
     for (const barrier of this.barriers) barrier.reject(error)
     this.barriers.clear()

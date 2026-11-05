@@ -1,5 +1,46 @@
 # Changelog
 
+## [0.17.0](https://github.com/0xPlayerOne/bun-native/compare/v0.16.1...v0.17.0) (2026-11-05)
+
+
+### Features
+
+* **cli:** create standalone projects from pinned local packages ([#388](https://github.com/0xPlayerOne/bun-native/issues/388)) ([6c67e74](https://github.com/0xPlayerOne/bun-native/commit/6c67e748e79945e85ad5776b8796685be335b5e0))
+
+
+### Bug Fixes
+
+* **cli:** fingerprint imported sources and safely publish qualification evidence ([#384](https://github.com/0xPlayerOne/bun-native/issues/384)) ([d19ce0c](https://github.com/0xPlayerOne/bun-native/commit/d19ce0cafed7e9af0ed81d723d12e7125289e990))
+
+
+### Documentation
+
+* refresh accepted compatibility scope ([#404](https://github.com/0xPlayerOne/bun-native/issues/404)) ([e7605a6](https://github.com/0xPlayerOne/bun-native/commit/e7605a62c641b360ee59394d693f1d2d5d5979fa))
+
+
+### Tests
+
+* **native:** qualify Solid and React on hosted platforms ([#399](https://github.com/0xPlayerOne/bun-native/issues/399)) ([8192d69](https://github.com/0xPlayerOne/bun-native/commit/8192d693b846f0e232add212ba78b32cd7b2240d))
+
+## [0.16.1](https://github.com/0xPlayerOne/bun-native/compare/v0.16.0...v0.16.1) (2026-11-04)
+
+
+### Documentation
+
+* record verified hosted native platform coverage ([6b4a775](https://github.com/0xPlayerOne/bun-native/commit/6b4a775b139e4a40c802b54614f0ae80dfcb6142))
+
+## [0.16.0](https://github.com/0xPlayerOne/bun-native/compare/v0.15.0...v0.16.0) (2026-11-04)
+
+
+### Features
+
+* **cli:** deliver native templates and joined watch remounts ([#360](https://github.com/0xPlayerOne/bun-native/issues/360)) ([77c842f](https://github.com/0xPlayerOne/bun-native/commit/77c842faa3137e8155b24c1d123d16c1ed5b76ed))
+
+
+### Bug Fixes
+
+* **benchmarks:** bind shared workload oracle in source manifests ([#379](https://github.com/0xPlayerOne/bun-native/issues/379)) ([c9ba430](https://github.com/0xPlayerOne/bun-native/commit/c9ba430d2100841ff7c336bd4cad33a4bc4bcdf4))
+
 ## [0.15.0](https://github.com/0xPlayerOne/bun-native/compare/v0.14.4...v0.15.0) (2026-11-04)
 
 
