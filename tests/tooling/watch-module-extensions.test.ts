@@ -12,6 +12,11 @@ const modules = [
     extension: 'cts',
     source: (value: string) => `const message: string = '${value}'\nmodule.exports = { message }\n`,
   },
+  {
+    extension: 'jsonc',
+    source: (value: string) => `// imported configuration\n{ "message": "${value}" }\n`,
+  },
+  { extension: 'toml', source: (value: string) => `message = '${value}'\n` },
 ] as const
 
 for (const { extension, source } of modules) {
