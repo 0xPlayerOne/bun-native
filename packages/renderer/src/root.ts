@@ -1,6 +1,8 @@
 import {
   NativeStateError,
+  type DropTargetEvent,
   type InputState,
+  type NativeDropTarget,
   type NativeNode,
   type NativeWindow,
   type Style,
@@ -158,6 +160,19 @@ class Root implements RenderRoot, Owner {
       for (const registration of registrations.values()) registration.unsubscribe()
       registrations.clear()
     }
+  }
+
+  registerDropTarget(
+    node: Node,
+    listener: (event: DropTargetEvent) => void | Promise<void>
+  ): Promise<NativeDropTarget> {
+    const state = this.committed.get(node)
+    if (this.phase !== 'active' || !state)
+      return Promise.reject(
+        new NativeStateError('invalid_handle', 'Node is unmounted or not yet committed')
+      )
+    // The native target is revoked when a later commit removes this node.
+    return this.window.registerDropTarget(state.handle, listener)
   }
 
   input(node: Node): InputState {

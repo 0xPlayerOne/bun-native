@@ -8,6 +8,7 @@ type ServiceName =
   | 'global_shortcuts'
   | 'notifications'
   | 'filesystem_grants'
+  | 'drag_drop'
 
 export type ServicePermissions = NonNullable<
   import('@bun-native/runtime').HostOptions['permissions']
@@ -59,7 +60,16 @@ export interface ServiceCapabilities {
         backend: 'freedesktop'
       }>
     | Readonly<{ availability: 'unavailable'; reason: 'unsupported_platform' }>
-  readonly dragDrop: UnavailableService
+  readonly dragDrop:
+    | Readonly<{
+        availability: 'available'
+        permission: 'allow' | 'deny'
+        scope: 'owned_target'
+        /** Local files only, delivered as untrusted display names. */
+        payload: 'files'
+        backend: 'x11'
+      }>
+    | Readonly<{ availability: 'unavailable'; reason: 'unsupported_platform' }>
   readonly filesystemGrants:
     | Readonly<{
         availability: 'available'
@@ -139,7 +149,15 @@ export function serviceCapabilities(
           backend: 'freedesktop',
         })
       : Object.freeze({ availability: 'unavailable', reason: 'unsupported_platform' }),
-    dragDrop: unavailable,
+    dragDrop: capabilities.includes('drag_drop_files_v1')
+      ? Object.freeze({
+          availability: 'available',
+          permission: policy.drag_drop ? 'allow' : 'deny',
+          scope: 'owned_target',
+          payload: 'files',
+          backend: 'x11',
+        })
+      : Object.freeze({ availability: 'unavailable', reason: 'unsupported_platform' }),
     filesystemGrants: capabilities.includes('filesystem_grants_v1')
       ? Object.freeze({
           availability: 'available',

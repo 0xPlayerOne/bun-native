@@ -1,8 +1,10 @@
 import {
   NativeStateError,
   UnsupportedFeatureError,
+  type DropTargetEvent,
   type Element,
   type InputState,
+  type NativeDropTarget,
   type Style,
 } from '@bun-native/core'
 import { captureInput, type InputIntent } from './input-intent.ts'
@@ -25,6 +27,10 @@ export interface Owner {
   changed(): void
   detached(node: Node): void
   input(node: Node): InputState
+  registerDropTarget(
+    node: Node,
+    listener: (event: DropTargetEvent) => void | Promise<void>
+  ): Promise<NativeDropTarget>
 }
 
 type Properties = EventListeners & {

@@ -20,6 +20,7 @@ import type {
 } from './shortcuts.ts'
 import type { NativeNotification, NotificationEvent, NotificationOptions } from './notifications.ts'
 import type { FileGrantOptions, NativeFileGrant } from './files.ts'
+import type { DropTargetEvent, NativeDropTarget } from './drops.ts'
 
 export type { Element, KeyModifiers, PointerButton, Style }
 export type ApplicationOptions = HostOptions
@@ -179,6 +180,17 @@ export interface NativeWindow {
    * pathname or model text can create one. Closing the window revokes it.
    */
   openFileGrant(root: string, options?: FileGrantOptions): Promise<NativeFileGrant>
+  /**
+   * Make a committed node an owned drop target for external file drags.
+   * Requires the immutable dragDrop launch grant. Dropped items arrive as
+   * untrusted display names; only `item.resolve(root)` maps one, through the
+   * host, beneath a launch root. Removing the node, closing the target or
+   * its window revokes it, and no later event is delivered.
+   */
+  registerDropTarget(
+    node: NativeNode,
+    listener: (event: DropTargetEvent) => void | Promise<void>
+  ): Promise<NativeDropTarget>
   /** Idempotent. Revokes listeners before requesting native window removal. */
   close(): Promise<void>
 }

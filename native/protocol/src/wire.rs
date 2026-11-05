@@ -3,7 +3,7 @@
 use serde::{de, Deserialize, Deserializer, Serialize};
 use std::fmt;
 
-pub const PROTOCOL_VERSION: u32 = 9;
+pub const PROTOCOL_VERSION: u32 = 11;
 pub const MAX_ID: u64 = 9_007_199_254_740_991;
 pub const MAX_FRAME_BYTES: usize = 65_536;
 pub const MAX_TEXT_BYTES: usize = 16_384;
@@ -58,6 +58,8 @@ identifier!(EventSequence);
 identifier!(ShortcutId);
 identifier!(NotificationId);
 identifier!(FileGrantId);
+identifier!(DropTargetId);
+identifier!(DropId);
 
 /// JSON has one number type. Match JavaScript's safe-integer validation even
 /// when a sender spells an integer as `1.0` or `1e0` instead of canonical `1`.
@@ -101,7 +103,7 @@ fn safe_usize<'de, D: Deserializer<'de>>(deserializer: D) -> Result<usize, D::Er
     usize::try_from(safe_integer(deserializer)?).map_err(de::Error::custom)
 }
 
-fn safe_u32<'de, D: Deserializer<'de>>(deserializer: D) -> Result<u32, D::Error> {
+pub(crate) fn safe_u32<'de, D: Deserializer<'de>>(deserializer: D) -> Result<u32, D::Error> {
     u32::try_from(safe_integer(deserializer)?).map_err(de::Error::custom)
 }
 
@@ -423,6 +425,28 @@ pub enum Command {
         path: String,
         operation: crate::FileOperation,
     },
+    RegisterDropTarget {
+        id: RequestId,
+        window_id: WindowId,
+        target_id: DropTargetId,
+        node_id: NodeId,
+    },
+    UnregisterDropTarget {
+        id: RequestId,
+        window_id: WindowId,
+        target_id: DropTargetId,
+    },
+    /// Map one item of the target's latest drop to a path relative to a
+    /// launch root. The host matches its own retained path; no path is sent.
+    ResolveDroppedItem {
+        id: RequestId,
+        window_id: WindowId,
+        target_id: DropTargetId,
+        drop_id: DropId,
+        #[serde(deserialize_with = "safe_u32")]
+        item: u32,
+        root: String,
+    },
     Shutdown {
         id: RequestId,
     },
@@ -464,6 +488,7 @@ pub enum Capability {
     GlobalShortcutsV1,
     NotificationsV1,
     FilesystemGrantsV1,
+    DragDropFilesV1,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -482,6 +507,8 @@ pub struct Limits {
     pub max_notifications: usize,
     pub max_file_grants: usize,
     pub max_file_chunk_bytes: usize,
+    pub max_drop_targets: usize,
+    pub max_drop_items: usize,
 }
 
 impl Default for Limits {
@@ -500,6 +527,8 @@ impl Default for Limits {
             max_notifications: crate::MAX_NOTIFICATIONS,
             max_file_grants: crate::MAX_FILE_GRANTS,
             max_file_chunk_bytes: crate::MAX_FILE_CHUNK_BYTES,
+            max_drop_targets: crate::MAX_DROP_TARGETS,
+            max_drop_items: crate::MAX_DROP_ITEMS,
         }
     }
 }
@@ -521,6 +550,9 @@ impl Command {
             | Self::OpenFileGrant { id, .. }
             | Self::CloseFileGrant { id, .. }
             | Self::FileRequest { id, .. }
+            | Self::RegisterDropTarget { id, .. }
+            | Self::UnregisterDropTarget { id, .. }
+            | Self::ResolveDroppedItem { id, .. }
             | Self::Shutdown { id } => *id,
         }
     }
@@ -599,6 +631,10 @@ impl Command {
             Self::FileRequest {
                 path, operation, ..
             } => operation.validate(path)?,
+            Self::ResolveDroppedItem { item, root, .. } => {
+                crate::validate_drop_item_index(*item)?;
+                crate::validate_root_id(root)?;
+            }
             Self::Hello { .. }
             | Self::Close { .. }
             | Self::DisplaySnapshot { .. }
@@ -606,6 +642,8 @@ impl Command {
             | Self::UnregisterGlobalShortcut { .. }
             | Self::WithdrawNotification { .. }
             | Self::CloseFileGrant { .. }
+            | Self::RegisterDropTarget { .. }
+            | Self::UnregisterDropTarget { .. }
             | Self::Shutdown { .. } => {}
         }
         Ok(())

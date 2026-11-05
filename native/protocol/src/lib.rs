@@ -1,6 +1,7 @@
 //! Bun Native's bounded, versioned private host protocol and atomic tree model.
-//! Protocol 9 requires explicit per-operation service policy; no older-version decoder.
+//! Protocol 11 requires explicit per-operation service policy; no older-version decoder.
 
+mod drops;
 mod events;
 mod files;
 mod framing;
@@ -8,6 +9,7 @@ mod services;
 mod tree;
 mod wire;
 
+pub use drops::*;
 pub use events::*;
 pub use files::*;
 pub use framing::{write_event, CommandReader, ProtocolError};

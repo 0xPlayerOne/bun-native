@@ -1,4 +1,4 @@
-import { ProtocolError, type Capability, type Limits } from '@bun-native/protocol'
+import { parseRootId, ProtocolError, type Capability, type Limits } from '@bun-native/protocol'
 import {
   NativeCommandError,
   NativeHost,
@@ -37,6 +37,12 @@ import {
   type FileGrantOptions,
   type NativeFileGrant,
 } from './files.ts'
+import {
+  DropTargetRegistration,
+  type DropTargetEvent,
+  type NativeDropTarget,
+  type NativeDroppedItem,
+} from './drops.ts'
 import { makeNode, own, Transaction, type NodeState } from './tree.ts'
 import {
   NativeStateError,
@@ -59,6 +65,7 @@ type Callback =
   | { windowId: number; nodeId: number; plan: DispatchPlan }
   | { windowId: number; shortcut: ShortcutRegistration; event: GlobalShortcutEvent }
   | { windowId: number; notification: NotificationRegistration; event: NotificationEvent }
+  | { windowId: number; dropTarget: DropTargetRegistration; event: DropTargetEvent }
 
 class Application implements NativeApplication {
   readonly closed: Promise<void>
@@ -73,6 +80,9 @@ class Application implements NativeApplication {
   private nextNotification = 1
   readonly fileGrants = new Map<number, FileGrantRegistration>()
   private nextFileGrant = 1
+  readonly dropTargets = new Map<number, DropTargetRegistration>()
+  private nextDropTarget = 1
+  private lastDrop = 0
   private tail: Promise<void> = Promise.resolve()
   private queued = 0
   private readonly services = new Set<Promise<void>>()
@@ -145,12 +155,19 @@ class Application implements NativeApplication {
     return this.nextFileGrant++
   }
 
+  allocateDropTarget(): number {
+    if (!Number.isSafeInteger(this.nextDropTarget))
+      throw new NativeStateError('limit_exceeded', 'Drop target identity space exhausted')
+    return this.nextDropTarget++
+  }
+
   cancelCallbacks(windowId: number): void {
     const window = this.windows.get(windowId)
     this.callbacks = this.callbacks.filter((callback) => {
       if (callback.windowId !== windowId) return true
       if ('shortcut' in callback) return callback.shortcut.live
       if ('notification' in callback) return callback.notification.deliverable
+      if ('dropTarget' in callback) return callback.dropTarget.live
       if (window?.isTargetLive(callback.nodeId) && prunePlan(callback.plan)) return true
       window?.listeners.release(callback.plan)
       return false
@@ -189,6 +206,8 @@ class Application implements NativeApplication {
         if ('shortcut' in callback) await dispatchShortcut(callback.shortcut, callback.event)
         else if ('notification' in callback)
           await dispatchNotification(callback.notification, callback.event)
+        else if ('dropTarget' in callback)
+          await dispatchDropTarget(callback.dropTarget, callback.event)
         else await window.dispatch(callback.nodeId, callback.plan)
       } finally {
         this.activeCallbacks = 0
@@ -319,6 +338,18 @@ class Application implements NativeApplication {
           !this.isAllocatedNotification(event.notification_id)
         )
           throw new ProtocolError('Native event names an unallocated notification')
+        if (
+          (event.type === 'drop_target_drag' ||
+            event.type === 'drop_received' ||
+            event.type === 'drop_rejected') &&
+          event.target_id >= this.nextDropTarget
+        )
+          throw new ProtocolError('Native event names an unallocated drop target')
+        if (event.type === 'drop_received') {
+          if (event.drop_id <= this.lastDrop)
+            throw new ProtocolError('Native drop identities must increase')
+          this.lastDrop = event.drop_id
+        }
         const window = this.windows.get(event.window_id)
         if (!window) {
           if (event.window_id >= this.nextWindow)
@@ -364,6 +395,15 @@ async function dispatchNotification(
   }
 }
 
+async function dispatchDropTarget(
+  registration: DropTargetRegistration,
+  event: DropTargetEvent
+): Promise<void> {
+  const listener = registration.listener
+  if (!listener || !registration.live) return
+  await dispatchOwned(listener, event, registration.controller.signal)
+}
+
 async function dispatchOwned<T>(
   listener: (event: T) => void | Promise<void>,
   event: T,
@@ -395,6 +435,17 @@ const FILE_ERRORS = [
   'wrong_kind',
   'not_empty',
   'access_denied',
+] as const
+
+const DROP_ERRORS = [
+  'permission_denied',
+  'service_unavailable',
+  'conflict',
+  'cancelled',
+  'native_failure',
+  'limit_exceeded',
+  'not_found',
+  'path_denied',
 ] as const
 
 const NOTIFICATION_ERRORS = [
@@ -495,6 +546,12 @@ class Window implements NativeWindow {
       this.nodes = transaction.nodes
       this.revision = reply.tree_revision
       this.listeners.retain(this.nodes)
+      // The host revokes a target whose node a committed tree removed.
+      for (const registration of this.application.dropTargets.values())
+        if (registration.windowId === this.id && !this.nodes.has(registration.nodeId)) {
+          registration.revoke()
+          this.application.dropTargets.delete(registration.id)
+        }
       return value
     })
   }
@@ -866,6 +923,176 @@ class Window implements NativeWindow {
     )
   }
 
+  async registerDropTarget(
+    handle: NativeNode,
+    listener: (event: DropTargetEvent) => void | Promise<void>
+  ): Promise<NativeDropTarget> {
+    if (typeof listener !== 'function')
+      throw new TypeError('A drop target listener must be a function')
+    this.assertActive()
+    const node = own(this.nodes, handle)
+    return this.application.service(async () => {
+      this.assertActive()
+      if (this.nodes.get(node.id)?.handle !== node.handle)
+        throw new NativeStateError('invalid_handle', 'Drop target node was removed')
+      const registration = new DropTargetRegistration(
+        this.application.allocateDropTarget(),
+        this.id,
+        node.id,
+        node.handle,
+        listener,
+        (item) => this.releaseDropTarget(item)
+      )
+      this.application.dropTargets.set(registration.id, registration)
+      try {
+        await this.application.host.send({
+          type: 'register_drop_target',
+          window_id: this.id,
+          target_id: registration.id,
+          node_id: node.id,
+        })
+        this.assertActive()
+        if (!registration.live)
+          throw new NativeServiceError(
+            'drag_drop',
+            'cancelled',
+            'Drop target was revoked during registration'
+          )
+        return registration.handle
+      } catch (error) {
+        registration.revoke()
+        this.application.dropTargets.delete(registration.id)
+        if (error instanceof ProtocolError) throw error
+        this.assertActive()
+        if (error instanceof NativeCommandError && error.code === 'invalid_handle')
+          throw new NativeStateError('invalid_handle', 'Drop target node is not committed')
+        throw this.dropError(error)
+      }
+    })
+  }
+
+  private dropError(error: unknown): unknown {
+    if (
+      error instanceof NativeCommandError &&
+      (DROP_ERRORS as readonly string[]).includes(error.code)
+    )
+      return new NativeServiceError(
+        'drag_drop',
+        error.code as NativeServiceError['code'],
+        error.message
+      )
+    return error
+  }
+
+  private releaseDropTarget(registration: DropTargetRegistration): Promise<void> {
+    // Local revocation first: no drag or drop is delivered after this call.
+    registration.revoke()
+    this.application.dropTargets.delete(registration.id)
+    // Window close and application shutdown remove it natively.
+    if (!this.active || !this.application.running) return Promise.resolve()
+    return this.application.track(
+      this.application.host
+        .send({
+          type: 'unregister_drop_target',
+          window_id: this.id,
+          target_id: registration.id,
+        })
+        .then(
+          () => {},
+          (error: unknown) => {
+            // A tree commit or the owner window can remove it while in flight.
+            if (error instanceof NativeCommandError && error.code === 'invalid_handle') return
+            if (!this.application.running) return
+            throw error
+          }
+        )
+    )
+  }
+
+  private resolveDroppedItem(
+    registration: DropTargetRegistration,
+    dropId: number,
+    item: number,
+    requested: string
+  ): Promise<Readonly<{ root: string; path: string }>> {
+    const stale = () =>
+      new NativeServiceError(
+        'drag_drop',
+        'cancelled',
+        'The drop was replaced or its target revoked; no result is delivered'
+      )
+    let root: string
+    try {
+      root = parseRootId(requested)
+    } catch (error) {
+      return Promise.reject(new TypeError((error as Error).message))
+    }
+    const live = () => registration.live && registration.latestDrop === dropId
+    if (!live()) return Promise.reject(stale())
+    this.assertActive()
+    return this.application.service(async () => {
+      this.assertActive()
+      if (!live()) throw stale()
+      try {
+        const response = await this.application.host.send({
+          type: 'resolve_dropped_item',
+          window_id: this.id,
+          target_id: registration.id,
+          drop_id: dropId,
+          item,
+          root,
+        })
+        // Revocation withholds a result the host already produced.
+        this.assertActive()
+        if (!live()) throw stale()
+        return Object.freeze({ root: response.root, path: response.path })
+      } catch (error) {
+        if (error instanceof ProtocolError) throw error
+        this.assertActive()
+        if (!live()) throw stale()
+        if (error instanceof NativeCommandError && error.code === 'invalid_handle') throw stale()
+        throw this.dropError(error)
+      }
+    })
+  }
+
+  receiveDrop(
+    event: Extract<WindowEvent, { type: 'drop_target_drag' | 'drop_received' | 'drop_rejected' }>
+  ): void {
+    if (!this.active) return
+    const registration = this.application.dropTargets.get(event.target_id)
+    if (!registration?.live) return // Revoked: the host may already have queued this event.
+    if (registration.windowId !== this.id)
+      throw new ProtocolError('Native event names a drop target outside its owner')
+    const common = {
+      sequence: event.sequence,
+      target: registration.handle,
+      signal: registration.controller.signal,
+    }
+    let delivered: DropTargetEvent
+    if (event.type === 'drop_target_drag')
+      delivered = { type: event.state === 'entered' ? 'drag_entered' : 'drag_left', ...common }
+    else if (event.type === 'drop_rejected') {
+      registration.latestDrop = undefined
+      delivered = { type: 'drop_rejected', reason: event.reason, ...common }
+    } else {
+      registration.latestDrop = event.drop_id
+      const dropId = event.drop_id
+      const items: NativeDroppedItem[] = event.items.map((item, index) =>
+        Object.freeze({
+          name: item.name,
+          resolve: (root: string) => this.resolveDroppedItem(registration, dropId, index, root),
+        })
+      )
+      delivered = { type: 'drop', items: Object.freeze(items), ...common }
+    }
+    this.application.queueCallback({
+      windowId: this.id,
+      dropTarget: registration,
+      event: Object.freeze(delivered),
+    })
+  }
+
   private withdrawNotification(registration: NotificationRegistration): Promise<void> {
     // Local revocation first: no activation is delivered after this call.
     registration.revoke()
@@ -980,6 +1207,11 @@ class Window implements NativeWindow {
         registration.revoke()
         this.application.fileGrants.delete(registration.id)
       }
+    for (const registration of this.application.dropTargets.values())
+      if (registration.windowId === this.id) {
+        registration.revoke()
+        this.application.dropTargets.delete(registration.id)
+      }
     this.application.windows.delete(this.id)
     this.resolveClosed()
   }
@@ -999,6 +1231,14 @@ class Window implements NativeWindow {
     }
     if (event.type === 'notification_activated' || event.type === 'notification_dismissed') {
       this.receiveNotification(event)
+      return
+    }
+    if (
+      event.type === 'drop_target_drag' ||
+      event.type === 'drop_received' ||
+      event.type === 'drop_rejected'
+    ) {
+      this.receiveDrop(event)
       return
     }
     if (!this.active) return

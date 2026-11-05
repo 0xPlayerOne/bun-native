@@ -47,6 +47,9 @@ const entries = {
   'global-shortcuts': 'tests/native/global-shortcuts.ts',
   notifications: 'tests/native/notifications.ts',
   'filesystem-grants': 'tests/native/filesystem-grants.ts',
+  'drag-drop': 'tests/native/drag-drop.ts',
+  'solid-drag-drop': 'tests/native/solid-drag-drop.tsx',
+  'react-drag-drop': 'tests/native/react-drag-drop.tsx',
   'solid-services': 'tests/native/solid-services.tsx',
   'react-services': 'tests/native/react-services.tsx',
   'platform-smoke': 'tests/native/platform-smoke.ts',
@@ -80,7 +83,8 @@ const solidEntry =
   entry === 'solid-interactions' ||
   entry === 'solid-input-viewport' ||
   entry === 'solid-platform' ||
-  entry === 'solid-services'
+  entry === 'solid-services' ||
+  entry === 'solid-drag-drop'
 const reactEntry =
   entry === 'react' ||
   entry === 'react-workspace' ||
@@ -90,6 +94,7 @@ const reactEntry =
   entry === 'react-behavior' ||
   entry === 'react-services' ||
   entry === 'react-platform' ||
+  entry === 'react-drag-drop' ||
   entry === 'react-workload'
 if (!values.host || !values.outdir || !isAbsolute(values.host) || !isAbsolute(values.outdir)) {
   throw new Error(
@@ -118,6 +123,7 @@ if (
     entry === 'global-shortcuts' ||
     entry === 'notifications' ||
     entry === 'filesystem-grants' ||
+    entry === 'drag-drop' ||
     entry === 'platform-smoke' ||
     solidEntry ||
     reactEntry) &&
@@ -236,6 +242,12 @@ async function sourceHashes() {
     sources.add('examples/react-workspace/model.ts')
   }
   if (entry === 'clipboard') sources.add('native/gpui-host/examples/clipboard-peer.rs')
+  if (entry === 'drag-drop' || entry === 'solid-drag-drop' || entry === 'react-drag-drop') {
+    sources.add('tests/native/xdnd-source.ts')
+    sources.add('native/gpui-host/examples/xdnd-source.rs')
+  }
+  if (entry === 'solid-drag-drop' || entry === 'react-drag-drop')
+    sources.add('tests/native/drop-adapter.ts')
   for (const path of await nativeSourcePaths(source)) sources.add(path)
   return Promise.all(
     [...sources]

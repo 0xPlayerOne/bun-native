@@ -42,6 +42,10 @@ fn service_commands_and_responses_share_the_checked_typescript_contract() {
             include_str!("../../../tests/fixtures/native-filesystem-grants.json"),
             "filesystem_grants_v1",
         ),
+        (
+            include_str!("../../../tests/fixtures/native-drag-drop.json"),
+            "drag_drop_files_v1",
+        ),
     ] {
         service_cases(source, capability);
     }
@@ -110,7 +114,7 @@ fn clipboard_payload_is_byte_bounded_even_after_json_escaping() {
 fn service_policy_requires_an_explicit_boolean_and_denies_unrecognized_grants() {
     for value in [false, true] {
         let policy: ServicePolicy =
-            serde_json::from_value(serde_json::json!({"window_display": value, "clipboard_read": false, "clipboard_write": false, "global_shortcuts": false, "notifications": false, "filesystem_roots": []})).unwrap();
+            serde_json::from_value(serde_json::json!({"window_display": value, "clipboard_read": false, "clipboard_write": false, "global_shortcuts": false, "notifications": false, "drag_drop": false, "filesystem_roots": []})).unwrap();
         assert_eq!(policy.window_display, value);
     }
     for wire in [

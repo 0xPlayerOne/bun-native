@@ -40,6 +40,9 @@ export type WindowCommand = WithoutId<
         | 'open_file_grant'
         | 'close_file_grant'
         | 'file_request'
+        | 'register_drop_target'
+        | 'unregister_drop_target'
+        | 'resolve_dropped_item'
     }
   >
 >
@@ -61,6 +64,9 @@ export type HostResponse = Extract<
       | 'file_grant_opened'
       | 'file_grant_closed'
       | 'file_result'
+      | 'drop_target_registered'
+      | 'drop_target_unregistered'
+      | 'dropped_item_resolved'
   }
 >
 
@@ -73,6 +79,8 @@ export interface ServicePermissions {
   readonly globalShortcuts?: 'allow' | 'deny'
   /** Desktop notifications posted by an owned window. */
   readonly notifications?: 'allow' | 'deny'
+  /** Owned drop targets that receive external file drops as untrusted names. */
+  readonly dragDrop?: 'allow' | 'deny'
   /**
    * Directories an owned window may open as scoped file grants. Each `path`
    * is absolute and normalized; `access` caps every grant on that root.
@@ -112,6 +120,7 @@ function launchPolicy(value: unknown = {}): Readonly<ServicePolicy> {
           'clipboardWrite',
           'globalShortcuts',
           'notifications',
+          'dragDrop',
           'filesystemRoots',
         ].includes(key)
     )
@@ -129,6 +138,7 @@ function launchPolicy(value: unknown = {}): Readonly<ServicePolicy> {
     clipboard_write: grant('clipboardWrite'),
     global_shortcuts: grant('globalShortcuts'),
     notifications: grant('notifications'),
+    drag_drop: grant('dragDrop'),
     filesystem_roots: filesystemRoots(value),
   })
 }
@@ -156,6 +166,7 @@ function samePolicy(left: Readonly<ServicePolicy>, right: Readonly<ServicePolicy
     left.clipboard_write === right.clipboard_write &&
     left.global_shortcuts === right.global_shortcuts &&
     left.notifications === right.notifications &&
+    left.drag_drop === right.drag_drop &&
     left.filesystem_roots.length === right.filesystem_roots.length &&
     left.filesystem_roots.every(
       (root, index) =>
@@ -222,6 +233,7 @@ export class NativeHost implements AsyncIterable<WindowEvent> {
         ...(requestedPolicy.clipboard_write ? ['--bun-native-allow-clipboard-write'] : []),
         ...(requestedPolicy.global_shortcuts ? ['--bun-native-allow-global-shortcuts'] : []),
         ...(requestedPolicy.notifications ? ['--bun-native-allow-notifications'] : []),
+        ...(requestedPolicy.drag_drop ? ['--bun-native-allow-drag-drop'] : []),
         ...requestedPolicy.filesystem_roots.map(filesystemRootArgument),
       ],
       stdin: 'pipe',
@@ -318,6 +330,15 @@ export class NativeHost implements AsyncIterable<WindowEvent> {
   send(
     command: Extract<WindowCommand, { type: 'file_request' }>
   ): Promise<Extract<HostResponse, { type: 'file_result' }>>
+  send(
+    command: Extract<WindowCommand, { type: 'register_drop_target' }>
+  ): Promise<Extract<HostResponse, { type: 'drop_target_registered' }>>
+  send(
+    command: Extract<WindowCommand, { type: 'unregister_drop_target' }>
+  ): Promise<Extract<HostResponse, { type: 'drop_target_unregistered' }>>
+  send(
+    command: Extract<WindowCommand, { type: 'resolve_dropped_item' }>
+  ): Promise<Extract<HostResponse, { type: 'dropped_item_resolved' }>>
   send(command: WindowCommand): Promise<HostResponse>
   send(command: WindowCommand): Promise<HostResponse> {
     if (this.phase !== 'running') return Promise.reject(this.closedError())
@@ -549,6 +570,9 @@ export class NativeHost implements AsyncIterable<WindowEvent> {
       event.type === 'file_grant_opened' ||
       event.type === 'file_grant_closed' ||
       event.type === 'file_result' ||
+      event.type === 'drop_target_registered' ||
+      event.type === 'drop_target_unregistered' ||
+      event.type === 'dropped_item_resolved' ||
       event.type === 'error'
     ) {
       if (event.type === 'error' && event.id === undefined)
@@ -629,6 +653,25 @@ export class NativeHost implements AsyncIterable<WindowEvent> {
           response.window_id === command.window_id &&
           response.grant_id === command.grant_id &&
           fileResultAnswers(command.operation, response.result)
+        )
+      case 'register_drop_target':
+      case 'unregister_drop_target':
+        return (
+          response.type ===
+            (command.type === 'register_drop_target'
+              ? 'drop_target_registered'
+              : 'drop_target_unregistered') &&
+          response.window_id === command.window_id &&
+          response.target_id === command.target_id
+        )
+      case 'resolve_dropped_item':
+        return (
+          response.type === 'dropped_item_resolved' &&
+          response.window_id === command.window_id &&
+          response.target_id === command.target_id &&
+          response.drop_id === command.drop_id &&
+          response.item === command.item &&
+          response.root === command.root
         )
       case 'open':
         return (

@@ -16,6 +16,8 @@ export interface ServicePolicy {
   clipboard_write: boolean
   global_shortcuts: boolean
   notifications: boolean
+  /** Owned targets that receive external file drops as untrusted names. */
+  drag_drop: boolean
   /** Directories a window may open as scoped grants, in launch order. */
   filesystem_roots: FilesystemRoot[]
 }
@@ -114,6 +116,7 @@ export function parseServicePolicy(value: unknown): ServicePolicy {
     'clipboard_write',
     'global_shortcuts',
     'notifications',
+    'drag_drop',
     'filesystem_roots',
   ])
   const grant = (key: keyof ServicePolicy) => {
@@ -127,6 +130,7 @@ export function parseServicePolicy(value: unknown): ServicePolicy {
     clipboard_write: grant('clipboard_write'),
     global_shortcuts: grant('global_shortcuts'),
     notifications: grant('notifications'),
+    drag_drop: grant('drag_drop'),
     filesystem_roots: parseFilesystemRoots(data['filesystem_roots']),
   }
 }

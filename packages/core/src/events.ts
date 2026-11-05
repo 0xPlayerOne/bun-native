@@ -11,7 +11,16 @@ import {
 
 export type RoutedEvent = Exclude<
   WindowEvent,
-  { type: 'closed' | 'global_shortcut' | 'notification_activated' | 'notification_dismissed' }
+  {
+    type:
+      | 'closed'
+      | 'global_shortcut'
+      | 'notification_activated'
+      | 'notification_dismissed'
+      | 'drop_target_drag'
+      | 'drop_received'
+      | 'drop_rejected'
+  }
 >
 const eventTypes: readonly string[] = [
   'click',

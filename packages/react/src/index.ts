@@ -1,4 +1,4 @@
-export { inputState } from '@bun-native/renderer'
+export { inputState, registerDropTarget } from '@bun-native/renderer'
 export type { RendererNode as NativeRef } from '@bun-native/renderer'
 export { render } from './mount.ts'
 export type { ReactRenderOptions, ReactRenderRoot } from './mount.ts'

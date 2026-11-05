@@ -12,6 +12,7 @@ pub(crate) mod clipboard;
 #[cfg(not(target_os = "linux"))]
 #[path = "services/clipboard_unavailable.rs"]
 pub(crate) mod clipboard;
+pub(crate) mod drops;
 #[cfg(target_os = "linux")]
 pub(crate) mod files;
 #[cfg(not(target_os = "linux"))]
@@ -35,6 +36,7 @@ pub(crate) const CLIPBOARD_READ_ARGUMENT: &str = "--bun-native-allow-clipboard-r
 pub(crate) const CLIPBOARD_WRITE_ARGUMENT: &str = "--bun-native-allow-clipboard-write";
 pub(crate) const GLOBAL_SHORTCUTS_ARGUMENT: &str = "--bun-native-allow-global-shortcuts";
 pub(crate) const NOTIFICATIONS_ARGUMENT: &str = "--bun-native-allow-notifications";
+pub(crate) const DRAG_DROP_ARGUMENT: &str = "--bun-native-allow-drag-drop";
 /// `--bun-native-filesystem-root=<read|read_write>:<id>:<absolute path>`.
 pub(crate) const FILESYSTEM_ROOT_ARGUMENT: &str = "--bun-native-filesystem-root=";
 
@@ -80,6 +82,8 @@ pub(crate) fn policy(
             &mut policy.global_shortcuts
         } else if argument == NOTIFICATIONS_ARGUMENT {
             &mut policy.notifications
+        } else if argument == DRAG_DROP_ARGUMENT {
+            &mut policy.drag_drop
         } else {
             return Err("unknown native host argument");
         };
@@ -144,6 +148,7 @@ mod tests {
                 clipboard_write: true,
                 global_shortcuts: false,
                 notifications: false,
+                drag_drop: false,
                 filesystem_roots: Vec::new(),
             }
         );
@@ -161,11 +166,19 @@ mod tests {
                 ..ServicePolicy::default()
             }
         );
+        assert_eq!(
+            policy([OsString::from(DRAG_DROP_ARGUMENT)]).unwrap(),
+            ServicePolicy {
+                drag_drop: true,
+                ..ServicePolicy::default()
+            }
+        );
         for argument in [
             CLIPBOARD_READ_ARGUMENT,
             CLIPBOARD_WRITE_ARGUMENT,
             GLOBAL_SHORTCUTS_ARGUMENT,
             NOTIFICATIONS_ARGUMENT,
+            DRAG_DROP_ARGUMENT,
         ] {
             assert!(policy([argument, argument].map(OsString::from)).is_err());
         }

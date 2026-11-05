@@ -45,6 +45,7 @@ describe('shared native service boundary', () => {
             clipboard_write: false,
             global_shortcuts: false,
             notifications: false,
+            drag_drop: false,
             filesystem_roots: [],
           },
         })
@@ -56,6 +57,7 @@ describe('shared native service boundary', () => {
           clipboard_write: false,
           global_shortcuts: false,
           notifications: false,
+          drag_drop: false,
           filesystem_roots: [],
         },
       })
@@ -78,6 +80,7 @@ describe('shared native service boundary', () => {
           clipboard_write: false,
           global_shortcuts: false,
           notifications: false,
+          drag_drop: false,
           filesystem_roots: [],
         },
       })
