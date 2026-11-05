@@ -60,8 +60,7 @@ function command(
   name: string,
   argv: string[],
   timeout = 120_000,
-  evidence?: { path: string; nonce: string },
-  environment: Record<string, string> = {}
+  evidence?: { path: string; nonce: string }
 ) {
   const result = Bun.spawnSync(argv, {
     cwd: source,
@@ -74,7 +73,6 @@ function command(
       ...process.env,
       BUN_NATIVE_EVIDENCE_LOG: evidence?.path ?? '',
       BUN_NATIVE_EVIDENCE_NONCE: evidence?.nonce ?? '',
-      ...environment,
     },
   })
   writeFileSync(join(output, `${name}.stdout.log`), result.stdout)
@@ -294,9 +292,7 @@ try {
         '--calibration',
       ],
       180_000,
-      { path: evidencePath, nonce },
-      // Calibrations assert collectability; disable the DFG tier there only.
-      build.mode === 'development' ? { BUN_JSC_useDFGJIT: '0' } : {}
+      { path: evidencePath, nonce }
     )
     const checked = await checkedResult(build, resultPath, nonce)
     calibrations.push({

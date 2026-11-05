@@ -1,4 +1,4 @@
-# DFG retention and the settled collectability oracle
+# DFG retention in collectability checks
 
 **Status:** root identified for the development-mode positives in [#287](https://github.com/0xPlayerOne/bun-native/issues/287). The AOT-only positives recorded in [README.md](README.md) are not explained by this result.
 
@@ -10,7 +10,7 @@ A second, smaller effect is stale stack or register residue. It most often holds
 
 ## Measurements
 
-These are local runs of [solid-collection-control.ts](solid-collection-control.ts). Each trial mounts, acknowledges and disposes ten Solid roots, then observes their `WeakRef`s. `fixed` is the previous oracle, two `sleep(0)`/`gc(true)` checkpoints. `settled` is [`observeCollection`](../solid/collection.ts): up to five rounds of timer turn, stack overwrite and full collection.
+These are local runs of [solid-collection-control.ts](solid-collection-control.ts). Each trial mounts, acknowledges and disposes ten Solid roots, then observes their `WeakRef`s. `fixed` is the previous oracle, two `sleep(0)`/`gc(true)` checkpoints. `settled` is the research helper [`settled-observation.ts`](settled-observation.ts): up to five rounds of timer turn, stack overwrite and full collection.
 
 | Oracle  | DFG      | Trials | Failed trials | Survivor indexes   | Settled rounds used |
 | ------- | -------- | -----: | ------------: | ------------------ | ------------------- |
@@ -23,10 +23,9 @@ The same split appeared in a framework-free control: an async allocation loop wi
 
 This explains why CI failures only appeared after hot shared code had been compiled, such as late in a full test suite or after warmups. It also explains why an unchanged source could pass on one run and fail on the next.
 
-## Oracle
+## What the required checks do
 
-- **Unit tests:** the Solid root and window-callback collectability cases run in a child process with `BUN_JSC_useDFGJIT=0` ([collectability-scenarios.ts](../../tests/renderers/collectability-scenarios.ts)). They assert zero survivors after settled rounds. The child negative control releases nine of ten real window subscriptions and must report exactly the unreleased one after every round.
-- **Native workload:** collectability is asserted for inspected AOT runs, which have no DFG tier, and for development calibrations launched with DFG disabled. Timed development runs keep DFG enabled for representative timing. They record the settled observation with `oracle: "observed (DFG enabled)"`, and their ownership counters stay strict.
-- **Helper controls:** [collection-observation.test.ts](../../tests/quality/collection-observation.test.ts) checks that released targets clear and that a strongly owned target survives every round. It also checks that the helper itself keeps nothing alive and that the round bounds are validated.
-
-Timeouts, ownership counters and mutation contracts are unchanged.
+- The Solid root and window-callback collectability tests keep their original two fixed `sleep(0)`/`gc(true)` checkpoints and their zero-survivor assertions. They now run in a child process with `BUN_JSC_useDFGJIT=0` ([collectability-scenarios.ts](../../tests/renderers/collectability-scenarios.ts)), because the table above shows the DFG tier is the only source of positives with those checkpoints.
+- A new negative control in that child releases nine of ten real window subscriptions and must report exactly the unreleased one, so the DFG-disabled child still detects a real ownership edge.
+- The settled rounds above are research only. No required test, workload or benchmark uses them, since they did not change the DFG-enabled failure rate.
+- The native workload, deadlines, ownership counters and mutation contracts are unchanged.

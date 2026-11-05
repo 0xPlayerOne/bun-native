@@ -265,37 +265,11 @@ describe('native process transport (headless protocol peer)', () => {
     expect(error.message).toBe('Native hello request 1 timed out')
   })
 
-  test('bounds the first open by the renderer startup deadline and later opens by the request deadline', async () => {
-    const host = await NativeHost.launch({
-      ...options('slow-open', 100),
-      rendererStartupTimeoutMs: 2_000,
-    })
-    // 300 ms exceeds the 100 ms request deadline but not renderer startup.
-    expect((await host.send(open)).type).toBe('opened')
-    const error = await rejectedError(host.send({ ...open, window_id: 2, root_id: 2 }))
-    expect(error.message).toMatch(/^Native open request \d+ timed out$/)
-  })
-
-  test('a first open slower than the renderer startup deadline still times out', async () => {
-    const host = await NativeHost.launch({
-      ...options('slow-open', 100),
-      rendererStartupTimeoutMs: 150,
-    })
-    const error = await rejectedError(host.send(open))
-    expect(error.message).toMatch(/^Native open request \d+ timed out$/)
-  })
-
   test('rejects invalid options before spawning', async () => {
     const pathError = await rejectedError(NativeHost.launch({ executable: 'relative' }))
     expect(pathError.message).toContain('absolute')
     const timeoutError = await rejectedError(NativeHost.launch(options('normal', 0)))
     expect(timeoutError.message).toContain('requestTimeoutMs')
-    for (const rendererStartupTimeoutMs of [0, 120_001, 1.5]) {
-      const error = await rejectedError(
-        NativeHost.launch({ ...options(), rendererStartupTimeoutMs })
-      )
-      expect(error.message).toContain('rendererStartupTimeoutMs')
-    }
   })
 
   test('bounds an unconsumed event flood and terminates the native process', async () => {

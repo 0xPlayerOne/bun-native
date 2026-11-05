@@ -25,7 +25,6 @@ async function run(mode: string, enabled = true, nonce = 'owned-startup-diagnost
           mode === 'timeout' ? 'diagnostic-open-timeout' : 'normal',
         ],
         requestTimeoutMs: mode === 'timeout' ? 300 : 1_000,
-        rendererStartupTimeoutMs: mode === 'timeout' ? 300 : 1_000,
       })
       for (let cycle = 0; cycle < (mode === 'budget' ? 60 : 1); cycle++) {
         await host.send({

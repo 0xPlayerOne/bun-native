@@ -1,6 +1,5 @@
 import { resolve } from 'node:path'
-import type { CollectionObservation } from '../../benchmarks/solid/collection.ts'
-import type { CollectabilityScenario } from './collectability-scenarios.ts'
+import type { CollectabilityScenario, CollectionObservation } from './collectability-scenarios.ts'
 
 const script = resolve(import.meta.dir, 'collectability-scenarios.ts')
 

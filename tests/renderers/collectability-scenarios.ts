@@ -9,12 +9,27 @@
  * still detects a callback that is never released.
  */
 import { render, createElement, setProp, type RenderRoot } from '@bun-native/solid'
-import { observeCollection } from '../../benchmarks/solid/collection.ts'
 import { watchWindow } from '../../packages/renderer/src/window-lifetime.ts'
 import { rethrowWithRetentionDiagnostic } from '../solid/retention-diagnostic.ts'
 import { withApp } from './support.ts'
 
 type Window = Parameters<typeof watchWindow>[0]
+export type CollectionObservation = { readonly survivors: readonly number[] }
+
+/** The original two fixed checkpoints from the in-process tests; nothing added. */
+async function observeCollection(
+  references: readonly Pick<WeakRef<object>, 'deref'>[]
+): Promise<CollectionObservation> {
+  await Bun.sleep(0)
+  Bun.gc(true)
+  await Bun.sleep(0)
+  Bun.gc(true)
+  return {
+    survivors: references.flatMap((reference, index) =>
+      reference.deref() === undefined ? [] : [index]
+    ),
+  }
+}
 
 function watched(window: Window, onClose: () => void) {
   const callback = () => onClose()
@@ -68,10 +83,7 @@ const scenarios = {
       const window = await app.openWindow({ title: 'Retained callback control' })
       const observations = Array.from({ length: 10 }, () => watched(window, () => {}))
       for (const [index, item] of observations.entries()) if (index !== 6) item.release()
-      observation = await observeCollection(
-        observations.map(({ reference }) => reference),
-        2
-      )
+      observation = await observeCollection(observations.map(({ reference }) => reference))
       observations[6]!.release()
       await window.close()
     })

@@ -8,7 +8,7 @@
  * settled-collection.md.
  */
 import { createElement, render, setProp, type RenderRoot } from '@bun-native/solid'
-import { observeCollection } from '../solid/collection.ts'
+import { observeCollection } from './settled-observation.ts'
 import { withApp } from '../../tests/renderers/support.ts'
 
 const mode = process.argv[2]

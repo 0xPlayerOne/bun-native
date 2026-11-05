@@ -1,28 +1,9 @@
 # Native first-window startup diagnostics
 
-## Renderer startup deadline (November 5, 2026)
-
-The traced hosted first opens show that the first window pays for one-time GPU
-renderer initialization. In the three #359 trials on hosted Linux with Mesa
-Lavapipe, `instance_enter` → `instance_return` took about 1.9 s and
-`device_request` took about 0.75 s. Whole first opens took 2.46–3.60 s, which is
-more than half of the 5,000 ms request deadline. The recorded `Native open
-request 3 timed out` failures (#296) are the tail of that same span; the #366
-trace stopped inside it at 4.96 s. Later opens in the same process take about
-50 ms. A local Xvfb/Lavapipe run on a faster machine measured the first open at
-165–290 ms, cold shader cache included.
-
-Until the first window has opened, an `open` request now uses
-`rendererStartupTimeoutMs` (default **30,000 ms**). After the first `opened`
-response, every request, including later opens, uses `requestTimeoutMs`
-(default 5,000 ms). A host that never finishes renderer startup still fails with
-the same `Native open request N timed out` error. The 45-second lifecycle
-ceiling and all assertions are unchanged.
-
-The historical record below describes the trace that led to this change.
-
 The opt-in startup trace records where a native request stops progressing without
 changing the request deadline, scheduler, FileSink, renderer or acceptance test.
+The transport default remains **5,000 ms**. The real five-window lifecycle smoke
+retains its **45-second** outer ceiling and every existing assertion.
 
 ## Failure motivating the trace
 

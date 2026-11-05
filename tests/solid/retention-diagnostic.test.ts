@@ -86,7 +86,7 @@ test('retention metadata records survivor indexes and exact identity while rethr
     assert.equal(report.runtime.executable, process.execPath)
     assert.equal(report.platform.os, process.platform)
     assert.equal(report.platform.architecture, process.arch)
-    assert.match(report.scope, /no further collection, snapshot or await/)
+    assert.match(report.scope, /no extra collection, snapshot, await or retry/)
     assert.match(report.limitation, /not a trace of their original marking roots/)
     const source = report.source.files.find(
       (file: { path: string }) => file.path === 'tests/solid/renderer.test.ts'
@@ -94,7 +94,7 @@ test('retention metadata records survivor indexes and exact identity while rethr
     const current = readFileSync(resolve(import.meta.dir, 'renderer.test.ts'))
     assert.equal(source.bytes, current.length)
     assert.equal(source.sha256, createHash('sha256').update(current).digest('hex'))
-    assert.equal(report.source.files.length, 14)
+    assert.equal(report.source.files.length, 13)
     assert(
       !bytes.includes(Buffer.from(original.message)),
       'Do not persist arbitrary error contents'

@@ -10,10 +10,6 @@ test('window completion releases callbacks even while unsubscribe handles stay l
   expect((await observeScenario('completed-callbacks')).survivors).toEqual([])
 })
 
-test('an unreleased subscription stays observable after every round (negative control)', async () => {
-  expect(await observeScenario('unreleased-callback-control')).toEqual({
-    survivors: [6],
-    rounds: 2,
-    maxRounds: 2,
-  })
+test('an unreleased subscription stays observable (negative control)', async () => {
+  expect(await observeScenario('unreleased-callback-control')).toEqual({ survivors: [6] })
 })

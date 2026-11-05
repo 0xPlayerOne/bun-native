@@ -291,9 +291,7 @@ jobs:
               command=("$NATIVE_EVIDENCE/react-workload-package/react-workload")
             fi
             nonce=$(python3 -c 'import secrets; print(secrets.token_hex(16))')
-            # The calibration asserts collectability, so it runs without the
-            # DFG tier (benchmarks/retention/settled-collection.md).
-            BUN_JSC_useDFGJIT=0 BUN_NATIVE_EVIDENCE_LOG="$evidence/calibration-$mode.jsonl" \
+            BUN_NATIVE_EVIDENCE_LOG="$evidence/calibration-$mode.jsonl" \
               BUN_NATIVE_EVIDENCE_NONCE="$nonce" \
               timeout --kill-after=5s 150s xvfb-run --auto-servernum \
                 --server-args='-screen 0 1280x800x24 -nolisten tcp' \
