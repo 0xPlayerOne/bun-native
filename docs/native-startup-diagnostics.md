@@ -138,6 +138,13 @@ The exact Info-or-higher target allowlist is:
   surface-configuration diagnostics.
 - `gpui_wgpu::wgpu_renderer`: existing renderer error and recovery diagnostics.
 
+Two pinned HAL targets are also captured at **Debug** or higher, to split the
+one-time GPU instance creation that dominates hosted first opens (#296):
+
+- `wgpu_hal::vulkan::instance`: Vulkan loader version, extension and layer setup.
+- `wgpu_hal::gles::egl`: EGL platform attempts, display vendor/version and
+  context configuration.
+
 These are the pinned [X11 window](https://github.com/zed-industries/zed/blob/ba63a022c9a22ca66d68ef2a8f0bb9b5b0a9984d/crates/gpui_linux/src/linux/x11/window.rs),
 [WGPU context](https://github.com/zed-industries/zed/blob/ba63a022c9a22ca66d68ef2a8f0bb9b5b0a9984d/crates/gpui_wgpu/src/wgpu_context.rs)
 and [renderer](https://github.com/zed-industries/zed/blob/ba63a022c9a22ca66d68ef2a8f0bb9b5b0a9984d/crates/gpui_wgpu/src/wgpu_renderer.rs)
@@ -158,8 +165,9 @@ title, input value or application object is added by this backend.
 When enabled, the logger serializes selected records under a mutex and performs
 synchronous bounded file appends/flushes. Its formatting, locking and filesystem
 work can perturb startup; the record/byte bounds are not a filesystem latency
-guarantee. The facade's Info level is enabled globally while the backend rejects
-other targets before message formatting. These runs are diagnostic controls,
+guarantee. The facade's Debug level is enabled globally while the backend rejects
+other targets, and Debug records from the three GPUI targets, before message
+formatting. These runs are diagnostic controls,
 not uninstrumented startup/performance measurements. Disabled mode installs no
 backend or file handle. Registration/open/write failures produce one bounded
 stderr notice per failed setup or writer and leave the native protocol,

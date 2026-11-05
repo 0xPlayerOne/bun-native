@@ -88,6 +88,8 @@ fn exact_targets_and_level_filter_before_formatting() {
         ("unrelated", Level::Error),
         (TARGETS[0], Level::Debug),
         (TARGETS[1], Level::Trace),
+        (DEBUG_TARGETS[0], Level::Trace),
+        ("wgpu_hal::vulkan::device", Level::Debug),
     ] {
         output
             .record(
@@ -102,6 +104,13 @@ fn exact_targets_and_level_filter_before_formatting() {
     assert_eq!(sink.writes.get(), 0);
     for target in TARGETS {
         for level in [Level::Error, Level::Warn, Level::Info] {
+            assert!(allowed(
+                &Metadata::builder().target(target).level(level).build()
+            ));
+        }
+    }
+    for target in DEBUG_TARGETS {
+        for level in [Level::Error, Level::Info, Level::Debug] {
             assert!(allowed(
                 &Metadata::builder().target(target).level(level).build()
             ));
