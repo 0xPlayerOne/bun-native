@@ -19,5 +19,10 @@ export namespace JSX {
       value?: string | InputState
       placeholder?: string
     }
+    /** Painted above the ordinary tree; only window-anchored overlays may be modal. */
+    overlay: Base<'overlay'> & { children?: Element } & (
+        | { anchor?: 'window'; modal?: boolean }
+        | { anchor: 'parent'; modal?: false }
+      )
   }
 }

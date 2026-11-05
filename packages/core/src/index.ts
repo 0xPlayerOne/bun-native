@@ -3,6 +3,7 @@ export { NativeStateError, UnsupportedFeatureError } from './types.ts'
 export { ProtocolError } from '@bun-native/protocol'
 export { NativeCommandError } from '@bun-native/runtime'
 export { NativeServiceError } from './services.ts'
+export { onDismiss, type DismissEvent } from './overlays.ts'
 export type {
   NativeDisplaySnapshot,
   NativeClipboardText,
@@ -20,6 +21,7 @@ export type { NativeNotification, NotificationEvent, NotificationOptions } from 
 export type {
   ApplicationOptions,
   ClickEvent,
+  ContainerKind,
   Element,
   ElementKind,
   EventContext,

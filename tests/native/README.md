@@ -294,6 +294,8 @@ input, display-presentation latency or macOS/Windows GUI behavior.
 
 ## Shared layout diagnostics
 
+`tests/native/overlays.ts` consumes only public core and drives itself with XTest (xdotool) inside the isolated session, reading click positions from the host's nonce-tagged paint evidence (`BUN_NATIVE_EVIDENCE_LOG`/`BUN_NATIVE_EVIDENCE_NONCE` must be set by the caller because the host inherits the launching environment). It covers modal focus trapping, backdrop pointer blocking, nested Escape, focus/selection return, popover z-order with screenshot pixels and end-anchored streaming scroll in development and through `--entry overlays` AOT. See the [overlay contract](../../docs/native-overlays.md).
+
 `tests/native/layout.ts` consumes only public core and is driven by the `layout` scenario in `scripts/quality/native-diagnostics-linux.py`. It uses the same isolated session and owned-window cleanup, with actual pointer/wheel/key/resize actions. Both development and the shared AOT helper's `--entry layout` must pass against the matching current host. The [layout contract](../../docs/native-layout.md) records exact commands, geometry bounds, source status and unsupported coverage. This diagnostic is separate from the repeated window baseline.
 
 ## Shared interaction diagnostics

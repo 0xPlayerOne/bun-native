@@ -10,7 +10,11 @@ defines the supported style subset; the [interaction contract](native-events.md)
 defines native event observations and public propagation. The
 [service contract](native-services.md) defines immutable launch policy and
 owned-window display reads, bounded clipboard transfers, owned global
-shortcut registrations and owned desktop notifications.
+shortcut registrations and owned desktop notifications. The optional
+`overlays_v1` and `scroll_anchor_v1` capabilities add the `overlay` container
+element and the `scroll_anchor` style field defined by the
+[overlay contract](native-overlays.md); core rejects both locally when a host
+does not advertise them.
 
 The authoritative schemas and validators are
 [`packages/protocol/src/messages.ts`](../packages/protocol/src/messages.ts),
@@ -131,9 +135,9 @@ Each atomic `batch` supports the following operations:
 
 | Operation | Meaning                                                                                                               |
 | --------- | --------------------------------------------------------------------------------------------------------------------- |
-| `create`  | Allocate a new `box`, `text`, `button` or `input` with complete validated properties.                                 |
+| `create`  | Allocate a new `box`, `text`, `button`, `input` or `overlay` with complete validated properties.                      |
 | `set`     | Replace a node's properties with the same element kind; it is not a shallow property merge.                           |
-| `insert`  | Attach or move a node under a `box`; the index is evaluated after detaching it from its old parent.                   |
+| `insert`  | Attach or move a node under a `box` or `overlay`; the index is evaluated after detaching it from its old parent.      |
 | `delete`  | Remove a complete subtree and revoke its identities, input entities, focus and listeners. The root cannot be deleted. |
 
 Validation runs against a candidate graph before native commit. It checks the
@@ -187,6 +191,7 @@ is observed without echoing older values back to the native editor.
 | Live windows                                     |                                                  16 |
 | Nodes per window, including root                 |                                               4,096 |
 | Tree depth, measured in edges from root          |                                                  64 |
+| Nested overlay layers                            |                                                   8 |
 | Event ancestry, root and target included         |                                                  65 |
 | Key / optional logical-text UTF-8 bytes          |                                                 256 |
 | Pointer coordinate magnitude, logical pixels     |                                           1,048,576 |

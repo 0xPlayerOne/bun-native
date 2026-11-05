@@ -1,7 +1,15 @@
-import { parseElement, type Element, type Limits, type Operation } from '@bun-native/protocol'
+import {
+  MAX_OVERLAY_DEPTH,
+  parseElement,
+  type Capability,
+  type Element,
+  type Limits,
+  type Operation,
+} from '@bun-native/protocol'
 import {
   NativeStateError,
   UnsupportedFeatureError,
+  type ContainerKind,
   type ElementKind,
   type NativeBatch,
   type NativeNode,
@@ -9,7 +17,7 @@ import {
 
 const identities = new WeakMap<NativeNode, number>()
 const encoder = new TextEncoder()
-const elementKinds: readonly string[] = ['box', 'text', 'button', 'input']
+const elementKinds: readonly string[] = ['box', 'text', 'button', 'input', 'overlay']
 
 function normalize(element: Element): Element {
   if (
@@ -21,6 +29,21 @@ function normalize(element: Element): Element {
     throw new UnsupportedFeatureError('element:' + element.kind)
   return parseElement(element)
 }
+
+/** Optional element features fail locally instead of reaching a host that lacks them. */
+function supported(element: Element, capabilities: readonly Capability[]): Element {
+  if (element.kind === 'overlay' && !capabilities.includes('overlays_v1'))
+    throw new UnsupportedFeatureError('element:overlay')
+  if (
+    (element.kind === 'box' || element.kind === 'overlay') &&
+    element.style?.scroll_anchor !== undefined &&
+    !capabilities.includes('scroll_anchor_v1')
+  )
+    throw new UnsupportedFeatureError('style:scroll_anchor')
+  return element
+}
+
+const isContainer = (element: Element) => element.kind === 'box' || element.kind === 'overlay'
 
 export interface NodeState {
   id: number
@@ -68,7 +91,8 @@ export class Transaction implements NativeBatch {
     current: ReadonlyMap<number, NodeState>,
     private readonly rootId: number,
     private readonly allocateId: () => number,
-    private readonly limits: Readonly<Limits>
+    private readonly limits: Readonly<Limits>,
+    private readonly capabilities: readonly Capability[]
   ) {
     this.nodes = new Map(
       [...current].map(([id, node]) => [id, { ...node, children: [...node.children] }])
@@ -90,7 +114,7 @@ export class Transaction implements NativeBatch {
     this.check()
     if (this.nodes.size >= this.limits.max_nodes_per_window)
       throw new NativeStateError('limit_exceeded', 'Window node limit exceeded')
-    const normalized = normalize(element)
+    const normalized = supported(normalize(element), this.capabilities)
     const node = makeNode(this.allocateId(), normalized)
     this.nodes.set(node.id, node)
     this.operations.push({ type: 'create', node_id: node.id, element: node.element })
@@ -109,7 +133,7 @@ export class Transaction implements NativeBatch {
   set(handle: NativeNode, value: Element, expectedInputRevision?: number): void {
     this.check()
     const node = own(this.nodes, handle)
-    const element = normalize(value)
+    const element = supported(normalize(value), this.capabilities)
     if (element.kind !== node.element.kind)
       throw new NativeStateError(
         'invalid_state',
@@ -141,14 +165,14 @@ export class Transaction implements NativeBatch {
     node.element = element
   }
 
-  insert(parentHandle: NativeNode<'box'>, childHandle: NativeNode, index: number): void {
+  insert(parentHandle: NativeNode<ContainerKind>, childHandle: NativeNode, index: number): void {
     this.check()
     const parent = own(this.nodes, parentHandle)
     const child = own(this.nodes, childHandle)
-    if (parent.element.kind !== 'box' || child.id === this.rootId)
+    if (!isContainer(parent.element) || child.id === this.rootId)
       throw new NativeStateError(
         'invalid_state',
-        'Only boxes accept children and the root cannot move'
+        'Only boxes and overlays accept children and the root cannot move'
       )
     let ancestor: NodeState | undefined = parent
     while (ancestor) {
@@ -168,7 +192,7 @@ export class Transaction implements NativeBatch {
     this.operations.push({ type: 'insert', parent_id: parent.id, child_id: child.id, index })
   }
 
-  append(parentHandle: NativeNode<'box'>, childHandle: NativeNode): void {
+  append(parentHandle: NativeNode<ContainerKind>, childHandle: NativeNode): void {
     const parent = own(this.nodes, parentHandle)
     const child = own(this.nodes, childHandle)
     this.insert(
@@ -199,19 +223,22 @@ export class Transaction implements NativeBatch {
   validate(): void {
     let seen = 0
     let bytes = 0
-    const pending = [{ id: this.rootId, depth: 0 }]
-    for (const { id, depth } of pending) {
+    const pending = [{ id: this.rootId, depth: 0, overlays: 0 }]
+    for (const { id, depth, overlays: outer } of pending) {
       if (depth > this.limits.max_depth)
         throw new NativeStateError('limit_exceeded', 'Native tree depth limit exceeded')
       const node = this.nodes.get(id)!
       seen += 1
       const element = node.element
+      const overlays = outer + (element.kind === 'overlay' ? 1 : 0)
+      if (overlays > MAX_OVERLAY_DEPTH)
+        throw new NativeStateError('limit_exceeded', 'Overlay nesting limit exceeded')
       const texts =
         element.kind === 'input'
           ? [element.value, element.placeholder ?? '']
-          : element.kind === 'box'
-            ? []
-            : [element.text]
+          : 'text' in element
+            ? [element.text]
+            : []
       for (const text of texts) {
         const size = encoder.encode(text).byteLength
         if (size > this.limits.max_text_bytes)
@@ -220,7 +247,7 @@ export class Transaction implements NativeBatch {
       }
       if (bytes > this.limits.max_text_bytes_per_window)
         throw new NativeStateError('limit_exceeded', 'Window text memory limit exceeded')
-      pending.push(...node.children.map((child) => ({ id: child, depth: depth + 1 })))
+      pending.push(...node.children.map((child) => ({ id: child, depth: depth + 1, overlays })))
     }
     if (seen !== this.nodes.size)
       throw new NativeStateError(

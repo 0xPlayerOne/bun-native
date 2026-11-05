@@ -1,5 +1,11 @@
 export { encodeFrame, FrameDecoder, MAX_FRAME_BYTES, ProtocolError } from './framing.ts'
-export { parseElement, type Element, type Style } from './elements.ts'
+export {
+  MAX_OVERLAY_DEPTH,
+  parseElement,
+  type Element,
+  type OverlayElement,
+  type Style,
+} from './elements.ts'
 export { MAX_TEXT_BYTES } from './values.ts'
 export {
   GLOBAL_SHORTCUT_KEYS,

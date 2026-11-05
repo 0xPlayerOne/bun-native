@@ -146,6 +146,8 @@ const CAPABILITIES = [
   'clipboard_text_v1',
   'global_shortcuts_v1',
   'notifications_v1',
+  'overlays_v1',
+  'scroll_anchor_v1',
 ] as const
 export type Capability = (typeof CAPABILITIES)[number]
 

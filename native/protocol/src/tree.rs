@@ -3,7 +3,7 @@
 
 use crate::{
     validate_text, Element, ErrorCode, NodeId, Operation, Style, MAX_DEPTH, MAX_ID,
-    MAX_NODES_PER_WINDOW, MAX_OPERATIONS, MAX_TEXT_BYTES_PER_WINDOW,
+    MAX_NODES_PER_WINDOW, MAX_OPERATIONS, MAX_OVERLAY_DEPTH, MAX_TEXT_BYTES_PER_WINDOW,
 };
 use serde::Serialize;
 use std::collections::{BTreeMap, BTreeSet};
@@ -309,10 +309,10 @@ impl Tree {
         index: usize,
     ) -> Result<(), ModelError> {
         let parent = self.nodes.get(&parent_id).ok_or_else(invalid_handle)?;
-        if !matches!(parent.element.as_ref(), Element::Box { .. }) {
+        if !parent.element.is_container() {
             return Err(error(
                 ErrorCode::InvalidState,
-                "only box elements can own children",
+                "only box and overlay elements can own children",
             ));
         }
         if child_id == self.root_id {
@@ -384,8 +384,8 @@ impl Tree {
 
     fn validate_graph(&self) -> Result<(), ModelError> {
         let mut seen = BTreeSet::new();
-        let mut pending = vec![(self.root_id, None, 0)];
-        while let Some((id, parent, depth)) = pending.pop() {
+        let mut pending = vec![(self.root_id, None, 0, 0)];
+        while let Some((id, parent, depth, overlays)) = pending.pop() {
             if depth > MAX_DEPTH {
                 return Err(error(
                     ErrorCode::LimitExceeded,
@@ -399,6 +399,13 @@ impl Tree {
                 ));
             }
             let node = self.nodes.get(&id).ok_or_else(invalid_handle)?;
+            let overlays = overlays + usize::from(matches!(*node.element, Element::Overlay { .. }));
+            if overlays > MAX_OVERLAY_DEPTH {
+                return Err(error(
+                    ErrorCode::LimitExceeded,
+                    "overlay nesting exceeds 8 layers",
+                ));
+            }
             if node.parent != parent {
                 return Err(error(
                     ErrorCode::InvalidState,
@@ -406,7 +413,7 @@ impl Tree {
                 ));
             }
             for child in &node.children {
-                pending.push((*child, Some(id), depth + 1));
+                pending.push((*child, Some(id), depth + 1, overlays));
             }
         }
         if seen.len() != self.nodes.len() {

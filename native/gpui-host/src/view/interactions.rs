@@ -184,8 +184,10 @@ impl NativeView {
         if !state.active {
             return;
         }
+        // Without a focused control, a modal layer receives keys such as Escape.
         let node_id = self
             .focused_node(window, cx)
+            .or(self.overlays.active_modal())
             .unwrap_or_else(|| state.tree.root_id());
         let Some(path) = state.tree.path(node_id) else {
             return;

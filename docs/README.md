@@ -14,7 +14,7 @@ This directory documents the **new native Bun + AOT desktop framework**, not the
 
 The [current implementation handoff](bun-native-handoff.md) records source removal, current checks and next actions. The [BN0 audit](bn0-audit.md) maps foundation evidence to #227/#258/#226; the [BN1 audit](bn1-audit.md) maps bridge, safety, security and public API evidence to #219 and its implementation tasks.
 
-The initial [shared native layout contract](native-layout.md) extends this tree with bounded sizing, alignment, clipping and retained scroll state. The current protocol 4 also adds the [shared interaction contract](native-events.md). Both documents separate implemented native verification from remaining milestone acceptance.
+The initial [shared native layout contract](native-layout.md) extends this tree with bounded sizing, alignment, clipping and retained scroll state. The current protocol 4 also adds the [shared interaction contract](native-events.md). Both documents separate implemented native verification from remaining milestone acceptance. The [overlay contract](native-overlays.md) adds optional dialog/menu/popover layers, modal focus and end-anchored scrolling.
 
 ## Build and operate
 
