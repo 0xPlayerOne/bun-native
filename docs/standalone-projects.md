@@ -75,7 +75,8 @@ The project does not extend a checkout configuration or import workspace paths.
 The initial lock contains the complete selected local archive graph, SHA-256
 integrities and the same `file:` overrides as the project manifest. It also
 preserves the original registry tuples and nested versions. A missing local
-root is rejected before installation. With an already populated cache:
+root is rejected before installation. With an already populated cache (for
+example, Bun's default cache after the checkout's own `bun install`):
 
 ```sh
 cd /absolute/new/my-app
@@ -108,8 +109,9 @@ bun run dev --host /absolute/path/to/bun-native-host
 bun run build --host /absolute/path/to/bun-native-host --host-profile release
 ```
 
-Supply the exact pinned Bun revision and a separately acquired, compatible native
-host. Ordinary source edits and AOT builds do not invoke Cargo. The compiler child
+`build` writes to the project's `dist` directory unless `--outdir` names another;
+the output directory must be empty. Supply the exact pinned Bun revision and a
+separately acquired, compatible native host. Ordinary source edits and AOT builds do not invoke Cargo. The compiler child
 also receives `--no-install`, so an absent import cannot silently trigger package
 acquisition during compilation. `--watch` uses the existing remount contract and
 resets state; see the [CLI lifecycle reference](developer-tooling.md).
