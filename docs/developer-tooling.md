@@ -21,11 +21,27 @@ The generated package scripts are:
 ```sh
 cd apps/my-app
 bun run check
+bun run format
+bun run format:check
 bun run dev --host /absolute/path/to/bun-native-host
 bun run build --host /absolute/path/to/bun-native-host --host-profile release
 ```
 
 For this default checkout mode, do not run a separate dependency install inside the generated project. Keep it in the checkout so its relative script, TypeScript configuration and public workspace imports continue to resolve. The [standalone mode](standalone-projects.md) instead writes its own dependency declarations, strict configuration, local archives and installed-CLI scripts.
+
+## Check, format and diagnose a project
+
+```sh
+bun run native check apps/my-app
+bun run native format apps/my-app [--check]
+bun run native doctor [apps/my-app] [--host /absolute/path/to/bun-native-host]
+```
+
+`check` validates `bun-native.json` (and, for a standalone project, its installed package set), then runs two steps in the project directory and reports each as `passed` or `failed`: Bun's built-in type checker (`bun --no-install check --no-script --no-pretty`) and the built-in formatter in check mode (`bun --no-install fmt --no-script --check .`). Both steps always run, and any failure exits with status 1. `--no-script` keeps a same-named package script from replacing the built-in. `format` applies the same formatter; `--check` only reports differences. The generated `format` and `format:check` scripts call these commands; the generated `check` script remains the type checker alone.
+
+The formatter uses whatever config Bun discovers for the entry file. Checkout projects inherit the repository `.oxfmtrc.json` and `.gitignore`, so a project placed inside an ignored directory such as `dist/`, `build/` or `.bun-native/` has no formatter targets and fails the format step with Bun's ignore-rule error. Standalone projects without their own config use the template style packaged with the CLI, and never format the digest-verified `vendor/` package set. Linting is not part of this command: `oxlint` is a checkout development dependency, not a consumer dependency.
+
+`doctor` reports `ok`, `failed` or `skipped` for the running Bun revision against `toolchain.json`, a pinned Bun distribution for the current OS/CPU, an optional `--host` executable header check and an optional project configuration. It never launches the host, so a passing host line is not a protocol handshake; the runtime still decides that on launch. Any failed line exits with status 1.
 
 ## Develop against a prebuilt host
 
