@@ -81,6 +81,11 @@ jobs:
             sha256sum "$VK_DRIVER_FILES"
             printf 'Application modes: Bun development and verified machine-code AOT\nNative host profile: release\nDisplay: isolated Xvfb X11\nInput: XTest\nRenderer request: Mesa software Vulkan/GL; actual adapter in result.json\n'
           } > "$NATIVE_EVIDENCE/toolchain.txt"
+      - name: Keep the runner's Cargo home path out of native binaries
+        # Dependency sources live under CARGO_HOME, and their panic locations are
+        # otherwise embedded verbatim, so equal sources built under another home
+        # differ. See docs/reproducible-builds.md.
+        run: printf 'CARGO_ENCODED_RUSTFLAGS=--remap-path-prefix=%s=/cargo\n' "${CARGO_HOME:-$HOME/.cargo}" >> "$GITHUB_ENV"
       - name: Check native source formatting
         run: cargo fmt --manifest-path Cargo.toml --all -- --check
       - name: Build native executable
@@ -587,7 +592,17 @@ jobs:
         run: |
           sha256sum --check "$NATIVE_EVIDENCE/binary-sha256.txt"
           archive="$NATIVE_EVIDENCE/unsigned-native-host.tar.gz"
-          tar -czf "$archive" -C target/release bun-native-host
+          SOURCE_DATE_EPOCH="$(git log -1 --format=%ct)"
+          export SOURCE_DATE_EPOCH
+          bun scripts/native/host-archive.ts --output "$archive" target/release/bun-native-host
+          # Repack a copy from another directory with a different mtime: the
+          # archive must depend only on the executable bytes and the commit time.
+          copy="$RUNNER_TEMP/host-archive-repack"
+          mkdir "$copy"
+          cp target/release/bun-native-host "$copy/"
+          touch -d '2001-02-03 04:05:06' "$copy/bun-native-host"
+          bun scripts/native/host-archive.ts --output "$copy/repacked.tar.gz" "$copy/bun-native-host"
+          cmp "$archive" "$copy/repacked.tar.gz"
           sha256sum "$archive" > "$archive.sha256"
       - name: Retain native evidence even after failure
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2

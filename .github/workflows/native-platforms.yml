@@ -120,6 +120,13 @@ jobs:
             & '${{ matrix.python }}' --version
             bun -e 'console.log(JSON.stringify({os:process.platform,arch:process.arch,hostProfile:"release",scope:"native paint/lifecycle and separate owned OS-input qualification; results recorded per phase"}))'
           } | Tee-Object -FilePath (Join-Path $env:NATIVE_EVIDENCE 'toolchain.txt')
+      - name: Keep the runner's Cargo home path out of native binaries
+        # Dependency panic locations otherwise embed CARGO_HOME verbatim; see
+        # docs/reproducible-builds.md.
+        run: |
+          $cargoHome = if ($env:CARGO_HOME) { $env:CARGO_HOME } else { Join-Path $HOME '.cargo' }
+          "CARGO_ENCODED_RUSTFLAGS=--remap-path-prefix=$cargoHome=/cargo" |
+            Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
       - name: Build the genuine target-platform GPUI executable
         id: native-build
         run: |
@@ -313,7 +320,9 @@ jobs:
         if: ${{ !cancelled() && steps.native-build.outcome == 'success' }}
         run: |
           $archive = Join-Path $env:NATIVE_EVIDENCE 'unsigned-native-host.tar.gz'
-          tar -czf $archive -C target/release '${{ matrix.binary }}'
+          $env:SOURCE_DATE_EPOCH = git log -1 --format=%ct
+          if ($LASTEXITCODE -ne 0) { throw 'Source commit time is unavailable' }
+          bun scripts/native/host-archive.ts --output $archive (Join-Path 'target/release' '${{ matrix.binary }}')
           if ($LASTEXITCODE -ne 0) { throw 'Native host archive failed' }
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: ${{ !cancelled() }}
