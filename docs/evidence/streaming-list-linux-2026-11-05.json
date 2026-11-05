@@ -3,6 +3,7 @@
   "issue": 257,
   "recorded": "2026-11-05",
   "sourceCommit": "1049a3b09d946748c7e7fc6029e45845c630829c",
+  "sourceCommitNote": "Measured before rebasing onto main 3863459; rebased as 6aefa26 with only unrelated main changes (protocol framing, Solid Babel peer). Each run records the tested host sha256; the per-file source hashes stayed in the uncommitted local run reports.",
   "status": "passed",
   "scope": "Local isolated Xvfb/openbox session, Mesa llvmpipe software Vulkan at scale 1, development-profile (unoptimized) GPUI host on a shared 4-core VM under concurrent load. Frame figures are native paint-callback cadence, not presentation timing. Baselines only; release-host CI artifacts (streaming-list-baseline.json) supersede these for comparison. No thresholds are derived from this single record.",
   "commands": [

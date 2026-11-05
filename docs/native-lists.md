@@ -92,7 +92,7 @@ python3 tests/native/streaming-list.py summarize --output "$run/baseline.json" "
 
 ## Recorded baselines
 
-The [Linux evidence record](evidence/streaming-list-linux-2026-11-05.json) holds a passed local run of all four combinations at commit `1049a3b`, together with the host hash. That run used a **development-profile** (unoptimized) host on Xvfb with Mesa llvmpipe at scale 1, on a shared 4-core VM that other jobs were loading at the same time.
+The [Linux evidence record](evidence/streaming-list-linux-2026-11-05.json) holds a passed local run of all four combinations at commit `1049a3b` (before a rebase onto unrelated main changes; rebased as `6aefa26`), together with the host hash. That run used a **development-profile** (unoptimized) host on Xvfb with Mesa llvmpipe at scale 1, on a shared 4-core VM that other jobs were loading at the same time.
 
 - The paint-callback cadence was about 21–25 frames per second. The p50 interval was 33–46 ms and the p95 interval was 64–79 ms.
 - `render_to_paint` p95 was 15–18 ms.
