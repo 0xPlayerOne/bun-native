@@ -140,24 +140,11 @@ impl Clipboard {
         operation: Operation,
         cx: &mut App,
     ) -> Result<(), Failure> {
-        if !self.available() {
-            return Err((
-                ErrorCode::ServiceUnavailable,
-                "clipboard text is implemented only for a local Linux X11 session",
-            ));
-        }
-        if self.0.pending.borrow().len() >= MAX_SERVICE_REQUESTS {
-            return Err((
-                ErrorCode::LimitExceeded,
-                "native service request limit exceeded",
-            ));
-        }
-        if self.0.stopping.load(Ordering::Acquire) {
-            return Err((
-                ErrorCode::Cancelled,
-                "native clipboard worker is shutting down",
-            ));
-        }
+        check_submit(
+            self.available(),
+            self.0.pending.borrow().len(),
+            self.0.stopping.load(Ordering::Acquire),
+        )?;
         if self.0.worker.borrow().running().is_none() {
             self.start(cx)?;
         }
@@ -384,11 +371,63 @@ fn worker(
     // previous external owner is cleared or restored.
 }
 
+/// The capacity checks for a new request, in reply order.
+fn check_submit(available: bool, pending: usize, stopping: bool) -> Result<(), Failure> {
+    if !available {
+        return Err((
+            ErrorCode::ServiceUnavailable,
+            "clipboard text is implemented only for a local Linux X11 session",
+        ));
+    }
+    if pending >= MAX_SERVICE_REQUESTS {
+        return Err((
+            ErrorCode::LimitExceeded,
+            "native service request limit exceeded",
+        ));
+    }
+    if stopping {
+        return Err((
+            ErrorCode::Cancelled,
+            "native clipboard worker is shutting down",
+        ));
+    }
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use std::sync::mpsc;
     use std::time::Duration;
+
+    #[test]
+    fn submit_checks_availability_then_capacity_then_shutdown() {
+        assert_eq!(check_submit(true, 0, false), Ok(()));
+        assert_eq!(check_submit(true, MAX_SERVICE_REQUESTS - 1, false), Ok(()));
+        assert_eq!(
+            check_submit(false, usize::MAX, true),
+            Err((
+                ErrorCode::ServiceUnavailable,
+                "clipboard text is implemented only for a local Linux X11 session"
+            ))
+        );
+        for pending in [MAX_SERVICE_REQUESTS, MAX_SERVICE_REQUESTS + 1] {
+            assert_eq!(
+                check_submit(true, pending, true),
+                Err((
+                    ErrorCode::LimitExceeded,
+                    "native service request limit exceeded"
+                ))
+            );
+        }
+        assert_eq!(
+            check_submit(true, MAX_SERVICE_REQUESTS - 1, true),
+            Err((
+                ErrorCode::Cancelled,
+                "native clipboard worker is shutting down"
+            ))
+        );
+    }
 
     #[test]
     fn failed_notification_keeps_the_pending_join_for_shutdown() {
