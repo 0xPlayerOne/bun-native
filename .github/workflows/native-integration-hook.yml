@@ -1,0 +1,91 @@
+name: Native integration pre-commit
+on:
+  push:
+    branches: [test/viewport-integration-hook-20261105]
+permissions:
+  contents: read
+jobs:
+  check:
+    if: ${{ vars.CI_BILLING_PAUSED == 'false' && github.run_attempt == 1 }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    defaults:
+      run:
+        shell: bash
+    env:
+      CARGO_BUILD_JOBS: 2
+      CARGO_INCREMENTAL: 0
+      PYTHONDONTWRITEBYTECODE: 1
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: bc539b5cf519ba1809e7a4fd09663d58fe251b8d
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Reconstruct the exact proposed integration without committing
+        run: |
+          set -euo pipefail
+          out="$RUNNER_TEMP/native-integration-hook"
+          mkdir -p "$out"
+          git config user.name 'Bun Native integration validation'
+          git config user.email 'bun-native-integration@users.noreply.github.com'
+          git config core.hooksPath .githooks
+          test "$(git rev-parse HEAD)" = bc539b5cf519ba1809e7a4fd09663d58fe251b8d
+          git fetch --no-tags origin b1ab72388f7c0ee89cd5365b1b0481d42ca33892
+          git merge --no-ff --no-commit b1ab72388f7c0ee89cd5365b1b0481d42ca33892 2>&1 | tee "$out/merge.log"
+          test "$(git write-tree)" = a9a30d3f43e24077e5d73ced0aa6c105ec5d4a82
+          git diff --cached --name-status > "$out/staged-paths.txt"
+          git rev-parse HEAD MERGE_HEAD > "$out/parents.txt"
+          git write-tree > "$out/pre-commit-tree.txt"
+      - name: Install the existing checksum-pinned Bun and Rust tools
+        run: |
+          node scripts/install-bun.mjs --destination "$RUNNER_TEMP/bun-native-bun"
+          rustup show active-toolchain
+      - name: Install native compile prerequisites
+        run: |
+          sudo apt-get update
+          sudo apt-get install --no-install-recommends -y \
+            pkg-config libfontconfig-dev libglib2.0-dev libssl-dev libwayland-dev \
+            libx11-xcb-dev libxkbcommon-x11-dev libvulkan1 libzstd-dev
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
+        with:
+          path: |
+            ~/.bun/install/cache
+            ~/.cargo/registry/index
+            ~/.cargo/registry/cache
+            ~/.cargo/git/db
+          key: gpui-downloads-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('toolchain.json', 'bun.lock', 'rust-toolchain.toml', 'Cargo.lock') }}
+      - name: Install exact locked dependencies and repository-pinned Ruff
+        run: |
+          bun install --frozen-lockfile
+          python3 -m venv "$RUNNER_TEMP/native-quality"
+          "$RUNNER_TEMP/native-quality/bin/pip" install --disable-pip-version-check \
+            --no-deps --only-binary=:all: --require-hashes -r scripts/quality/requirements.txt
+          echo "$RUNNER_TEMP/native-quality/bin" >> "$GITHUB_PATH"
+      - name: Commit through the unchanged configured hook and verify source identity
+        run: |
+          set -euo pipefail
+          out="$RUNNER_TEMP/native-integration-hook"
+          {
+            bun --revision
+            rustc --version --verbose
+            cargo --version
+            ruff --version
+            git config --get core.hooksPath
+            sha256sum .githooks/pre-commit toolchain.json Cargo.lock bun.lock scripts/quality/requirements.txt
+          } > "$out/environment.txt"
+          test "$(git write-tree)" = a9a30d3f43e24077e5d73ced0aa6c105ec5d4a82
+          git commit -m 'fix(input): integrate qualified native resource ownership with viewport coverage' 2>&1 | tee "$out/normal-commit.log"
+          test "$(git rev-parse HEAD^{tree})" = a9a30d3f43e24077e5d73ced0aa6c105ec5d4a82
+          test -z "$(git status --porcelain)"
+          git show --no-patch --format=raw HEAD > "$out/commit.txt"
+          git rev-parse HEAD HEAD^{tree} > "$out/result.txt"
+          printf 'Normal configured pre-commit passed; no native window, GC, or test workload executed. Full PR qualification remains separate.\n' > "$out/scope.txt"
+      - name: Retain exact preparation result, including a failed hook
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: viewport-native-integration-hook
+          path: ${{ runner.temp }}/native-integration-hook/
+          if-no-files-found: error
+          retention-days: 7
