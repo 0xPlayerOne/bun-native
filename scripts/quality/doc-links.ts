@@ -37,11 +37,19 @@ function stripInlineCode(line: string): string {
   return line.replace(/(`+)[^`]*?\1/g, (span) => ' '.repeat(span.length))
 }
 
+/** Inline HTML tags render no text; repeat until stable so nested fragments like `<<b>x>` cannot leave a tag behind. */
+function stripTags(text: string): string {
+  let previous: string
+  do {
+    previous = text
+    text = text.replace(/<[^<>]*>/g, '')
+  } while (text !== previous)
+  return text
+}
+
 /** GitHub's heading anchor slug: rendered text, lowercased, punctuation dropped, spaces to hyphens. */
 export function githubSlug(heading: string): string {
-  const text = heading
-    .replace(/!?\[([^\]]*)\]\([^)]*\)/g, '$1') // links and images keep their text
-    .replace(/<[^>]+>/g, '') // inline HTML tags render no text
+  const text = stripTags(heading.replace(/!?\[([^\]]*)\]\([^)]*\)/g, '$1')) // links and images keep their text
     .replace(/`([^`]*)`/g, '$1')
     .replace(/(\*{1,3})(\S(?:.*?\S)?)\1/g, '$2') // emphasis markers render no text
     .replace(/(^|[^\p{L}\p{N}])(_{1,3})(\S(?:.*?\S)?)\2(?![\p{L}\p{N}])/gu, '$1$3')
