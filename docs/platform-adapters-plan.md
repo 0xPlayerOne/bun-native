@@ -1,5 +1,13 @@
 # Portable framework native qualification
 
+> **Status (2026-11-05):** executed and merged in
+> [#399](https://github.com/0xPlayerOne/bun-native/pull/399). The shared fixture is
+> [`tests/native/platform-adapter.ts`](../tests/native/platform-adapter.ts) with
+> [Solid](../tests/native/solid-platform.tsx) and [React](../tests/native/react-platform.tsx)
+> adapters in the [`Native Platforms` workflow](../.github/workflows/native-platforms.yml).
+> Per its merge record, all eight hosted framework/mode/platform cases passed. The
+> plan below is kept as written.
+
 This slice advances BN2/BN3 and #256 without replacing the existing public-core
 platform cases or claiming that their success qualifies Solid or React. It adds
 one shared lifecycle and two thin public JSX adapters to the existing macOS and
