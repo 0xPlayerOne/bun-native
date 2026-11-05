@@ -1,12 +1,8 @@
 import { afterEach, expect, test } from 'bun:test'
 import { generateKeyPairSync } from 'node:crypto'
 import { existsSync } from 'node:fs'
-import { mkdir, mkdtemp, readdir, readFile, rm, stat, writeFile } from 'node:fs/promises'
-import { tmpdir } from 'node:os'
-import { join, resolve } from 'node:path'
-import toolchain from '../../toolchain.json'
-import { PROTOCOL_VERSION } from '../../packages/protocol/src/index.ts'
-import { fileDigest } from '../../scripts/native/artifact.ts'
+import { mkdir, readdir, readFile, rm, stat, writeFile } from 'node:fs/promises'
+import { join } from 'node:path'
 import {
   currentRelease,
   dataDirectory,
@@ -19,111 +15,28 @@ import {
   type PayloadSource,
 } from '../../scripts/native/installation.ts'
 import {
-  createUpdateManifest,
   signUpdate,
   UpdateError,
   verifyUpdate,
-  type HostRequirements,
-  type TrustPolicy,
   type UpdateManifest,
 } from '../../scripts/native/update-manifest.ts'
+import {
+  build,
+  clean,
+  cleanup,
+  installed,
+  keys,
+  leftovers,
+  publicPem,
+  rejects,
+  release,
+  repository,
+  requirements,
+  signed,
+  temporary,
+} from './update-fixture.ts'
 
-const repository = resolve(import.meta.dir, '../..')
-const requirements: HostRequirements = {
-  os: process.platform,
-  architecture: process.arch,
-  protocol: PROTOCOL_VERSION,
-  bunRevision: toolchain.bun.revision,
-}
-const keys = generateKeyPairSync('ed25519')
-const publicPem = keys.publicKey.export({ type: 'spki', format: 'pem' }).toString()
-const signed: TrustPolicy = { kind: 'ed25519', publicKeys: [publicPem] }
-const directories: string[] = []
-
-afterEach(async () => {
-  for (const directory of directories.splice(0))
-    await rm(directory, { recursive: true, force: true })
-})
-
-async function temporary(): Promise<string> {
-  const directory = await mkdtemp(join(tmpdir(), 'bun-native-update-'))
-  directories.push(directory)
-  return directory
-}
-
-/** A synthetic `native build` output with the fields the updater cross-checks. */
-async function build(label: string): Promise<string> {
-  const directory = await temporary()
-  const suffix = process.platform === 'win32' ? '.exe' : ''
-  await writeFile(join(directory, `application${suffix}`), `application ${label}\n`)
-  await writeFile(join(directory, `bun-native-host${suffix}`), `host ${label}\n`)
-  await mkdir(join(directory, 'development'))
-  await writeFile(join(directory, 'development/application.js'), `console.log(${label})\n`)
-  const manifest = {
-    schemaVersion: 1,
-    target: { os: process.platform, architecture: process.arch },
-    toolchain: { bun: { revision: toolchain.bun.revision } },
-    application: {
-      file: `application${suffix}`,
-      ...(await fileDigest(join(directory, `application${suffix}`))),
-    },
-    host: {
-      file: `bun-native-host${suffix}`,
-      ...(await fileDigest(join(directory, `bun-native-host${suffix}`))),
-    },
-  }
-  await writeFile(join(directory, 'manifest.json'), JSON.stringify(manifest, null, 2) + '\n')
-  return directory
-}
-
-async function release(
-  label: string,
-  sequence: number,
-  trust: UpdateManifest['trust'] = 'ed25519',
-  edit?: (manifest: UpdateManifest) => void
-) {
-  const payload = await build(label)
-  const manifest = await createUpdateManifest(payload, {
-    product: 'dev.bun-native.example',
-    version: `1.0.${sequence}`,
-    sequence,
-    trust,
-    protocol: requirements.protocol,
-  })
-  edit?.(manifest)
-  const bytes = Buffer.from(JSON.stringify(manifest, null, 2) + '\n')
-  const signature =
-    trust === 'ed25519' ? Buffer.from(signUpdate(bytes, keys.privateKey)) : undefined
-  return { payload, manifest, bytes, signature }
-}
-
-async function rejects(promise: Promise<unknown> | (() => unknown), code: UpdateError['code']) {
-  let error: unknown
-  try {
-    await (typeof promise === 'function' ? promise() : promise)
-  } catch (caught) {
-    error = caught
-  }
-  expect(error).toBeInstanceOf(UpdateError)
-  expect((error as UpdateError).code).toBe(code)
-  return error as UpdateError
-}
-
-async function installed(root: string, label: string) {
-  const { directory } = await currentRelease(root)
-  const application = (await readdir(directory)).find((name) => name.startsWith('application'))!
-  expect(await readFile(join(directory, application), 'utf8')).toBe(`application ${label}\n`)
-}
-
-async function leftovers(root: string) {
-  return {
-    staging: await readdir(join(root, 'staging')),
-    lock: existsSync(join(root, 'lock')),
-    temporary: (await readdir(root)).filter((name) => name.endsWith('.tmp')),
-  }
-}
-
-const clean = { staging: [], lock: false, temporary: [] }
+afterEach(cleanup)
 
 test('signed update installs atomically, rolls back and preserves user data', async () => {
   const root = join(await temporary(), 'install')
@@ -540,11 +453,13 @@ test('release-update CLI creates, signs, installs, reports and rolls back', asyn
     )
     return { code: result.exitCode, out: result.stdout.toString(), err: result.stderr.toString() }
   }
+  const payloads: string[] = []
   for (const [label, sequence] of [
     ['one', '1'],
     ['two', '2'],
   ] as const) {
     const payload = await build(label)
+    payloads.push(payload)
     const manifest = join(work, `${label}.json`)
     const steps = [
       [
@@ -566,4 +481,17 @@ test('release-update CLI creates, signs, installs, reports and rolls back', asyn
   const unsigned = cli('install', join(work, 'one.json'), '--root', root, '--payload', work)
   expect(unsigned.code).toBe(1)
   expect(unsigned.err).toContain('exactly one trust mode')
+
+  const bundles = join(work, 'bundles')
+  await mkdir(bundles)
+  const bundled = cli('bundle', join(work, 'one.json'), '--payload', payloads[0]!, '--out', bundles)
+  expect(bundled).toMatchObject({ code: 0, err: '' })
+  expect(bundled.out).toContain('signed-manifest bundle')
+  const menu = join(work, 'menu')
+  const integration = cli('integrate', '--root', root, '--name', 'CLI App', '--applications', menu)
+  expect(integration).toMatchObject({ code: 0, err: '' })
+  await writeFile(join(dataDirectory(root), 'kept.txt'), 'kept')
+  expect(JSON.parse(cli('uninstall', '--root', root).out)).toMatchObject({ data: 'kept' })
+  expect(await readdir(root)).toEqual(['data'])
+  expect(await readdir(menu)).toEqual([])
 })
