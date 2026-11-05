@@ -16,6 +16,13 @@ INITIAL_TITLES = [
 ]
 
 
+def require(items, description):
+    """Return the first match, or fail with a diagnostic instead of StopIteration."""
+    for item in items:
+        return item
+    raise RuntimeError(f"Native workspace evidence is missing {description}")
+
+
 def dark_input_pixels(driver, geometry_tools, screenshot, current):
     """Observe actual input fill and readable text, beyond semantic tree records."""
     observations = {}
@@ -24,16 +31,22 @@ def dark_input_pixels(driver, geometry_tools, screenshot, current):
         ("Search tasks", "222D3C"),
         ("Task title", "151B24"),
     ):
-        node = next(
-            item
-            for item in current["paint"]["nodes"]
-            if item["element"]["kind"] == "input"
-            and item["element"]["placeholder"] == label
+        node = require(
+            (
+                item
+                for item in current["paint"]["nodes"]
+                if item["element"]["kind"] == "input"
+                and item["element"]["placeholder"] == label
+            ),
+            f"the {label!r} input paint",
         )
-        geometry = next(
-            item
-            for item in current["layout"]["nodes"]
-            if item["node_id"] == node["node_id"]
+        geometry = require(
+            (
+                item
+                for item in current["layout"]["nodes"]
+                if item["node_id"] == node["node_id"]
+            ),
+            f"the {label!r} input geometry",
         )
         bounds = geometry_tools.rectangle(geometry["bounds"])
         if geometry_tools.intersects(bounds, geometry["ancestor_clip"]) != bounds:
@@ -156,12 +169,15 @@ def run(
 
     def node(kind, label):
         current = settled("native workspace geometry")
-        return next(
-            item
-            for item in current["paint"]["nodes"]
-            if item["element"]["kind"] == kind
-            and item["element"].get("placeholder" if kind == "input" else "text")
-            == label
+        return require(
+            (
+                item
+                for item in current["paint"]["nodes"]
+                if item["element"]["kind"] == kind
+                and item["element"].get("placeholder" if kind == "input" else "text")
+                == label
+            ),
+            f"the {label!r} {kind} paint",
         )
 
     def action(*arguments):
@@ -171,8 +187,13 @@ def run(
         driver.run(["xdotool", *arguments])
 
     def geometry(identity, current):
-        return next(
-            item for item in current["layout"]["nodes"] if item["node_id"] == identity
+        return require(
+            (
+                item
+                for item in current["layout"]["nodes"]
+                if item["node_id"] == identity
+            ),
+            f"geometry for node {identity}",
         )
 
     def pointer(identity):
@@ -237,15 +258,21 @@ def run(
     initial = settled("initial workspace paint and native geometry")
     initial_nodes = {item["node_id"]: item for item in initial["paint"]["nodes"]}
     first_title = node("button", INITIAL_TITLES[0])["node_id"]
-    first_row = next(
-        item["node_id"]
-        for item in initial_nodes.values()
-        if first_title in item["children"]
+    first_row = require(
+        (
+            item["node_id"]
+            for item in initial_nodes.values()
+            if first_title in item["children"]
+        ),
+        "the first task row",
     )
-    list_id = next(
-        item["node_id"]
-        for item in initial_nodes.values()
-        if first_row in item["children"]
+    list_id = require(
+        (
+            item["node_id"]
+            for item in initial_nodes.values()
+            if first_row in item["children"]
+        ),
+        "the task list",
     )
 
     def rows(current):
@@ -274,8 +301,13 @@ def run(
         )
 
     def scroll(current):
-        return next(
-            item for item in current["layout"]["scrolls"] if item["node_id"] == list_id
+        return require(
+            (
+                item
+                for item in current["layout"]["scrolls"]
+                if item["node_id"] == list_id
+            ),
+            "the task list scroll geometry",
         )
 
     expect_rows(INITIAL_TITLES)
