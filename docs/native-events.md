@@ -2,7 +2,7 @@
 
 This implements the shared native event foundation for [BN2 #234](https://github.com/0xPlayerOne/bun-native/issues/234). The GPUI host, protocol and public core own one event implementation. Solid and React map their listener props to that public API; they do not create native event backends or reconstruct a DOM.
 
-Protocol **4** requires `interactions_v1` together with `tree`, `input_revisions` and `layout_v1`. Earlier hosts are incompatible and fail negotiation before a window opens. Rebuild and pin packages and the prebuilt native executable together. Historical protocol-2/3 artifacts remain evidence for their original revisions, not for the new event contract.
+This contract was introduced in protocol 4. The [current native protocol](native-abi.md) still requires `interactions_v1` together with `tree`, `input_revisions`, `layout_v1` and `window_display_v1`; hosts that do not negotiate that exact protocol and capability set fail before a window opens. Rebuild and pin packages and the prebuilt native executable together. Historical protocol-2/3 artifacts remain evidence for their original revisions, not for this event contract.
 
 ## Public listener contract
 
@@ -86,8 +86,9 @@ synthesized merely because a listener was attached after focus occurred.
 
 Every node event has a native tree revision and a unique root-to-target route
 of at most 65 IDs. The existing maximum tree depth is 64 **edges**. All UI
-events, including window closure, share one contiguous global sequence. A
-listener subscribed only to input or clicks sees an increasing subset with gaps.
+events, including window closure and the global-shortcut and notification
+service events, share one contiguous global sequence. A listener subscribed
+only to input or clicks sees an increasing subset with gaps.
 
 The host commits a batch and queues its `applied` reply before a new-revision
 native event can be emitted. The core rejects impossible future revisions.

@@ -3,7 +3,7 @@
 This is the behavior contract for [BN3 #235](https://github.com/0xPlayerOne/bun-native/issues/235).
 The adapter pins React **19.3.1**, `react-reconciler` **0.34.0** and reconciler
 declarations **0.34.1**. It renders through the same public core, staged renderer,
-protocol4 contract and GPUI host as Solid. These tests introduce no alternate
+[native protocol](native-abi.md) and GPUI host as Solid. These tests introduce no alternate
 native widget or event implementation.
 
 ## Native scenario matrix
