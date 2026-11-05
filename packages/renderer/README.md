@@ -29,6 +29,10 @@ changing the current owner. Disposal revokes registration before invoking teardo
 so a retained `onCleanup` cannot install another callback during cleanup or after
 window closure or framework failure.
 Asynchronous framework failures call `fail`; it cannot restart a disposed root.
+If initialization reports a failure before throwing another error, the first
+reported cause remains authoritative across `ready`, `closed`, `flush()` and
+`dispose()`. A later cleanup-registration rejection or throwing teardown cannot
+replace that cause; sibling roots remain independently usable.
 
 The driver snapshots staged values before awaiting the public-core queue. Only
 one native transaction is in flight per root; further changes coalesce into a
