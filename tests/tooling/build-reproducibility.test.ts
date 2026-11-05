@@ -1,6 +1,6 @@
 import { expect, test } from 'bun:test'
 import { createHash } from 'node:crypto'
-import { mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync } from 'node:fs'
+import { mkdirSync, mkdtempSync, readFileSync, readdirSync, realpathSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join, relative, resolve } from 'node:path'
 import { createProject } from '../../scripts/native/project.ts'
@@ -30,7 +30,10 @@ test('AOT builds of equal sources are byte-identical across locations and workin
     for (const project of projects) await createProject(repository, project, 'solid', 'typescript')
     for (const path of files(projects[0]!))
       expect(sha256(join(projects[1]!, path))).toBe(sha256(join(projects[0]!, path)))
-    const working = [repository, mkdtempSync(join(tmpdir(), 'bun-native-build-cwd-'))]
+    // The child resolves its relative operand against its physical cwd; macOS tmpdir() is a
+    // /var -> /private/var symlink, so the relative path must be computed from the real path.
+    const outside = realpathSync(mkdtempSync(join(tmpdir(), 'bun-native-build-cwd-')))
+    const working = [repository, outside]
     try {
       for (const [index, project] of projects.entries()) {
         const result = Bun.spawnSync(

@@ -22,9 +22,14 @@ export type Integration = {
 
 const namePattern = /^[A-Za-z0-9][A-Za-z0-9 ._-]{0,63}$/
 
-/** Paths are embedded in shell, .desktop and plist text, so only plain characters are allowed. */
+/**
+ * Paths are embedded in shell, .desktop, plist and cmd text, so only plain characters are
+ * allowed. `~` is accepted because Windows 8.3 short names (such as `C:\Users\RUNNER~1`, which
+ * `%TEMP%` often uses) contain it, and it is literal in every embedding: single-quoted shell,
+ * a quoted .desktop Exec argument, plist text and a quoted cmd `set` or `call`.
+ */
 function plainPath(path: string): string {
-  if (!isAbsolute(path) || !/^[A-Za-z0-9 _./:\\-]+$/.test(path))
+  if (!isAbsolute(path) || !/^[A-Za-z0-9 _./:\\~-]+$/.test(path))
     throw new UpdateError('state', `Unsupported characters in installation path: ${path}`)
   return path
 }

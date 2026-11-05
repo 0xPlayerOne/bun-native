@@ -77,7 +77,14 @@ describe('reproducible native host archive', () => {
       writeFileSync(archive, hostArchive([{ name: 'bun-native-host', data }], 1_700_000_000))
       const extracted = join(directory, 'extracted')
       mkdirSync(extracted)
-      const result = Bun.spawnSync(['tar', '-xzf', archive, '-C', extracted], {
+      // Relative operands: GNU tar (Git for Windows can precede System32 on PATH) reads a
+      // `C:` prefix as a remote host. The Windows platform tar is System32's bsdtar.
+      const tar =
+        process.platform === 'win32'
+          ? join(process.env.SystemRoot ?? 'C:\\Windows', 'System32', 'tar.exe')
+          : 'tar'
+      const result = Bun.spawnSync([tar, '-xzf', 'host.tar.gz', '-C', 'extracted'], {
+        cwd: directory,
         stdout: 'pipe',
         stderr: 'pipe',
         timeout: 15_000,

@@ -138,10 +138,18 @@ test('platform integrations write a desktop entry, an app wrapper and a Start-me
   await rejects(integrate(root, { platform: 'linux', name: 'X', applications: root }), 'state')
   await installTwo(root)
   await rejects(integrate(root, { platform: 'linux', name: '../x', applications: root }), 'state')
-  await rejects(
-    integrate(root, { platform: 'linux', name: 'X', applications: join(root, 'a"b') }),
-    'state'
-  )
+  for (const unsafe of ['a"b', "a'b", 'a$b', 'a`b', 'a%b', 'a!b', 'a&b'])
+    await rejects(
+      integrate(root, { platform: 'win32', name: 'X', applications: join(root, unsafe) }),
+      'state'
+    )
+  // Windows 8.3 short names, as in %TEMP% = C:\Users\RUNNER~1\AppData\Local\Temp, are valid.
+  for (const platform of ['linux', 'darwin', 'win32'] as const) {
+    const short = join(root, 'RUNNER~1', platform)
+    const [, entry] = await integrate(root, { platform, name: 'X', applications: short })
+    expect(entry!.startsWith(short)).toBe(true)
+    expect(existsSync(entry!)).toBe(true)
+  }
   await rejects(recordIntegration(join(await temporary(), 'none'), ['/x']), 'state')
 })
 
