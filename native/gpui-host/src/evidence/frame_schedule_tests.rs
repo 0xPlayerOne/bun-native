@@ -29,6 +29,7 @@ pub(super) fn make_log(enabled: bool) -> (TemporaryLog, Evidence) {
         last_state: BTreeMap::new(),
         last_layout: BTreeMap::new(),
         pointer: None,
+        frames: None,
         input_viewports: false,
         startup_started: enabled.then(Instant::now),
         startup_records: 0,

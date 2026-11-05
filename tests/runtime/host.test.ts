@@ -262,7 +262,23 @@ describe('native process transport (headless protocol peer)', () => {
 
   test('bounds startup when the native process stops responding', async () => {
     const error = await rejectedError(NativeHost.launch(options('silent', 100)))
-    expect(error.message).toBe('Native hello request 1 timed out')
+    expect(error.message).toMatch(
+      /^Native hello request 1 timed out \(write flushed: queued \+0ms, written \+\d+ms, flushed \+\d+ms\)$/
+    )
+  })
+
+  test('reports a read but unanswered request as flushed in its timeout', async () => {
+    // Diagnostic for #304: separates a stalled runtime write/flush (queued or
+    // written) from a peer that received the frame and never replied (flushed).
+    const host = await NativeHost.launch(options('diagnostic-open-timeout', 500))
+    const error = await rejectedError(host.send(open))
+    const match =
+      /^Native open request 2 timed out \(write (\w+): queued \+0ms, written \+(\d+)ms, flushed \+(\d+)ms\)$/.exec(
+        error.message
+      )
+    expect(match?.[1]).toBe('flushed')
+    expect(Number(match?.[2])).toBeLessThanOrEqual(Number(match?.[3]))
+    expect((await rejectedError(host.shutdown())).message).toBe(error.message)
   })
 
   test('rejects invalid options before spawning', async () => {

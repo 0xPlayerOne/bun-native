@@ -599,6 +599,35 @@ jobs:
                 --output "$evidence" -- "${command[@]}"
             done
           done
+      - name: Development and AOT streaming-list soak through Solid and React
+        if: ${{ !cancelled() && steps.native-build.outcome == 'success' }}
+        timeout-minutes: 6
+        env:
+          BUN_NATIVE_HOST: ${{ github.workspace }}/target/release/bun-native-host
+        run: |
+          reports=()
+          for framework in solid react; do
+            entry="$framework-streaming-list"
+            package="$NATIVE_EVIDENCE/$entry-package"
+            bun experiments/aot-gpui/build-window.ts \
+              --source "$GITHUB_WORKSPACE" --host "$BUN_NATIVE_HOST" \
+              --host-profile release --entry "$entry" --outdir "$package"
+            for mode in development aot; do
+              command=(bun "$package/development/application.js")
+              if [[ "$mode" == aot ]]; then
+                command=("$package/$entry")
+              fi
+              evidence="$NATIVE_EVIDENCE/streaming-list-$framework-$mode"
+              xvfb-run --auto-servernum --server-args='-screen 0 1280x800x24 -nolisten tcp' \
+                dbus-run-session -- bash scripts/quality/native-linux-session.sh \
+                "$evidence-session" -- python3 tests/native/streaming-list.py \
+                --framework "$framework" --mode "$mode" --host-profile release \
+                --output "$evidence" -- "${command[@]}"
+              reports+=("$evidence/result.json")
+            done
+          done
+          python3 tests/native/streaming-list.py summarize \
+            --output "$NATIVE_EVIDENCE/streaming-list-baseline.json" "${reports[@]}"
       - name: Retain unsigned native host for reproducibility
         if: ${{ !cancelled() && steps.native-build.outcome == 'success' }}
         run: |
@@ -657,6 +686,8 @@ jobs:
             ${{ runner.temp }}/native-evidence/baseline/
             ${{ runner.temp }}/native-evidence/baseline-session/*.log
             ${{ runner.temp }}/native-evidence/baseline.log
+            ${{ runner.temp }}/native-evidence/streaming-list-*/
+            ${{ runner.temp }}/native-evidence/streaming-list-baseline.json
             ${{ runner.temp }}/native-evidence/package/manifest.json
             ${{ runner.temp }}/native-evidence/package/*.log
             ${{ runner.temp }}/native-evidence/*-package/manifest.json
@@ -687,4 +718,5 @@ jobs:
             echo 'React also consumes the shared capture/target/bubble event mapping. Development and AOT scenarios require real pointer/focus/keyboard events, Enter activation despite JavaScript propagation stops, caret insertion and selection replacement without native input echo, and revocation of every observed callback signal after OS close.'
             echo 'Eight React behavior scenarios in each mode require real native mount/update/unmount, state/reducer batching, effect/ref lifetime, boundary fallback/recovery, transient concurrent retry, terminal reporter and cleanup failures, and an independently usable survivor root. The non-suspending transition case waits for an explicit React commit and native acknowledgement; ordinary flush does not promise to drain every transition lane.'
             echo 'The React diagnostic requires 1,000 individual state updates, 1,000 values coalesced into 100 native updates, 1,000 keyed rotations, and 1,000 mount/update/dispose cycles in each mode. Fixed WeakRef checkpoints, row-owner counts and public resource counts guard bounded cleanup. Separate native-paint calibration observes the complete expected tree and actual GPU; recorded acknowledgement timings are single-run diagnostics, not a cross-framework performance claim.'
+            echo 'The streaming-list soak replays one versioned 10,000-message, 2,400-token stream through Solid and React in development and AOT on the same release host. It requires real XTest navigation, pointer selection, theme/density restyle and WM resize, an unmoved detached window, visible-window node/listener bounds, one cross-adapter final digest and zero owners after OS close. Frame, RSS, thread and descriptor figures are recorded baselines on software GPU, not thresholds or presentation timing.'
           } >> "$GITHUB_STEP_SUMMARY"
