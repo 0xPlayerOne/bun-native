@@ -376,6 +376,24 @@ hashes. The host's native source is byte-identical across the explicitly named
 host/application commits. Neither binary was executed during that compilation;
 this record does not qualify the native recipe above.
 
+## Streaming-list soak
+
+The `solid-streaming-list` and `react-streaming-list` entries render one
+app-level windowed model over a 10,000-message history and replay the
+versioned `benchmarks/streaming-list-fixture.ts` stream. Build each with
+`experiments/aot-gpui/build-window.ts --entry ENTRY`. Then pass its
+`development/application.js` or AOT executable to `tests/native/streaming-list.py
+--framework solid|react --mode development|aot --host-profile release --output
+NEW_DIRECTORY -- APPLICATION`. Run it inside the isolated session.
+
+The controller uses real XTest navigation, pointer selection, theme/density
+keys, a window-manager resize and Alt+F4. The fixture requires an unmoved
+detached window, visible-window node/listener bounds and zero owners after
+close. `streaming-list.py summarize --output FILE REPORT...` requires one final
+digest across runs and writes the compact baseline. See
+[streaming lists](../../docs/native-lists.md) for the oracle, the opt-in
+`BUN_NATIVE_FRAME_TRACE` record and unsupported scope.
+
 ## Portable target-host paint smoke
 
 `tests/native/platform-smoke.ts` and `scripts/quality/native-platform-smoke.py`

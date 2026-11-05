@@ -57,11 +57,13 @@ const entries = {
   'solid-input-intent': 'tests/native/solid-input-intent.tsx',
   'solid-interactions': 'tests/native/solid-interactions.tsx',
   'solid-input-viewport': 'tests/native/solid-input-viewport.tsx',
+  'solid-streaming-list': 'tests/native/solid-streaming-list.tsx',
   react: 'examples/react-counter/main.tsx',
   'react-workspace': 'examples/react-workspace/main.tsx',
   'react-workspace-flow': 'tests/native/react-workspace.tsx',
   'react-interactions': 'tests/native/react-interactions.tsx',
   'react-input-viewport': 'tests/native/react-input-viewport.tsx',
+  'react-streaming-list': 'tests/native/react-streaming-list.tsx',
   'react-behavior': 'tests/native/react-behavior.tsx',
   'react-workload': 'benchmarks/solid/react.tsx',
 } as const
@@ -78,6 +80,7 @@ const solidEntry =
   entry === 'solid-input-intent' ||
   entry === 'solid-interactions' ||
   entry === 'solid-input-viewport' ||
+  entry === 'solid-streaming-list' ||
   entry === 'solid-platform' ||
   entry === 'solid-services'
 const reactEntry =
@@ -86,6 +89,7 @@ const reactEntry =
   entry === 'react-workspace-flow' ||
   entry === 'react-interactions' ||
   entry === 'react-input-viewport' ||
+  entry === 'react-streaming-list' ||
   entry === 'react-behavior' ||
   entry === 'react-services' ||
   entry === 'react-platform' ||
@@ -195,6 +199,13 @@ async function sourceHashes() {
     sources.add(path)
   if (entry === 'solid-input-viewport' || entry === 'react-input-viewport')
     sources.add('tests/native/renderer-input-viewport.ts')
+  if (entry === 'solid-streaming-list' || entry === 'react-streaming-list')
+    for (const path of [
+      'tests/native/renderer-streaming-list.ts',
+      'tests/native/streaming-list-model.ts',
+      'benchmarks/streaming-list-fixture.ts',
+    ])
+      sources.add(path)
   if (solidEntry) {
     for (const path of [
       'packages/solid/package.json',
