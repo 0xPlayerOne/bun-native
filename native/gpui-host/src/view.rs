@@ -8,7 +8,7 @@ use crate::{
 use bun_native_protocol::{Element as NativeElement, Event, NodeId, Overflow, Tree, WindowId};
 use gpui::{
     AnyElement, App, Context, Entity, FocusHandle, Focusable, KeyBinding, MouseButton,
-    ScrollHandle, Subscription, Window, actions, canvas, div, prelude::*, px, rgb,
+    ScrollHandle, SharedString, Subscription, Window, actions, canvas, div, prelude::*, px, rgb,
 };
 use std::collections::BTreeMap;
 use std::rc::Rc;
@@ -31,6 +31,9 @@ pub(crate) struct NativeView {
     inputs: BTreeMap<NodeId, Entity<TextInput>>,
     buttons: BTreeMap<NodeId, FocusHandle>,
     scrolls: BTreeMap<NodeId, ScrollHandle>,
+    /// Text and button labels as shared strings, reused across batches while
+    /// unchanged, so each render bumps a refcount instead of copying text.
+    labels: BTreeMap<NodeId, SharedString>,
     focus_subscriptions: BTreeMap<NodeId, [Subscription; 2]>,
     reported_focus: Option<NodeId>,
     _subscriptions: [Subscription; 2],
@@ -61,6 +64,7 @@ impl NativeView {
             inputs: BTreeMap::new(),
             buttons: BTreeMap::new(),
             scrolls: BTreeMap::new(),
+            labels: BTreeMap::new(),
             focus_subscriptions: BTreeMap::new(),
             reported_focus: None,
             _subscriptions: [keyboard, focus_lost],
@@ -79,12 +83,23 @@ impl NativeView {
             let state = self.state.borrow();
             let mut controls = BTreeMap::new();
             let mut scroll_modes = BTreeMap::new();
+            let mut labels = BTreeMap::new();
             for (id, node) in state.tree.nodes() {
                 if matches!(
                     node.element(),
                     NativeElement::Input { .. } | NativeElement::Button { .. }
                 ) {
                     controls.insert(id, node.clone());
+                }
+                if let NativeElement::Text { text, .. } | NativeElement::Button { text, .. } =
+                    node.element()
+                {
+                    let label = self
+                        .labels
+                        .remove(&id)
+                        .filter(|label| label.as_ref() == text.as_str())
+                        .unwrap_or_else(|| SharedString::from(text));
+                    labels.insert(id, label);
                 }
                 if let Some(mode) = node
                     .element()
@@ -95,6 +110,7 @@ impl NativeView {
                     scroll_modes.insert(id, mode);
                 }
             }
+            self.labels = labels;
             (controls, scroll_modes)
         };
         self.scrolls.retain(|id, _| scroll_modes.contains_key(id));
@@ -215,6 +231,13 @@ impl NativeView {
         }
     }
 
+    fn label(&self, node_id: NodeId) -> SharedString {
+        self.labels
+            .get(&node_id)
+            .expect("label reconciled before render")
+            .clone()
+    }
+
     fn render_node(
         &self,
         tree: &Tree,
@@ -251,15 +274,14 @@ impl NativeView {
                     .into_any_element()
             }
             NativeElement::Text {
-                text,
-                style: properties,
+                style: properties, ..
             } => style::apply(base, properties)
-                .child(text.clone())
+                .child(self.label(node_id))
                 .into_any_element(),
             NativeElement::Button {
-                text,
                 disabled,
                 style: properties,
+                ..
             } => {
                 let mut button = style::apply(
                     base.flex()
@@ -271,7 +293,7 @@ impl NativeView {
                         .text_color(rgb(0xffffff)),
                     properties,
                 )
-                .child(text.clone());
+                .child(self.label(node_id));
                 if !disabled {
                     let focus = self
                         .buttons

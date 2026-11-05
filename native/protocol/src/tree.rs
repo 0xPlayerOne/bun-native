@@ -6,7 +6,7 @@ use crate::{
     MAX_NODES_PER_WINDOW, MAX_OPERATIONS, MAX_TEXT_BYTES_PER_WINDOW,
 };
 use serde::Serialize;
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::{BTreeMap, HashSet};
 use std::fmt;
 use std::sync::Arc;
 use std::time::Instant;
@@ -15,7 +15,9 @@ use std::time::Instant;
 pub struct Node {
     element: Arc<Element>,
     parent: Option<NodeId>,
-    children: Vec<NodeId>,
+    // Shared like `element`: preflight clones the whole graph per batch, so a
+    // child list is copied only when that batch actually reorders it.
+    children: Arc<Vec<NodeId>>,
     input_revision: Option<u64>,
 }
 
@@ -107,7 +109,7 @@ impl Tree {
                         style: Style::default(),
                     }),
                     parent: None,
-                    children: Vec::new(),
+                    children: Arc::default(),
                     input_revision: None,
                 },
             )]),
@@ -175,10 +177,15 @@ impl Tree {
             ));
         }
         let operation_count = operations.len();
-        // Property payloads are immutable Arc values: cloning the bounded graph
-        // copies its links, not every text string on each keypress or update.
+        // Property payloads and child lists are immutable Arc values: cloning
+        // the bounded graph copies its links, not every text string or child
+        // list on each keypress or update.
         let mut next = self.clone();
+        // `set` cannot change an element kind, so a batch of only sets keeps
+        // the committed, already validated ownership graph.
+        let mut graph_changed = false;
         for operation in operations {
+            graph_changed |= !matches!(operation, Operation::Set { .. });
             match operation {
                 Operation::Create { node_id, element } => {
                     element
@@ -203,7 +210,7 @@ impl Tree {
                         Node {
                             element: Arc::new(element),
                             parent: None,
-                            children: Vec::new(),
+                            children: Arc::default(),
                             input_revision,
                         },
                     );
@@ -261,13 +268,18 @@ impl Tree {
                 Operation::Delete { node_id } => next.delete(node_id)?,
             }
         }
-        next.validate_graph()?;
+        if graph_changed {
+            next.validate_graph()?;
+        } else {
+            debug_assert!(next.validate_graph().is_ok());
+        }
         next.revision = next_revision(self.revision)?;
         let metrics = BatchMetrics {
             operation_count,
             node_count: next.nodes.len(),
             text_bytes: next.text_bytes,
-            preflight_nanos: started.elapsed().as_nanos().min(MAX_ID as u128) as u64,
+            preflight_nanos: u64::try_from(started.elapsed().as_nanos())
+                .map_or(MAX_ID, |nanos| nanos.min(MAX_ID)),
         };
         Ok(PreparedBatch {
             tree: next,
@@ -333,17 +345,20 @@ impl Tree {
             ancestor = self.nodes.get(&id).ok_or_else(invalid_handle)?.parent;
         }
         if let Some(old_parent) = old_parent {
-            self.nodes
+            let siblings = &mut self
+                .nodes
                 .get_mut(&old_parent)
                 .ok_or_else(invalid_handle)?
-                .children
-                .retain(|id| *id != child_id);
+                .children;
+            Arc::make_mut(siblings).retain(|id| *id != child_id);
         }
-        let children = &mut self
-            .nodes
-            .get_mut(&parent_id)
-            .ok_or_else(invalid_handle)?
-            .children;
+        let children = Arc::make_mut(
+            &mut self
+                .nodes
+                .get_mut(&parent_id)
+                .ok_or_else(invalid_handle)?
+                .children,
+        );
         if index > children.len() {
             return Err(error(
                 ErrorCode::InvalidCommand,
@@ -367,23 +382,26 @@ impl Tree {
         }
         let parent = self.nodes.get(&node_id).ok_or_else(invalid_handle)?.parent;
         if let Some(parent) = parent {
-            self.nodes
+            let siblings = &mut self
+                .nodes
                 .get_mut(&parent)
                 .ok_or_else(invalid_handle)?
-                .children
-                .retain(|id| *id != node_id);
+                .children;
+            Arc::make_mut(siblings).retain(|id| *id != node_id);
         }
         let mut pending = vec![node_id];
         while let Some(id) = pending.pop() {
             let node = self.nodes.remove(&id).ok_or_else(invalid_handle)?;
             self.text_bytes -= node.element.text_bytes();
-            pending.extend(node.children);
+            pending.extend(node.children.iter().copied());
         }
         Ok(())
     }
 
     fn validate_graph(&self) -> Result<(), ModelError> {
-        let mut seen = BTreeSet::new();
+        // One sized allocation; the ordered set rebalanced per node and
+        // dominated small-update preflight on large trees.
+        let mut seen = HashSet::with_capacity(self.nodes.len());
         let mut pending = vec![(self.root_id, None, 0)];
         while let Some((id, parent, depth)) = pending.pop() {
             if depth > MAX_DEPTH {
@@ -405,9 +423,11 @@ impl Tree {
                     "tree parent and child ownership disagree",
                 ));
             }
-            for child in &node.children {
-                pending.push((*child, Some(id), depth + 1));
-            }
+            pending.extend(
+                node.children
+                    .iter()
+                    .map(|child| (*child, Some(id), depth + 1)),
+            );
         }
         if seen.len() != self.nodes.len() {
             return Err(error(
