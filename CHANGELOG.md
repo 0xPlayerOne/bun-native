@@ -1,5 +1,22 @@
 # Changelog
 
+## [0.17.2](https://github.com/0xPlayerOne/bun-native/compare/v0.17.1...v0.17.2) (2026-11-05)
+
+
+### Bug Fixes
+
+* **renderer:** preserve the first reported initialization failure ([#415](https://github.com/0xPlayerOne/bun-native/issues/415)) ([85f6d1c](https://github.com/0xPlayerOne/bun-native/commit/85f6d1cbc571ac21dff4bad983beebaae7e521c9))
+
+
+### Tests
+
+* **toolchain:** make exact command output independent of forced color ([#416](https://github.com/0xPlayerOne/bun-native/issues/416)) ([764b50d](https://github.com/0xPlayerOne/bun-native/commit/764b50d09cc8bb06be1b0f1c2336d5d21f83ae7d))
+
+
+### CI
+
+* schedule protected-main native audits ([#396](https://github.com/0xPlayerOne/bun-native/issues/396)) ([1f012e9](https://github.com/0xPlayerOne/bun-native/commit/1f012e979f8ac0c515ec82a926a0382957c27e13))
+
 ## [0.17.1](https://github.com/0xPlayerOne/bun-native/compare/v0.17.0...v0.17.1) (2026-11-05)
 
 
