@@ -173,6 +173,28 @@ describe('versioned native message validation', () => {
     expect(() => parseCommand(value)).toThrow(ProtocolError)
   })
 
+  test('names unknown operations and malformed capability lists', () => {
+    expect(() => parseCommand({ ...batch, operations: [{ type: 'move', node_id: 2 }] })).toThrow(
+      new ProtocolError('Unknown native operation')
+    )
+    const ready = {
+      type: 'ready',
+      service_policy: {
+        window_display: false,
+        clipboard_read: false,
+        clipboard_write: false,
+        global_shortcuts: false,
+        notifications: false,
+      },
+      protocol: PROTOCOL_VERSION,
+      limits: DEFAULT_LIMITS,
+    }
+    for (const capabilities of ['tree', null, Array.from({ length: 9 }, () => 'tree')])
+      expect(() => parseEvent({ ...ready, capabilities })).toThrow(
+        new ProtocolError('Invalid native capabilities')
+      )
+  })
+
   test.each([
     ['ASCII', 'a'.repeat(MAX_TEXT_BYTES)],
     ['three-byte', '€'.repeat((MAX_TEXT_BYTES - 1) / 3) + 'a'],

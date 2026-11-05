@@ -64,3 +64,45 @@ export function observeWindow(window: NativeWindow) {
   }
   return { window: observed, observations }
 }
+
+/** Forward public calls; optionally fail or observe each batch acknowledgement. */
+export function scheduledWindow(window: NativeWindow) {
+  const control = {
+    failure: undefined as Error | undefined,
+    /** Runs once, `depth` microtasks after the next batch acknowledgement. */
+    afterAck: undefined as { depth: number; run: () => void } | undefined,
+  }
+  const scheduled: NativeWindow = {
+    root: window.root,
+    get closed() {
+      return window.closed
+    },
+    get revision() {
+      return window.revision
+    },
+    batch(update) {
+      if (control.failure) return Promise.reject(control.failure)
+      return window.batch(update).then((value) => {
+        const hook = control.afterAck
+        control.afterAck = undefined
+        if (hook) {
+          let next = Promise.resolve()
+          for (let index = 0; index < hook.depth; index += 1) next = next.then(() => {})
+          void next.then(hook.run)
+        }
+        return value
+      })
+    },
+    close: window.close.bind(window),
+    displaySnapshot: window.displaySnapshot.bind(window),
+    readClipboardText: window.readClipboardText.bind(window),
+    writeClipboardText: window.writeClipboardText.bind(window),
+    registerGlobalShortcut: window.registerGlobalShortcut.bind(window),
+    postNotification: window.postNotification.bind(window),
+    input: window.input.bind(window),
+    on: window.on.bind(window),
+    onClick: window.onClick.bind(window),
+    onInput: window.onInput.bind(window),
+  }
+  return { window: scheduled, control }
+}

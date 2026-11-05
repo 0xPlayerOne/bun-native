@@ -100,7 +100,10 @@ for await (const chunk of Bun.stdin.stream()) {
               : mode === 'missing-interactions'
                 ? ['tree', 'input_revisions', 'layout_v1']
                 : REQUIRED_CAPABILITIES,
-        limits: DEFAULT_LIMITS,
+        limits:
+          mode === 'small-limits'
+            ? { ...DEFAULT_LIMITS, max_frame_bytes: 256, max_operations: 1 }
+            : DEFAULT_LIMITS,
       }
       await emit(ready)
       if (mode === 'duplicate-ready') {
@@ -121,6 +124,10 @@ for await (const chunk of Bun.stdin.stream()) {
         const diagnostic = Bun.stderr.writer()
         diagnostic.write('x'.repeat(5_000) + '\nOwned diagnostic peer is waiting at open\n')
         await diagnostic.flush()
+        continue
+      }
+      if (mode === 'unsolicited-error') {
+        await emit({ type: 'error', code: 'native_failure', message: 'Unsolicited failure' })
         continue
       }
       roots.set(command.window_id, command.root_id)
