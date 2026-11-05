@@ -88,6 +88,12 @@ Options: `--adapters core,solid,react`, `--trials 3..30`, `--iterations`,
 per-launch process observations with child-report digests, load averages and
 the summary; `launches/` holds every raw child report and log.
 
+To keep a run in the repository, copy it into a compact record with
+`bun benchmarks/comparison/export.ts ABSOLUTE_RUN_OUTPUT ABSOLUTE_DEST`. The
+destination must not exist yet. The export writes `comparison.json` and
+`launches.jsonl.gz` (every child report plus its stderr tail) and prints a
+Markdown summary table.
+
 ## Not measured here
 
 - A direct Rust GPUI baseline: no Rust application performing this workload
