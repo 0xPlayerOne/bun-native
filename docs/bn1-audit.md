@@ -115,6 +115,8 @@ The lifecycle fixture records process memory and ownership checkpoints, all 1,00
 
 Live-cell counts are not total allocations or allocation rates, and JavaScript heap observations do not measure Rust/GPUI or GPU allocation. The actual native event-stress fixture separately delivers 1,000 XTest edits, verifies every contiguous event/input revision and intermediate value, then requires a complete final paint and OS close. Its application-observed interval includes instrumented delivery and observation work; it is not a per-keystroke dispatch or presentation-latency distribution. [The bridge benchmark](../benchmarks/bridge.ts) measures acknowledged individual/batched mutations separately with evidence instrumentation disabled. [The repeated startup/RSS runner](../benchmarks/NATIVE_BASELINE.md) uses matched release hosts and descriptive distributions with explicitly uncontrolled caches.
 
+The [bridge phase and render attribution](../benchmarks/BRIDGE.md#phase-and-render-attribution-297) for #297 separates prepare, apply, reply, render and paint time with an opt-in host trace. Locally, the individual-update tail follows full 1,001-node renders on the shared UI thread rather than bridge or apply work. The per-node pointer capture callbacks cost 8 native allocation calls per node per rendered frame and at most about 15% of render-to-paint time; that tradeoff is recorded there, and no change to hit testing is made without the native pointer/scroll/focus/macOS qualification it lists.
+
 The separate [native allocation diagnostic](../benchmarks/ALLOCATIONS.md) uses
 standard Heaptrack interception on the actual owned GPUI process while the same
 1,000-cycle public fixture runs. An initial development-host diagnostic observed
