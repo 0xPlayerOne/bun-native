@@ -1,6 +1,6 @@
 # Create your first Bun Native app
 
-Create a Solid or React application inside a Bun Native checkout, run it against a supplied native host, and compile it with Bun's AOT compiler. TypeScript is the default; checked JavaScript with JSX is also supported. The checkout supplies the framework packages and build tools. Independently published packages and automatic native-host acquisition remain open under [#242](https://github.com/0xPlayerOne/bun-native/issues/242).
+Create a Solid or React application inside a Bun Native checkout, run it against a supplied native host, and compile it with Bun's AOT compiler. TypeScript is the default; checked JavaScript with JSX is also supported. This accepted [#242](https://github.com/0xPlayerOne/bun-native/issues/242) workflow uses the checkout's framework packages and build tools. The separate [standalone local-package route](standalone-projects.md) is tracked in [#382](https://github.com/0xPlayerOne/bun-native/issues/382), with its own installation and native qualification. Registry publication, automatic host acquisition and the wider support contract remain separate work.
 
 ## 1. Prepare the checkout
 

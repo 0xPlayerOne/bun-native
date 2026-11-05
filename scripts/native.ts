@@ -1,19 +1,21 @@
+#!/usr/bin/env bun
 import { mkdir, mkdtemp, rm } from 'node:fs/promises'
 import { join, resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { parseArgs } from 'node:util'
-import { buildProject, bundleProject, prebuiltHost } from './native/build.ts'
+import { prebuiltHost } from './native/host.ts'
 import { createProject, readProject } from './native/project.ts'
-import { watchProject } from './native/watch.ts'
 
 const repository = resolve(import.meta.dir, '..')
-const usage = `Bun Native checkout tooling
+const usage = `Bun Native application tooling
 
   bun run native create apps/my-app [--framework solid|react] [--language typescript|javascript]
+  bun scripts/native.ts create /path/to/my-app --packages /path/to/package-set/manifest.json
   bun run native dev apps/my-app --host /absolute/path/to/bun-native-host [--watch]
   bun run native build apps/my-app --host /absolute/path/to/bun-native-host --host-profile dev|release [--outdir directory]
 
-Projects use the checkout's installed dependencies. Native hosts must be supplied explicitly.
+Projects use checkout dependencies unless --packages selects a standalone local package set.
+Standalone scripts use their own installed CLI. Native hosts must be supplied explicitly.
 dev starts once; --watch remounts the app after edits and resets state. build produces unsigned same-platform AOT artifacts.
 No command downloads a host or runs Cargo. See docs/developer-tooling.md.`
 
@@ -31,6 +33,7 @@ async function main(args: string[]): Promise<void> {
       options: {
         framework: { type: 'string', default: 'solid' },
         language: { type: 'string', default: 'typescript' },
+        packages: { type: 'string' },
       },
     })
     if (positionals.length !== 1)
@@ -39,9 +42,19 @@ async function main(args: string[]): Promise<void> {
       throw new Error('--framework must be solid or react')
     if (values.language !== 'typescript' && values.language !== 'javascript')
       throw new Error('--language must be typescript or javascript')
-    const path = await createProject(repository, positionals[0]!, values.framework, values.language)
+    const path = await createProject(
+      repository,
+      positionals[0]!,
+      values.framework,
+      values.language,
+      values.packages
+    )
     console.log(`Created ${values.framework} ${values.language} project: ${path}`)
-    console.log('Run its check script, then dev with --host pointing to a prebuilt native host.')
+    console.log(
+      values.packages
+        ? 'Follow the generated README to install the pinned dependencies, then run check and dev with a prebuilt host.'
+        : 'Run its check script, then dev with --host pointing to a prebuilt native host.'
+    )
     return
   }
   if (command !== 'dev' && command !== 'build')
@@ -61,9 +74,11 @@ async function main(args: string[]): Promise<void> {
   const host = await prebuiltHost(typeof values['host'] === 'string' ? values['host'] : undefined)
   const project = await readProject(repository, positionals[0]!)
   if (command === 'dev' && values.watch) {
+    const { watchProject } = await import('./native/watch.ts')
     await watchProject(repository, project.directory, host)
     return
   }
+  const { buildProject, bundleProject } = await import('./native/build.ts')
   if (command === 'build') {
     const profile = values['host-profile']
     if (profile !== 'dev' && profile !== 'release')

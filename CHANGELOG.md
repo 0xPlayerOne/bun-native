@@ -1,5 +1,24 @@
 # Changelog
 
+## [0.16.1](https://github.com/0xPlayerOne/bun-native/compare/v0.16.0...v0.16.1) (2026-11-04)
+
+
+### Documentation
+
+* record verified hosted native platform coverage ([6b4a775](https://github.com/0xPlayerOne/bun-native/commit/6b4a775b139e4a40c802b54614f0ae80dfcb6142))
+
+## [0.16.0](https://github.com/0xPlayerOne/bun-native/compare/v0.15.0...v0.16.0) (2026-11-04)
+
+
+### Features
+
+* **cli:** deliver native templates and joined watch remounts ([#360](https://github.com/0xPlayerOne/bun-native/issues/360)) ([77c842f](https://github.com/0xPlayerOne/bun-native/commit/77c842faa3137e8155b24c1d123d16c1ed5b76ed))
+
+
+### Bug Fixes
+
+* **benchmarks:** bind shared workload oracle in source manifests ([#379](https://github.com/0xPlayerOne/bun-native/issues/379)) ([c9ba430](https://github.com/0xPlayerOne/bun-native/commit/c9ba430d2100841ff7c336bd4cad33a4bc4bcdf4))
+
 ## [0.15.0](https://github.com/0xPlayerOne/bun-native/compare/v0.14.4...v0.15.0) (2026-11-04)
 
 

@@ -253,6 +253,13 @@ def scenario(package_root, case, mode, output):
             "--host",
             str(host),
         ]
+    return counter_command(
+        framework, mode, output, [*owned, *(["--", *command] if command else [])]
+    )
+
+
+def counter_command(framework, mode, output, command):
+    """One unchanged native paint/input/close oracle for checkout and installed apps."""
     driver = REPOSITORY / "scripts/quality/native-input-linux.py"
     return [
         sys.executable,
@@ -276,8 +283,7 @@ def scenario(package_root, case, mode, output):
         "--expect-render",
         json.dumps(counter_paint(framework, 1)),
         "--",
-        *owned,
-        *(["--", *command] if command else []),
+        *command,
     ]
 
 
