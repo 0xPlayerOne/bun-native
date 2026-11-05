@@ -1,5 +1,5 @@
 import { mkdir, readdir, realpath, writeFile } from 'node:fs/promises'
-import { dirname, isAbsolute, join, resolve } from 'node:path'
+import { basename, dirname, isAbsolute, join, resolve } from 'node:path'
 import { isDeepStrictEqual, parseArgs } from 'node:util'
 import { consumerArchiveLock, parsePackageSet } from '../native/package-set.ts'
 import { seedConsumerLock, verifyConsumerLock } from '../native/package-lock.ts'
@@ -90,9 +90,13 @@ async function json(path: string, value: unknown): Promise<void> {
   await writeFile(path, JSON.stringify(value, null, 2) + '\n')
 }
 
-async function main(): Promise<void> {
+const usage =
+  'Usage: standalone-lock-control.ts --input ABSOLUTE_RETAINED_COHORT --prior ABSOLUTE_C16_FAILED_CONTROL --outdir ABSOLUTE_NEW_DIRECTORY'
+
+/** Parses the absolute paths; `outdir` names the new directory itself, never a root. */
+export function lockControlArguments(args: string[]) {
   const { values } = parseArgs({
-    args: process.argv.slice(2),
+    args,
     strict: true,
     options: {
       input: { type: 'string' },
@@ -107,8 +111,15 @@ async function main(): Promise<void> {
       isAbsolute(values.input) &&
       isAbsolute(values.prior) &&
       isAbsolute(values.outdir),
-    'Usage: standalone-lock-control.ts --input ABSOLUTE_RETAINED_COHORT --prior ABSOLUTE_C16_FAILED_CONTROL --outdir ABSOLUTE_NEW_DIRECTORY'
+    usage
   )
+  const outdir = resolve(values.outdir)
+  ensure(dirname(outdir) !== outdir, usage)
+  return { input: values.input, prior: values.prior, outdir }
+}
+
+async function main(): Promise<void> {
+  const values = lockControlArguments(process.argv.slice(2))
   ensure(
     process.platform === 'linux' &&
       process.arch === 'x64' &&
@@ -119,7 +130,7 @@ async function main(): Promise<void> {
   const source = await sourceSnapshot()
   const input = await realpath(values.input)
   const prior = await realpath(values.prior)
-  const output = join(await realpath(dirname(values.outdir)), values.outdir.split('/').at(-1)!)
+  const output = join(await realpath(dirname(values.outdir)), basename(values.outdir))
   ensure(output !== input && !inside(input, output), 'Do not write into the retained cohort')
   ensure(output !== prior && !inside(prior, output), 'Do not write into the prior failed control')
   for (const line of git('worktree', 'list', '--porcelain').split('\n'))
