@@ -1,4 +1,4 @@
-name: Immutable dependency source receipts
+name: Pinned quality tool receipt
 on:
   push:
     branches: [test/source-receipt-20261105-1255]
@@ -14,32 +14,24 @@ jobs:
         with:
           ref: 9520477038da7b3a3bf88af9eef98ce6aeeb45ef
           persist-credentials: false
-      - name: Export immutable branch and common-ancestor source
+      - name: Install only the repository-hashed quality wheel and retain its public binary
         shell: bash
         run: |
           set -euo pipefail
           test "$(git rev-parse HEAD)" = 9520477038da7b3a3bf88af9eef98ce6aeeb45ef
-          out="$RUNNER_TEMP/dependency-source-receipts"
+          out="$RUNNER_TEMP/quality-receipt"
           mkdir -p "$out"
-          for ref in \
-            9520477038da7b3a3bf88af9eef98ce6aeeb45ef \
-            2a882e7ca401dec07a0a4e16f3d9ebcc90f816cf \
-            b1a7e5336e3c5a7bb992349ea064b6d87b0cee85 \
-            c4d4c2e74d561ce19621e3e3940469d33bf3f118 \
-            c9ba430d2100841ff7c336bd4cad33a4bc4bcdf4 \
-            d4a1db9ae1067e694062b8590870fea384166232 \
-            27405939ce1007d4142e1bb67e9ecc6ca3ce0411; do
-            git -c gc.auto=0 fetch --no-tags --depth=1 origin "$ref"
-            test "$(git rev-parse FETCH_HEAD)" = "$ref"
-            git archive --format=tar.gz "$ref" > "$out/$ref.tar.gz"
-            git ls-tree -r "$ref" > "$out/$ref.tree.txt"
-            git rev-parse "$ref" "$ref^{tree}" > "$out/$ref.identity.txt"
-          done
+          python3 -m venv "$RUNNER_TEMP/native-quality"
+          "$RUNNER_TEMP/native-quality/bin/pip" install --disable-pip-version-check --no-deps --only-binary=:all: --require-hashes -r scripts/quality/requirements.txt > "$out/install.log" 2>&1
+          cp "$RUNNER_TEMP/native-quality/bin/ruff" "$out/ruff"
+          cp scripts/quality/requirements.txt "$out/requirements.txt"
+          "$out/ruff" --version > "$out/version.txt"
+          git rev-parse HEAD HEAD^{tree} > "$out/source.txt"
           cd "$out"
-          sha256sum ./*.tar.gz ./*.tree.txt ./*.identity.txt > SHA256SUMS
+          sha256sum ruff requirements.txt install.log version.txt source.txt > SHA256SUMS
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
-          name: immutable-dependent-source-receipts
-          path: ${{ runner.temp }}/dependency-source-receipts/
+          name: pinned-ruff-0-17-3-linux-x64
+          path: ${{ runner.temp }}/quality-receipt/
           if-no-files-found: error
           retention-days: 1
