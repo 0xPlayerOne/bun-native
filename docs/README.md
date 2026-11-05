@@ -19,7 +19,7 @@ The initial [shared native layout contract](native-layout.md) extends this tree 
 ## Build and operate
 
 6. [Getting started](getting-started.md) — first contributor steps and what does not work yet
-7. [Development workflow](development.md) — current and intended edit loop; [checkout CLI](developer-tooling.md) — implemented create/dev/build commands and limitations
+7. [Development workflow](development.md) — current and intended edit loop; [checkout CLI](developer-tooling.md) — implemented create/dev/build commands and limitations; [reproducible builds](reproducible-builds.md) — which outputs are byte-identical and how that is checked
 8. [Testing and validation](testing.md) — hosted CI, connected Mac native checks and evidence
 9. [Benchmark design](../benchmarks/README.md) — performance fixtures, comparators and raw measurements
 10. [Releasing](releasing.md) — native AOT targets, installers, signing, updates and rollback

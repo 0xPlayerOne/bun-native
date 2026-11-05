@@ -29,7 +29,12 @@ def retain_build_diagnostics(project, destination):
     """Retain the actual existing producer logs/launcher before owned cleanup."""
     destination.mkdir()
     files = {}
-    for name in ("compile-aot.stdout.log", "compile-aot.stderr.log", "launcher.ts"):
+    for name in (
+        "build-metrics.json",
+        "compile-aot.stdout.log",
+        "compile-aot.stderr.log",
+        "launcher.ts",
+    ):
         source, retained = project / "dist" / name, destination / name
         require(
             source.is_file() and not source.is_symlink(),
@@ -113,8 +118,13 @@ def build_receipt(project, source, toolchain, host, bun):
     )
     command = manifest["application"]["compileCommand"]
     require(
-        command[:3] == [str(bun), "--no-install", "compile"],
+        command[:3] == ["bun", "--no-install", "compile"],
         "AOT child lost its explicit no-install guard",
+    )
+    require(
+        manifest["application"]["compiler"]
+        == {"revision": toolchain["bun"]["revision"], "executable": digest(bun)},
+        "AOT compiler identity differs",
     )
     for field in ("application", "developmentModule", "host"):
         item = manifest[field]

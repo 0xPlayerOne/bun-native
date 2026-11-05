@@ -76,8 +76,11 @@ The build reuses the fixture packager's pinned `bun compile` implementation and 
 
 - `application` (`application.exe` on Windows), the actual AOT executable.
 - `bun-native-host` (`bun-native-host.exe` on Windows), copied from the explicit input.
-- `manifest.json`, with OS/CPU, exact toolchain, application/module/host SHA-256 and byte sizes, compiler command, compilation duration, executable inspections and validation status.
+- `manifest.json`, with OS/CPU, exact toolchain, application/module/source-map/launcher/host SHA-256 and byte sizes, the compiler revision and executable digest, the compiler command (paths relative to the output directory), executable inspections, validation status and a `reproducibility` file inventory.
 - The bundled development module and source map, generated launcher, and compiler logs for reproduction and diagnosis.
+- `build-metrics.json`, with the compilation duration.
+
+Equal sources and pins produce byte-identical files listed in `manifest.reproducibility.deterministic`, independent of the checkout location, output directory, working directory and build time. Compiler logs and `build-metrics.json` are diagnostics and are not reproducible. See [reproducible builds](reproducible-builds.md).
 
 The application resolves its host next to its own executable, so the output directory can be moved and launched from another working directory. `BUN_NATIVE_HOST` is an explicit runtime override. Keep the application and bundled host together. Changed host or bundled-module bytes during packaging cause a failure. On failure, inspect the retained logs and use a new empty output directory for a retry.
 
@@ -103,7 +106,7 @@ The [preserved first template failure](../tests/native/evidence/template-pointer
 
 These are eight bounded Linux cases: Solid/React × TypeScript/JavaScript × development/AOT. The workflow's `cli-templates` evidence directory contains preparation provenance plus each case's `result.json` and `lifecycle.json`; development cases also retain their actual `native-dev-module`. Exact `native dev` qualification requires these changed-command cases to pass on the current source head. Native qualification of `native dev --watch`, 100 native reload cycles, hardware GPU or physical-input behavior, macOS/Windows template qualification, and installation outside the checkout remain separate work. Assess the actual run's statuses before claiming qualification.
 
-Linux native artifacts now also retain `unsigned-native-host.tar.gz`, containing the executable from that job's release build. Match the extracted executable to `binary-sha256.txt` and the source/toolchain records in the same artifact before supplying its absolute path to `--host`. The archive is an experimental reproducibility artifact, is retained for the workflow's normal 14-day artifact lifetime, and still needs the documented Linux native libraries. It does not provide an automatic download/cache policy or a standalone application installer.
+Linux native artifacts now also retain `unsigned-native-host.tar.gz`, containing the executable from that job's release build. It is packed by `scripts/native/host-archive.ts` with fixed metadata and the commit time, so the archive bytes depend only on the executable ([reproducible builds](reproducible-builds.md)). Match the extracted executable to `binary-sha256.txt` and the source/toolchain records in the same artifact before supplying its absolute path to `--host`. The archive is an experimental reproducibility artifact, is retained for the workflow's normal 14-day artifact lifetime, and still needs the documented Linux native libraries. It does not provide an automatic download/cache policy or a standalone application installer.
 
 ### Native watch qualification
 
