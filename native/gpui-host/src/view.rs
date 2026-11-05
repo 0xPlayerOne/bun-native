@@ -12,6 +12,7 @@ use gpui::{
 };
 use std::collections::BTreeMap;
 use std::rc::Rc;
+use std::time::Instant;
 
 actions!(native_button, [ActivateButton]);
 actions!(native_window, [FocusNext, FocusPrevious]);
@@ -330,8 +331,9 @@ impl NativeView {
 
 impl Render for NativeView {
     fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        let render_started = Instant::now();
         let state = self.state.borrow();
-        let layout = self.evidence.enabled().then(|| {
+        let layout = self.evidence.layout_tracing().then(|| {
             let focus = self
                 .buttons
                 .iter()
@@ -406,6 +408,7 @@ impl Render for NativeView {
                         // selected the deepest GPUI hit before default actions.
                         pointer.observe(window, &view);
                         let state = paint_state.borrow();
+                        evidence.frame(window_id, &state.tree, render_started);
                         evidence.painted(
                             window_id,
                             &state.tree,
