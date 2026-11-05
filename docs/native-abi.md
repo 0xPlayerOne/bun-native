@@ -14,7 +14,10 @@ shortcut registrations and owned desktop notifications. The optional
 `overlays_v1` and `scroll_anchor_v1` capabilities add the `overlay` container
 element and the `scroll_anchor` style field defined by the
 [overlay contract](native-overlays.md); core rejects both locally when a host
-does not advertise them.
+does not advertise them. The optional `focus_v1` and `scroll_control_v1`
+capabilities add the `focus`, `scroll_to` and `scroll_into_view` batch
+operations, and `overlay_keyboard_v1` adds the overlay `autofocus` and
+`navigation` fields, under the same contract and local rejection rule.
 
 The authoritative schemas and validators are
 [`packages/protocol/src/messages.ts`](../packages/protocol/src/messages.ts),

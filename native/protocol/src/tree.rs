@@ -2,7 +2,7 @@
 //! successful preparation, so invalid input cannot partially alter a window.
 
 use crate::{
-    validate_text, Element, ErrorCode, NodeId, Operation, Style, MAX_DEPTH, MAX_ID,
+    validate_text, Element, ErrorCode, NodeId, Operation, Overflow, Style, MAX_DEPTH, MAX_ID,
     MAX_NODES_PER_WINDOW, MAX_OPERATIONS, MAX_OVERLAY_DEPTH, MAX_TEXT_BYTES_PER_WINDOW,
 };
 use serde::Serialize;
@@ -60,10 +60,24 @@ pub struct BatchMetrics {
     pub preflight_nanos: u64,
 }
 
+/// A focus or scroll request validated against the batch's final tree. The
+/// native view applies requests in order after the tree commit.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum ViewRequest {
+    Focus(NodeId),
+    ScrollTo {
+        node_id: NodeId,
+        x: Option<f64>,
+        y: Option<f64>,
+    },
+    ScrollIntoView(NodeId),
+}
+
 pub struct PreparedBatch {
     pub tree: Tree,
     pub last_node_id: u64,
     pub metrics: BatchMetrics,
+    pub requests: Vec<ViewRequest>,
 }
 
 fn error(code: ErrorCode, message: &'static str) -> ModelError {
@@ -178,6 +192,7 @@ impl Tree {
         // Property payloads are immutable Arc values: cloning the bounded graph
         // copies its links, not every text string on each keypress or update.
         let mut next = self.clone();
+        let mut requests = Vec::new();
         for operation in operations {
             match operation {
                 Operation::Create { node_id, element } => {
@@ -259,9 +274,19 @@ impl Tree {
                     index,
                 } => next.insert(parent_id, child_id, index)?,
                 Operation::Delete { node_id } => next.delete(node_id)?,
+                Operation::Focus { node_id } => requests.push(ViewRequest::Focus(node_id)),
+                Operation::ScrollTo { node_id, x, y } => {
+                    requests.push(ViewRequest::ScrollTo { node_id, x, y })
+                }
+                Operation::ScrollIntoView { node_id } => {
+                    requests.push(ViewRequest::ScrollIntoView(node_id))
+                }
             }
         }
         next.validate_graph()?;
+        for request in &requests {
+            next.validate_request(*request)?;
+        }
         next.revision = next_revision(self.revision)?;
         let metrics = BatchMetrics {
             operation_count,
@@ -273,7 +298,87 @@ impl Tree {
             tree: next,
             last_node_id,
             metrics,
+            requests,
         })
+    }
+
+    /// The modal overlay highest in paint order: deepest nesting first, then
+    /// the later one in tree pre-order. Focus and Tab order stay inside it.
+    pub fn active_modal(&self) -> Option<NodeId> {
+        let mut active: Option<(usize, NodeId)> = None;
+        let mut pending = vec![(self.root_id, 0)];
+        while let Some((id, outer)) = pending.pop() {
+            let Some(node) = self.nodes.get(&id) else {
+                continue;
+            };
+            let depth = match node.element.as_ref() {
+                Element::Overlay { modal, .. } => {
+                    if *modal && active.is_none_or(|(depth, _)| outer + 1 >= depth) {
+                        active = Some((outer + 1, id));
+                    }
+                    outer + 1
+                }
+                _ => outer,
+            };
+            pending.extend(node.children.iter().rev().map(|child| (*child, depth)));
+        }
+        active.map(|(_, id)| id)
+    }
+
+    fn validate_request(&self, request: ViewRequest) -> Result<(), ModelError> {
+        match request {
+            ViewRequest::Focus(node_id) => {
+                let node = self.nodes.get(&node_id).ok_or_else(invalid_handle)?;
+                if !matches!(
+                    node.element.as_ref(),
+                    Element::Button {
+                        disabled: false,
+                        ..
+                    } | Element::Input { .. }
+                ) {
+                    return Err(error(
+                        ErrorCode::InvalidState,
+                        "only an enabled button or an input can take focus",
+                    ));
+                }
+                let path = self.path(node_id).unwrap_or_default();
+                if self
+                    .active_modal()
+                    .is_some_and(|modal| !path.contains(&modal))
+                {
+                    return Err(error(
+                        ErrorCode::InvalidState,
+                        "focus target is outside the active modal overlay",
+                    ));
+                }
+            }
+            ViewRequest::ScrollTo { node_id, x, y } => {
+                let node = self.nodes.get(&node_id).ok_or_else(invalid_handle)?;
+                let overflow = node.element.style().overflow;
+                if !overflow.is_some_and(Overflow::scrolls) {
+                    return Err(error(
+                        ErrorCode::InvalidState,
+                        "scroll_to requires a scrolling container",
+                    ));
+                }
+                // Offsets were bounded when the command was decoded.
+                for (value, axes) in [
+                    (x, [Overflow::ScrollX, Overflow::Scroll]),
+                    (y, [Overflow::ScrollY, Overflow::Scroll]),
+                ] {
+                    if value.is_some() && !overflow.is_some_and(|mode| axes.contains(&mode)) {
+                        return Err(error(
+                            ErrorCode::InvalidState,
+                            "scroll_to axis does not scroll on this container",
+                        ));
+                    }
+                }
+            }
+            ViewRequest::ScrollIntoView(node_id) => {
+                self.nodes.get(&node_id).ok_or_else(invalid_handle)?;
+            }
+        }
+        Ok(())
     }
 
     /// Native editing advances only this input's revision, so typing cannot

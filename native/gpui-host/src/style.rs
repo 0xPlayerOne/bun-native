@@ -1,5 +1,5 @@
 use bun_native_protocol::{AlignItems, Dimension, Direction, JustifyContent, Overflow, Style};
-use gpui::{Overflow as NativeOverflow, Styled, px, relative, rgb};
+use gpui::{BoxShadow, Overflow as NativeOverflow, Styled, px, relative, rgb};
 
 /// Values have already passed protocol bounds. Convert to GPUI pixels only
 /// here, after f64 validation, so rounding cannot admit out-of-range values.
@@ -87,4 +87,20 @@ pub(crate) fn apply<T: Styled>(mut element: T, style: &Style) -> T {
         element = element.text_size(px(size as f32));
     }
     element
+}
+
+/// The keyboard focus indicator: a 1-pixel white edge over a 2-pixel dark
+/// band, inset so ancestor clipping never hides it and layout never moves.
+/// The pair stays visible on light and dark control backgrounds alike.
+pub(crate) const FOCUS_RING_WIDTH: f32 = 3.;
+
+pub(crate) fn focus_ring() -> Vec<BoxShadow> {
+    vec![
+        BoxShadow::new(px(0.), px(0.), rgb(0x101828).into())
+            .spread_radius(px(FOCUS_RING_WIDTH))
+            .inset(),
+        BoxShadow::new(px(0.), px(0.), rgb(0xffffff).into())
+            .spread_radius(px(1.))
+            .inset(),
+    ]
 }

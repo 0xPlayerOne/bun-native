@@ -4,6 +4,7 @@ export {
   parseElement,
   type Element,
   type OverlayElement,
+  type OverlayKeyboard,
   type Style,
 } from './elements.ts'
 export { MAX_TEXT_BYTES } from './values.ts'
@@ -24,6 +25,7 @@ export {
   DEFAULT_LIMITS,
   ERROR_CODES,
   MAX_OPERATIONS,
+  MAX_SCROLL_OFFSET,
   parseCommand,
   parseEvent,
   PROTOCOL_VERSION,

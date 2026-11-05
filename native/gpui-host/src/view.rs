@@ -6,18 +6,21 @@ use crate::{
     style,
 };
 use bun_native_protocol::{
-    Element as NativeElement, Event, NodeId, Overflow, ScrollAnchor, Style, Tree, WindowId,
+    Element as NativeElement, Event, NodeId, Overflow, ScrollAnchor, Style, Tree, ViewRequest,
+    WindowId,
 };
 use gpui::{
     AnyElement, App, Context, Div, Entity, FocusHandle, Focusable, KeyBinding, MouseButton, Pixels,
     ScrollHandle, Size, Stateful, Subscription, Window, actions, canvas, deferred, div, prelude::*,
     px, rgb,
 };
-use std::collections::BTreeMap;
+use std::cell::RefCell;
+use std::collections::{BTreeMap, BTreeSet};
 use std::rc::Rc;
 
 actions!(native_button, [ActivateButton]);
 actions!(native_window, [FocusNext, FocusPrevious]);
+actions!(native_menu, [MenuNext, MenuPrevious, MenuFirst, MenuLast]);
 
 pub(crate) fn bind_keys(cx: &mut App) {
     cx.bind_keys([
@@ -25,6 +28,11 @@ pub(crate) fn bind_keys(cx: &mut App) {
         KeyBinding::new("space", ActivateButton, Some("NativeButton")),
         KeyBinding::new("tab", FocusNext, Some("NativeWindow")),
         KeyBinding::new("shift-tab", FocusPrevious, Some("NativeWindow")),
+        // A focused input's own Home/End bindings are deeper and win.
+        KeyBinding::new("down", MenuNext, Some("NativeWindow")),
+        KeyBinding::new("up", MenuPrevious, Some("NativeWindow")),
+        KeyBinding::new("home", MenuFirst, Some("NativeWindow")),
+        KeyBinding::new("end", MenuLast, Some("NativeWindow")),
     ]);
 }
 
@@ -37,6 +45,10 @@ pub(crate) struct NativeView {
     focus_subscriptions: BTreeMap<NodeId, [Subscription; 2]>,
     reported_focus: Option<NodeId>,
     overlays: Overlays,
+    type_ahead: TypeAhead,
+    /// Viewports with a pending programmatic scroll this frame; their end
+    /// anchor does not re-pin them before GPUI resolves the request.
+    held_scrolls: RefCell<BTreeSet<NodeId>>,
     viewport: Size<Pixels>,
     _subscriptions: [Subscription; 2],
     events: EventSink,
@@ -56,7 +68,10 @@ impl NativeView {
         let view = cx.weak_entity();
         let keyboard = cx.intercept_keystrokes(move |event, window, cx| {
             if window.window_handle() == owned_window {
-                let _ = view.update(cx, |view, cx| view.key(&event.keystroke, true, window, cx));
+                let _ = view.update(cx, |view, cx| {
+                    view.key(&event.keystroke, true, window, cx);
+                    view.type_ahead(&event.keystroke, window, cx);
+                });
             }
         });
         let focus_lost = cx.on_focus_lost(window, |view, window, cx| view.sync_focus(window, cx));
@@ -69,6 +84,8 @@ impl NativeView {
             focus_subscriptions: BTreeMap::new(),
             reported_focus: None,
             overlays: Overlays::default(),
+            type_ahead: TypeAhead::default(),
+            held_scrolls: RefCell::default(),
             viewport: window.viewport_size(),
             _subscriptions: [keyboard, focus_lost],
             events,
@@ -78,7 +95,13 @@ impl NativeView {
 
     /// Called synchronously after complete transaction preflight. This method
     /// does not yield or dispatch native input between model and entity updates.
-    pub(crate) fn apply(&mut self, tree: Tree, window: &mut Window, cx: &mut Context<Self>) {
+    pub(crate) fn apply(
+        &mut self,
+        tree: Tree,
+        requests: &[ViewRequest],
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
         let focused_before = self.focused_control(window, cx);
         self.state.borrow_mut().tree = tree;
         // Snapshot cheap Arc-backed properties before focus/IME notifications:
@@ -177,6 +200,7 @@ impl NativeView {
         }
         self.reconcile_overlays(focused_before, window, cx);
         self.reconcile_focus(window, cx);
+        self.apply_requests(requests, window, cx);
         cx.notify();
         #[cfg(target_os = "macos")]
         {
@@ -294,6 +318,7 @@ impl NativeView {
                         .clone();
                     button = button
                         .track_focus(&focus)
+                        .focus_visible(|style| style.shadow(style::focus_ring()))
                         .key_context("NativeButton")
                         .cursor_pointer()
                         .on_mouse_down(MouseButton::Left, move |_, window, cx| {
@@ -337,6 +362,7 @@ impl NativeView {
             // A viewport already showing its end stays there as content or
             // the viewport changes; a user scroll away from the end releases it.
             if properties.scroll_anchor == Some(ScrollAnchor::End)
+                && !self.held_scrolls.borrow().contains(&node_id)
                 && handle.offset().y <= -handle.max_offset().y + px(1.)
             {
                 handle.scroll_to_bottom();
@@ -386,6 +412,8 @@ impl Render for NativeView {
             &pointer,
             cx,
         );
+        // Requests issued before this frame resolve in its prepaint.
+        self.held_scrolls.borrow_mut().clear();
         let view = cx.weak_entity();
         let evidence = self.evidence.clone();
         let paint_state = self.state.clone();
@@ -428,6 +456,18 @@ impl Render for NativeView {
                     view.focus_step(false, window, cx)
                 }),
             )
+            .on_action(cx.listener(|view, _: &MenuNext, window, cx| {
+                view.menu_action(MenuMove::Next, window, cx)
+            }))
+            .on_action(cx.listener(|view, _: &MenuPrevious, window, cx| {
+                view.menu_action(MenuMove::Previous, window, cx)
+            }))
+            .on_action(cx.listener(|view, _: &MenuFirst, window, cx| {
+                view.menu_action(MenuMove::First, window, cx)
+            }))
+            .on_action(cx.listener(|view, _: &MenuLast, window, cx| {
+                view.menu_action(MenuMove::Last, window, cx)
+            }))
             .children(pointer_trace)
             .child(body)
             .child(
@@ -456,6 +496,12 @@ impl Render for NativeView {
 }
 
 impl NativeView {
+    fn menu_action(&mut self, step: MenuMove, window: &mut Window, cx: &mut Context<Self>) {
+        if !self.menu_move(step, window, cx) {
+            cx.propagate();
+        }
+    }
+
     /// The final pointer observer must register after every overlay layer's
     /// capture listeners, so it is deferred above them while any overlay lives.
     fn observer(&self, observer: impl IntoElement) -> AnyElement {
@@ -469,7 +515,9 @@ impl NativeView {
     }
 }
 mod interactions;
+mod keyboard;
 mod overlays;
 
 use interactions::PointerFrame;
+use keyboard::{MenuMove, TypeAhead};
 use overlays::{OBSERVER_PRIORITY, Overlays};

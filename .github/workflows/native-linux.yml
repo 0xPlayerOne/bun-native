@@ -195,7 +195,7 @@ jobs:
               dbus-run-session -- bash scripts/quality/native-linux-session.sh \
               "$evidence-session" -- "${command[@]}" 2>&1 | tee "$evidence/run.log"
           done
-      - name: Development and AOT overlays, modal focus and scroll anchoring
+      - name: Development and AOT overlays, modal focus, keyboard menus and scrolling
         timeout-minutes: 3
         env:
           BUN_NATIVE_HOST: ${{ github.workspace }}/target/release/bun-native-host

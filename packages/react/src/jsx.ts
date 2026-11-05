@@ -27,9 +27,12 @@ export namespace JSX {
       placeholder?: string
     }
     /** Painted above the ordinary tree; only window-anchored overlays may be modal. */
-    overlay: Base<'overlay'> & { children?: ReactNode } & (
-        | { anchor?: 'window'; modal?: boolean }
-        | { anchor: 'parent'; modal?: false }
-      )
+    overlay: Base<'overlay'> & {
+      children?: ReactNode
+      /** Requires `overlay_keyboard_v1`: focus the first enabled control on open. */
+      autofocus?: boolean
+      /** Requires `overlay_keyboard_v1`: `menu` adds arrow-key roving focus and type-ahead. */
+      navigation?: 'tab' | 'menu'
+    } & ({ anchor?: 'window'; modal?: boolean } | { anchor: 'parent'; modal?: false })
   }
 }

@@ -42,6 +42,7 @@ export type {
   NativeCapability,
   NativeNode,
   NativeWindow,
+  ScrollOffset,
   Style,
   WindowOptions,
 } from './types.ts'

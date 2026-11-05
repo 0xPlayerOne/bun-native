@@ -2,7 +2,7 @@ import { renderer } from './renderer.ts'
 
 export { render } from './mount.ts'
 export type { RenderOptions, RenderRoot } from './mount.ts'
-export { inputState } from '@bun-native/renderer'
+export { focusNode, inputState, scrollNodeIntoView, scrollNodeTo } from '@bun-native/renderer'
 export type { RendererNode as SolidNode } from '@bun-native/renderer'
 export type { JSX } from './jsx.ts'
 

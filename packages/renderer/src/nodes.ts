@@ -3,6 +3,8 @@ import {
   UnsupportedFeatureError,
   type Element,
   type InputState,
+  type NativeBatch,
+  type NativeNode,
   type Style,
 } from '@bun-native/core'
 import { captureInput, type InputIntent } from './input-intent.ts'
@@ -25,6 +27,8 @@ export interface Owner {
   changed(): void
   detached(node: Node): void
   input(node: Node): InputState
+  /** Commit staged changes, then send one request batch for the committed handle. */
+  request(node: Node, send: (batch: NativeBatch, handle: NativeNode) => void): Promise<void>
 }
 
 type Properties = EventListeners & {
@@ -35,6 +39,8 @@ type Properties = EventListeners & {
   disabled?: boolean
   anchor?: 'window' | 'parent'
   modal?: boolean
+  autofocus?: boolean
+  navigation?: 'tab' | 'menu'
 }
 
 const isContainer = (kind: Node['kind']) => kind === 'box' || kind === 'overlay'
@@ -187,6 +193,18 @@ export function setProperty(node: Node, name: string, value: unknown): void {
       else if (typeof value === 'boolean') props.modal = value
       else throw new TypeError('Native modal must be boolean')
       break
+    case 'autofocus':
+      if (node.kind !== 'overlay') throw new TypeError('Only overlays accept autofocus')
+      if (value === undefined) delete props.autofocus
+      else if (typeof value === 'boolean') props.autofocus = value
+      else throw new TypeError('Native autofocus must be boolean')
+      break
+    case 'navigation':
+      if (node.kind !== 'overlay') throw new TypeError('Only overlays accept navigation')
+      if (value === undefined) delete props.navigation
+      else if (value === 'tab' || value === 'menu') props.navigation = value
+      else throw new TypeError('Native overlay navigation must be tab or menu')
+      break
     default:
       throw new UnsupportedFeatureError('native-property:' + name)
   }
@@ -227,6 +245,8 @@ export function snapshot(root: Node): Map<Node, Snapshot> {
         kind: 'overlay',
         ...(props.anchor === undefined ? {} : { anchor: props.anchor }),
         ...(props.modal === undefined ? {} : { modal: props.modal }),
+        ...(props.autofocus === undefined ? {} : { autofocus: props.autofocus }),
+        ...(props.navigation === undefined ? {} : { navigation: props.navigation }),
         ...(props.style ? { style: { ...props.style } } : {}),
       } as Element
     else if (node.kind === 'input')
