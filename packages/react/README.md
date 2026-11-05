@@ -267,3 +267,19 @@ and development-host hashes: the six event scenarios and four counter regression
 It preserves the earlier protocol2 records as history. Local XTest/software-GPU
 input and paint evidence do not establish physical input, display-presentation
 latency, release performance or macOS/Windows native support.
+
+### Error callback lifetime
+
+Root-scoped error callbacks are revoked when framework teardown finishes, before
+pending native removal acknowledges, including the user-supplied recoverable-error
+reporter. Revocation also runs when framework teardown throws. A reconciler-retained callback cannot
+keep its released owner/reporter reachable or report late errors to that owner.
+Errors raised during unmount still propagate through the existing cleanup path;
+this does not weaken the separate strict collectability diagnostics.
+
+Commit-barrier callbacks use the same one-shot ownership rule: successful
+completion, rejected submission and terminal disposal revoke their root and
+promise bindings before any completion callback runs. A synchronously rejected
+submission returns its reserved slot immediately, so repeated failures cannot
+fill the unchanged 128-barrier queue. Retaining an old reconciler callback does
+not authorize another completion or keep that binding live.

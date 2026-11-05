@@ -46,7 +46,7 @@ export interface RenderRoot {
 
 export interface RenderContext {
   readonly container: Node
-  /** Register framework teardown before evaluating user components. */
+  /** Register one callable teardown while active, before evaluating user components. */
   onCleanup(cleanup: () => void): void
   /** Unrecovered asynchronous framework errors terminate only this render root. */
   fail(cause: unknown): void
@@ -95,6 +95,13 @@ class Root implements RenderRoot, Owner {
       initialize({
         container: this.root,
         onCleanup: (cleanup) => {
+          if (this.phase !== 'active')
+            throw new NativeStateError(
+              'invalid_state',
+              'Cannot register framework cleanup after disposal has started'
+            )
+          if (typeof cleanup !== 'function')
+            throw new TypeError('Framework cleanup must be a function')
           if (this.disposeFramework)
             throw new NativeStateError('invalid_state', 'Framework cleanup is already registered')
           this.disposeFramework = cleanup

@@ -23,6 +23,11 @@ only that renderer's container; it does not change the window or sibling roots.
 subtree. `initialize` receives its staged `container`, an `onCleanup` registration
 and a terminal `fail` callback. Register framework cleanup before evaluating user
 components, so an initialization failure can dispose already-created owners.
+The cleanup registration accepts exactly one function while the root is active.
+Invalid JavaScript values and duplicate registrations are rejected without
+changing the current owner. Disposal revokes registration before invoking teardown,
+so a retained `onCleanup` cannot install another callback during cleanup or after
+window closure or framework failure.
 Asynchronous framework failures call `fail`; it cannot restart a disposed root.
 
 The driver snapshots staged values before awaiting the public-core queue. Only
