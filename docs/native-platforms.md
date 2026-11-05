@@ -8,6 +8,52 @@ fixture for macOS and Windows. It does not infer GUI interaction from compilatio
 The [hosted evidence below](#hosted-paint-os-input-and-assigned-device-evidence)
 qualifies paint/lifecycle and separately enabled OS input on the recorded targets.
 
+## Scheduled finite native audit
+
+[`Bun Native Scheduled Audit`](../.github/workflows/native-audit.yml) schedules
+the existing full validation graph every **Tuesday at 05:23 UTC**. Manual
+validation uses that same caller and is permitted only on `refs/heads/main`
+when `CI_BILLING_PAUSED` is explicitly `false`. It accepts no source/runtime
+ref or other input, grants only repository-content read permission, and never
+cancels an active audit. Scheduled and permitted manual audits share one concurrency
+group. PR and main-push validation keep their existing triggers and gate.
+
+The caller invokes [`bun-native.yml`](../.github/workflows/bun-native.yml)
+through a local reusable reference, so both workflows use the same commit.
+[GitHub schedules](https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#schedule)
+run from the default branch and can be delayed or dropped under load; the
+main-only guard also rejects a manual request selecting another branch.
+Billing-paused or non-main requests are skipped, not qualified. The separate
+caller follows the managed audit policy while these native workflows remain
+repository-owned under the preserved custom-workflow configuration.
+
+This reuses every existing source, protocol, AOT, native and dependency-audit
+job, with the same assertions, timeouts, caches, artifacts and failure gate.
+The finite Linux checks include React's 1,000-update/rotation/mount workloads,
+101 source-edit remounts per framework, and five measured startup/RSS trials
+plus one warmup per mode. macOS and Windows retain their development/AOT
+native paint, lifecycle and owned OS-input checks. These are **finite stress
+checks**, not a long soak, physical-GPU qualification or measured regression
+budget. Linux uses its existing software GPU; all other hardware, IME and
+accessibility limits remain as documented below. Comparable trend/budget
+automation and longer soaks remain [#259](https://github.com/0xPlayerOne/bun-native/issues/259).
+
+### Qualification plan for the scheduling change
+
+Publish the prepared source as a draft after workflow lint, formatting,
+unchanged-job parity review and normal hooks. Qualification uses **one normal
+required PR matrix for the exact prepared head**, preserving every failure,
+skip and original artifact. Do not retry unchanged source to obtain a passing
+result. No native workload or audit dispatch is part of local preparation.
+
+After protected merge, retain separate evidence for the first actual caller
+execution: event and scheduled expression, source commit/tree, run and attempt,
+all job outcomes, the actual aggregate result and original native/AOT artifacts.
+A PR run does not prove that the weekly trigger executed, and static checks do
+not qualify an unexecuted caller. Keep that execution pending until its
+source-bound record exists; regular scheduling does not resolve previously
+retained startup, close or collectability failures.
+
 ## Paint/lifecycle mode and its claims
 
 The reusable [`Native Platforms` workflow](../.github/workflows/native-platforms.yml)
