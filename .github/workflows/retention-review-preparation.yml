@@ -1,0 +1,66 @@
+name: Retention review preparation (transport only)
+
+on:
+  pull_request:
+    branches: [main]
+    types: [ready_for_review]
+    paths: [.github/workflows/retention-review-preparation.yml]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: retention-review-preparation-${{ github.event.pull_request.number }}
+  cancel-in-progress: false
+
+jobs:
+  prepare:
+    name: Pinned offline review inputs (not qualification)
+    if: >-
+      vars.CI_BILLING_PAUSED == 'false' &&
+      github.event.pull_request.draft == false &&
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      github.event.pull_request.head.ref == 'test/retention-review-tools-20261105'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - name: Install the existing checksum-pinned compiler and locked dependencies
+        run: |
+          node scripts/install-bun.mjs --destination "$RUNNER_TEMP/review-bun"
+          "$RUNNER_TEMP/review-bun/bun" install --frozen-lockfile --ignore-scripts
+          git diff --exit-code HEAD
+      - name: Retain only public source, installed dependencies and the verified compiler
+        env:
+          EXPECTED_HEAD: ${{ github.event.pull_request.head.sha }}
+        run: |
+          test "$(git rev-parse HEAD)" = "$EXPECTED_HEAD"
+          output="$RUNNER_TEMP/review-inputs"
+          mkdir "$output"
+          git cat-file commit HEAD > "$output/source-commit.raw"
+          git rev-parse 'HEAD^{tree}' > "$output/source-tree.txt"
+          git ls-tree -rz HEAD > "$output/source-tree.z"
+          git ls-files -z | tar --null --no-recursion -czf "$output/source.tar.gz" -T -
+          tar -czf "$output/dependencies.tar.gz" node_modules
+          tar -czf "$output/compiler.tar.gz" -C "$RUNNER_TEMP/review-bun" bun
+          "$RUNNER_TEMP/review-bun/bun" --revision > "$output/compiler-revision.txt"
+          sha256sum "$RUNNER_TEMP/review-bun/bun" | cut -d ' ' -f 1 > "$output/compiler-sha256.txt"
+          git diff --exit-code HEAD
+          cd "$output"
+          sha256sum source-commit.raw source-tree.txt source-tree.z \
+            source.tar.gz dependencies.tar.gz compiler.tar.gz \
+            compiler-revision.txt compiler-sha256.txt > SHA256SUMS
+          sha256sum --check --strict SHA256SUMS
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: retention-review-inputs-linux-x64-${{ github.event.pull_request.head.sha }}
+          path: ${{ runner.temp }}/review-inputs/
+          if-no-files-found: error
+          retention-days: 3
+          compression-level: 0
