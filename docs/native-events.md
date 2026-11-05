@@ -103,6 +103,50 @@ application value replacement requires the current input revision; ordinary
 typing is observed without echoing stale values into the editor. Ancestor
 movement or styling does not reset a surviving editor's value or input revision.
 
+## Single-line input viewport
+
+The shared input implementation scrolls a long shaped line horizontally to keep
+the active caret or selection endpoint visible. It reserves the painted caret's
+width, preserves the offset while that endpoint remains visible, and clamps the
+offset after a resize, font change or content shrink. Text, selection and caret
+use one viewport clip intersected with the ancestor clip. This is local native
+editor state; it adds no public scrolling method or protocol feature.
+
+Pointer hit testing applies the inverse of the painted offset. Native text range
+and point queries use the same line, bounds and offset snapshot, committed after
+paint. A content edit invalidates that snapshot for geometry queries until the
+next matching paint; a mouse event in that interval preserves the current caret
+instead of interpreting old glyph byte offsets against new text. Same-content
+restyling retains input ownership and selection.
+
+Focused Rust controls exercise the production viewport and GPUI line-index
+methods, including reversed selection, resize, changed font advances, empty or
+very narrow bounds, multibyte text, range clipping and stale geometry rejection:
+
+```sh
+cargo test --locked -p bun-native-host input::viewport::tests
+```
+
+With the existing native evidence log enabled, `BUN_NATIVE_INPUT_VIEWPORT_TRACE=1`
+adds input viewport, effective clip, drawn caret/selection rectangles and byte
+positions to its layout records. The observer reads weak input entities after
+their children paint; it retains no input owner. Caret-only paints can therefore
+publish new geometry without changing the tree or input revision. Normal layout
+records remain unchanged, and the existing 128-node and 65,536-byte bounds still
+apply. These are paint observations; screenshots remain independent evidence of
+displayed pixels.
+
+The Rust controls use fixed glyph advances, so they establish coordinate
+behavior rather than real shaping. The
+[shared Solid/React native viewport recipe](../tests/native/README.md#shared-input-viewport-pixels)
+adds actual OS input, complete native paint, independent caret/text/selection
+pixels, resize, restyle and joined cleanup in development and AOT. Its own
+changed-head hosted qualification remains pending under
+[#241](https://github.com/0xPlayerOne/bun-native/issues/241). The earlier short-input
+native evidence below belongs to its recorded source and is not relabeled as
+qualification of this change. RTL, complete IME, accessibility, physical input
+and HiDPI remain separate unsupported or unverified scope.
+
 ## Reproduce actual native verification
 
 Build the pinned native host once, then reuse it in the existing isolated X11

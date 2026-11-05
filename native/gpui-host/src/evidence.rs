@@ -27,6 +27,7 @@ struct Log {
     last_state: BTreeMap<WindowId, PaintVersion>,
     last_layout: BTreeMap<WindowId, LayoutSnapshot>,
     pointer: Option<pointer::PointerTrace>,
+    input_viewports: bool,
     startup_started: Option<Instant>,
     startup_records: u16,
 }
@@ -61,6 +62,8 @@ impl Evidence {
                 last_state: BTreeMap::new(),
                 last_layout: BTreeMap::new(),
                 pointer: pointer::PointerTrace::from_environment(),
+                input_viewports: std::env::var("BUN_NATIVE_INPUT_VIEWPORT_TRACE").as_deref()
+                    == Ok("1"),
                 startup_started: (std::env::var("BUN_NATIVE_STARTUP_TRACE").as_deref() == Ok("1"))
                     .then(Instant::now),
                 startup_records: 0,
@@ -74,6 +77,12 @@ impl Evidence {
 
     pub(crate) fn enabled(&self) -> bool {
         self.0.is_some()
+    }
+
+    pub(crate) fn input_viewport_tracing(&self) -> bool {
+        self.0
+            .as_ref()
+            .is_some_and(|log| log.borrow().input_viewports)
     }
 
     /// Opt-in phase evidence only; never changes native dispatch or its deadline.

@@ -2,14 +2,17 @@
 // Copyright the Zed contributors. Licensed under Apache-2.0; see LICENSE-APACHE and NOTICE.
 mod binding;
 mod paint;
+mod viewport;
 pub(crate) use binding::InputBinding;
 use paint::TextElement;
 use std::ops::Range;
+use viewport::InputPaint;
+pub(crate) use viewport::{InputViewportSnapshot, PaintedInputDecorations};
 
 use gpui::{
     App, Bounds, ClipboardItem, Context, CursorStyle, EntityInputHandler, FocusHandle, Focusable,
     KeyBinding, MouseButton, MouseDownEvent, MouseMoveEvent, MouseUpEvent, Pixels, Point,
-    ShapedLine, SharedString, UTF16Selection, Window, actions, div, point, prelude::*, px,
+    SharedString, UTF16Selection, Window, actions, div, prelude::*, px,
 };
 use unicode_segmentation::*;
 
@@ -40,8 +43,7 @@ pub(crate) struct TextInput {
     selected_range: Range<usize>,
     selection_reversed: bool,
     marked_range: Option<Range<usize>>,
-    last_layout: Option<ShapedLine>,
-    last_bounds: Option<Bounds<Pixels>>,
+    last_paint: Option<InputPaint>,
     is_selecting: bool,
 }
 
@@ -190,17 +192,12 @@ impl TextInput {
             return 0;
         }
 
-        let (Some(bounds), Some(line)) = (self.last_bounds.as_ref(), self.last_layout.as_ref())
-        else {
-            return 0;
-        };
-        if position.y < bounds.top() {
-            return 0;
-        }
-        if position.y > bounds.bottom() {
-            return self.content.len();
-        }
-        line.closest_index_for_x(position.x - bounds.left())
+        // An edit can arrive before the next paint. Never interpret old glyph
+        // byte indices against new text; retain the current caret instead.
+        self.last_paint
+            .as_ref()
+            .and_then(|paint| paint.mouse_index(&self.content, position))
+            .unwrap_or_else(|| self.cursor_offset())
     }
 
     fn select_to(&mut self, offset: usize, window: &Window, cx: &mut Context<Self>) {
@@ -287,8 +284,7 @@ impl TextInput {
             selected_range: end..end,
             selection_reversed: false,
             marked_range: None,
-            last_layout: None,
-            last_bounds: None,
+            last_paint: None,
             is_selecting: false,
         }
     }
@@ -312,11 +308,15 @@ impl TextInput {
         self.selected_range = end..end;
         self.selection_reversed = false;
         self.marked_range = None;
-        self.last_layout = None;
-        self.last_bounds = None;
+        self.last_paint = None;
         self.is_selecting = false;
         window.notify_text_input_changed(&self.focus_handle);
         cx.notify();
+    }
+
+    /// Opt-in diagnostics read the geometry committed by the last actual paint.
+    pub(crate) fn painted_viewport(&self) -> Option<InputViewportSnapshot> {
+        self.last_paint.as_ref()?.snapshot(&self.content)
     }
 }
 
@@ -465,25 +465,14 @@ impl EntityInputHandler for TextInput {
     fn bounds_for_range(
         &mut self,
         range_utf16: Range<usize>,
-        bounds: Bounds<Pixels>,
+        _bounds: Bounds<Pixels>,
         _window: &mut Window,
         _cx: &mut Context<Self>,
     ) -> Option<Bounds<Pixels>> {
-        let last_layout = self.last_layout.as_ref()?;
-        if last_layout.text != self.content {
-            return None;
-        }
         let range = self.range_from_utf16(&range_utf16);
-        Some(Bounds::from_corners(
-            point(
-                bounds.left() + last_layout.x_for_index(range.start),
-                bounds.top(),
-            ),
-            point(
-                bounds.left() + last_layout.x_for_index(range.end),
-                bounds.bottom(),
-            ),
-        ))
+        self.last_paint
+            .as_ref()?
+            .bounds_for_range(&self.content, range)
     }
 
     fn selection_bounds_for_range(
@@ -504,13 +493,10 @@ impl EntityInputHandler for TextInput {
         _window: &mut Window,
         _cx: &mut Context<Self>,
     ) -> Option<usize> {
-        let line_point = self.last_bounds?.localize(&point)?;
-        let last_layout = self.last_layout.as_ref()?;
-
-        if last_layout.text != self.content {
-            return None;
-        }
-        let utf8_index = last_layout.closest_index_for_x(line_point.x);
+        let utf8_index = self
+            .last_paint
+            .as_ref()?
+            .character_index(&self.content, point)?;
         Some(self.offset_to_utf16(utf8_index))
     }
 }

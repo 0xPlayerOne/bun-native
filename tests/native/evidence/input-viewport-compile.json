@@ -1,0 +1,186 @@
+{
+  "schemaVersion": 1,
+  "issue": 241,
+  "status": "compile-only",
+  "applicationSource": {
+    "commit": "64ae9e5a33e41af61ce48b50d4cf7575e075100e",
+    "tree": "12ddda261fb2f696e9d7563aacfd6925f7562e23",
+    "publicEquivalentCommit": "4aa17ae36c1246cfba4ff10f15eeec6405d5a425"
+  },
+  "nativeSource": {
+    "commit": "8e4fc12d3c0f1a8011bb4c6c53161020852e2bf4",
+    "tree": "e243b7c0758ab91be65c742e2b5765ac4a12fea0",
+    "nativeSubtree": "237e77421e3c22f40c84b621fcc348c8ca340532",
+    "identicalAtApplicationCommit": true,
+    "equivalence": "git diff --quiet 8e4fc12d 64ae9e5 -- native Cargo.toml Cargo.lock rust-toolchain.toml",
+    "publicEquivalentCommit": "7917a679403d41c2d10f69da7985efc7140eb799"
+  },
+  "toolchain": {
+    "bunRevision": "da867c60bf0bcbf9d6d36994f8ca0efa42075115",
+    "rust": "1.98.1",
+    "gpuiRevision": "ba63a022c9a22ca66d68ef2a8f0bb9b5b0a9984d"
+  },
+  "host": {
+    "profile": "release",
+    "target": "linux-x64",
+    "buildCommand": [
+      "cargo",
+      "build",
+      "--offline",
+      "--locked",
+      "--release",
+      "-p",
+      "bun-native-host",
+      "--bin",
+      "bun-native-host"
+    ],
+    "buildJobs": 2,
+    "bytes": 29530104,
+    "sha256": "191f412d973812f9b251f6d526bce275c302ef090387b5516e7d1b25c94a60ca",
+    "buildLog": {
+      "bytes": 290,
+      "sha256": "9fa1c992048623e44005f7d70976be5a09f5810b1eea8a7d14fe8342599e72dc"
+    }
+  },
+  "entries": {
+    "solid-input-viewport": {
+      "manifest": {
+        "bytes": 22914,
+        "sha256": "2d45ffd980edf50387abd76e68d37cd609ac680c099539cbdc42f8888b7efa20"
+      },
+      "sourceFilesVerified": 89,
+      "application": {
+        "file": "solid-input-viewport",
+        "bytes": 71859240,
+        "sha256": "0c8613d5a700cda590fca89c703b89a64dea9968bcbd0f13c2a20f4ddf6b789c",
+        "inspection": {
+          "format": "elf",
+          "payloadOffset": 67510280,
+          "payloadBytes": 4292852,
+          "flags": 16764,
+          "hasCompiledProgram": true
+        }
+      },
+      "runtimeFeatures": {
+        "format": "elf64-le",
+        "jit": "unused",
+        "interpreter": "present",
+        "jitRemovedRanges": {
+          "count": 27,
+          "virtualBytes": 14297303
+        }
+      },
+      "developmentModule": {
+        "file": "development/application.js",
+        "bytes": 130376,
+        "sha256": "e5fde7fbb9b133cee78ae58c717899c17023e6c496af11effb2e9d50399084a7"
+      },
+      "compileMs": 2336.753854,
+      "verification": {
+        "aotCompiledProgram": "passed",
+        "jitOmission": "passed",
+        "nativeRendering": "not-run",
+        "osInput": "not-run",
+        "teardown": "not-run",
+        "installation": "not-tested",
+        "signing": "unsigned"
+      }
+    },
+    "react-input-viewport": {
+      "manifest": {
+        "bytes": 23135,
+        "sha256": "d73a266a1a000a34f86a5665adde3a185025e4c392abb675b273b9d5a6215ef9"
+      },
+      "sourceFilesVerified": 89,
+      "application": {
+        "file": "react-input-viewport",
+        "bytes": 72825896,
+        "sha256": "f55eca873e8f85d6135bf0def7db60e04c7033d2988e418d6f970aec862acecc",
+        "inspection": {
+          "format": "elf",
+          "payloadOffset": 67510280,
+          "payloadBytes": 5259508,
+          "flags": 16764,
+          "hasCompiledProgram": true
+        }
+      },
+      "runtimeFeatures": {
+        "format": "elf64-le",
+        "jit": "unused",
+        "interpreter": "present",
+        "jitRemovedRanges": {
+          "count": 27,
+          "virtualBytes": 14297303
+        }
+      },
+      "developmentModule": {
+        "file": "development/application.js",
+        "bytes": 201979,
+        "sha256": "b4aed61f52fc90cd72d79a7d6e5c2e2247185a071bf88b1ab8004f2d9a9537fd"
+      },
+      "compileMs": 3205.068779,
+      "verification": {
+        "aotCompiledProgram": "passed",
+        "jitOmission": "passed",
+        "nativeRendering": "not-run",
+        "osInput": "not-run",
+        "teardown": "not-run",
+        "installation": "not-tested",
+        "signing": "unsigned"
+      }
+    }
+  },
+  "focusedControls": {
+    "nativeViewport": {
+      "tests": 6,
+      "status": "passed",
+      "scope": "actual viewport/helper methods with fixed glyph advances, no driver/window"
+    },
+    "evidenceWriter": {
+      "tests": 4,
+      "status": "passed",
+      "scope": "actual bounded writer ordering/dedup and input-only geometry"
+    },
+    "pixelAndPointerOracle": {
+      "tests": 8,
+      "status": "passed",
+      "scope": "synthetic complete-tree/RGB and recorded X11-coordinate controls; no GUI"
+    },
+    "sourceChecks": [
+      "strict TypeScript157files",
+      "Oxlint",
+      "package boundaries",
+      "source-health",
+      "Ruff",
+      "actionlint",
+      "normal commit hooks"
+    ],
+    "hostClippy": "passed",
+    "sourceCheckpoints": {
+      "nativeHelperWriterAndClippy": "7b94dba92b150bc823f31d101304f3ea6b2044a8 (native source unchanged in64ae)",
+      "pixelPointerAndTypecheck": "64ae9e5a33e41af61ce48b50d4cf7575e075100e",
+      "boundariesAndSourceHealth": "8e4fc12d3c0f1a8011bb4c6c53161020852e2bf4 (production packages unchanged in64ae)"
+    }
+  },
+  "reviewCorrections": {
+    "firstFixtureSource": "8e4fc12d3c0f1a8011bb4c6c53161020852e2bf4",
+    "correctedSource": "64ae9e5a33e41af61ce48b50d4cf7575e075100e",
+    "details": [
+      "Move caret one byte left before the pointer action; require fresh ordered native/public down/up at the same logical pixel and final changed caret/value.",
+      "Reject selection tint in the empty exterior gutter; the original8e4 pixel predicate accepted the preserved synthetic[23,23,74] overflow, corrected predicate rejects it."
+    ]
+  },
+  "limits": [
+    "Neither native host nor generated application was executed during this compilation.",
+    "The host was built at the explicitly recorded earlier whole-repository commit; its complete native subtree, Cargo inputs and toolchain are byte-identical at the AOT application source.",
+    "Actual Linux development/AOT viewport pixels/input/OS close remain pending hosted qualification.",
+    "No current GUI/GC/long-soak, IME composition, RTL, accessibility, physical hardware, high-DPI or macOS/Windows input acceptance is claimed."
+  ],
+  "postCompileIntegration": {
+    "acceptedMain": "77c842faa3137e8155b24c1d123d16c1ed5b76ed",
+    "acceptedMainTree": "2389f8c39219037f99059ed9fab7812f74471391",
+    "scope": "Ordinary main integration after these measurements; production native/Cargo/toolchain and viewport fixture/oracle sources remain byte-identical to the recorded application commit.",
+    "changedBuildInputs": "Accepted main extracts the existing AOT compile/inspection logic into compile.ts and adds CLI tooling and release metadata. These host/application artifacts are prior-whole-repository-source evidence, not builds of the integrated tree.",
+    "additionalExecution": "No native, AOT application, GUI or GC workload was executed for this integration."
+  }
+}

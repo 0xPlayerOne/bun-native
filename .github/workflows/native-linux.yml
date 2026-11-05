@@ -495,6 +495,31 @@ jobs:
         if: ${{ always() && contains(fromJSON('["success","failure","cancelled"]'), steps.standalone-prepare.outcome) }}
         timeout-minutes: 1
         run: python3 tests/native/cli-standalone.py cleanup --output "$NATIVE_EVIDENCE/cli-standalone"
+      - name: Shared input viewport pixels through Solid and React in development and AOT
+        if: ${{ !cancelled() && steps.native-build.outcome == 'success' }}
+        timeout-minutes: 4
+        env:
+          BUN_NATIVE_HOST: ${{ github.workspace }}/target/release/bun-native-host
+        run: |
+          for framework in solid react; do
+            entry="$framework-input-viewport"
+            package="$NATIVE_EVIDENCE/$entry-package"
+            bun experiments/aot-gpui/build-window.ts \
+              --source "$GITHUB_WORKSPACE" --host "$BUN_NATIVE_HOST" \
+              --host-profile release --entry "$entry" --outdir "$package"
+            for mode in development aot; do
+              command=(bun "$package/development/application.js")
+              if [[ "$mode" == aot ]]; then
+                command=("$package/$entry")
+              fi
+              evidence="$NATIVE_EVIDENCE/diagnostics-$mode-$entry"
+              xvfb-run --auto-servernum --server-args='-screen 0 1280x800x24 -nolisten tcp' \
+                dbus-run-session -- bash scripts/quality/native-linux-session.sh \
+                "$evidence-session" -- python3 scripts/quality/native-diagnostics-linux.py \
+                --scenario "$entry" --mode "$mode" --host-profile release \
+                --output "$evidence" -- "${command[@]}"
+            done
+          done
       - name: Retain unsigned native host for reproducibility
         if: ${{ !cancelled() && steps.native-build.outcome == 'success' }}
         run: |
