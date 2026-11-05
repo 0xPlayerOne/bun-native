@@ -55,3 +55,13 @@ JSON uses `.json.raw` so source formatting cannot alter artifact fingerprints.
 
 The [shared renderer commit micro benchmark](renderer/README.md) isolates the
 JavaScript snapshot/diff cost of one acknowledged commit from IPC and native work.
+
+## Equivalent-workload framework and execution-mode comparison
+
+[`COMPARISON.md`](COMPARISON.md) describes the repeatable harness that runs one
+shared workload through direct core, Solid and React in development and AOT
+modes on one host. It rejects unequal workloads and native paint trees, and it
+records first-launch and repeated startup, RSS, build/compile time, artifact
+bytes and bootstrap intervals. The first
+[recorded run](comparison/results/linux-x64-llvmpipe-2026-11-05/README.md) is
+Linux x64 with Xvfb and llvmpipe only.

@@ -36,8 +36,18 @@ export function id(value: unknown): number {
   return integer(value, 'Identifier', 1)
 }
 
+/**
+ * UTF-8 length bound without encoding when the UTF-16 length decides it: each
+ * code unit encodes to one to three bytes (a surrogate pair to four).
+ */
+function withinBytes(value: string, limit: number): boolean {
+  if (value.length > limit) return false
+  if (value.length * 3 <= limit) return true
+  return encoder.encode(value).byteLength <= limit
+}
+
 export function string(value: unknown, field: string, limit = MAX_TEXT_BYTES): string {
-  if (typeof value !== 'string' || encoder.encode(value).byteLength > limit)
+  if (typeof value !== 'string' || !withinBytes(value, limit))
     throw new ProtocolError(field + ' must be a string within ' + limit + ' UTF-8 bytes')
   if (!value.isWellFormed()) throw new ProtocolError(field + ' contains an unpaired surrogate')
   if (value.includes('\0')) throw new ProtocolError(field + ' contains a NUL character')
