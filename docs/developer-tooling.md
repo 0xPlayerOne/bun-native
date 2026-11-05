@@ -1,6 +1,6 @@
-# Checkout application CLI
+# Bun Native application CLI
 
-`scripts/native.ts` implements the first usable slice of [BN5 #242](https://github.com/0xPlayerOne/bun-native/issues/242). It creates and runs **projects inside an existing Bun Native checkout**. Install the exact Bun pin and run `bun install --frozen-lockfile` at the repository root once. Generated applications use those installed workspace dependencies; they are not independent published packages.
+`scripts/native.ts` implements the checkout workflow accepted in [BN5 #242](https://github.com/0xPlayerOne/bun-native/issues/242). By default it creates and runs **projects inside an existing Bun Native checkout**. Install the exact Bun pin and run `bun install --frozen-lockfile` at the repository root once. Those generated applications use the installed workspace dependencies. The explicit `--packages` mode uses a [standalone local package set](standalone-projects.md), developed and separately qualified under [#382](https://github.com/0xPlayerOne/bun-native/issues/382); neither mode implies registry publication.
 
 For the end-to-end setup sequence and verified offline-cache onboarding record, start with [Create your first Bun Native app](getting-started.md). This page is the command and lifecycle reference.
 
@@ -14,7 +14,7 @@ bun run native create apps/javascript-app --framework solid --language javascrip
 
 The default is Solid with TypeScript. `--framework` accepts `solid` or `react`; `--language` accepts `typescript` or `javascript`. The templates use only the public core and selected renderer, include a native counter, and dispose the renderer and owned application explicitly. JavaScript uses JSX with JSDoc and the same strict checker as TypeScript.
 
-The destination must be new and inside the checkout. Existing directories are rejected, including empty ones. A parent symlink cannot redirect generation outside the checkout. `bun-native.json` identifies the renderer and relative entry file; unsupported keys, renderer names and entries outside the project are rejected. Paths containing spaces are supported.
+Without `--packages`, the destination must be new and inside the checkout. Existing directories are rejected, including empty ones. A parent symlink cannot redirect checkout generation outside the checkout. `bun-native.json` identifies the renderer and relative entry file; unsupported keys, renderer names and entries outside the project are rejected. A standalone project also identifies its contained package-set manifest. Paths containing spaces are supported.
 
 The generated package scripts are:
 
@@ -25,7 +25,7 @@ bun run dev --host /absolute/path/to/bun-native-host
 bun run build --host /absolute/path/to/bun-native-host --host-profile release
 ```
 
-Do not run a separate dependency install inside the generated project. Keep it in the checkout so its relative script, TypeScript configuration and public workspace imports continue to resolve.
+For this default checkout mode, do not run a separate dependency install inside the generated project. Keep it in the checkout so its relative script, TypeScript configuration and public workspace imports continue to resolve. The [standalone mode](standalone-projects.md) instead writes its own dependency declarations, strict configuration, local archives and installed-CLI scripts.
 
 ## Develop against a prebuilt host
 
@@ -117,4 +117,4 @@ The malformed edit must report a build error while preserving the same app, nati
 
 This step runs after all existing native scenarios, baselines and template cases. Artifacts retain `cli-watch-solid` and `cli-watch-react` reports, source versions, raw native/CLI logs, process transitions and first/final screenshots. Qualification requires the actual hosted run to pass both fixed-count experiments. JavaScript syntax is covered by the separate four-template checks; native watch behavior on macOS/Windows, physical input, sustained workloads and finer-grained/state-preserving reload remain separate work for #243.
 
-This increment leaves #242 open for independently installable packages, supported prebuilt-host acquisition/cache policy and complete generated-app native/AOT evidence across supported platforms. #243 retains the native acceptance gaps described above. Signing, installers and updater qualification remain BN6 work. No existing native CI or adapter retention requirement is reduced by this tooling slice.
+The accepted checkout scope of #242 is complete. Standalone local-package installation is tracked in #382, and the wider onboarding/support contract remains in #254. #243 and #372 retain resource-behavior and wider watch-qualification work; finite RSS observations and zero public ownership counters do not prove a memory plateau or heap collectability. Signing, installers and updater qualification remain BN6 work. No existing native CI or adapter retention requirement is reduced by this tooling slice.
