@@ -1,0 +1,43 @@
+{
+  "schemaVersion": 1,
+  "scope": "one inert duplicate regular-member parser control; no package production/install/build or application/native execution",
+  "compilerRevision": "da867c60bf0bcbf9d6d36994f8ca0efa42075115",
+  "archive": {
+    "bytes": 141,
+    "sha256": "3f34ccfee2a6ee5ecf79f2f93115126c2ef19356585dbe0252004e2d9ca5a0b1",
+    "base64": "H4sIAAAAAAACA+3UQQ6CMBCF4Vl7Ck4AUynep4FKiEklbU309hY3JrKWaPi/zZvMZlZvZtdf3OibKQz+XuckX6DFydpXFp+paux7XvbGqDlKpbKBW8oulvOyT+cpplz5kOPjINid+Sf6363739L/LSTfX8PAAwAAAAAAAAAAAAAAAPhXT9mFMvAAKAAA"
+  },
+  "originalMembers": [
+    {
+      "name": "package/index.ts",
+      "type": "regular",
+      "contents": "first entry\n"
+    },
+    {
+      "name": "package/index.ts",
+      "type": "regular",
+      "contents": "second entry\n"
+    }
+  ],
+  "pinnedReaderObservation": {
+    "revision": "da867c60bf0bcbf9d6d36994f8ca0efa42075115",
+    "readerOutcome": "accepted",
+    "entries": [
+      {
+        "name": "package/index.ts",
+        "bytes": 13,
+        "text": "second entry\n"
+      }
+    ]
+  },
+  "controlExitCode": 0,
+  "stdout": {
+    "bytes": 158,
+    "sha256": "838f6a8bec27d6ad7c252ae964cbf179ffd5535f1d720d17b81b09fe13a11e7a"
+  },
+  "stderr": {
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "interpretation": "A Map inventory cannot establish uniqueness of original tar member names. This is a package-validator limitation; no installation, compiler, app, native or GC workload ran."
+}
