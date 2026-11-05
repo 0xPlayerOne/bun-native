@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.19.0](https://github.com/0xPlayerOne/bun-native/compare/v0.18.0...v0.19.0) (2026-11-05)
+
+
+### Features
+
+* **host:** split first-window GPU instance setup in the startup trace ([#296](https://github.com/0xPlayerOne/bun-native/issues/296)) ([#421](https://github.com/0xPlayerOne/bun-native/issues/421)) ([2008f52](https://github.com/0xPlayerOne/bun-native/commit/2008f52088065e03007dd8c2d1dea04d872b1755))
+* **services:** owned freedesktop desktop notifications ([#302](https://github.com/0xPlayerOne/bun-native/issues/302)) ([#424](https://github.com/0xPlayerOne/bun-native/issues/424)) ([741a360](https://github.com/0xPlayerOne/bun-native/commit/741a36027952719dfe9fdac56569a303fdc8efd5))
+
 ## [0.18.0](https://github.com/0xPlayerOne/bun-native/compare/v0.17.3...v0.18.0) (2026-11-05)
 
 
