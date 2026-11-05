@@ -635,7 +635,105 @@ fn escape_markup(text: &str) -> String {
 
 #[cfg(test)]
 mod tests {
-    use super::escape_markup;
+    use super::*;
+
+    const SERVER: &str = ":1.42";
+
+    // A macro, because the body bound names serde, which is not a direct dependency.
+    macro_rules! signal {
+        ($member:expr, $body:expr) => {
+            zbus::Message::signal(PATH, NAME, $member)
+                .unwrap()
+                .sender(SERVER)
+                .unwrap()
+                .build($body)
+                .unwrap()
+        };
+    }
+
+    #[test]
+    fn only_the_default_action_activates_a_notification() {
+        let Some(Signal::Activated { sender, key }) =
+            parse_signal(&signal!("ActionInvoked", &(7_u32, "default")))
+        else {
+            panic!("default action must activate");
+        };
+        assert_eq!(sender.as_str(), SERVER);
+        assert_eq!(key, 7);
+        for action in ["", "Default", "open", "default "] {
+            assert!(
+                parse_signal(&signal!("ActionInvoked", &(7_u32, action))).is_none(),
+                "{action:?}"
+            );
+        }
+    }
+
+    #[test]
+    fn close_reasons_map_and_unknown_reasons_mean_closed() {
+        for (reason, expected) in [
+            (1, NotificationDismissal::Expired),
+            (2, NotificationDismissal::Dismissed),
+            (3, NotificationDismissal::Closed),
+            (4, NotificationDismissal::Closed),
+            (0, NotificationDismissal::Closed),
+            (u32::MAX, NotificationDismissal::Closed),
+        ] {
+            let Some(Signal::Closed {
+                sender,
+                key,
+                reason: parsed,
+            }) = parse_signal(&signal!("NotificationClosed", &(u32::MAX, reason)))
+            else {
+                panic!("reason {reason} must parse");
+            };
+            assert_eq!(sender.as_str(), SERVER);
+            assert_eq!(key, u32::MAX);
+            assert_eq!(parsed, expected, "reason {reason}");
+        }
+    }
+
+    #[test]
+    fn malformed_unknown_or_anonymous_signals_are_ignored() {
+        assert!(parse_signal(&signal!("ActionInvoked", &(7_u32,))).is_none());
+        assert!(parse_signal(&signal!("ActionInvoked", &("default", 7_u32))).is_none());
+        assert!(parse_signal(&signal!("NotificationClosed", &(7_u32, "2"))).is_none());
+        assert!(parse_signal(&signal!("NotificationClosed", &(7_i32, 2_u32))).is_none());
+        assert!(parse_signal(&signal!("ActivationToken", &(7_u32, "token"))).is_none());
+        let anonymous = zbus::Message::signal(PATH, NAME, "NotificationClosed")
+            .unwrap()
+            .build(&(7_u32, 2_u32))
+            .unwrap();
+        assert!(parse_signal(&anonymous).is_none());
+    }
+
+    #[test]
+    fn only_a_missing_server_is_reported_as_unavailable() {
+        let reply = signal!("NotificationClosed", &(1_u32, 1_u32));
+        let method_error = |name: &str| {
+            zbus::Error::MethodError(
+                zbus::names::OwnedErrorName::try_from(name.to_owned()).unwrap(),
+                None,
+                reply.clone(),
+            )
+        };
+        for name in [
+            "org.freedesktop.DBus.Error.ServiceUnknown",
+            "org.freedesktop.DBus.Error.NameHasNoOwner",
+        ] {
+            assert_eq!(
+                bus_failure(&method_error(name)).0,
+                ErrorCode::ServiceUnavailable
+            );
+        }
+        for error in [
+            method_error("org.freedesktop.DBus.Error.AccessDenied"),
+            method_error("org.freedesktop.DBus.Error.NoReply"),
+            zbus::Error::InvalidReply,
+            zbus::Error::Unsupported,
+        ] {
+            assert_eq!(bus_failure(&error).0, ErrorCode::NativeFailure);
+        }
+    }
 
     #[test]
     fn plain_text_is_never_interpreted_as_markup() {

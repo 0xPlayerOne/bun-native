@@ -1,6 +1,7 @@
 // Adapted from Zed GPUI examples/input.rs, revision ba63a022c9a22ca66d68ef2a8f0bb9b5b0a9984d.
 // Copyright the Zed contributors. Licensed under Apache-2.0; see LICENSE-APACHE and NOTICE.
 mod binding;
+mod offsets;
 mod paint;
 mod viewport;
 pub(crate) use binding::InputBinding;
@@ -14,7 +15,6 @@ use gpui::{
     KeyBinding, MouseButton, MouseDownEvent, MouseMoveEvent, MouseUpEvent, Pixels, Point,
     SharedString, UTF16Selection, Window, actions, div, prelude::*, px,
 };
-use unicode_segmentation::*;
 
 actions!(
     text_input,
@@ -214,59 +214,24 @@ impl TextInput {
         cx.notify()
     }
 
-    fn offset_from_utf16(&self, offset: usize) -> usize {
-        let mut utf8_offset = 0;
-        let mut utf16_count = 0;
-
-        for ch in self.content.chars() {
-            if utf16_count >= offset {
-                break;
-            }
-            utf16_count += ch.len_utf16();
-            utf8_offset += ch.len_utf8();
-        }
-
-        utf8_offset
-    }
-
     fn offset_to_utf16(&self, offset: usize) -> usize {
-        let mut utf16_offset = 0;
-        let mut utf8_count = 0;
-
-        for ch in self.content.chars() {
-            if utf8_count >= offset {
-                break;
-            }
-            utf8_count += ch.len_utf8();
-            utf16_offset += ch.len_utf16();
-        }
-
-        utf16_offset
+        offsets::to_utf16(&self.content, offset)
     }
 
     fn range_to_utf16(&self, range: &Range<usize>) -> Range<usize> {
-        self.offset_to_utf16(range.start)..self.offset_to_utf16(range.end)
+        offsets::range_to_utf16(&self.content, range)
     }
 
     fn range_from_utf16(&self, range_utf16: &Range<usize>) -> Range<usize> {
-        let start = self.offset_from_utf16(range_utf16.start);
-        let end = self.offset_from_utf16(range_utf16.end);
-        start.min(end)..start.max(end)
+        offsets::range_from_utf16(&self.content, range_utf16)
     }
 
     fn previous_boundary(&self, offset: usize) -> usize {
-        self.content
-            .grapheme_indices(true)
-            .rev()
-            .find_map(|(idx, _)| (idx < offset).then_some(idx))
-            .unwrap_or(0)
+        offsets::previous_boundary(&self.content, offset)
     }
 
     fn next_boundary(&self, offset: usize) -> usize {
-        self.content
-            .grapheme_indices(true)
-            .find_map(|(idx, _)| (idx > offset).then_some(idx))
-            .unwrap_or(self.content.len())
+        offsets::next_boundary(&self.content, offset)
     }
 
     pub(crate) fn new(

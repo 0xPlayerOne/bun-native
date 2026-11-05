@@ -73,6 +73,26 @@ fn requires_explicit_flags_absolute_path_and_valid_nonce() {
 }
 
 #[test]
+fn nonce_limit_counts_bytes_and_rejects_every_control_character() {
+    let path = std::env::temp_dir().join("bun-native-startup-log.jsonl");
+    let path = path.to_str().unwrap();
+    let configuration = Configuration::parse("1", "1", path, &"n".repeat(128)).unwrap();
+    assert_eq!(configuration.correlation_id.len(), 128);
+    assert_eq!(configuration.path, std::path::Path::new(path));
+    assert!(Configuration::parse("1", "1", path, &"n".repeat(129)).is_none());
+    assert!(Configuration::parse("1", "1", path, &"é".repeat(64)).is_some());
+    for nonce in ["a\tb", "a\rb", "\0", "a\u{7f}", "a\u{85}b"] {
+        assert!(
+            Configuration::parse("1", "1", path, nonce).is_none(),
+            "{nonce:?}"
+        );
+    }
+    assert!(Configuration::parse("1", "1", path, "spaces are fine").is_some());
+    assert!(Configuration::parse("01", "1", path, "nonce").is_none());
+    assert!(Configuration::parse("1", "1 ", path, "nonce").is_none());
+}
+
+#[test]
 fn exact_targets_and_level_filter_before_formatting() {
     struct Unreachable;
     impl fmt::Display for Unreachable {
