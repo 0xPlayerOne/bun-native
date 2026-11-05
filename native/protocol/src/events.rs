@@ -237,6 +237,24 @@ fn non_null_string<'de, D: serde::Deserializer<'de>>(
     String::deserialize(deserializer).map(Some)
 }
 
+/// Sorts a stack copy of an already length-bounded route: a deep route would
+/// otherwise cost quadratic comparisons on every UI event.
+fn has_duplicate(path: &[NodeId]) -> bool {
+    let Some(first) = path.first() else {
+        return false;
+    };
+    let mut sorted = [*first; MAX_EVENT_PATH_NODES];
+    let Some(sorted) = sorted.get_mut(..path.len()) else {
+        return path
+            .iter()
+            .enumerate()
+            .any(|(index, id)| path[..index].contains(id));
+    };
+    sorted.copy_from_slice(path);
+    sorted.sort_unstable();
+    sorted.windows(2).any(|pair| pair[0] == pair[1])
+}
+
 impl Event {
     /// Check bounded UI metadata before writing it to the application process.
     pub fn validate(&self) -> Result<(), &'static str> {
@@ -292,10 +310,7 @@ impl Event {
                 || path.is_empty()
                 || path.len() > MAX_EVENT_PATH_NODES
                 || path.last() != Some(node_id)
-                || path
-                    .iter()
-                    .enumerate()
-                    .any(|(index, id)| path[..index].contains(id)) =>
+                || has_duplicate(path) =>
             {
                 return Err("event route must contain unique root-to-target identities and a safe tree revision");
             }
