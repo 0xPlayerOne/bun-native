@@ -5,8 +5,9 @@ use crate::{
     validate_text, Element, ErrorCode, NodeId, Operation, Style, MAX_DEPTH, MAX_ID,
     MAX_NODES_PER_WINDOW, MAX_OPERATIONS, MAX_TEXT_BYTES_PER_WINDOW,
 };
+use nodes::NodeMap;
 use serde::Serialize;
-use std::collections::{BTreeMap, HashSet};
+use std::collections::HashSet;
 use std::fmt;
 use std::sync::Arc;
 use std::time::Instant;
@@ -15,8 +16,8 @@ use std::time::Instant;
 pub struct Node {
     element: Arc<Element>,
     parent: Option<NodeId>,
-    // Shared like `element`: preflight clones the whole graph per batch, so a
-    // child list is copied only when that batch actually reorders it.
+    // Shared like `element`: a write copies its node, so a child list is
+    // copied only when that batch actually reorders it.
     children: Arc<Vec<NodeId>>,
     input_revision: Option<u64>,
 }
@@ -38,7 +39,7 @@ pub struct Tree {
     root_id: NodeId,
     revision: u64,
     text_bytes: usize,
-    nodes: BTreeMap<NodeId, Node>,
+    nodes: NodeMap,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -98,21 +99,23 @@ fn text_budget(bytes: usize) -> Result<usize, ModelError> {
 
 impl Tree {
     pub fn new(root_id: NodeId) -> Self {
+        let mut nodes = NodeMap::default();
+        nodes.insert(
+            root_id,
+            Node {
+                element: Arc::new(Element::Box {
+                    style: Style::default(),
+                }),
+                parent: None,
+                children: Arc::default(),
+                input_revision: None,
+            },
+        );
         Self {
             root_id,
             revision: 0,
             text_bytes: 0,
-            nodes: BTreeMap::from([(
-                root_id,
-                Node {
-                    element: Arc::new(Element::Box {
-                        style: Style::default(),
-                    }),
-                    parent: None,
-                    children: Arc::default(),
-                    input_revision: None,
-                },
-            )]),
+            nodes,
         }
     }
 
@@ -123,10 +126,10 @@ impl Tree {
         self.revision
     }
     pub fn node(&self, id: NodeId) -> Option<&Node> {
-        self.nodes.get(&id)
+        self.nodes.get(id)
     }
-    pub fn nodes(&self) -> impl Iterator<Item = (NodeId, &Node)> {
-        self.nodes.iter().map(|(id, node)| (*id, node))
+    pub fn nodes(&self) -> impl ExactSizeIterator<Item = (NodeId, &Node)> {
+        self.nodes.iter()
     }
 
     /// Snapshot the committed root-to-target route before an event leaves the
@@ -135,7 +138,7 @@ impl Tree {
         let mut path = Vec::new();
         let mut current = Some(id);
         while let Some(id) = current {
-            let node = self.nodes.get(&id)?;
+            let node = self.nodes.get(id)?;
             path.push(id);
             current = node.parent;
         }
@@ -167,8 +170,7 @@ impl Tree {
         if last_node_id > MAX_ID
             || self
                 .nodes
-                .keys()
-                .next_back()
+                .last_id()
                 .is_some_and(|id| id.get() > last_node_id)
         {
             return Err(error(
@@ -177,15 +179,14 @@ impl Tree {
             ));
         }
         let operation_count = operations.len();
-        // Property payloads and child lists are immutable Arc values: cloning
-        // the bounded graph copies its links, not every text string or child
-        // list on each keypress or update.
+        // Node storage is persistent: this clone is a refcount, and each write
+        // below copies only its own path, so the committed tree stays intact
+        // and keeps sharing every untouched node and element `Arc`.
         let mut next = self.clone();
-        // `set` cannot change an element kind, so a batch of only sets keeps
-        // the committed, already validated ownership graph.
-        let mut graph_changed = false;
+        // Created and moved nodes: the only places a batch can break the
+        // committed, already validated ownership graph.
+        let mut attached = Vec::new();
         for operation in operations {
-            graph_changed |= !matches!(operation, Operation::Set { .. });
             match operation {
                 Operation::Create { node_id, element } => {
                     element
@@ -215,6 +216,7 @@ impl Tree {
                         },
                     );
                     last_node_id = node_id.get();
+                    attached.push(node_id);
                 }
                 Operation::Set {
                     node_id,
@@ -224,7 +226,7 @@ impl Tree {
                     element
                         .validate()
                         .map_err(|message| error(ErrorCode::InvalidCommand, message))?;
-                    let node = next.nodes.get_mut(&node_id).ok_or_else(invalid_handle)?;
+                    let node = next.nodes.get_mut(node_id).ok_or_else(invalid_handle)?;
                     if !node.element.same_kind(&element) {
                         return Err(error(
                             ErrorCode::InvalidState,
@@ -264,15 +266,16 @@ impl Tree {
                     parent_id,
                     child_id,
                     index,
-                } => next.insert(parent_id, child_id, index)?,
+                } => {
+                    next.insert(parent_id, child_id, index)?;
+                    attached.push(child_id);
+                }
                 Operation::Delete { node_id } => next.delete(node_id)?,
             }
         }
-        if graph_changed {
-            next.validate_graph()?;
-        } else {
-            debug_assert!(next.validate_graph().is_ok());
-        }
+        let verdict = next.validate_attached(&attached);
+        debug_assert_eq!(verdict, next.validate_graph());
+        verdict?;
         next.revision = next_revision(self.revision)?;
         let metrics = BatchMetrics {
             operation_count,
@@ -297,7 +300,7 @@ impl Tree {
         value: String,
     ) -> Result<Option<u64>, ModelError> {
         validate_text(&value).map_err(|message| error(ErrorCode::InvalidCommand, message))?;
-        let node = self.nodes.get_mut(&node_id).ok_or_else(invalid_handle)?;
+        let node = self.nodes.get_mut(node_id).ok_or_else(invalid_handle)?;
         let Element::Input { value: old, .. } = node.element.as_ref() else {
             return Err(error(ErrorCode::InvalidState, "node is not an input"));
         };
@@ -320,7 +323,7 @@ impl Tree {
         child_id: NodeId,
         index: usize,
     ) -> Result<(), ModelError> {
-        let parent = self.nodes.get(&parent_id).ok_or_else(invalid_handle)?;
+        let parent = self.nodes.get(parent_id).ok_or_else(invalid_handle)?;
         if !matches!(parent.element.as_ref(), Element::Box { .. }) {
             return Err(error(
                 ErrorCode::InvalidState,
@@ -333,7 +336,7 @@ impl Tree {
                 "the window root cannot be reparented",
             ));
         }
-        let old_parent = self.nodes.get(&child_id).ok_or_else(invalid_handle)?.parent;
+        let old_parent = self.nodes.get(child_id).ok_or_else(invalid_handle)?.parent;
         let mut ancestor = Some(parent_id);
         while let Some(id) = ancestor {
             if id == child_id {
@@ -342,12 +345,12 @@ impl Tree {
                     "insert would create a cycle",
                 ));
             }
-            ancestor = self.nodes.get(&id).ok_or_else(invalid_handle)?.parent;
+            ancestor = self.nodes.get(id).ok_or_else(invalid_handle)?.parent;
         }
         if let Some(old_parent) = old_parent {
             let siblings = &mut self
                 .nodes
-                .get_mut(&old_parent)
+                .get_mut(old_parent)
                 .ok_or_else(invalid_handle)?
                 .children;
             Arc::make_mut(siblings).retain(|id| *id != child_id);
@@ -355,7 +358,7 @@ impl Tree {
         let children = Arc::make_mut(
             &mut self
                 .nodes
-                .get_mut(&parent_id)
+                .get_mut(parent_id)
                 .ok_or_else(invalid_handle)?
                 .children,
         );
@@ -367,7 +370,7 @@ impl Tree {
         }
         children.insert(index, child_id);
         self.nodes
-            .get_mut(&child_id)
+            .get_mut(child_id)
             .ok_or_else(invalid_handle)?
             .parent = Some(parent_id);
         Ok(())
@@ -380,20 +383,71 @@ impl Tree {
                 "close the window to delete its root",
             ));
         }
-        let parent = self.nodes.get(&node_id).ok_or_else(invalid_handle)?.parent;
+        let parent = self.nodes.get(node_id).ok_or_else(invalid_handle)?.parent;
         if let Some(parent) = parent {
             let siblings = &mut self
                 .nodes
-                .get_mut(&parent)
+                .get_mut(parent)
                 .ok_or_else(invalid_handle)?
                 .children;
             Arc::make_mut(siblings).retain(|id| *id != node_id);
         }
         let mut pending = vec![node_id];
         while let Some(id) = pending.pop() {
-            let node = self.nodes.remove(&id).ok_or_else(invalid_handle)?;
+            let node = self.nodes.remove(id).ok_or_else(invalid_handle)?;
             self.text_bytes -= node.element.text_bytes();
             pending.extend(node.children.iter().copied());
+        }
+        Ok(())
+    }
+
+    /// Committed trees are validated graphs, and create, insert and delete keep
+    /// parent and child links consistent and reject cycles. A batch can then
+    /// break only depth or attachment, and only at or below a node it created
+    /// or moved, so checking those subtrees reaches `validate_graph`'s verdict
+    /// (depth before detachment, as its walk from the root reports them)
+    /// without walking the untouched window.
+    fn validate_attached(&self, attached: &[NodeId]) -> Result<(), ModelError> {
+        let too_deep = || error(ErrorCode::LimitExceeded, "tree depth exceeds 64 edges");
+        let mut detached = false;
+        let mut seen = HashSet::new();
+        let mut pending = Vec::new();
+        for &id in attached {
+            if seen.contains(&id) || self.nodes.get(id).is_none() {
+                continue;
+            }
+            let mut depth = 0;
+            let mut top = id;
+            while let Some(parent) = self.nodes.get(top).ok_or_else(invalid_handle)?.parent {
+                depth += 1;
+                top = parent;
+                if depth > self.nodes.len() {
+                    return Err(error(
+                        ErrorCode::InvalidState,
+                        "tree contains duplicate ownership or a cycle",
+                    ));
+                }
+            }
+            if top != self.root_id {
+                detached = true;
+                continue;
+            }
+            pending.push((id, depth));
+            while let Some((id, depth)) = pending.pop() {
+                if depth > MAX_DEPTH {
+                    return Err(too_deep());
+                }
+                if seen.insert(id) {
+                    let node = self.nodes.get(id).ok_or_else(invalid_handle)?;
+                    pending.extend(node.children.iter().map(|child| (*child, depth + 1)));
+                }
+            }
+        }
+        if detached {
+            return Err(error(
+                ErrorCode::InvalidState,
+                "batch leaves detached nodes",
+            ));
         }
         Ok(())
     }
@@ -416,7 +470,7 @@ impl Tree {
                     "tree contains duplicate ownership or a cycle",
                 ));
             }
-            let node = self.nodes.get(&id).ok_or_else(invalid_handle)?;
+            let node = self.nodes.get(id).ok_or_else(invalid_handle)?;
             if node.parent != parent {
                 return Err(error(
                     ErrorCode::InvalidState,
@@ -438,6 +492,8 @@ impl Tree {
         Ok(())
     }
 }
+
+mod nodes;
 
 #[cfg(test)]
 mod tests;
