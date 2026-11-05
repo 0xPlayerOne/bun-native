@@ -20,7 +20,7 @@ fn invalid() -> io::Error {
     )
 }
 
-pub(super) fn get(
+pub(crate) fn get(
     path: Option<&Path>,
     family: Family,
     address: &[u8],

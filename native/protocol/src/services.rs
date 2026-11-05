@@ -5,6 +5,7 @@ use serde::{Deserialize, Serialize};
 const MAX_DISPLAY_COORDINATE: f64 = 1_048_576.;
 pub const MAX_CLIPBOARD_BYTES: usize = 8_192;
 pub const MAX_SERVICE_REQUESTS: usize = 8;
+pub const MAX_GLOBAL_SHORTCUTS: usize = 16;
 
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -12,6 +13,36 @@ pub struct ServicePolicy {
     pub window_display: bool,
     pub clipboard_read: bool,
     pub clipboard_write: bool,
+    pub global_shortcuts: bool,
+}
+
+/// OS-wide modifier state. Shift alone cannot form a global shortcut: at least
+/// one of control, alt or platform (Super/Command/Windows) is required.
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ShortcutModifiers {
+    pub control: bool,
+    pub alt: bool,
+    pub shift: bool,
+    pub platform: bool,
+}
+
+/// The closed set of layout-level keys a global shortcut may name: `a`-`z`,
+/// `0`-`9` and `f1`-`f12`. Anything else is rejected, never approximated.
+pub fn validate_global_shortcut(
+    key: &str,
+    modifiers: ShortcutModifiers,
+) -> Result<(), &'static str> {
+    if !matches!(
+        key.as_bytes(),
+        [b'a'..=b'z' | b'0'..=b'9'] | [b'f', b'1'..=b'9'] | [b'f', b'1', b'0'..=b'2']
+    ) {
+        return Err("global shortcut key must be one of a-z, 0-9 or f1-f12");
+    }
+    if !(modifiers.control || modifiers.alt || modifiers.platform) {
+        return Err("global shortcut requires control, alt or platform");
+    }
+    Ok(())
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]

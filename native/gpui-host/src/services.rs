@@ -9,10 +9,18 @@ pub(crate) mod clipboard;
 #[cfg(not(target_os = "linux"))]
 #[path = "services/clipboard_unavailable.rs"]
 pub(crate) mod clipboard;
+#[cfg(target_os = "linux")]
+pub(crate) mod shortcuts;
+#[cfg(not(target_os = "linux"))]
+#[path = "services/shortcuts_unavailable.rs"]
+pub(crate) mod shortcuts;
+#[cfg(target_os = "linux")]
+pub(crate) mod x11;
 
 pub(crate) const DISPLAY_PERMISSION_ARGUMENT: &str = "--bun-native-allow-window-display";
 pub(crate) const CLIPBOARD_READ_ARGUMENT: &str = "--bun-native-allow-clipboard-read";
 pub(crate) const CLIPBOARD_WRITE_ARGUMENT: &str = "--bun-native-allow-clipboard-write";
+pub(crate) const GLOBAL_SHORTCUTS_ARGUMENT: &str = "--bun-native-allow-global-shortcuts";
 
 pub(crate) fn policy(
     arguments: impl IntoIterator<Item = OsString>,
@@ -25,6 +33,8 @@ pub(crate) fn policy(
             &mut policy.clipboard_read
         } else if argument == CLIPBOARD_WRITE_ARGUMENT {
             &mut policy.clipboard_write
+        } else if argument == GLOBAL_SHORTCUTS_ARGUMENT {
+            &mut policy.global_shortcuts
         } else {
             return Err("unknown native host argument");
         };
@@ -86,10 +96,22 @@ mod tests {
             ServicePolicy {
                 window_display: false,
                 clipboard_read: true,
-                clipboard_write: true
+                clipboard_write: true,
+                global_shortcuts: false,
             }
         );
-        for argument in [CLIPBOARD_READ_ARGUMENT, CLIPBOARD_WRITE_ARGUMENT] {
+        assert_eq!(
+            policy([OsString::from(GLOBAL_SHORTCUTS_ARGUMENT)]).unwrap(),
+            ServicePolicy {
+                global_shortcuts: true,
+                ..ServicePolicy::default()
+            }
+        );
+        for argument in [
+            CLIPBOARD_READ_ARGUMENT,
+            CLIPBOARD_WRITE_ARGUMENT,
+            GLOBAL_SHORTCUTS_ARGUMENT,
+        ] {
             assert!(policy([argument, argument].map(OsString::from)).is_err());
         }
     }

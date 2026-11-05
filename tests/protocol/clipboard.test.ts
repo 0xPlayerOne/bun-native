@@ -23,7 +23,12 @@ describe('shared clipboard wire contract (headless)', () => {
           protocol: PROTOCOL_VERSION,
           capabilities: [...REQUIRED_CAPABILITIES, 'clipboard_text_v1'],
           limits: DEFAULT_LIMITS,
-          service_policy: { window_display: false, clipboard_read, clipboard_write },
+          service_policy: {
+            window_display: false,
+            clipboard_read,
+            clipboard_write,
+            global_shortcuts: false,
+          },
         } satisfies NativeEvent
         expect(parseEvent(ready)).toEqual(ready)
         expect(parseEvent({ ...ready, capabilities: [...REQUIRED_CAPABILITIES] })).toEqual({
@@ -38,7 +43,7 @@ describe('shared clipboard wire contract (headless)', () => {
             parseEvent({ ...ready, service_policy: { ...ready.service_policy, [key]: 'allow' } })
           ).toThrow()
         }
-        expect(() => parseEvent({ ...ready, protocol: 5 })).toThrow('version mismatch')
+        expect(() => parseEvent({ ...ready, protocol: 6 })).toThrow('version mismatch')
       }
   })
 

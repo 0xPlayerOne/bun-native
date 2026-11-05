@@ -42,6 +42,7 @@ for await (const chunk of Bun.stdin.stream()) {
             window_display: mode === 'wrong-policy' ? !allowed : allowed,
             clipboard_read: false,
             clipboard_write: false,
+            global_shortcuts: false,
           },
         })
         await emit({ type: 'ack', id: command.id })
