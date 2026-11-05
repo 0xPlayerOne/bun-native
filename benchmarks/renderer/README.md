@@ -15,6 +15,15 @@ bun benchmarks/renderer/commit.ts          # 1,000 and 5,002 staged nodes
 bun benchmarks/renderer/commit.ts 333 1667 5000  # rows; three nodes per row
 ```
 
+`clear.ts` mounts 20,000 `text` rows under the root and removes half of them in
+one batch (`front`, `alternate`, `middle`, `random` or `tail` rows), reporting
+the median staging time of the `removeNode` calls and of the following commit
+over five runs after a warm-up run.
+
+```sh
+bun benchmarks/renderer/clear.ts [rows] [runs]
+```
+
 The window is an in-process stand-in that counts operations and acknowledges
 immediately. Samples therefore cover only the renderer's snapshot, diff,
 publish and listener reconciliation work. They exclude core validation,
@@ -72,3 +81,56 @@ of its direct children (the `text` row's cost at 15,001 nodes is the root's
 5,000-child scan), and a parent whose child list changes copies and diffs that
 whole list (the `row` scenario's root). Staged `insertNode`/`removeNode`
 sibling lookups are separate work.
+
+## Dirty children and deferred removal
+
+Linux x64 container, Bun `1.4.4-canary.1+da867c60b`, five processes each.
+"dirty walk" is `6ce6b55`; "dirty children" is this change. Ranges are
+per-process results. The Solid rows filter a 20,000-row `<For>` to half
+through `solid-js/universal` (median of five runs, staging only); they were
+measured with a scratch script that is not checked in.
+
+| Scenario | Tree         | dirty walk mean ms | dirty children mean ms | dirty walk p50 ms | dirty children p50 ms |
+| -------- | ------------ | ------------------ | ---------------------- | ----------------- | --------------------- |
+| `text`   | 1,000 nodes  | 0.0098–0.0149      | 0.0088–0.0127          | 0.0059–0.0096     | 0.0048–0.0054         |
+| `text`   | 5,002 nodes  | 0.0127–0.0166      | 0.0050–0.0070          | 0.0101–0.0144     | 0.0041–0.0059         |
+| `text`   | 15,001 nodes | 0.0364–0.0609      | 0.0048–0.0074          | 0.0333–0.0482     | 0.0040–0.0055         |
+| `row`    | 1,000 nodes  | 0.178–0.209        | 0.171–0.203            | 0.109–0.121       | 0.105–0.129           |
+| `row`    | 5,002 nodes  | 0.524–0.600        | 0.528–0.636            | 0.379–0.420       | 0.376–0.425           |
+| `row`    | 15,001 nodes | 1.59–1.76          | 1.69–1.84              | 1.20–1.29         | 1.22–1.32             |
+
+| Clear half of 20,000 | dirty walk stage ms | dirty children stage ms | dirty walk commit ms | dirty children commit ms |
+| -------------------- | ------------------- | ----------------------- | -------------------- | ------------------------ |
+| `front`              | 23.7–25.9           | 1.54–2.59               | 5.54–7.39            | 4.96–8.20                |
+| `alternate`          | 25.9–32.0           | 1.81–2.72               | 4.59–5.32            | 4.97–7.89                |
+| `middle`             | 23.9–29.8           | 1.56–1.74               | 4.69–5.77            | 4.65–5.49                |
+| `random`             | 28.3–31.8           | 4.66–6.08               | 5.43–6.87            | 6.14–7.07                |
+| `tail`               | 1.02–1.73           | 1.43–1.88               | 4.54–5.40            | 4.51–5.97                |
+| Solid `<For>` front  | 24.7–25.3           | 1.85–4.12               |                      |                          |
+| Solid `<For>` alt.   | 29.5–32.6           | 3.83–4.93               |                      |                          |
+| Solid `<For>` middle | 24.5–25.5           | 1.67–4.57               |                      |                          |
+| Solid `<For>` tail   | 23.2–24.5           | 1.58–4.43               |                      |                          |
+
+A node that becomes dirty now registers itself with its parent, so a parent
+whose own capture is current visits only its registered dirty children, sorted
+into child order because the diff emits native operations in snapshot order;
+the `text` commit no longer grows with the root's width. A recaptured parent
+still scans all of its children, which covers a child inserted already dirty.
+
+Staged sibling bookkeeping no longer searches or shifts the list on removal.
+Each child keeps a verified position hint, and a removal leaves an `undefined`
+hole in the parent's staged list instead of splicing it; the list is compacted
+in one pass (or one splice when the holes are adjacent) the next time its
+`children` are read, which a commit does once per recaptured parent, or when
+holes reach half the list. Solid's `getNextSibling` and `getFirstChild` use
+the same hints and skip a leading run of holes, so `cleanChildren` and keyed
+reconciliation stop scanning from the front. The old `tail` staging path was
+already O(1); Solid's tail case was not, because `getNextSibling` searched.
+
+What remains proportional to the tree: a parent whose child list changes still
+copies and diffs that whole list in the commit (the `row` scenario's root and
+the clear commits above), and an anchored insertion into a wide list still
+shifts it natively. Reading `children` of a list with scattered holes compacts
+it with a JavaScript pass, so a caller that alternates removals with full
+`children` reads (React's `clearContainer` reads `children[0]` each time) pays
+what the splice used to cost, not less.
