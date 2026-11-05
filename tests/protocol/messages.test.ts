@@ -173,6 +173,15 @@ describe('versioned native message validation', () => {
     expect(() => parseCommand(value)).toThrow(ProtocolError)
   })
 
+  test.each([
+    ['ASCII', 'a'.repeat(MAX_TEXT_BYTES)],
+    ['three-byte', '€'.repeat((MAX_TEXT_BYTES - 1) / 3) + 'a'],
+    ['four-byte', '😀'.repeat(MAX_TEXT_BYTES / 4)],
+  ])('bounds text by UTF-8 bytes at the exact limit: %s', (_name, text) => {
+    expect(parseElement({ kind: 'text', text })).toMatchObject({ kind: 'text', text })
+    expect(() => parseElement({ kind: 'text', text: text + 'a' })).toThrow(ProtocolError)
+  })
+
   test.each(
     [
       { kind: 'webview' },

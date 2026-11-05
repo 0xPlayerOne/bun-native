@@ -41,6 +41,28 @@ describe('bounded native pipe framing', () => {
     expect(() => new FrameDecoder().push(input)).toThrow(ProtocolError)
   })
 
+  test('decodes in-chunk frames around a buffered partial frame', () => {
+    const decoder = new FrameDecoder()
+    const whole = encodeFrame({ n: 1 })
+    const split = encodeFrame({ text: '世界' })
+    const head = split.subarray(0, 5)
+    expect(decoder.push(new Uint8Array([...whole, ...head]))).toEqual([{ n: 1 }])
+    expect(decoder.push(new Uint8Array([...split.subarray(5), ...whole, ...whole]))).toEqual([
+      { text: '世界' },
+      { n: 1 },
+      { n: 1 },
+    ])
+    expect(() => decoder.finish()).not.toThrow()
+  })
+
+  test('rejects an empty frame after a complete frame in the same chunk', () => {
+    const decoder = new FrameDecoder()
+    expect(() => decoder.push(new Uint8Array([...encodeFrame({ ok: true }), 10]))).toThrow(
+      'Empty frame'
+    )
+    expect(() => decoder.push(encodeFrame({ ok: true }))).toThrow('Decoder is closed')
+  })
+
   test('rejects EOF inside a frame', () => {
     const decoder = new FrameDecoder()
     decoder.push(new TextEncoder().encode('{"ok":true}'))

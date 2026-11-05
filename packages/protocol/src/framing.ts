@@ -5,6 +5,8 @@ export class ProtocolError extends Error {
   override readonly name = 'ProtocolError'
 }
 
+const encoder = new TextEncoder()
+
 /** Encodes one JSON value. This does not validate a command or event schema. */
 export function encodeFrame(value: unknown): Uint8Array {
   let json: string | undefined
@@ -14,7 +16,9 @@ export function encodeFrame(value: unknown): Uint8Array {
     throw new ProtocolError('Frame is not a JSON value', { cause: error })
   }
   if (json === undefined) throw new ProtocolError('Frame is not a JSON value')
-  const encoded = new TextEncoder().encode(`${json}\n`)
+  // Each UTF-16 code unit encodes to at least one UTF-8 byte.
+  if (json.length > MAX_FRAME_BYTES) throw new ProtocolError('Frame exceeds byte limit')
+  const encoded = encoder.encode(`${json}\n`)
   if (encoded.byteLength - 1 > MAX_FRAME_BYTES) throw new ProtocolError('Frame exceeds byte limit')
   return encoded
 }
@@ -47,10 +51,16 @@ export class FrameDecoder {
         const size = end - start
         if (this.length + size > MAX_FRAME_BYTES)
           throw new ProtocolError('Frame exceeds byte limit')
+        if (newline !== -1 && this.length === 0) {
+          // A frame wholly inside this chunk decodes in place, without a copy.
+          if (size === 0) throw new ProtocolError('Empty frame')
+          frames.push(JSON.parse(this.utf8.decode(chunk.subarray(start, end))) as unknown)
+          start = newline + 1
+          continue
+        }
         this.buffer.set(chunk.subarray(start, end), this.length)
         this.length += size
         if (newline === -1) break
-        if (this.length === 0) throw new ProtocolError('Empty frame')
         const json = this.utf8.decode(this.buffer.subarray(0, this.length))
         frames.push(JSON.parse(json) as unknown)
         this.length = 0
