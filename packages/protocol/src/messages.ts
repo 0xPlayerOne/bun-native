@@ -6,11 +6,15 @@ import {
   parseServicePolicy,
   parseShortcutKey,
   parseShortcutModifiers,
+  parseNotificationContent,
+  parseNotificationDismissal,
   MAX_CLIPBOARD_BYTES,
   MAX_GLOBAL_SHORTCUTS,
+  MAX_NOTIFICATIONS,
   MAX_SERVICE_REQUESTS,
   type ClipboardText,
   type DisplaySnapshot,
+  type NotificationDismissal,
   type ServicePolicy,
   type ShortcutModifiers,
 } from './services.ts'
@@ -25,7 +29,7 @@ import {
   string,
 } from './values.ts'
 
-export const PROTOCOL_VERSION = 7
+export const PROTOCOL_VERSION = 8
 export const MAX_OPERATIONS = 256
 const MAX_NODES_PER_WINDOW = 4_096
 const MAX_WINDOWS = 16
@@ -43,6 +47,7 @@ export interface Limits {
   max_clipboard_bytes: number
   max_service_requests: number
   max_global_shortcuts: number
+  max_notifications: number
 }
 
 export const DEFAULT_LIMITS: Readonly<Limits> = Object.freeze({
@@ -56,6 +61,7 @@ export const DEFAULT_LIMITS: Readonly<Limits> = Object.freeze({
   max_clipboard_bytes: MAX_CLIPBOARD_BYTES,
   max_service_requests: MAX_SERVICE_REQUESTS,
   max_global_shortcuts: MAX_GLOBAL_SHORTCUTS,
+  max_notifications: MAX_NOTIFICATIONS,
 })
 
 export type Operation =
@@ -101,6 +107,15 @@ export type Command =
       modifiers: ShortcutModifiers
     }
   | { id: number; type: 'unregister_global_shortcut'; window_id: number; shortcut_id: number }
+  | {
+      id: number
+      type: 'post_notification'
+      window_id: number
+      notification_id: number
+      title: string
+      body: string
+    }
+  | { id: number; type: 'withdraw_notification'; window_id: number; notification_id: number }
   | { id: number; type: 'shutdown' }
 
 export const ERROR_CODES = [
@@ -126,7 +141,12 @@ export const REQUIRED_CAPABILITIES = Object.freeze([
   'interactions_v1',
   'window_display_v1',
 ] as const)
-const CAPABILITIES = [...REQUIRED_CAPABILITIES, 'clipboard_text_v1', 'global_shortcuts_v1'] as const
+const CAPABILITIES = [
+  ...REQUIRED_CAPABILITIES,
+  'clipboard_text_v1',
+  'global_shortcuts_v1',
+  'notifications_v1',
+] as const
 export type Capability = (typeof CAPABILITIES)[number]
 
 export interface KeyModifiers {
@@ -178,6 +198,22 @@ export type NativeEvent =
   | { type: 'global_shortcut_unregistered'; id: number; window_id: number; shortcut_id: number }
   | RoutedEvent
   | { type: 'global_shortcut'; sequence: number; window_id: number; shortcut_id: number }
+  | {
+      type: 'notification_posted'
+      id: number
+      window_id: number
+      notification_id: number
+      activatable: boolean
+    }
+  | { type: 'notification_withdrawn'; id: number; window_id: number; notification_id: number }
+  | { type: 'notification_activated'; sequence: number; window_id: number; notification_id: number }
+  | {
+      type: 'notification_dismissed'
+      sequence: number
+      window_id: number
+      notification_id: number
+      reason: NotificationDismissal
+    }
   | { type: 'closed'; sequence: number; window_id: number }
   | { type: 'error'; id?: number; code: ErrorCode; message: string }
 
@@ -296,6 +332,26 @@ export function parseCommand(value: unknown): Command {
         window_id: id(message['window_id']),
         shortcut_id: id(message['shortcut_id']),
       }
+    case 'post_notification': {
+      keys(message, ['id', 'type', 'window_id', 'notification_id', 'title', 'body'])
+      const { title, body } = parseNotificationContent(message['title'], message['body'])
+      return {
+        id: request,
+        type: 'post_notification',
+        window_id: id(message['window_id']),
+        notification_id: id(message['notification_id']),
+        title,
+        body,
+      }
+    }
+    case 'withdraw_notification':
+      keys(message, ['id', 'type', 'window_id', 'notification_id'])
+      return {
+        id: request,
+        type: 'withdraw_notification',
+        window_id: id(message['window_id']),
+        notification_id: id(message['notification_id']),
+      }
     case 'shutdown':
       keys(message, ['id', 'type'])
       return { id: request, type: 'shutdown' }
@@ -319,6 +375,7 @@ function limits(value: unknown): Limits {
     max_clipboard_bytes: parse('max_clipboard_bytes'),
     max_service_requests: parse('max_service_requests'),
     max_global_shortcuts: parse('max_global_shortcuts'),
+    max_notifications: parse('max_notifications'),
   }
 }
 
@@ -440,6 +497,42 @@ export function parseEvent(value: unknown): NativeEvent {
         sequence: id(message['sequence']),
         window_id: id(message['window_id']),
         shortcut_id: id(message['shortcut_id']),
+      }
+    case 'notification_posted':
+      keys(message, ['type', 'id', 'window_id', 'notification_id', 'activatable'])
+      if (typeof message['activatable'] !== 'boolean')
+        throw new ProtocolError('Notification activatable must be a boolean')
+      return {
+        type: 'notification_posted',
+        id: id(message['id']),
+        window_id: id(message['window_id']),
+        notification_id: id(message['notification_id']),
+        activatable: message['activatable'],
+      }
+    case 'notification_withdrawn':
+      keys(message, ['type', 'id', 'window_id', 'notification_id'])
+      return {
+        type: 'notification_withdrawn',
+        id: id(message['id']),
+        window_id: id(message['window_id']),
+        notification_id: id(message['notification_id']),
+      }
+    case 'notification_activated':
+      keys(message, ['type', 'sequence', 'window_id', 'notification_id'])
+      return {
+        type: 'notification_activated',
+        sequence: id(message['sequence']),
+        window_id: id(message['window_id']),
+        notification_id: id(message['notification_id']),
+      }
+    case 'notification_dismissed':
+      keys(message, ['type', 'sequence', 'window_id', 'notification_id', 'reason'])
+      return {
+        type: 'notification_dismissed',
+        sequence: id(message['sequence']),
+        window_id: id(message['window_id']),
+        notification_id: id(message['notification_id']),
+        reason: parseNotificationDismissal(message['reason']),
       }
     case 'click':
     case 'focus':

@@ -3,12 +3,13 @@ use crate::{
     evidence::Evidence,
     services,
     services::clipboard::{Clipboard, Operation as ClipboardOperation},
+    services::notifications::Notifications,
     services::shortcuts::Shortcuts,
     state::{SharedWindowState, WindowState},
     view::NativeView,
 };
 use bun_native_protocol::{
-    Capability, Command, ErrorCode, Event, Limits, MAX_WINDOWS, NodeId, Operation,
+    Capability, Command, ErrorCode, Event, Limits, MAX_WINDOWS, NodeId, NotificationId, Operation,
     PROTOCOL_VERSION, RequestId, ServicePolicy, ShortcutId, ShortcutModifiers, Tree, WindowId,
 };
 use gpui::{
@@ -44,6 +45,7 @@ pub(crate) struct Session {
     policy: ServicePolicy,
     clipboard: Clipboard,
     shortcuts: Shortcuts,
+    notifications: Notifications,
 }
 
 impl Session {
@@ -58,6 +60,7 @@ impl Session {
         let clipboard = Clipboard::new(events.clone(), cx);
         let shortcuts = Shortcuts::new(events.clone(), cx);
         evidence.observe_keys(cx);
+        let notifications = Notifications::new(events.clone(), cx);
         cx.on_window_closed({
             let windows = windows.clone();
             let finishing = finishing.clone();
@@ -65,6 +68,7 @@ impl Session {
             let evidence = evidence.clone();
             let clipboard = clipboard.clone();
             let shortcuts = shortcuts.clone();
+            let notifications = notifications.clone();
             move |cx, closed| {
                 let id = windows
                     .borrow()
@@ -82,6 +86,7 @@ impl Session {
                         cx,
                     );
                     shortcuts.close_window(window_id, cx);
+                    notifications.close_window(window_id, cx);
                     if !finishing.get() {
                         events.ui(
                             |sequence| Event::Closed {
@@ -107,6 +112,7 @@ impl Session {
             policy,
             clipboard,
             shortcuts,
+            notifications,
         }
     }
 
@@ -166,6 +172,9 @@ impl Session {
                 }
                 if self.shortcuts.available() {
                     capabilities.push(Capability::GlobalShortcutsV1);
+                }
+                if self.notifications.available() {
+                    capabilities.push(Capability::NotificationsV1);
                 }
                 self.events.send(
                     Event::Ready {
@@ -236,6 +245,25 @@ impl Session {
             } => {
                 if let Err((code, message)) =
                     self.shortcuts.unregister(id, window_id, shortcut_id, cx)
+                {
+                    self.error(id, code, message, cx);
+                }
+            }
+            Command::PostNotification {
+                window_id,
+                notification_id,
+                title,
+                body,
+                ..
+            } => self.post_notification((id, window_id, notification_id), title, body, cx),
+            Command::WithdrawNotification {
+                window_id,
+                notification_id,
+                ..
+            } => {
+                if let Err((code, message)) =
+                    self.notifications
+                        .withdraw(id, window_id, notification_id, cx)
                 {
                     self.error(id, code, message, cx);
                 }
@@ -461,6 +489,7 @@ impl Session {
                 cx,
             );
             self.shortcuts.close_window(window_id, cx);
+            self.notifications.close_window(window_id, cx);
             self.events.send(Event::Ack { id }, cx);
         } else {
             state.borrow_mut().active = true;
@@ -550,6 +579,31 @@ impl Session {
         }
     }
 
+    fn post_notification(
+        &self,
+        request: (RequestId, WindowId, NotificationId),
+        title: String,
+        body: String,
+        cx: &mut App,
+    ) {
+        let (id, window_id, _) = request;
+        if !self.policy.notifications {
+            self.error(
+                id,
+                ErrorCode::PermissionDenied,
+                "notifications were not granted at native process launch",
+                cx,
+            );
+            return;
+        }
+        if self.window(id, window_id, cx).is_none() {
+            return;
+        }
+        if let Err((code, message)) = self.notifications.post(request, title, body, cx) {
+            self.error(id, code, message, cx);
+        }
+    }
+
     fn revoke(&self) {
         self.finishing.set(true);
         for entry in self.windows.borrow().values() {
@@ -561,10 +615,14 @@ impl Session {
     /// must complete before the final reply or process exit.
     fn stop_services(&self, cx: &mut App) -> Vec<gpui::Task<()>> {
         self.revoke();
-        [self.clipboard.stop(cx), self.shortcuts.stop(cx)]
-            .into_iter()
-            .flatten()
-            .collect()
+        [
+            self.clipboard.stop(cx),
+            self.shortcuts.stop(cx),
+            self.notifications.stop(cx),
+        ]
+        .into_iter()
+        .flatten()
+        .collect()
     }
 
     pub(crate) fn finish(&self, final_event: Event, cx: &mut App) {
