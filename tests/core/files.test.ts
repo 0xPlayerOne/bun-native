@@ -160,11 +160,21 @@ describe('filesystem grants through the public core (headless subprocess)', () =
   })
 
   test('a result of the wrong shape fails the channel', async () => {
-    await withFiles(async (app) => {
+    await withFiles(async (app, directory) => {
       const window = await app.openWindow({ title: 'Mismatch' })
       const grant = await window.openFileGrant('docs')
-      await expect(grant.stat('a')).rejects.toBeInstanceOf(Error)
-      await expect(app.closed).rejects.toBeInstanceOf(ProtocolError)
+      const stat = await grant.stat('a').catch((error: unknown) => error)
+      const closed = await app.closed.catch((error: unknown) => error)
+      // On failure, name what the peer received and finished replying.
+      const trace = ['requests.jsonl', 'replies.jsonl']
+        .map((name) => join(directory, name))
+        .map((path) => (existsSync(path) ? readFileSync(path, 'utf8') : '(none)'))
+        .join('\n')
+      expect([stat instanceof ProtocolError, closed instanceof ProtocolError, trace]).toEqual([
+        true,
+        true,
+        trace,
+      ])
     }, 'mismatch')
   })
 

@@ -367,8 +367,17 @@ jobs:
             if [[ "$mode" == aot ]]; then
               command=("$NATIVE_EVIDENCE/react-workload-package/react-workload")
             fi
+            # The small development calibration asserts zero WeakRef survivors
+            # after two mounts; JSC's DFG tier can pin the last mount's scope
+            # (54/100 failures with DFG, 0/100 without; see
+            # benchmarks/retention/settled-collection.md). Timed runs keep DFG.
+            calibration_env=()
+            if [[ "$mode" == development ]]; then
+              calibration_env=(BUN_JSC_useDFGJIT=0)
+            fi
             nonce=$(python3 -c 'import secrets; print(secrets.token_hex(16))')
-            BUN_NATIVE_EVIDENCE_LOG="$evidence/calibration-$mode.jsonl" \
+            env "${calibration_env[@]}" \
+              BUN_NATIVE_EVIDENCE_LOG="$evidence/calibration-$mode.jsonl" \
               BUN_NATIVE_EVIDENCE_NONCE="$nonce" \
               timeout --kill-after=5s 150s xvfb-run --auto-servernum \
                 --server-args='-screen 0 1280x800x24 -nolisten tcp' \

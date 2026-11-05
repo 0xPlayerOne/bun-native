@@ -35,6 +35,12 @@ function emit(value: unknown): Promise<void> {
   writing = writing.then(async () => {
     output.write(encodeFrame(value))
     await output.flush()
+    // Diagnostic only: which replies this peer finished writing, and when.
+    const reply = value as { type: string; id?: number }
+    appendFileSync(
+      join(directory, 'replies.jsonl'),
+      JSON.stringify({ type: reply.type, id: reply.id, atMs: Math.round(performance.now()) }) + '\n'
+    )
   })
   return writing
 }
