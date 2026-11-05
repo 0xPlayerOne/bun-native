@@ -1,5 +1,7 @@
 # Fixed-checkpoint retention research
 
+**Update:** the development-mode positives are explained by JSC DFG-compiled code retaining cells. See [settled-collection.md](settled-collection.md) for the measurements and how the required checks use them. The AOT-only observations below remain unexplained.
+
 **Status: unresolved.** A failed direct-core AOT benchmark and a later Solid unit-test failure remain recorded. The no-framework controls establish that two explicit full collections can leave short-lived objects observable without importing Bun Native, Solid, React, a native host or a DOM. Those positive controls occurred in development mode; they do **not** explain the original native AOT failure. No renderer assertion, benchmark oracle, mutation limit or ownership check was relaxed by this research increment.
 
 This directory preserves the exact experimental source, every fixed-trial summary, the original failed comparison, the inspected executable identities and the visible retaining graphs. These are Linux x86_64 diagnostics on Bun revision `da867c60bf0bcbf9d6d36994f8ca0efa42075115`, not a successful matched performance comparison or cross-platform qualification. [summary.json](summary.json) contains the full SHA-256 identities and source references.

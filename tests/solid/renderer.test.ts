@@ -16,7 +16,7 @@ import { batch, createEffect, createSignal, onCleanup } from 'solid-js'
 import assert from 'node:assert/strict'
 
 import { observeWindow, withApp } from '../renderers/support.ts'
-import { rethrowWithRetentionDiagnostic } from './retention-diagnostic.ts'
+import { observeScenario } from '../renderers/collectability.ts'
 
 function label(text: string) {
   const node = createElement('text')
@@ -505,31 +505,10 @@ describe('Solid universal adapter over the public core (headless subprocess)', (
       assert.throws(() => render(() => label('closed'), window), /already closed/)
     }))
 
-  test('disposed roots are collectable while their native window stays open', () =>
-    withApp(async (app) => {
-      const window = await app.openWindow({ title: 'Solid root retention' })
-      async function cycle(index: number) {
-        const root = render(() => label(String(index)), window)
-        await root.ready
-        await root.dispose()
-        return new WeakRef(root)
-      }
-      const references: WeakRef<RenderRoot>[] = []
-      for (let index = 0; index < 10; index++) references.push(await cycle(index))
-      // WeakRef keeps targets alive until this job ends. Run the pinned Bun's
-      // explicit full collection after that boundary, outside the mount scope.
-      await Bun.sleep(0)
-      Bun.gc(true)
-      await Bun.sleep(0)
-      Bun.gc(true)
-      try {
-        expect(references.filter((reference) => reference.deref() !== undefined)).toHaveLength(0)
-      } catch (failure) {
-        rethrowWithRetentionDiagnostic(failure, references, { application: app, window })
-      }
-      expect(app.diagnostics.windows).toBe(1)
-      expect(app.diagnostics.nodes).toBe(1)
-    }))
+  test('disposed roots are collectable while their native window stays open', async () => {
+    // Real headless IPC in a DFG-disabled child; see collectability-scenarios.ts.
+    expect((await observeScenario('solid-roots')).survivors).toEqual([])
+  })
 
   test('a closed window or immediate disposal cannot report a successful initial mount', () =>
     withApp(async (app) => {
