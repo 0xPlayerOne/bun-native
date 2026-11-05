@@ -2,6 +2,7 @@
 // exercises real pipes and event ordering; it does not render or validate GPUI.
 import {
   DEFAULT_LIMITS,
+  filesystemRootsFromArguments,
   encodeFrame,
   FrameDecoder,
   parseCommand,
@@ -82,6 +83,7 @@ for await (const chunk of Bun.stdin.stream()) {
           clipboard_write: process.argv.includes('--bun-native-allow-clipboard-write'),
           global_shortcuts: process.argv.includes('--bun-native-allow-global-shortcuts'),
           notifications: process.argv.includes('--bun-native-allow-notifications'),
+          filesystem_roots: filesystemRootsFromArguments(process.argv),
         },
         protocol: PROTOCOL_VERSION,
         capabilities: [...REQUIRED_CAPABILITIES],

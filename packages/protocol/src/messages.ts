@@ -19,6 +19,18 @@ import {
   type ShortcutModifiers,
 } from './services.ts'
 import {
+  MAX_FILE_CHUNK_BYTES,
+  MAX_FILE_GRANTS,
+  parseFileAccess,
+  parseFileOperation,
+  parseFilePath,
+  parseFileResult,
+  parseRootId,
+  type FileAccess,
+  type FileOperation,
+  type FileResult,
+} from './files.ts'
+import {
   id,
   integer,
   keys,
@@ -29,7 +41,7 @@ import {
   string,
 } from './values.ts'
 
-export const PROTOCOL_VERSION = 8
+export const PROTOCOL_VERSION = 9
 export const MAX_OPERATIONS = 256
 const MAX_NODES_PER_WINDOW = 4_096
 const MAX_WINDOWS = 16
@@ -48,6 +60,8 @@ export interface Limits {
   max_service_requests: number
   max_global_shortcuts: number
   max_notifications: number
+  max_file_grants: number
+  max_file_chunk_bytes: number
 }
 
 export const DEFAULT_LIMITS: Readonly<Limits> = Object.freeze({
@@ -62,6 +76,8 @@ export const DEFAULT_LIMITS: Readonly<Limits> = Object.freeze({
   max_service_requests: MAX_SERVICE_REQUESTS,
   max_global_shortcuts: MAX_GLOBAL_SHORTCUTS,
   max_notifications: MAX_NOTIFICATIONS,
+  max_file_grants: MAX_FILE_GRANTS,
+  max_file_chunk_bytes: MAX_FILE_CHUNK_BYTES,
 })
 
 export type Operation =
@@ -116,6 +132,23 @@ export type Command =
       body: string
     }
   | { id: number; type: 'withdraw_notification'; window_id: number; notification_id: number }
+  | {
+      id: number
+      type: 'open_file_grant'
+      window_id: number
+      grant_id: number
+      root: string
+      access: FileAccess
+    }
+  | { id: number; type: 'close_file_grant'; window_id: number; grant_id: number }
+  | {
+      id: number
+      type: 'file_request'
+      window_id: number
+      grant_id: number
+      path: string
+      operation: FileOperation
+    }
   | { id: number; type: 'shutdown' }
 
 export const ERROR_CODES = [
@@ -132,6 +165,12 @@ export const ERROR_CODES = [
   'operation_timed_out',
   'payload_too_large',
   'conflict',
+  'not_found',
+  'already_exists',
+  'path_denied',
+  'wrong_kind',
+  'not_empty',
+  'access_denied',
 ] as const
 export type ErrorCode = (typeof ERROR_CODES)[number]
 export const REQUIRED_CAPABILITIES = Object.freeze([
@@ -146,6 +185,7 @@ const CAPABILITIES = [
   'clipboard_text_v1',
   'global_shortcuts_v1',
   'notifications_v1',
+  'filesystem_grants_v1',
 ] as const
 export type Capability = (typeof CAPABILITIES)[number]
 
@@ -214,6 +254,9 @@ export type NativeEvent =
       notification_id: number
       reason: NotificationDismissal
     }
+  | { type: 'file_grant_opened'; id: number; window_id: number; grant_id: number }
+  | { type: 'file_grant_closed'; id: number; window_id: number; grant_id: number }
+  | { type: 'file_result'; id: number; window_id: number; grant_id: number; result: FileResult }
   | { type: 'closed'; sequence: number; window_id: number }
   | { type: 'error'; id?: number; code: ErrorCode; message: string }
 
@@ -352,6 +395,36 @@ export function parseCommand(value: unknown): Command {
         window_id: id(message['window_id']),
         notification_id: id(message['notification_id']),
       }
+    case 'open_file_grant':
+      keys(message, ['id', 'type', 'window_id', 'grant_id', 'root', 'access'])
+      return {
+        id: request,
+        type: 'open_file_grant',
+        window_id: id(message['window_id']),
+        grant_id: id(message['grant_id']),
+        root: parseRootId(message['root']),
+        access: parseFileAccess(message['access']),
+      }
+    case 'close_file_grant':
+      keys(message, ['id', 'type', 'window_id', 'grant_id'])
+      return {
+        id: request,
+        type: 'close_file_grant',
+        window_id: id(message['window_id']),
+        grant_id: id(message['grant_id']),
+      }
+    case 'file_request': {
+      keys(message, ['id', 'type', 'window_id', 'grant_id', 'path', 'operation'])
+      const path = parseFilePath(message['path'])
+      return {
+        id: request,
+        type: 'file_request',
+        window_id: id(message['window_id']),
+        grant_id: id(message['grant_id']),
+        path,
+        operation: parseFileOperation(message['operation'], path),
+      }
+    }
     case 'shutdown':
       keys(message, ['id', 'type'])
       return { id: request, type: 'shutdown' }
@@ -376,6 +449,8 @@ function limits(value: unknown): Limits {
     max_service_requests: parse('max_service_requests'),
     max_global_shortcuts: parse('max_global_shortcuts'),
     max_notifications: parse('max_notifications'),
+    max_file_grants: parse('max_file_grants'),
+    max_file_chunk_bytes: parse('max_file_chunk_bytes'),
   }
 }
 
@@ -533,6 +608,24 @@ export function parseEvent(value: unknown): NativeEvent {
         window_id: id(message['window_id']),
         notification_id: id(message['notification_id']),
         reason: parseNotificationDismissal(message['reason']),
+      }
+    case 'file_grant_opened':
+    case 'file_grant_closed':
+      keys(message, ['type', 'id', 'window_id', 'grant_id'])
+      return {
+        type: message['type'],
+        id: id(message['id']),
+        window_id: id(message['window_id']),
+        grant_id: id(message['grant_id']),
+      }
+    case 'file_result':
+      keys(message, ['type', 'id', 'window_id', 'grant_id', 'result'])
+      return {
+        type: 'file_result',
+        id: id(message['id']),
+        window_id: id(message['window_id']),
+        grant_id: id(message['grant_id']),
+        result: parseFileResult(message['result']),
       }
     case 'click':
     case 'focus':

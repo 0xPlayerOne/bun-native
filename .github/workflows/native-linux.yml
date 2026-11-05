@@ -132,7 +132,7 @@ jobs:
             "$NATIVE_EVIDENCE/events-development" event-throughput bun tests/native/event-throughput.ts
       - name: Compile and inspect the actual AOT entries
         run: |
-          for entry in native-window input-race bridge javascript core-lifecycle event-throughput fault scheduling layout interactions services clipboard global-shortcuts notifications solid-services react-services solid solid-input-intent solid-interactions react react-interactions react-behavior react-workload react-workspace react-workspace-flow; do
+          for entry in native-window input-race bridge javascript core-lifecycle event-throughput fault scheduling layout interactions services clipboard global-shortcuts notifications filesystem-grants solid-services react-services solid solid-input-intent solid-interactions react react-interactions react-behavior react-workload react-workspace react-workspace-flow; do
             outdir="$NATIVE_EVIDENCE/$entry-package"
             if [[ "$entry" == native-window ]]; then
               outdir="$NATIVE_EVIDENCE/package"
@@ -191,6 +191,23 @@ jobs:
             evidence="$NATIVE_EVIDENCE/notifications-$mode"
             mkdir "$evidence"
             BUN_NATIVE_NOTIFICATION_EVIDENCE="$evidence" BUN_NATIVE_NOTIFICATION_MODE="$mode" \
+              xvfb-run --auto-servernum --server-args='-screen 0 1280x800x24 -nolisten tcp' \
+              dbus-run-session -- bash scripts/quality/native-linux-session.sh \
+              "$evidence-session" -- "${command[@]}" 2>&1 | tee "$evidence/run.log"
+          done
+      - name: Development and AOT filesystem grants
+        timeout-minutes: 3
+        env:
+          BUN_NATIVE_HOST: ${{ github.workspace }}/target/release/bun-native-host
+        run: |
+          for mode in development aot; do
+            command=(bun tests/native/filesystem-grants.ts)
+            if [[ "$mode" == aot ]]; then
+              command=("$NATIVE_EVIDENCE/filesystem-grants-package/filesystem-grants")
+            fi
+            evidence="$NATIVE_EVIDENCE/filesystem-grants-$mode"
+            mkdir "$evidence"
+            BUN_NATIVE_FILESYSTEM_EVIDENCE="$evidence" BUN_NATIVE_FILESYSTEM_MODE="$mode" \
               xvfb-run --auto-servernum --server-args='-screen 0 1280x800x24 -nolisten tcp' \
               dbus-run-session -- bash scripts/quality/native-linux-session.sh \
               "$evidence-session" -- "${command[@]}" 2>&1 | tee "$evidence/run.log"
@@ -595,6 +612,7 @@ jobs:
             ${{ runner.temp }}/native-evidence/shortcut-peer-sha256.txt
             ${{ runner.temp }}/native-evidence/global-shortcuts-*/
             ${{ runner.temp }}/native-evidence/notifications-*/
+            ${{ runner.temp }}/native-evidence/filesystem-grants-*/
             ${{ runner.temp }}/native-evidence/development/
             ${{ runner.temp }}/native-evidence/aot/
             ${{ runner.temp }}/native-evidence/input-race-aot/
@@ -641,6 +659,7 @@ jobs:
             echo 'The Linux clipboard service uses an independent owned X11 peer in development and inspected AOT. Required outcomes cover immutable grants, ordinary/delayed/INCR text, payload and metadata rejection, owner loss, bounded stalled transfers with responsive input/commits, cancellation, idle worker sleep, selection persistence and joined cleanup. This does not qualify clipboard support on Wayland, macOS or Windows.'
             echo 'Linux X11 global shortcuts run in development and inspected AOT: default denial, delivery while another owned window is focused, Num Lock independence, real conflicts with an independent X11 client, and verified OS grab release after unregistration, owner close and shutdown. This does not qualify global shortcuts on Wayland, macOS or Windows.'
             echo 'Linux freedesktop notifications run against the real dunst server on an isolated D-Bus session in development and inspected AOT: default denial, an isolated bus without a server reported as unavailable, posting, server-action activation, user dismissal, forged signals from an independent bus client ignored, and server-side withdrawal on request, owner close and shutdown. This does not qualify notifications on macOS or Windows, or with other notification servers.'
+            echo 'Linux filesystem grants run in development and inspected AOT on a private temporary tree checked independently with node:fs: default denial, unknown roots and access above the launch grant refused, read grants refusing writes, actual create/append/truncate/binary effects, directory pages and removal, symbolic links never followed inside or out of the grant, traversal rejected before the wire, a sibling directory left untouched, and native rejection of foreign, stale and reused grant handles. Close, owner close and shutdown revoke grants and withhold in-flight results. This does not qualify filesystem grants on macOS or Windows.'
             echo 'Solid runs the exact source-fingerprinted generated module in development and through inspected Bun AOT against the same release GPUI host. Twelve scenarios require keyed identity, every native edit, delayed revision-aware replacement, shared keyboard/pointer/focus phases, caret and selection behavior, complete native paint, OS close and owner cleanup. These correctness cases do not close the separate retained-object investigation or establish matched framework performance.'
             echo 'Bridge acknowledgement timings run with instrumentation disabled; they are not display-presentation timings. The startup/RSS baseline retains one warm-up and five measured fresh-process trials per mode, alternating order, with a two-second idle interval and uncontrolled OS caches.'
             echo 'Separate Heaptrack runs profile only the real native host during the 1,000-cycle lifecycle in both modes. Full compressed allocation traces, tool/host/source hashes and bounded callsite reports are retained; profiler timing/RSS is not mixed into the baseline, and outstanding-at-exit allocations are not automatically leaks.'

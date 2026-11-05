@@ -30,6 +30,13 @@ import {
   type NotificationEvent,
   type NotificationOptions,
 } from './notifications.ts'
+import {
+  fileGrantRequest,
+  FileGrantRegistration,
+  type FileCall,
+  type FileGrantOptions,
+  type NativeFileGrant,
+} from './files.ts'
 import { makeNode, own, Transaction, type NodeState } from './tree.ts'
 import {
   NativeStateError,
@@ -64,6 +71,8 @@ class Application implements NativeApplication {
   private nextShortcut = 1
   readonly notifications = new Map<number, NotificationRegistration>()
   private nextNotification = 1
+  readonly fileGrants = new Map<number, FileGrantRegistration>()
+  private nextFileGrant = 1
   private tail: Promise<void> = Promise.resolve()
   private queued = 0
   private readonly services = new Set<Promise<void>>()
@@ -128,6 +137,12 @@ class Application implements NativeApplication {
 
   isAllocatedNotification(id: number): boolean {
     return id < this.nextNotification
+  }
+
+  allocateFileGrant(): number {
+    if (!Number.isSafeInteger(this.nextFileGrant))
+      throw new NativeStateError('limit_exceeded', 'File grant identity space exhausted')
+    return this.nextFileGrant++
   }
 
   cancelCallbacks(windowId: number): void {
@@ -367,6 +382,20 @@ async function dispatchOwned<T>(
     signal.removeEventListener('abort', cancel)
   }
 }
+
+const FILE_ERRORS = [
+  'permission_denied',
+  'service_unavailable',
+  'cancelled',
+  'native_failure',
+  'limit_exceeded',
+  'not_found',
+  'already_exists',
+  'path_denied',
+  'wrong_kind',
+  'not_empty',
+  'access_denied',
+] as const
 
 const NOTIFICATION_ERRORS = [
   'permission_denied',
@@ -732,6 +761,111 @@ class Window implements NativeWindow {
     })
   }
 
+  async openFileGrant(root: string, options: FileGrantOptions = {}): Promise<NativeFileGrant> {
+    const request = fileGrantRequest(root, options)
+    this.assertActive()
+    return this.application.service(async () => {
+      this.assertActive()
+      const registration = new FileGrantRegistration(
+        this.application.allocateFileGrant(),
+        this.id,
+        request.root,
+        request.access,
+        (item, call) => this.fileCall(item, call),
+        (item) => this.closeFileGrant(item)
+      )
+      this.application.fileGrants.set(registration.id, registration)
+      try {
+        await this.application.host.send({
+          type: 'open_file_grant',
+          window_id: this.id,
+          grant_id: registration.id,
+          root: request.root,
+          access: request.access,
+        })
+        this.assertActive()
+        if (!registration.live)
+          throw new NativeServiceError(
+            'filesystem_grants',
+            'cancelled',
+            'File grant was revoked while it opened'
+          )
+        return registration.handle
+      } catch (error) {
+        registration.revoke()
+        this.application.fileGrants.delete(registration.id)
+        throw this.fileError(error)
+      }
+    })
+  }
+
+  private fileError(error: unknown): unknown {
+    if (error instanceof ProtocolError) return error
+    this.assertActive()
+    if (
+      error instanceof NativeCommandError &&
+      (FILE_ERRORS as readonly string[]).includes(error.code)
+    )
+      return new NativeServiceError(
+        'filesystem_grants',
+        error.code as NativeServiceError['code'],
+        error.message
+      )
+    return error
+  }
+
+  private fileCall(registration: FileGrantRegistration, call: FileCall): Promise<unknown> {
+    const revoked = () =>
+      new NativeServiceError(
+        'filesystem_grants',
+        'cancelled',
+        'File grant is closed; no result is delivered'
+      )
+    if (!registration.live) return Promise.reject(revoked())
+    this.assertActive()
+    return this.application.service(async () => {
+      this.assertActive()
+      if (!registration.live) throw revoked()
+      try {
+        const response = await this.application.host.send({
+          type: 'file_request',
+          window_id: this.id,
+          grant_id: registration.id,
+          path: call.path,
+          operation: call.operation,
+        })
+        // Revocation withholds a result the worker already produced.
+        this.assertActive()
+        if (!registration.live) throw revoked()
+        return call.finish(response.result)
+      } catch (error) {
+        if (error instanceof ProtocolError) throw error
+        this.assertActive()
+        if (!registration.live) throw revoked()
+        throw this.fileError(error)
+      }
+    })
+  }
+
+  private closeFileGrant(registration: FileGrantRegistration): Promise<void> {
+    registration.revoke()
+    this.application.fileGrants.delete(registration.id)
+    // Window close and application shutdown close the descriptor natively.
+    if (!this.active || !this.application.running) return Promise.resolve()
+    return this.application.track(
+      this.application.host
+        .send({ type: 'close_file_grant', window_id: this.id, grant_id: registration.id })
+        .then(
+          () => {},
+          (error: unknown) => {
+            if (error instanceof NativeCommandError && error.code === 'invalid_handle') return
+            if (!this.application.running) return
+            throw error
+          }
+        )
+    )
+  }
+
   private withdrawNotification(registration: NotificationRegistration): Promise<void> {
     // Local revocation first: no activation is delivered after this call.
     registration.revoke()
@@ -840,6 +974,11 @@ class Window implements NativeWindow {
       if (registration.windowId === this.id) {
         registration.revoke()
         this.application.notifications.delete(registration.id)
+      }
+    for (const registration of this.application.fileGrants.values())
+      if (registration.windowId === this.id) {
+        registration.revoke()
+        this.application.fileGrants.delete(registration.id)
       }
     this.application.windows.delete(this.id)
     this.resolveClosed()

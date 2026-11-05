@@ -1,4 +1,7 @@
 import {
+  filesystemRootArgument,
+  fileResultAnswers,
+  parseFilesystemRoots,
   encodeFrame,
   FrameDecoder,
   parseCommand,
@@ -12,6 +15,7 @@ import {
   type Limits,
   type ServicePolicy,
   type Capability,
+  type FileAccess,
 } from '@bun-native/protocol'
 import { isAbsolute } from 'node:path'
 import type { ReadableStreamDefaultReader } from 'node:stream/web'
@@ -33,6 +37,9 @@ export type WindowCommand = WithoutId<
         | 'unregister_global_shortcut'
         | 'post_notification'
         | 'withdraw_notification'
+        | 'open_file_grant'
+        | 'close_file_grant'
+        | 'file_request'
     }
   >
 >
@@ -51,6 +58,9 @@ export type HostResponse = Extract<
       | 'global_shortcut_unregistered'
       | 'notification_posted'
       | 'notification_withdrawn'
+      | 'file_grant_opened'
+      | 'file_grant_closed'
+      | 'file_result'
   }
 >
 
@@ -63,6 +73,11 @@ export interface ServicePermissions {
   readonly globalShortcuts?: 'allow' | 'deny'
   /** Desktop notifications posted by an owned window. */
   readonly notifications?: 'allow' | 'deny'
+  /**
+   * Directories an owned window may open as scoped file grants. Each `path`
+   * is absolute and normalized; `access` caps every grant on that root.
+   */
+  readonly filesystemRoots?: readonly Readonly<{ id: string; path: string; access: FileAccess }>[]
 }
 
 export class NativeCommandError extends Error {
@@ -97,6 +112,7 @@ function launchPolicy(value: unknown = {}): Readonly<ServicePolicy> {
           'clipboardWrite',
           'globalShortcuts',
           'notifications',
+          'filesystemRoots',
         ].includes(key)
     )
   )
@@ -113,7 +129,41 @@ function launchPolicy(value: unknown = {}): Readonly<ServicePolicy> {
     clipboard_write: grant('clipboardWrite'),
     global_shortcuts: grant('globalShortcuts'),
     notifications: grant('notifications'),
+    filesystem_roots: filesystemRoots(value),
   })
+}
+
+function filesystemRoots(value: object): ServicePolicy['filesystem_roots'] {
+  const roots = Object.hasOwn(value, 'filesystemRoots')
+    ? (value as Record<string, unknown>)['filesystemRoots']
+    : []
+  try {
+    return Object.freeze(
+      parseFilesystemRoots(roots).map((root) => Object.freeze(root))
+    ) as ServicePolicy['filesystem_roots']
+  } catch (error) {
+    throw new TypeError(
+      'filesystemRoots must list at most 8 unique { id, path, access } roots: ' +
+        (error as Error).message
+    )
+  }
+}
+
+function samePolicy(left: Readonly<ServicePolicy>, right: Readonly<ServicePolicy>): boolean {
+  return (
+    left.window_display === right.window_display &&
+    left.clipboard_read === right.clipboard_read &&
+    left.clipboard_write === right.clipboard_write &&
+    left.global_shortcuts === right.global_shortcuts &&
+    left.notifications === right.notifications &&
+    left.filesystem_roots.length === right.filesystem_roots.length &&
+    left.filesystem_roots.every(
+      (root, index) =>
+        root.id === right.filesystem_roots[index]!.id &&
+        root.path === right.filesystem_roots[index]!.path &&
+        root.access === right.filesystem_roots[index]!.access
+    )
+  )
 }
 
 type Pending = {
@@ -172,6 +222,7 @@ export class NativeHost implements AsyncIterable<WindowEvent> {
         ...(requestedPolicy.clipboard_write ? ['--bun-native-allow-clipboard-write'] : []),
         ...(requestedPolicy.global_shortcuts ? ['--bun-native-allow-global-shortcuts'] : []),
         ...(requestedPolicy.notifications ? ['--bun-native-allow-notifications'] : []),
+        ...requestedPolicy.filesystem_roots.map(filesystemRootArgument),
       ],
       stdin: 'pipe',
       stdout: 'pipe',
@@ -258,6 +309,15 @@ export class NativeHost implements AsyncIterable<WindowEvent> {
   send(
     command: Extract<WindowCommand, { type: 'withdraw_notification' }>
   ): Promise<Extract<HostResponse, { type: 'notification_withdrawn' }>>
+  send(
+    command: Extract<WindowCommand, { type: 'open_file_grant' }>
+  ): Promise<Extract<HostResponse, { type: 'file_grant_opened' }>>
+  send(
+    command: Extract<WindowCommand, { type: 'close_file_grant' }>
+  ): Promise<Extract<HostResponse, { type: 'file_grant_closed' }>>
+  send(
+    command: Extract<WindowCommand, { type: 'file_request' }>
+  ): Promise<Extract<HostResponse, { type: 'file_result' }>>
   send(command: WindowCommand): Promise<HostResponse>
   send(command: WindowCommand): Promise<HostResponse> {
     if (this.phase !== 'running') return Promise.reject(this.closedError())
@@ -335,6 +395,14 @@ export class NativeHost implements AsyncIterable<WindowEvent> {
           Buffer.byteLength(command.text, 'utf8') > this.negotiatedLimits.max_clipboard_bytes
         )
           throw new ProtocolError('Clipboard write exceeds the negotiated text limit')
+        const chunk = this.negotiatedLimits.max_file_chunk_bytes
+        if (
+          command.type === 'file_request' &&
+          ((command.operation.kind === 'read' && command.operation.length > chunk) ||
+            (command.operation.kind === 'write' &&
+              Buffer.from(command.operation.data, 'base64').byteLength > chunk))
+        )
+          throw new ProtocolError('File request exceeds the negotiated chunk limit')
       }
     } catch (error) {
       return Promise.reject(error)
@@ -443,6 +511,14 @@ export class NativeHost implements AsyncIterable<WindowEvent> {
       Buffer.byteLength(event.result.text, 'utf8') > this.negotiatedLimits.max_clipboard_bytes
     )
       throw new ProtocolError('Clipboard response exceeds the negotiated text limit')
+    if (
+      event.type === 'file_result' &&
+      event.result.kind === 'read' &&
+      this.negotiatedLimits &&
+      Buffer.from(event.result.data, 'base64').byteLength >
+        this.negotiatedLimits.max_file_chunk_bytes
+    )
+      throw new ProtocolError('File read exceeds the negotiated chunk limit')
     if (event.type === 'ready') {
       if (this.ready || this.phase !== 'starting') throw new ProtocolError('Unexpected ready event')
       if (REQUIRED_CAPABILITIES.some((capability) => !event.capabilities.includes(capability)))
@@ -450,15 +526,11 @@ export class NativeHost implements AsyncIterable<WindowEvent> {
           'Native host lacks required protocol capabilities: ' + REQUIRED_CAPABILITIES.join(', ')
         )
       this.negotiatedLimits = Object.freeze(event.limits)
-      if (
-        (Object.keys(this.requestedPolicy) as (keyof ServicePolicy)[]).some(
-          (key) => event.service_policy[key] !== this.requestedPolicy[key]
-        )
-      )
+      if (!samePolicy(event.service_policy, this.requestedPolicy))
         throw new ProtocolError(
           'Native service policy does not match the explicit launch permissions'
         )
-      this.negotiatedServicePolicy = Object.freeze(event.service_policy)
+      this.negotiatedServicePolicy = this.requestedPolicy
       this.negotiatedCapabilities = Object.freeze(event.capabilities)
       this.ready = true
       return
@@ -474,6 +546,9 @@ export class NativeHost implements AsyncIterable<WindowEvent> {
       event.type === 'global_shortcut_unregistered' ||
       event.type === 'notification_posted' ||
       event.type === 'notification_withdrawn' ||
+      event.type === 'file_grant_opened' ||
+      event.type === 'file_grant_closed' ||
+      event.type === 'file_result' ||
       event.type === 'error'
     ) {
       if (event.type === 'error' && event.id === undefined)
@@ -539,6 +614,21 @@ export class NativeHost implements AsyncIterable<WindowEvent> {
           response.type === 'notification_withdrawn' &&
           response.window_id === command.window_id &&
           response.notification_id === command.notification_id
+        )
+      case 'open_file_grant':
+      case 'close_file_grant':
+        return (
+          response.type ===
+            (command.type === 'open_file_grant' ? 'file_grant_opened' : 'file_grant_closed') &&
+          response.window_id === command.window_id &&
+          response.grant_id === command.grant_id
+        )
+      case 'file_request':
+        return (
+          response.type === 'file_result' &&
+          response.window_id === command.window_id &&
+          response.grant_id === command.grant_id &&
+          fileResultAnswers(command.operation, response.result)
         )
       case 'open':
         return (

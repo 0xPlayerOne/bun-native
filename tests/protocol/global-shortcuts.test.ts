@@ -28,6 +28,7 @@ describe('shared global shortcut wire contract (headless)', () => {
           clipboard_write: false,
           global_shortcuts,
           notifications: false,
+          filesystem_roots: [],
         },
       } satisfies NativeEvent
       expect(parseEvent(ready)).toEqual(ready)

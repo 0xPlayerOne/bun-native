@@ -2,6 +2,7 @@
 // never evidence that a native clipboard selection was read or written.
 import {
   DEFAULT_LIMITS,
+  filesystemRootsFromArguments,
   encodeFrame,
   FrameDecoder,
   parseCommand,
@@ -21,6 +22,7 @@ const policy = {
   clipboard_write: process.argv.includes('--bun-native-allow-clipboard-write'),
   global_shortcuts: process.argv.includes('--bun-native-allow-global-shortcuts'),
   notifications: process.argv.includes('--bun-native-allow-notifications'),
+  filesystem_roots: filesystemRootsFromArguments(process.argv),
 }
 const windows = new Set<number>()
 const pending = new Map<number, number>()

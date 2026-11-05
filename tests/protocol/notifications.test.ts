@@ -29,6 +29,7 @@ describe('shared notification wire contract (headless)', () => {
           clipboard_write: false,
           global_shortcuts: false,
           notifications,
+          filesystem_roots: [],
         },
       } satisfies NativeEvent
       expect(parseEvent(ready)).toEqual(ready)

@@ -46,6 +46,7 @@ const entries = {
   clipboard: 'tests/native/clipboard.ts',
   'global-shortcuts': 'tests/native/global-shortcuts.ts',
   notifications: 'tests/native/notifications.ts',
+  'filesystem-grants': 'tests/native/filesystem-grants.ts',
   'solid-services': 'tests/native/solid-services.tsx',
   'react-services': 'tests/native/react-services.tsx',
   'platform-smoke': 'tests/native/platform-smoke.ts',
@@ -116,6 +117,7 @@ if (
     entry === 'clipboard' ||
     entry === 'global-shortcuts' ||
     entry === 'notifications' ||
+    entry === 'filesystem-grants' ||
     entry === 'platform-smoke' ||
     solidEntry ||
     reactEntry) &&

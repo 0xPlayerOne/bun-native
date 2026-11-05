@@ -62,8 +62,9 @@ try {
 ```
 
 The default permission is `deny`. The accepted keys are `windowDisplay`,
-`clipboardRead`, `clipboardWrite` and `globalShortcuts`, each independently
-`allow` or `deny`.
+`clipboardRead`, `clipboardWrite`, `globalShortcuts` and `notifications`, each
+independently `allow` or `deny`, and `filesystemRoots`, a list of launch
+directories described under [filesystem grants](#filesystem-grants).
 The runtime translates each explicit grant into its reserved native launch argument. The Rust process
 parses that immutable policy before starting GPUI or its private channel.
 Unknown or duplicate native arguments fail startup. A wire message cannot
@@ -322,6 +323,77 @@ zero after withdrawal, owner close and shutdown. macOS and Windows remain
 unavailable, and other notification servers are not qualified. See
 [ADR 0009](decisions/0009-native-notifications.md).
 
+## Filesystem grants
+
+`window.openFileGrant(root, { access })` opens a scoped grant on one of the
+directories the application named in its immutable `filesystemRoots` launch
+permission:
+
+```ts
+const app = await createApplication({
+  executable,
+  permissions: {
+    filesystemRoots: [{ id: 'workspace', path: '/home/me/project', access: 'read_write' }],
+  },
+})
+const window = await app.openWindow({ title: 'Workspace' })
+const grant = await window.openFileGrant('workspace', { access: 'read' })
+const page = await grant.list('src')
+const chunk = await grant.read('src/main.ts', { offset: 0, length: 16_384 })
+await grant.close()
+```
+
+Each root has an ID of lowercase letters, digits, `-` and `_`, an absolute
+normalized path and `read` or `read_write` access; at most eight are accepted.
+A grant requests at most its root's access and defaults to `read`. Readiness
+reports the same ordered roots, and the frozen capability record lists them by
+ID with `backend: 'openat2'`. The optional `filesystem_grants_v1` feature is
+advertised only on Linux with `openat2`; other targets report `unavailable` /
+`unsupported_platform`. No run-time path, dropped file name or model text can
+create a root or a grant.
+
+Paths are relative to the grant: `''` is the root itself and other paths are
+`/`-joined names without empty, `.`, `..` or control-character components (at
+most 1,024 bytes and 32 components). The host opens the root once as a
+directory descriptor and resolves every request beneath it with
+`openat2(RESOLVE_BENEATH | RESOLVE_NO_SYMLINKS | RESOLVE_NO_MAGICLINKS)`, so
+symbolic links are never followed, inside or out of the grant. `stat` and
+`list` report link entries as `symlink`; `remove` deletes the link, not its
+target. Renaming the root after a grant opens keeps that grant on the same
+directory. Reads and writes refuse anything but a regular file before any byte
+moves, so FIFOs and devices are never opened for I/O.
+
+| Method                   | Result                                                                                           |
+| ------------------------ | ------------------------------------------------------------------------------------------------ |
+| `stat(path)`             | `{ kind, size, modifiedMs }`; `kind` is `file`, `directory`, `symlink` or `other`                |
+| `list(path?, { after })` | Up to 64 entries sorted by UTF-8 name, `complete`, and `omitted` unrepresentable names           |
+| `read(path, options)`    | `{ bytes, endOfFile }` for at most 16,384 bytes at `offset`                                      |
+| `write(path, bytes, …)`  | Bytes written; `mode` is `create` (default, exclusive), `truncate` or `append`; one 16 KiB chunk |
+| `createDirectory(path)`  | Creates one directory; the parent must exist                                                     |
+| `remove(path)`           | Removes a file, link or empty directory                                                          |
+| `close()`                | Idempotent; revokes locally first, then closes the native descriptor                             |
+
+Writes, `createDirectory` and `remove` need a `read_write` grant; the host
+enforces that before any I/O. Failures are `NativeServiceError` with service
+`filesystem_grants` and a code: `permission_denied`, `not_found`,
+`already_exists`, `path_denied` (a link or escape), `wrong_kind`, `not_empty`,
+`access_denied` (the OS refused), `limit_exceeded`, `service_unavailable`,
+`native_failure` or `cancelled`. Requests run on one host worker thread and
+share the eight-request service bound; at most 32 grants are live per session.
+Closing the grant, its window or the application revokes it: later calls reject
+with `cancelled` without a native request, and a result that arrives after
+revocation is withheld. An operation the worker has already started may still
+take effect.
+
+The [Native Linux workflow](../.github/workflows/native-linux.yml) runs
+[`tests/native/filesystem-grants.ts`](../tests/native/filesystem-grants.ts) in
+development and inspected AOT on an isolated display. It checks every effect
+independently through `node:fs` on a private temporary tree, including a
+sibling directory that must stay unchanged, and drives the private runtime to
+confirm that the host rejects foreign, stale and reused grant IDs. See
+[ADR 0010](decisions/0010-filesystem-grants.md). macOS and Windows remain
+unavailable.
+
 ## Service and platform matrix
 
 All services listed here share the core's policy boundary. The unavailable rows
@@ -338,7 +410,7 @@ already exists. The linked follow-ups belong to
 | Dialogs           | Capability `dialogs`; unavailable                             | Unavailable                                         | Unavailable                  | Unavailable                  | Owned-window modality, explicit cancellation, shutdown and file selection distinct from a file grant. [#239](https://github.com/0xPlayerOne/bun-native/issues/239).             |
 | Notifications     | `postNotification`; `notifications` grant                     | Freedesktop D-Bus (dunst) dev+AOT verified          | Unavailable                  | Unavailable                  | macOS/Windows backends, additional notification servers, named actions and replacement. [#302](https://github.com/0xPlayerOne/bun-native/issues/302).                           |
 | Drag/drop         | Capability `dragDrop`; unavailable                            | Unavailable                                         | Unavailable                  | Unavailable                  | Bounded untrusted payload, owned target, native cancellation and explicit file-grant conversion. [#303](https://github.com/0xPlayerOne/bun-native/issues/303).                  |
-| Filesystem grants | Capability `filesystemGrants`; unavailable                    | Unavailable                                         | Unavailable                  | Unavailable                  | Scoped file/directory handles, allowed operations, path/symlink policy, revocation and OS failure mapping. [#304](https://github.com/0xPlayerOne/bun-native/issues/304).        |
+| Filesystem grants | `openFileGrant`; `filesystemRoots` launch roots               | openat2 dev+AOT verified locally                    | Unavailable                  | Unavailable                  | OS file selection and dropped files as explicit user grants, macOS/Windows confinement. [#304](https://github.com/0xPlayerOne/bun-native/issues/304).                           |
 | PTY/process       | Capability `ptyProcess`; unavailable                          | Unavailable                                         | Unavailable                  | Unavailable                  | Executable/argument/environment policy, bounded streams, process identity, interruption and joined child cleanup. [#305](https://github.com/0xPlayerOne/bun-native/issues/305). |
 
 For the deferred rows, the exported typed contract is the frozen availability
