@@ -321,10 +321,10 @@ impl Tree {
         index: usize,
     ) -> Result<(), ModelError> {
         let parent = self.nodes.get(&parent_id).ok_or_else(invalid_handle)?;
-        if !matches!(parent.element.as_ref(), Element::Box { .. }) {
+        if !parent.element.is_container() {
             return Err(error(
                 ErrorCode::InvalidState,
-                "only box elements can own children",
+                "only box and split elements can own children",
             ));
         }
         if child_id == self.root_id {
@@ -417,6 +417,12 @@ impl Tree {
                 ));
             }
             let node = self.nodes.get(&id).ok_or_else(invalid_handle)?;
+            if node.children.len() > node.element.max_children() {
+                return Err(error(
+                    ErrorCode::LimitExceeded,
+                    "a split owns at most two panes",
+                ));
+            }
             if node.parent != parent {
                 return Err(error(
                     ErrorCode::InvalidState,

@@ -48,7 +48,10 @@ for await (const chunk of Bun.stdin.stream()) {
           filesystem_roots: filesystemRootsFromArguments(process.argv),
         },
         protocol: PROTOCOL_VERSION,
-        capabilities: [...REQUIRED_CAPABILITIES],
+        capabilities:
+          mode === 'layout-v2'
+            ? [...REQUIRED_CAPABILITIES, 'split_v1', 'style_decoration_v1']
+            : [...REQUIRED_CAPABILITIES],
         limits,
       })
       await emit({ type: 'ack', id: command.id })

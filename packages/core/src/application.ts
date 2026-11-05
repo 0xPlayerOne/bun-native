@@ -451,7 +451,8 @@ class Window implements NativeWindow {
         this.nodes,
         this.rootId,
         () => this.application.allocateNode(),
-        this.application.limits
+        this.application.limits,
+        this.application.capabilities
       )
       let value: T
       try {

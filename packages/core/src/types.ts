@@ -24,6 +24,8 @@ import type { FileGrantOptions, NativeFileGrant } from './files.ts'
 export type { Element, KeyModifiers, PointerButton, Style }
 export type ApplicationOptions = HostOptions
 export type ElementKind = Element['kind']
+/** Element kinds that own ordered children. */
+export type ContainerKind = 'box' | 'split'
 export type NativeCapability = Capability
 declare const nodeType: unique symbol
 
@@ -118,8 +120,8 @@ export interface NativeBatch {
     element: Extract<Element, { kind: NoInfer<K> }>
   ): void
   /** Index is evaluated after detaching the child from its previous parent. */
-  insert(parent: NativeNode<'box'>, child: NativeNode, index: number): void
-  append(parent: NativeNode<'box'>, child: NativeNode): void
+  insert(parent: NativeNode<ContainerKind>, child: NativeNode, index: number): void
+  append(parent: NativeNode<ContainerKind>, child: NativeNode): void
   /** Deletes the complete subtree; deleting a revoked node is an error. */
   remove(node: NativeNode): void
 }

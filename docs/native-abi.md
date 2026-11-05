@@ -61,7 +61,10 @@ disposed handles. The runtime cannot terminate arbitrary consumer JavaScript.
 - The first request is `hello` with protocol `6`. The host emits `ready` with the
   same protocol, implemented capabilities, resource limits and explicit
   `service_policy`, then acknowledges the request. `tree`, `input_revisions`,
-  `layout_v1`, `interactions_v1` and `window_display_v1` are mandatory. Missing features,
+  `layout_v1`, `interactions_v1` and `window_display_v1` are mandatory. Optional
+  element features (`split_v1` for the `split` element and `style_decoration_v1`
+  for border, radius, opacity and weight style fields) are advertised without a
+  protocol change; core rejects them locally when a host lacks them. Missing features,
   version mismatch, duplicate readiness or acknowledgement before readiness
   fail launch and clean up the child. The native service policy must exactly
   match the caller's immutable explicit launch permissions; readiness cannot

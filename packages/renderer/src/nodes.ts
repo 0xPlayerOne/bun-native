@@ -33,7 +33,11 @@ type Properties = EventListeners & {
   value?: string | InputIntent
   placeholder?: string
   disabled?: boolean
+  ratio?: number
+  min_size?: number
 }
+
+const isContainer = (kind: Node['kind']) => kind === 'box' || kind === 'split'
 
 const nodes = new WeakSet<object>()
 
@@ -58,7 +62,7 @@ export function asNode(value: RendererNode): Node {
 }
 
 export function createElement(tag: string): Node {
-  if (tag !== 'box' && tag !== 'text' && tag !== 'button' && tag !== 'input')
+  if (tag !== 'box' && tag !== 'text' && tag !== 'button' && tag !== 'input' && tag !== 'split')
     throw new UnsupportedFeatureError('native-element:' + tag)
   return new Node(tag)
 }
@@ -77,7 +81,7 @@ export function visit(node: Node, fn: (node: Node) => void): void {
 export function insertNode(parent: Node, node: Node, anchor?: Node): void {
   if (parent.kind === 'input' || parent.kind === 'text-node')
     throw new NativeStateError('invalid_state', 'This native element cannot have children')
-  if (parent.kind !== 'box' && node.kind !== 'text-node')
+  if (!isContainer(parent.kind) && node.kind !== 'text-node')
     throw new NativeStateError('invalid_state', 'Text and button children must be text')
   if (anchor && anchor.parent !== parent)
     throw new NativeStateError('invalid_handle', 'Insertion anchor belongs to another parent')
@@ -171,6 +175,13 @@ export function setProperty(node: Node, name: string, value: unknown): void {
       else if (typeof value === 'boolean') props.disabled = value
       else throw new TypeError('Native disabled must be boolean')
       break
+    case 'ratio':
+    case 'min_size':
+      if (node.kind !== 'split') throw new TypeError('Only splits accept ' + name)
+      if (value === undefined) delete props[name]
+      else if (typeof value === 'number') props[name] = value
+      else throw new TypeError(`Native split ${name} must be a number`)
+      break
     default:
       throw new UnsupportedFeatureError('native-property:' + name)
   }
@@ -202,6 +213,14 @@ export function snapshot(root: Node): Map<Node, Snapshot> {
     let element: Element
     if (node.kind === 'box')
       element = { kind: 'box', ...(props.style ? { style: { ...props.style } } : {}) }
+    else if (node.kind === 'split')
+      // Core validation rejects gap and alignment on a split.
+      element = {
+        kind: 'split',
+        ...(props.ratio === undefined ? {} : { ratio: props.ratio }),
+        ...(props.min_size === undefined ? {} : { min_size: props.min_size }),
+        ...style,
+      }
     else if (node.kind === 'input')
       element = {
         kind: 'input',
@@ -226,7 +245,7 @@ export function snapshot(root: Node): Map<Node, Snapshot> {
             }
           : { kind: 'text', text, ...style }
     }
-    const children = node.kind === 'box' ? [...node.children] : []
+    const children = isContainer(node.kind) ? [...node.children] : []
     result.set(node, {
       element,
       children,

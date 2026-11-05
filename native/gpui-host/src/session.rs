@@ -173,6 +173,8 @@ impl Session {
                     Capability::LayoutV1,
                     Capability::InteractionsV1,
                     Capability::WindowDisplayV1,
+                    Capability::SplitV1,
+                    Capability::StyleDecorationV1,
                 ];
                 if self.clipboard.available() {
                     capabilities.push(Capability::ClipboardTextV1);

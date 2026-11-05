@@ -1,7 +1,16 @@
-import { parseElement, type Element, type Limits, type Operation } from '@bun-native/protocol'
+import {
+  DECORATION_FIELDS,
+  parseElement,
+  type Capability,
+  type Element,
+  type Limits,
+  type Operation,
+  type Style,
+} from '@bun-native/protocol'
 import {
   NativeStateError,
   UnsupportedFeatureError,
+  type ContainerKind,
   type ElementKind,
   type NativeBatch,
   type NativeNode,
@@ -9,7 +18,8 @@ import {
 
 const identities = new WeakMap<NativeNode, number>()
 const encoder = new TextEncoder()
-const elementKinds: readonly string[] = ['box', 'text', 'button', 'input']
+const elementKinds: readonly string[] = ['box', 'text', 'button', 'input', 'split']
+const isContainer = (element: Element) => element.kind === 'box' || element.kind === 'split'
 
 function normalize(element: Element): Element {
   if (
@@ -20,6 +30,19 @@ function normalize(element: Element): Element {
   )
     throw new UnsupportedFeatureError('element:' + element.kind)
   return parseElement(element)
+}
+
+/** Optional element features fail locally instead of reaching a host that lacks them. */
+function supported(element: Element, capabilities: readonly Capability[]): Element {
+  if (element.kind === 'split' && !capabilities.includes('split_v1'))
+    throw new UnsupportedFeatureError('element:split')
+  const style: Style = element.style ?? {}
+  if (
+    !capabilities.includes('style_decoration_v1') &&
+    DECORATION_FIELDS.some((field) => style[field] !== undefined)
+  )
+    throw new UnsupportedFeatureError('style:decoration')
+  return element
 }
 
 export interface NodeState {
@@ -68,7 +91,8 @@ export class Transaction implements NativeBatch {
     current: ReadonlyMap<number, NodeState>,
     private readonly rootId: number,
     private readonly allocateId: () => number,
-    private readonly limits: Readonly<Limits>
+    private readonly limits: Readonly<Limits>,
+    private readonly capabilities: readonly Capability[]
   ) {
     this.nodes = new Map(
       [...current].map(([id, node]) => [id, { ...node, children: [...node.children] }])
@@ -90,7 +114,7 @@ export class Transaction implements NativeBatch {
     this.check()
     if (this.nodes.size >= this.limits.max_nodes_per_window)
       throw new NativeStateError('limit_exceeded', 'Window node limit exceeded')
-    const normalized = normalize(element)
+    const normalized = supported(normalize(element), this.capabilities)
     const node = makeNode(this.allocateId(), normalized)
     this.nodes.set(node.id, node)
     this.operations.push({ type: 'create', node_id: node.id, element: node.element })
@@ -109,7 +133,7 @@ export class Transaction implements NativeBatch {
   set(handle: NativeNode, value: Element, expectedInputRevision?: number): void {
     this.check()
     const node = own(this.nodes, handle)
-    const element = normalize(value)
+    const element = supported(normalize(value), this.capabilities)
     if (element.kind !== node.element.kind)
       throw new NativeStateError(
         'invalid_state',
@@ -141,14 +165,14 @@ export class Transaction implements NativeBatch {
     node.element = element
   }
 
-  insert(parentHandle: NativeNode<'box'>, childHandle: NativeNode, index: number): void {
+  insert(parentHandle: NativeNode<ContainerKind>, childHandle: NativeNode, index: number): void {
     this.check()
     const parent = own(this.nodes, parentHandle)
     const child = own(this.nodes, childHandle)
-    if (parent.element.kind !== 'box' || child.id === this.rootId)
+    if (!isContainer(parent.element) || child.id === this.rootId)
       throw new NativeStateError(
         'invalid_state',
-        'Only boxes accept children and the root cannot move'
+        'Only boxes and splits accept children and the root cannot move'
       )
     let ancestor: NodeState | undefined = parent
     while (ancestor) {
@@ -168,7 +192,7 @@ export class Transaction implements NativeBatch {
     this.operations.push({ type: 'insert', parent_id: parent.id, child_id: child.id, index })
   }
 
-  append(parentHandle: NativeNode<'box'>, childHandle: NativeNode): void {
+  append(parentHandle: NativeNode<ContainerKind>, childHandle: NativeNode): void {
     const parent = own(this.nodes, parentHandle)
     const child = own(this.nodes, childHandle)
     this.insert(
@@ -206,12 +230,14 @@ export class Transaction implements NativeBatch {
       const node = this.nodes.get(id)!
       seen += 1
       const element = node.element
+      if (element.kind === 'split' && node.children.length > 2)
+        throw new NativeStateError('limit_exceeded', 'A split owns at most two panes')
       const texts =
         element.kind === 'input'
           ? [element.value, element.placeholder ?? '']
-          : element.kind === 'box'
-            ? []
-            : [element.text]
+          : 'text' in element
+            ? [element.text]
+            : []
       for (const text of texts) {
         const size = encoder.encode(text).byteLength
         if (size > this.limits.max_text_bytes)

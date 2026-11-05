@@ -3,6 +3,9 @@ export { NativeStateError, UnsupportedFeatureError } from './types.ts'
 export { ProtocolError } from '@bun-native/protocol'
 export { NativeCommandError } from '@bun-native/runtime'
 export { NativeServiceError } from './services.ts'
+export { DECORATION_FIELDS, SPLIT_DIVIDER } from '@bun-native/protocol'
+export { defaultTheme, defineTheme } from './theme.ts'
+export type { ResolvedStyle, Theme, ThemedStyle, ThemeTokens } from './theme.ts'
 export type {
   NativeDisplaySnapshot,
   NativeClipboardText,
@@ -27,6 +30,7 @@ export type {
 export type {
   ApplicationOptions,
   ClickEvent,
+  ContainerKind,
   Element,
   ElementKind,
   EventContext,
