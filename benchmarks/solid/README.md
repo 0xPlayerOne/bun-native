@@ -61,3 +61,11 @@ Use fresh output/session directories outside the repository, preferably under th
 `comparison.json` records source/host/compiler provenance, executable inspection, actual calibration GPU metadata and report digests. Per-trial JSON retains raw timings, mutations, component reuse/disposal, weak-target and heap observations, and cleanup. CPU models, logical count, OS and memory are recorded; power state, other machine load and OS cache state remain uncontrolled. A development-profile host is explicitly diagnostic and does not establish release performance.
 
 Actual pointer/text qualification uses the separate `tests/native/solid-window.py` scenarios. Input-to-paint, display presentation, cumulative allocations, native RSS, hardware-GPU behavior, macOS/Windows GUI, physical input, IME/accessibility, cold-cache startup and long-term leak freedom remain separate acceptance work.
+
+## Headless keyed-list adapter micro benchmark
+
+`keyed.ts` mounts a real Solid `<For>` of plain rows through `@bun-native/solid` against an in-process window whose batches acknowledge immediately. It reports median microseconds for stable-size append, swap, middle removal and prepend, plus clearing the whole list. `sync` covers only Solid reconciliation and the universal renderer callbacks; `total` adds the renderer's snapshot, diff and publish. It measures no IPC, core validation, native work or paint, and makes no AOT or retention claim.
+
+```sh
+bun --conditions=browser benchmarks/solid/keyed.ts [rows=1000] [samples=200]
+```

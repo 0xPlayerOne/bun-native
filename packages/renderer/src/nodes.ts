@@ -76,6 +76,12 @@ export function invalidate(node: Node | undefined): void {
   if (node) node.captured = undefined
 }
 
+/** Solid detaches keyed regions from their end, so the tail is checked before scanning. */
+function childIndex(children: readonly Node[], child: Node): number {
+  const last = children.length - 1
+  return children[last] === child ? last : children.indexOf(child)
+}
+
 export function visit(node: Node, fn: (node: Node) => void): void {
   fn(node)
   for (const child of node.children) visit(child, fn)
@@ -102,11 +108,15 @@ export function insertNode(parent: Node, node: Node, anchor?: Node): void {
     })
   const previousOwner = node.owner
   if (previousOwner && previousOwner !== owner) previousOwner.detached(node)
-  if (node.parent) node.parent.children.splice(node.parent.children.indexOf(node), 1)
+  if (node.parent) node.parent.children.splice(childIndex(node.parent.children, node), 1)
   invalidate(node.parent)
   invalidate(parent)
   node.parent = parent
-  parent.children.splice(anchor ? parent.children.indexOf(anchor) : parent.children.length, 0, node)
+  parent.children.splice(
+    anchor ? childIndex(parent.children, anchor) : parent.children.length,
+    0,
+    node
+  )
   // Adapters may clear detached nodes directly, so a reinserted subtree is
   // always captured again from its current state.
   visit(node, (child) => {
@@ -123,7 +133,7 @@ export function removeNode(parent: Node, node: Node): void {
     throw new NativeStateError('invalid_handle', 'Removal target belongs to another parent')
   const owner = parent.owner
   owner?.detached(node)
-  parent.children.splice(parent.children.indexOf(node), 1)
+  parent.children.splice(childIndex(parent.children, node), 1)
   invalidate(parent)
   node.parent = undefined
   // A detached capture would otherwise retain listeners an adapter releases.
