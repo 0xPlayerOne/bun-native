@@ -1,5 +1,10 @@
 # macOS input target verification
 
+> **Status (2026-11-05):** the hosted development and AOT macOS input scenarios
+> described below have since passed; see
+> [native platforms](native-platforms.md#hosted-paint-os-input-and-assigned-device-evidence).
+> This record is otherwise kept as written.
+
 The controller must authorize the exact native window that would receive a mouse-down, not the first rectangle containing the point. An opaque, on-screen window may explicitly ignore mouse events. Its rectangle can cover the application while the actual input target is still the application.
 
 The macOS helper uses AppKit's documented `+[NSWindow windowNumberAtPoint:belowWindowWithWindowNumber:]` with window number zero. It converts the measured global Quartz point to global AppKit coordinates using the primary display's logical height. It independently matches the returned window number against current Quartz owner, bounds and opacity metadata. Unknown, stale, duplicate, inconsistent, foreign and same-process-but-different windows reject. Foreground and target checks run before each of the three pointer events. Posting remains `CGEventPost(kCGSessionEventTap)`; no permission is requested, no alternate posting route is attempted, and no application/input deadline changes.
