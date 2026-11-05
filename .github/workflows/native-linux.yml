@@ -101,6 +101,12 @@ jobs:
         run: |
           python3 benchmarks/native-allocation-control.py \
             --output "$NATIVE_EVIDENCE/allocation-selection"
+      # The first GPUI open loads Lavapipe and LLVM (~240 MB) from a cold
+      # runner disk inside its 5 s request (#296). Read them once here and
+      # record residency and read time; the request deadline is unchanged.
+      - name: Read the software GPU driver into the page cache
+        timeout-minutes: 2
+        run: python3 scripts/quality/warm-gpu-driver.py --output "$NATIVE_EVIDENCE/gpu-driver-warmup.json"
       - name: Development public API input, stale revision and window lifecycle
         env:
           BUN_NATIVE_HOST: ${{ github.workspace }}/target/release/bun-native-host
@@ -579,6 +585,7 @@ jobs:
           name: native-linux-${{ runner.arch }}
           path: |
             ${{ runner.temp }}/native-evidence/toolchain.txt
+            ${{ runner.temp }}/native-evidence/gpu-driver-warmup.json
             ${{ runner.temp }}/native-evidence/allocation-selection/
             ${{ runner.temp }}/native-evidence/build.log
             ${{ runner.temp }}/native-evidence/binary-*.txt
