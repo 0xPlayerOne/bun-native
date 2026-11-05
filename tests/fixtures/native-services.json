@@ -1,5 +1,5 @@
 {
-  "protocol": 8,
+  "protocol": 9,
   "capability": "window_display_v1",
   "commands": [
     {
@@ -19,7 +19,7 @@
     },
     {
       "name": "hello cannot grant a service",
-      "wire": "{\"id\":1,\"type\":\"hello\",\"protocol\":8,\"service_policy\":{\"window_display\":true}}",
+      "wire": "{\"id\":1,\"type\":\"hello\",\"protocol\":9,\"service_policy\":{\"window_display\":true}}",
       "valid": false
     },
     {

@@ -1,5 +1,5 @@
 {
-  "protocol": 8,
+  "protocol": 9,
   "capability": "clipboard_text_v1",
   "commands": [
     {

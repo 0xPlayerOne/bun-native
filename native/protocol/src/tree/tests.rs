@@ -434,3 +434,23 @@ fn aggregate_text_budget_bounds_batches_and_native_edits() {
         MAX_TEXT_BYTES_PER_WINDOW - crate::MAX_TEXT_BYTES + 1
     );
 }
+
+#[test]
+fn preflight_shares_child_lists_until_a_batch_reorders_them() {
+    let tree = populated();
+    let shared = |left: &Tree, right: &Tree, node: u64| {
+        Arc::ptr_eq(
+            &left.node(id(node)).unwrap().children,
+            &right.node(id(node)).unwrap().children,
+        )
+    };
+    let edited = tree
+        .prepare(1, vec![set(3, text("b"), None)], 4)
+        .unwrap()
+        .tree;
+    assert!(shared(&tree, &edited, 1) && shared(&tree, &edited, 2));
+    let moved = edited.prepare(2, vec![insert(2, 3, 1)], 4).unwrap().tree;
+    assert!(shared(&edited, &moved, 1) && !shared(&edited, &moved, 2));
+    assert_eq!(edited.node(id(2)).unwrap().children(), &[id(3), id(4)]);
+    assert_eq!(moved.node(id(2)).unwrap().children(), &[id(4), id(3)]);
+}

@@ -3,7 +3,7 @@
 use serde::{de, Deserialize, Deserializer, Serialize};
 use std::fmt;
 
-pub const PROTOCOL_VERSION: u32 = 8;
+pub const PROTOCOL_VERSION: u32 = 9;
 pub const MAX_ID: u64 = 9_007_199_254_740_991;
 pub const MAX_FRAME_BYTES: usize = 65_536;
 pub const MAX_TEXT_BYTES: usize = 16_384;
@@ -57,6 +57,7 @@ identifier!(NodeId);
 identifier!(EventSequence);
 identifier!(ShortcutId);
 identifier!(NotificationId);
+identifier!(FileGrantId);
 
 /// JSON has one number type. Match JavaScript's safe-integer validation even
 /// when a sender spells an integer as `1.0` or `1e0` instead of canonical `1`.
@@ -403,6 +404,25 @@ pub enum Command {
         window_id: WindowId,
         notification_id: NotificationId,
     },
+    OpenFileGrant {
+        id: RequestId,
+        window_id: WindowId,
+        grant_id: FileGrantId,
+        root: String,
+        access: crate::FileAccess,
+    },
+    CloseFileGrant {
+        id: RequestId,
+        window_id: WindowId,
+        grant_id: FileGrantId,
+    },
+    FileRequest {
+        id: RequestId,
+        window_id: WindowId,
+        grant_id: FileGrantId,
+        path: String,
+        operation: crate::FileOperation,
+    },
     Shutdown {
         id: RequestId,
     },
@@ -424,6 +444,12 @@ pub enum ErrorCode {
     OperationTimedOut,
     PayloadTooLarge,
     Conflict,
+    NotFound,
+    AlreadyExists,
+    PathDenied,
+    WrongKind,
+    NotEmpty,
+    AccessDenied,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -437,6 +463,7 @@ pub enum Capability {
     ClipboardTextV1,
     GlobalShortcutsV1,
     NotificationsV1,
+    FilesystemGrantsV1,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -453,6 +480,8 @@ pub struct Limits {
     pub max_service_requests: usize,
     pub max_global_shortcuts: usize,
     pub max_notifications: usize,
+    pub max_file_grants: usize,
+    pub max_file_chunk_bytes: usize,
 }
 
 impl Default for Limits {
@@ -469,6 +498,8 @@ impl Default for Limits {
             max_service_requests: crate::MAX_SERVICE_REQUESTS,
             max_global_shortcuts: crate::MAX_GLOBAL_SHORTCUTS,
             max_notifications: crate::MAX_NOTIFICATIONS,
+            max_file_grants: crate::MAX_FILE_GRANTS,
+            max_file_chunk_bytes: crate::MAX_FILE_CHUNK_BYTES,
         }
     }
 }
@@ -487,6 +518,9 @@ impl Command {
             | Self::UnregisterGlobalShortcut { id, .. }
             | Self::PostNotification { id, .. }
             | Self::WithdrawNotification { id, .. }
+            | Self::OpenFileGrant { id, .. }
+            | Self::CloseFileGrant { id, .. }
+            | Self::FileRequest { id, .. }
             | Self::Shutdown { id } => *id,
         }
     }
@@ -561,12 +595,17 @@ impl Command {
             Self::PostNotification { title, body, .. } => {
                 crate::validate_notification(title, body)?
             }
+            Self::OpenFileGrant { root, .. } => crate::validate_root_id(root)?,
+            Self::FileRequest {
+                path, operation, ..
+            } => operation.validate(path)?,
             Self::Hello { .. }
             | Self::Close { .. }
             | Self::DisplaySnapshot { .. }
             | Self::ClipboardRead { .. }
             | Self::UnregisterGlobalShortcut { .. }
             | Self::WithdrawNotification { .. }
+            | Self::CloseFileGrant { .. }
             | Self::Shutdown { .. } => {}
         }
         Ok(())
