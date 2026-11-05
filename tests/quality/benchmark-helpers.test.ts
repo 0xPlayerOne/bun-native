@@ -5,15 +5,35 @@ import {
   defaultCollectionRounds,
   observeCollection,
 } from '../../benchmarks/retention/settled-observation.ts'
-import { count } from '../../benchmarks/solid/workload.ts'
 
 const root = resolve(import.meta.dir, '../..')
 
+// `count` is evaluated in a child Bun so that the rest of the benchmark
+// workload, which needs a native host, stays out of the per-file coverage report.
+function counted(values: (string | undefined)[], maximum: number): (number | string)[] {
+  const workload = resolve(root, 'benchmarks/solid/workload.ts')
+  const source =
+    `const { count } = await import(${JSON.stringify(workload)})\n` +
+    `const values = ${JSON.stringify(values)}.map((value) => value ?? undefined)\n` +
+    'console.log(JSON.stringify(values.map((value) => {\n' +
+    `  try { return count(value, 'rows', ${maximum}) }\n` +
+    '  catch (error) { return String(error.message) }\n' +
+    '})))'
+  const result = Bun.spawnSync([process.execPath, '--eval', source], {
+    stdout: 'pipe',
+    stderr: 'pipe',
+  })
+  if (result.exitCode !== 0) throw new Error(result.stderr.toString())
+  return JSON.parse(result.stdout.toString())
+}
+
 test('workload counts accept only safe integers within 1..maximum', () => {
-  expect(count('1', 'rows', 128)).toBe(1)
-  expect(count('128', 'rows', 128)).toBe(128)
-  for (const value of [undefined, '', '0', '-1', '129', '1.5', 'NaN', 'Infinity', 'ten'])
-    expect(() => count(value, 'rows', 128)).toThrow('rows must be an integer in 1..128')
+  const rejected = [undefined, '', '0', '-1', '129', '1.5', 'NaN', 'Infinity', 'ten']
+  expect(counted(['1', '128', ...rejected], 128)).toEqual([
+    1,
+    128,
+    ...rejected.map(() => 'rows must be an integer in 1..128'),
+  ])
 })
 
 function reference(survivingRounds: number) {
@@ -28,7 +48,11 @@ function reference(survivingRounds: number) {
 test('settled observation stops at the first round with no survivors', async () => {
   const references = [reference(0), reference(2), reference(1)]
   const observation = await observeCollection(references)
-  expect(observation).toEqual({ survivors: [], rounds: 3, maxRounds: defaultCollectionRounds })
+  expect(observation).toEqual({
+    survivors: [],
+    rounds: 3,
+    maxRounds: defaultCollectionRounds,
+  })
   for (const item of references) expect(item.calls()).toBe(3)
 })
 
@@ -41,7 +65,11 @@ test('settled observation reports targets that outlive every round', async () =>
 test('settled observation rejects unbounded or fractional round counts', async () => {
   for (const rounds of [0, 21, 1.5, Number.NaN])
     await expect(observeCollection([], rounds)).rejects.toThrow(RangeError)
-  expect(await observeCollection([], 20)).toEqual({ survivors: [], rounds: 1, maxRounds: 20 })
+  expect(await observeCollection([], 20)).toEqual({
+    survivors: [],
+    rounds: 1,
+    maxRounds: 20,
+  })
 })
 
 test('the AOT build helper README lists exactly the entries in build-window.ts', () => {

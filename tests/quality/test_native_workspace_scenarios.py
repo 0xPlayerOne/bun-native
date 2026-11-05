@@ -194,7 +194,9 @@ class ReactFrameGuardTests(unittest.TestCase):
     def test_reused_older_geometry_settles_against_a_newer_paint(self):
         # Geometry is deduplicated across style-only commits; the first settled
         # frame then looks up the first task button, which this fake omits.
-        with self.assertRaises(StopIteration):
+        with self.assertRaisesRegex(
+            RuntimeError, "missing the 'Write the project brief'"
+        ):
             run_scenario(REACT, native=self.records(paint_revision=5))
 
 

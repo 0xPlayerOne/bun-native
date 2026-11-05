@@ -186,11 +186,13 @@ describe('versioned native message validation', () => {
         clipboard_write: false,
         global_shortcuts: false,
         notifications: false,
+        filesystem_roots: [],
       },
       protocol: PROTOCOL_VERSION,
       limits: DEFAULT_LIMITS,
     }
-    for (const capabilities of ['tree', null, Array.from({ length: 9 }, () => 'tree')])
+    // Longer than every capability the protocol defines, so the length check fires first.
+    for (const capabilities of ['tree', null, Array.from({ length: 64 }, () => 'tree')])
       expect(() => parseEvent({ ...ready, capabilities })).toThrow(
         new ProtocolError('Invalid native capabilities')
       )

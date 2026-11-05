@@ -76,6 +76,7 @@ The same compiler and inspection pipeline supports these explicit entries:
 | `clipboard`               | `tests/native/clipboard.ts`             | `clipboard`            | Existing prebuilt host referenced by absolute path |
 | `global-shortcuts`        | `tests/native/global-shortcuts.ts`      | `global-shortcuts`     | Existing prebuilt host referenced by absolute path |
 | `notifications`           | `tests/native/notifications.ts`         | `notifications`        | Existing prebuilt host referenced by absolute path |
+| `filesystem-grants`       | `tests/native/filesystem-grants.ts`     | `filesystem-grants`    | Existing prebuilt host referenced by absolute path |
 | `solid-services`          | `tests/native/solid-services.tsx`       | `solid-services`       | Existing prebuilt host referenced by absolute path |
 | `react-services`          | `tests/native/react-services.tsx`       | `react-services`       | Existing prebuilt host referenced by absolute path |
 | `platform-smoke`          | `tests/native/platform-smoke.ts`        | `platform-smoke`       | Existing prebuilt host referenced by absolute path |
