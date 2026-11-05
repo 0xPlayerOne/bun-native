@@ -1,5 +1,5 @@
 import { randomBytes, createHash } from 'node:crypto'
-import { createReadStream } from 'node:fs'
+import { createReadStream, existsSync } from 'node:fs'
 import {
   chmod,
   mkdir,
@@ -11,7 +11,7 @@ import {
   stat,
   type FileHandle,
 } from 'node:fs/promises'
-import { dirname, join, resolve } from 'node:path'
+import { dirname, isAbsolute, join, resolve } from 'node:path'
 import { fileDigest, type FileDigest } from './artifact.ts'
 import { packagePath } from './paths.ts'
 import {
@@ -25,6 +25,9 @@ import {
 /**
  * Installation root layout (all updater-owned except data/):
  *   state.json   committed pointer to the current and previous release
+ *   current      derived one-line copy of the current release directory for launchers
+ *   bin/         generated launchers
+ *   integration.json  external menu entries/bundles created for this installation
  *   versions/    immutable verified release directories
  *   staging/     in-progress downloads, discarded by recovery
  *   data/        application user data; never written or removed by the updater
@@ -75,6 +78,9 @@ export function httpSource(base: URL): PayloadSource {
 }
 
 const stateFile = 'state.json'
+const pointerFile = 'current'
+const integrationFile = 'integration.json'
+const ownedFiles = [stateFile, pointerFile, integrationFile]
 
 export function dataDirectory(root: string): string {
   return join(resolve(root), 'data')
@@ -166,18 +172,27 @@ export async function readState(root: string): Promise<InstallationState | null>
   }
 }
 
-/** Commit point: write a complete state file, then atomically rename it into place. */
-async function writeState(root: string, state: InstallationState): Promise<void> {
-  const temporary = join(root, `${stateFile}.${randomBytes(6).toString('hex')}.tmp`)
+async function writeAtomic(root: string, name: string, text: string): Promise<void> {
+  const temporary = join(root, `${name}.${randomBytes(6).toString('hex')}.tmp`)
   const handle = await open(temporary, 'wx')
   try {
-    await handle.writeFile(JSON.stringify(state, null, 2) + '\n')
+    await handle.writeFile(text)
     await handle.sync()
   } finally {
     await handle.close()
   }
-  await rename(temporary, join(root, stateFile))
+  await rename(temporary, join(root, name))
   await syncDirectory(root)
+}
+
+/**
+ * Commit point: write a complete state file, then atomically rename it into place.
+ * `current` is a derived one-line pointer for shell launchers. A crash between the
+ * two renames leaves it naming the retained previous release until the next sweep.
+ */
+async function writeState(root: string, state: InstallationState): Promise<void> {
+  await writeAtomic(root, stateFile, JSON.stringify(state, null, 2) + '\n')
+  await writeAtomic(root, pointerFile, `${state.current.directory}\n`)
 }
 
 /** Remove uncommitted staging, temporary state and unreferenced release directories. */
@@ -194,10 +209,14 @@ async function sweep(root: string, state: InstallationState | null): Promise<str
       removed.push(`versions/${name}`)
     }
   for (const name of await readdir(root))
-    if (name.startsWith(`${stateFile}.`) && name.endsWith('.tmp')) {
+    if (name.endsWith('.tmp') && ownedFiles.some((owned) => name.startsWith(`${owned}.`))) {
       await rm(join(root, name), { force: true })
       removed.push(name)
     }
+  const pointer = await readFile(join(root, pointerFile), 'utf8').catch(String)
+  if (!state) await rm(join(root, pointerFile), { force: true })
+  else if (pointer !== `${state.current.directory}\n`)
+    await writeAtomic(root, pointerFile, `${state.current.directory}\n`)
   return removed.sort()
 }
 
@@ -211,13 +230,7 @@ async function prepare(root: string): Promise<string> {
 
 /** Discard interrupted installation work. Committed releases and data are untouched. */
 export async function recover(root: string): Promise<string[]> {
-  const directory = await prepare(root)
-  const unlock = await lock(directory)
-  try {
-    return await sweep(directory, await readState(directory))
-  } finally {
-    await unlock()
-  }
+  return locked(root, async (directory) => sweep(directory, await readState(directory)))
 }
 
 async function download(
@@ -365,4 +378,69 @@ export async function currentRelease(
   }
   if (!directory) throw new UpdateError('integrity', 'The current release directory is missing')
   return { directory: path, release: state.current }
+}
+
+async function locked<T>(root: string, run: (directory: string) => Promise<T>): Promise<T> {
+  const directory = await prepare(root)
+  const unlock = await lock(directory)
+  try {
+    return await run(directory)
+  } finally {
+    await unlock()
+  }
+}
+
+export async function integrationPaths(root: string): Promise<string[]> {
+  let text: string
+  try {
+    text = await readFile(join(resolve(root), integrationFile), 'utf8')
+  } catch (error) {
+    if (code(error) === 'ENOENT') return []
+    throw error
+  }
+  const paths = (JSON.parse(text) as { paths?: unknown }).paths
+  if (!Array.isArray(paths) || !paths.every((path) => typeof path === 'string' && isAbsolute(path)))
+    throw new UpdateError('state', 'Integration record is invalid')
+  return paths as string[]
+}
+
+/** Record external files created for an installed product so uninstall removes exactly them. */
+export async function recordIntegration(root: string, paths: readonly string[]): Promise<void> {
+  await locked(root, async (directory) => {
+    if (!(await readState(directory))) throw new UpdateError('state', 'Nothing is installed')
+    const all = [...new Set([...(await integrationPaths(directory)), ...paths])].sort()
+    await writeAtomic(directory, integrationFile, JSON.stringify({ paths: all }, null, 2) + '\n')
+  })
+}
+
+export type UninstallPhase = 'locked' | 'detached' | 'committed'
+
+/**
+ * Remove integrations, then state.json (the commit point), then releases and launchers.
+ * User data is kept unless `purgeData` is set. Rerunning after an interruption completes it.
+ */
+export async function uninstall(
+  root: string,
+  options: { purgeData?: boolean; onPhase?: (phase: UninstallPhase) => void | Promise<void> } = {}
+): Promise<{ removed: string[]; data: 'kept' | 'removed' }> {
+  const directory = resolve(root)
+  if (!existsSync(directory)) throw new UpdateError('state', 'Nothing is installed')
+  const removed = await locked(directory, async () => {
+    await readState(directory)
+    await options.onPhase?.('locked')
+    const paths = await integrationPaths(directory)
+    for (const path of paths) await rm(path, { recursive: true, force: true })
+    await options.onPhase?.('detached')
+    await rm(join(directory, integrationFile), { force: true })
+    await rm(join(directory, stateFile), { force: true })
+    await syncDirectory(directory)
+    await options.onPhase?.('committed')
+    await sweep(directory, null)
+    await rm(join(directory, 'bin'), { recursive: true, force: true })
+    for (const name of ['versions', 'staging']) await rm(join(directory, name), { recursive: true })
+    if (options.purgeData) await rm(join(directory, 'data'), { recursive: true, force: true })
+    return paths
+  })
+  if (options.purgeData) await rm(directory, { recursive: true, force: true })
+  return { removed, data: options.purgeData ? 'removed' : 'kept' }
 }

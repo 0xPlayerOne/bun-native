@@ -11,7 +11,9 @@ import {
   install,
   recover,
   rollback,
+  uninstall,
 } from './native/installation.ts'
+import { createBundle, integrate, type Platform } from './native/installer.ts'
 import {
   createUpdateManifest,
   signUpdate,
@@ -25,6 +27,9 @@ const usage = `Experimental Bun Native application updates (see docs/updates.md)
   bun scripts/release-update.ts sign update.json --private-key /absolute/ed25519-private.pem
   bun scripts/release-update.ts install update.json --root INSTALL_DIR --payload BUILD_DIR_OR_HTTPS_URL (--public-key PEM_PATH ... | --unsigned-experimental)
   bun scripts/release-update.ts rollback|recover|status --root INSTALL_DIR
+  bun scripts/release-update.ts bundle update.json --payload BUILD_DIR --out EXISTING_DIR
+  bun scripts/release-update.ts integrate --root INSTALL_DIR --name "App Name" --applications MENU_DIR
+  bun scripts/release-update.ts uninstall --root INSTALL_DIR [--purge-data]
 
 Keys are read only from caller-supplied files at runtime and are never stored by this tool.
 Unsigned manifests are experimental, labeled as such and must be accepted explicitly.`
@@ -54,6 +59,9 @@ async function main(args: string[]): Promise<void> {
       'public-key': { type: 'string', multiple: true },
       root: { type: 'string' },
       payload: { type: 'string' },
+      name: { type: 'string' },
+      applications: { type: 'string' },
+      'purge-data': { type: 'boolean' },
     },
   })
   const [command, input, ...extra] = positionals
@@ -92,7 +100,30 @@ async function main(args: string[]): Promise<void> {
     console.log(`Wrote detached Ed25519 signature ${input}.sig`)
     return
   }
+  if (command === 'bundle') {
+    if (!input || !values.payload || !values.out) throw new Error(usage)
+    const { directory, signed } = await createBundle(resolve(values.payload), input, values.out)
+    console.log(`Wrote ${signed ? 'signed-manifest' : 'UNSIGNED EXPERIMENTAL'} bundle ${directory}`)
+    return
+  }
   if (!values.root) throw new Error(usage)
+  if (command === 'integrate') {
+    if (!values.name || !values.applications) throw new Error(usage)
+    if (!['linux', 'darwin', 'win32'].includes(process.platform))
+      throw new Error(`Desktop integration is unsupported on ${process.platform}`)
+    const paths = await integrate(values.root, {
+      platform: process.platform as Platform,
+      name: values.name,
+      applications: values.applications,
+    })
+    console.log(JSON.stringify({ created: paths }))
+    return
+  }
+  if (command === 'uninstall') {
+    const result = await uninstall(values.root, { purgeData: values['purge-data'] === true })
+    console.log(JSON.stringify(result))
+    return
+  }
   if (command === 'install') {
     const keys = values['public-key'] ?? []
     if (!input || !values.payload || unsigned === keys.length > 0)

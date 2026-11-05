@@ -1,8 +1,8 @@
 # Experimental application updates and rollback
 
-**Status:** Experimental tooling for [#249](https://github.com/0xPlayerOne/bun-native/issues/249). It verifies, installs and rolls back the output of `bun run native build` in an updater-owned installation directory. It is not a platform installer, and no production signing or notarization is claimed. See [releasing](releasing.md) for the release policy.
+**Status:** Experimental tooling for [#249](https://github.com/0xPlayerOne/bun-native/issues/249). It verifies, installs, integrates, rolls back and uninstalls the output of `bun run native build` in a per-user installation directory. Packages are **unsigned experimental** at the OS level; no code signing or notarization is claimed. See [releasing](releasing.md) for the release policy.
 
-The implementation is [`scripts/native/update-manifest.ts`](../scripts/native/update-manifest.ts) (manifest, trust and compatibility), [`scripts/native/installation.ts`](../scripts/native/installation.ts) (staging, commit, recovery and rollback) and the [`scripts/release-update.ts`](../scripts/release-update.ts) command. [`tests/tooling/update.test.ts`](../tests/tooling/update.test.ts) covers the behavior below.
+The implementation is [`scripts/native/update-manifest.ts`](../scripts/native/update-manifest.ts) (manifest, trust and compatibility), [`scripts/native/installation.ts`](../scripts/native/installation.ts) (staging, commit, recovery, rollback and uninstall), [`scripts/native/installer.ts`](../scripts/native/installer.ts) (launchers, desktop integration and bundles) and the [`scripts/release-update.ts`](../scripts/release-update.ts) command. [`tests/tooling/update.test.ts`](../tests/tooling/update.test.ts) and [`tests/tooling/installer.test.ts`](../tests/tooling/installer.test.ts) cover the behavior below.
 
 ## Update manifest
 
@@ -20,6 +20,9 @@ Before any download, the target OS/CPU, native protocol version and Bun revision
 ```
 INSTALL_DIR/
   state.json   committed current and previous release records (the commit point)
+  current      derived one-line pointer to the current release, read by launchers
+  bin/         generated launcher
+  integration.json  menu entries and app wrappers created for this installation
   versions/    verified immutable release directories
   staging/     in-progress downloads
   data/        application user data; never written or removed by the updater
@@ -32,6 +35,22 @@ A crash at any point leaves a stale lock and possibly staged or unreferenced fil
 
 `rollback` re-hashes the retained previous release, refuses it if any file is missing or modified, and swaps current and previous with the same atomic commit. Running it again rolls forward. Neither operation touches `data/`. The launcher resolves the active directory from `state.json` (`currentRelease`). Payloads come from a local directory or an HTTPS base URL. Plain HTTP is accepted only for loopback test servers, and redirects are refused.
 
+## Launchers, desktop integration and uninstall
+
+`state.json` stays authoritative. After each commit, the installer atomically rewrites `current`, a one-line copy of the current release directory, because shell and `cmd` launchers cannot parse JSON safely. A crash between the two renames leaves `current` on the retained previous release, which is still complete and verified. The next locked operation repairs it.
+
+`integrate` writes `bin/<product>`, or `bin/<product>.cmd` on Windows. The launcher reads `current`, refuses a pointer outside `versions/`, sets `BUN_NATIVE_DATA_DIR` to `data/` and executes that release's `application`. It also creates one per-user menu entry:
+
+- **Linux:** a `.desktop` file in the given applications directory, normally `~/.local/share/applications`.
+- **macOS:** a minimal unsigned `Name.app` wrapper with `Info.plist` and `Contents/MacOS/<product>` in the given directory, normally `~/Applications`. Gatekeeper treats it as an app from an unidentified developer.
+- **Windows:** a `Name.cmd` in the given Start-menu Programs directory.
+
+Paths that end up inside shell, `.desktop` or plist text are limited to plain characters. Every created entry is recorded in `integration.json`.
+
+`uninstall` takes the lock and removes the recorded entries. It then deletes `state.json`, which is the uninstall's commit point, followed by releases, staging, the pointer and launchers. `data/` is kept unless `--purge-data` is given; a purge removes the whole root. A kill before the commit leaves a working installation. A kill after it leaves orphaned releases, which `recover` removes; rerunning `uninstall` finishes the job. Reinstalling into a kept root reuses the preserved data.
+
+`bundle` lays out a distributable directory: `update.json`, `update.json.sig` when the manifest is signed, `payload/` and a `README.txt` that labels the package unsigned at the OS level. Each payload file is checked against the manifest as it is copied. A trust-mode/signature mismatch is rejected. Archive the directory with the platform's `tar` or zip tool.
+
 ## Commands
 
 ```sh
@@ -41,6 +60,9 @@ bun scripts/release-update.ts install update.json --root ~/Apps/example --payloa
 bun scripts/release-update.ts rollback --root ~/Apps/example
 bun scripts/release-update.ts recover --root ~/Apps/example
 bun scripts/release-update.ts status --root ~/Apps/example
+bun scripts/release-update.ts bundle update.json --payload dist --out /absolute/existing/bundles
+bun scripts/release-update.ts integrate --root ~/Apps/example --name "Example App" --applications ~/.local/share/applications
+bun scripts/release-update.ts uninstall --root ~/Apps/example [--purge-data]
 ```
 
 For unsigned experimental releases, use `--unsigned-experimental` instead of `--signed`, skip `sign`, and pass `--unsigned-experimental` instead of `--public-key` to `install`. Keys are read from caller-supplied files at the time of the command. The tool neither stores nor prints them.
@@ -61,13 +83,19 @@ For unsigned experimental releases, use `--unsigned-experimental` instead of `--
 - a live lock
 - an installer killed with `SIGKILL` at each of five phases, followed by recovery to exactly the old or the new release
 - HTTP loopback and HTTPS-only enforcement
-- the end-to-end CLI
+- the end-to-end CLI, including `bundle`, `integrate` and `uninstall`
+- `current` pointer maintenance and repair
+- the POSIX launcher executing the current release with `BUN_NATIVE_DATA_DIR` and refusing a tampered pointer
+- the Linux, macOS and Windows integration files, as generated text
+- uninstall that keeps or purges data
+- an uninstall killed with `SIGKILL` at each of three phases, then completed
+- bundle contents, labels and mismatch rejection
 
-The crash test is skipped on Windows because it relies on POSIX signals.
+The crash and launcher-execution tests are skipped on Windows, because they rely on POSIX signals and `sh`. On macOS and Windows, the integration files are checked as generated text only. No hosted or clean-machine run has opened them through Finder, Gatekeeper or the Start menu.
 
 ## Remaining for #249
 
 - **Signing and notarization:** Apple Developer ID signing and notarization, Windows Authenticode, and Linux package signatures are not configured or verified. Ed25519 manifest signing is the updater's own trust root. It does not replace OS code signing.
-- **Platform installers:** `.app`/`.dmg`, MSI/MSIX and `.deb`/AppImage packaging, a launcher that reads `state.json`, and automatic rollback after a failed health check are not implemented.
+- **Platform installers:** not implemented: native installer formats (`.dmg`, MSI/MSIX, `.deb`/AppImage), a self-contained installer executable (the tools currently need Bun on the target), Windows `.lnk` shortcuts, real `.app` bundles holding the release, and automatic rollback after a failed health check.
 - **Native evidence:** these checks have not yet been run with real `native build` output on clean macOS and Windows machines, or with a running application. Windows replacement of running executables is not handled.
 - **Key management:** key rotation, revocation and a release workflow that signs with a configured CI secret are not implemented.
