@@ -501,8 +501,65 @@ def run(
         "steps": PLAN_STEPS,
         "status": "complete",
     }
-    assert {row["title"]: row["row"] for row in rows(complete)} == original_rows
+    # Filtering remounted the hidden keyed rows; compare with the final list.
+    assert {row["title"]: row["row"] for row in rows(complete)} == {
+        row["title"]: row["row"] for row in rows(final)
+    }, "Plan streaming remounted keyed task rows"
+
+    # Reveal the streamed rows in the native details scroll pane.
+    def details_scroll(current):
+        return next(
+            item for item in current["layout"]["scrolls"] if item["node_id"] != list_id
+        )
+
+    viewport = details_scroll(complete)["viewport"]
+    assert details_scroll(complete)["maximum"][1] > 0, (
+        "The complete plan must overflow the native details pane"
+    )
+    x, y = geometry_tools.pointer_point(
+        viewport, viewport, complete["layout"]["viewport"]
+    )
+    action(
+        "mousemove",
+        "--window",
+        window,
+        x,
+        y,
+        "click",
+        "--repeat",
+        "12",
+        "--delay",
+        "15",
+        "5",
+    )
+
+    def plan_revealed(current):
+        if not geometry_tools.at_scroll_end(details_scroll(current), 1):
+            return False
+        last = geometry(plan_rows(current)[-1]["node_id"], current)
+        bounds = geometry_tools.rectangle(last["bounds"])
+        return geometry_tools.intersects(bounds, last["ancestor_clip"]) == bounds
+
+    revealed = wait_frame(plan_revealed, "native plan rows scrolled into view")
+    assert plan_rows(revealed)[0]["node_id"] == first_step
     capture(window, "plan-complete.png")
+    action(
+        "mousemove",
+        "--window",
+        window,
+        x,
+        y,
+        "click",
+        "--repeat",
+        "12",
+        "--delay",
+        "15",
+        "4",
+    )
+    wait_frame(
+        lambda current: details_scroll(current)["offset"] == [0, 0],
+        "native details pane returns to the plan controls",
+    )
     observations["planComplete"] = complete
 
     button("Draft a new plan")

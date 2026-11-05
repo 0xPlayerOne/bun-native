@@ -97,7 +97,8 @@ to click, type, complete and rename a task, search/filter, scroll, change theme,
 resize, delete, stream a complete plan, stop a second plan, switch tasks during
 a third, and close the OS window while a fourth plan still streams. Native
 paints independently verify the complete task list, ordered plan rows, retained
-keyed task and plan rows and the visible plan status. The fixture observes the
+keyed task and plan rows and the visible plan status; the details pane is
+wheel-scrolled until the last plan row is wholly visible. The fixture observes the
 component's real timers: after disposal and a further two plan intervals, no
 timer is pending or fires, and final ownership must return to zero.
 It reuses the existing isolated X11 driver and records screenshots and raw events.
