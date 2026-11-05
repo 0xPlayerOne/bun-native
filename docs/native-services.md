@@ -276,6 +276,52 @@ successfully grabbing the same combination after unregistration, owner close
 and shutdown. macOS, Windows, Wayland and remote X11 remain unavailable. See
 [ADR 0008](decisions/0008-native-global-shortcuts.md).
 
+## Notifications
+
+`window.postNotification(options, listener)` posts an owned plain-text desktop
+notification under the separate `notifications` grant. The optional
+`notifications_v1` feature is advertised on Linux when a D-Bus session bus is
+configured; the host talks to the freedesktop.org `org.freedesktop.Notifications`
+service on that bus. There is no OS permission prompt on this platform, so the
+launch grant is the only permission state. Whether a notification server is
+running is only known when posting: a bus without one rejects with
+`service_unavailable`. Every bus operation, including connection setup, is
+bounded to two seconds (`operation_timed_out`).
+
+The title is one nonempty line of at most 256 UTF-8 bytes and the body at most
+2048 bytes with line feeds as the only control characters; both language
+implementations reject anything else before a native request. Content is plain
+text: when the server supports body markup the host escapes `&`, `<` and `>`.
+A notification has no action strings, URLs or commands. The host offers the
+server's default action only when it advertises `actions`, and the posted
+response reports that as `activatable`. Activation is a typed sequenced event
+naming the owned notification. At most 32 notifications are live per session.
+
+The UI-thread registry decides delivery. Only signals from the bus connection
+that answered `Notify` are accepted for that notification, so another client on
+the session bus cannot forge an activation or dismissal. When the server
+removes a notification first, its final `notification_dismissed` event reports
+`expired`, `dismissed` (by the user) or `closed` (any other server reason), and
+the handle ends. Withdrawal, owner close and shutdown remove the registration
+first, so an activation the server already queued is never published, then ask
+the server to close the notification; shutdown waits, within the bound, for
+those closes. A notification therefore never outlives its owner window in a
+running host. If the host process dies, the server keeps showing it, but no
+process remains to receive its activation.
+
+The [Native Linux workflow](../.github/workflows/native-linux.yml) runs
+[`tests/native/notifications.ts`](../tests/native/notifications.ts) in
+development and inspected AOT on an isolated Xvfb with openbox and its own
+D-Bus session bus, against the real dunst notification server. It requires
+default denial with nothing shown, `service_unavailable` from the same host on
+an isolated bus without a server, a displayed notification, activation through
+the server's own action (`dunstctl action`), a user dismissal (`dunstctl
+close`), forged `ActionInvoked`/`NotificationClosed` signals from an
+independent bus client ignored, and the server's displayed count returning to
+zero after withdrawal, owner close and shutdown. macOS and Windows remain
+unavailable, and other notification servers are not qualified. See
+[ADR 0009](decisions/0009-native-notifications.md).
+
 ## Service and platform matrix
 
 All services listed here share the core's policy boundary. The unavailable rows
@@ -290,7 +336,7 @@ already exists. The linked follow-ups belong to
 | Global shortcuts  | `registerGlobalShortcut`; `globalShortcuts` grant             | X11 dev+AOT verified with release host              | Unavailable                  | Unavailable                  | macOS/Windows backends, Wayland portal design and keyboard-map change tracking. [#301](https://github.com/0xPlayerOne/bun-native/issues/301).                                   |
 | System menus      | Capability `systemMenus`; unavailable                         | Unavailable                                         | Unavailable                  | Unavailable                  | Typed action identities, owned menu lifetime, keyboard/accessibility behavior and safe action revocation. [#239](https://github.com/0xPlayerOne/bun-native/issues/239).         |
 | Dialogs           | Capability `dialogs`; unavailable                             | Unavailable                                         | Unavailable                  | Unavailable                  | Owned-window modality, explicit cancellation, shutdown and file selection distinct from a file grant. [#239](https://github.com/0xPlayerOne/bun-native/issues/239).             |
-| Notifications     | Capability `notifications`; unavailable                       | Unavailable                                         | Unavailable                  | Unavailable                  | OS permission outcome, bounded payload, activation routing and late-callback revocation. [#302](https://github.com/0xPlayerOne/bun-native/issues/302).                          |
+| Notifications     | `postNotification`; `notifications` grant                     | Freedesktop D-Bus (dunst) dev+AOT verified          | Unavailable                  | Unavailable                  | macOS/Windows backends, additional notification servers, named actions and replacement. [#302](https://github.com/0xPlayerOne/bun-native/issues/302).                           |
 | Drag/drop         | Capability `dragDrop`; unavailable                            | Unavailable                                         | Unavailable                  | Unavailable                  | Bounded untrusted payload, owned target, native cancellation and explicit file-grant conversion. [#303](https://github.com/0xPlayerOne/bun-native/issues/303).                  |
 | Filesystem grants | Capability `filesystemGrants`; unavailable                    | Unavailable                                         | Unavailable                  | Unavailable                  | Scoped file/directory handles, allowed operations, path/symlink policy, revocation and OS failure mapping. [#304](https://github.com/0xPlayerOne/bun-native/issues/304).        |
 | PTY/process       | Capability `ptyProcess`; unavailable                          | Unavailable                                         | Unavailable                  | Unavailable                  | Executable/argument/environment policy, bounded streams, process identity, interruption and joined child cleanup. [#305](https://github.com/0xPlayerOne/bun-native/issues/305). |

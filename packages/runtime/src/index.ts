@@ -31,6 +31,8 @@ export type WindowCommand = WithoutId<
         | 'clipboard_write'
         | 'register_global_shortcut'
         | 'unregister_global_shortcut'
+        | 'post_notification'
+        | 'withdraw_notification'
     }
   >
 >
@@ -47,6 +49,8 @@ export type HostResponse = Extract<
       | 'clipboard_written'
       | 'global_shortcut_registered'
       | 'global_shortcut_unregistered'
+      | 'notification_posted'
+      | 'notification_withdrawn'
   }
 >
 
@@ -57,6 +61,8 @@ export interface ServicePermissions {
   readonly clipboardWrite?: 'allow' | 'deny'
   /** OS-wide key grabs that deliver while another application is focused. */
   readonly globalShortcuts?: 'allow' | 'deny'
+  /** Desktop notifications posted by an owned window. */
+  readonly notifications?: 'allow' | 'deny'
 }
 
 export class NativeCommandError extends Error {
@@ -85,7 +91,13 @@ function launchPolicy(value: unknown = {}): Readonly<ServicePolicy> {
   if (
     Object.keys(value).some(
       (key) =>
-        !['windowDisplay', 'clipboardRead', 'clipboardWrite', 'globalShortcuts'].includes(key)
+        ![
+          'windowDisplay',
+          'clipboardRead',
+          'clipboardWrite',
+          'globalShortcuts',
+          'notifications',
+        ].includes(key)
     )
   )
     throw new TypeError('Unknown native service permission')
@@ -100,6 +112,7 @@ function launchPolicy(value: unknown = {}): Readonly<ServicePolicy> {
     clipboard_read: grant('clipboardRead'),
     clipboard_write: grant('clipboardWrite'),
     global_shortcuts: grant('globalShortcuts'),
+    notifications: grant('notifications'),
   })
 }
 
@@ -158,6 +171,7 @@ export class NativeHost implements AsyncIterable<WindowEvent> {
         ...(requestedPolicy.clipboard_read ? ['--bun-native-allow-clipboard-read'] : []),
         ...(requestedPolicy.clipboard_write ? ['--bun-native-allow-clipboard-write'] : []),
         ...(requestedPolicy.global_shortcuts ? ['--bun-native-allow-global-shortcuts'] : []),
+        ...(requestedPolicy.notifications ? ['--bun-native-allow-notifications'] : []),
       ],
       stdin: 'pipe',
       stdout: 'pipe',
@@ -238,6 +252,12 @@ export class NativeHost implements AsyncIterable<WindowEvent> {
   send(
     command: Extract<WindowCommand, { type: 'unregister_global_shortcut' }>
   ): Promise<Extract<HostResponse, { type: 'global_shortcut_unregistered' }>>
+  send(
+    command: Extract<WindowCommand, { type: 'post_notification' }>
+  ): Promise<Extract<HostResponse, { type: 'notification_posted' }>>
+  send(
+    command: Extract<WindowCommand, { type: 'withdraw_notification' }>
+  ): Promise<Extract<HostResponse, { type: 'notification_withdrawn' }>>
   send(command: WindowCommand): Promise<HostResponse>
   send(command: WindowCommand): Promise<HostResponse> {
     if (this.phase !== 'running') return Promise.reject(this.closedError())
@@ -452,6 +472,8 @@ export class NativeHost implements AsyncIterable<WindowEvent> {
       event.type === 'clipboard_written' ||
       event.type === 'global_shortcut_registered' ||
       event.type === 'global_shortcut_unregistered' ||
+      event.type === 'notification_posted' ||
+      event.type === 'notification_withdrawn' ||
       event.type === 'error'
     ) {
       if (event.type === 'error' && event.id === undefined)
@@ -505,6 +527,18 @@ export class NativeHost implements AsyncIterable<WindowEvent> {
           response.type === 'global_shortcut_unregistered' &&
           response.window_id === command.window_id &&
           response.shortcut_id === command.shortcut_id
+        )
+      case 'post_notification':
+        return (
+          response.type === 'notification_posted' &&
+          response.window_id === command.window_id &&
+          response.notification_id === command.notification_id
+        )
+      case 'withdraw_notification':
+        return (
+          response.type === 'notification_withdrawn' &&
+          response.window_id === command.window_id &&
+          response.notification_id === command.notification_id
         )
       case 'open':
         return (

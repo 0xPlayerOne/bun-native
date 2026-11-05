@@ -224,10 +224,47 @@ this application, rejects with `NativeServiceError` code `conflict` and
 failure have their own codes. At most 16 registrations exist per application.
 See [ADR 0008](../../docs/decisions/0008-native-global-shortcuts.md).
 
+### Notifications
+
+```ts
+const app = await createApplication({ executable, permissions: { notifications: 'allow' } })
+const window = await app.openWindow({ title: 'Builds' })
+const notification = await window.postNotification(
+  { title: 'Build finished', body: 'All tests passed' },
+  (event) => {
+    if (event.type === 'notification_activated') window.root /* focus your UI */
+    else console.log('dismissed', event.reason)
+  }
+)
+// Later: delivery stops at once; the promise resolves after the server closes it.
+await notification.withdraw()
+```
+
+`window.postNotification(options, listener)` posts a plain-text desktop
+notification owned by the window. `title` is one nonempty line of at most 256
+UTF-8 bytes; the optional `body` is at most 2048 bytes and may contain line
+feeds but no other control characters. Neither is interpreted as markup, and
+there are no action strings, URLs or commands: activation is a typed event.
+The `notifications` launch permission defaults to `deny`. On Linux with a D-Bus
+session bus `app.serviceCapabilities.notifications` reports `available`, the
+permission, `owned_window` scope and backend `freedesktop`; other targets report
+`unavailable` / `unsupported_platform`. A bus without a running notification
+server rejects with `NativeServiceError` code `service_unavailable`.
+
+The frozen `NativeNotification` exposes `title`, `body`, `activatable` (false
+when the server offers no actions), `active` and an idempotent `withdraw()`.
+The listener receives `notification_activated` events and at most one final
+`notification_dismissed` event (`expired`, `dismissed` or `closed`) when the
+server removes it first. Withdrawal, owner window close and application
+shutdown revoke the handle synchronously, abort `event.signal` and close the
+notification on the server; none outlives its window. At most 32 notifications
+are live per application. See
+[ADR 0009](../../docs/decisions/0009-native-notifications.md).
+
 ## Supported scope
 
 The initial elements are `box`, `text`, `button` and single-line `input`. `Style` explicitly supports `direction`, `gap`, `padding`, `width`, `height`, `min_width`, `max_width`, `min_height`, `max_height`, `flex_grow`, `flex_shrink`, `align_items`, `justify_content`, `overflow`, `background`, `color` and `font_size`. Dimensions are numeric logical native pixels, with `fill` available for width and height; colors are unsigned 24-bit RGB values. These fields are validated and bounded by the [shared layout contract](../../docs/native-layout.md). Scroll overflow is accepted only for `box` containers; leaf element types also enforce this restriction. Styles are shared by every framework adapter.
 
-There is no DOM, HTML, CSS parser, browser navigation, WebView, CEF, React DOM or automatic compatibility with web component libraries. Native service APIs for files, processes, notifications, menus and other desktop integrations remain separate roadmap work. The current renderer does not claim complete scrolling, IME, focus traversal or accessibility coverage. See [the native host limitations](../../native/gpui-host/README.md) and [testing evidence](../../docs/testing.md) before treating a platform as supported.
+There is no DOM, HTML, CSS parser, browser navigation, WebView, CEF, React DOM or automatic compatibility with web component libraries. Native service APIs for files, processes, menus and other desktop integrations remain separate roadmap work. The current renderer does not claim complete scrolling, IME, focus traversal or accessibility coverage. See [the native host limitations](../../native/gpui-host/README.md) and [testing evidence](../../docs/testing.md) before treating a platform as supported.
 
-Protocol 7 requires shared layout, interactions and immutable service policy and replaces protocol 6 without a compatibility layer. During this private experimental phase, pin the application packages and native host together at the tested source revision. A package build or type check is not native GUI acceptance; a bundled executable is not proof of Bun machine-code AOT. [ADR 0004](../../docs/decisions/0004-public-api.md) records the API boundary and its tradeoffs.
+Protocol 8 requires shared layout, interactions and immutable service policy and replaces protocol 7 without a compatibility layer. During this private experimental phase, pin the application packages and native host together at the tested source revision. A package build or type check is not native GUI acceptance; a bundled executable is not proof of Bun machine-code AOT. [ADR 0004](../../docs/decisions/0004-public-api.md) records the API boundary and its tradeoffs.

@@ -16,6 +16,7 @@ export type {
   GlobalShortcutOptions,
   NativeGlobalShortcut,
 } from './shortcuts.ts'
+export type { NativeNotification, NotificationEvent, NotificationOptions } from './notifications.ts'
 export type {
   ApplicationOptions,
   ClickEvent,
