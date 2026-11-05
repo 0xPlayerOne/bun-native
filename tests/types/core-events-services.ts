@@ -162,7 +162,8 @@ export function checkErrors(error: unknown): string | undefined {
       | 'clipboard_read'
       | 'clipboard_write'
       | 'global_shortcuts'
-      | 'notifications' = error.service
+      | 'notifications'
+      | 'filesystem_grants' = error.service
     return service + error.code
   }
   if (error instanceof NativeCommandError) {

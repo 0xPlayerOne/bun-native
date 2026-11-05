@@ -96,6 +96,7 @@ export function scheduledWindow(window: NativeWindow) {
     },
     close: window.close.bind(window),
     displaySnapshot: window.displaySnapshot.bind(window),
+    openFileGrant: window.openFileGrant.bind(window),
     readClipboardText: window.readClipboardText.bind(window),
     writeClipboardText: window.writeClipboardText.bind(window),
     registerGlobalShortcut: window.registerGlobalShortcut.bind(window),

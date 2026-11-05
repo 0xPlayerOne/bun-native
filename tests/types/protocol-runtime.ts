@@ -55,7 +55,7 @@ export const sizes: readonly number[] = [
   MAX_OPERATIONS,
   MAX_TEXT_BYTES,
 ]
-export const version: 8 = PROTOCOL_VERSION
+export const version: 9 = PROTOCOL_VERSION
 
 export function checkFraming(bytes: Uint8Array): unknown[] {
   const frame: Uint8Array = encodeFrame({ type: 'ack', id: 1 })
@@ -106,7 +106,7 @@ export const capability: Capability = 'notifications_v1'
 export const unknownCapability: Capability = 'webgpu_v1'
 export const errorCode: ErrorCode = 'conflict'
 // @ts-expect-error Error codes are the closed protocol set.
-export const unknownErrorCode: ErrorCode = 'not_found'
+export const unknownErrorCode: ErrorCode = 'teapot'
 export const dismissal: NotificationDismissal = 'expired'
 // @ts-expect-error Dismissal reasons are the closed freedesktop mapping.
 export const unknownDismissal: NotificationDismissal = 'clicked'
@@ -139,6 +139,7 @@ export const policy: ServicePolicy = {
   clipboard_write: false,
   global_shortcuts: false,
   notifications: true,
+  filesystem_roots: [],
 }
 // @ts-expect-error The wire policy is boolean, unlike the allow/deny launch option.
 export const wirePolicy: ServicePolicy = { ...policy, notifications: 'allow' }

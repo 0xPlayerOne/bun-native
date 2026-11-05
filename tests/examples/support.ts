@@ -78,6 +78,7 @@ export function mirrorWindow(actual: NativeWindow) {
     batch: mirroredBatch,
     close: actual.close.bind(actual),
     displaySnapshot: actual.displaySnapshot.bind(actual),
+    openFileGrant: actual.openFileGrant.bind(actual),
     readClipboardText: actual.readClipboardText.bind(actual),
     writeClipboardText: actual.writeClipboardText.bind(actual),
     registerGlobalShortcut: actual.registerGlobalShortcut.bind(actual),
