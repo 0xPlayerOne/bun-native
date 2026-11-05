@@ -5,12 +5,16 @@ import { keys, number, object, string } from './values.ts'
 export const MAX_CLIPBOARD_BYTES = 8_192
 export const MAX_SERVICE_REQUESTS = 8
 export const MAX_GLOBAL_SHORTCUTS = 16
+export const MAX_NOTIFICATIONS = 32
+export const MAX_NOTIFICATION_TITLE_BYTES = 256
+export const MAX_NOTIFICATION_BODY_BYTES = 2_048
 
 export interface ServicePolicy {
   window_display: boolean
   clipboard_read: boolean
   clipboard_write: boolean
   global_shortcuts: boolean
+  notifications: boolean
 }
 
 /** The closed set of layout-level keys a global shortcut may name. */
@@ -51,6 +55,29 @@ export function parseShortcutKey(value: unknown): string {
   return value
 }
 
+/** Plain-text notification content: one nonempty title line and a body that
+ * may hold line feeds but no other control characters. Neither is markup. */
+export function parseNotificationContent(title: unknown, body: unknown) {
+  const parsedTitle = string(title, 'notification title', MAX_NOTIFICATION_TITLE_BYTES)
+  if (!parsedTitle || /\p{Cc}/u.test(parsedTitle))
+    throw new ProtocolError('Notification title must be nonempty and contain no control characters')
+  const parsedBody = string(body, 'notification body', MAX_NOTIFICATION_BODY_BYTES)
+  if (/[^\P{Cc}\n]/u.test(parsedBody))
+    throw new ProtocolError(
+      'Notification body may contain no control characters other than line feeds'
+    )
+  return { title: parsedTitle, body: parsedBody }
+}
+
+export const NOTIFICATION_DISMISSALS = Object.freeze(['expired', 'dismissed', 'closed'] as const)
+export type NotificationDismissal = (typeof NOTIFICATION_DISMISSALS)[number]
+
+export function parseNotificationDismissal(value: unknown): NotificationDismissal {
+  if (!NOTIFICATION_DISMISSALS.includes(value as NotificationDismissal))
+    throw new ProtocolError('Unknown notification dismissal reason')
+  return value as NotificationDismissal
+}
+
 export type ClipboardText = { kind: 'empty' } | { kind: 'text'; text: string }
 
 export function parseClipboardText(value: unknown): ClipboardText {
@@ -78,7 +105,13 @@ export interface DisplaySnapshot {
 
 export function parseServicePolicy(value: unknown): ServicePolicy {
   const data = object(value)
-  keys(data, ['window_display', 'clipboard_read', 'clipboard_write', 'global_shortcuts'])
+  keys(data, [
+    'window_display',
+    'clipboard_read',
+    'clipboard_write',
+    'global_shortcuts',
+    'notifications',
+  ])
   const grant = (key: keyof ServicePolicy) => {
     if (typeof data[key] !== 'boolean')
       throw new ProtocolError('Native service policy must explicitly grant or deny each operation')
@@ -89,6 +122,7 @@ export function parseServicePolicy(value: unknown): ServicePolicy {
     clipboard_read: grant('clipboard_read'),
     clipboard_write: grant('clipboard_write'),
     global_shortcuts: grant('global_shortcuts'),
+    notifications: grant('notifications'),
   }
 }
 

@@ -5,7 +5,12 @@ export {
   GLOBAL_SHORTCUT_KEYS,
   MAX_CLIPBOARD_BYTES,
   MAX_GLOBAL_SHORTCUTS,
+  MAX_NOTIFICATION_BODY_BYTES,
+  MAX_NOTIFICATION_TITLE_BYTES,
+  MAX_NOTIFICATIONS,
+  NOTIFICATION_DISMISSALS,
   type ClipboardText,
+  type NotificationDismissal,
   type ServicePolicy,
   type ShortcutModifiers,
 } from './services.ts'

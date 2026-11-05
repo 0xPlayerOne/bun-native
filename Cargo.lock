@@ -617,6 +617,8 @@ dependencies = [
  "async-channel",
  "bun-native-macos-surface",
  "bun-native-protocol",
+ "futures",
+ "futures-lite",
  "gpui",
  "gpui_platform",
  "log",
@@ -625,6 +627,7 @@ dependencies = [
  "serde_json",
  "unicode-segmentation",
  "x11rb",
+ "zbus",
 ]
 
 [[package]]

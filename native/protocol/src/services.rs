@@ -6,6 +6,9 @@ const MAX_DISPLAY_COORDINATE: f64 = 1_048_576.;
 pub const MAX_CLIPBOARD_BYTES: usize = 8_192;
 pub const MAX_SERVICE_REQUESTS: usize = 8;
 pub const MAX_GLOBAL_SHORTCUTS: usize = 16;
+pub const MAX_NOTIFICATIONS: usize = 32;
+pub const MAX_NOTIFICATION_TITLE_BYTES: usize = 256;
+pub const MAX_NOTIFICATION_BODY_BYTES: usize = 2_048;
 
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -14,6 +17,7 @@ pub struct ServicePolicy {
     pub clipboard_read: bool,
     pub clipboard_write: bool,
     pub global_shortcuts: bool,
+    pub notifications: bool,
 }
 
 /// OS-wide modifier state. Shift alone cannot form a global shortcut: at least
@@ -43,6 +47,39 @@ pub fn validate_global_shortcut(
         return Err("global shortcut requires control, alt or platform");
     }
     Ok(())
+}
+
+/// Plain-text notification content. The title is one nonempty line; the body
+/// may hold line breaks but no other control characters. Neither is markup.
+pub fn validate_notification(title: &str, body: &str) -> Result<(), &'static str> {
+    if title.is_empty()
+        || title.len() > MAX_NOTIFICATION_TITLE_BYTES
+        || title.chars().any(char::is_control)
+    {
+        return Err(
+            "notification title must be nonempty, at most 256 bytes, and contain no control characters",
+        );
+    }
+    if body.len() > MAX_NOTIFICATION_BODY_BYTES
+        || body
+            .chars()
+            .any(|character| character != '\n' && character.is_control())
+    {
+        return Err(
+            "notification body must be at most 2048 bytes with no control characters other than line feeds",
+        );
+    }
+    Ok(())
+}
+
+/// Why the notification server removed a posted notification that the
+/// application did not withdraw.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum NotificationDismissal {
+    Expired,
+    Dismissed,
+    Closed,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
