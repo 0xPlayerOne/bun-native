@@ -98,3 +98,61 @@ pub(crate) fn connect() -> (Receiver<Incoming>, EventSink) {
         },
     )
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use bun_native_protocol::RequestId;
+
+    fn sink(capacity: usize) -> (EventSink, std::sync::mpsc::Receiver<Outgoing>) {
+        let (sender, events) = sync_channel(capacity);
+        let sink = EventSink {
+            sender,
+            sequence: Rc::new(Cell::new(0)),
+        };
+        (sink, events)
+    }
+
+    fn ack(id: u64) -> Event {
+        Event::Ack {
+            id: RequestId::try_from(id).unwrap(),
+        }
+    }
+
+    #[test]
+    fn finish_queues_its_event_with_a_completion_that_resolves_once() {
+        let (sink, events) = sink(1);
+        let flushed = sink.finish(ack(7)).expect("queue had capacity");
+        let Ok(Outgoing::Finish(event, completion)) = events.try_recv() else {
+            panic!("finish must queue a completion-carrying event");
+        };
+        assert_eq!(event, ack(7));
+        assert!(flushed.try_recv().is_err());
+        completion.send_blocking(()).unwrap();
+        assert_eq!(flushed.try_recv(), Ok(()));
+        // The completion channel holds exactly one acknowledgement.
+        drop(completion);
+        assert!(flushed.try_recv().is_err());
+    }
+
+    #[test]
+    fn finish_fails_without_blocking_on_a_full_or_closed_writer() {
+        let (sink, events) = sink(1);
+        assert!(sink.finish(ack(1)).is_some());
+        assert!(sink.finish(ack(2)).is_none());
+        assert!(matches!(events.try_recv(), Ok(Outgoing::Finish(..))));
+        drop(events);
+        assert!(sink.finish(ack(3)).is_none());
+    }
+
+    #[test]
+    fn clones_share_one_event_sequence_and_queue() {
+        let (sink, events) = sink(2);
+        let clone = sink.clone();
+        clone.sequence.set(41);
+        assert_eq!(sink.sequence.get(), 41);
+        assert!(clone.finish(ack(1)).is_some());
+        assert!(sink.finish(ack(2)).is_some());
+        assert_eq!(events.try_iter().count(), 2);
+    }
+}
