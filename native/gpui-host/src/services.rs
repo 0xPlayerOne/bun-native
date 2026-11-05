@@ -1,6 +1,9 @@
 //! Policy is fixed before the private channel starts. Wire messages cannot grant it.
 
-use bun_native_protocol::{DisplayBounds, DisplaySnapshot, ErrorCode, ServicePolicy};
+use bun_native_protocol::{
+    DisplayBounds, DisplaySnapshot, ErrorCode, FileAccess, FilesystemRoot, ServicePolicy,
+    validate_filesystem_roots,
+};
 use gpui::{App, Window};
 use std::ffi::OsString;
 
@@ -9,6 +12,11 @@ pub(crate) mod clipboard;
 #[cfg(not(target_os = "linux"))]
 #[path = "services/clipboard_unavailable.rs"]
 pub(crate) mod clipboard;
+#[cfg(target_os = "linux")]
+pub(crate) mod files;
+#[cfg(not(target_os = "linux"))]
+#[path = "services/files_unavailable.rs"]
+pub(crate) mod files;
 #[cfg(target_os = "linux")]
 pub(crate) mod notifications;
 #[cfg(not(target_os = "linux"))]
@@ -27,12 +35,41 @@ pub(crate) const CLIPBOARD_READ_ARGUMENT: &str = "--bun-native-allow-clipboard-r
 pub(crate) const CLIPBOARD_WRITE_ARGUMENT: &str = "--bun-native-allow-clipboard-write";
 pub(crate) const GLOBAL_SHORTCUTS_ARGUMENT: &str = "--bun-native-allow-global-shortcuts";
 pub(crate) const NOTIFICATIONS_ARGUMENT: &str = "--bun-native-allow-notifications";
+/// `--bun-native-filesystem-root=<read|read_write>:<id>:<absolute path>`.
+pub(crate) const FILESYSTEM_ROOT_ARGUMENT: &str = "--bun-native-filesystem-root=";
+
+fn filesystem_root(argument: &str) -> Result<FilesystemRoot, &'static str> {
+    let mut parts = argument.splitn(3, ':');
+    let access = match parts.next() {
+        Some("read") => FileAccess::Read,
+        Some("read_write") => FileAccess::ReadWrite,
+        _ => return Err("filesystem root access must be read or read_write"),
+    };
+    let (Some(id), Some(path)) = (parts.next(), parts.next()) else {
+        return Err("filesystem root argument must be <access>:<id>:<path>");
+    };
+    let root = FilesystemRoot {
+        id: id.into(),
+        path: path.into(),
+        access,
+    };
+    root.validate()?;
+    Ok(root)
+}
 
 pub(crate) fn policy(
     arguments: impl IntoIterator<Item = OsString>,
 ) -> Result<ServicePolicy, &'static str> {
     let mut policy = ServicePolicy::default();
     for argument in arguments {
+        if let Some(root) = argument
+            .to_str()
+            .and_then(|value| value.strip_prefix(FILESYSTEM_ROOT_ARGUMENT))
+        {
+            policy.filesystem_roots.push(filesystem_root(root)?);
+            validate_filesystem_roots(&policy.filesystem_roots)?;
+            continue;
+        }
         let permission = if argument == DISPLAY_PERMISSION_ARGUMENT {
             &mut policy.window_display
         } else if argument == CLIPBOARD_READ_ARGUMENT {
@@ -107,6 +144,7 @@ mod tests {
                 clipboard_write: true,
                 global_shortcuts: false,
                 notifications: false,
+                filesystem_roots: Vec::new(),
             }
         );
         assert_eq!(
@@ -131,5 +169,51 @@ mod tests {
         ] {
             assert!(policy([argument, argument].map(OsString::from)).is_err());
         }
+    }
+
+    #[test]
+    fn filesystem_roots_are_explicit_validated_and_ordered() {
+        let roots = policy(
+            [
+                "--bun-native-filesystem-root=read:docs:/srv/docs",
+                "--bun-native-filesystem-root=read_write:work:/tmp/a:b",
+            ]
+            .map(OsString::from),
+        )
+        .unwrap()
+        .filesystem_roots;
+        assert_eq!(
+            roots,
+            [
+                FilesystemRoot {
+                    id: "docs".into(),
+                    path: "/srv/docs".into(),
+                    access: FileAccess::Read,
+                },
+                FilesystemRoot {
+                    id: "work".into(),
+                    path: "/tmp/a:b".into(),
+                    access: FileAccess::ReadWrite,
+                },
+            ]
+        );
+        for arguments in [
+            vec!["--bun-native-filesystem-root=write:docs:/srv"],
+            vec!["--bun-native-filesystem-root=read:Docs:/srv"],
+            vec!["--bun-native-filesystem-root=read:docs:relative"],
+            vec!["--bun-native-filesystem-root=read:docs:/srv/../etc"],
+            vec!["--bun-native-filesystem-root=read:docs:/srv/"],
+            vec!["--bun-native-filesystem-root=read:docs"],
+            vec![
+                "--bun-native-filesystem-root=read:docs:/a",
+                "--bun-native-filesystem-root=read:docs:/b",
+            ],
+        ] {
+            assert!(policy(arguments.into_iter().map(OsString::from)).is_err());
+        }
+        let many: Vec<_> = (0..9)
+            .map(|index| OsString::from(format!("--bun-native-filesystem-root=read:r{index}:/r")))
+            .collect();
+        assert!(policy(many).is_err());
     }
 }

@@ -3,14 +3,16 @@ use crate::{
     evidence::Evidence,
     services,
     services::clipboard::{Clipboard, Operation as ClipboardOperation},
+    services::files::Files,
     services::notifications::Notifications,
     services::shortcuts::Shortcuts,
     state::{SharedWindowState, WindowState},
     view::NativeView,
 };
 use bun_native_protocol::{
-    Capability, Command, ErrorCode, Event, Limits, MAX_WINDOWS, NodeId, NotificationId, Operation,
-    PROTOCOL_VERSION, RequestId, ServicePolicy, ShortcutId, ShortcutModifiers, Tree, WindowId,
+    Capability, Command, ErrorCode, Event, FileAccess, FileGrantId, FileOperation, Limits,
+    MAX_WINDOWS, NodeId, NotificationId, Operation, PROTOCOL_VERSION, RequestId, ServicePolicy,
+    ShortcutId, ShortcutModifiers, Tree, WindowId,
 };
 use gpui::{
     App, Bounds, TitlebarOptions, WindowBounds, WindowHandle, WindowOptions, prelude::*, px, size,
@@ -46,6 +48,7 @@ pub(crate) struct Session {
     clipboard: Clipboard,
     shortcuts: Shortcuts,
     notifications: Notifications,
+    files: Files,
 }
 
 impl Session {
@@ -61,6 +64,7 @@ impl Session {
         let shortcuts = Shortcuts::new(events.clone(), cx);
         evidence.observe_keys(cx);
         let notifications = Notifications::new(events.clone(), cx);
+        let files = Files::new(events.clone(), policy.filesystem_roots.clone(), cx);
         cx.on_window_closed({
             let windows = windows.clone();
             let finishing = finishing.clone();
@@ -69,6 +73,7 @@ impl Session {
             let clipboard = clipboard.clone();
             let shortcuts = shortcuts.clone();
             let notifications = notifications.clone();
+            let files = files.clone();
             move |cx, closed| {
                 let id = windows
                     .borrow()
@@ -87,6 +92,7 @@ impl Session {
                     );
                     shortcuts.close_window(window_id, cx);
                     notifications.close_window(window_id, cx);
+                    files.close_window(window_id, cx);
                     if !finishing.get() {
                         events.ui(
                             |sequence| Event::Closed {
@@ -113,6 +119,7 @@ impl Session {
             clipboard,
             shortcuts,
             notifications,
+            files,
         }
     }
 
@@ -176,12 +183,15 @@ impl Session {
                 if self.notifications.available() {
                     capabilities.push(Capability::NotificationsV1);
                 }
+                if self.files.available() {
+                    capabilities.push(Capability::FilesystemGrantsV1);
+                }
                 self.events.send(
                     Event::Ready {
                         protocol: PROTOCOL_VERSION,
                         capabilities,
                         limits: Limits::default(),
-                        service_policy: self.policy,
+                        service_policy: self.policy.clone(),
                     },
                     cx,
                 );
@@ -268,6 +278,29 @@ impl Session {
                     self.error(id, code, message, cx);
                 }
             }
+            Command::OpenFileGrant {
+                window_id,
+                grant_id,
+                root,
+                access,
+                ..
+            } => self.open_file_grant((id, window_id, grant_id), &root, access, cx),
+            Command::CloseFileGrant {
+                window_id,
+                grant_id,
+                ..
+            } => {
+                if let Err((code, message)) = self.files.close(id, window_id, grant_id, cx) {
+                    self.error(id, code, message, cx);
+                }
+            }
+            Command::FileRequest {
+                window_id,
+                grant_id,
+                path,
+                operation,
+                ..
+            } => self.file_request((id, window_id, grant_id), path, operation, cx),
             Command::Shutdown { .. } => self.finish(Event::Ack { id }, cx),
             Command::Hello { .. } => unreachable!("hello handled before command dispatch"),
         }
@@ -490,6 +523,7 @@ impl Session {
             );
             self.shortcuts.close_window(window_id, cx);
             self.notifications.close_window(window_id, cx);
+            self.files.close_window(window_id, cx);
             self.events.send(Event::Ack { id }, cx);
         } else {
             state.borrow_mut().active = true;
@@ -604,6 +638,52 @@ impl Session {
         }
     }
 
+    fn open_file_grant(
+        &self,
+        request: (RequestId, WindowId, FileGrantId),
+        root: &str,
+        access: FileAccess,
+        cx: &mut App,
+    ) {
+        let (id, window_id, _) = request;
+        if !self
+            .policy
+            .filesystem_roots
+            .iter()
+            .any(|item| item.id == root)
+        {
+            self.error(
+                id,
+                ErrorCode::PermissionDenied,
+                "this filesystem root was not granted at native process launch",
+                cx,
+            );
+            return;
+        }
+        if self.window(id, window_id, cx).is_none() {
+            return;
+        }
+        if let Err((code, message)) = self.files.open(request, root, access, cx) {
+            self.error(id, code, message, cx);
+        }
+    }
+
+    fn file_request(
+        &self,
+        request: (RequestId, WindowId, FileGrantId),
+        path: String,
+        operation: FileOperation,
+        cx: &mut App,
+    ) {
+        let (id, window_id, _) = request;
+        if self.window(id, window_id, cx).is_none() {
+            return;
+        }
+        if let Err((code, message)) = self.files.request(request, path, operation, cx) {
+            self.error(id, code, message, cx);
+        }
+    }
+
     fn revoke(&self) {
         self.finishing.set(true);
         for entry in self.windows.borrow().values() {
@@ -619,6 +699,7 @@ impl Session {
             self.clipboard.stop(cx),
             self.shortcuts.stop(cx),
             self.notifications.stop(cx),
+            self.files.stop(cx),
         ]
         .into_iter()
         .flatten()
