@@ -1,4 +1,4 @@
-name: Immutable source receipt
+name: Immutable dependency source receipts
 on:
   push:
     branches: [test/source-receipt-20261105-1255]
@@ -12,23 +12,34 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
-          ref: 9706eb685d6222c520f66927770cfc3359bcd07b
+          ref: 9520477038da7b3a3bf88af9eef98ce6aeeb45ef
           persist-credentials: false
-      - name: Export only immutable tracked source
+      - name: Export immutable branch and common-ancestor source
         shell: bash
         run: |
           set -euo pipefail
-          test "$(git rev-parse HEAD)" = 9706eb685d6222c520f66927770cfc3359bcd07b
-          test "$(git rev-parse HEAD^{tree})" = ad5ceb516c69a2ce06d74e62a0be43aeaa60e248
-          mkdir -p "$RUNNER_TEMP/source-receipt"
-          git archive --format=tar.gz HEAD > "$RUNNER_TEMP/source-receipt/source.tar.gz"
-          git ls-tree -r HEAD > "$RUNNER_TEMP/source-receipt/source-tree.txt"
-          git rev-parse HEAD HEAD^{tree} > "$RUNNER_TEMP/source-receipt/identity.txt"
-          cd "$RUNNER_TEMP/source-receipt"
-          sha256sum source.tar.gz source-tree.txt identity.txt > SHA256SUMS
+          test "$(git rev-parse HEAD)" = 9520477038da7b3a3bf88af9eef98ce6aeeb45ef
+          out="$RUNNER_TEMP/dependency-source-receipts"
+          mkdir -p "$out"
+          for ref in \
+            9520477038da7b3a3bf88af9eef98ce6aeeb45ef \
+            2a882e7ca401dec07a0a4e16f3d9ebcc90f816cf \
+            b1a7e5336e3c5a7bb992349ea064b6d87b0cee85 \
+            c4d4c2e74d561ce19621e3e3940469d33bf3f118 \
+            c9ba430d2100841ff7c336bd4cad33a4bc4bcdf4 \
+            d4a1db9ae1067e694062b8590870fea384166232 \
+            27405939ce1007d4142e1bb67e9ecc6ca3ce0411; do
+            git -c gc.auto=0 fetch --no-tags --depth=1 origin "$ref"
+            test "$(git rev-parse FETCH_HEAD)" = "$ref"
+            git archive --format=tar.gz "$ref" > "$out/$ref.tar.gz"
+            git ls-tree -r "$ref" > "$out/$ref.tree.txt"
+            git rev-parse "$ref" "$ref^{tree}" > "$out/$ref.identity.txt"
+          done
+          cd "$out"
+          sha256sum ./*.tar.gz ./*.tree.txt ./*.identity.txt > SHA256SUMS
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
-          name: immutable-main-9706eb68-source
-          path: ${{ runner.temp }}/source-receipt/
+          name: immutable-dependent-source-receipts
+          path: ${{ runner.temp }}/dependency-source-receipts/
           if-no-files-found: error
           retention-days: 1
