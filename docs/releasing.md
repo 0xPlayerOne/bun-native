@@ -21,7 +21,7 @@ A compiled JIT bundle, build-only probe or WebView app cannot be advertised as a
 2. Audit native dependencies, artifact size, startup, idle RSS/CPU/GPU, included assets and whether a browser/JIT payload was inadvertently bundled.
 3. Produce installer/package and integrity-checked update channel; define version compatibility, rollback, interrupted install and user-state preservation (#249).
 4. Exercise native capability denial, malformed events, crash reports without secrets, signed update trust and clean/offline launch (#247).
-5. Publish supported/unsupported matrix and measured evidence; verify accessiblity, text input and platform-specific behavior before a public quality claim (#245).
+5. Publish supported/unsupported matrix and measured evidence; verify accessibility, text input and platform-specific behavior before a public quality claim (#245).
 
 ## Experimental signing policy
 

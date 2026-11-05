@@ -44,7 +44,7 @@ Every change must leave the touched area cleaner or demonstrably no worse.
 - Batch layout/tree mutations across Bun↔native, avoid unbounded queues, coalesce redundant updates without dropping required events, and keep expensive work off the UI thread.
 - Profile p50/p95/p99 input-to-paint latency, UI frame durations/dropped frames, long streaming updates, virtualization and text layout/IME. Avoid unnecessary redraws, repeated allocations, GPU resource churn, excessive copies across FFI and retaining disposed nodes/listeners.
 - Track process-tree RSS/peak and idle CPU/GPU rather than a single process if helpers exist. Exercise mount/unmount, window open/close, repeated hot reload and long-running message streams for leaks.
-- Compare identical workloads across Solid and React adapters and a direct native host baseline. Treat accessiblity/IME correctness as required behavior, not a performance knob to disable.
+- Compare identical workloads across Solid and React adapters and a direct native host baseline. Treat accessibility/IME correctness as required behavior, not a performance knob to disable.
 
 ### Distribution and development loop
 
