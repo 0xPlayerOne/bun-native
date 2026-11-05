@@ -60,6 +60,12 @@ def source_snapshot():
         paths.extend((ROOT / "packages" / package / "src").rglob("*.ts"))
     paths.extend((ROOT / "native").rglob("*.rs"))
     paths.extend((ROOT / "native").rglob("Cargo.toml"))
+    for manifest in (ROOT / "native/vendor").glob("*/Cargo.toml"):
+        paths.extend(
+            path
+            for path in (manifest.parent / "src").rglob("*")
+            if path.is_file() and path.suffix != ".rs"
+        )
     return {str(path.relative_to(ROOT)): fingerprint(path) for path in sorted(paths)}
 
 

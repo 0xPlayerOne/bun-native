@@ -1,0 +1,217 @@
+{
+  "schemaVersion": 1,
+  "status": "executed-failure-preserved",
+  "scope": "Source-inventory preflight failure before any baseline trial; no native runtime or performance failure is inferred.",
+  "source": {
+    "head": "cac197be3be81be4f9d62d521db422eb5de30a55",
+    "testedMerge": "dd4eb606273235cb8297a1e3ae575db52d5019eb",
+    "tree": "02f203b185b50ef98fbf575671b93f9bd26a24df",
+    "actualBase": "b1a7e5336e3c5a7bb992349ea064b6d87b0cee85",
+    "headToTestedChangedFiles": 0,
+    "localReviewedCommitWithSameTree": "b663e6a1ca0170e0e4dde56e2cb647e392f28341",
+    "baselineSha256": "50f04d564d1b23dacf372d7c729834a89b731a8c4d1c5bbffe2cc543e1af0eb3"
+  },
+  "run": {
+    "id": 41897769365,
+    "attempt": 1,
+    "jobId": 126811773759,
+    "jobConclusion": "failure",
+    "step": 37,
+    "stepName": "Repeated matched development and AOT release-host baseline",
+    "url": "https://github.com/0xPlayerOne/bun-native/actions/runs/41897769365/job/126811773759"
+  },
+  "artifact": {
+    "id": 13358130210,
+    "name": "native-linux-X64",
+    "bytes": 15740500,
+    "sha256": "48b56047b755f222e10db32b382faae209897f62e423b2d59b577ad04fbe4107"
+  },
+  "observedFailure": {
+    "error": "AOT manifest must describe every current application/host source",
+    "trials": [],
+    "elapsedSeconds": 0.0966116360000342,
+    "declaredSamplesPerMode": 5,
+    "declaredWarmupsPerMode": 1,
+    "idleSeconds": 2,
+    "stepExitCode": 1,
+    "originalSummary": {
+      "path": "wgpu-hal-baseline-summary.json.raw",
+      "bytes": 1985,
+      "sha256": "028f44794304ff7a794832ab089cd1032d924406642834f2cdf8f011620187a8"
+    }
+  },
+  "sourceInventory": {
+    "baselineExpectedCount": 68,
+    "actualManifestCount": 145,
+    "verifiedSourceHashes": 145,
+    "manifestSourceCommit": "dd4eb606273235cb8297a1e3ae575db52d5019eb",
+    "manifestDirty": false,
+    "unexpectedToOldValidator": [
+      "native/vendor/wgpu-hal/Cargo.toml",
+      "native/vendor/wgpu-hal/build.rs",
+      "native/vendor/wgpu-hal/src/auxil/dxgi/conv.rs",
+      "native/vendor/wgpu-hal/src/auxil/dxgi/dxgi_lib.rs",
+      "native/vendor/wgpu-hal/src/auxil/dxgi/exception.rs",
+      "native/vendor/wgpu-hal/src/auxil/dxgi/factory.rs",
+      "native/vendor/wgpu-hal/src/auxil/dxgi/hdr.rs",
+      "native/vendor/wgpu-hal/src/auxil/dxgi/mod.rs",
+      "native/vendor/wgpu-hal/src/auxil/dxgi/name.rs",
+      "native/vendor/wgpu-hal/src/auxil/dxgi/result.rs",
+      "native/vendor/wgpu-hal/src/auxil/dxgi/time.rs",
+      "native/vendor/wgpu-hal/src/auxil/dyn_lib.rs",
+      "native/vendor/wgpu-hal/src/auxil/mod.rs",
+      "native/vendor/wgpu-hal/src/auxil/renderdoc.rs",
+      "native/vendor/wgpu-hal/src/dx12/adapter.rs",
+      "native/vendor/wgpu-hal/src/dx12/command.rs",
+      "native/vendor/wgpu-hal/src/dx12/conv.rs",
+      "native/vendor/wgpu-hal/src/dx12/dcomp.rs",
+      "native/vendor/wgpu-hal/src/dx12/descriptor.rs",
+      "native/vendor/wgpu-hal/src/dx12/device.rs",
+      "native/vendor/wgpu-hal/src/dx12/device_creation.rs",
+      "native/vendor/wgpu-hal/src/dx12/instance.rs",
+      "native/vendor/wgpu-hal/src/dx12/mod.rs",
+      "native/vendor/wgpu-hal/src/dx12/pipeline_desc.rs",
+      "native/vendor/wgpu-hal/src/dx12/sampler.rs",
+      "native/vendor/wgpu-hal/src/dx12/shader_compilation.rs",
+      "native/vendor/wgpu-hal/src/dx12/suballocation.rs",
+      "native/vendor/wgpu-hal/src/dx12/types.rs",
+      "native/vendor/wgpu-hal/src/dx12/view.rs",
+      "native/vendor/wgpu-hal/src/dynamic/adapter.rs",
+      "native/vendor/wgpu-hal/src/dynamic/command.rs",
+      "native/vendor/wgpu-hal/src/dynamic/device.rs",
+      "native/vendor/wgpu-hal/src/dynamic/instance.rs",
+      "native/vendor/wgpu-hal/src/dynamic/mod.rs",
+      "native/vendor/wgpu-hal/src/dynamic/queue.rs",
+      "native/vendor/wgpu-hal/src/dynamic/surface.rs",
+      "native/vendor/wgpu-hal/src/gles/adapter.rs",
+      "native/vendor/wgpu-hal/src/gles/command.rs",
+      "native/vendor/wgpu-hal/src/gles/conv.rs",
+      "native/vendor/wgpu-hal/src/gles/device.rs",
+      "native/vendor/wgpu-hal/src/gles/egl.rs",
+      "native/vendor/wgpu-hal/src/gles/emscripten.rs",
+      "native/vendor/wgpu-hal/src/gles/fence.rs",
+      "native/vendor/wgpu-hal/src/gles/mod.rs",
+      "native/vendor/wgpu-hal/src/gles/queue.rs",
+      "native/vendor/wgpu-hal/src/gles/shaders/clear.frag",
+      "native/vendor/wgpu-hal/src/gles/shaders/clear.vert",
+      "native/vendor/wgpu-hal/src/gles/shaders/srgb_present.frag",
+      "native/vendor/wgpu-hal/src/gles/shaders/srgb_present.vert",
+      "native/vendor/wgpu-hal/src/gles/web.rs",
+      "native/vendor/wgpu-hal/src/gles/wgl.rs",
+      "native/vendor/wgpu-hal/src/lib.rs",
+      "native/vendor/wgpu-hal/src/metal/adapter.rs",
+      "native/vendor/wgpu-hal/src/metal/command.rs",
+      "native/vendor/wgpu-hal/src/metal/conv.rs",
+      "native/vendor/wgpu-hal/src/metal/device.rs",
+      "native/vendor/wgpu-hal/src/metal/library_from_metallib.rs",
+      "native/vendor/wgpu-hal/src/metal/mod.rs",
+      "native/vendor/wgpu-hal/src/metal/surface.rs",
+      "native/vendor/wgpu-hal/src/metal/time.rs",
+      "native/vendor/wgpu-hal/src/noop/buffer.rs",
+      "native/vendor/wgpu-hal/src/noop/command.rs",
+      "native/vendor/wgpu-hal/src/noop/mod.rs",
+      "native/vendor/wgpu-hal/src/validation_canary.rs",
+      "native/vendor/wgpu-hal/src/vulkan/adapter.rs",
+      "native/vendor/wgpu-hal/src/vulkan/command.rs",
+      "native/vendor/wgpu-hal/src/vulkan/conv.rs",
+      "native/vendor/wgpu-hal/src/vulkan/descriptor.rs",
+      "native/vendor/wgpu-hal/src/vulkan/device.rs",
+      "native/vendor/wgpu-hal/src/vulkan/drm.rs",
+      "native/vendor/wgpu-hal/src/vulkan/instance.rs",
+      "native/vendor/wgpu-hal/src/vulkan/mod.rs",
+      "native/vendor/wgpu-hal/src/vulkan/pnext_chain.rs",
+      "native/vendor/wgpu-hal/src/vulkan/sampler.rs",
+      "native/vendor/wgpu-hal/src/vulkan/semaphore_list.rs",
+      "native/vendor/wgpu-hal/src/vulkan/swapchain/mod.rs",
+      "native/vendor/wgpu-hal/src/vulkan/swapchain/native.rs"
+    ],
+    "missingFromManifest": [],
+    "cause": "The AOT builder includes native/vendor/* package manifests, optional build.rs and all src files; the old baseline collector enumerates only native/* workspace crates. Its exact-set check rejects the 77 additional compile inputs."
+  },
+  "runtimeReceipts": {
+    "bunRevision": "da867c60bf0bcbf9d6d36994f8ca0efa42075115",
+    "gpuiRevision": "ba63a022c9a22ca66d68ef2a8f0bb9b5b0a9984d",
+    "host": {
+      "bytes": 29479320,
+      "sha256": "33654a61180e2ca67eec7087fa19bf0382db2c1652d6a8c7fd4d6a88d4fdc4ee",
+      "profile": "release",
+      "placement": "bundled"
+    },
+    "hostBinaryRetained": false,
+    "scope": "Build and manifest receipts only; the failed baseline preflight launched neither executable."
+  },
+  "priorAndLaterSteps": {
+    "steps1Through36": "success",
+    "step38SolidWorkspace": "success",
+    "scope": "Provider job-step conclusions; the baseline failure remains independently blocking."
+  },
+  "retainedReceipts": {
+    "raw/package/manifest.json": {
+      "bytes": 32938,
+      "sha256": "d41cc6346d2ee89f9ef28f33c88441dcdcffbedd7e4f3d82aeb92cc28abe6a90"
+    },
+    "raw/baseline/summary.json": {
+      "bytes": 1985,
+      "sha256": "028f44794304ff7a794832ab089cd1032d924406642834f2cdf8f011620187a8"
+    },
+    "raw/baseline.log": {
+      "bytes": 97,
+      "sha256": "2d0662ebb2c679411b995b557ad1be39b131a50d310c2026dc5de8f084c33858"
+    },
+    "raw/toolchain.txt": {
+      "bytes": 1402,
+      "sha256": "715f863db7f543be018eb68953694c97a1929e0a51b2621cf29ebe2a2f676e2b"
+    },
+    "raw/binary-sha256.txt": {
+      "bytes": 97,
+      "sha256": "3118ce0a2920a2849c8a44a1116dc6551706b35da7f83e2144da048944f074c6"
+    },
+    "raw/binary-size.txt": {
+      "bytes": 15,
+      "sha256": "e8779ddded098ecf94f194b8e3dc9d16e425a1b5dd707406daa85ec14ed7ad42"
+    },
+    "native-linux-job.log": {
+      "bytes": 1786882,
+      "sha256": "95ec0df4ff67b6e98c1daf2d6a9c009befd2e89a98659de2b9046b7758f25557"
+    },
+    "native-job-step37.log": {
+      "bytes": 1547,
+      "sha256": "2b6d7fc150e9c59e37da2abeff7f75f2dcfebaabf5fe5fd0fe3f18adcd2657e7"
+    }
+  },
+  "correction": {
+    "path": "benchmarks/native-baseline.py",
+    "sha256": "79d81b36678d76183b2abeb9ea1c9e74bb4abdbff851799b6497afbec91ef200",
+    "membership": "Add the existing vendored compile inputs to the baseline expectation; keep exact-set, duplicate, path and hash validation unchanged. Exclude examples and target output.",
+    "regressionRed": {
+      "command": "python3 -B -m unittest discover -s tests/quality -p test_native_baseline.py -k vendor -v",
+      "result": "2 errors at the original completeness check before the correction",
+      "bytes": 2243,
+      "sha256": "c03f07f4a9e23baba0ca22adb38d1067c54faacc54d556bddc0875ed09f241a1"
+    },
+    "focusedGreen": {
+      "command": "python3 -B -m unittest discover -s tests/quality -p test_native_baseline.py -v",
+      "tests": 23,
+      "passed": 22,
+      "skipped": 1,
+      "skipReason": "Linux process IDs and /proc must share a PID namespace"
+    },
+    "retainedManifestCheck": {
+      "status": "passed",
+      "operation": "verify_sources(repository, retained_manifest)",
+      "validatorSha256": "79d81b36678d76183b2abeb9ea1c9e74bb4abdbff851799b6497afbec91ef200",
+      "manifestSha256": "d41cc6346d2ee89f9ef28f33c88441dcdcffbedd7e4f3d82aeb92cc28abe6a90",
+      "sourceRecordsVerified": 145,
+      "nativeTrialsExecuted": 0,
+      "scope": "Source membership and byte fingerprints only; this is not verify_package, artifact binary inspection, a baseline rerun, or native acceptance."
+    },
+    "negativeControls": [
+      "omitted Cargo.toml, build.rs, Rust files and non-Rust assets",
+      "tampered source bytes for each compile input",
+      "duplicate source record",
+      "unexpected README, example and target source records"
+    ],
+    "nativeTrialsExecuted": 0
+  },
+  "qualification": "The original run remains failed. Local source validation and inert controls do not qualify native execution, improve a benchmark, or prove first-open, close, retention or physical-driver behavior. A future source revision requires its own normal hosted checks."
+}

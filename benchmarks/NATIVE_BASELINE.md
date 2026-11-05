@@ -23,7 +23,10 @@ recorded by the AOT build helper; the runner checks every recorded application
 and native-host source/configuration hash before and after the trials, including
 package exports, Bun's lockfile and compiler configuration. The source set
 includes `packages/core`, the protocol/runtime packages, and both the example
-entry point and shared content. The baseline accepts only the `native-window`
+entry point and shared content. Native source completeness includes each
+vendored package's `Cargo.toml`, optional `build.rs`, and every file under `src`,
+including embedded shader/assets; package examples and build outputs are excluded.
+The baseline accepts only the `native-window`
 entry with its bundled host; a bridge or input-race artifact cannot qualify as
 the same workload. It also rejects an
 incorrect Bun revision, a changed executable, an unverified host profile, missing
@@ -106,10 +109,19 @@ binary hash to the recorded `cargo build --release` command and native CI
 evidence when publishing results; a manifest field alone does not prove compiler
 optimization settings.
 
-The twelve safety tests in `tests/quality/test_native_baseline.py` exercise metadata
+The safety tests in `tests/quality/test_native_baseline.py` exercise metadata
 validation with inert fixtures, reject a missing display without launching an
 artifact, and cancel a real supervised Python child. They never report those
 fixtures as working AOT/native applications.
+
+The [preserved HAL adoption preflight failure](../tests/native/evidence/wgpu-hal-baseline-inventory-failure.json)
+records run `41897769365`, whose correct 145-source AOT manifest was rejected by
+the older 68-source baseline expectation. The 77 extra records were the newly
+vendored HAL's actual build inputs; the baseline launched no trials. The
+corrected validator accepts that retained source inventory and byte hashes, and
+focused controls still reject missing, altered, duplicate or unexpected files.
+This local source check does not change the failed hosted result or establish a
+new native or performance result.
 
 The baseline supervisor forwards termination to the running driver and waits
 for bounded cleanup. The driver handles termination as a failed measurement.

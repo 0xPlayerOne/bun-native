@@ -24,3 +24,6 @@ debug = 0
 lto = "thin"
 codegen-units = 1
 strip = "debuginfo"
+
+[patch."https://github.com/gfx-rs/wgpu"]
+wgpu-hal = { path = "native/vendor/wgpu-hal" }

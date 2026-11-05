@@ -1,0 +1,48 @@
+{
+  "scope": "Cargo metadata and source provenance only; no native execution or driver qualification",
+  "base_commit": "b1a7e5336e3c5a7bb992349ea064b6d87b0cee85",
+  "baseline_collection_commit": "5b49755556136af89ec7941d5452b23fabb8037a",
+  "baseline_note": "All Cargo manifests and lockfile are byte-identical between these accepted commits.",
+  "target": "x86_64-unknown-linux-gnu",
+  "command": [
+    "cargo",
+    "metadata",
+    "--offline",
+    "--locked",
+    "--format-version",
+    "1",
+    "--filter-platform",
+    "x86_64-unknown-linux-gnu"
+  ],
+  "before_packages": 485,
+  "after_packages": 485,
+  "workspace_members": 3,
+  "unmodified_non_hal_package_metadata": 484,
+  "resolve_nodes_equal_after_only_hal_id_remap": true,
+  "resolve_dependency_edges": 1307,
+  "canonical_resolve_graph_sha256": "aa9a4fb7b7f121a8db2677e1cbc261e4deefdab02e595fb5cbe491ae2166de5e",
+  "hal_before_id": "git+https://github.com/gfx-rs/wgpu?rev=cddb2f5d80dc0009b2ef6767635140cacf90a007#wgpu-hal@30.0.0",
+  "hal_after_id": "path+file://$CHECKOUT/native/vendor/wgpu-hal#30.0.0",
+  "hal_features": ["dx12", "gles", "metal", "portable-atomic", "renderdoc", "vulkan"],
+  "sibling_ids": {
+    "naga": "git+https://github.com/gfx-rs/wgpu?rev=cddb2f5d80dc0009b2ef6767635140cacf90a007#naga@30.0.0",
+    "naga-types": "git+https://github.com/gfx-rs/wgpu?rev=cddb2f5d80dc0009b2ef6767635140cacf90a007#naga-types@30.0.0",
+    "wgpu-naga-bridge": "git+https://github.com/gfx-rs/wgpu?rev=cddb2f5d80dc0009b2ef6767635140cacf90a007#wgpu-naga-bridge@30.0.0",
+    "wgpu-sync": "git+https://github.com/gfx-rs/wgpu?rev=cddb2f5d80dc0009b2ef6767635140cacf90a007#wgpu-sync@30.0.0",
+    "wgpu-types": "git+https://github.com/gfx-rs/wgpu?rev=cddb2f5d80dc0009b2ef6767635140cacf90a007#wgpu-types@30.0.0"
+  },
+  "lock_delta": "Only wgpu-hal source line removed; every other lock byte unchanged.",
+  "source_sha256": {
+    "Cargo.toml": "1489cc153215b9c64bc0c63d4232e47c82d7a62162839da22bf3d30e951aae0b",
+    "Cargo.lock": "2081f1c0e61d438a5dc70cde89b5a6efe7d00a2cbbc001c89c65a0cc743db6d3",
+    "native/vendor/wgpu-hal/Cargo.toml": "58dae1b22e375981100319767d7617e7dc3de3580605310eeb0e7910b7ab016e",
+    "native/vendor/wgpu-hal/src/gles/egl.rs": "b2dd2b061084c588711b9170ae541340e554ece5d307b71a38cae07f25b78dee",
+    "native/vendor/wgpu-hal/bun-native/upstream.json": "48841d3372ec12a7949c2106e350c88ea3fea02d66341118bd7cdc050019c143"
+  },
+  "raw_metadata_sha256": {
+    "baseline": "69d56d7c73db326d5d983ebdef3e19ef813d33b27b2f5725da8c98f4c1525e81",
+    "adopted": "5e0abd432f07b300bf47b5957b4bed0d9fb24f261b7ec0249b1459b40aa2cefc"
+  },
+  "unsupported": "Unfiltered offline baseline metadata stopped at uncached accesskit_macos0.26.3 before source edits. This receipt qualifies only the Linux filtered graph; all target declarations were also independently compared without changing pins.",
+  "manifest_formatting_note": "Normal hook formatted the standalone manifest. Repeated metadata read is byte-identical after formatting, and declaration equivalence is checked structurally."
+}

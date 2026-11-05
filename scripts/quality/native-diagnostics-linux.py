@@ -123,6 +123,13 @@ def source_snapshot():
     for manifest in (ROOT / "native").glob("*/Cargo.toml"):
         paths.append(manifest)
         paths.extend((manifest.parent / "src").rglob("*.rs"))
+    for manifest in (ROOT / "native/vendor").glob("*/Cargo.toml"):
+        paths.append(manifest)
+        if (build := manifest.parent / "build.rs").is_file():
+            paths.append(build)
+        paths.extend(
+            path for path in (manifest.parent / "src").rglob("*") if path.is_file()
+        )
     return {str(path.relative_to(ROOT)): fingerprint(path) for path in sorted(paths)}
 
 

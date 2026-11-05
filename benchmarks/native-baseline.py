@@ -155,6 +155,15 @@ def expected_sources(repository, *, source_commit=None):
             path.relative_to(repository).as_posix()
             for path in (manifest.parent / "src").rglob("*.rs")
         )
+    for manifest in (repository / "native/vendor").glob("*/Cargo.toml"):
+        paths.add(manifest.relative_to(repository).as_posix())
+        if (build := manifest.parent / "build.rs").is_file():
+            paths.add(build.relative_to(repository).as_posix())
+        paths.update(
+            path.relative_to(repository).as_posix()
+            for path in (manifest.parent / "src").rglob("*")
+            if path.is_file()
+        )
     return paths
 
 

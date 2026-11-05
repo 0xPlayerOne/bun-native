@@ -1,0 +1,59 @@
+{
+  "schemaVersion": 1,
+  "status": "original-codeql-failure-preserved",
+  "source": {
+    "head": "5ca2cac204521216bd94a2203baa59f3694ec0e0",
+    "tree": "5e24b1b76735a6e639457a1008186ef31b55da57",
+    "path": "native/vendor/wgpu-hal/src/auxil/renderdoc.rs",
+    "upstreamRepository": "https://github.com/gfx-rs/wgpu",
+    "upstreamCommit": "cddb2f5d80dc0009b2ef6767635140cacf90a007",
+    "originalFile": {
+      "mode": "100644",
+      "git_blob": "52fa2b0bd673aafb0bd6fd8cd83fbdb78addcce4",
+      "bytes": 4709,
+      "sha256": "94898f747476e269b2910d42e769f2bbb6be0cb466ad92f9d381f55799d2756e"
+    }
+  },
+  "check": {
+    "id": 126826119860,
+    "name": "CodeQL",
+    "head_sha": "5ca2cac204521216bd94a2203baa59f3694ec0e0",
+    "html_url": "https://github.com/0xPlayerOne/bun-native/runs/126826119860",
+    "status": "completed",
+    "conclusion": "failure",
+    "started_at": "2026-11-04T19:57:03Z",
+    "completed_at": "2026-11-04T19:57:05Z"
+  },
+  "annotation": {
+    "rule": "rust/access-invalid-pointer",
+    "originalRawFile": "renderdoc-codeql-annotations.json.raw",
+    "bytes": 430,
+    "sha256": "cdf1cb68128d51d64615f25ffe785e80b6d57fa3868b5741481a2fb442e5a338",
+    "records": 1,
+    "originalCheckJsonBytes": 3050,
+    "originalCheckJsonSha256": "5e97d1d63aa3bfc6d73851513182ef867afaad95d6ca2397bea03c505fe7b5fe"
+  },
+  "boundary": {
+    "lookup": "Existing constant-name already-loaded RenderDoc library",
+    "entry": "RENDERDOC_GetAPI(version10401, outPointer)",
+    "eligibility": "Default returns unavailable when debug_assertions is false; explicit unsafe new keeps its original contract.",
+    "contract": "https://github.com/baldurk/renderdoc/blob/173510cc8d0d692cec842077da3cce9af4972666/docs/in_application_api.rst",
+    "scope": "No lower-trust attacker input or exploit was established by the retained annotation and source trace."
+  },
+  "correction": {
+    "patch": "native/vendor/wgpu-hal/bun-native/renderdoc-null-api.patch",
+    "behavior": "Reject status1 with null before copying the table; preserve failed status diagnostics and successful non-null library ownership.",
+    "controls": [
+      "status0 with null",
+      "status1 with null",
+      "status1 with an initialized static table and known GetAPIVersion function",
+      "failed status with that same non-null static table"
+    ],
+    "limits": [
+      "A null guard does not prove validity of arbitrary non-null addresses or function pointers.",
+      "The existing unsafe ABI/readability/initialization/library-lifetime contract remains required.",
+      "No RenderDoc library, graphics context, native application, GC or benchmark is executed by these fixed ABI controls.",
+      "The original check remains failed; changed-source CodeQL and platform qualification are separate."
+    ]
+  }
+}

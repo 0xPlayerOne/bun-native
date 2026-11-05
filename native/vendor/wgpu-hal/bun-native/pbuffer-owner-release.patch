@@ -1,0 +1,14 @@
+--- a/wgpu-hal/src/gles/egl.rs
++++ b/wgpu-hal/src/gles/egl.rs
+@@ -697,6 +697,11 @@
+         // ERROR: Since EglContext is erroneously Clone, these handles could be copied and
+         // accidentally used elsewhere outside of Inner, despite us assuming ownership and
+         // destroying the handles here.
++        if let Some(pbuffer) = self.egl.pbuffer {
++            if let Err(e) = self.egl.instance.destroy_surface(self.egl.display, pbuffer) {
++                log::warn!("Error in destroy_surface: {e:?}");
++            }
++        }
+         if let Err(e) = self
+             .egl
+             .instance

@@ -1,0 +1,180 @@
+{
+  "schemaVersion": 1,
+  "status": "local-compilation-and-fixed-ffi-controls-passed",
+  "scope": "Compile-only Linux host and four fixed FFI controls; no native window, application, RenderDoc library, graphics context, GC or benchmark execution.",
+  "source": {
+    "commit": "1b8cf76a9e2cdf31861d184a0d533a7c330aa8a0",
+    "tree": "fdcf657247a89216b2d3ed0a4e030695becf9bdc",
+    "parent": "5ca2cac204521216bd94a2203baa59f3694ec0e0",
+    "renderdoc": {
+      "path": "native/vendor/wgpu-hal/src/auxil/renderdoc.rs",
+      "bytes": 8124,
+      "sha256": "f5b843f98a6c2132043a766b0bccfeeab5c154962909fd9bd5b42483cf59857f"
+    },
+    "cargoLock": {
+      "bytes": 161078,
+      "sha256": "2081f1c0e61d438a5dc70cde89b5a6efe7d00a2cbbc001c89c65a0cc743db6d3"
+    },
+    "rustToolchain": {
+      "bytes": 86,
+      "sha256": "887f9be066a15585a2c583578e84b0fcb541126d81546276bad3d2ff00d61167"
+    }
+  },
+  "compiler": {
+    "rustc": "rustc 1.98.1 (48a229cea 2026-09-01)\nbinary: rustc\ncommit-hash: 48a229ceaefd4985c50990b14116b6d856af0985\ncommit-date: 2026-09-01\nhost: x86_64-unknown-linux-gnu\nrelease: 1.98.1\nLLVM version: 22.1.8",
+    "edition": "2021"
+  },
+  "ffiControls": {
+    "method": "rustc --test includes the exact production file through #[path], using existing pinned rlibs; no helper algorithm duplicated.",
+    "commandTemplate": "rustc --edition=2021 --test <owned-harness.rs> --crate-name renderdoc_null_api_controls --extern libloading=<pinned-rlib> --extern renderdoc_sys=<pinned-rlib> --extern log=<pinned-rlib> -L dependency=<owned-cargo-deps> -D warnings -o <owned-test-binary>",
+    "passed": 4,
+    "failed": 0,
+    "ignored": 0,
+    "productionSourceSha256": "f5b843f98a6c2132043a766b0bccfeeab5c154962909fd9bd5b42483cf59857f",
+    "harnessSha256": "ad3cec41782ce6e14002152ac0b532dff2dfb472701ca07db87d92a4b12b9ed0",
+    "binary": {
+      "bytes": 7188144,
+      "sha256": "e97eeb12d63a3883011f0f09ae5dfa903622684c7791cf1b1d9a79596926af57"
+    },
+    "log": {
+      "bytes": 412,
+      "sha256": "07fd50240fbc48f58db9501aa2f4b0f6b6adcd4861fd29d773351458ba354de8"
+    },
+    "dependencies": [
+      {
+        "name": "libloading",
+        "version": "0.8.9",
+        "registryChecksum": "d7c4b02199fee7c5d21a5ae7d8cfa79a6ef5bb2fc834d6e9058e89c825efdc55",
+        "rlib": {
+          "bytes": 227678,
+          "sha256": "dcc87d72163bf42c1a32e0a8d62c475ebd0e65dcb3f6c2306e1ee120f655ad0c"
+        },
+        "cargoFingerprint": {
+          "bytes": 410,
+          "sha256": "385009072b7d835b34e55ca2e1da553cad53e9a9db5c92054f2d97b9e7cbe57e"
+        },
+        "dependencySourceList": {
+          "bytes": 4240,
+          "sha256": "fa08ef708475e666ea3f817ed9dcdbc9f5725bce0fc58d367303c3736bea4722"
+        }
+      },
+      {
+        "name": "renderdoc-sys",
+        "version": "1.1.0",
+        "registryChecksum": "19b30a45b0cd0bcca8037f3d0dc3421eaf95327a17cad11964fb8179b4fc4832",
+        "rlib": {
+          "bytes": 110612,
+          "sha256": "72f49058a9ac0344e426d258be5d96bf23d447bee300ed50ec08f6867a346379"
+        },
+        "cargoFingerprint": {
+          "bytes": 358,
+          "sha256": "b15bb71ad826c046fa6a788f5b5a2345efb0472b872ee88965efa62fd9de9b9e"
+        },
+        "dependencySourceList": {
+          "bytes": 1335,
+          "sha256": "56d98b794ebb2fc86be7dc962a702df005791b37fa7686d2be1d52a2d1fc1c71"
+        }
+      },
+      {
+        "name": "log",
+        "version": "0.4.35",
+        "registryChecksum": "5d15f86d12da44cd8d4ec3c73984537eb7f4cadcb9776a575a0a8a05ca11005c",
+        "rlib": {
+          "bytes": 301770,
+          "sha256": "48b8e8cd0a744929ef8d0b81d6eb6804bff3bdc910c343f6c89b75cc6c2f6ee4"
+        },
+        "cargoFingerprint": {
+          "bytes": 950,
+          "sha256": "8e8a0a020fb7823cf143312a1cbb579426737b427e17d951a6213ff20bdbb89c"
+        },
+        "dependencySourceList": {
+          "bytes": 2163,
+          "sha256": "bf21aa11dd969ba504d6f6274d4551215f1f242fe4269854518a82ac427c9782"
+        }
+      }
+    ]
+  },
+  "provenance": {
+    "command": "python3 -m unittest discover -s tests/quality -p test_wgpu_vendor.py -v",
+    "passed": 6,
+    "failed": 0,
+    "originalFiles": 86,
+    "originalPackageTree": "6a77b79e0f0624d7ac66aad3301f7ae244cbefaa",
+    "originalFileHashesUnchanged": true,
+    "finalPatchReverseVerification": "passed",
+    "log": {
+      "bytes": 1086,
+      "sha256": "64a14680dda7964e3de0ad8351303005d98645e5080ab915472272faea5f2983"
+    },
+    "verificationLog": {
+      "bytes": 182,
+      "sha256": "d0f60aa064a31bed610472c97670114c91cd3f4180975ec877fdaa7e468830f6"
+    }
+  },
+  "workspaceClippy": {
+    "command": "cargo clippy --locked --offline --workspace --all-targets -- -D warnings",
+    "status": "passed",
+    "exitCode": 0,
+    "log": {
+      "bytes": 60,
+      "sha256": "6d982f82f533d8d80f700f4952cc773013a451c68f1e72f50affd3e0482b255a"
+    }
+  },
+  "releaseHost": {
+    "command": "cargo build --locked --offline -p bun-native-host --release",
+    "status": "passed",
+    "exitCode": 0,
+    "profile": "release",
+    "platform": "x86_64-unknown-linux-gnu",
+    "bytes": 29500976,
+    "sha256": "6e01ad8c25ad580ed6cdfffa733787333c0ec3968870e1738d7f3ae8020e5dee",
+    "log": {
+      "bytes": 1163,
+      "sha256": "6f45ed9134f909d20bef44a7d62aa4ab6794d9e4fb73806d4be922184748a043"
+    }
+  },
+  "normalHook": {
+    "status": "passed",
+    "bypassed": false,
+    "log": {
+      "bytes": 1579,
+      "sha256": "8c40ad8df3a9de76ab4c137aac01b9d8380e29dacb8ee4d1da62e40db4078a66"
+    }
+  },
+  "preservedPreparationFailures": [
+    {
+      "stage": "Cargo unit-test command preflight",
+      "exitCode": 101,
+      "error": "cannot specify features for packages outside of workspace",
+      "log": {
+        "bytes": 65,
+        "sha256": "e8ba25ea0890bf6630709e9f811ccb71944e489015181c521f81c609f9040c2a"
+      },
+      "testsExecuted": 0
+    },
+    {
+      "stage": "Cargo unit-test command preflight",
+      "exitCode": 101,
+      "error": "package wgpu-hal cannot be tested because it requires dev-dependencies and is not a member of the workspace",
+      "log": {
+        "bytes": 117,
+        "sha256": "e6279614899e1ae5cd567b140656d813a5c4f3c4d2c7ff79a928c69427ec728a"
+      },
+      "testsExecuted": 0
+    },
+    {
+      "stage": "normal pre-commit whitespace gate",
+      "error": "new patch contained one blank context line with a trailing space; normalized the context encoding and reverified the inverse patch",
+      "log": {
+        "bytes": 127,
+        "sha256": "598109ac8f3f53add3bd7198291f32bbd32b52000eafac2fb79f67c19149d197"
+      }
+    }
+  ],
+  "limits": [
+    "The measured source is this exact pre-integration commit; subsequent source or integration commits require separate scope checks.",
+    "Fresh hosted CodeQL and platform qualification are pending; the original failed check is preserved.",
+    "A null guard cannot validate arbitrary non-null pointers; the original unsafe API and library lifetime contract remains required.",
+    "These controls do not establish a startup or retention cause or broad native acceptance."
+  ]
+}

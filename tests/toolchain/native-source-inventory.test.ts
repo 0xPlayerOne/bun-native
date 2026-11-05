@@ -16,12 +16,19 @@ describe('AOT native source provenance inventory', () => {
       'native/protocol/src/lib.rs',
       'native/extra-platform/Cargo.toml',
       'native/extra-platform/src/surface/layer.rs',
+      'native/vendor/example-hal/Cargo.toml',
+      'native/vendor/example-hal/build.rs',
+      'native/vendor/example-hal/src/lib.rs',
+      'native/vendor/example-hal/src/shaders/clear.frag',
+      'native/vendor/example-hal/src/shaders/clear.vert',
     ]
     try {
       for (const path of [
         ...expected,
         'native/gpui-host/examples/peer.rs',
         'native/gpui-host/src/readme.txt',
+        'native/vendor/example-hal/target/generated.rs',
+        'native/vendor/example-hal/examples/example.rs',
         'packages/runtime/src/index.ts',
       ].reverse()) {
         const file = join(directory, path)
@@ -37,12 +44,13 @@ describe('AOT native source provenance inventory', () => {
   test('matches an independent filesystem walk of the actual native workspace', async () => {
     const source = resolve(import.meta.dir, '../..')
     const expected: string[] = []
-    function walk(directory: string): void {
+    function walk(directory: string, includeAssets = false): void {
       if (!existsSync(join(source, directory))) return
       for (const entry of readdirSync(join(source, directory), { withFileTypes: true })) {
         const path = `${directory}/${entry.name}`
-        if (entry.isDirectory()) walk(path)
-        else if (entry.isFile() && entry.name.endsWith('.rs')) expected.push(path)
+        if (entry.isDirectory()) walk(path, includeAssets)
+        else if (entry.isFile() && (includeAssets || entry.name.endsWith('.rs')))
+          expected.push(path)
       }
     }
     for (const crate of readdirSync(join(source, 'native'), { withFileTypes: true })) {
@@ -51,8 +59,18 @@ describe('AOT native source provenance inventory', () => {
       if (existsSync(join(source, manifest))) expected.push(manifest)
       walk(`native/${crate.name}/src`)
     }
+    for (const crate of readdirSync(join(source, 'native/vendor'), { withFileTypes: true })) {
+      if (!crate.isDirectory()) continue
+      for (const name of ['Cargo.toml', 'build.rs']) {
+        const path = `native/vendor/${crate.name}/${name}`
+        if (existsSync(join(source, path))) expected.push(path)
+      }
+      walk(`native/vendor/${crate.name}/src`, true)
+    }
     expect(expected).toContain('native/gpui-host/src/channel.rs')
     expect(expected).toContain('native/macos-surface/src/lib.rs')
+    expect(expected).toContain('native/vendor/wgpu-hal/src/gles/egl.rs')
+    expect(expected).toContain('native/vendor/wgpu-hal/src/gles/shaders/srgb_present.frag')
     expect(await nativeSourcePaths(source)).toEqual(expected.sort())
   })
 })
