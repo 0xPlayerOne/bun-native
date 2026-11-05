@@ -136,7 +136,7 @@ def renderer_telemetry(
     return {"window_id": renderer["window_id"], "status": "reported"}
 
 
-def source_snapshot():
+def source_snapshot(framework="core"):
     sources = {
         Path(relative).as_posix(): value
         for relative, value in DIAGNOSTICS.source_snapshot().items()
@@ -154,15 +154,31 @@ def source_snapshot():
         "tests/native/macos-cross-process-hit.m",
     ):
         sources[relative] = DIAGNOSTICS.fingerprint(ROOT / relative)
+    if framework != "core":
+        for relative in (
+            "tests/native/platform-adapter.ts",
+            f"tests/native/{framework}-platform.tsx",
+        ):
+            sources[relative] = DIAGNOSTICS.fingerprint(ROOT / relative)
     return sources
 
 
-def expected_paint(cycle, updated, nonce, *, os_input=False):
+def expected_paint(cycle, updated, nonce, *, os_input=False, framework="core"):
     value = f"Native {cycle} {nonce}" if updated else ""
     label = f"Native update {cycle}" if updated else "Clicks: 0"
     result = EVIDENCE.fixture_paint(2 if updated else 1, label, value)
     result["window_id"] = cycle
-    offset = (cycle - 1) * 6
+    if framework != "core":
+        # Each adapter mounts its ownership box and the JSX box below the
+        # window root. Preserve all properties and links of the six-node UI.
+        for node in result["nodes"]:
+            node["node_id"] += 2
+            node["children"] = [child + 2 for child in node["children"]]
+        result["nodes"][:0] = [
+            {"node_id": 1, "element": {"kind": "box", "style": {}}, "children": [2]},
+            {"node_id": 2, "element": {"kind": "box", "style": {}}, "children": [3]},
+        ]
+    offset = (cycle - 1) * len(result["nodes"])
     for node in result["nodes"]:
         node["node_id"] += offset
         node["children"] = [child + offset for child in node["children"]]
@@ -173,7 +189,16 @@ def expected_paint(cycle, updated, nonce, *, os_input=False):
 
 
 def exercise_input(
-    cycle, initial, *, input_driver, report, records, wait_for, nonce, started
+    cycle,
+    initial,
+    *,
+    input_driver,
+    report,
+    records,
+    wait_for,
+    nonce,
+    started,
+    framework="core",
 ):
     observation = dict(
         wait_for(
@@ -187,7 +212,11 @@ def exercise_input(
     report["osObservations"].append(observation)
     report["osWindowVisibility"] = "observed through target OS window APIs"
     report["osInput"] = "not-yet-verified"
-    button_id = initial["nodes"][3]["node_id"]
+    button_id = next(
+        node["node_id"]
+        for node in initial["nodes"]
+        if node["element"]["kind"] == "button"
+    )
     input_id = initial["nodes"][-1]["node_id"]
 
     def latest_layout():
@@ -274,7 +303,7 @@ def exercise_input(
             != 1
         ):
             raise RuntimeError("Actual native Tab key event was missing or duplicated")
-    expected = expected_paint(cycle, False, nonce)
+    expected = expected_paint(cycle, False, nonce, framework=framework)
     expected["nodes"][-1]["element"]["value"] = nonce
     expected["nodes"][-1]["input_revision"] = len(nonce)
     painted = wait_for(
@@ -322,6 +351,32 @@ def wait_for_observation(predicate, app, started, description, timeout=10, paint
     raise error("Timed out waiting for " + description)
 
 
+def adapter_cleanup_matches(application, framework):
+    """Require three framework disposals and exact native callback revocation."""
+    renderers = application.get("renderers")
+    return (
+        application.get("framework") == framework
+        and type(application.get("ownerDisposals")) is int
+        and application["ownerDisposals"] == 3
+        and type(application.get("observedInputEvents")) is int
+        and application["observedInputEvents"] >= 0
+        and type(application.get("revokedInputCallbacks")) is int
+        and application["revokedInputCallbacks"]
+        == application.get("observedInputEvents")
+        and isinstance(renderers, list)
+        and len(renderers) == 3
+        and all(
+            isinstance(renderer, dict)
+            and type(renderer.get("nodes")) is int
+            and renderer["nodes"] == 0
+            and type(renderer.get("listeners")) is int
+            and renderer["listeners"] == 0
+            and renderer.get("pending") is False
+            for renderer in renderers
+        )
+    )
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--output", required=True, type=Path)
@@ -329,6 +384,9 @@ def main():
     parser.add_argument("--host-profile", required=True, choices=("dev", "release"))
     parser.add_argument("--negative-paint-check", action="store_true")
     parser.add_argument("--os-input", action="store_true")
+    parser.add_argument(
+        "--framework", choices=("core", "solid", "react"), default="core"
+    )
     parser.add_argument("--require-metal-device", action="store_true")
     parser.add_argument("command", nargs=argparse.REMAINDER)
     args = parser.parse_args()
@@ -346,7 +404,7 @@ def main():
     args.output.mkdir()
     output = args.output.resolve()
     nonce = secrets.token_hex(16)
-    sources = source_snapshot()
+    sources = source_snapshot(args.framework)
     gpui_revision = json.loads((ROOT / "toolchain.json").read_text())["gpui"][
         "revision"
     ]
@@ -356,6 +414,7 @@ def main():
         "status": "failed",
         "scenario": "platform-smoke",
         "mode": args.mode,
+        "framework": args.framework,
         "aotVerifiedByDriver": False,
         "hostProfile": args.host_profile,
         "host": {"path": str(host), **fingerprint},
@@ -471,11 +530,17 @@ def main():
                         ),
                         "acknowledged native update",
                     )
-                expected = expected_paint(cycle, updated, nonce, os_input=args.os_input)
+                expected = expected_paint(
+                    cycle,
+                    updated,
+                    nonce,
+                    os_input=args.os_input,
+                    framework=args.framework,
+                )
                 if args.negative_paint_check:
-                    expected["nodes"][2]["element"]["text"] = (
-                        "Deliberate invalid paint expectation"
-                    )
+                    expected["nodes"][2 if args.framework == "core" else 4]["element"][
+                        "text"
+                    ] = "Deliberate invalid paint expectation"
                 painted = wait_for(
                     lambda expected=expected: next(
                         (
@@ -502,6 +567,7 @@ def main():
                         wait_for=wait_for,
                         nonce=nonce,
                         started=started,
+                        framework=args.framework,
                     )
             (output / f"close-{cycle}").touch()
             wait_for(
@@ -514,7 +580,10 @@ def main():
         wait_for(lambda: app.poll() is not None, "application shutdown", timeout=5)
         if app.wait(timeout=1) != 0:
             raise RuntimeError("The native smoke application failed")
-        if source_snapshot() != sources or DIAGNOSTICS.fingerprint(host) != fingerprint:
+        if (
+            source_snapshot(args.framework) != sources
+            or DIAGNOSTICS.fingerprint(host) != fingerprint
+        ):
             raise RuntimeError("Native source or executable changed during the smoke")
         if (
             helper_fingerprint
@@ -589,6 +658,13 @@ def main():
             or any(application["ownership"].values())
         ):
             report["status"] = "failed"
+        if (
+            report["status"] == "passed"
+            and args.framework != "core"
+            and not adapter_cleanup_matches(application, args.framework)
+        ):
+            report["status"] = "failed"
+            report["adapterCleanupError"] = "Exact framework ownership was not revoked"
         report["nativeShutdownAndExitVerified"] = application.get(
             "nativeShutdownAndExitVerified", False
         )
