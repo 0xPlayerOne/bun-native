@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.17.3](https://github.com/0xPlayerOne/bun-native/compare/v0.17.2...v0.17.3) (2026-11-05)
+
+
+### Bug Fixes
+
+* **input:** keep the native caret inside a horizontal viewport ([#377](https://github.com/0xPlayerOne/bun-native/issues/377)) ([90304c9](https://github.com/0xPlayerOne/bun-native/commit/90304c9b0f6f59165b34cca811ab31079f5a6adb))
+
 ## [0.17.2](https://github.com/0xPlayerOne/bun-native/compare/v0.17.1...v0.17.2) (2026-11-05)
 
 
