@@ -35,6 +35,7 @@ pub enum PointerButton {
 #[serde(tag = "type", rename_all = "snake_case", deny_unknown_fields)]
 pub enum Event {
     Ready {
+        #[serde(deserialize_with = "crate::wire::safe_u32")]
         protocol: u32,
         capabilities: Vec<Capability>,
         limits: Limits,
@@ -265,7 +266,11 @@ pub enum Event {
         window_id: WindowId,
     },
     Error {
-        #[serde(skip_serializing_if = "Option::is_none")]
+        #[serde(
+            default,
+            skip_serializing_if = "Option::is_none",
+            deserialize_with = "crate::wire::non_null"
+        )]
         id: Option<RequestId>,
         code: ErrorCode,
         message: String,
@@ -348,10 +353,23 @@ impl Event {
             }
             Self::ClipboardText { result, .. } => result.validate()?,
             Self::FileResult { result, .. } => result.validate()?,
-            Self::Ready { service_policy, .. } => {
+            Self::Ready {
+                protocol,
+                capabilities,
+                limits,
+                service_policy,
+            } => {
+                if *protocol != crate::PROTOCOL_VERSION {
+                    return Err("ready must advertise the implemented protocol version");
+                }
+                if (1..capabilities.len()).any(|i| capabilities[..i].contains(&capabilities[i])) {
+                    return Err("ready capabilities must be unique");
+                }
+                limits.validate()?;
                 crate::validate_filesystem_roots(&service_policy.filesystem_roots)?;
                 crate::validate_process_executables(&service_policy.processes)?
             }
+            Self::Error { message, .. } => validate_text(message)?,
             Self::ProcessOutput { data, chunk, .. } => {
                 if *chunk == 0 || *chunk > MAX_ID {
                     return Err("process output chunk must be a positive safe integer");

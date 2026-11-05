@@ -102,7 +102,7 @@ fn safe_usize<'de, D: Deserializer<'de>>(deserializer: D) -> Result<usize, D::Er
     usize::try_from(safe_integer(deserializer)?).map_err(de::Error::custom)
 }
 
-fn safe_u32<'de, D: Deserializer<'de>>(deserializer: D) -> Result<u32, D::Error> {
+pub(crate) fn safe_u32<'de, D: Deserializer<'de>>(deserializer: D) -> Result<u32, D::Error> {
     u32::try_from(safe_integer(deserializer)?).map_err(de::Error::custom)
 }
 
@@ -618,6 +618,56 @@ impl Default for Limits {
             max_file_chunk_bytes: crate::MAX_FILE_CHUNK_BYTES,
             max_processes: crate::MAX_PROCESSES,
         }
+    }
+}
+
+impl Limits {
+    /// Advertised limits may only narrow the protocol defaults, never widen or
+    /// disable a resource (the TypeScript reader bounds each to `1..=default`).
+    pub fn validate(&self) -> Result<(), &'static str> {
+        let Self {
+            max_frame_bytes,
+            max_operations,
+            max_nodes_per_window,
+            max_windows,
+            max_depth,
+            max_text_bytes,
+            max_text_bytes_per_window,
+            max_clipboard_bytes,
+            max_service_requests,
+            max_global_shortcuts,
+            max_notifications,
+            max_file_grants,
+            max_file_chunk_bytes,
+            max_processes,
+        } = *self;
+        let defaults = Self::default();
+        let pairs = [
+            (max_frame_bytes, defaults.max_frame_bytes),
+            (max_operations, defaults.max_operations),
+            (max_nodes_per_window, defaults.max_nodes_per_window),
+            (max_windows, defaults.max_windows),
+            (max_depth, defaults.max_depth),
+            (max_text_bytes, defaults.max_text_bytes),
+            (
+                max_text_bytes_per_window,
+                defaults.max_text_bytes_per_window,
+            ),
+            (max_clipboard_bytes, defaults.max_clipboard_bytes),
+            (max_service_requests, defaults.max_service_requests),
+            (max_global_shortcuts, defaults.max_global_shortcuts),
+            (max_notifications, defaults.max_notifications),
+            (max_file_grants, defaults.max_file_grants),
+            (max_file_chunk_bytes, defaults.max_file_chunk_bytes),
+            (max_processes, defaults.max_processes),
+        ];
+        if pairs
+            .into_iter()
+            .any(|(value, default)| value == 0 || value > default)
+        {
+            return Err("ready limits must be between 1 and the protocol default");
+        }
+        Ok(())
     }
 }
 

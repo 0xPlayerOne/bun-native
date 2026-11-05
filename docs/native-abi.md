@@ -87,6 +87,17 @@ including `1.0` and `1e0`, and on last-value semantics for duplicate JSON keys.
 Strings must be well-formed Unicode without NUL. This parity is covered by the
 shared [negative corpus](../tests/fixtures/bridge-security.json) and parser tests.
 
+The [wire conformance fixtures](../tests/fixtures/protocol-conformance.json) run
+the same frames through `parseCommand`/`parseEvent` and the Rust
+`CommandReader`/`Event::validate` (which `write_event` applies before emitting).
+The host therefore cannot emit an event the runtime rejects: `ready` must carry
+the implemented protocol, unique capabilities and every limit within
+`1..=default`; an `error` `id` is a request identity or absent, never `null`, and
+its `message` is bounded text (at most 16,384 UTF-8 bytes, no NUL). One
+difference is deliberate: the Rust reader decodes a `hello` for any safe `u32`
+protocol so the session can answer `version_mismatch`, while the TypeScript
+validator only lets the runtime send its own `PROTOCOL_VERSION`.
+
 ## Commands and replies
 
 Every command contains a request `id`. Replies must match that pending request's
