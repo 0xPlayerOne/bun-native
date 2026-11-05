@@ -109,7 +109,7 @@ class Root implements RenderRoot, Owner {
         fail: (cause) => this.fail(cause),
       })
     } catch (cause) {
-      this.failure = cause instanceof Error ? cause : new Error(String(cause))
+      this.failure ??= cause instanceof Error ? cause : new Error(String(cause))
       this.stop()
     }
     this.start()
