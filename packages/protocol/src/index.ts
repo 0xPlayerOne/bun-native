@@ -2,6 +2,26 @@ export { encodeFrame, FrameDecoder, MAX_FRAME_BYTES, ProtocolError } from './fra
 export { parseElement, type Element, type Style } from './elements.ts'
 export { MAX_TEXT_BYTES } from './values.ts'
 export {
+  FILE_ACCESS,
+  fileResultAnswers,
+  filesystemRootArgument,
+  filesystemRootsFromArguments,
+  MAX_DIRECTORY_ENTRIES,
+  MAX_FILE_CHUNK_BYTES,
+  MAX_FILE_GRANTS,
+  MAX_FILESYSTEM_ROOTS,
+  parseFilePath,
+  parseFilesystemRoots,
+  parseRootId,
+  type DirectoryEntry,
+  type FileAccess,
+  type FileKind,
+  type FileOperation,
+  type FileResult,
+  type FilesystemRoot,
+  type WriteMode,
+} from './files.ts'
+export {
   GLOBAL_SHORTCUT_KEYS,
   MAX_CLIPBOARD_BYTES,
   MAX_GLOBAL_SHORTCUTS,

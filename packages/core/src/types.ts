@@ -19,6 +19,7 @@ import type {
   NativeGlobalShortcut,
 } from './shortcuts.ts'
 import type { NativeNotification, NotificationEvent, NotificationOptions } from './notifications.ts'
+import type { FileGrantOptions, NativeFileGrant } from './files.ts'
 
 export type { Element, KeyModifiers, PointerButton, Style }
 export type ApplicationOptions = HostOptions
@@ -172,6 +173,12 @@ export interface NativeWindow {
     options: NotificationOptions,
     listener: (event: NotificationEvent) => void | Promise<void>
   ): Promise<NativeNotification>
+  /**
+   * Open a scoped grant on a directory the application named in its
+   * immutable `filesystemRoots` launch permission. No run-time path, dropped
+   * pathname or model text can create one. Closing the window revokes it.
+   */
+  openFileGrant(root: string, options?: FileGrantOptions): Promise<NativeFileGrant>
   /** Idempotent. Revokes listeners before requesting native window removal. */
   close(): Promise<void>
 }

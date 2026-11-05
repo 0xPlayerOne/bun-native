@@ -39,8 +39,12 @@ Tracing requires `BUN_NATIVE_STARTUP_TRACE=1`, an absolute
 `BUN_NATIVE_EVIDENCE_NONCE` of at most 128 UTF-8 bytes. Without the explicit flag,
 the transport adds no diagnostic file writes. The existing Linux session enables
 these variables **only** for `tests/native/lifecycle.ts`, with a new nonce and
-`lifecycle-events.jsonl` inside that run's owned evidence directory. Other native
-scenarios and performance measurements do not inherit the startup flag.
+`lifecycle-events.jsonl` inside that run's owned evidence directory. Other Linux
+native scenarios and performance measurements do not inherit the startup flag.
+Separately, the [Native Platforms workflow](../.github/workflows/native-platforms.yml)
+sets `BUN_NATIVE_STARTUP_TRACE=1` only on macOS for its owned native window/OS-input
+steps; the platform controller supplies its own `native.jsonl` evidence log and
+nonce. Windows runs those steps with the flag off.
 
 Each JSONL diagnostic contains the nonce, source (`transport` or `native`), PID,
 per-source record index, phase and request ID. `elapsed_ns` is a decimal string
@@ -167,7 +171,7 @@ synchronous bounded file appends/flushes. Its formatting, locking and filesystem
 work can perturb startup; the record/byte bounds are not a filesystem latency
 guarantee. The facade's Debug level is enabled globally while the backend rejects
 other targets, and Debug records from the three GPUI targets, before message
-formatting. These runs are diagnostic controls,
+formatting. The installation record also lists the two Debug HAL targets. These runs are diagnostic controls,
 not uninstrumented startup/performance measurements. Disabled mode installs no
 backend or file handle. Registration/open/write failures produce one bounded
 stderr notice per failed setup or writer and leave the native protocol,

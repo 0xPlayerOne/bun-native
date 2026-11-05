@@ -7,6 +7,7 @@ type ServiceName =
   | 'clipboard_write'
   | 'global_shortcuts'
   | 'notifications'
+  | 'filesystem_grants'
 
 export type ServicePermissions = NonNullable<
   import('@bun-native/runtime').HostOptions['permissions']
@@ -59,7 +60,15 @@ export interface ServiceCapabilities {
       }>
     | Readonly<{ availability: 'unavailable'; reason: 'unsupported_platform' }>
   readonly dragDrop: UnavailableService
-  readonly filesystemGrants: UnavailableService
+  readonly filesystemGrants:
+    | Readonly<{
+        availability: 'available'
+        /** Launch roots by ID; each caps the access a grant may request. */
+        roots: Readonly<Record<string, Readonly<{ access: 'read' | 'read_write' }>>>
+        scope: 'owned_window'
+        backend: 'openat2'
+      }>
+    | Readonly<{ availability: 'unavailable'; reason: 'unsupported_platform' }>
   readonly ptyProcess: UnavailableService
 }
 
@@ -75,7 +84,13 @@ export class NativeServiceError extends Error {
       | 'operation_timed_out'
       | 'payload_too_large'
       | 'limit_exceeded'
-      | 'conflict',
+      | 'conflict'
+      | 'not_found'
+      | 'already_exists'
+      | 'path_denied'
+      | 'wrong_kind'
+      | 'not_empty'
+      | 'access_denied',
     message: string
   ) {
     super(message)
@@ -125,7 +140,21 @@ export function serviceCapabilities(
         })
       : Object.freeze({ availability: 'unavailable', reason: 'unsupported_platform' }),
     dragDrop: unavailable,
-    filesystemGrants: unavailable,
+    filesystemGrants: capabilities.includes('filesystem_grants_v1')
+      ? Object.freeze({
+          availability: 'available',
+          roots: Object.freeze(
+            Object.fromEntries(
+              policy.filesystem_roots.map((root) => [
+                root.id,
+                Object.freeze({ access: root.access }),
+              ])
+            )
+          ),
+          scope: 'owned_window',
+          backend: 'openat2',
+        })
+      : Object.freeze({ availability: 'unavailable', reason: 'unsupported_platform' }),
     ptyProcess: unavailable,
   })
 }
