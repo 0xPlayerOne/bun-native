@@ -152,7 +152,7 @@ impl TextInput {
 
     fn paste(&mut self, _: &Paste, window: &mut Window, cx: &mut Context<Self>) {
         if let Some(text) = cx.read_from_clipboard().and_then(|item| item.text()) {
-            self.replace_text_in_range(None, &text.replace("\n", " "), window, cx);
+            self.replace_text_in_range(None, &text.replace('\n', " "), window, cx);
         }
     }
 
@@ -402,11 +402,11 @@ impl EntityInputHandler for TextInput {
             return;
         }
         let value = self.content[0..range.start].to_owned() + new_text + &self.content[range.end..];
-        if !self.binding.edit(&value, cx) {
+        let Some(value) = self.binding.edit(value, cx) else {
             window.play_system_bell();
             return;
-        }
-        self.content = value.into();
+        };
+        self.content = value;
         self.selected_range = range.start + new_text.len()..range.start + new_text.len();
         self.selection_reversed = false;
         self.marked_range.take();
@@ -436,11 +436,11 @@ impl EntityInputHandler for TextInput {
             return;
         }
         let value = self.content[0..range.start].to_owned() + new_text + &self.content[range.end..];
-        if !self.binding.edit(&value, cx) {
+        let Some(value) = self.binding.edit(value, cx) else {
             window.play_system_bell();
             return;
-        }
-        self.content = value.into();
+        };
+        self.content = value;
         if !new_text.is_empty() {
             self.marked_range = Some(range.start..range.start + new_text.len());
         } else {

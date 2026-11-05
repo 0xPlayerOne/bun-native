@@ -1,6 +1,6 @@
 use crate::{channel::EventSink, state::WindowState};
 use bun_native_protocol::{Event, MAX_FRAME_BYTES, NodeId, WindowId};
-use gpui::App;
+use gpui::{App, SharedString};
 use std::cell::RefCell;
 use std::rc::Weak;
 
@@ -13,19 +13,19 @@ pub(crate) struct InputBinding {
 
 impl InputBinding {
     /// Apply accepted native text before emitting its revision. A stale entity
-    /// cannot resurrect a removed node or emit on a closed window.
-    pub(super) fn edit(&self, value: &str, cx: &mut App) -> bool {
-        if !event_fits(value) {
-            return false;
+    /// cannot resurrect a removed node or emit on a closed window. The model
+    /// takes ownership of `value`; the returned string is the entity's copy.
+    pub(super) fn edit(&self, value: String, cx: &mut App) -> Option<SharedString> {
+        if !event_fits(&value) {
+            return None;
         }
-        let Some(state) = self.state.upgrade() else {
-            return false;
-        };
+        let state = self.state.upgrade()?;
         let mut state = state.borrow_mut();
         if !state.active {
-            return false;
+            return None;
         }
-        match state.tree.replace_input(self.node_id, value.to_owned()) {
+        let content = SharedString::new(&value);
+        match state.tree.replace_input(self.node_id, value) {
             Ok(Some(input_revision)) => {
                 self.events.ui(
                     |sequence| Event::Input {
@@ -37,15 +37,15 @@ impl InputBinding {
                             .tree
                             .path(self.node_id)
                             .expect("accepted edit has a committed route"),
-                        value: value.to_owned(),
+                        value: content.to_string(),
                         input_revision,
                     },
                     cx,
                 );
-                true
+                Some(content)
             }
-            Ok(None) => true,
-            Err(_) => false,
+            Ok(None) => Some(content),
+            Err(_) => None,
         }
     }
 }
