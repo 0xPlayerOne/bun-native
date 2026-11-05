@@ -47,6 +47,7 @@ const entries = {
   'global-shortcuts': 'tests/native/global-shortcuts.ts',
   notifications: 'tests/native/notifications.ts',
   overlays: 'tests/native/overlays.ts',
+  popups: 'tests/native/popups.ts',
   'solid-services': 'tests/native/solid-services.tsx',
   'react-services': 'tests/native/react-services.tsx',
   'platform-smoke': 'tests/native/platform-smoke.ts',
@@ -118,6 +119,7 @@ if (
     entry === 'global-shortcuts' ||
     entry === 'notifications' ||
     entry === 'overlays' ||
+    entry === 'popups' ||
     entry === 'platform-smoke' ||
     solidEntry ||
     reactEntry) &&

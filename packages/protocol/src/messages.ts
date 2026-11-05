@@ -148,6 +148,7 @@ const CAPABILITIES = [
   'notifications_v1',
   'overlays_v1',
   'scroll_anchor_v1',
+  'popup_windows_v1',
 ] as const
 export type Capability = (typeof CAPABILITIES)[number]
 
@@ -160,6 +161,8 @@ export interface KeyModifiers {
 }
 
 export type PointerButton = 'left' | 'right' | 'middle' | 'back' | 'forward'
+/** Why the host asks the application to close a popup window overlay. */
+export type DismissReason = 'window_blur'
 
 interface NodeEventRoute {
   sequence: number
@@ -180,6 +183,7 @@ type RoutedEvent = NodeEventRoute &
     | { type: 'key_up'; key: string; key_char?: string; modifiers: KeyModifiers }
     | { type: 'pointer_down'; button: PointerButton; x: number; y: number; modifiers: KeyModifiers }
     | { type: 'pointer_up'; button: PointerButton; x: number; y: number; modifiers: KeyModifiers }
+    | { type: 'dismiss'; reason: DismissReason }
   )
 
 export type NativeEvent =
@@ -575,6 +579,11 @@ export function parseEvent(value: unknown): NativeEvent {
         modifiers: modifiers(message['modifiers']),
       }
     }
+    case 'dismiss':
+      keys(message, [...ROUTE_KEYS, 'reason'])
+      if (message['reason'] !== 'window_blur')
+        throw new ProtocolError('Unknown native dismissal reason')
+      return { type: 'dismiss', ...route(message), reason: 'window_blur' }
     case 'closed':
       keys(message, ['type', 'sequence', 'window_id'])
       return {

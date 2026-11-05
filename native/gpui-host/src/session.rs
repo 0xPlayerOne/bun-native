@@ -169,6 +169,9 @@ impl Session {
                     Capability::OverlaysV1,
                     Capability::ScrollAnchorV1,
                 ];
+                if crate::view::popups_available(cx) {
+                    capabilities.push(Capability::PopupWindowsV1);
+                }
                 if self.clipboard.available() {
                     capabilities.push(Capability::ClipboardTextV1);
                 }

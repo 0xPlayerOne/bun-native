@@ -6,12 +6,13 @@ use crate::{
     style,
 };
 use bun_native_protocol::{
-    Element as NativeElement, Event, NodeId, Overflow, ScrollAnchor, Style, Tree, WindowId,
+    Element as NativeElement, Event, NodeId, Overflow, OverlaySurface, ScrollAnchor, Style, Tree,
+    WindowId,
 };
 use gpui::{
-    AnyElement, App, Context, Div, Entity, FocusHandle, Focusable, KeyBinding, MouseButton, Pixels,
-    ScrollHandle, Size, Stateful, Subscription, Window, actions, canvas, deferred, div, prelude::*,
-    px, rgb,
+    AnyElement, AnyWindowHandle, App, Context, Div, Entity, FocusHandle, Focusable, KeyBinding,
+    MouseButton, Pixels, ScrollHandle, Size, Stateful, Subscription, WeakEntity, Window, actions,
+    canvas, deferred, div, point, prelude::*, px, rgb,
 };
 use std::collections::BTreeMap;
 use std::rc::Rc;
@@ -37,8 +38,11 @@ pub(crate) struct NativeView {
     focus_subscriptions: BTreeMap<NodeId, [Subscription; 2]>,
     reported_focus: Option<NodeId>,
     overlays: Overlays,
+    popups: Popups,
+    weak: WeakEntity<NativeView>,
+    window_handle: AnyWindowHandle,
     viewport: Size<Pixels>,
-    _subscriptions: [Subscription; 2],
+    _subscriptions: [Subscription; 4],
     events: EventSink,
     evidence: Evidence,
 }
@@ -60,6 +64,15 @@ impl NativeView {
             }
         });
         let focus_lost = cx.on_focus_lost(window, |view, window, cx| view.sync_focus(window, cx));
+        let deactivated = cx.observe_window_activation(window, |view, window, cx| {
+            if !window.is_window_active() {
+                view.dismiss_popups(cx);
+            }
+        });
+        let moved = cx.observe_window_bounds(window, |view, window, cx| {
+            view.popups.invalidate();
+            view.place_popups(window, cx);
+        });
         Self {
             window_id,
             state,
@@ -69,8 +82,11 @@ impl NativeView {
             focus_subscriptions: BTreeMap::new(),
             reported_focus: None,
             overlays: Overlays::default(),
+            popups: Popups::default(),
+            weak: cx.weak_entity(),
+            window_handle: window.window_handle(),
             viewport: window.viewport_size(),
-            _subscriptions: [keyboard, focus_lost],
+            _subscriptions: [keyboard, focus_lost, deactivated, moved],
             events,
             evidence,
         }
@@ -176,6 +192,7 @@ impl NativeView {
             }
         }
         self.reconcile_overlays(focused_before, window, cx);
+        self.reconcile_popups(cx);
         self.reconcile_focus(window, cx);
         cx.notify();
         #[cfg(target_os = "macos")]
@@ -252,6 +269,12 @@ impl NativeView {
                 self.container(tree, node_id, base, properties, layout, pointer, cx)
                     .into_any_element()
             }
+            NativeElement::Overlay {
+                surface: OverlaySurface::Window,
+                ..
+            } if self.popups.active() => self
+                .popup_anchor(node_id)
+                .unwrap_or_else(|| div().into_any_element()),
             NativeElement::Overlay {
                 anchor,
                 style: properties,
@@ -437,7 +460,7 @@ impl Render for NativeView {
                         move |_, (), window, cx| {
                             // Registered after native children: capture has already
                             // selected the deepest GPUI hit before default actions.
-                            pointer.observe(window, &view);
+                            pointer.observe(window, &view, point(px(0.), px(0.)));
                             let state = paint_state.borrow();
                             evidence.painted(
                                 window_id,
@@ -470,6 +493,9 @@ impl NativeView {
 }
 mod interactions;
 mod overlays;
+mod popups;
 
 use interactions::PointerFrame;
 use overlays::{OBSERVER_PRIORITY, Overlays};
+use popups::Popups;
+pub(crate) use popups::available as popups_available;

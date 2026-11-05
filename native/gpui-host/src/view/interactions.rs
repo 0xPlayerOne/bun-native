@@ -43,7 +43,14 @@ impl PointerFrame {
             .capture_any_mouse_up(move |_, _, _| up.set(Some(node_id)))
     }
 
-    pub(super) fn observe(&self, window: &mut Window, view: &WeakEntity<NativeView>) {
+    /// `origin` is this window's content origin in the owning native window's
+    /// coordinates: zero for the window itself, the offset for a popup window.
+    pub(super) fn observe(
+        &self,
+        window: &mut Window,
+        view: &WeakEntity<NativeView>,
+        origin: Point<Pixels>,
+    ) {
         let down = self.0.clone();
         let down_view = view.clone();
         window.on_mouse_event(move |event: &MouseDownEvent, phase, window, cx| {
@@ -56,7 +63,7 @@ impl PointerFrame {
                         node_id,
                         true,
                         event.button,
-                        event.position,
+                        event.position + origin,
                         event.modifiers,
                         cx,
                     )
@@ -75,7 +82,7 @@ impl PointerFrame {
                         node_id,
                         false,
                         event.button,
-                        event.position,
+                        event.position + origin,
                         event.modifiers,
                         cx,
                     )
@@ -184,9 +191,14 @@ impl NativeView {
         if !state.active {
             return;
         }
-        // Without a focused control, a modal layer receives keys such as Escape.
+        // An open popup window holds the keyboard route, so Escape reaches it
+        // while focus stays in this window. Without a focused control, a
+        // modal layer receives keys such as Escape.
         let node_id = self
-            .focused_node(window, cx)
+            .popups
+            .topmost()
+            .filter(|_| self.popups.active())
+            .or_else(|| self.focused_node(window, cx))
             .or(self.overlays.active_modal())
             .unwrap_or_else(|| state.tree.root_id());
         let Some(path) = state.tree.path(node_id) else {

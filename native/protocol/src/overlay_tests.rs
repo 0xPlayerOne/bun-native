@@ -29,6 +29,7 @@ fn overlay(modal: bool) -> Element {
     Element::Overlay {
         anchor: OverlayAnchor::Window,
         modal,
+        surface: OverlaySurface::Layer,
         style: Style::default(),
     }
 }
@@ -136,6 +137,7 @@ fn modal_overlays_reject_parent_anchoring_and_set_keeps_the_kind() {
     assert!(Element::Overlay {
         anchor: OverlayAnchor::Parent,
         modal: true,
+        surface: OverlaySurface::Layer,
         style: Style::default(),
     }
     .validate()

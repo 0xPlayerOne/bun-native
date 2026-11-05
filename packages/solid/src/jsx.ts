@@ -21,8 +21,8 @@ export namespace JSX {
     }
     /** Painted above the ordinary tree; only window-anchored overlays may be modal. */
     overlay: Base<'overlay'> & { children?: Element } & (
-        | { anchor?: 'window'; modal?: boolean }
-        | { anchor: 'parent'; modal?: false }
+        | { anchor?: 'window'; modal?: boolean; surface?: 'layer' }
+        | { anchor: 'parent'; modal?: false; surface?: 'layer' | 'window' }
       )
   }
 }

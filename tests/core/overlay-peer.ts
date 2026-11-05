@@ -12,11 +12,17 @@ import {
 import { PeerTree } from './peer-tree.ts'
 
 /** `target` is a button label or `overlay#N`, the Nth created overlay. */
-type Spec = { type: 'key_down' | 'pointer_down'; target: string; key?: string; shift?: boolean }
+type Spec = {
+  type: 'key_down' | 'pointer_down' | 'dismiss'
+  target: string
+  key?: string
+  shift?: boolean
+}
 const windows = new Map<number, PeerTree>()
 const output = Bun.stdout.writer()
 const decoder = new FrameDecoder()
 const overlays = process.argv.includes('--overlays')
+const popups = process.argv.includes('--popups')
 let sequence = 0
 async function emit(value: unknown) {
   output.write(encodeFrame(value))
@@ -39,7 +45,8 @@ async function event(window_id: number, tree: PeerTree, spec: Spec) {
     function: false,
   }
   const base = { type: spec.type, window_id, sequence: ++sequence, ...tree.route(target[0]) }
-  if (spec.type === 'key_down') await emit({ ...base, key: spec.key ?? 'escape', modifiers })
+  if (spec.type === 'dismiss') await emit({ ...base, reason: 'window_blur' })
+  else if (spec.type === 'key_down') await emit({ ...base, key: spec.key ?? 'escape', modifiers })
   else await emit({ ...base, button: 'left', x: 4, y: 4, modifiers })
 }
 
@@ -60,6 +67,7 @@ for await (const chunk of Bun.stdin.stream()) {
         capabilities: [
           ...REQUIRED_CAPABILITIES,
           ...(overlays ? ['overlays_v1', 'scroll_anchor_v1'] : []),
+          ...(popups ? ['popup_windows_v1'] : []),
         ],
         limits: { ...DEFAULT_LIMITS },
       })

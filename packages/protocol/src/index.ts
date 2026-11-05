@@ -36,4 +36,5 @@ export {
   type Capability,
   type KeyModifiers,
   type PointerButton,
+  type DismissReason,
 } from './messages.ts'

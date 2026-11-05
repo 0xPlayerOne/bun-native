@@ -14,7 +14,10 @@ shortcut registrations and owned desktop notifications. The optional
 `overlays_v1` and `scroll_anchor_v1` capabilities add the `overlay` container
 element and the `scroll_anchor` style field defined by the
 [overlay contract](native-overlays.md); core rejects both locally when a host
-does not advertise them.
+does not advertise them. The optional `popup_windows_v1` capability, advertised
+only for a local X11 session, adds the overlay field `surface: "window"` and the
+routed `dismiss` event described in
+[popup windows](native-overlays.md#popup-windows-beyond-the-parent-window).
 
 The authoritative schemas and validators are
 [`packages/protocol/src/messages.ts`](../packages/protocol/src/messages.ts),
@@ -153,7 +156,7 @@ All node events carry `sequence`, `window_id`, `node_id`, `tree_revision` and a
 captured `path` from the committed root to the target. The path contains unique
 positive IDs, ends at `node_id`, and has at most 65 entries: tree depth is bounded
 at 64 edges, not 64 nodes. `click`, `input`, `key_down`, `key_up`, `pointer_down`,
-`pointer_up`, `focus` and `blur` use this route. `closed` carries only sequence and
+`pointer_up`, `focus`, `blur` and `dismiss` use this route. `closed` carries only sequence and
 window identity. The transport checks contiguous sequence across **all** UI
 events; a click/input callback subset naturally has gaps.
 

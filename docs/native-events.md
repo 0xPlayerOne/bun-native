@@ -52,13 +52,14 @@ The runtime cannot terminate arbitrary user JavaScript that ignores cancellation
 
 ## Observed native fields
 
-| Event                        | Additional public fields               | Native meaning                                                                                                 |
-| ---------------------------- | -------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
-| `click`                      | None                                   | Logical enabled-button activation through pointer or its native keyboard action.                               |
-| `input`                      | `value`, `revision`                    | Accepted native content change and its independent input revision. Selection-only changes do not increment it. |
-| `key_down`, `key_up`         | `key`, optional `keyChar`, `modifiers` | GPUI logical key identity and optional logical text. `keyChar` is not committed text or an IME notification.   |
-| `pointer_down`, `pointer_up` | `button`, `x`, `y`, `modifiers`        | Native hit-tested target; coordinates are logical pixels relative to the owned window.                         |
-| `focus`, `blur`              | None                                   | Observed native control focus transitions. They can arrive during GPUI's subsequent focus/render phase.        |
+| Event                        | Additional public fields               | Native meaning                                                                                                   |
+| ---------------------------- | -------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
+| `click`                      | None                                   | Logical enabled-button activation through pointer or its native keyboard action.                                 |
+| `input`                      | `value`, `revision`                    | Accepted native content change and its independent input revision. Selection-only changes do not increment it.   |
+| `key_down`, `key_up`         | `key`, optional `keyChar`, `modifiers` | GPUI logical key identity and optional logical text. `keyChar` is not committed text or an IME notification.     |
+| `pointer_down`, `pointer_up` | `button`, `x`, `y`, `modifiers`        | Native hit-tested target; coordinates are logical pixels relative to the owned window.                           |
+| `focus`, `blur`              | None                                   | Observed native control focus transitions. They can arrive during GPUI's subsequent focus/render phase.          |
+| `dismiss`                    | `reason` (`window_blur`)               | The host asks the application to close a popup window overlay (`popup_windows_v1`). Nothing is removed natively. |
 
 The five modifier fields are required booleans: `control`, `alt`, `shift`,
 `platform` and `function`. Supported pointer buttons are `left`, `right`,

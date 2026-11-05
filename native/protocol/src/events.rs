@@ -31,6 +31,14 @@ pub enum PointerButton {
     Forward,
 }
 
+/// Why the host requests a popup dismissal.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum DismissReason {
+    /// The popup's parent window stopped being the active window.
+    WindowBlur,
+}
+
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(tag = "type", rename_all = "snake_case", deny_unknown_fields)]
 pub enum Event {
@@ -203,6 +211,17 @@ pub enum Event {
         tree_revision: u64,
         path: Vec<NodeId>,
     },
+    /// The host asks the application to close a popup window overlay. The
+    /// host never removes the node itself; the model tree stays app-owned.
+    Dismiss {
+        sequence: EventSequence,
+        window_id: WindowId,
+        node_id: NodeId,
+        #[serde(deserialize_with = "crate::wire::safe_integer")]
+        tree_revision: u64,
+        path: Vec<NodeId>,
+        reason: DismissReason,
+    },
     Closed {
         sequence: EventSequence,
         window_id: WindowId,
@@ -268,6 +287,12 @@ impl Event {
                 ..
             }
             | Self::Blur {
+                node_id,
+                tree_revision,
+                path,
+                ..
+            }
+            | Self::Dismiss {
                 node_id,
                 tree_revision,
                 path,

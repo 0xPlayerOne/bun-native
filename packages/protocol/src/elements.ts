@@ -31,11 +31,20 @@ export const MAX_OVERLAY_DEPTH = 8
 /**
  * `window` covers the viewport and blocks pointer input beneath it; `parent`
  * is content-sized below its parent's bottom-left corner. Only window
- * overlays may be modal.
+ * overlays may be modal. `surface: 'window'` (capability `popup_windows_v1`)
+ * paints a parent-anchored overlay into an owned popup window that may extend
+ * beyond its parent window; it needs a fixed pixel `width` and `height`.
  */
 export type OverlayElement =
-  | { kind: 'overlay'; anchor?: 'window'; modal?: boolean; style?: Style }
-  | { kind: 'overlay'; anchor: 'parent'; modal?: false; style?: Style }
+  | { kind: 'overlay'; anchor?: 'window'; modal?: boolean; surface?: 'layer'; style?: Style }
+  | { kind: 'overlay'; anchor: 'parent'; modal?: false; surface?: 'layer'; style?: Style }
+  | {
+      kind: 'overlay'
+      anchor: 'parent'
+      modal?: false
+      surface: 'window'
+      style: Style & { width: number; height: number }
+    }
 
 export type Element =
   | { kind: 'box'; style?: Style }
@@ -162,12 +171,29 @@ export function parseElement(value: unknown): Element {
         style,
       }
     case 'overlay': {
-      keys(element, ['kind', 'anchor', 'modal', 'style'])
+      keys(element, ['kind', 'anchor', 'modal', 'surface', 'style'])
       const anchor =
         'anchor' in element ? choice(element['anchor'], 'anchor', ['window', 'parent']) : 'window'
       if ('modal' in element && typeof element['modal'] !== 'boolean')
         throw new ProtocolError('modal must be a boolean')
       const modal = element['modal'] === true
+      const surface =
+        'surface' in element ? choice(element['surface'], 'surface', ['layer', 'window']) : 'layer'
+      if (surface === 'window') {
+        if (anchor !== 'parent')
+          throw new ProtocolError('A popup window overlay must be anchored to its parent')
+        if (modal) throw new ProtocolError('A modal overlay must be anchored to the window')
+        const { width, height } = style
+        if (typeof width !== 'number' || width < 1 || typeof height !== 'number' || height < 1)
+          throw new ProtocolError('A popup window overlay needs a fixed width and height')
+        return {
+          kind: 'overlay',
+          anchor,
+          modal: false,
+          surface,
+          style: { ...style, width, height },
+        }
+      }
       if (anchor === 'parent') {
         if (modal) throw new ProtocolError('A modal overlay must be anchored to the window')
         return { kind: 'overlay', anchor, modal: false, style }

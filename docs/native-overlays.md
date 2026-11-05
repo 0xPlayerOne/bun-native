@@ -103,10 +103,80 @@ The required Native Linux job runs this in development and AOT against its relea
 | Streaming scroll           | Eight 4-row appends kept the 64-pixel viewport at its growing end (maximum 52 → 864). Two wheel-ups released it at −690; a further append kept −690 while the maximum grew; wheeling back to the end pinned it again (offset −1096 = −maximum). |
 | Ownership                  | Window close and shutdown left all seven public ownership counters at zero.                                                                                                                                                                     |
 
+## Popup windows beyond the parent window
+
+A parent-anchored overlay with `surface: 'window'` paints into an **owned OS popup window** instead of an in-window layer, so a menu may extend past its parent window's edges. It requires the optional `popup_windows_v1` capability; core rejects it locally with `UnsupportedFeatureError('overlay:surface_window')` otherwise. There is no protocol version change.
+
+```ts
+const menu = batch.create({
+  kind: 'overlay',
+  anchor: 'parent',
+  surface: 'window',
+  style: { width: 220, height: 160, padding: 4, background: 0xf4e3c1 },
+})
+batch.append(triggerBox, menu)
+batch.append(menu, batch.create({ kind: 'button', text: 'Copy' }))
+onDismiss(window, menu, () => window.batch((batch) => batch.remove(menu)))
+```
+
+| Rule               | Contract                                                                                                                                                                                                                                                                                                                                                   |
+| ------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Shape              | `anchor` must be `parent` (so never modal), and `style.width`/`style.height` must be fixed pixels of at least 1: the popup window has that logical size. `surface: 'layer'` is the default and is omitted from normalized output. Shared corpus: [`popup-windows.json`](../tests/fixtures/popup-windows.json).                                             |
+| Content            | Boxes, text and buttons. An `input` or any `overlay` anywhere beneath a popup surface fails the whole batch with `invalid_state` in core and in the Rust model, because keyboard focus never moves to the popup. A popup may itself sit inside a layer overlay, such as a modal dialog.                                                                    |
+| Ownership          | The content stays in the parent window's model tree and is drawn by the same `NativeView` renderer and element code. The popup window closes when its node leaves the tree, when the parent window closes, and at shutdown.                                                                                                                                |
+| Placement          | Below the parent node's bottom-left corner in screen coordinates; flipped above the parent node when only that fits vertically; otherwise shifted onto the X screen, as is the horizontal position. It is placed again when the parent window moves or the popup is resized by `set`.                                                                      |
+| Pointer            | Presses and clicks in the popup reach its nodes. `pointer_down`/`pointer_up` coordinates stay in the **parent window's** logical space, so they may lie outside its viewport. A press on the popup itself, outside its children, is a `backdrop` dismissal like other overlays.                                                                            |
+| Keyboard and focus | The parent window keeps keyboard focus and stays the active window. While a popup is open, the parent window's key events target the topmost popup node, so an unmodified Escape reaches `onDismiss`. Typing still edits the parent's focused editor natively; only the routed key events target the popup.                                                |
+| Dismissal          | When the parent window stops being the active window, the host emits a routed `dismiss` event (`reason: 'window_blur'`) for every open popup, in tree order. `onDismiss` reports it as `blur`. As elsewhere, the host never removes the node; the application commits the removal. A `dismiss` targeting anything but a popup surface is a protocol error. |
+
+### Platform mechanics
+
+GPUI at the pinned revision (zed [`ba63a02`](https://github.com/zed-industries/zed/tree/ba63a022c9a22ca66d68ef2a8f0bb9b5b0a9984d)) offers two relevant window kinds ([`crates/gpui/src/platform.rs`](https://github.com/zed-industries/zed/blob/ba63a022c9a22ca66d68ef2a8f0bb9b5b0a9984d/crates/gpui/src/platform.rs#L2837-L2864)):
+
+- `WindowKind::AnchoredPopup(PopupOptions)` places a popup relative to a parent window and anchor rectangle with gravity and constraint adjustment. Only Wayland and macOS implement it; the X11 backend rejects it with `PopupNotSupportedError` ([`x11/window.rs`](https://github.com/zed-industries/zed/blob/ba63a022c9a22ca66d68ef2a8f0bb9b5b0a9984d/crates/gpui_linux/src/linux/x11/window.rs#L477-L481)), as do Windows and the web backend.
+- `WindowKind::PopUp` is, on X11, an **override-redirect** window typed `_NET_WM_WINDOW_TYPE_NOTIFICATION`, created at an absolute root position ([`x11/window.rs`](https://github.com/zed-industries/zed/blob/ba63a022c9a22ca66d68ef2a8f0bb9b5b0a9984d/crates/gpui_linux/src/linux/x11/window.rs#L509-L627)). It has no parent: `WM_TRANSIENT_FOR` is only set for `Floating` and `Dialog`. Its x position is offset by two pixels at creation ([`L549-L553`](https://github.com/zed-industries/zed/blob/ba63a022c9a22ca66d68ef2a8f0bb9b5b0a9984d/crates/gpui_linux/src/linux/x11/window.rs#L549-L553)).
+
+GPUI does not expose a window's root position on X11: `bounds()` comes from `ConfigureNotify` coordinates without distinguishing synthetic events, so under a reparenting window manager it can be frame-relative ([`x11/client.rs`](https://github.com/zed-industries/zed/blob/ba63a022c9a22ca66d68ef2a8f0bb9b5b0a9984d/crates/gpui_linux/src/linux/x11/client.rs#L1036-L1052)). Its X11 display is the whole X screen, not a RandR monitor ([`x11/display.rs`](https://github.com/zed-industries/zed/blob/ba63a022c9a22ca66d68ef2a8f0bb9b5b0a9984d/crates/gpui_linux/src/linux/x11/display.rs)). Because of that, the host opens each popup as `WindowKind::PopUp` and does the X11 part itself through one bounded local connection per native window (250 ms per round trip, no events selected, the same local-socket and authority rules as the native services): `TranslateCoordinates` for the parent's root position, `ConfigureWindow` for exact device-pixel bounds with `StackMode::Above`, and `WM_TRANSIENT_FOR` plus `_NET_WM_WINDOW_TYPE_POPUP_MENU` on the popup. Override-redirect windows are not managed, so the window manager neither moves nor focuses them, and the parent keeps the X input focus. The parent node's bounds come from a zero-cost measuring element painted in the parent's flow; placement runs after that paint and again on parent window moves.
+
+On hosts without a local X11 connection the capability is not advertised. A raw protocol client that still sends `surface: 'window'` gets the ordinary in-window parent-anchored layer.
+
+### Popup verification
+
+| Check                                                                                                   | Command                                                                                                       |
+| ------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------- |
+| Shared accept/reject corpus, normalization, popup content rules, `dismiss` event route validation       | `cargo test --locked -p bun-native-protocol popup` and `bun test tests/protocol/popup-windows.test.ts`        |
+| Placement below, shift and upward flip against the screen                                               | `cargo test --locked -p bun-native-host popups`                                                               |
+| Capability gating, content preflight, blur/Escape/backdrop dismissal, propagation stop, queued disposal | `bun test tests/core/popup-windows.test.ts`                                                                   |
+| Real host, X server geometry and stacking, XTest input, screenshots, development and AOT                | [`tests/native/popups.ts`](../tests/native/popups.ts), run like the overlay fixture with `BUN_NATIVE_POPUP_*` |
+
+Locally on Linux X11 (Xvfb 1280×800 + openbox, XTest via xdotool, Mesa lavapipe, scale 1) with a development-profile host, both development and AOT passed. Observed in one run:
+
+| Outcome                  | Observed                                                                                                                                                                                                                                                                                                                                                                    |
+| ------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Placed beyond the parent | Parent content at (460, 307) 360×200; anchor painted at (0, 146) 120×44. `xwininfo` reported the popup at exactly (460, 497) 220×160, override-redirect, crossing the parent's bottom edge; `xprop` showed `WM_TRANSIENT_FOR` = the parent and `POPUP_MENU`. It stacked above the parent frame. Screenshot pixels matched the popup background and the native button color. |
+| Pointer                  | A real click on the popup's `Copy` button produced `click`; its `pointer_down` reported (110, 216) in parent coordinates, below the 200-pixel viewport. No focus/blur event, the parent stayed the active window and the popup stayed above it.                                                                                                                             |
+| Escape                   | Escape in the parent dismissed the popup, its X window disappeared, and typing continued in the parent editor (`ab` → `abc`).                                                                                                                                                                                                                                               |
+| Parent move              | Moving the parent frame to (200, 120) moved the open popup to the new anchor position (201, 330).                                                                                                                                                                                                                                                                           |
+| Blur                     | Activating a second application window produced a `blur` dismissal and the popup closed.                                                                                                                                                                                                                                                                                    |
+| Clamping                 | With the parent near the bottom-right corner the popup was shifted to x = 1060 (1280 − 220) and flipped above its anchor (y = 576).                                                                                                                                                                                                                                         |
+| Close and ownership      | Closing the parent window closed its open popup; all seven public ownership counters returned to zero.                                                                                                                                                                                                                                                                      |
+
+The existing overlay fixture still passed against the same host.
+
+### Popup limitations
+
+- **Linux X11 only.** Wayland (GPUI's `AnchoredPopup` there is unused), macOS and Windows do not advertise `popup_windows_v1`. Only Xvfb + openbox at scale 1 is verified; other window managers, compositors, HiDPI and physical GPUs are not.
+- **Display.** Clamping uses the whole X screen, like GPUI's X11 display. On a multi-monitor RandR layout a popup can be placed across a monitor gap or on another monitor's area.
+- **Size.** Popups have a fixed declared size; there is no content sizing. Content larger than it is clipped unless the popup scrolls.
+- **Keyboard.** No arrow-key navigation, type-ahead or keyboard activation of popup buttons; Tab stays in the parent window. Editors and nested overlays are rejected inside popups.
+- **Outside presses.** A press elsewhere in the parent window is delivered there normally and is not reported as a dismissal; the application decides. Presses on other applications' windows dismiss only through the resulting parent blur, which depends on the window manager changing focus.
+- **Placement races.** The popup is opened at its computed position and then moved to exact bounds; a first frame may briefly appear two pixels to the right. Parent moves are followed only when GPUI reports them; a popup does not follow a parent node that moves without a repaint of the parent window.
+- **Accessibility.** No roles or announcements are exposed for popup windows.
+
 ## Limitations
 
 - **Platforms.** Only Linux X11 with software rendering at scale 1 is exercised. macOS and Windows build the same GPUI code but their overlay, focus and pointer behavior is unverified, as are Wayland, HiDPI, physical GPUs and touchpads.
-- **No native OS menus or dialogs.** These are in-window GPUI layers. Application menu bars, OS context menus, native file/message dialogs and child popup windows that extend beyond the window are not implemented.
+- **No native OS menus or dialogs.** These are in-window GPUI layers, except [popup windows](#popup-windows-beyond-the-parent-window) on Linux X11. Application menu bars, OS context menus and native file/message dialogs are not implemented.
 - **Anchoring.** A parent-anchored overlay always opens below its parent's bottom-left corner and is shifted, not flipped, to fit the window. There is no anchoring to an arbitrary node, the pointer position or a side other than below; no arrow, sizing to the trigger or collision-aware flipping.
 - **Keyboard.** There is no programmatic focus API. Non-modal popovers never take focus, so a menu that needs keyboard navigation must be modal (and therefore window-anchored) or be reached with Tab. Arrow-key menu navigation, type-ahead and roving focus are not implemented. Escape for a non-modal popover reaches it only when focus is inside it.
 - **Modal scope.** Overlays above the active modal in paint order (deeper non-modal popovers) remain interactive by pointer. Modality affects this window only; other windows of the application are not blocked.

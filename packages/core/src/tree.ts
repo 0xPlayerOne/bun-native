@@ -40,6 +40,12 @@ function supported(element: Element, capabilities: readonly Capability[]): Eleme
     !capabilities.includes('scroll_anchor_v1')
   )
     throw new UnsupportedFeatureError('style:scroll_anchor')
+  if (
+    element.kind === 'overlay' &&
+    element.surface === 'window' &&
+    !capabilities.includes('popup_windows_v1')
+  )
+    throw new UnsupportedFeatureError('overlay:surface_window')
   return element
 }
 
@@ -223,8 +229,10 @@ export class Transaction implements NativeBatch {
   validate(): void {
     let seen = 0
     let bytes = 0
-    const pending = [{ id: this.rootId, depth: 0, overlays: 0 }]
-    for (const { id, depth, overlays: outer } of pending) {
+    // `popup` marks content beneath a popup window surface: keyboard focus
+    // stays on the parent window, so it holds no editor or further layer.
+    const pending = [{ id: this.rootId, depth: 0, overlays: 0, popup: false }]
+    for (const { id, depth, overlays: outer, popup: inPopup } of pending) {
       if (depth > this.limits.max_depth)
         throw new NativeStateError('limit_exceeded', 'Native tree depth limit exceeded')
       const node = this.nodes.get(id)!
@@ -233,6 +241,12 @@ export class Transaction implements NativeBatch {
       const overlays = outer + (element.kind === 'overlay' ? 1 : 0)
       if (overlays > MAX_OVERLAY_DEPTH)
         throw new NativeStateError('limit_exceeded', 'Overlay nesting limit exceeded')
+      if (inPopup && (element.kind === 'input' || element.kind === 'overlay'))
+        throw new NativeStateError(
+          'invalid_state',
+          'Popup window content cannot contain inputs or overlays'
+        )
+      const popup = inPopup || (element.kind === 'overlay' && element.surface === 'window')
       const texts =
         element.kind === 'input'
           ? [element.value, element.placeholder ?? '']
@@ -247,7 +261,9 @@ export class Transaction implements NativeBatch {
       }
       if (bytes > this.limits.max_text_bytes_per_window)
         throw new NativeStateError('limit_exceeded', 'Window text memory limit exceeded')
-      pending.push(...node.children.map((child) => ({ id: child, depth: depth + 1, overlays })))
+      pending.push(
+        ...node.children.map((child) => ({ id: child, depth: depth + 1, overlays, popup }))
+      )
     }
     if (seen !== this.nodes.size)
       throw new NativeStateError(

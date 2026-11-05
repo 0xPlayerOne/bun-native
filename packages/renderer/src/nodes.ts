@@ -35,6 +35,7 @@ type Properties = EventListeners & {
   disabled?: boolean
   anchor?: 'window' | 'parent'
   modal?: boolean
+  surface?: 'layer' | 'window'
 }
 
 const isContainer = (kind: Node['kind']) => kind === 'box' || kind === 'overlay'
@@ -187,6 +188,12 @@ export function setProperty(node: Node, name: string, value: unknown): void {
       else if (typeof value === 'boolean') props.modal = value
       else throw new TypeError('Native modal must be boolean')
       break
+    case 'surface':
+      if (node.kind !== 'overlay') throw new TypeError('Only overlays accept surface')
+      if (value === undefined) delete props.surface
+      else if (value === 'layer' || value === 'window') props.surface = value
+      else throw new TypeError('Native overlay surface must be layer or window')
+      break
     default:
       throw new UnsupportedFeatureError('native-property:' + name)
   }
@@ -222,11 +229,13 @@ export function snapshot(root: Node): Map<Node, Snapshot> {
     if (node.kind === 'box')
       element = { kind: 'box', ...(props.style ? { style: { ...props.style } } : {}) }
     else if (node.kind === 'overlay')
-      // Core validation rejects a modal parent-anchored overlay.
+      // Core validation rejects a modal parent-anchored overlay and an
+      // unsized or window-anchored popup surface.
       element = {
         kind: 'overlay',
         ...(props.anchor === undefined ? {} : { anchor: props.anchor }),
         ...(props.modal === undefined ? {} : { modal: props.modal }),
+        ...(props.surface === undefined ? {} : { surface: props.surface }),
         ...(props.style ? { style: { ...props.style } } : {}),
       } as Element
     else if (node.kind === 'input')

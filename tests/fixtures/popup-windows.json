@@ -1,0 +1,88 @@
+{
+  "capability": "popup_windows_v1",
+  "cases": [
+    {
+      "name": "popup-window-menu",
+      "element": {
+        "kind": "overlay",
+        "anchor": "parent",
+        "surface": "window",
+        "style": { "width": 160, "height": 120, "padding": 4 }
+      },
+      "normalized": {
+        "kind": "overlay",
+        "anchor": "parent",
+        "modal": false,
+        "surface": "window",
+        "style": { "width": 160, "height": 120, "padding": 4 }
+      },
+      "valid": true
+    },
+    {
+      "name": "explicit-layer-surface-normalizes-away",
+      "element": { "kind": "overlay", "surface": "layer" },
+      "normalized": { "kind": "overlay", "anchor": "window", "modal": false, "style": {} },
+      "valid": true
+    },
+    {
+      "name": "window-anchored-popup-rejected",
+      "element": {
+        "kind": "overlay",
+        "surface": "window",
+        "style": { "width": 160, "height": 120 }
+      },
+      "valid": false
+    },
+    {
+      "name": "modal-popup-rejected",
+      "element": {
+        "kind": "overlay",
+        "anchor": "parent",
+        "modal": true,
+        "surface": "window",
+        "style": { "width": 160, "height": 120 }
+      },
+      "valid": false
+    },
+    {
+      "name": "popup-without-height-rejected",
+      "element": {
+        "kind": "overlay",
+        "anchor": "parent",
+        "surface": "window",
+        "style": { "width": 160 }
+      },
+      "valid": false
+    },
+    {
+      "name": "popup-fill-width-rejected",
+      "element": {
+        "kind": "overlay",
+        "anchor": "parent",
+        "surface": "window",
+        "style": { "width": "fill", "height": 120 }
+      },
+      "valid": false
+    },
+    {
+      "name": "popup-sub-pixel-height-rejected",
+      "element": {
+        "kind": "overlay",
+        "anchor": "parent",
+        "surface": "window",
+        "style": { "width": 160, "height": 0.5 }
+      },
+      "valid": false
+    },
+    {
+      "name": "unknown-surface-rejected",
+      "element": { "kind": "overlay", "anchor": "parent", "surface": "native_menu" },
+      "valid": false
+    },
+    {
+      "name": "null-surface-rejected",
+      "element": { "kind": "overlay", "surface": null },
+      "valid": false
+    }
+  ]
+}
