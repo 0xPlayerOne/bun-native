@@ -56,6 +56,14 @@ export interface HostOptions {
   /** Optional native process arguments, passed without a shell. */
   args?: readonly string[]
   requestTimeoutMs?: number
+  /**
+   * Deadline for `open` requests until the first window has opened. The first
+   * window initializes the GPU instance and device once per process, which
+   * takes seconds on cold software renderers (Mesa Lavapipe on hosted CI
+   * measured 2.5–3.6 s, with a tail past 5 s). Later opens use
+   * `requestTimeoutMs`.
+   */
+  rendererStartupTimeoutMs?: number
   permissions?: ServicePermissions
 }
 
@@ -106,6 +114,8 @@ export class NativeHost implements AsyncIterable<WindowEvent> {
   private readonly stdout: ReadableStreamDefaultReader<Uint8Array>
   private readonly stderr: ReadableStreamDefaultReader<Uint8Array>
   private readonly timeout: number
+  private readonly rendererStartupTimeout: number
+  private rendererStarted = false
   private readonly pending = new Map<number, Pending>()
   private readonly events: WindowEvent[] = []
   private readonly finished: Promise<void>
@@ -128,6 +138,7 @@ export class NativeHost implements AsyncIterable<WindowEvent> {
     private readonly requestedPolicy: Readonly<ServicePolicy>
   ) {
     this.timeout = options.requestTimeoutMs ?? 5_000
+    this.rendererStartupTimeout = options.rendererStartupTimeoutMs ?? 30_000
     this.process = Bun.spawn({
       cmd: [
         options.executable,
@@ -151,6 +162,9 @@ export class NativeHost implements AsyncIterable<WindowEvent> {
     const timeout = options.requestTimeoutMs ?? 5_000
     if (!Number.isSafeInteger(timeout) || timeout < 1 || timeout > 60_000)
       throw new Error('requestTimeoutMs must be an integer between 1 and 60000')
+    const rendererTimeout = options.rendererStartupTimeoutMs ?? 30_000
+    if (!Number.isSafeInteger(rendererTimeout) || rendererTimeout < 1 || rendererTimeout > 120_000)
+      throw new Error('rendererStartupTimeoutMs must be an integer between 1 and 120000')
     const policy = launchPolicy(options.permissions)
     if (
       options.args?.some(
@@ -293,7 +307,9 @@ export class NativeHost implements AsyncIterable<WindowEvent> {
     const result = new Promise<HostResponse>((resolve, reject) => {
       const timer = setTimeout(
         () => this.fail(new Error(`Native ${command.type} request ${command.id} timed out`)),
-        this.timeout
+        command.type === 'open' && !this.rendererStarted
+          ? this.rendererStartupTimeout
+          : this.timeout
       )
       this.pending.set(command.id, {
         command,
@@ -438,7 +454,10 @@ export class NativeHost implements AsyncIterable<WindowEvent> {
         )
         request.reject(error)
         throw error
-      } else request.resolve(event)
+      } else {
+        if (event.type === 'opened') this.rendererStarted = true
+        request.resolve(event)
+      }
       return
     }
     if (!this.ready) throw new ProtocolError('Native input arrived before protocol readiness')

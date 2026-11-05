@@ -121,6 +121,8 @@ for await (const chunk of Bun.stdin.stream()) {
         await diagnostic.flush()
         continue
       }
+      // Models one-time renderer startup cost; every open is equally slow.
+      if (mode === 'slow-open') await Bun.sleep(300)
       roots.set(command.window_id, command.root_id)
       await emit({
         type: 'opened',
