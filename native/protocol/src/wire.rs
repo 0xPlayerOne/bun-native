@@ -3,6 +3,10 @@
 use serde::{de, Deserialize, Deserializer, Serialize};
 use std::fmt;
 
+mod decode;
+#[cfg(test)]
+mod oracle_tests;
+
 pub const PROTOCOL_VERSION: u32 = 11;
 pub const MAX_ID: u64 = 9_007_199_254_740_991;
 pub const MAX_FRAME_BYTES: usize = 65_536;
@@ -113,10 +117,6 @@ fn safe_usize<'de, D: Deserializer<'de>>(deserializer: D) -> Result<usize, D::Er
 
 pub(crate) fn safe_u32<'de, D: Deserializer<'de>>(deserializer: D) -> Result<u32, D::Error> {
     u32::try_from(safe_integer(deserializer)?).map_err(de::Error::custom)
-}
-
-fn non_null_revision<'de, D: Deserializer<'de>>(deserializer: D) -> Result<Option<u64>, D::Error> {
-    safe_integer(deserializer).map(Some)
 }
 
 fn non_null_color<'de, D: Deserializer<'de>>(deserializer: D) -> Result<Option<u32>, D::Error> {
@@ -407,84 +407,65 @@ fn half() -> f64 {
     0.5
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[serde(tag = "kind", rename_all = "snake_case", deny_unknown_fields)]
+/// Decoded by hand in `decode.rs`; unknown, duplicate and null members are rejected.
+#[derive(Debug, Clone, PartialEq, Serialize)]
+#[serde(tag = "kind", rename_all = "snake_case")]
 pub enum Element {
     Box {
-        #[serde(default)]
         style: Style,
     },
     Text {
         text: String,
-        #[serde(default)]
         style: Style,
     },
     Button {
         text: String,
-        #[serde(default)]
         disabled: bool,
-        #[serde(default)]
         style: Style,
     },
     Input {
         value: String,
-        #[serde(default)]
         placeholder: String,
         /// Requires `input_states_v1`. Not focusable, editable or selectable.
-        #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+        #[serde(skip_serializing_if = "std::ops::Not::not")]
         disabled: bool,
         /// Requires `input_states_v1`. Focusable, selectable and copyable;
         /// native edits, paste, cut and composition are rejected.
-        #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+        #[serde(skip_serializing_if = "std::ops::Not::not")]
         read_only: bool,
-        #[serde(default)]
         style: Style,
     },
     /// `split_v1`: at most two panes separated by a host-owned draggable
     /// divider. `style.direction` chooses the axis (row by default).
     Split {
         /// The leading pane's share of the space left after the divider.
-        #[serde(default = "half")]
         ratio: f64,
         /// The smallest main-axis size of each pane, in logical pixels.
-        #[serde(default)]
         min_size: f64,
         /// Requires `accessibility_v1`: the divider's accessible name.
-        #[serde(
-            default,
-            skip_serializing_if = "Option::is_none",
-            deserialize_with = "non_null"
-        )]
+        #[serde(skip_serializing_if = "Option::is_none")]
         accessible_label: Option<String>,
-        #[serde(default)]
         style: Style,
     },
     /// A container painted above the ordinary tree. Nested overlays paint
     /// above shallower ones; equal depths follow tree order.
     Overlay {
-        #[serde(default)]
         anchor: OverlayAnchor,
         /// Traps keyboard focus and Tab order until removed.
-        #[serde(default)]
         modal: bool,
         /// Moves focus to the first enabled control when the layer opens.
         /// Requires `overlay_keyboard_v1`; omitted when false.
-        #[serde(default, skip_serializing_if = "is_false")]
+        #[serde(skip_serializing_if = "is_false")]
         autofocus: bool,
         /// Requires `overlay_keyboard_v1`; omitted when `tab`.
-        #[serde(default, skip_serializing_if = "OverlayNavigation::is_tab")]
+        #[serde(skip_serializing_if = "OverlayNavigation::is_tab")]
         navigation: OverlayNavigation,
         /// Omitted from normalized output while it is the default layer.
-        #[serde(default, skip_serializing_if = "OverlaySurface::is_layer")]
+        #[serde(skip_serializing_if = "OverlaySurface::is_layer")]
         surface: OverlaySurface,
         /// Requires `accessibility_v1`: the dialog's accessible name.
-        #[serde(
-            default,
-            skip_serializing_if = "Option::is_none",
-            deserialize_with = "non_null"
-        )]
+        #[serde(skip_serializing_if = "Option::is_none")]
         accessible_label: Option<String>,
-        #[serde(default)]
         style: Style,
     },
 }
@@ -492,8 +473,9 @@ pub enum Element {
 /// Main-axis thickness of a split divider, in logical pixels.
 pub const SPLIT_DIVIDER: f64 = 6.;
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[serde(tag = "type", rename_all = "snake_case", deny_unknown_fields)]
+/// Decoded by hand in `decode.rs`; unknown, duplicate and null members are rejected.
+#[derive(Debug, Clone, PartialEq, Serialize)]
+#[serde(tag = "type", rename_all = "snake_case")]
 pub enum Operation {
     Create {
         node_id: NodeId,
@@ -502,17 +484,12 @@ pub enum Operation {
     Set {
         node_id: NodeId,
         element: Element,
-        #[serde(
-            default,
-            skip_serializing_if = "Option::is_none",
-            deserialize_with = "non_null_revision"
-        )]
+        #[serde(skip_serializing_if = "Option::is_none")]
         expected_input_revision: Option<u64>,
     },
     Insert {
         parent_id: NodeId,
         child_id: NodeId,
-        #[serde(deserialize_with = "safe_usize")]
         index: usize,
     },
     Delete {
@@ -527,17 +504,9 @@ pub enum Operation {
     /// its content start; an omitted axis keeps its offset. Clamped natively.
     ScrollTo {
         node_id: NodeId,
-        #[serde(
-            default,
-            skip_serializing_if = "Option::is_none",
-            deserialize_with = "non_null"
-        )]
+        #[serde(skip_serializing_if = "Option::is_none")]
         x: Option<f64>,
-        #[serde(
-            default,
-            skip_serializing_if = "Option::is_none",
-            deserialize_with = "non_null"
-        )]
+        #[serde(skip_serializing_if = "Option::is_none")]
         y: Option<f64>,
     },
     /// Requires `scroll_control_v1`. Scrolls every scrolling ancestor so the

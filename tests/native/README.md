@@ -127,6 +127,32 @@ The framework modes execute the exact generated production modules recorded
 by `--entry solid-services` and `--entry react-services` before compiling them
 to AOT. They share the core operation, policy and native implementation.
 
+## Release-host boundary, startup panic and offline AOT
+
+`boundary.ts` writes raw frames to the actual host, bypassing the TypeScript
+client: version mismatch, pre-hello and duplicate `hello`, invalid JSON, UTF-8
+and BOM, empty, unknown-type and unknown-field frames, frames exactly at and one
+byte over the 64 KiB limit, EOF inside a frame and on a frame boundary, frames
+behind a terminal error, and fragmented or coalesced frames. Each case owns a
+fresh host and a 10 s deadline, and must end with exit 0. With neither `DISPLAY`
+nor `WAYLAND_DISPLAY`, GPUI runs its headless Linux platform: every protocol case
+still runs and the real window case is reported under `skipped`.
+
+`release-host.test.ts` runs only with `BUN_NATIVE_HOST` set to the prebuilt
+host; otherwise each case is skipped with its reason in the test name. It runs
+`boundary.ts` with no display at all, `startup-panic.ts` with an unreachable X
+display (a real GPUI panic during startup, reported by the Bun launch as a typed
+`panic` diagnostic in the `starting` phase with the inherited display value
+redacted), and an inspected AOT build of `boundary.ts` under Xvfb inside
+`unshare --map-root-user --net`. The offline case is skipped where unprivileged
+user namespaces, `xvfb-run`, `dbus-run-session` or the pinned AOT compiler are
+unavailable. A panic after a session is established still needs a test-only
+host fault command.
+
+```sh
+BUN_NATIVE_HOST="$PWD/target/release/bun-native-host" bun test tests/native/release-host.test.ts
+```
+
 ## Evidence and limits
 
 ### Isolated clipboard diagnostic
