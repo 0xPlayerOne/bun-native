@@ -147,6 +147,23 @@ impl Tree {
         self.nodes.iter()
     }
 
+    /// Calls `visit(id, previous, next)`, in ID order, for every node that exists
+    /// in only one of the trees or whose element is a different allocation in
+    /// `self` than in `previous`. A batch shares every element it does not
+    /// write, so for a tree prepared from `previous` this is exactly the nodes
+    /// it created, set or deleted, found without visiting the rest.
+    pub fn diff_elements<'a>(
+        &'a self,
+        previous: &'a Tree,
+        mut visit: impl FnMut(NodeId, Option<&'a Node>, Option<&'a Node>),
+    ) {
+        self.nodes.diff(
+            &previous.nodes,
+            &|old, new| Arc::ptr_eq(&old.element, &new.element),
+            &mut visit,
+        );
+    }
+
     /// Snapshot the committed root-to-target route before an event leaves the
     /// UI thread. A later move must not rewrite an already-emitted event path.
     pub fn path(&self, target: NodeId) -> Option<Vec<NodeId>> {

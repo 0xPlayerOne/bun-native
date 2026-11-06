@@ -14,9 +14,14 @@ bytes excluding LF; CRLF is accepted as JSON trailing whitespace. Invalid UTF-8,
 BOMs, empty lines, truncated EOF, invalid JSON, unknown fields and malformed
 commands poison the channel. The host emits a terminal `invalid_command` error
 when possible and exits. EOF is terminal even if a caller supplies a new reader.
-Decoding first builds a bounded JSON value, then validates its typed shape.
-Duplicate keys use the last value, matching JavaScript `JSON.parse`. Integral
-number spellings such as `1.0` and `1e0` follow JavaScript safe-integer semantics.
+Decoding reads each frame straight into its typed shape, with no intermediate
+JSON value: a `batch` frame through a plain struct, its operations and elements
+through hand-written decoders (`src/wire/decode.rs`) that accept members in any
+order and reject unknown, duplicate and `null` members and variant tags that are
+not exact strings. A frame the typed decoders reject is decided again by the
+reference path, which builds a bounded JSON value first, so duplicate keys use
+the last value, matching JavaScript `JSON.parse`. Integral number spellings such
+as `1.0` and `1e0` follow JavaScript safe-integer semantics.
 
 Structurally valid requests that fail a lifecycle, ownership, revision or
 resource rule receive `error` with the request ID and a finite code:

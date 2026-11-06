@@ -566,3 +566,56 @@ fn ready_event_advertises_the_compiled_limits_and_rejects_unknown_fields() {
     value["capabilities"] = json!(["tree", "filesystem_v1"]);
     assert!(serde_json::from_value::<Event>(value).is_err());
 }
+
+/// The decoder before the plain-struct batch path: typed, then last-wins.
+fn general_decode(frame: &[u8]) -> Result<Command, ProtocolError> {
+    serde_json::from_slice(frame).or_else(|_| decode_command_last_wins(frame))
+}
+
+#[test]
+fn batch_fast_path_decodes_exactly_what_the_general_path_does() {
+    let element = r#"{"kind":"text","text":"a","style":{"gap":1}}"#;
+    let frames = [
+        // The runtime's normalized order, and others.
+        format!(r#"{{"id":1,"type":"batch","window_id":2,"base_revision":3,"operations":[{{"type":"create","node_id":4,"element":{element}}}]}}"#),
+        r#"{"type":"batch","id":1,"window_id":2,"base_revision":3,"operations":[{"type":"delete","node_id":4}]}"#.to_string(),
+        r#"{"operations":[{"type":"delete","node_id":4}],"base_revision":3,"window_id":2,"type":"batch","id":1}"#.to_string(),
+        r#"{ "id" : 1 , "type" : "batch" , "window_id" : 2 , "base_revision" : 0 , "operations" : [ ] }"#.to_string(),
+        // Spellings of integers.
+        r#"{"id":1.0,"type":"batch","window_id":2e0,"base_revision":3.0,"operations":[{"type":"delete","node_id":4}]}"#.to_string(),
+        // Rejected shapes.
+        r#"{"id":1,"type":"batch","window_id":2,"base_revision":3}"#.to_string(),
+        r#"{"id":1,"type":"batch","window_id":2,"base_revision":3,"operations":[],"extra":1}"#.to_string(),
+        r#"{"id":1,"type":"batch","window_id":2,"base_revision":3,"operations":null}"#.to_string(),
+        r#"{"id":1,"type":"batch","window_id":2,"base_revision":-1,"operations":[]}"#.to_string(),
+        r#"{"id":0,"type":"batch","window_id":2,"base_revision":3,"operations":[]}"#.to_string(),
+        r#"{"id":1,"type":"batch","window_id":9007199254740992,"base_revision":3,"operations":[]}"#.to_string(),
+        r#"{"id":1,"type":"batch","window_id":2,"base_revision":3,"operations":[{"type":"nope"}]}"#.to_string(),
+        r#"{"id":1,"type":"batch","window_id":2,"base_revision":3,"operations":[{"type":"delete"}]}"#.to_string(),
+        r#"{"id":1,"type":"Batch","window_id":2,"base_revision":3,"operations":[]}"#.to_string(),
+        r#"{"id":1,"type":0,"window_id":2,"base_revision":3,"operations":[]}"#.to_string(),
+        // Duplicate members decide by the last one (the general path).
+        r#"{"id":1,"type":"batch","window_id":2,"base_revision":3,"base_revision":4,"operations":[]}"#.to_string(),
+        r#"{"id":1,"id":5,"type":"batch","window_id":2,"base_revision":3,"operations":[]}"#.to_string(),
+        r#"{"id":1,"type":"batch","type":"batch","window_id":2,"base_revision":3,"operations":[]}"#.to_string(),
+        r#"{"id":1,"type":"batch","window_id":2,"base_revision":3,"operations":[],"operations":[{"type":"delete","node_id":4}]}"#.to_string(),
+        r#"{"id":1,"type":"batch","window_id":2,"base_revision":3,"operations":[{"type":"delete","node_id":4,"node_id":5}]}"#.to_string(),
+        // The tag is not first or is escaped, and is not a batch at all.
+        r#"{"id":1,"type":"batch","window_id":2,"base_revision":3,"operations":[]}"#.to_string(),
+        r#"{"id":1,"type":"close","window_id":2}"#.to_string(),
+        r#"{"id":1,"type":"close","window_id":2,"type":"batch","base_revision":3,"operations":[]}"#.to_string(),
+        r#"{"id":1,"type":"batch","window_id":2,"base_revision":3,"operations":[]} "#.to_string(),
+        "\u{feff}{\"id\":1,\"type\":\"batch\"}".to_string(),
+        String::new(),
+        "{".to_string(),
+    ];
+    for frame in frames {
+        let new = decode_command(frame.as_bytes());
+        let old = general_decode(frame.as_bytes());
+        match (&new, &old) {
+            (Ok(new), Ok(old)) => assert_eq!(new, old, "{frame}"),
+            (Err(_), Err(_)) => {}
+            _ => panic!("paths disagree on {frame}: new {new:?}, old {old:?}"),
+        }
+    }
+}

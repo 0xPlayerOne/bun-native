@@ -30,21 +30,14 @@ impl NodeIndex {
     /// every untouched element `Arc`, so a node whose element is the same
     /// allocation in both trees cannot have changed any indexed fact; created,
     /// set and deleted (including whole deleted subtrees) nodes are exactly the
-    /// keys that differ. Moves never change an element and are not indexed.
+    /// keys that differ, and the persistent node storage finds them without
+    /// visiting the shared rest. Moves never change an element and are not
+    /// indexed.
     pub(super) fn sync(&mut self, previous: &Tree, next: &Tree) {
-        let mut before = previous.nodes().peekable();
-        for (id, node) in next.nodes() {
-            while let Some((deleted, _)) = before.next_if(|(old, _)| *old < id) {
-                self.forget(deleted);
-            }
-            match before.next_if(|(old, _)| *old == id) {
-                Some((_, old)) if std::ptr::eq(old.element(), node.element()) => {}
-                _ => self.index(id, node),
-            }
-        }
-        for (deleted, _) in before {
-            self.forget(deleted);
-        }
+        next.diff_elements(previous, |id, _, node| match node {
+            Some(node) => self.index(id, node),
+            None => self.forget(id),
+        });
         #[cfg(debug_assertions)]
         assert_eq!(
             *self,
