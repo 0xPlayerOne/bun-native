@@ -123,6 +123,12 @@ and the dialog layer is another, so neither interferes with the other.
 - The dialog's nodes count toward the window's ordinary node and text limits.
 - Native `NSAlert`/task dialogs remain possible as a different backend value
   later; the public result shape does not depend on the backend.
+- **Linux decision (2026-11-06, #239).** Linux has no OS menu or alert service
+  that the host could call: there is no portal for alerts and GPUI's own
+  prompt is an in-window renderer. The modal overlay is therefore the supported
+  and only Linux implementation, not a fallback awaiting an OS backend. Menus
+  follow the same rule: in-window overlays everywhere except the macOS
+  application menu bar.
 
 ## Verification
 
