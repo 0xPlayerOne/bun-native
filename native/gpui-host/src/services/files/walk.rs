@@ -20,7 +20,7 @@
 //! per-component logic runs against real files on every Linux test run.
 
 use super::Confine;
-use rustix::fs::{AtFlags, CWD, FileType, Mode, OFlags, openat, statat};
+use rustix::fs::{AtFlags, FileType, Mode, OFlags, openat, statat};
 use rustix::io::Errno;
 use std::os::fd::{AsFd, BorrowedFd, OwnedFd};
 
@@ -51,15 +51,20 @@ fn step(
     })
 }
 
+impl Walk {
+    /// Opens a descriptor for `/` and then one name beneath it with the exact
+    /// flags every walk step uses. Probing a relative step (not an absolute
+    /// path) mirrors the real use, because `O_NOFOLLOW_ANY` applies to the
+    /// whole path it resolves.
+    pub(crate) fn check() -> Result<(), Errno> {
+        let root = rustix::fs::open("/", DIRECTORY | OFlags::CLOEXEC, Mode::empty())?;
+        step(root.as_fd(), ".", DIRECTORY, Mode::empty()).map(drop)
+    }
+}
+
 impl Confine for Walk {
     fn probe() -> bool {
-        openat(
-            CWD,
-            "/",
-            DIRECTORY | NO_LINKS | OFlags::CLOEXEC,
-            Mode::empty(),
-        )
-        .is_ok()
+        Self::check().is_ok()
     }
 
     fn open_root(path: &str) -> Result<OwnedFd, Errno> {

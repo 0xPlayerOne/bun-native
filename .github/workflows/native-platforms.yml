@@ -448,7 +448,7 @@ jobs:
             $dragSource = Join-Path $env:NATIVE_EVIDENCE 'windows-drag-source.exe'
             & $csc /nologo /target:exe /optimize `
               /r:System.Windows.Forms.dll /r:System.Drawing.dll `
-              "/out:$dragSource" tests/native/windows-drag-source.cs
+              "/out:$dragSource" (Resolve-Path tests/native/windows-drag-source.cs).Path
             if ($LASTEXITCODE -ne 0) { throw 'The OLE DoDragDrop source did not compile' }
           }
           "BUN_NATIVE_DRAG_SOURCE=$dragSource" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8

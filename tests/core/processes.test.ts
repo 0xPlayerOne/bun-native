@@ -35,10 +35,33 @@ async function withProcesses(
     })
     await run(app, directory)
   } finally {
-    await app?.shutdown().catch(() => {})
-    await app?.closed.catch(() => {})
+    if (app)
+      await stage(
+        'shutdown',
+        app.shutdown().catch(() => {})
+      )
+    if (app)
+      await stage(
+        'closed',
+        app.closed.catch(() => {})
+      )
     if (app) expect(Object.values(app.diagnostics)).toEqual([0, 0, 0, 0, 0, 0, 0])
     rmSync(directory, { recursive: true, force: true })
+  }
+}
+
+/** Names the awaited step when it stalls, so a hung CI run says where. */
+async function stage<T>(name: string, work: Promise<T>): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | undefined
+  try {
+    return await Promise.race([
+      work,
+      new Promise<never>((_, reject) => {
+        timer = setTimeout(() => reject(new Error(`Stalled waiting for ${name}`)), 4_000)
+      }),
+    ])
+  } finally {
+    clearTimeout(timer)
   }
 }
 
@@ -257,11 +280,21 @@ describe('owned processes through the public core (headless subprocess)', () => 
   for (const mode of ['reorder', 'after-exit'])
     test(`${mode} output fails the channel`, async () => {
       await withProcesses(async (app) => {
-        const window = await app.openWindow({ title: mode })
-        await window.spawnProcess('shell', {}, () => {}).catch(() => {})
-        await expect(app.closed).rejects.toBeInstanceOf(ProtocolError)
+        const window = await stage('openWindow', app.openWindow({ title: mode }))
+        await stage(
+          'spawnProcess',
+          window.spawnProcess('shell', {}, () => {}).catch(() => {})
+        )
+        const failure = await stage(
+          'the channel failure',
+          app.closed.then(
+            () => undefined,
+            (error: unknown) => error
+          )
+        )
+        expect(failure).toBeInstanceOf(ProtocolError)
       }, mode)
-    })
+    }, 15_000)
 
   test('targets without process support report the service unavailable', async () => {
     await withProcesses(async (app) => {

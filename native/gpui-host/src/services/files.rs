@@ -746,7 +746,7 @@ mod tests {
                     }
                     #[test]
                     fn walk() {
-                        assert!(<super::super::walk::Walk as super::super::Confine>::probe());
+                        assert_eq!(super::super::walk::Walk::check(), Ok(()));
                         super::$suite::<super::super::walk::Walk>();
                     }
                 }

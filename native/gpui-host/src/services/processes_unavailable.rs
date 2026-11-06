@@ -11,6 +11,7 @@ use gpui::{App, Task};
 
 type Failure = (ErrorCode, &'static str);
 
+#[allow(dead_code, reason = "parsed from the wire on every target")]
 pub(crate) struct Spawn {
     pub(crate) launch: ProcessLaunch,
     pub(crate) directory: Option<(Directory, String)>,
