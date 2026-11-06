@@ -1,9 +1,44 @@
-use bun_native_protocol::{AlignItems, Dimension, Direction, JustifyContent, Overflow, Style};
-use gpui::{Overflow as NativeOverflow, Styled, px, relative, rgb};
+use bun_native_protocol::{
+    AlignItems, Dimension, Direction, Element, JustifyContent, Overflow, Style,
+};
+use gpui::{Overflow as NativeOverflow, StyleRefinement, Styled, px, relative, rgb};
+
+/// GPUI's `Styled` builders take the element by value, and a `Div` is over a
+/// kilobyte, so chaining them on the element itself copies it at every call.
+/// Refining the element's style through this borrow writes the same fields
+/// without moving the element; see the ignored bench in the tests.
+struct InPlace<'a>(&'a mut StyleRefinement);
+
+impl Styled for InPlace<'_> {
+    fn style(&mut self) -> &mut StyleRefinement {
+        self.0
+    }
+}
+
+/// Refine a freshly created element's style into the native default look of
+/// its kind, overridden by the committed protocol style.
+pub(crate) fn element(target: &mut StyleRefinement, element: &Element, root: bool) {
+    let base = InPlace(target).flex_shrink_0();
+    let base = match element {
+        Element::Box { .. } if root => base.size_full().flex().flex_col(),
+        Element::Box { .. } => base.flex().flex_col(),
+        Element::Text { .. } => base,
+        Element::Button { disabled, .. } => base
+            .flex()
+            .items_center()
+            .justify_center()
+            .h(px(44.))
+            .px(px(12.))
+            .bg(rgb(if *disabled { 0x7a8396 } else { 0x2255cc }))
+            .text_color(rgb(0xffffff)),
+        Element::Input { .. } => base.bg(rgb(0xffffff)),
+    };
+    apply(base, element.style());
+}
 
 /// Values have already passed protocol bounds. Convert to GPUI pixels only
 /// here, after f64 validation, so rounding cannot admit out-of-range values.
-pub(crate) fn apply<T: Styled>(mut element: T, style: &Style) -> T {
+fn apply<T: Styled>(mut element: T, style: &Style) -> T {
     if let Some(direction) = style.direction {
         element = match direction {
             Direction::Row => element.flex().flex_row(),
@@ -88,3 +123,6 @@ pub(crate) fn apply<T: Styled>(mut element: T, style: &Style) -> T {
     }
     element
 }
+
+#[cfg(test)]
+mod tests;
