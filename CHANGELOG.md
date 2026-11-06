@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.23.1](https://github.com/0xPlayerOne/bun-native/compare/v0.23.0...v0.23.1) (2026-11-06)
+
+
+### Tests
+
+* **quality:** documented-command smoke test and fail-closed metric regression gate ([#546](https://github.com/0xPlayerOne/bun-native/issues/546)) ([6644ab8](https://github.com/0xPlayerOne/bun-native/commit/6644ab8309bb68e39efca1c0f8a929e9325c8f97))
+
 ## [0.23.0](https://github.com/0xPlayerOne/bun-native/compare/v0.22.0...v0.23.0) (2026-11-06)
 
 
