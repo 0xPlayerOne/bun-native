@@ -43,6 +43,7 @@ lint: failed
 These commands were run only on Linux x64, with the pinned Bun `1.4.4-canary.1+da867c60b`:
 
 - `bun test tests/tooling/cli-lint.test.ts` scaffolds all four checkout templates and requires `lint: passed` from both the CLI and each `lint` script. It requires the exact deterministic report and status 1 for a deliberate `debugger` file from both `lint` and `check`. It also checks the ignore patterns, project-config precedence, standalone `vendor/` exclusion, and pin agreement across the checkout, CLI package and consumer lock.
+- `bun test tests/tooling/standalone-quality.test.ts` generates all four standalone projects against the inert installed package fixture. It requires their `lint` script and `oxlint` pin, a passing formatter check and lint as generated, and an unlinted `debugger` file under `vendor/`. That fixture cannot run the type checker.
 - The Linux native workflow's standalone consumer cohort (`tests/native/cli-standalone.py prepare`) runs `bun --no-install run lint` in each of the four installed external consumers. It requires a fixed count of four such commands. That hosted run is the evidence for the installed-package path. A local test does not replace it.
 
 macOS and Windows lint behaviour is not verified here. oxlint ships native bindings for those platforms, but no lint run on them is claimed. Type-aware oxlint rules (`--type-aware`, `oxlint-tsgolint`) and automatic fixes (`--fix`) are not offered.

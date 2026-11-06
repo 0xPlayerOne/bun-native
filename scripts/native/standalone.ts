@@ -24,6 +24,12 @@ export function standaloneFiles(
   const devDependencies = local(consumer.devDependencies)
   const cli = 'bun --no-install ./node_modules/@bun-native/cli/src/scripts/native.ts'
   const json = (value: unknown) => JSON.stringify(value, null, 2) + '\n'
+  // The template formatter keeps short string arrays on one line, so format checks pass as generated.
+  const formattedJSON = (value: unknown) =>
+    json(value).replace(
+      /\[\n\s*("[^"\n]*"(?:,\n\s*"[^"\n]*")*)\n\s*\]/g,
+      (_, items: string) => `[${items.split(/,\n\s*/).join(', ')}]`
+    )
   return {
     'bun-native.json': json({ schemaVersion: 1, framework, entry, packageSet: packageSetPath }),
     'package.json': json({
@@ -49,7 +55,7 @@ export function standaloneFiles(
     'bun.lock': json(
       seedConsumerLock(consumer.lock, { name, dependencies, devDependencies }, localLock)
     ),
-    'tsconfig.json': json({
+    'tsconfig.json': formattedJSON({
       compilerOptions: {
         ...compilerConfig.compilerOptions,
         jsxImportSource: `@bun-native/${framework}`,
