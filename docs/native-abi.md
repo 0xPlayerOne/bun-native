@@ -202,6 +202,16 @@ is observed without echoing older values back to the native editor.
 | Public ordinary transactions / waiting callbacks |                                           128 / 128 |
 | Concurrent application callbacks                 |                                                   1 |
 
+The operation bound applies to each native batch, not to one public
+`window.batch` transaction. A larger transaction (up to twice the node limit
+plus one batch) is committed by the core without a wire change: staging
+batches build its new nodes under a zero-size, clipped box appended to the
+root, then one batch applies every set, move and deletion of committed nodes
+and removes that box. A rejection removes the box, restoring the committed
+tree. Changes to committed nodes alone still must fit one batch, so their
+application stays atomic in one paint. Staging needs node and text capacity
+for the new nodes before old ones are deleted.
+
 The public transaction queue reserves additional cleanup capacity for one close
 per live window. Reaching its ordinary-work limit rejects new work. Native
 output uses nonblocking enqueue; an overflowing/disconnected output channel

@@ -199,4 +199,58 @@ describe('React reconciler over shared native core (headless subprocess)', () =>
       expect(application.diagnostics.callbacks).toBe(0)
       await assert.rejects(root.render(<text>Too late</text>), /React root is closed/)
     }))
+
+  test('a keyed pane remount above the native batch limit commits as one React update', () =>
+    withApp(async (application) => {
+      const window = await application.openWindow({ title: 'React large remount' })
+      // Each row is three nodes, created and inserted: 60 rows exceed 256 operations.
+      function Pane({ name, count }: { name: string; count: number }) {
+        return (
+          <box>
+            {Array.from({ length: count }, (_, index) => (
+              <box key={index}>
+                <text>{`${name} ${index}`}</text>
+                <text>detail</text>
+              </box>
+            ))}
+          </box>
+        )
+      }
+      const first = createRef<NativeRef>()
+      let select!: Dispatch<SetStateAction<'a' | 'b'>>
+      function App() {
+        const [selected, setSelected] = useState<'a' | 'b'>('a')
+        select = setSelected
+        return (
+          <box>
+            <text ref={first}>{selected}</text>
+            {selected === 'a' ? (
+              <Pane key="a" name="A" count={60} />
+            ) : (
+              <Pane key="b" name="B" count={70} />
+            )}
+          </box>
+        )
+      }
+      const root = render(<App />, window)
+      await root.ready
+      await root.flush()
+      // The initial mount is itself one commit above the batch limit.
+      const mounted = root.diagnostics.nodes
+      expect(mounted).toBeGreaterThan(60 * 3)
+      const identity = first.current
+      const before = root.diagnostics
+      select('b')
+      await root.flush()
+      expect(root.diagnostics.commits - before.commits).toBe(1)
+      expect(root.diagnostics.mutations.create - before.mutations.create).toBe(1 + 70 * 3)
+      expect(root.diagnostics.nodes).toBe(mounted + 10 * 3)
+      expect(application.diagnostics.nodes).toBe(1 + mounted + 10 * 3)
+      expect(first.current).toBe(identity)
+      select('a')
+      await root.flush()
+      expect(root.diagnostics.nodes).toBe(mounted)
+      await root.dispose()
+      expect(application.diagnostics.nodes).toBe(1)
+    }))
 })
