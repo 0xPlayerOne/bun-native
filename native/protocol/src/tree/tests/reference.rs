@@ -3,8 +3,8 @@
 //! production path must reach the same verdict, error and committed state.
 
 use crate::{
-    Element, ErrorCode, NodeId, Operation, MAX_DEPTH, MAX_ID, MAX_NODES_PER_WINDOW, MAX_OPERATIONS,
-    MAX_TEXT_BYTES_PER_WINDOW,
+    Element, ErrorCode, NodeId, Operation, OverlaySurface, MAX_DEPTH, MAX_ID, MAX_NODES_PER_WINDOW,
+    MAX_OPERATIONS, MAX_OVERLAY_DEPTH, MAX_TEXT_BYTES_PER_WINDOW,
 };
 use std::collections::{BTreeMap, BTreeSet};
 
@@ -157,6 +157,11 @@ impl Model {
                     index,
                 } => next.insert(parent_id, child_id, index)?,
                 Operation::Delete { node_id } => next.delete(node_id)?,
+                // View requests are checked against the final tree by the
+                // production path alone; these batches never carry them.
+                Operation::Focus { .. }
+                | Operation::ScrollTo { .. }
+                | Operation::ScrollIntoView { .. } => {}
             }
         }
         next.validate()?;
@@ -166,10 +171,10 @@ impl Model {
 
     fn insert(&mut self, parent_id: NodeId, child_id: NodeId, index: usize) -> Result<(), Failure> {
         let parent = self.nodes.get(&parent_id).ok_or(STALE)?;
-        if !matches!(parent.element, Element::Box { .. }) {
+        if !parent.element.is_container() {
             return Err((
                 ErrorCode::InvalidState,
-                "only box elements can own children",
+                "only box, split and overlay elements can own children",
             ));
         }
         if child_id == self.root_id {
@@ -224,8 +229,8 @@ impl Model {
 
     fn validate(&self) -> Result<(), Failure> {
         let mut seen = BTreeSet::new();
-        let mut pending = vec![(self.root_id, None, 0)];
-        while let Some((id, parent, depth)) = pending.pop() {
+        let mut pending = vec![(self.root_id, None, 0, 0, false)];
+        while let Some((id, parent, depth, overlays, popup)) = pending.pop() {
             if depth > MAX_DEPTH {
                 return Err((ErrorCode::LimitExceeded, "tree depth exceeds 64 edges"));
             }
@@ -236,6 +241,32 @@ impl Model {
                 ));
             }
             let node = self.nodes.get(&id).ok_or(STALE)?;
+            if node.children.len() > node.element.max_children() {
+                return Err((ErrorCode::LimitExceeded, "a split owns at most two panes"));
+            }
+            let overlays = overlays + usize::from(matches!(node.element, Element::Overlay { .. }));
+            if overlays > MAX_OVERLAY_DEPTH {
+                return Err((ErrorCode::LimitExceeded, "overlay nesting exceeds 8 layers"));
+            }
+            if popup
+                && matches!(
+                    node.element,
+                    Element::Input { .. } | Element::Overlay { .. }
+                )
+            {
+                return Err((
+                    ErrorCode::InvalidState,
+                    "popup window content cannot contain inputs or overlays",
+                ));
+            }
+            let popup = popup
+                || matches!(
+                    node.element,
+                    Element::Overlay {
+                        surface: OverlaySurface::Window,
+                        ..
+                    }
+                );
             if node.parent != parent {
                 return Err((
                     ErrorCode::InvalidState,
@@ -245,7 +276,7 @@ impl Model {
             pending.extend(
                 node.children
                     .iter()
-                    .map(|child| (*child, Some(id), depth + 1)),
+                    .map(|child| (*child, Some(id), depth + 1, overlays, popup)),
             );
         }
         if seen.len() != self.nodes.len() {

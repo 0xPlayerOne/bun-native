@@ -5,6 +5,7 @@
 
 use super::reference::{self, Model};
 use super::*;
+use crate::{Dimension, OverlayAnchor, OverlayNavigation, OverlaySurface};
 
 struct Rng(u64);
 impl Rng {
@@ -48,12 +49,46 @@ fn element(rng: &mut Rng, kind: Option<&Element>) -> Element {
         Some(Element::Box { .. }) if !rng.chance(10) => 0,
         Some(Element::Text { .. }) if !rng.chance(10) => 1,
         Some(Element::Input { .. }) if !rng.chance(10) => 2,
-        _ => rng.below(3),
+        Some(Element::Split { .. }) if !rng.chance(10) => 3,
+        Some(Element::Overlay { .. }) if !rng.chance(10) => 4 + rng.below(2),
+        _ => rng.below(6),
     };
     match pick {
         0 => box_element(),
         1 => text(&label),
-        _ => input(&label),
+        2 => input(&label),
+        3 => Element::Split {
+            ratio: 0.5,
+            min_size: 0.,
+            style: Style::default(),
+        },
+        // A layer, or a popup window surface that keeps all of its content
+        // out of inputs and further overlays.
+        n => overlay_element(n == 5),
+    }
+}
+
+fn overlay_element(window: bool) -> Element {
+    let mut style = Style::default();
+    if window {
+        style.width = Some(Dimension::Pixels(100.));
+        style.height = Some(Dimension::Pixels(100.));
+    }
+    Element::Overlay {
+        anchor: if window {
+            OverlayAnchor::Parent
+        } else {
+            OverlayAnchor::default()
+        },
+        modal: false,
+        autofocus: false,
+        navigation: OverlayNavigation::default(),
+        surface: if window {
+            OverlaySurface::Window
+        } else {
+            OverlaySurface::Layer
+        },
+        style,
     }
 }
 

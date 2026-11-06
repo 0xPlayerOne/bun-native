@@ -3,6 +3,7 @@
 import {
   DEFAULT_LIMITS,
   filesystemRootsFromArguments,
+  processesFromArguments,
   encodeFrame,
   FrameDecoder,
   parseCommand,
@@ -83,7 +84,9 @@ for await (const chunk of Bun.stdin.stream()) {
           clipboard_write: process.argv.includes('--bun-native-allow-clipboard-write'),
           global_shortcuts: process.argv.includes('--bun-native-allow-global-shortcuts'),
           notifications: process.argv.includes('--bun-native-allow-notifications'),
+          drag_drop: process.argv.includes('--bun-native-allow-drag-drop'),
           filesystem_roots: filesystemRootsFromArguments(process.argv),
+          processes: processesFromArguments(process.argv),
         },
         protocol: PROTOCOL_VERSION,
         capabilities: [...REQUIRED_CAPABILITIES],

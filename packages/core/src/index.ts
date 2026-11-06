@@ -4,7 +4,12 @@ export { ProtocolError } from '@bun-native/protocol'
 export { NativeCommandError, NativeHostExitError } from '@bun-native/runtime'
 export type { NativeHostExitDiagnostic, NativeHostExitReason } from '@bun-native/runtime'
 export { NativeServiceError } from './services.ts'
+export { DECORATION_FIELDS, SPLIT_DIVIDER } from '@bun-native/protocol'
+export { defaultTheme, defineTheme } from './theme.ts'
+export type { ResolvedStyle, Theme, ThemedStyle, ThemeTokens } from './theme.ts'
+export { onDismiss, type DismissEvent } from './overlays.ts'
 export type {
+  DisplayChangeEvent,
   NativeDisplaySnapshot,
   NativeClipboardText,
   ServiceCapabilities,
@@ -18,6 +23,7 @@ export type {
   NativeGlobalShortcut,
 } from './shortcuts.ts'
 export type { NativeNotification, NotificationEvent, NotificationOptions } from './notifications.ts'
+export type { DropTargetEvent, NativeDropTarget, NativeDroppedItem } from './drops.ts'
 export type {
   FileGrantOptions,
   NativeDirectoryPage,
@@ -25,9 +31,19 @@ export type {
   NativeFileGrant,
   NativeFileStat,
 } from './files.ts'
+export type { NativeProcess, NativeProcessExit, ProcessEvent, ProcessOptions } from './processes.ts'
+export type {
+  FileDialogFilter,
+  OpenDialogOptions,
+  OpenDialogResult,
+  SaveDialogOptions,
+  SaveDialogResult,
+} from './dialogs.ts'
 export type {
   ApplicationOptions,
   ClickEvent,
+  ContainerKind,
+  DismissRequestEvent,
   Element,
   ElementKind,
   EventContext,
@@ -48,6 +64,7 @@ export type {
   NativeCapability,
   NativeNode,
   NativeWindow,
+  ScrollOffset,
   Style,
   WindowOptions,
 } from './types.ts'

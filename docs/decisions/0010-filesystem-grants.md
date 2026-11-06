@@ -2,8 +2,10 @@
 
 Status: accepted; Linux implementation verified locally in development and
 inspected AOT with a development-profile host on an isolated Xvfb display.
-Hosted release-host qualification runs in Native Linux. Other platforms report
-the service unavailable.
+Hosted release-host qualification runs in Native Linux. The macOS backend is
+type-checked and linted locally for `aarch64-apple-darwin` and its walk logic
+runs in the Linux unit tests; its only macOS execution evidence is the hosted
+`macos-15` Native Platforms job. Windows reports the service unavailable.
 
 Date: 2026-11-05.
 
@@ -54,6 +56,25 @@ outside the grant; `stat` and `list` report them as `symlink`, and `remove`
 removes the link entry itself. Without `openat2` (Linux before 5.6) the host
 does not advertise `filesystem_grants_v1`.
 
+macOS has no `openat2`. Its host walks the validated path one name at a time:
+each step is `openat(dirfd, name, O_NOFOLLOW | O_NOFOLLOW_ANY | O_CLOEXEC |
+O_NOCTTY)` relative to the descriptor the previous step returned, starting at
+the grant's `O_RDONLY | O_DIRECTORY` descriptor, and every intermediate step
+adds `O_DIRECTORY`. Validation already forbids `/`, `.`, `..` and empty names,
+so a step can only name a direct child of a directory reached from the grant;
+`O_NOFOLLOW` refuses a link as that child, and `O_NOFOLLOW_ANY` (macOS 11 and
+later) makes the kernel refuse a link anywhere in the step's resolution as
+defence in depth. A link opened as a directory that reports `ENOTDIR` is
+re-checked with `fstatat(AT_SYMLINK_NOFOLLOW)` and reported as `path_denied`
+like every other link. As with `RESOLVE_BENEATH`, which guards only `..` and
+absolute names, a directory renamed out of the tree while a walk holds its
+descriptor remains the directory that was opened; no path text is resolved
+again. Differences from Linux: intermediate directories must be readable (no
+`O_PATH`), and names resolve as the volume does, so a case-insensitive APFS
+volume matches `A.TXT` to `a.txt` within the grant. Both backends share the
+operation code, so wire semantics and error codes are identical. The capability
+record names the backend: `openat2` on Linux, `openat_walk` on macOS.
+
 Operations are `stat`, `list` (pages of 64 entries sorted by UTF-8 bytes, with
 an `after` cursor and a count of unrepresentable names), `read` and `write` of
 at most 16,384 bytes per request (base64 on the wire), `create_directory` and
@@ -98,5 +119,10 @@ mismatched result shapes. The native test
 runs the real host in development and AOT on an isolated display, checks every
 effect independently with `node:fs` on a private tree, verifies that a sibling
 directory is untouched, and drives the private runtime directly to show the
-host rejects foreign, stale and reused grant IDs. macOS and Windows remain
-unavailable until they have an equivalent kernel-enforced confinement.
+host rejects foreign, stale and reused grant IDs. On Linux the unit suite runs
+against both the `openat2` backend and the macOS walk (without
+`O_NOFOLLOW_ANY`, which Linux lacks). The Native Platforms `macos-15` job runs
+the same Rust unit tests and the same native test in development and inspected
+AOT; that hosted job is the only macOS execution evidence, and no local Mac
+has run it. Windows remains unavailable until it has an equivalent
+kernel-enforced confinement.

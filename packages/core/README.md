@@ -15,35 +15,41 @@ BUN_NATIVE_HOST="$PWD/target/release/bun-native-host" bun examples/native-window
 The explicit executable path is trusted configuration. A successful handshake checks protocol compatibility; it does not authenticate an arbitrary executable. `app.capabilities` is a frozen, readonly list containing the required `tree`, `input_revisions`, `layout_v1`, `interactions_v1` and `window_display_v1` features. Launch fails if the host cannot negotiate all five. Feature availability does not grant OS-service authority; see [the trust boundary](../../docs/decisions/0003-bridge-security.md).
 
 ```ts
-import { createApplication } from '@bun-native/core'
+import { createApplication } from "@bun-native/core";
 
-const executable = process.env['BUN_NATIVE_HOST']
-if (!executable) throw new Error('Set an absolute BUN_NATIVE_HOST path')
+const executable = process.env["BUN_NATIVE_HOST"];
+if (!executable) throw new Error("Set an absolute BUN_NATIVE_HOST path");
 
-const app = await createApplication({ executable })
+const app = await createApplication({ executable });
 try {
-  const window = await app.openWindow({ title: 'Counter', width: 560, height: 380 })
+  const window = await app.openWindow({
+    title: "Counter",
+    width: 560,
+    height: 380,
+  });
   const { label, button } = await window.batch((batch) => {
     batch.set(window.root, {
-      kind: 'box',
-      style: { direction: 'column', gap: 12, padding: 24 },
-    })
-    const label = batch.create({ kind: 'text', text: 'Clicks: 0' })
-    const button = batch.create({ kind: 'button', text: 'Increment' })
-    batch.append(window.root, label)
-    batch.append(window.root, button)
-    return { label, button }
-  })
-  let clicks = 0
+      kind: "box",
+      style: { direction: "column", gap: 12, padding: 24 },
+    });
+    const label = batch.create({ kind: "text", text: "Clicks: 0" });
+    const button = batch.create({ kind: "button", text: "Increment" });
+    batch.append(window.root, label);
+    batch.append(window.root, button);
+    return { label, button };
+  });
+  let clicks = 0;
   window.onClick(button, async (event) => {
-    if (event.signal.aborted) return
-    clicks += 1
-    await window.batch((batch) => batch.set(label, { kind: 'text', text: `Clicks: ${clicks}` }))
-  })
-  await window.closed
+    if (event.signal.aborted) return;
+    clicks += 1;
+    await window.batch((batch) =>
+      batch.set(label, { kind: "text", text: `Clicks: ${clicks}` }),
+    );
+  });
+  await window.closed;
 } finally {
-  await app.shutdown()
-  await app.closed
+  await app.shutdown();
+  await app.closed;
 }
 ```
 
@@ -76,9 +82,13 @@ To replace an input intentionally, read its revision inside the synchronous batc
 
 ```ts
 await window.batch((batch) => {
-  const current = window.input(input)
-  batch.set(input, { kind: 'input', value: 'Replacement', placeholder: 'Type here' }, current.revision)
-})
+  const current = window.input(input);
+  batch.set(
+    input,
+    { kind: "input", value: "Replacement", placeholder: "Type here" },
+    current.revision,
+  );
+});
 ```
 
 The native side rejects a replacement if a newer edit wins the race before commit. Handle that stale-revision error according to the application's intent; do not retry blindly with an old value. An accepted explicit replacement advances the input revision even if its text is unchanged. An input callback already describes a native edit: update application state without echoing the same text back into the native input.
@@ -88,13 +98,18 @@ The native side rejects a replacement if a newer edit wins the race before commi
 `window.on(node, type, listener, { capture?: boolean })` registers one binding for that node, event type and phase. It accepts any owned node, including an ancestor box. A new binding replaces the previous binding in that exact slot; it does not replace another event type or phase. The returned unsubscribe is idempotent and cannot remove a replacement. `onClick(button, listener)` and `onInput(input, listener)` are target-specific bubble conveniences using the same registry.
 
 ```ts
-window.on(window.root, 'key_down', (event) => {
-  console.log(event.key, event.modifiers.control, event.phase)
-}, { capture: true })
+window.on(
+  window.root,
+  "key_down",
+  (event) => {
+    console.log(event.key, event.modifiers.control, event.phase);
+  },
+  { capture: true },
+);
 
-window.on(button, 'pointer_up', (event) => {
-  console.log(event.button, event.x, event.y)
-})
+window.on(button, "pointer_up", (event) => {
+  console.log(event.button, event.x, event.y);
+});
 ```
 
 | Type                         | Additional fields                      | Meaning                                                                  |
@@ -145,11 +160,11 @@ No per-request option or protocol message can grant access. Both framework
 adapters use this same public window method.
 
 `app.serviceCapabilities.windowDisplay` reports implementation availability,
-the negotiated permission and `owned_window` scope. The system menu, dialog,
-drag/drop and PTY/process entries explicitly report `unavailable` /
-`not_implemented`; they have no placeholder callable methods. Clipboard, global
-shortcut, notification and filesystem-grant entries report `available` only when
-the host negotiates their capability, and `unavailable` /
+the negotiated permission and `owned_window` scope. The system menu and message
+dialog entries explicitly report `unavailable` / `not_implemented`; they have no
+placeholder callable methods. Clipboard, global shortcut, file dialog,
+notification, drag/drop, filesystem-grant and PTY/process entries report
+`available` only when the host negotiates their capability, and `unavailable` /
 `unsupported_platform` otherwise. This policy constrains the selected native
 host, not trusted Bun code's ordinary OS APIs.
 
@@ -198,14 +213,17 @@ inspected AOT; this does not qualify Wayland, macOS or Windows.
 ### Global shortcuts
 
 ```ts
-const app = await createApplication({ executable, permissions: { globalShortcuts: 'allow' } })
-const window = await app.openWindow({ title: 'Launcher' })
+const app = await createApplication({
+  executable,
+  permissions: { globalShortcuts: "allow" },
+});
+const window = await app.openWindow({ title: "Launcher" });
 const shortcut = await window.registerGlobalShortcut(
-  { key: 'k', control: true, alt: true },
-  (event) => console.log('activated', event.sequence)
-)
+  { key: "k", control: true, alt: true },
+  (event) => console.log("activated", event.sequence),
+);
 // Later: delivery stops at once; the promise resolves after the OS release.
-await shortcut.unregister()
+await shortcut.unregister();
 ```
 
 `window.registerGlobalShortcut(options, listener)` registers an OS-wide
@@ -232,17 +250,21 @@ See [ADR 0008](../../docs/decisions/0008-native-global-shortcuts.md).
 ### Notifications
 
 ```ts
-const app = await createApplication({ executable, permissions: { notifications: 'allow' } })
-const window = await app.openWindow({ title: 'Builds' })
+const app = await createApplication({
+  executable,
+  permissions: { notifications: "allow" },
+});
+const window = await app.openWindow({ title: "Builds" });
 const notification = await window.postNotification(
-  { title: 'Build finished', body: 'All tests passed' },
+  { title: "Build finished", body: "All tests passed" },
   (event) => {
-    if (event.type === 'notification_activated') window.root /* focus your UI */
-    else console.log('dismissed', event.reason)
-  }
-)
+    if (event.type === "notification_activated")
+      window.root; /* focus your UI */
+    else console.log("dismissed", event.reason);
+  },
+);
 // Later: delivery stops at once; the promise resolves after the server closes it.
-await notification.withdraw()
+await notification.withdraw();
 ```
 
 `window.postNotification(options, listener)` posts a plain-text desktop
@@ -272,32 +294,110 @@ are live per application. See
 const app = await createApplication({
   executable,
   permissions: {
-    filesystemRoots: [{ id: 'workspace', path: '/home/me/project', access: 'read_write' }],
+    filesystemRoots: [
+      { id: "workspace", path: "/home/me/project", access: "read_write" },
+    ],
   },
-})
-const window = await app.openWindow({ title: 'Workspace' })
-const grant = await window.openFileGrant('workspace', { access: 'read_write' })
-await grant.write('notes/today.md', new TextEncoder().encode('# Today\n'), { mode: 'truncate' })
-const { bytes } = await grant.read('notes/today.md')
-await grant.close()
+});
+const window = await app.openWindow({ title: "Workspace" });
+const grant = await window.openFileGrant("workspace", { access: "read_write" });
+await grant.write("notes/today.md", new TextEncoder().encode("# Today\n"), {
+  mode: "truncate",
+});
+const { bytes } = await grant.read("notes/today.md");
+await grant.close();
 ```
 
 `window.openFileGrant(root, { access })` opens a scoped grant on a directory
 named in the immutable `filesystemRoots` launch permission, at no more than its
 launch access (default `read`). Paths are relative `/`-joined names; `..`,
 absolute paths and empty or control-character names are rejected before any
-native request, and the Linux host resolves every path beneath the granted
-directory with `openat2` without following symbolic links. The frozen
+native request, and the host resolves every path beneath the granted
+directory without following symbolic links: Linux with `openat2`, macOS one
+name at a time with `openat(O_NOFOLLOW | O_NOFOLLOW_ANY)`. The frozen
 `NativeFileGrant` offers `stat`, `list` (pages of 64), `read` and `write`
 (16 KiB chunks), `createDirectory`, `remove` and an idempotent `close()`.
 Closing the grant, its window or the application revokes it and withholds
-late results. Other targets report `unavailable` / `unsupported_platform`.
+late results. Windows and other targets report `unavailable` /
+`unsupported_platform`.
 See the [service contract](../../docs/native-services.md#filesystem-grants).
+
+### Owned processes
+
+```ts
+const app = await createApplication({
+  executable,
+  permissions: { processes: [{ id: 'git', executable: '/usr/bin/git' }] },
+})
+const window = await app.openWindow({ title: 'Status' })
+const child = await window.spawnProcess(
+  'git',
+  { args: ['status', '--short'], env: { PATH: '/usr/bin:/bin' } },
+  (event) => {
+    if (event.type === 'process_output') console.log(new TextDecoder().decode(event.bytes))
+    else console.log('exit', event.exit)
+  }
+)
+```
+
+`window.spawnProcess(id, options, listener)` starts an executable named in the
+immutable `processes` launch permission. Arguments are an explicit array and
+`env` is the complete environment; there is no shell or command string. A
+working directory comes only from a live file grant of the same window, and
+`terminal: { columns, rows }` runs the child on its own pseudo-terminal. Output
+arrives in order in chunks of at most 16 KiB, each acknowledged when its
+callback settles, and the exit event is always last. The frozen
+`NativeProcess` offers `write`, `closeInput`, `resize`, `signal` (to the whole
+process group) and an idempotent `release()`. Releasing it, closing its window
+or stopping the application kills and reaps its group. Other targets report
+`unavailable` / `unsupported_platform`. See the
+[service contract](../../docs/native-services.md#owned-processes).
+
+### File dialogs
+
+```ts
+const app = await createApplication({
+  executable,
+  permissions: { fileDialogs: "allow" },
+});
+const window = await app.openWindow({ title: "Editor" });
+const controller = new AbortController();
+const opened = await window.showOpenDialog(
+  {
+    title: "Open",
+    select: "files",
+    filters: [{ name: "Text", patterns: ["*.txt"] }],
+  },
+  { signal: controller.signal },
+);
+if (opened.kind === "selected") console.log(opened.paths);
+const saved = await window.showSaveDialog({
+  title: "Save as",
+  name: "notes.txt",
+});
+if (saved.kind === "selected") console.log(saved.path);
+```
+
+`window.showOpenDialog(options, { signal })` (`select`: `file`, `files` or
+`directory`) and `window.showSaveDialog(options, { signal })` show the
+operating system's file chooser, owned by the window. The `fileDialogs` launch
+permission defaults to `deny`. On Linux with a D-Bus session bus
+`app.serviceCapabilities.fileDialogs` reports `available`, the permission,
+`owned_window` scope and backend `xdg_desktop_portal`; other targets report
+`unavailable` / `unsupported_platform`. A missing portal rejects with
+`NativeServiceError` code `service_unavailable`.
+
+Results are frozen `{ kind: 'selected', paths }` / `{ kind: 'selected', path }`
+or `{ kind: 'cancelled' }`. **The paths are data, not filesystem authority**:
+nothing is opened, created or granted, and turning a path into a scoped grant
+is a separate operation. A window has at most one file dialog. Aborting the
+signal, closing the window or shutting down closes the OS dialog. See
+[ADR 0013](../../docs/decisions/0013-native-file-dialogs.md).
 
 ## Supported scope
 
-The initial elements are `box`, `text`, `button` and single-line `input`. `Style` explicitly supports `direction`, `gap`, `padding`, `width`, `height`, `min_width`, `max_width`, `min_height`, `max_height`, `flex_grow`, `flex_shrink`, `align_items`, `justify_content`, `overflow`, `background`, `color` and `font_size`. Dimensions are numeric logical native pixels, with `fill` available for width and height; colors are unsigned 24-bit RGB values. These fields are validated and bounded by the [shared layout contract](../../docs/native-layout.md). Scroll overflow is accepted only for `box` containers; leaf element types also enforce this restriction. Styles are shared by every framework adapter.
+The elements are `box`, `text`, `button`, single-line `input` and, when the host advertises `split_v1`, a two-pane `split` with a host-owned draggable divider. `Style` explicitly supports `direction`, `gap`, `padding`, `width`, `height`, `min_width`, `max_width`, `min_height`, `max_height`, `flex_grow`, `flex_shrink`, `align_items`, `justify_content`, `overflow`, `background`, `color` and `font_size`, plus `border_width`, `border_color`, `corner_radius`, `opacity` and `font_weight` when the host advertises `style_decoration_v1`. `defineTheme` and `defaultTheme` resolve named color, spacing, radius and font-size tokens to these plain values in JavaScript. Dimensions are numeric logical native pixels, with `fill` available for width and height; colors are unsigned 24-bit RGB values. These fields are validated and bounded by the [shared layout contract](../../docs/native-layout.md). Scroll overflow is accepted only for `box` and `overlay` containers; leaf element types also enforce this restriction. Hosts advertising `overlays_v1` accept the `overlay` container and `scroll_anchor_v1` the `scroll_anchor` style field; `onDismiss(window, overlay, listener)` reports Escape and backdrop presses. See the [overlay contract](../../docs/native-overlays.md). Styles are shared by every framework adapter.
 
-There is no DOM, HTML, CSS parser, browser navigation, WebView, CEF, React DOM or automatic compatibility with web component libraries. Native service APIs for files, processes, menus and other desktop integrations remain separate roadmap work. The current renderer does not claim complete scrolling, IME, focus traversal or accessibility coverage. See [the native host limitations](../../native/gpui-host/README.md) and [testing evidence](../../docs/testing.md) before treating a platform as supported.
+There is no DOM, HTML, CSS parser, browser navigation, WebView, CEF, React DOM or automatic compatibility with web component libraries. Native service APIs for menus, dialogs, drag/drop and other desktop integrations remain separate roadmap work. The current renderer does not claim complete scrolling, IME, focus traversal or accessibility coverage. See [the native host limitations](../../native/gpui-host/README.md) and [testing evidence](../../docs/testing.md) before treating a platform as supported.
 
-Protocol 9 requires shared layout, interactions and immutable service policy and replaces protocol 8 without a compatibility layer. During this private experimental phase, pin the application packages and native host together at the tested source revision. A package build or type check is not native GUI acceptance; a bundled executable is not proof of Bun machine-code AOT. [ADR 0004](../../docs/decisions/0004-public-api.md) records the API boundary and its tradeoffs.
+Protocol 11 requires shared layout, interactions and immutable service policy and replaces earlier protocols without a compatibility layer. During this private experimental phase, pin the application packages and native host together at the tested source revision. A package build or type check is not native GUI acceptance; a bundled executable is not proof of Bun machine-code AOT. [ADR 0004](../../docs/decisions/0004-public-api.md) records the API boundary and its tradeoffs.

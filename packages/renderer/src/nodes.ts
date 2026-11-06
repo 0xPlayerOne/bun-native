@@ -1,8 +1,12 @@
 import {
   NativeStateError,
   UnsupportedFeatureError,
+  type DropTargetEvent,
   type Element,
   type InputState,
+  type NativeBatch,
+  type NativeDropTarget,
+  type NativeNode,
   type Style,
 } from '@bun-native/core'
 import { captureInput, type InputIntent } from './input-intent.ts'
@@ -25,6 +29,12 @@ export interface Owner {
   changed(): void
   detached(node: Node): void
   input(node: Node): InputState
+  /** Commit staged changes, then send one request batch for the committed handle. */
+  request(node: Node, send: (batch: NativeBatch, handle: NativeNode) => void): Promise<void>
+  registerDropTarget(
+    node: Node,
+    listener: (event: DropTargetEvent) => void | Promise<void>
+  ): Promise<NativeDropTarget>
 }
 
 type Properties = EventListeners & {
@@ -33,7 +43,17 @@ type Properties = EventListeners & {
   value?: string | InputIntent
   placeholder?: string
   disabled?: boolean
+  ratio?: number
+  min_size?: number
+  anchor?: 'window' | 'parent'
+  modal?: boolean
+  autofocus?: boolean
+  navigation?: 'tab' | 'menu'
+  surface?: 'layer' | 'window'
+  readOnly?: boolean
 }
+
+const isContainer = (kind: Node['kind']) => kind === 'box' || kind === 'split' || kind === 'overlay'
 
 const nodes = new WeakSet<object>()
 
@@ -90,7 +110,14 @@ export function asNode(value: RendererNode): Node {
 }
 
 export function createElement(tag: string): Node {
-  if (tag !== 'box' && tag !== 'text' && tag !== 'button' && tag !== 'input')
+  if (
+    tag !== 'box' &&
+    tag !== 'text' &&
+    tag !== 'button' &&
+    tag !== 'input' &&
+    tag !== 'split' &&
+    tag !== 'overlay'
+  )
     throw new UnsupportedFeatureError('native-element:' + tag)
   return new Node(tag)
 }
@@ -251,7 +278,7 @@ function adopt(node: Node, owner: Owner | undefined): void {
 export function insertNode(parent: Node, node: Node, anchor?: Node): void {
   if (parent.kind === 'input' || parent.kind === 'text-node')
     throw new NativeStateError('invalid_state', 'This native element cannot have children')
-  if (parent.kind !== 'box' && node.kind !== 'text-node')
+  if (!isContainer(parent.kind) && node.kind !== 'text-node')
     throw new NativeStateError('invalid_state', 'Text and button children must be text')
   if (anchor && anchor.parent !== parent)
     throw new NativeStateError('invalid_handle', 'Insertion anchor belongs to another parent')
@@ -346,10 +373,54 @@ export function setProperty(node: Node, name: string, value: unknown): void {
       else throw new TypeError('Native input placeholder must be a string')
       break
     case 'disabled':
-      if (node.kind !== 'button') throw new TypeError('Only buttons accept disabled')
+      if (node.kind !== 'button' && node.kind !== 'input')
+        throw new TypeError('Only buttons and inputs accept disabled')
       if (value === undefined) delete props.disabled
       else if (typeof value === 'boolean') props.disabled = value
       else throw new TypeError('Native disabled must be boolean')
+      break
+    case 'ratio':
+    case 'min_size':
+      if (node.kind !== 'split') throw new TypeError('Only splits accept ' + name)
+      if (value === undefined) delete props[name]
+      else if (typeof value === 'number') props[name] = value
+      else throw new TypeError(`Native split ${name} must be a number`)
+      break
+    case 'anchor':
+      if (node.kind !== 'overlay') throw new TypeError('Only overlays accept anchor')
+      if (value === undefined) delete props.anchor
+      else if (value === 'window' || value === 'parent') props.anchor = value
+      else throw new TypeError('Native overlay anchor must be window or parent')
+      break
+    case 'modal':
+      if (node.kind !== 'overlay') throw new TypeError('Only overlays accept modal')
+      if (value === undefined) delete props.modal
+      else if (typeof value === 'boolean') props.modal = value
+      else throw new TypeError('Native modal must be boolean')
+      break
+    case 'autofocus':
+      if (node.kind !== 'overlay') throw new TypeError('Only overlays accept autofocus')
+      if (value === undefined) delete props.autofocus
+      else if (typeof value === 'boolean') props.autofocus = value
+      else throw new TypeError('Native autofocus must be boolean')
+      break
+    case 'navigation':
+      if (node.kind !== 'overlay') throw new TypeError('Only overlays accept navigation')
+      if (value === undefined) delete props.navigation
+      else if (value === 'tab' || value === 'menu') props.navigation = value
+      else throw new TypeError('Native overlay navigation must be tab or menu')
+      break
+    case 'surface':
+      if (node.kind !== 'overlay') throw new TypeError('Only overlays accept surface')
+      if (value === undefined) delete props.surface
+      else if (value === 'layer' || value === 'window') props.surface = value
+      else throw new TypeError('Native overlay surface must be layer or window')
+      break
+    case 'readOnly':
+      if (node.kind !== 'input') throw new TypeError('Only inputs accept readOnly')
+      if (value === undefined) delete props.readOnly
+      else if (typeof value === 'boolean') props.readOnly = value
+      else throw new TypeError('Native readOnly must be boolean')
       break
     default:
       throw new UnsupportedFeatureError('native-property:' + name)
@@ -369,9 +440,12 @@ export type Snapshot = Readonly<{
 }>
 
 function leafStyle(style: Style): NonNullable<Extract<Element, { kind: 'text' }>['style']> {
-  const { overflow, ...rest } = style
-  if (overflow !== undefined && overflow !== 'visible' && overflow !== 'hidden')
-    throw new TypeError('Only native boxes support scrolling')
+  const { overflow, scroll_anchor, ...rest } = style
+  if (
+    scroll_anchor !== undefined ||
+    (overflow !== undefined && overflow !== 'visible' && overflow !== 'hidden')
+  )
+    throw new TypeError('Only native boxes and overlays support scrolling')
   return { ...rest, ...(overflow === undefined ? {} : { overflow }) }
 }
 
@@ -438,15 +512,37 @@ function childList(node: Node): readonly Node[] {
 
 function build(node: Node, parent: Node | undefined): Snapshot {
   const props = node.properties
-  const style = props.style && node.kind !== 'box' ? { style: leafStyle(props.style) } : {}
+  const style = props.style && !isContainer(node.kind) ? { style: leafStyle(props.style) } : {}
   let element: Element
   if (node.kind === 'box')
     element = { kind: 'box', ...(props.style ? { style: { ...props.style } } : {}) }
+  else if (node.kind === 'split')
+    // Core validation rejects gap and alignment on a split.
+    element = {
+      kind: 'split',
+      ...(props.ratio === undefined ? {} : { ratio: props.ratio }),
+      ...(props.min_size === undefined ? {} : { min_size: props.min_size }),
+      ...(props.style ? { style: leafStyle(props.style) } : {}),
+    }
+  else if (node.kind === 'overlay')
+    // Core validation rejects a modal parent-anchored overlay and an
+    // unsized or window-anchored popup surface.
+    element = {
+      kind: 'overlay',
+      ...(props.anchor === undefined ? {} : { anchor: props.anchor }),
+      ...(props.modal === undefined ? {} : { modal: props.modal }),
+      ...(props.autofocus === undefined ? {} : { autofocus: props.autofocus }),
+      ...(props.navigation === undefined ? {} : { navigation: props.navigation }),
+      ...(props.surface === undefined ? {} : { surface: props.surface }),
+      ...(props.style ? { style: { ...props.style } } : {}),
+    } as Element
   else if (node.kind === 'input')
     element = {
       kind: 'input',
       value: typeof props.value === 'string' ? props.value : (props.value?.value ?? ''),
       ...(props.placeholder === undefined ? {} : { placeholder: props.placeholder }),
+      ...(props.disabled ? { disabled: true } : {}),
+      ...(props.readOnly ? { read_only: true } : {}),
       ...style,
     }
   else {
@@ -470,7 +566,7 @@ function build(node: Node, parent: Node | undefined): Snapshot {
   }
   return {
     element,
-    children: node.kind === 'box' ? childList(node) : [],
+    children: isContainer(node.kind) ? childList(node) : [],
     parent,
     events: listeners(props),
     initialValue: typeof props.value === 'string' ? props.value : undefined,

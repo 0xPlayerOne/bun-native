@@ -1,6 +1,6 @@
 /**
- * Real filesystem grant qualification against the native host on an isolated
- * X11 display. Every effect is checked independently through node:fs on a
+ * Real filesystem grant qualification against the native host: on Linux on an
+ * isolated X11 display, on macOS in the runner's own GUI session. Every effect is checked independently through node:fs on a
  * private temporary tree, including a sibling directory the grants must never
  * reach. Raw protocol checks drive the same host through the private runtime
  * to prove foreign, stale and reused grant handles are rejected natively.
@@ -14,18 +14,22 @@ import {
   mkdtempSync,
   readFileSync,
   readdirSync,
+  realpathSync,
   renameSync,
   rmSync,
   statSync,
   symlinkSync,
   writeFileSync,
 } from 'node:fs'
-import { tmpdir } from 'node:os'
+import { release, tmpdir } from 'node:os'
 import { isAbsolute, join } from 'node:path'
 
 const output = process.env['BUN_NATIVE_FILESYSTEM_EVIDENCE']
 const executable = process.env['BUN_NATIVE_HOST']
 const mode = process.env['BUN_NATIVE_FILESYSTEM_MODE']
+const macos = process.platform === 'darwin'
+if (process.platform !== 'linux' && !macos)
+  throw new Error('Filesystem grants are qualified only on Linux and macOS')
 if (
   !output ||
   !isAbsolute(output) ||
@@ -33,11 +37,11 @@ if (
   !executable ||
   !isAbsolute(executable) ||
   (mode !== 'development' && mode !== 'aot') ||
-  !process.env['DISPLAY'] ||
-  process.env['WAYLAND_DISPLAY']
+  (!macos && (!process.env['DISPLAY'] || process.env['WAYLAND_DISPLAY']))
 )
   throw new Error('An isolated X11 display, evidence directory, host and mode are required')
 const host = executable
+const backend = macos ? 'openat_walk' : 'openat2'
 
 const started = performance.now()
 const outcomes: Record<string, unknown> = {}
@@ -50,7 +54,8 @@ const rejectsWith = (service: string, code: string) => (error: unknown) =>
   error instanceof NativeServiceError && error.service === service && error.code === code
 const denied = (code: string) => rejectsWith('filesystem_grants', code)
 
-const base = mkdtempSync(join(tmpdir(), 'bun-native-grants-'))
+// macOS reaches its temporary directory through the /var link; name the real tree.
+const base = realpathSync(mkdtempSync(join(tmpdir(), 'bun-native-grants-')))
 const work = join(base, 'work')
 const docs = join(base, 'docs')
 const outside = join(base, 'outside')
@@ -75,7 +80,7 @@ async function deniedByDefault() {
       availability: 'available',
       roots: {},
       scope: 'owned_window',
-      backend: 'openat2',
+      backend,
     })
     const window = await app.openWindow({ title: 'Grant denial' })
     await assert.rejects(window.openFileGrant('work'), denied('permission_denied'))
@@ -185,7 +190,7 @@ async function lifecycle() {
       availability: 'available',
       roots: { work: { access: 'read_write' }, docs: { access: 'read' } },
       scope: 'owned_window',
-      backend: 'openat2',
+      backend,
     })
     const owner = await app.openWindow({ title: 'Grant owner', width: 360, height: 200 })
     await assert.rejects(owner.openFileGrant('other'), denied('permission_denied'))
@@ -343,8 +348,10 @@ writeFileSync(
       mode,
       bun: process.versions.bun,
       revision: Bun.revision,
-      kernel: readFileSync('/proc/sys/kernel/osrelease', 'utf8').trim(),
-      display: 'isolated Xvfb with openbox',
+      platform: process.platform,
+      backend,
+      kernel: macos ? release() : readFileSync('/proc/sys/kernel/osrelease', 'utf8').trim(),
+      display: macos ? 'hosted macOS runner GUI session' : 'isolated Xvfb with openbox',
       filesystem: 'private temporary tree, independently checked with node:fs',
       outcomes,
     },
