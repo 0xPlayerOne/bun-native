@@ -143,7 +143,9 @@ impl TaskDialogs {
                         let sender = sender.clone();
                         move || drop(sender.try_send(Message::Created))
                     };
+                    task_dialog::trace("dialog thread started");
                     let result = task_dialog::show(owner, &spec, &control, created);
+                    task_dialog::trace(&format!("dialog thread result ok={}", result.is_ok()));
                     drop(sender.try_send(Message::Finished(result)));
                 }
             })
@@ -169,11 +171,13 @@ impl TaskDialogs {
         );
         let this = self.clone();
         cx.spawn(async move |cx| {
-            if matches!(receiver.recv().await, Ok(Message::Created)) {
+            let mut next = receiver.recv().await;
+            if matches!(next, Ok(Message::Created)) {
                 cx.update(|cx| this.created(dialog, window, cx));
+                next = receiver.recv().await;
             }
             // A thread that ended without a result reports a failure.
-            let result = match receiver.recv().await {
+            let result = match next {
                 Ok(Message::Finished(result)) => result,
                 _ => Err(io::Error::other("the message dialog thread ended abruptly")),
             };

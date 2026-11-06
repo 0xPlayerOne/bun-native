@@ -26,6 +26,17 @@ use windows_sys::Win32::UI::Controls::{
 };
 use windows_sys::Win32::UI::WindowsAndMessaging::PostMessageW;
 
+/// TEMPORARY hosted-run diagnostics (removed once #239 is verified).
+pub fn trace(line: &str) {
+    use std::io::Write;
+    if let Some(dir) = std::env::var_os("BUN_NATIVE_TASK_DIALOG_EVIDENCE") {
+        let path = std::path::Path::new(&dir).join("host-trace.log");
+        if let Ok(mut file) = std::fs::OpenOptions::new().create(true).append(true).open(path) {
+            let _ = writeln!(file, "{line}");
+        }
+    }
+}
+
 type TaskDialogIndirect =
     unsafe extern "system" fn(*const TASKDIALOGCONFIG, *mut i32, *mut i32, *mut i32) -> i32;
 
@@ -105,6 +116,7 @@ unsafe extern "system" fn callback(
     // SAFETY: `data` is the address of the `Callback` that `show` keeps alive
     // for the whole `TaskDialogIndirect` call that invokes this function.
     let state = unsafe { &*(data as *const Callback<'_>) };
+    trace(&format!("callback notification={notification}"));
     if notification == TDN_CREATED as u32 {
         state
             .control
@@ -189,6 +201,7 @@ pub fn show(
         ..Default::default()
     };
     let mut result = 0i32;
+    trace(&format!("calling TaskDialogIndirect owner={owner} cb={}", size_of::<TASKDIALOGCONFIG>()));
     // SAFETY: `config` and everything it points to (the strings, the button
     // array and `state`) outlive this call, which returns only after the
     // dialog and every callback have ended. The out pointer is valid; the
@@ -202,6 +215,7 @@ pub fn show(
         )
     };
     control.window.store(0, Ordering::SeqCst);
+    trace(&format!("TaskDialogIndirect returned status={status:#x} result={result}"));
     if status < 0 {
         return Err(io::Error::from_raw_os_error(status));
     }
