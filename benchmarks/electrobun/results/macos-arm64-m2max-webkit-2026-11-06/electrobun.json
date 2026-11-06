@@ -1,0 +1,357 @@
+{
+  "schemaVersion": 1,
+  "status": "passed",
+  "startedAt": "2026-11-06T04:38:01.959Z",
+  "command": [
+    "/private/tmp/claude-501/bn-pinbun/bun",
+    "/Users/amf/Developer/.worktrees/bun-native-macos-validation/benchmarks/electrobun/run.ts",
+    "--app",
+    "/private/tmp/claude-501/eb/stable/build/stable-macos-arm64/workload-baseline.app",
+    "--output",
+    "/private/tmp/claude-501/eb/run-full",
+    "--trials",
+    "5"
+  ],
+  "app": {
+    "path": "/private/tmp/claude-501/eb/stable/build/stable-macos-arm64/workload-baseline.app",
+    "bundleBytes": 95645696,
+    "launcherSha256": "612aafd40e4727b542bfa12d289bada96fdd19e3781ff27a4c6d573a5f48e1dc",
+    "bunSha256": "0a2237cdcfa0d16ef501d9acca9f0026309ef348bea7393a64e8d1e3609565cc",
+    "infoPlist": "{\n  \"CFBundleExecutable\" => \"launcher\"\n  \"CFBundleIconFile\" => \"AppIcon\"\n  \"CFBundleIdentifier\" => \"dev.bunnative.baseline\"\n  \"CFBundleName\" => \"workload-baseline\"\n  \"CFBundlePackageType\" => \"APPL\"\n  \"CFBundleVersion\" => \"0.0.1\"\n}"
+  },
+  "toolchain": {
+    "hutchConfig": "// @hutch cli=0.29.0 cottontail=0.7.3\nexport default {\n  scripts: {\n    install: ['hutch', 'install', '--frozen-lockfile'],\n    start: ['hutch', 'electrobun', 'dev'],\n    dev: ['hutch', 'electrobun', 'dev', '--watch'],\n    build: ['hutch', 'electrobun', 'build', '--env=stable'],\n  },\n  electrobun: {\n    version: '2.0.6',\n  },\n}\n"
+  },
+  "target": {
+    "os": "darwin",
+    "osRelease": "macOS 27.2 (26B123)",
+    "architecture": "arm64",
+    "kernel": "27.2.0",
+    "cpuModels": ["Apple M2 Max"],
+    "logicalCpus": 12,
+    "memoryBytes": 68719476736,
+    "load": "{ 13.38 21.77 22.31 }",
+    "power": "Now drawing from 'AC Power'\n -InternalBattery-0 (id=8126563)\t80%; AC attached; not charging present: true",
+    "webKit": "22625.2.8.11.9"
+  },
+  "workload": {
+    "iterations": 1000,
+    "rotations": 1000,
+    "mounts": 100,
+    "rows": 32
+  },
+  "methodology": {
+    "equivalence": "same tree shape (label, button, keyed rows), phase counts and lifecycle as benchmarks/solid/workload.ts, in a DOM. Operation timings are DOM mutation time and time to the next animation frame; neither equals the Bun Native host acknowledgement, so do not compare them across harnesses.",
+    "startup": "controller spawn epoch to the page performance.timeOrigin + viewMounted (first animation frame after mount); not display presentation",
+    "rss": "ps rss of the launcher and its descendants every 20 ms, plus WebKit helper processes (com.apple.WebKit.WebContent/GPU/Networking) that did not exist before the launch. Those helpers are launchd XPC services, so any other application starting WebKit work during the run is also counted: this is a heuristic upper bound.",
+    "failures": "failed launches are retained and excluded; never retried",
+    "firstLaunch": "launch \"first\" is reported separately and excluded from the summary"
+  },
+  "summary": {
+    "spawnToViewMountedMs": {
+      "count": 5,
+      "min": 427,
+      "median": 445,
+      "mean": 447.8,
+      "max": 484,
+      "medianCi95": [427, 484]
+    },
+    "processWallMs": {
+      "count": 5,
+      "min": 37588.30533300001,
+      "median": 37617.20662500002,
+      "mean": 37621.343066600006,
+      "max": 37668.287125,
+      "medianCi95": [37588.30533300001, 37668.287125]
+    },
+    "peakProcessTreeRssMB": {
+      "count": 5,
+      "min": 131.39968,
+      "median": 132.005888,
+      "mean": 131.9337984,
+      "max": 132.399104,
+      "medianCi95": [131.39968, 132.399104]
+    },
+    "peakNewWebKitHelperRssMB": {
+      "count": 5,
+      "min": 87.785472,
+      "median": 88.539136,
+      "mean": 88.71936,
+      "max": 89.86624,
+      "medianCi95": [87.785472, 89.86624]
+    },
+    "peakTotalRssMB": {
+      "count": 5,
+      "min": 218.529792,
+      "median": 219.611136,
+      "mean": 219.758592,
+      "max": 220.889088,
+      "medianCi95": [218.529792, 220.889088]
+    },
+    "signalsSubmissionP50Ms": {
+      "count": 5,
+      "min": 0,
+      "median": 0,
+      "mean": 0,
+      "max": 0,
+      "medianCi95": [0, 0]
+    },
+    "signalsToNextFrameP50Ms": {
+      "count": 5,
+      "min": 17,
+      "median": 17,
+      "mean": 17,
+      "max": 17,
+      "medianCi95": [17, 17]
+    },
+    "rotationSubmissionP50Ms": {
+      "count": 5,
+      "min": 0,
+      "median": 0,
+      "mean": 0,
+      "max": 0,
+      "medianCi95": [0, 0]
+    },
+    "rotationToNextFrameP50Ms": {
+      "count": 5,
+      "min": 17,
+      "median": 17,
+      "mean": 17,
+      "max": 17,
+      "medianCi95": [17, 17]
+    },
+    "lifecycleP50Ms": {
+      "count": 5,
+      "min": 17,
+      "median": 17,
+      "mean": 17,
+      "max": 17,
+      "medianCi95": [17, 17]
+    }
+  },
+  "launches": [
+    {
+      "name": "first",
+      "status": "passed",
+      "exitCode": 0,
+      "wallMs": 37575.180834,
+      "spawnEpochMs": 1793939656027,
+      "peakProcessTreeRssBytes": 131727360,
+      "peakNewWebKitHelperRssBytes": 90554368,
+      "peakTotalRssBytes": 221184000,
+      "newWebKitHelperProcesses": 3,
+      "rssSamples": 485,
+      "spawnToMainEntryMs": 28.359130859375,
+      "spawnToWindowCreatedMs": 229.53662109375,
+      "spawnToViewMountedMs": 398,
+      "report": {
+        "mainProcessStartEpochMs": 1793939656043.308,
+        "mainEntryMs": 12.051041,
+        "windowCreatedMs": 213.228458,
+        "bunVersion": "1.4.4",
+        "bunRevision": "38afee6c84fcf48c0edb2466aa4b27d287a59c30",
+        "startup": {
+          "timeOriginEpochMs": 1793939656417,
+          "scriptStartMs": 5,
+          "viewMountedMs": 8
+        },
+        "workload": {
+          "iterations": 1000,
+          "rotations": 1000,
+          "mounts": 100,
+          "rows": 32,
+          "warmup": 20
+        },
+        "memory": null,
+        "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko)"
+      }
+    },
+    {
+      "name": "trial-1",
+      "status": "passed",
+      "exitCode": 0,
+      "wallMs": 37610.558124999996,
+      "spawnEpochMs": 1793939693653,
+      "peakProcessTreeRssBytes": 131694592,
+      "peakNewWebKitHelperRssBytes": 89194496,
+      "peakTotalRssBytes": 220889088,
+      "newWebKitHelperProcesses": 3,
+      "rssSamples": 577,
+      "spawnToMainEntryMs": 31.54443359375,
+      "spawnToWindowCreatedMs": 238.0517578125,
+      "spawnToViewMountedMs": 445,
+      "report": {
+        "mainProcessStartEpochMs": 1793939693670.0002,
+        "mainEntryMs": 14.544125,
+        "windowCreatedMs": 221.051625,
+        "bunVersion": "1.4.4",
+        "bunRevision": "38afee6c84fcf48c0edb2466aa4b27d287a59c30",
+        "startup": {
+          "timeOriginEpochMs": 1793939694088,
+          "scriptStartMs": 6,
+          "viewMountedMs": 10
+        },
+        "workload": {
+          "iterations": 1000,
+          "rotations": 1000,
+          "mounts": 100,
+          "rows": 32,
+          "warmup": 20
+        },
+        "memory": null,
+        "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko)"
+      }
+    },
+    {
+      "name": "trial-2",
+      "status": "passed",
+      "exitCode": 0,
+      "wallMs": 37588.30533300001,
+      "spawnEpochMs": 1793939731308,
+      "peakProcessTreeRssBytes": 132169728,
+      "peakNewWebKitHelperRssBytes": 88539136,
+      "peakTotalRssBytes": 219611136,
+      "newWebKitHelperProcesses": 3,
+      "rssSamples": 617,
+      "spawnToMainEntryMs": 41.224365234375,
+      "spawnToWindowCreatedMs": 260.325927734375,
+      "spawnToViewMountedMs": 427,
+      "report": {
+        "mainProcessStartEpochMs": 1793939731335.117,
+        "mainEntryMs": 14.107334,
+        "windowCreatedMs": 233.209084,
+        "bunVersion": "1.4.4",
+        "bunRevision": "38afee6c84fcf48c0edb2466aa4b27d287a59c30",
+        "startup": {
+          "timeOriginEpochMs": 1793939731727,
+          "scriptStartMs": 6,
+          "viewMountedMs": 8
+        },
+        "workload": {
+          "iterations": 1000,
+          "rotations": 1000,
+          "mounts": 100,
+          "rows": 32,
+          "warmup": 20
+        },
+        "memory": null,
+        "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko)"
+      }
+    },
+    {
+      "name": "trial-3",
+      "status": "passed",
+      "exitCode": 0,
+      "wallMs": 37668.287125,
+      "spawnEpochMs": 1793939768946,
+      "peakProcessTreeRssBytes": 132399104,
+      "peakNewWebKitHelperRssBytes": 87785472,
+      "peakTotalRssBytes": 219086848,
+      "newWebKitHelperProcesses": 3,
+      "rssSamples": 613,
+      "spawnToMainEntryMs": 74.616943359375,
+      "spawnToWindowCreatedMs": 399.37060546875,
+      "spawnToViewMountedMs": 484,
+      "report": {
+        "mainProcessStartEpochMs": 1793939768991.613,
+        "mainEntryMs": 29.003959,
+        "windowCreatedMs": 353.757667,
+        "bunVersion": "1.4.4",
+        "bunRevision": "38afee6c84fcf48c0edb2466aa4b27d287a59c30",
+        "startup": {
+          "timeOriginEpochMs": 1793939769421,
+          "scriptStartMs": 6,
+          "viewMountedMs": 9
+        },
+        "workload": {
+          "iterations": 1000,
+          "rotations": 1000,
+          "mounts": 100,
+          "rows": 32,
+          "warmup": 20
+        },
+        "memory": null,
+        "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko)"
+      }
+    },
+    {
+      "name": "trial-4",
+      "status": "passed",
+      "exitCode": 0,
+      "wallMs": 37617.20662500002,
+      "spawnEpochMs": 1793939806666,
+      "peakProcessTreeRssBytes": 132005888,
+      "peakNewWebKitHelperRssBytes": 89866240,
+      "peakTotalRssBytes": 220676096,
+      "newWebKitHelperProcesses": 3,
+      "rssSamples": 610,
+      "spawnToMainEntryMs": 31.920654296875,
+      "spawnToWindowCreatedMs": 263.903564453125,
+      "spawnToViewMountedMs": 428,
+      "report": {
+        "mainProcessStartEpochMs": 1793939806683.107,
+        "mainEntryMs": 14.813834,
+        "windowCreatedMs": 246.796584,
+        "bunVersion": "1.4.4",
+        "bunRevision": "38afee6c84fcf48c0edb2466aa4b27d287a59c30",
+        "startup": {
+          "timeOriginEpochMs": 1793939807086,
+          "scriptStartMs": 5,
+          "viewMountedMs": 8
+        },
+        "workload": {
+          "iterations": 1000,
+          "rotations": 1000,
+          "mounts": 100,
+          "rows": 32,
+          "warmup": 20
+        },
+        "memory": null,
+        "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko)"
+      }
+    },
+    {
+      "name": "trial-5",
+      "status": "passed",
+      "exitCode": 0,
+      "wallMs": 37622.358125,
+      "spawnEpochMs": 1793939844330,
+      "peakProcessTreeRssBytes": 131399680,
+      "peakNewWebKitHelperRssBytes": 88211456,
+      "peakTotalRssBytes": 218529792,
+      "newWebKitHelperProcesses": 3,
+      "rssSamples": 623,
+      "spawnToMainEntryMs": 29.72021484375,
+      "spawnToWindowCreatedMs": 346.606201171875,
+      "spawnToViewMountedMs": 455,
+      "report": {
+        "mainProcessStartEpochMs": 1793939844346.696,
+        "mainEntryMs": 13.024167,
+        "windowCreatedMs": 329.910167,
+        "bunVersion": "1.4.4",
+        "bunRevision": "38afee6c84fcf48c0edb2466aa4b27d287a59c30",
+        "startup": {
+          "timeOriginEpochMs": 1793939844776,
+          "scriptStartMs": 6,
+          "viewMountedMs": 9
+        },
+        "workload": {
+          "iterations": 1000,
+          "rotations": 1000,
+          "mounts": 100,
+          "rows": 32,
+          "warmup": 20
+        },
+        "memory": null,
+        "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko)"
+      }
+    }
+  ],
+  "artifacts": {
+    "dmgBytes": 33131223,
+    "appTarZstBytes": 31941739,
+    "appBytesBeforeFirstLaunch": "about 32 MB (du -sh)",
+    "appBytesAfterFirstLaunch": 95645696,
+    "note": "The stable .app grows on first launch; the run record bundleBytes (95,645,696) is the post-launch size"
+  }
+}

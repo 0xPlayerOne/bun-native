@@ -1,0 +1,18 @@
+body {
+  margin: 0;
+  font-family: -apple-system, sans-serif;
+}
+.content {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 16px;
+}
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+.row {
+  font-size: 12px;
+}
