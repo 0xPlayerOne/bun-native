@@ -82,9 +82,6 @@ def run(command, timeout=3):
     return result.stdout.strip()
 
 
-PAGE_SIZE = os.sysconf("SC_PAGE_SIZE")
-
-
 def process_table():
     """Rows for every readable /proc/<pid>/stat.
 
@@ -93,6 +90,9 @@ def process_table():
     UTF-8 is kept, where a text read would have dropped it from ownership.
     """
     result = {}
+    # Looked up here, once per table: importing this module must work on
+    # Windows, which has no os.sysconf, where the portable evidence tests load it.
+    page_size = os.sysconf("SC_PAGE_SIZE")
     for name in os.listdir("/proc"):
         if not name.isdigit():
             continue
@@ -106,7 +106,7 @@ def process_table():
                 "parent_pid": int(fields[1]),
                 "process_group": int(fields[2]),
                 "start_ticks": int(fields[19]),
-                "rss_bytes": int(fields[21]) * PAGE_SIZE,
+                "rss_bytes": int(fields[21]) * page_size,
             }
         except (OSError, ValueError, IndexError, ProcessLookupError):
             continue
