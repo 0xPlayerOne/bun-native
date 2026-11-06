@@ -1,5 +1,5 @@
 /** @jsxImportSource @bun-native/react */
-import { createApplication } from '@bun-native/core'
+import { createApplication, NativeStateError, type ConfirmDialogOptions } from '@bun-native/core'
 import { render, type ReactRenderRoot } from '@bun-native/react'
 import { resolve } from 'node:path'
 import { recordEvidence } from '../native-window/content.ts'
@@ -21,7 +21,17 @@ try {
     width: 1000,
     height: 760,
   })
-  root = render(<Workspace onChange={changed} />, window, {
+  // Closing the window while the question is open rejects it with an
+  // invalid-handle error; that is an answer of "no", not a failure.
+  async function confirm(options: ConfirmDialogOptions): Promise<boolean> {
+    try {
+      return await window.showConfirmDialog(options)
+    } catch (error) {
+      if (error instanceof NativeStateError && error.code === 'invalid_handle') return false
+      throw error
+    }
+  }
+  root = render(<Workspace onChange={changed} confirm={confirm} />, window, {
     style: { width: 'fill', height: 'fill' },
   })
   await root.ready
