@@ -139,6 +139,7 @@ async function qualification() {
     permissions: { dragDrop: 'allow', filesystemRoots: roots },
   })
   const xdnd = new DragSource(source)
+  let failure: unknown
   try {
     assert.deepEqual(app.serviceCapabilities.dragDrop, {
       availability: 'available',
@@ -392,11 +393,20 @@ async function qualification() {
     assert.deepEqual(pointerEvents, [])
     await right.close()
     return [left, right, inner] as NativeDropTarget[]
+  } catch (error) {
+    failure = error
+    throw error
   } finally {
-    await xdnd.close()
-    await app.shutdown()
-    await app.closed
-    assert.deepEqual(Object.values(app.diagnostics), [0, 0, 0, 0, 0, 0, 0])
+    // A failed run still reports its own error first: a source that exited
+    // because of it must not replace that error with its exit status.
+    const cleanup = async () => {
+      await xdnd.close()
+      await app.shutdown()
+      await app.closed
+      assert.deepEqual(Object.values(app.diagnostics), [0, 0, 0, 0, 0, 0, 0])
+    }
+    if (failure === undefined) await cleanup()
+    else await cleanup().catch((error: unknown) => console.error('cleanup after failure:', error))
   }
 }
 

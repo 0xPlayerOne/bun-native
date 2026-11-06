@@ -241,6 +241,35 @@ async function windowsScreens(): Promise<ExpectedDisplay[]> {
 
 const screens = () => (platform === 'darwin' ? macScreens() : windowsScreens())
 
+/**
+ * The OS displays once they stop changing. macOS relayouts the Dock (and so
+ * the work area) for a few seconds after a display mode change, so a read made
+ * right after a change, or after an earlier run's change, races that relayout.
+ * Two reads 400 ms apart must agree; the read is never relaxed beyond that.
+ */
+async function settledScreens(): Promise<ExpectedDisplay[]> {
+  const deadline = performance.now() + 15_000
+  let previous: string | undefined
+  let latest: ExpectedDisplay[] | undefined
+  let failure: unknown
+  while (performance.now() < deadline) {
+    try {
+      latest = await screens()
+      failure = undefined
+      const text = JSON.stringify(latest)
+      if (text === previous) return latest
+      previous = text
+    } catch (error) {
+      // The two independent oracle reads disagreed mid-relayout.
+      failure = error
+      previous = undefined
+    }
+    await Bun.sleep(400)
+  }
+  if (failure !== undefined) throw failure
+  throw new Error('the OS display state did not settle within 15 s: ' + JSON.stringify(latest))
+}
+
 function owning(snapshot: NativeDisplaySnapshot, displays: ExpectedDisplay[]): ExpectedDisplay {
   assert(snapshot.displayId, 'a macOS/Windows snapshot names its display')
   const matches = displays.filter((display) => display.id === snapshot.displayId)
@@ -371,7 +400,7 @@ async function applyMode(display: ExpectedDisplay, candidate: OsMode) {
 }
 
 const backend = platform === 'darwin' ? 'macOS AppKit/CoreGraphics' : 'Windows Win32'
-const initialDisplays = await screens()
+const initialDisplays = await settledScreens()
 assert(initialDisplays.length >= 1, 'the OS reports at least one display')
 record('osDisplays', { backend, displays: initialDisplays })
 if (initialDisplays.length === 1) {
@@ -486,7 +515,7 @@ try {
         continue
       }
       modeChanged = true
-      const after = await screens()
+      const after = await settledScreens()
       const os = after.find((item) => item.id === display.id)
       assert(os, 'the changed display keeps its identity')
       assert(
@@ -523,7 +552,7 @@ try {
       const removedAt = secondChanges.length
       const before = changes.length
       await restore()
-      const back = await screens()
+      const back = await settledScreens()
       const restoredEvent = await waitFor('display_change back to the original mode', 10_000, () =>
         matching(changes.slice(before), back)
       )

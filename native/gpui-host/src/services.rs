@@ -264,8 +264,11 @@ fn settle(
 }
 
 /// Delays after a display change at which the snapshot is read again.
-const DISPLAY_SETTLE_DELAYS: [Duration; 2] =
-    [Duration::from_millis(300), Duration::from_millis(1200)];
+const DISPLAY_SETTLE_DELAYS: [Duration; 3] = [
+    Duration::from_millis(300),
+    Duration::from_millis(1200),
+    Duration::from_millis(3000),
+];
 
 #[cfg(test)]
 mod tests {
