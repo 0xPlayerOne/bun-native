@@ -34,7 +34,7 @@ def expected_tree(state):
     messages = conversation["messages"]
     streaming = any(message["status"] == "streaming" for message in messages)
     prompt_length = len(conversation["draft"].strip())
-    can_send = not streaming and 0 < prompt_length <= 240 and len(messages) <= 30
+    can_send = not streaming and 0 < prompt_length <= 240 and len(messages) <= 22
     plain = {"color": foreground, "background": panel}
     header = box(
         [

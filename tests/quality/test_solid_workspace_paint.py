@@ -198,6 +198,133 @@ class SolidWorkspacePaintControls(unittest.TestCase):
         # If geometry really is unchanged, the completed paint may reuse it.
         self.assertEqual(observed_scrolls([changed_paint]), [[0, -100]])
 
+    def test_session_states_change_the_expected_tree(self):
+        def labels(tree):
+            element = tree["element"]
+            found = [element.get("text")] if "text" in element else []
+            for child in tree["children"]:
+                found += labels(child)
+            return found
+
+        def find(tree, label):
+            if tree["element"].get("text") == label:
+                return tree
+            for child in tree["children"]:
+                if result := find(child, label):
+                    return result
+            return None
+
+        snapshot = state()
+        snapshot["theme"] = "light"
+        snapshot["details"] = False
+        snapshot["conversations"].append(
+            {"id": 2, "title": "Other conversation", "draft": "Next", "messages": []}
+        )
+        snapshot["conversations"][0].update(
+            draft="Queued prompt",
+            messages=[
+                {"id": 1, "role": "user", "body": "Hello", "status": "complete"},
+                {"id": 2, "role": "assistant", "body": "", "status": "streaming"},
+            ],
+        )
+        snapshot["clearConfirmation"] = 1
+        tree = PAINT.expected_tree(snapshot)
+        found = labels(tree)
+        self.assertTrue(PAINT.matches(records(snapshot)[0], snapshot))
+        for label in (
+            "You · 1",
+            "Local assistant · 2",
+            "Waiting for local text…",
+            "Streaming locally",
+            "Local reply in progress",
+            "Clear this conversation's history?",
+            "Confirm clear",
+            "Keep history",
+            "Use dark theme",
+            "Show details",
+        ):
+            self.assertIn(label, found)
+        self.assertNotIn("Workspace details", found)
+        self.assertNotIn("No messages yet. Write a prompt below.", found)
+        self.assertEqual(
+            find(tree, "Other conversation")["element"]["style"]["background"], 0xFFFFFF
+        )
+        self.assertEqual(
+            find(tree, "Control conversation")["element"]["style"]["background"],
+            0xDCE9FF,
+        )
+        self.assertTrue(find(tree, "Send prompt")["element"]["disabled"])
+        self.assertFalse(find(tree, "Cancel reply")["element"]["disabled"])
+        self.assertFalse(find(tree, "Close conversation")["element"]["disabled"])
+
+        # A confirmation for another conversation is not shown; finished
+        # replies re-enable Send with a bounded draft.
+        snapshot["clearConfirmation"] = 2
+        snapshot["conversations"][0]["messages"][1].update(
+            body="Done", status="cancelled"
+        )
+        found = labels(PAINT.expected_tree(snapshot))
+        self.assertNotIn("Clear this conversation's history?", found)
+        self.assertIn("Cancelled", found)
+        self.assertIn("Local simulation · No backend connected", found)
+        tree = PAINT.expected_tree(snapshot)
+        self.assertFalse(find(tree, "Send prompt")["element"]["disabled"])
+        self.assertTrue(find(tree, "Cancel reply")["element"]["disabled"])
+
+    def test_send_follows_the_app_history_limit(self):
+        def send_disabled(count):
+            snapshot = state()
+            snapshot["conversations"][0].update(
+                draft="Another prompt",
+                messages=[
+                    {
+                        "id": index + 1,
+                        "role": "user" if index % 2 == 0 else "assistant",
+                        "body": f"Message {index + 1}",
+                        "status": "complete",
+                    }
+                    for index in range(count)
+                ],
+            )
+            tree = PAINT.expected_tree(snapshot)
+            composer = tree["children"][0]["children"][0]["children"][2]["children"][1][
+                "children"
+            ][3]
+            limit = composer["children"][3]["element"]["text"]
+            send = composer["children"][2]["children"][0]["element"]
+            return send["disabled"], limit
+
+        # The app allows a send while at most MAX_MESSAGES - 2 messages exist.
+        self.assertEqual(
+            send_disabled(22),
+            (
+                False,
+                "Enter sends · Up to 240 characters · 24 messages per conversation",
+            ),
+        )
+        self.assertEqual(
+            send_disabled(24),
+            (True, "History limit reached. Clear history to continue."),
+        )
+
+    def test_oversized_and_malformed_children_fail(self):
+        paint, geometry = records()
+        oversized = {
+            **paint,
+            "nodes": [
+                {"node_id": index + 1, "element": {"kind": "text"}, "children": []}
+                for index in range(257)
+            ],
+        }
+        self.assertFalse(PAINT.matches(oversized, state()))
+        self.assertFalse(PAINT.matches({**paint, "nodes": {}}, state()))
+        damaged = copy.deepcopy(paint)
+        damaged["nodes"][0]["children"] = None
+        self.assertFalse(PAINT.matches(damaged, state()))
+        self.assertIsNone(PAINT.frame(paint, {**geometry, "layout": []}, state()))
+        self.assertIsNone(PAINT.frame(None, geometry, state()))
+        self.assertIsNone(PAINT.frame(paint, geometry, None))
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -2,6 +2,10 @@
 
 import copy
 import importlib.util
+import json
+import subprocess
+import sys
+import tempfile
 import unittest
 from pathlib import Path
 
@@ -72,12 +76,57 @@ class SoakReportTest(unittest.TestCase):
             lambda value: value["samples"].pop(),
             lambda value: value["samples"][2].update(hostRssKiB=None),
             lambda value: value["samples"][1].update(objectCount=0),
+            lambda value: value["samples"][3].update(bunRssBytes=0),
+            lambda value: value["roundDurationsMs"].__setitem__(5, 0),
+            lambda value: value["final"]["localWork"].update(disposed=False),
+            lambda value: value.update(scenario="solid-workspace"),
         ]
         for change in changes:
             value = copy.deepcopy(report())
             change(value)
             with self.assertRaises((AssertionError, KeyError)):
                 SOAK.check(value)
+
+    def test_summary_reports_first_warm_and_last_samples(self):
+        value = report()
+        for index, sample in enumerate(value["samples"]):
+            sample.update(objectCount=index + 1, hostRssKiB=100 + index)
+        summary = SOAK.check(value)
+        self.assertEqual(summary["objectCount"], [1, 2, len(value["samples"])])
+        self.assertEqual(summary["hostRssKiB"], [100, 101, 99 + len(value["samples"])])
+        self.assertEqual(summary["replies"], SOAK.ROUNDS * SOAK.SENDS_PER_ROUND)
+
+    def test_command_line_prints_summary_and_rejects_usage(self):
+        script = ROOT / "scripts/quality/native-solid-workspace-soak.py"
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "soak-result.json"
+            path.write_text(json.dumps(report()))
+            result = subprocess.run(
+                [sys.executable, "-I", str(script), str(path)],
+                capture_output=True,
+                text=True,
+                check=True,
+            )
+            self.assertEqual(json.loads(result.stdout), SOAK.check(report()))
+            failed = report()
+            failed["status"] = "failed"
+            path.write_text(json.dumps(failed))
+            result = subprocess.run(
+                [sys.executable, "-I", str(script), str(path)],
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("status: expected 'passed'", result.stderr)
+        result = subprocess.run(
+            [sys.executable, "-I", str(script)],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        self.assertEqual(result.returncode, 1)
+        self.assertIn("usage: native-solid-workspace-soak.py", result.stderr)
 
 
 if __name__ == "__main__":
