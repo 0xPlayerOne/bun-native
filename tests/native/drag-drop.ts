@@ -177,6 +177,35 @@ function dragTraceEvidence(): unknown {
   }
 }
 
+/**
+ * AppKit only: a one-second `sample` of the host process (a direct child of
+ * this one), cut to the start of its call graph. If its UI thread is inside a
+ * pasteboard or drag call, or stuck behind one, the stack names it; if it is
+ * idle in the run loop, AppKit never called the destination.
+ */
+function stackSample(): string {
+  const text = (command: string[]) =>
+    Bun.spawnSync(command, { stdout: 'pipe', stderr: 'pipe', timeout: 30_000 })
+  const children = text(['pgrep', '-P', String(process.pid)])
+    .stdout.toString()
+    .split(/\s+/)
+    .filter((pid) => /^\d+$/.test(pid))
+  const hostPids = children.filter(
+    (pid) => !text(['ps', '-o', 'comm=', '-p', pid]).stdout.toString().includes('drag-source')
+  )
+  if (hostPids.length === 0) return `no host process among children ${JSON.stringify(children)}`
+  return hostPids
+    .map((pid) => {
+      const run = text(['sample', pid, '1'])
+      const out = run.stdout.toString()
+      const start = out.indexOf('Call graph:')
+      return start === -1
+        ? `pid ${pid}: no call graph (exit ${run.exitCode}): ${run.stderr.toString().slice(0, 500)}`
+        : `pid ${pid}:\n${out.slice(start, start + 6_000)}`
+    })
+    .join('\n')
+}
+
 async function qualification() {
   const app = await createApplication({
     executable: host,
@@ -375,6 +404,7 @@ async function qualification() {
             activeTargets: [left.active, right.active, inner.active],
           }).slice(0, 2_000)
         )
+        console.error('AppKit host stack sample after the failed entry:\n' + stackSample())
       }
       throw error
     }
@@ -480,11 +510,17 @@ async function qualification() {
     // A failed run still reports its own error first: a source that exited
     // because of it must not replace that error with its exit status.
     const cleanup = async () => {
-      await xdnd.close()
+      // A source that exits nonzero after a failed drag must not hide the
+      // host's trace, which is written when the host exits.
+      const sourceError = await xdnd.close().then(
+        () => undefined,
+        (error: unknown) => error
+      )
       await app.shutdown()
       await app.closed
       if (failure !== undefined && backend === 'appkit')
         console.error('AppKit host drag trace (ms, step):', JSON.stringify(dragTraceEvidence()))
+      if (sourceError !== undefined) throw sourceError
       assert.deepEqual(Object.values(app.diagnostics), [0, 0, 0, 0, 0, 0, 0])
     }
     if (failure === undefined) await cleanup()

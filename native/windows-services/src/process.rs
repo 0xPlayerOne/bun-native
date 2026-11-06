@@ -462,6 +462,12 @@ pub fn interrupt_console(helper: &std::path::Path, pid: u32) -> io::Result<()> {
 /// event is delivered, and the event reaches every process on that console,
 /// which is the child's own job.
 pub fn send_console_interrupt(pid: u32) -> io::Result<()> {
+    // `AttachConsole` reads `u32::MAX` as `ATTACH_PARENT_PROCESS`, which would
+    // send the event to this helper's parent console, and 0 names no process.
+    // Both are refused before any console is touched.
+    if pid == 0 || pid == u32::MAX {
+        return Err(io::Error::from(io::ErrorKind::InvalidInput));
+    }
     // SAFETY: plain console calls with no pointers. The helper's own console
     // (a fresh hidden one) is released first because a process may be attached
     // to only one.
@@ -481,6 +487,16 @@ pub fn send_console_interrupt(pid: u32) -> io::Result<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn an_interrupt_never_targets_the_parent_console_or_process_zero() {
+        for pid in [0, u32::MAX] {
+            assert_eq!(
+                send_console_interrupt(pid).unwrap_err().kind(),
+                io::ErrorKind::InvalidInput
+            );
+        }
+    }
 
     #[test]
     fn environment_blocks_are_double_terminated() {
