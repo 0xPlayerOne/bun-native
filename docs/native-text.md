@@ -55,7 +55,7 @@ from what is **unsupported**. Unsupported or not-run is never reported as passed
   [overlay contract](native-overlays.md#batch-requests-focus_v1-scroll_control_v1).
   `tests/native/overlays.ts` exercises it on Linux X11; this text fixture does
   not. An assistive technology can focus a control through AccessKit's Focus
-  action, but this is not qualified.
+  action, but this is not qualified. There is no `blur` request.
 
 ## Support matrix
 

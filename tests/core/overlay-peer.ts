@@ -17,6 +17,8 @@ type Spec = {
   target: string
   key?: string
   shift?: boolean
+  /** Explicit modifier flags, merged over the all-false default. */
+  modifiers?: Partial<Record<'control' | 'alt' | 'shift' | 'platform' | 'function', boolean>>
 }
 const windows = new Map<number, PeerTree>()
 const output = Bun.stdout.writer()
@@ -24,6 +26,7 @@ const decoder = new FrameDecoder()
 const overlays = process.argv.includes('--overlays')
 const keyboard = process.argv.includes('--keyboard')
 const popups = process.argv.includes('--popups')
+const split = process.argv.includes('--split')
 let sequence = 0
 async function emit(value: unknown) {
   output.write(encodeFrame(value))
@@ -44,6 +47,7 @@ async function event(window_id: number, tree: PeerTree, spec: Spec) {
     shift: spec.shift === true,
     platform: false,
     function: false,
+    ...spec.modifiers,
   }
   const base = { type: spec.type, window_id, sequence: ++sequence, ...tree.route(target[0]) }
   if (spec.type === 'dismiss') await emit({ ...base, reason: 'window_blur' })
@@ -73,6 +77,7 @@ for await (const chunk of Bun.stdin.stream()) {
           ...(overlays ? ['overlays_v1', 'scroll_anchor_v1'] : []),
           ...(keyboard ? ['focus_v1', 'scroll_control_v1', 'overlay_keyboard_v1'] : []),
           ...(popups ? ['popup_windows_v1'] : []),
+          ...(split ? ['split_v1'] : []),
         ],
         limits: { ...DEFAULT_LIMITS },
       })
