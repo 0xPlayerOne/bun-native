@@ -483,6 +483,8 @@ jobs:
           BUN_NATIVE_WAYLAND_INPUT_PEER: ${{ github.workspace }}/target/release/examples/wayland-input-peer
           BUN_NATIVE_STARTUP_LOG: '1'
           BUN_NATIVE_STARTUP_TRACE: '1'
+          # Bounded raw GPUI input records, read only by the #526 failure evidence.
+          BUN_NATIVE_POINTER_TRACE: '1'
         run: |
           for run in development-scale-1 aot-scale-1 development-scale-2; do
             mode=${run%%-*}
