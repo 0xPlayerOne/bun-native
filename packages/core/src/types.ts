@@ -29,6 +29,11 @@ import type {
   SaveDialogOptions,
   SaveDialogResult,
 } from './dialogs.ts'
+import type {
+  ConfirmDialogOptions,
+  MessageDialogOptions,
+  MessageDialogResult,
+} from './message-dialogs.ts'
 import type { DropTargetEvent, NativeDropTarget } from './drops.ts'
 
 export type { Element, KeyModifiers, PointerButton, Style }
@@ -258,6 +263,24 @@ export interface NativeWindow {
     options: SaveDialogOptions,
     request?: ServiceRequestOptions
   ): Promise<SaveDialogResult>
+  /**
+   * Show a message dialog drawn by core as a window-anchored modal overlay
+   * (not an OS alert), with focus on its default button and Tab trapped
+   * inside it. No launch grant is needed; requires
+   * `serviceCapabilities.messageDialogs`. Dialogs of one window are shown one
+   * at a time in call order. The result is delivered after the layer is
+   * removed. Aborting the signal rejects with `cancelled`; closing the window
+   * or shutting down rejects with `invalid_handle`.
+   */
+  showMessageDialog(
+    options: MessageDialogOptions,
+    request?: ServiceRequestOptions
+  ): Promise<MessageDialogResult>
+  /** An OK/Cancel message dialog: true for OK; Cancel and Escape give false. */
+  showConfirmDialog(
+    options: ConfirmDialogOptions,
+    request?: ServiceRequestOptions
+  ): Promise<boolean>
   /**
    * Make a committed node an owned drop target for external file drags.
    * Requires the immutable dragDrop launch grant. Dropped items arrive as

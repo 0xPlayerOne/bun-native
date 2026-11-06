@@ -71,6 +71,14 @@ import {
   type SaveDialogOptions,
   type SaveDialogResult,
 } from './dialogs.ts'
+import {
+  confirmDialogSpec,
+  messageDialogSpec,
+  MessageDialogs,
+  type ConfirmDialogOptions,
+  type MessageDialogOptions,
+  type MessageDialogResult,
+} from './message-dialogs.ts'
 import { CommittedText, makeNode, own, Transaction, type NodeState } from './tree.ts'
 import {
   NativeStateError,
@@ -570,6 +578,7 @@ class Window implements NativeWindow {
   private resolveClosed!: () => void
   private closing: Promise<void> | undefined
   readonly displayChanges = new Set<DisplaySubscription>()
+  private readonly messages = new MessageDialogs(this)
 
   constructor(
     private readonly application: Application,
@@ -1552,6 +1561,36 @@ class Window implements NativeWindow {
     }
   }
 
+  async showMessageDialog(
+    options: MessageDialogOptions,
+    request: ServiceRequestOptions = {}
+  ): Promise<MessageDialogResult> {
+    return this.messageDialog(messageDialogSpec(options), request)
+  }
+
+  async showConfirmDialog(
+    options: ConfirmDialogOptions,
+    request: ServiceRequestOptions = {}
+  ): Promise<boolean> {
+    const result = await this.messageDialog(confirmDialogSpec(options), request)
+    return result.kind === 'button' && result.id === 'confirm'
+  }
+
+  private messageDialog(
+    spec: Parameters<MessageDialogs['show']>[0],
+    request: ServiceRequestOptions
+  ): Promise<MessageDialogResult> {
+    const signal = serviceSignal(request)
+    this.assertActive()
+    if (this.application.serviceCapabilities.messageDialogs.availability !== 'available')
+      throw new NativeServiceError(
+        'message_dialogs',
+        'service_unavailable',
+        'The native host does not advertise modal overlays with focus requests'
+      )
+    return this.messages.show(spec, signal)
+  }
+
   /** Delivery stops at once; the OS dialog is then closed natively. */
   private closeFileDialog(dialog: FileDialogRequest): void {
     if (!dialog.live) return
@@ -1668,6 +1707,7 @@ class Window implements NativeWindow {
         registration.revoke()
         this.application.dropTargets.delete(registration.id)
       }
+    this.messages.revoke()
     this.application.windows.delete(this.id)
     this.resolveClosed()
   }
@@ -1747,6 +1787,15 @@ class Window implements NativeWindow {
       if (node.element.kind !== 'overlay' || node.element.surface !== 'window')
         throw new ProtocolError('Native dismissal targeted a non-popup node')
     }
+    // Input inside a message dialog settles it during ingestion.
+    if (
+      this.messages.receive(
+        event,
+        ownedPath.map((item) => item.handle),
+        node.handle
+      )
+    )
+      return
     const plan = this.listeners.prepare(
       event,
       ownedPath.map((item) => item.handle)

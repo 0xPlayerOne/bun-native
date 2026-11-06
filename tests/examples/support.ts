@@ -87,6 +87,8 @@ export function mirrorWindow(actual: NativeWindow) {
     spawnProcess: actual.spawnProcess.bind(actual),
     showOpenDialog: actual.showOpenDialog.bind(actual),
     showSaveDialog: actual.showSaveDialog.bind(actual),
+    showMessageDialog: actual.showMessageDialog.bind(actual),
+    showConfirmDialog: actual.showConfirmDialog.bind(actual),
     registerDropTarget: actual.registerDropTarget.bind(actual),
     input: actual.input.bind(actual),
     on: actual.on.bind(actual),

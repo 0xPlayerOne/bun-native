@@ -40,6 +40,12 @@ export type {
   SaveDialogResult,
 } from './dialogs.ts'
 export type {
+  ConfirmDialogOptions,
+  MessageDialogButton,
+  MessageDialogOptions,
+  MessageDialogResult,
+} from './message-dialogs.ts'
+export type {
   ApplicationOptions,
   ClickEvent,
   ContainerKind,

@@ -16,6 +16,7 @@ type ServiceName =
   | 'filesystem_grants'
   | 'processes'
   | 'file_dialogs'
+  | 'message_dialogs'
   | 'drag_drop'
 
 export type ServicePermissions = NonNullable<
@@ -94,8 +95,13 @@ export interface ServiceCapabilities {
         backend: 'xdg_desktop_portal'
       }>
     | Readonly<{ availability: 'unavailable'; reason: 'unsupported_platform' }>
-  /** OS message/confirm alerts. Use an in-window modal overlay meanwhile. */
-  readonly messageDialogs: UnavailableService
+  /**
+   * `showMessageDialog`/`showConfirmDialog`: an in-window modal overlay drawn
+   * by core on every platform, not an OS alert. Needs no launch grant.
+   */
+  readonly messageDialogs:
+    | Readonly<{ availability: 'available'; scope: 'owned_window'; backend: 'modal_overlay' }>
+    | Readonly<{ availability: 'unavailable'; reason: 'unsupported_host' }>
   readonly notifications:
     | Readonly<{
         availability: 'available'
@@ -214,7 +220,15 @@ export function serviceCapabilities(
           backend: 'xdg_desktop_portal',
         })
       : Object.freeze({ availability: 'unavailable', reason: 'unsupported_platform' }),
-    messageDialogs: unavailable,
+    // The modal overlay and a focus request are the only native features used.
+    messageDialogs:
+      capabilities.includes('overlays_v1') && capabilities.includes('focus_v1')
+        ? Object.freeze({
+            availability: 'available',
+            scope: 'owned_window',
+            backend: 'modal_overlay',
+          })
+        : Object.freeze({ availability: 'unavailable', reason: 'unsupported_host' }),
     notifications: capabilities.includes('notifications_v1')
       ? Object.freeze({
           availability: 'available',

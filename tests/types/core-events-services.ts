@@ -166,6 +166,7 @@ export function checkErrors(error: unknown): string | undefined {
       | 'filesystem_grants'
       | 'processes'
       | 'file_dialogs'
+      | 'message_dialogs'
       | 'drag_drop' = error.service
     return service + error.code
   }
@@ -244,6 +245,13 @@ export function checkCapabilities(app: NativeApplication): void {
     void backend
   }
   const menus: 'unavailable' = services.systemMenus.availability
+  if (services.messageDialogs.availability === 'available') {
+    const backend: 'modal_overlay' = services.messageDialogs.backend
+    void backend
+  } else {
+    const reason: 'unsupported_host' = services.messageDialogs.reason
+    void reason
+  }
   const pty: 'available' | 'unavailable' = services.ptyProcess.availability
   const diagnostics: number = app.diagnostics.serviceRequests + app.diagnostics.activeCallbacks
   const maxWindows: number = app.limits.max_windows
@@ -251,6 +259,8 @@ export function checkCapabilities(app: NativeApplication): void {
 
   // @ts-expect-error Unimplemented services report no permission.
   void services.dialogs.permission
+  // @ts-expect-error Message dialogs need no launch grant, so they report no permission.
+  void services.messageDialogs.permission
   // @ts-expect-error The clipboard backend is known only when the service is available.
   void services.clipboardText.backend
   // @ts-expect-error Service capabilities are a negotiated, immutable record.
@@ -272,6 +282,30 @@ export async function checkServices(window: NativeWindow): Promise<void> {
   snapshot.bounds = { x: 0, y: 0, width: 0, height: 0 }
   // @ts-expect-error Service request options accept only a cancellation signal.
   await window.readClipboardText({ timeout: 100 })
+  const result = await window.showMessageDialog(
+    {
+      title: 'Unsaved changes',
+      message: 'Save before closing?',
+      buttons: [
+        { id: 'save', label: 'Save', kind: 'primary' },
+        { id: 'discard', label: 'Discard', kind: 'destructive' },
+        { id: 'cancel', label: 'Cancel' },
+      ],
+      cancelButton: 'cancel',
+    },
+    request
+  )
+  if (result.kind === 'button') void (result.id satisfies string)
+  // @ts-expect-error A dismissal names no button.
+  else void result.id
+  const confirmed: boolean = await window.showConfirmDialog({ title: 'Delete', message: 'Sure?' })
+  await window.showMessageDialog({
+    title: 't',
+    message: 'm',
+    // @ts-expect-error Button kinds are a closed set.
+    buttons: [{ id: 'a', label: 'A', kind: 'link' }],
+  })
+  void confirmed
 }
 
 export async function checkShortcuts(window: NativeWindow): Promise<NativeGlobalShortcut> {
