@@ -129,10 +129,10 @@ async function scenarios(app: NativeApplication, window: NativeWindow) {
       cancelButton: 'cancel',
     })
     await ui('find', title)
-    await ui('escape', title)
+    const how = await ui('escape', title)
     assert.deepEqual(await pending, { kind: 'button', id: 'cancel' })
     await ui('absent', title)
-    record('escapeIsCancelButton', true)
+    record('escapeIsCancelButton', how)
   }
   {
     const title = 'Task dialog dismissible'
@@ -143,10 +143,10 @@ async function scenarios(app: NativeApplication, window: NativeWindow) {
       dismissible: true,
     })
     await ui('find', title)
-    await ui('escape', title)
+    const how = await ui('escape', title)
     assert.deepEqual(await pending, { kind: 'dismissed' })
     await ui('absent', title)
-    record('escapeDismisses', true)
+    record('escapeDismisses', how)
   }
   {
     const title = 'Task dialog ignores escape'

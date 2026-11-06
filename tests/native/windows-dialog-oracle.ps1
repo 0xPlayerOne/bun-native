@@ -4,7 +4,7 @@
 # accessibility tree and presses its buttons by their windows.
 #   find    print the dialog's text and button names as JSON (waits for it)
 #   invoke  press the button named -Name through its InvokePattern
-#   escape  focus the dialog and send Escape
+#   escape  send Escape to the dialog (or, failing that, its close command)
 #   absent  succeed once no such dialog exists
 param(
   [Parameter(Mandatory = $true)][ValidateSet('find', 'invoke', 'escape', 'absent')][string]$Command,
@@ -114,8 +114,21 @@ switch ($Command) {
     }
   }
   'escape' {
-    $dialog.SetFocus()
-    Start-Sleep -Milliseconds 100
-    [System.Windows.Forms.SendKeys]::SendWait('{ESC}')
+    # Posts Escape to the dialog's first button, where a user's focus rests.
+    # If the dialog is still open afterwards, the same cancellation arrives as
+    # the close command; a dialog that does not allow cancellation ignores both.
+    $window = [System.IntPtr]$dialog.Current.NativeWindowHandle
+    $first = Push-Buttons $dialog | Select-Object -First 1
+    $target = if ($null -ne $first) { [System.IntPtr]$first.Current.NativeWindowHandle } else { $window }
+    $null = [Win32.Native]::PostMessageW($target, 0x0100, [System.IntPtr]0x1B, [System.IntPtr]0x00010001)
+    $null = [Win32.Native]::PostMessageW($target, 0x0101, [System.IntPtr]0x1B, [System.IntPtr]::new(0xC0010001))
+    $deadline = [DateTime]::UtcNow.AddMilliseconds(600)
+    while ([DateTime]::UtcNow -lt $deadline -and $null -ne (Find-Dialog)) { Start-Sleep -Milliseconds 25 }
+    if ($null -ne (Find-Dialog)) {
+      $null = [Win32.Native]::PostMessageW($window, 0x0010, [System.IntPtr]::Zero, [System.IntPtr]::Zero)
+      'close'
+    } else {
+      'key'
+    }
   }
 }
