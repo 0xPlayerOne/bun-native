@@ -189,7 +189,23 @@ test.if(!aotSkip)(
     const stdout = run.stdout.toString()
     if (run.exitCode !== 0)
       throw new Error(`Offline AOT boundary failed (${run.exitCode}): ${run.stderr.toString()}`)
-    expectBoundary(JSON.parse(stdout.trim().split('\n').at(-1)!) as BoundaryReport, true, true)
+    let report: BoundaryReport
+    try {
+      report = JSON.parse(stdout.trim().split('\n').at(-1)!) as BoundaryReport
+    } catch (error) {
+      // Preserve the original failing parser while retaining bounded evidence
+      // of stdout contamination and the independent child stderr stream.
+      console.error(
+        JSON.stringify({
+          diagnostic: 'offline-aot-boundary-unparseable-stdout',
+          exitCode: run.exitCode,
+          stdoutTail: stdout.slice(-2_048),
+          stderrTail: run.stderr.toString().slice(-2_048),
+        })
+      )
+      throw error
+    }
+    expectBoundary(report, true, true)
   },
   300_000
 )
