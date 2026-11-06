@@ -20,7 +20,7 @@ names, or when two sources for one pin disagree.
 | Component            | Pin                                        | Repository source                                                                                                    |
 | -------------------- | ------------------------------------------ | -------------------------------------------------------------------------------------------------------------------- |
 | `bun`                | `1.4.4-canary.1`                           | [`toolchain.json`][toolchain] `bun.version` and root `package.json` `engines.bun`                                    |
-| `bun revision`       | `da867c60bf0bcbf9d6d36994f8ca0efa42075115` | [`toolchain.json`][toolchain] `bun.revision`                                                                         |
+| `bun revision`       | `b1007f1177fd402fae67387b8548cae5ae9b5707` | [`toolchain.json`][toolchain] `bun.revision`                                                                         |
 | `rust`               | `1.98.1`                                   | [`toolchain.json`][toolchain] `rust.version`                                                                         |
 | `gpui revision`      | `ba63a022c9a22ca66d68ef2a8f0bb9b5b0a9984d` | [`toolchain.json`][toolchain] and both GPUI crates in [`gpui-host`][host-manifest]                                   |
 | `gpui`               | `0.2.2`                                    | [`toolchain.json`][toolchain] `gpui.version`                                                                         |
