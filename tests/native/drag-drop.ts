@@ -76,11 +76,21 @@ function listener(name: string) {
   }
 }
 
+let activeSource: DragSource | undefined
+
 async function until(description: string, predicate: () => boolean): Promise<void> {
   try {
     await waitUntil(description, predicate)
   } catch (error) {
-    throw new Error((error as Error).message + ': ' + JSON.stringify(log.slice(-6)))
+    // The source's own replies tell a drag that never began (pasteboard,
+    // mouse-down) from one the host never reported.
+    throw new Error(
+      (error as Error).message +
+        ': ' +
+        JSON.stringify(log.slice(-6)) +
+        '; source: ' +
+        JSON.stringify(activeSource?.recent() ?? [])
+    )
   }
 }
 
@@ -139,6 +149,7 @@ async function qualification() {
     permissions: { dragDrop: 'allow', filesystemRoots: roots },
   })
   const xdnd = new DragSource(source)
+  activeSource = xdnd
   let failure: unknown
   try {
     assert.deepEqual(app.serviceCapabilities.dragDrop, {

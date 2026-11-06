@@ -270,6 +270,42 @@ async function settledScreens(): Promise<ExpectedDisplay[]> {
   throw new Error('the OS display state did not settle within 15 s: ' + JSON.stringify(latest))
 }
 
+/**
+ * Both windows' snapshots, compared exactly with the OS state they were read
+ * in. macOS resizes the Dock, and so the work area, when an application
+ * launches or quits and after a display-mode cycle (hosted run 42193523182:
+ * the restored 1024x768 display kept a 684-point work area where it started
+ * at 681 because the Dock shrank by three points). A single oracle read taken
+ * before the host launched can therefore be stale by the time the host reads
+ * the same display. The OS must be settled and unchanged both before and
+ * after the snapshots; if it moved in between, the pair is read again, and a
+ * display that never holds still fails with every state it passed through.
+ * No value is ever compared with a tolerance.
+ */
+type OwnedWindow = Awaited<ReturnType<typeof open>>
+async function snapshotWithinSettledOs(first: OwnedWindow, second: OwnedWindow) {
+  const deadline = performance.now() + 20_000
+  const history: string[] = []
+  for (;;) {
+    const before = await settledScreens()
+    const initial = await first.displaySnapshot()
+    const other = await second.displaySnapshot()
+    const after = await settledScreens()
+    if (JSON.stringify(before) === JSON.stringify(after)) {
+      const display = assertSnapshot(initial, after, 'first window')
+      assert.deepEqual(other, initial, 'same display, same snapshot')
+      return { initial, display }
+    }
+    history.push(
+      JSON.stringify([before, after].map((list) => list.map((item) => item.visibleBounds)))
+    )
+    if (performance.now() > deadline)
+      throw new Error(
+        'the OS work area kept changing while the snapshot was read: ' + history.join(' ; ')
+      )
+  }
+}
+
 function owning(snapshot: NativeDisplaySnapshot, displays: ExpectedDisplay[]): ExpectedDisplay {
   assert(snapshot.displayId, 'a macOS/Windows snapshot names its display')
   const matches = displays.filter((display) => display.id === snapshot.displayId)
@@ -450,9 +486,7 @@ try {
   // 2. Snapshot = the window's OS display: bounds, work area, scale and identity.
   const first = await open(app, 'Display platform first')
   const second = await open(app, 'Display platform second')
-  const initial = await first.displaySnapshot()
-  const display = assertSnapshot(initial, initialDisplays, 'first window')
-  assert.deepEqual(await second.displaySnapshot(), initial, 'same display, same snapshot')
+  const { initial, display } = await snapshotWithinSettledOs(first, second)
   record('snapshot', { snapshot: initial, osDisplay: display })
   if (platform === 'darwin')
     assert(
