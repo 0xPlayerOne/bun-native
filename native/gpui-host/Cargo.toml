@@ -22,6 +22,11 @@ serde_json.workspace = true
 unicode-segmentation = "=1.13.3"
 
 [target.'cfg(target_os = "linux")'.dependencies]
+# Not used directly. GPUI's XIM client enables ahash `compile-time-rng`, whose
+# hasher keys are then its only randomness. CONST_RANDOM_SEED is pinned for
+# reproducible builds (.cargo/config.toml), so unify in `runtime-rng` to keep
+# the keys randomized per process at runtime.
+ahash = { version = "=0.8.12", default-features = false, features = ["runtime-rng"] }
 raw-window-handle = "=0.6.2"
 pty-process = "=0.5.4"
 rustix = { version = "=1.1.6", features = ["event", "fs", "net", "process", "termios"] }

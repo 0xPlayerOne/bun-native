@@ -73,6 +73,28 @@ for await (const chunk of Bun.stdin.stream()) {
     const command = parseCommand(value)
     if (mode === 'silent') continue
     if (mode === 'exit') process.exit(23)
+    if (
+      command.type === 'open' &&
+      (mode === 'panic' || mode === 'signal' || mode === 'noisy-exit')
+    ) {
+      // Native-shaped failures while a request is awaiting acknowledgement.
+      // The inherited secret must never reach the Bun-side diagnostic.
+      const secret = process.env['BUN_NATIVE_TEST_SECRET'] ?? 'missing-secret'
+      const diagnostic = Bun.stderr.writer()
+      if (mode === 'noisy-exit')
+        diagnostic.write(('noise ' + secret + ' ').repeat(2_000) + '\n' + 'line\n'.repeat(100))
+      diagnostic.write(
+        "thread 'main' panicked at native/gpui-host/src/session.rs:42:9:\n" +
+          `window state corrupted with BUN_NATIVE_TEST_SECRET=${secret} token=${secret}\n` +
+          `authorization: Bearer ${'a1'.repeat(24)}\n` +
+          'note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace\n'
+      )
+      await diagnostic.flush()
+      // Bun's own crash handler intercepts SIGABRT in this peer and can stall on
+      // hosted runners; an uncatchable signal models the abort deterministically.
+      if (mode === 'signal') process.kill(process.pid, 'SIGKILL')
+      process.exit(mode === 'panic' ? 101 : 3)
+    }
     if (command.type === 'hello') {
       if (mode === 'bad-json') {
         output.write('{bad json}\n')

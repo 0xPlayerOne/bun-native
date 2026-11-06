@@ -25,7 +25,7 @@
     "foundry:doctor": "bun --bun code-foundry doctor",
     "example": "bun examples/native-window/main.ts",
     "solid:build": "bun scripts/solid-build.ts",
-    "native": "bun scripts/native.ts"
+    "native": "MIMALLOC_PURGE_DELAY=0 bun scripts/native.ts"
   },
   "devDependencies": {
     "@babel/core": "7.29.7",

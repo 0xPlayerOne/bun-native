@@ -1,6 +1,6 @@
 # DFG retention in collectability checks
 
-**Status:** root identified for the development-mode positives in [#287](https://github.com/0xPlayerOne/bun-native/issues/287). The AOT-only positives recorded in [README.md](README.md) are not explained by this result.
+**Status:** root identified for the development-mode positives in [#287](https://github.com/0xPlayerOne/bun-native/issues/287). The AOT-only positives recorded in [README.md](README.md) have no DFG tier and are covered by [aot-eden-collection.md](aot-eden-collection.md).
 
 ## Finding
 

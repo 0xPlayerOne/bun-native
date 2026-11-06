@@ -21,7 +21,15 @@ import {
 } from '@bun-native/protocol'
 import { isAbsolute } from 'node:path'
 import type { ReadableStreamDefaultReader } from 'node:stream/web'
+import { exitDiagnostic, NativeHostExitError } from './exit-diagnostic.ts'
 import { StartupTrace } from './startup-trace.ts'
+
+export {
+  MAX_DIAGNOSTIC_TAIL,
+  NativeHostExitError,
+  type NativeHostExitDiagnostic,
+  type NativeHostExitReason,
+} from './exit-diagnostic.ts'
 
 type WithoutId<T> = T extends { id: number } ? Omit<T, 'id'> : never
 export type WindowCommand = WithoutId<
@@ -279,6 +287,7 @@ export class NativeHost implements AsyncIterable<WindowEvent> {
   private nextId = 1
   private writeTail: Promise<void> = Promise.resolve()
   private stderrTail = ''
+  private stderrClipped = false
   private iteratorTaken = false
   private readonly startupTrace = StartupTrace.fromEnvironment()
 
@@ -563,7 +572,11 @@ export class NativeHost implements AsyncIterable<WindowEvent> {
         for (const raw of decoder.push(value)) this.receive(parseEvent(raw))
       }
       decoder.finish()
-      if (this.phase !== 'stopping' && this.phase !== 'closed')
+      if (
+        this.phase !== 'stopping' &&
+        this.phase !== 'closed' &&
+        !(await this.exitsWithinTimeout())
+      )
         throw new ProtocolError('Native output closed before shutdown')
     } finally {
       this.stdout.releaseLock()
@@ -576,12 +589,52 @@ export class NativeHost implements AsyncIterable<WindowEvent> {
       for (;;) {
         const { done, value } = await this.stderr.read()
         if (done) break
-        this.stderrTail = (this.stderrTail + decoder.decode(value, { stream: true })).slice(-4_096)
+        this.appendStderr(decoder.decode(value, { stream: true }))
       }
-      this.stderrTail = (this.stderrTail + decoder.decode()).slice(-4_096)
+      this.appendStderr(decoder.decode())
     } finally {
       this.stderr.releaseLock()
     }
+  }
+
+  private appendStderr(text: string): void {
+    const tail = this.stderrTail + text
+    if (tail.length > 4_096) this.stderrClipped = true
+    this.stderrTail = tail.slice(-4_096)
+  }
+
+  /**
+   * Unexpected EOF usually precedes the exit status of a crashed host. Wait for
+   * that status, bounded, so the failure can carry its exit diagnostic.
+   */
+  private async exitsWithinTimeout(): Promise<boolean> {
+    let timer: ReturnType<typeof setTimeout> | undefined
+    try {
+      return await Promise.race([
+        this.exited.then(() => true),
+        new Promise<false>((resolve) => {
+          timer = setTimeout(() => resolve(false), this.timeout)
+        }),
+      ])
+    } finally {
+      clearTimeout(timer)
+    }
+  }
+
+  private exitError(status: number): NativeHostExitError {
+    const phase = this.phase === 'closed' ? 'running' : this.phase
+    return new NativeHostExitError(
+      exitDiagnostic({
+        exitCode: this.process.exitCode,
+        signal: this.process.signalCode === null ? null : String(this.process.signalCode),
+        phase,
+        pendingRequests: this.pending.size,
+        stderr: this.stderrTail,
+        stderrClipped: this.stderrClipped,
+        environment: process.env,
+      }),
+      status
+    )
   }
 
   private cancelOutput(): void {
@@ -604,8 +657,7 @@ export class NativeHost implements AsyncIterable<WindowEvent> {
     })
     try {
       const [code] = await Promise.all([exit, ...streams])
-      if (code !== 0 || this.phase !== 'stopping' || this.pending.size)
-        throw new Error(`Native host exited unexpectedly (${code}). ${this.stderrTail}`)
+      if (code !== 0 || this.phase !== 'stopping' || this.pending.size) throw this.exitError(code)
       this.phase = 'closed'
       this.waiting?.resolve({ done: true, value: undefined })
       this.waiting = undefined

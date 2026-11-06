@@ -52,3 +52,7 @@ The implementation agent may accept an ADR autonomously within the owner's exper
 - [Active roadmap](https://github.com/0xPlayerOne/bun-native/issues/1)
 - [Architecture overview](../architecture.md)
 - [Engineering quality](../engineering-quality.md)
+
+## Release scope
+
+- [0013 — Release readiness and supported scope](0013-release-readiness.md)

@@ -458,6 +458,7 @@ impl NativeView {
 impl Render for NativeView {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let render_started = Instant::now();
+        let phase_started = crate::phases::now();
         self.viewport = window.viewport_size();
         // GPUI ends an external drag on drop, on the source's leave and when
         // the button is released outside every target; each refreshes.
@@ -500,6 +501,9 @@ impl Render for NativeView {
         );
         // Requests issued before this frame resolve in its prepaint.
         self.held_scrolls.borrow_mut().clear();
+        let phase_frame = phase_started.and_then(|started| {
+            crate::phases::render(self.window_id, started, state.tree.nodes().count())
+        });
         let view = cx.weak_entity();
         let evidence = self.evidence.clone();
         let paint_state = self.state.clone();
@@ -565,6 +569,9 @@ impl Render for NativeView {
                             // Registered after native children: capture has already
                             // selected the deepest GPUI hit before default actions.
                             pointer.observe(window, &view, point(px(0.), px(0.)), &pressed);
+                            if let Some(frame) = phase_frame {
+                                crate::phases::painted(frame);
+                            }
                             let state = paint_state.borrow();
                             evidence.frame(window_id, &state.tree, render_started);
                             evidence.painted(

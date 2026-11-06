@@ -21,11 +21,27 @@ The generated package scripts are:
 ```sh
 cd apps/my-app
 bun run check
+bun run format
+bun run format:check
 bun run dev --host /absolute/path/to/bun-native-host
 bun run build --host /absolute/path/to/bun-native-host --host-profile release
 ```
 
 For this default checkout mode, do not run a separate dependency install inside the generated project. Keep it in the checkout so its relative script, TypeScript configuration and public workspace imports continue to resolve. The [standalone mode](standalone-projects.md) instead writes its own dependency declarations, strict configuration, local archives and installed-CLI scripts.
+
+## Check, format and diagnose a project
+
+```sh
+bun run native check apps/my-app
+bun run native format apps/my-app [--check]
+bun run native doctor [apps/my-app] [--host /absolute/path/to/bun-native-host]
+```
+
+`check` validates `bun-native.json` (and, for a standalone project, its installed package set), then runs two steps in the project directory and reports each as `passed` or `failed`: Bun's built-in type checker (`bun --no-install check --no-script --no-pretty`) and the built-in formatter in check mode (`bun --no-install fmt --no-script --check .`). Both steps always run, and any failure exits with status 1. `--no-script` keeps a same-named package script from replacing the built-in. `format` applies the same formatter; `--check` only reports differences. The generated `format` and `format:check` scripts call these commands; the generated `check` script remains the type checker alone.
+
+The formatter uses whatever config Bun discovers for the entry file. Checkout projects inherit the repository `.oxfmtrc.json` and `.gitignore`, so a project placed inside an ignored directory such as `dist/`, `build/` or `.bun-native/` has no formatter targets and fails the format step with Bun's ignore-rule error. Standalone projects without their own config use the template style packaged with the CLI, and never format the digest-verified `vendor/` package set. Linting is not part of this command: `oxlint` is a checkout development dependency, not a consumer dependency.
+
+`doctor` reports `ok`, `failed` or `skipped` for the running Bun revision against `toolchain.json`, a pinned Bun distribution for the current OS/CPU, an optional `--host` executable header check and an optional project configuration. It never launches the host, so a passing host line is not a protocol handshake; the runtime still decides that on launch. Any failed line exits with status 1.
 
 ## Develop against a prebuilt host
 
@@ -57,6 +73,14 @@ Readiness is the renderer's bridge acknowledgement. It is not a measurement of G
 
 Watch bundles live in a fresh, session-owned OS temporary directory. At rest there is one live generation; a candidate can coexist with it during compilation. Failed candidates and joined old generations are removed, and closing the session removes its owned temporary directory. Closing also cancels and joins any active source scan. The source directory is only watched and read by this reload machinery.
 
+### Controller memory
+
+The watch controller is one persistent Bun process that calls `Bun.build` for every generation. With the pinned runtime's default mimalloc `purge_delay` of 100 ms, pages freed by the bundler's idle worker threads stay resident after each build, so controller RSS grows across reloads even though the JavaScript heap stays small (about 7 MB for React) and no build output is retained. A full `Bun.gc(true)`, which also runs the allocator's collection, bounds it; a JavaScriptCore-only full collection does not. Setting `MIMALLOC_PURGE_DELAY=0` returns those pages promptly without any forced collection.
+
+The checkout `native` script and both generated templates' `dev` scripts therefore start the CLI with `MIMALLOC_PURGE_DELAY=0`. The `bun run` launcher keeps its default; generated `build` scripts are unchanged, and AOT application binaries do not inherit this setting. Watch-mode app processes inherit the CLI environment. Invoking `bun scripts/native.ts dev --watch` directly uses whatever the caller sets.
+
+[`benchmarks/tooling/controller-allocator.ts`](../benchmarks/tooling/controller-allocator.ts) is the matched compiler-only control: fresh processes, the production `bundleProject` path, one distinct edit per build and no app, host or forced collection. Its [Linux results](../benchmarks/tooling/README.md) show that React's 401-build final RSS roughly halves and Solid's drops by about a fifth, at about 6–8 ms more median bundle time. The remaining Solid growth follows JavaScriptCore garbage from the Babel transform, which this setting does not address. These are finite observations; no plateau or leak-freedom claim follows.
+
 The native watch scenario below supplies separate input, paint and repeated-cycle evidence when its hosted run passes. [#243](https://github.com/0xPlayerOne/bun-native/issues/243) also tracks qualification on the other supported platforms, matched performance measurements and any finer-grained reload strategy.
 
 No app command invokes Cargo, downloads a host, installs dependencies or changes toolchain pins. With the pinned Bun, installed dependency tree and supplied host already present, these commands operate offline. Building a native host from source remains a separate framework-contributor task documented in [getting started](getting-started.md).
@@ -76,8 +100,11 @@ The build reuses the fixture packager's pinned `bun compile` implementation and 
 
 - `application` (`application.exe` on Windows), the actual AOT executable.
 - `bun-native-host` (`bun-native-host.exe` on Windows), copied from the explicit input.
-- `manifest.json`, with OS/CPU, exact toolchain, application/module/host SHA-256 and byte sizes, compiler command, compilation duration, executable inspections and validation status.
+- `manifest.json`, with OS/CPU, exact toolchain, application/module/source-map/launcher/host SHA-256 and byte sizes, the compiler revision and executable digest, the compiler command (paths relative to the output directory), executable inspections, validation status and a `reproducibility` file inventory.
 - The bundled development module and source map, generated launcher, and compiler logs for reproduction and diagnosis.
+- `build-metrics.json`, with the compilation duration.
+
+Equal sources and pins produce byte-identical files listed in `manifest.reproducibility.deterministic`, independent of the checkout location, output directory, working directory and build time. Compiler logs and `build-metrics.json` are diagnostics and are not reproducible. See [reproducible builds](reproducible-builds.md).
 
 The application resolves its host next to its own executable, so the output directory can be moved and launched from another working directory. `BUN_NATIVE_HOST` is an explicit runtime override. Keep the application and bundled host together. Changed host or bundled-module bytes during packaging cause a failure. On failure, inspect the retained logs and use a new empty output directory for a retry.
 
@@ -103,7 +130,7 @@ The [preserved first template failure](../tests/native/evidence/template-pointer
 
 These are eight bounded Linux cases: Solid/React × TypeScript/JavaScript × development/AOT. The workflow's `cli-templates` evidence directory contains preparation provenance plus each case's `result.json` and `lifecycle.json`; development cases also retain their actual `native-dev-module`. Exact `native dev` qualification requires these changed-command cases to pass on the current source head. Native qualification of `native dev --watch`, 100 native reload cycles, hardware GPU or physical-input behavior, macOS/Windows template qualification, and installation outside the checkout remain separate work. Assess the actual run's statuses before claiming qualification.
 
-Linux native artifacts now also retain `unsigned-native-host.tar.gz`, containing the executable from that job's release build. Match the extracted executable to `binary-sha256.txt` and the source/toolchain records in the same artifact before supplying its absolute path to `--host`. The archive is an experimental reproducibility artifact, is retained for the workflow's normal 14-day artifact lifetime, and still needs the documented Linux native libraries. It does not provide an automatic download/cache policy or a standalone application installer.
+Linux native artifacts now also retain `unsigned-native-host.tar.gz`, containing the executable from that job's release build. It is packed by `scripts/native/host-archive.ts` with fixed metadata and the commit time, so the archive bytes depend only on the executable ([reproducible builds](reproducible-builds.md)). Match the extracted executable to `binary-sha256.txt` and the source/toolchain records in the same artifact before supplying its absolute path to `--host`. The archive is an experimental reproducibility artifact, is retained for the workflow's normal 14-day artifact lifetime, and still needs the documented Linux native libraries. It does not provide an automatic download/cache policy or a standalone application installer.
 
 ### Native watch qualification
 
