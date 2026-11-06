@@ -113,8 +113,17 @@ bun run build --host /absolute/path/to/bun-native-host --host-profile release
 `build` writes to the project's `dist` directory unless `--outdir` names another;
 the output directory must be empty.
 
-`format` and `format:check` run the installed CLI's built-in formatter command, which uses
-the template style unless the project supplies its own formatter config and skips `vendor/`.
+`check` is Bun's type checker alone. `format` and `format:check` run the installed CLI's
+built-in formatter command, which uses the template style unless the project supplies its
+own formatter config and always skips `vendor/`. The installed CLI's `check .` runs both the
+type checker and the formatter check, and `doctor .` reports the Bun pin, platform and
+verified installed package set without launching anything:
+
+```sh
+bun --no-install ./node_modules/@bun-native/cli/src/scripts/native.ts check .
+bun --no-install ./node_modules/@bun-native/cli/src/scripts/native.ts doctor . \
+  --host /absolute/path/to/bun-native-host
+```
 
 Supply the exact pinned Bun revision and a separately acquired, compatible native
 host. Ordinary source edits and AOT builds do not invoke Cargo. The compiler child
