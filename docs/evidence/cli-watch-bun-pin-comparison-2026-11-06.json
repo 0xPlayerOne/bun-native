@@ -1,0 +1,1024 @@
+{
+  "schemaVersion": 1,
+  "subject": "#243 101-edit native watch scenario (tests/native/cli-watch.py) on the old and new Bun pins, hosted ubuntu-24.04 runs",
+  "generatedBy": "python3 scripts/quality/watch-run-summary.py on each retained native-linux-X64 artifact result.json",
+  "scope": "Observation intervals with software-X11 and process-audit overhead on shared hosted runners. Not presentation latency, not a controlled A/B; runs differ in head commit and runner.",
+  "runs": [
+    {
+      "run": 41901735502,
+      "event": "pull_request",
+      "headSha": "241b056cca04a0950a6e114a9133cb8502e93d60",
+      "branch": "feat/cli-native-qualification-20261104",
+      "createdAt": "2026-11-04T19:56:12Z",
+      "url": "https://github.com/0xPlayerOne/bun-native/actions/runs/41901735502",
+      "frameworks": {
+        "solid": {
+          "bun": "1.4.4-canary.1+da867c60b",
+          "generations": 102,
+          "cliEditToReadyMs": {
+            "count": 101,
+            "median": 208.859,
+            "p95": 219.445,
+            "maximum": 227.366
+          },
+          "cliBundleMs": {
+            "count": 101,
+            "median": 13.057,
+            "p95": 16.765,
+            "maximum": 23.069
+          },
+          "cliShutdownMs": {
+            "count": 101,
+            "median": 19.099,
+            "p95": 21.441,
+            "maximum": 23.292
+          },
+          "cliMountMs": {
+            "count": 101,
+            "median": 124.597,
+            "p95": 132.921,
+            "maximum": 139.41
+          },
+          "observedEditToReadyMs": {
+            "count": 101,
+            "median": 209.292,
+            "p95": 220.309,
+            "maximum": 227.868
+          },
+          "observedEditToFirstPaintMs": {
+            "count": 101,
+            "median": 217.438,
+            "p95": 228.436,
+            "maximum": 235.428
+          },
+          "observedEditToInputConfirmedPaintMs": {
+            "count": 101,
+            "median": 346.844,
+            "p95": 374.337,
+            "maximum": 408.817
+          },
+          "controllerRssBytes": {
+            "first": 101257216,
+            "last": 129781760,
+            "maximum": 134733824
+          },
+          "treeRssBytes": {
+            "first": 263106560,
+            "last": 291762176,
+            "maximum": 296493056
+          },
+          "maximumLiveNativeHosts": 1,
+          "maximumLiveApplicationProcesses": 1
+        },
+        "react": {
+          "bun": "1.4.4-canary.1+da867c60b",
+          "generations": 102,
+          "cliEditToReadyMs": {
+            "count": 101,
+            "median": 232.384,
+            "p95": 245.56,
+            "maximum": 253.286
+          },
+          "cliBundleMs": {
+            "count": 101,
+            "median": 20.111,
+            "p95": 22.307,
+            "maximum": 24.07
+          },
+          "cliShutdownMs": {
+            "count": 101,
+            "median": 25.327,
+            "p95": 28.087,
+            "maximum": 30.832
+          },
+          "cliMountMs": {
+            "count": 101,
+            "median": 134.957,
+            "p95": 146.167,
+            "maximum": 152.297
+          },
+          "observedEditToReadyMs": {
+            "count": 101,
+            "median": 233.08,
+            "p95": 246.188,
+            "maximum": 253.735
+          },
+          "observedEditToFirstPaintMs": {
+            "count": 101,
+            "median": 240.186,
+            "p95": 253.447,
+            "maximum": 259.444
+          },
+          "observedEditToInputConfirmedPaintMs": {
+            "count": 101,
+            "median": 375.234,
+            "p95": 411.594,
+            "maximum": 439.136
+          },
+          "controllerRssBytes": {
+            "first": 88612864,
+            "last": 95547392,
+            "maximum": 95547392
+          },
+          "treeRssBytes": {
+            "first": 252542976,
+            "last": 258682880,
+            "maximum": 260075520
+          },
+          "maximumLiveNativeHosts": 1,
+          "maximumLiveApplicationProcesses": 1
+        }
+      },
+      "bun": "1.4.4-canary.1+da867c60b"
+    },
+    {
+      "run": 42163148559,
+      "event": "pull_request",
+      "headSha": "39a41372147b78998c042f3a4289bf2fb2a06e71",
+      "branch": "docs-tests/batch-3",
+      "createdAt": "2026-11-06T04:32:52Z",
+      "url": "https://github.com/0xPlayerOne/bun-native/actions/runs/42163148559",
+      "frameworks": {
+        "solid": {
+          "bun": "1.4.4-canary.1+da867c60b",
+          "generations": 102,
+          "cliEditToReadyMs": {
+            "count": 101,
+            "median": 237.447,
+            "p95": 259.21,
+            "maximum": 261.426
+          },
+          "cliBundleMs": {
+            "count": 101,
+            "median": 19.32,
+            "p95": 26.677,
+            "maximum": 31.488
+          },
+          "cliShutdownMs": {
+            "count": 101,
+            "median": 23.388,
+            "p95": 27.166,
+            "maximum": 28.249
+          },
+          "cliMountMs": {
+            "count": 101,
+            "median": 141.975,
+            "p95": 160.938,
+            "maximum": 163.163
+          },
+          "observedEditToReadyMs": {
+            "count": 101,
+            "median": 237.94,
+            "p95": 260.009,
+            "maximum": 297.609
+          },
+          "observedEditToFirstPaintMs": {
+            "count": 101,
+            "median": 244.329,
+            "p95": 274.367,
+            "maximum": 313.731
+          },
+          "observedEditToInputConfirmedPaintMs": {
+            "count": 101,
+            "median": 474.105,
+            "p95": 500.017,
+            "maximum": 551.2
+          },
+          "controllerRssBytes": {
+            "first": 122527744,
+            "last": 152190976,
+            "maximum": 154791936
+          },
+          "treeRssBytes": {
+            "first": 337981440,
+            "last": 367828992,
+            "maximum": 370114560
+          },
+          "maximumLiveNativeHosts": 1,
+          "maximumLiveApplicationProcesses": 1
+        },
+        "react": {
+          "bun": "1.4.4-canary.1+da867c60b",
+          "generations": 102,
+          "cliEditToReadyMs": {
+            "count": 101,
+            "median": 260.287,
+            "p95": 277.135,
+            "maximum": 288.897
+          },
+          "cliBundleMs": {
+            "count": 101,
+            "median": 28.101,
+            "p95": 30.71,
+            "maximum": 32.846
+          },
+          "cliShutdownMs": {
+            "count": 101,
+            "median": 30.271,
+            "p95": 35.143,
+            "maximum": 37.579
+          },
+          "cliMountMs": {
+            "count": 101,
+            "median": 148.775,
+            "p95": 166.19,
+            "maximum": 170.887
+          },
+          "observedEditToReadyMs": {
+            "count": 101,
+            "median": 260.657,
+            "p95": 277.651,
+            "maximum": 289.334
+          },
+          "observedEditToFirstPaintMs": {
+            "count": 101,
+            "median": 268.177,
+            "p95": 287.782,
+            "maximum": 294.21
+          },
+          "observedEditToInputConfirmedPaintMs": {
+            "count": 101,
+            "median": 499.74,
+            "p95": 531.512,
+            "maximum": 547.628
+          },
+          "controllerRssBytes": {
+            "first": 85905408,
+            "last": 97927168,
+            "maximum": 97927168
+          },
+          "treeRssBytes": {
+            "first": 303472640,
+            "last": 315297792,
+            "maximum": 315457536
+          },
+          "maximumLiveNativeHosts": 1,
+          "maximumLiveApplicationProcesses": 1
+        }
+      },
+      "bun": "1.4.4-canary.1+da867c60b"
+    },
+    {
+      "run": 42163449360,
+      "event": "pull_request",
+      "headSha": "4ee684c21e80de47535dce94961113bbb01c0765",
+      "branch": "claude/project-thread-qg08d3",
+      "createdAt": "2026-11-06T04:35:51Z",
+      "url": "https://github.com/0xPlayerOne/bun-native/actions/runs/42163449360",
+      "frameworks": {
+        "solid": {
+          "bun": "1.4.4-canary.1+da867c60b",
+          "generations": 102,
+          "cliEditToReadyMs": {
+            "count": 101,
+            "median": 169.818,
+            "p95": 177.861,
+            "maximum": 183.01
+          },
+          "cliBundleMs": {
+            "count": 101,
+            "median": 11.579,
+            "p95": 15.001,
+            "maximum": 17.801
+          },
+          "cliShutdownMs": {
+            "count": 101,
+            "median": 17.394,
+            "p95": 19.407,
+            "maximum": 21.22
+          },
+          "cliMountMs": {
+            "count": 101,
+            "median": 89.117,
+            "p95": 94.943,
+            "maximum": 100.463
+          },
+          "observedEditToReadyMs": {
+            "count": 101,
+            "median": 170.488,
+            "p95": 178.329,
+            "maximum": 183.537
+          },
+          "observedEditToFirstPaintMs": {
+            "count": 101,
+            "median": 179.736,
+            "p95": 186.802,
+            "maximum": 190.786
+          },
+          "observedEditToInputConfirmedPaintMs": {
+            "count": 101,
+            "median": 259.331,
+            "p95": 279.848,
+            "maximum": 291.709
+          },
+          "controllerRssBytes": {
+            "first": 122134528,
+            "last": 154750976,
+            "maximum": 154750976
+          },
+          "treeRssBytes": {
+            "first": 323510272,
+            "last": 355840000,
+            "maximum": 355840000
+          },
+          "maximumLiveNativeHosts": 1,
+          "maximumLiveApplicationProcesses": 1
+        },
+        "react": {
+          "bun": "1.4.4-canary.1+da867c60b",
+          "generations": 102,
+          "cliEditToReadyMs": {
+            "count": 101,
+            "median": 186.723,
+            "p95": 194.049,
+            "maximum": 205.42
+          },
+          "cliBundleMs": {
+            "count": 101,
+            "median": 15.739,
+            "p95": 17.253,
+            "maximum": 24.739
+          },
+          "cliShutdownMs": {
+            "count": 101,
+            "median": 21.824,
+            "p95": 23.232,
+            "maximum": 24.871
+          },
+          "cliMountMs": {
+            "count": 101,
+            "median": 97.482,
+            "p95": 104.223,
+            "maximum": 116.052
+          },
+          "observedEditToReadyMs": {
+            "count": 101,
+            "median": 187.56,
+            "p95": 194.494,
+            "maximum": 205.827
+          },
+          "observedEditToFirstPaintMs": {
+            "count": 101,
+            "median": 196.314,
+            "p95": 202.789,
+            "maximum": 208.194
+          },
+          "observedEditToInputConfirmedPaintMs": {
+            "count": 101,
+            "median": 288.628,
+            "p95": 296.945,
+            "maximum": 333.838
+          },
+          "controllerRssBytes": {
+            "first": 84213760,
+            "last": 97091584,
+            "maximum": 97091584
+          },
+          "treeRssBytes": {
+            "first": 287932416,
+            "last": 300544000,
+            "maximum": 300703744
+          },
+          "maximumLiveNativeHosts": 1,
+          "maximumLiveApplicationProcesses": 1
+        }
+      },
+      "bun": "1.4.4-canary.1+da867c60b"
+    },
+    {
+      "run": 42163901424,
+      "event": "push",
+      "headSha": "3170a10ca276b979cfe6d4e430afc8ec5fca4434",
+      "branch": "main",
+      "createdAt": "2026-11-06T04:40:34Z",
+      "url": "https://github.com/0xPlayerOne/bun-native/actions/runs/42163901424",
+      "frameworks": {
+        "solid": {
+          "bun": "1.4.4-canary.1+da867c60b",
+          "generations": 102,
+          "cliEditToReadyMs": {
+            "count": 101,
+            "median": 203.543,
+            "p95": 213.22,
+            "maximum": 221.397
+          },
+          "cliBundleMs": {
+            "count": 101,
+            "median": 14.989,
+            "p95": 19.506,
+            "maximum": 22.542
+          },
+          "cliShutdownMs": {
+            "count": 101,
+            "median": 19.801,
+            "p95": 21.943,
+            "maximum": 37.593
+          },
+          "cliMountMs": {
+            "count": 101,
+            "median": 114.554,
+            "p95": 122.949,
+            "maximum": 128.03
+          },
+          "observedEditToReadyMs": {
+            "count": 101,
+            "median": 203.964,
+            "p95": 217.786,
+            "maximum": 275.432
+          },
+          "observedEditToFirstPaintMs": {
+            "count": 101,
+            "median": 211.877,
+            "p95": 225.507,
+            "maximum": 284.635
+          },
+          "observedEditToInputConfirmedPaintMs": {
+            "count": 101,
+            "median": 360.549,
+            "p95": 376.212,
+            "maximum": 413.004
+          },
+          "controllerRssBytes": {
+            "first": 122650624,
+            "last": 147410944,
+            "maximum": 155615232
+          },
+          "treeRssBytes": {
+            "first": 324284416,
+            "last": 349290496,
+            "maximum": 357629952
+          },
+          "maximumLiveNativeHosts": 1,
+          "maximumLiveApplicationProcesses": 1
+        },
+        "react": {
+          "bun": "1.4.4-canary.1+da867c60b",
+          "generations": 102,
+          "cliEditToReadyMs": {
+            "count": 101,
+            "median": 221.748,
+            "p95": 237.308,
+            "maximum": 254.956
+          },
+          "cliBundleMs": {
+            "count": 101,
+            "median": 21.196,
+            "p95": 23.488,
+            "maximum": 29.95
+          },
+          "cliShutdownMs": {
+            "count": 101,
+            "median": 25.917,
+            "p95": 29.197,
+            "maximum": 42.936
+          },
+          "cliMountMs": {
+            "count": 101,
+            "median": 122.453,
+            "p95": 134.919,
+            "maximum": 142.693
+          },
+          "observedEditToReadyMs": {
+            "count": 101,
+            "median": 222.38,
+            "p95": 239.824,
+            "maximum": 286.525
+          },
+          "observedEditToFirstPaintMs": {
+            "count": 101,
+            "median": 229.505,
+            "p95": 247.88,
+            "maximum": 293.931
+          },
+          "observedEditToInputConfirmedPaintMs": {
+            "count": 101,
+            "median": 381.805,
+            "p95": 407.306,
+            "maximum": 435.731
+          },
+          "controllerRssBytes": {
+            "first": 84705280,
+            "last": 97095680,
+            "maximum": 97488896
+          },
+          "treeRssBytes": {
+            "first": 288555008,
+            "last": 300163072,
+            "maximum": 301445120
+          },
+          "maximumLiveNativeHosts": 1,
+          "maximumLiveApplicationProcesses": 1
+        }
+      },
+      "bun": "1.4.4-canary.1+da867c60b"
+    },
+    {
+      "run": 42165244068,
+      "event": "push",
+      "headSha": "40ea121d6cdc8746d53feb6b41df11cd0e792874",
+      "branch": "main",
+      "createdAt": "2026-11-06T04:54:32Z",
+      "url": "https://github.com/0xPlayerOne/bun-native/actions/runs/42165244068",
+      "frameworks": {
+        "solid": {
+          "bun": "1.4.4-canary.1+da867c60b",
+          "generations": 102,
+          "cliEditToReadyMs": {
+            "count": 101,
+            "median": 234.303,
+            "p95": 245.168,
+            "maximum": 252.849
+          },
+          "cliBundleMs": {
+            "count": 101,
+            "median": 18.539,
+            "p95": 25.057,
+            "maximum": 29.626
+          },
+          "cliShutdownMs": {
+            "count": 101,
+            "median": 22.389,
+            "p95": 26.234,
+            "maximum": 29.535
+          },
+          "cliMountMs": {
+            "count": 101,
+            "median": 138.495,
+            "p95": 148.452,
+            "maximum": 154.39
+          },
+          "observedEditToReadyMs": {
+            "count": 101,
+            "median": 234.714,
+            "p95": 245.555,
+            "maximum": 308.838
+          },
+          "observedEditToFirstPaintMs": {
+            "count": 101,
+            "median": 241.208,
+            "p95": 260.726,
+            "maximum": 327.484
+          },
+          "observedEditToInputConfirmedPaintMs": {
+            "count": 101,
+            "median": 371.787,
+            "p95": 392.662,
+            "maximum": 451.224
+          },
+          "controllerRssBytes": {
+            "first": 122855424,
+            "last": 152014848,
+            "maximum": 158187520
+          },
+          "treeRssBytes": {
+            "first": 338903040,
+            "last": 367849472,
+            "maximum": 373616640
+          },
+          "maximumLiveNativeHosts": 1,
+          "maximumLiveApplicationProcesses": 1
+        },
+        "react": {
+          "bun": "1.4.4-canary.1+da867c60b",
+          "generations": 102,
+          "cliEditToReadyMs": {
+            "count": 101,
+            "median": 254.799,
+            "p95": 266.527,
+            "maximum": 269.844
+          },
+          "cliBundleMs": {
+            "count": 101,
+            "median": 26.227,
+            "p95": 28.259,
+            "maximum": 35.069
+          },
+          "cliShutdownMs": {
+            "count": 101,
+            "median": 29.62,
+            "p95": 32.562,
+            "maximum": 34.824
+          },
+          "cliMountMs": {
+            "count": 101,
+            "median": 146.688,
+            "p95": 157.652,
+            "maximum": 159.854
+          },
+          "observedEditToReadyMs": {
+            "count": 101,
+            "median": 255.232,
+            "p95": 266.872,
+            "maximum": 270.336
+          },
+          "observedEditToFirstPaintMs": {
+            "count": 101,
+            "median": 261.837,
+            "p95": 279.012,
+            "maximum": 285.943
+          },
+          "observedEditToInputConfirmedPaintMs": {
+            "count": 101,
+            "median": 392.845,
+            "p95": 415.903,
+            "maximum": 432.796
+          },
+          "controllerRssBytes": {
+            "first": 84660224,
+            "last": 97460224,
+            "maximum": 97566720
+          },
+          "treeRssBytes": {
+            "first": 301588480,
+            "last": 314236928,
+            "maximum": 314929152
+          },
+          "maximumLiveNativeHosts": 1,
+          "maximumLiveApplicationProcesses": 1
+        }
+      },
+      "bun": "1.4.4-canary.1+da867c60b"
+    },
+    {
+      "run": 42167478083,
+      "event": "push",
+      "headSha": "fdc97e79a1c26842c0bc01e919d8eea6785ab69d",
+      "branch": "main",
+      "createdAt": "2026-11-06T05:16:48Z",
+      "url": "https://github.com/0xPlayerOne/bun-native/actions/runs/42167478083",
+      "frameworks": {
+        "solid": {
+          "bun": "1.4.4-canary.1+da867c60b",
+          "generations": 102,
+          "cliEditToReadyMs": {
+            "count": 101,
+            "median": 187.677,
+            "p95": 200.486,
+            "maximum": 229.444
+          },
+          "cliBundleMs": {
+            "count": 101,
+            "median": 13.348,
+            "p95": 17.774,
+            "maximum": 24.102
+          },
+          "cliShutdownMs": {
+            "count": 101,
+            "median": 20.167,
+            "p95": 22.72,
+            "maximum": 23.797
+          },
+          "cliMountMs": {
+            "count": 101,
+            "median": 101.741,
+            "p95": 109.737,
+            "maximum": 143.602
+          },
+          "observedEditToReadyMs": {
+            "count": 101,
+            "median": 188.708,
+            "p95": 200.961,
+            "maximum": 229.882
+          },
+          "observedEditToFirstPaintMs": {
+            "count": 101,
+            "median": 196.553,
+            "p95": 208.85,
+            "maximum": 233.49
+          },
+          "observedEditToInputConfirmedPaintMs": {
+            "count": 101,
+            "median": 291.052,
+            "p95": 312.456,
+            "maximum": 335.206
+          },
+          "controllerRssBytes": {
+            "first": 122449920,
+            "last": 151162880,
+            "maximum": 152948736
+          },
+          "treeRssBytes": {
+            "first": 323932160,
+            "last": 353046528,
+            "maximum": 354701312
+          },
+          "maximumLiveNativeHosts": 1,
+          "maximumLiveApplicationProcesses": 1
+        },
+        "react": {
+          "bun": "1.4.4-canary.1+da867c60b",
+          "generations": 102,
+          "cliEditToReadyMs": {
+            "count": 101,
+            "median": 200.549,
+            "p95": 217.039,
+            "maximum": 241.625
+          },
+          "cliBundleMs": {
+            "count": 101,
+            "median": 17.568,
+            "p95": 19.504,
+            "maximum": 30.108
+          },
+          "cliShutdownMs": {
+            "count": 101,
+            "median": 24.696,
+            "p95": 27.715,
+            "maximum": 37.695
+          },
+          "cliMountMs": {
+            "count": 101,
+            "median": 106.439,
+            "p95": 117.69,
+            "maximum": 139.909
+          },
+          "observedEditToReadyMs": {
+            "count": 101,
+            "median": 200.933,
+            "p95": 219.255,
+            "maximum": 242.098
+          },
+          "observedEditToFirstPaintMs": {
+            "count": 101,
+            "median": 209.49,
+            "p95": 228.266,
+            "maximum": 248.77
+          },
+          "observedEditToInputConfirmedPaintMs": {
+            "count": 101,
+            "median": 303.379,
+            "p95": 329.574,
+            "maximum": 349.924
+          },
+          "controllerRssBytes": {
+            "first": 84471808,
+            "last": 97193984,
+            "maximum": 97247232
+          },
+          "treeRssBytes": {
+            "first": 288661504,
+            "last": 300830720,
+            "maximum": 301314048
+          },
+          "maximumLiveNativeHosts": 1,
+          "maximumLiveApplicationProcesses": 1
+        }
+      },
+      "bun": "1.4.4-canary.1+da867c60b"
+    },
+    {
+      "run": 42166026669,
+      "event": "pull_request",
+      "headSha": "68b779c4d4c6a893fb21ccd49a18afef09d7df18",
+      "branch": "chore/bun-pin-trial",
+      "createdAt": "2026-11-06T05:02:41Z",
+      "url": "https://github.com/0xPlayerOne/bun-native/actions/runs/42166026669",
+      "frameworks": {
+        "solid": {
+          "bun": "1.4.4-canary.1+b1007f117",
+          "generations": 102,
+          "cliEditToReadyMs": {
+            "count": 101,
+            "median": 242.956,
+            "p95": 266.502,
+            "maximum": 276.592
+          },
+          "cliBundleMs": {
+            "count": 101,
+            "median": 20.156,
+            "p95": 28.391,
+            "maximum": 32.447
+          },
+          "cliShutdownMs": {
+            "count": 101,
+            "median": 24.632,
+            "p95": 29.405,
+            "maximum": 37.711
+          },
+          "cliMountMs": {
+            "count": 101,
+            "median": 145.295,
+            "p95": 159.284,
+            "maximum": 171.329
+          },
+          "observedEditToReadyMs": {
+            "count": 101,
+            "median": 243.579,
+            "p95": 267.284,
+            "maximum": 277.109
+          },
+          "observedEditToFirstPaintMs": {
+            "count": 101,
+            "median": 251.862,
+            "p95": 273.866,
+            "maximum": 293.271
+          },
+          "observedEditToInputConfirmedPaintMs": {
+            "count": 101,
+            "median": 388.209,
+            "p95": 422.044,
+            "maximum": 435.539
+          },
+          "controllerRssBytes": {
+            "first": 129024000,
+            "last": 157609984,
+            "maximum": 162091008
+          },
+          "treeRssBytes": {
+            "first": 346492928,
+            "last": 375214080,
+            "maximum": 380518400
+          },
+          "maximumLiveNativeHosts": 1,
+          "maximumLiveApplicationProcesses": 1
+        },
+        "react": {
+          "bun": "1.4.4-canary.1+b1007f117",
+          "generations": 102,
+          "cliEditToReadyMs": {
+            "count": 101,
+            "median": 264.009,
+            "p95": 276.336,
+            "maximum": 289.025
+          },
+          "cliBundleMs": {
+            "count": 101,
+            "median": 27.429,
+            "p95": 30.506,
+            "maximum": 32.752
+          },
+          "cliShutdownMs": {
+            "count": 101,
+            "median": 31.404,
+            "p95": 35.41,
+            "maximum": 36.801
+          },
+          "cliMountMs": {
+            "count": 101,
+            "median": 151.861,
+            "p95": 166.544,
+            "maximum": 179.742
+          },
+          "observedEditToReadyMs": {
+            "count": 101,
+            "median": 264.448,
+            "p95": 276.737,
+            "maximum": 289.901
+          },
+          "observedEditToFirstPaintMs": {
+            "count": 101,
+            "median": 271.372,
+            "p95": 289.514,
+            "maximum": 305.396
+          },
+          "observedEditToInputConfirmedPaintMs": {
+            "count": 101,
+            "median": 408.898,
+            "p95": 435.147,
+            "maximum": 450.006
+          },
+          "controllerRssBytes": {
+            "first": 90771456,
+            "last": 103071744,
+            "maximum": 103215104
+          },
+          "treeRssBytes": {
+            "first": 311070720,
+            "last": 321875968,
+            "maximum": 322764800
+          },
+          "maximumLiveNativeHosts": 1,
+          "maximumLiveApplicationProcesses": 1
+        }
+      },
+      "bun": "1.4.4-canary.1+b1007f117"
+    },
+    {
+      "run": 42169661497,
+      "event": "push",
+      "headSha": "3f0713cd25322d530322524e1f7e5a4e27516fd6",
+      "branch": "main",
+      "createdAt": "2026-11-06T05:38:58Z",
+      "url": "https://github.com/0xPlayerOne/bun-native/actions/runs/42169661497",
+      "frameworks": {
+        "solid": {
+          "bun": "1.4.4-canary.1+b1007f117",
+          "generations": 102,
+          "cliEditToReadyMs": {
+            "count": 101,
+            "median": 207.548,
+            "p95": 215.675,
+            "maximum": 222.334
+          },
+          "cliBundleMs": {
+            "count": 101,
+            "median": 15.685,
+            "p95": 20.248,
+            "maximum": 24.038
+          },
+          "cliShutdownMs": {
+            "count": 101,
+            "median": 20.927,
+            "p95": 22.991,
+            "maximum": 26.926
+          },
+          "cliMountMs": {
+            "count": 101,
+            "median": 118.57,
+            "p95": 124.835,
+            "maximum": 126.179
+          },
+          "observedEditToReadyMs": {
+            "count": 101,
+            "median": 208.352,
+            "p95": 216.997,
+            "maximum": 233.865
+          },
+          "observedEditToFirstPaintMs": {
+            "count": 101,
+            "median": 215.906,
+            "p95": 224.314,
+            "maximum": 241.31
+          },
+          "observedEditToInputConfirmedPaintMs": {
+            "count": 101,
+            "median": 327.001,
+            "p95": 343.917,
+            "maximum": 351.018
+          },
+          "controllerRssBytes": {
+            "first": 128876544,
+            "last": 155521024,
+            "maximum": 160890880
+          },
+          "treeRssBytes": {
+            "first": 332345344,
+            "last": 359092224,
+            "maximum": 364343296
+          },
+          "maximumLiveNativeHosts": 1,
+          "maximumLiveApplicationProcesses": 1
+        },
+        "react": {
+          "bun": "1.4.4-canary.1+b1007f117",
+          "generations": 102,
+          "cliEditToReadyMs": {
+            "count": 101,
+            "median": 223.45,
+            "p95": 232.579,
+            "maximum": 236.863
+          },
+          "cliBundleMs": {
+            "count": 101,
+            "median": 22.051,
+            "p95": 23.422,
+            "maximum": 24.402
+          },
+          "cliShutdownMs": {
+            "count": 101,
+            "median": 26.57,
+            "p95": 28.936,
+            "maximum": 30.521
+          },
+          "cliMountMs": {
+            "count": 101,
+            "median": 122.74,
+            "p95": 131.61,
+            "maximum": 137.988
+          },
+          "observedEditToReadyMs": {
+            "count": 101,
+            "median": 223.922,
+            "p95": 233.386,
+            "maximum": 252.069
+          },
+          "observedEditToFirstPaintMs": {
+            "count": 101,
+            "median": 231.618,
+            "p95": 241.96,
+            "maximum": 259.051
+          },
+          "observedEditToInputConfirmedPaintMs": {
+            "count": 101,
+            "median": 343.325,
+            "p95": 367.327,
+            "maximum": 384.979
+          },
+          "controllerRssBytes": {
+            "first": 91152384,
+            "last": 102998016,
+            "maximum": 103383040
+          },
+          "treeRssBytes": {
+            "first": 296714240,
+            "last": 307843072,
+            "maximum": 309477376
+          },
+          "maximumLiveNativeHosts": 1,
+          "maximumLiveApplicationProcesses": 1
+        }
+      },
+      "bun": "1.4.4-canary.1+b1007f117"
+    }
+  ]
+}
