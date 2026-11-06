@@ -398,10 +398,46 @@ is a separate operation. A window has at most one file dialog. Aborting the
 signal, closing the window or shutting down closes the OS dialog. See
 [ADR 0013](../../docs/decisions/0013-native-file-dialogs.md).
 
+### Drag and drop
+
+```ts
+const app = await createApplication({
+  executable,
+  permissions: {
+    dragDrop: "allow",
+    filesystemRoots: [{ id: "work", path: "/home/me/project", access: "read" }],
+  },
+});
+const target = await window.registerDropTarget(zone, async (event) => {
+  if (event.type !== "drop") return;
+  for (const item of event.items) {
+    const { root, path } = await item.resolve("work"); // path_denied if outside
+    console.log(item.name, root, path);
+  }
+});
+await target.close();
+```
+
+`window.registerDropTarget(node, listener)` makes a committed node an owned
+drop target for local files under the `dragDrop` launch permission (default
+`deny`); Solid and React export `registerDropTarget(ref, listener)` for a
+mounted element. `app.serviceCapabilities.dragDrop` reports `owned_target`
+scope, `files` payload and backend `x11`, `appkit` or `ole`; Wayland and other
+targets report `unavailable` / `unsupported_platform`. Listeners receive frozen
+`drag_entered`, `drag_left`, `drop` (1-64 items) and `drop_rejected` (`empty`
+or `limit_exceeded`) events. **An item carries only an untrusted display
+`name`**; `item.resolve(rootId)` returns a path relative to a launch root the
+application already holds, and grants nothing. At most 32 targets are live
+per session, one per node. `close()`, removing the node, closing the window or
+shutting down revokes the target at once: its signal aborts, later events are
+dropped and older items reject with `cancelled`. See the
+[service contract](../../docs/native-services.md#drag-and-drop) and
+[ADR 0012](../../docs/decisions/0012-native-drag-drop.md).
+
 ## Supported scope
 
 The elements are `box`, `text`, `button`, single-line `input`, a two-pane `split` with a host-owned draggable divider when the host advertises `split_v1`, and an `overlay` layer when it advertises `overlays_v1`. `Style` explicitly supports `direction`, `gap`, `padding`, `width`, `height`, `min_width`, `max_width`, `min_height`, `max_height`, `flex_grow`, `flex_shrink`, `align_items`, `justify_content`, `overflow`, `scroll_anchor`, `background`, `color` and `font_size`, plus `border_width`, `border_color`, `corner_radius`, `opacity` and `font_weight` when the host advertises `style_decoration_v1`. `defineTheme` and `defaultTheme` resolve named color, spacing, radius and font-size tokens to these plain values in JavaScript; an unknown token name or an invalid token value throws a `TypeError` before anything is staged. Dimensions are numeric logical native pixels, with `fill` available for width and height; colors are unsigned 24-bit RGB values. These fields are validated and bounded by the [shared layout contract](../../docs/native-layout.md). Scroll overflow is accepted only for `box` and `overlay` containers; leaf element types also enforce this restriction. Hosts advertising `overlays_v1` accept the `overlay` container and `scroll_anchor_v1` the `scroll_anchor` style field; `onDismiss(window, overlay, listener)` reports Escape and backdrop presses, plus parent-window blur for `surface: 'window'` popups (`popup_windows_v1`). See the [overlay contract](../../docs/native-overlays.md). Styles are shared by every framework adapter.
 
-There is no DOM, HTML, CSS parser, browser navigation, WebView, CEF, React DOM or automatic compatibility with web component libraries. Native service APIs for menus, dialogs, drag/drop and other desktop integrations remain separate roadmap work. The current renderer does not claim complete scrolling, IME, focus traversal or accessibility coverage. See [the native host limitations](../../native/gpui-host/README.md) and [testing evidence](../../docs/testing.md) before treating a platform as supported.
+There is no DOM, HTML, CSS parser, browser navigation, WebView, CEF, React DOM or automatic compatibility with web component libraries. Native service APIs for menus, message dialogs and other desktop integrations remain separate roadmap work. The current renderer does not claim complete scrolling, IME, focus traversal or accessibility coverage. See [the native host limitations](../../native/gpui-host/README.md) and [testing evidence](../../docs/testing.md) before treating a platform as supported.
 
 Protocol 11 requires shared layout, interactions and immutable service policy and replaces earlier protocols without a compatibility layer. During this private experimental phase, pin the application packages and native host together at the tested source revision. A package build or type check is not native GUI acceptance; a bundled executable is not proof of Bun machine-code AOT. [ADR 0004](../../docs/decisions/0004-public-api.md) records the API boundary and its tradeoffs.

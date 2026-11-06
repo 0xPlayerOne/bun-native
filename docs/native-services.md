@@ -692,9 +692,11 @@ shown. Every bus call is bounded to two seconds; waiting for the user is not.
 
 Options are bounded and validated by both language implementations: a
 one-line `title` of at most 256 UTF-8 bytes, an optional `acceptLabel` of at
-most 64, an optional absolute starting `folder` (a hint), an optional save
-`name` that is one path component of at most 255 bytes, and at most 16
-`filters` of 1-16 glob patterns. A folder dialog takes no filters.
+most 64, an optional absolute POSIX starting `folder` of at most 4,096 bytes
+(a hint), an optional save `name` that is one path component of at most 255
+bytes, and at most 16 `filters`, each a one-line name of at most 128 bytes
+with 1-16 glob patterns of at most 64 bytes. A folder dialog takes no
+filters. Invalid options reject with a `TypeError` and show nothing.
 
 The result is frozen: `{ kind: 'selected', paths }` from an open dialog,
 `{ kind: 'selected', path }` from a save dialog, or `{ kind: 'cancelled' }`
@@ -710,7 +712,8 @@ whole selection with `native_failure`; more than 256 paths, or a result that
 would not fit one frame, fails with `payload_too_large`. No partial selection
 is returned.
 
-A window owns at most one file dialog (`limit_exceeded` otherwise). The OS
+A window owns at most one file dialog and a session at most 16
+(`limit_exceeded` otherwise). The OS
 dialog is parented to the owner's X11 window. Aborting the request's
 `signal` before dispatch sends nothing; after the dialog is shown it rejects
 with `cancelled` immediately and closes the OS dialog through the portal.
@@ -786,9 +789,12 @@ root, `path_denied` beneath one). macOS has filesystem grants, so there the
 fixture reads a resolved item through a real `openFileGrant`, as on Linux. See [ADR 0012](decisions/0012-native-drag-drop.md) for
 each backend's delivery quirks.
 Failures are `NativeServiceError` with service `drag_drop`:
-`permission_denied`, `service_unavailable`, `conflict` (the node already has
-a target), `limit_exceeded` (32 live targets), `path_denied`, `not_found` and
-`cancelled`.
+`permission_denied` (no `dragDrop` grant, or a root not in the launch policy),
+`service_unavailable`, `conflict` (the node already has a target),
+`limit_exceeded` (32 live targets), `path_denied`, `not_found` (no item at
+that index) and `cancelled`. `resolve` rejects a malformed root ID (1-32
+lowercase ASCII letters, digits, `-` or `_`, starting with a letter; never a
+path) with a `TypeError` and sends nothing.
 
 `close()` is idempotent and revokes locally first. Removing the node, closing
 the window or stopping the application does the same. The handle becomes

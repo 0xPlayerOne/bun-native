@@ -73,7 +73,9 @@ truncated.
 Full paths stay in the host, which retains them only for the target's latest
 drop. `item.resolve(root)` asks the host to match that retained path lexically
 beneath a launch filesystem root (ADR 0010). It returns the relative path, or
-rejects with `path_denied` or `permission_denied`. Resolution grants nothing
+rejects with `path_denied`, `permission_denied` (a root ID outside the launch
+policy) or `not_found` (no item at that index). A malformed root ID is a
+`TypeError` raised before any native request. Resolution grants nothing
 new: the application still needs `openFileGrant(root)`, whose `openat2` checks
 apply to the returned path as to any other. A newer drop or rejection on the
 same target, closing the target, removing its node, closing its window or
@@ -166,7 +168,9 @@ Rust unit tests cover names, rejection bounds and lexical resolution. A shared
 fixture of 38 command and event cases runs through both parsers. Headless core
 tests cover capability records, frozen events, explicit resolution,
 replacement, revocation during resolution, node removal, window close,
-shutdown and protocol errors. The native test
+shutdown and protocol errors; `tests/core/drops-lifecycle.test.ts` adds the
+64-item bound, target and drop identity monotonicity, the target limit and
+conflicts, ancestor removal and late events for a closed window. The native test
 [`tests/native/drag-drop.ts`](../../tests/native/drag-drop.ts) drives real XDND
 drags into the host. It covers default denial, a multi-file drop resolved and
 then read through a grant, a move-off, a source leave, a bare drop, nested hit

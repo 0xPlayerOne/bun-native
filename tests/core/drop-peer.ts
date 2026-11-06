@@ -1,7 +1,10 @@
 // Real pipe/process lifecycle, deliberately headless responses. This peer is
 // never evidence that a drag happened or that a path was resolved. A text node
 // whose text starts with `drop:` scripts the drop events emitted after that
-// commit, so tests can deliver late, foreign or malformed identities.
+// commit, so tests can deliver late, foreign or malformed identities. The
+// resolution roots `missing` and `gone` answer `not_found` and `invalid_handle`.
+// A scripted `{ "peer": "forget", "target_id": n }` drops a target silently.
+// Mode `hold-register` answers a registration only after the next batch.
 import {
   DEFAULT_LIMITS,
   encodeFrame,
@@ -34,6 +37,7 @@ const targets = new Map<number, number>()
 const decoder = new FrameDecoder()
 const output = Bun.stdout.writer()
 let sequence = 0
+let held: (() => Promise<void>) | undefined
 let writing = Promise.resolve()
 
 function emit(value: unknown): Promise<void> {
@@ -91,8 +95,15 @@ for await (const chunk of Bun.stdin.stream())
             operation.element.kind === 'text' &&
             operation.element.text.startsWith('drop:')
           )
-            for (const event of JSON.parse(operation.element.text.slice(5)) as object[])
-              await emit({ sequence: ++sequence, window_id: command.window_id, ...event })
+            for (const event of JSON.parse(operation.element.text.slice(5)) as Record<
+              string,
+              unknown
+            >[])
+              if (event['peer'] === 'forget') targets.delete(event['target_id'] as number)
+              else await emit({ sequence: ++sequence, window_id: command.window_id, ...event })
+        const reply = held
+        held = undefined
+        await reply?.()
         break
       }
       case 'register_drop_target':
@@ -108,13 +119,26 @@ for await (const chunk of Bun.stdin.stream())
           await error(command.id, 'invalid_handle', 'Unknown node')
           break
         }
+        if ([...targets.values()].includes(command.node_id)) {
+          await error(command.id, 'conflict', 'This node already is a drop target')
+          break
+        }
+        if (targets.size >= DEFAULT_LIMITS.max_drop_targets) {
+          await error(command.id, 'limit_exceeded', 'Session drop target limit exceeded')
+          break
+        }
         targets.set(command.target_id, command.node_id)
-        await emit({
-          type: 'drop_target_registered',
-          id: command.id,
-          window_id: command.window_id,
-          target_id: command.target_id,
-        })
+        {
+          const registered = () =>
+            emit({
+              type: 'drop_target_registered',
+              id: command.id,
+              window_id: command.window_id,
+              target_id: command.target_id,
+            })
+          if (mode === 'hold-register') held = registered
+          else await registered()
+        }
         break
       case 'unregister_drop_target':
         if (!targets.delete(command.target_id)) {
@@ -141,7 +165,11 @@ for await (const chunk of Bun.stdin.stream())
                 root: command.root,
                 path: mode === 'absolute' ? '/etc/passwd' : 'a.txt',
               })
-            : error(command.id, 'path_denied', 'Not beneath that root')
+            : command.root === 'missing'
+              ? error(command.id, 'not_found', 'The drop has no item at this index')
+              : command.root === 'gone'
+                ? error(command.id, 'invalid_handle', 'Not the latest drop')
+                : error(command.id, 'path_denied', 'Not beneath that root')
         if (mode === 'slow') setTimeout(() => void answer(), 100)
         else await answer()
         break

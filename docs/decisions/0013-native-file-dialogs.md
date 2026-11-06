@@ -137,7 +137,9 @@ Shared fixture cases (`tests/fixtures/native-file-dialogs.json`) run through
 both parsers. `tests/core/file-dialogs.test.ts` drives a real Bun subprocess
 peer through denial, unavailability, every mode, cancellation before and after
 showing, late responses, one-dialog-per-window, owner close, shutdown and
-malformed completions; it is headless and never evidence of an OS dialog.
+malformed completions, and `tests/core/dialogs-lifecycle.test.ts` covers option
+bounds, dialog identities, native failures and completions for another
+window; both are headless and never evidence of an OS dialog.
 Host unit tests cover URI decoding, response mapping and the frame bound.
 
 `tests/native/file-dialogs.ts` runs in development and inspected AOT on an
