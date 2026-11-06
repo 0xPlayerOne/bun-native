@@ -83,7 +83,12 @@ async function fallBack(
 /** The application executable named by the release's own verified build manifest. */
 async function applicationOf(directory: string, release: Release): Promise<string> {
   const recorded = release.files['manifest.json']
-  const bytes = await readFile(join(directory, 'manifest.json')).catch(() => undefined)
+  let bytes: Buffer | undefined
+  try {
+    bytes = await readFile(join(directory, 'manifest.json'))
+  } catch {
+    // Removed after verification: reported below as a modified manifest.
+  }
   if (
     !recorded ||
     !bytes ||
@@ -102,7 +107,12 @@ async function applicationOf(directory: string, release: Release): Promise<strin
   if (!entry || !entry.executable || entry.sha256 !== build.application?.sha256)
     throw new UpdateError('integrity', 'Build manifest names no recorded application executable')
   const path = join(directory, file as string)
-  const mode = (await stat(path).catch(() => undefined))?.mode ?? 0
+  let mode = 0
+  try {
+    mode = (await stat(path)).mode
+  } catch {
+    // Removed after verification: reported below as not executable.
+  }
   if (process.platform !== 'win32' && !(mode & 0o100))
     throw new UpdateError('integrity', `${release.directory}/${file as string} is not executable`)
   return path

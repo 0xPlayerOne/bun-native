@@ -207,6 +207,37 @@ test('an automatic rollback re-verifies the retained release and fails closed', 
   await installed(root, 'r1')
 })
 
+/** Rewrite state.json as a tampered-but-self-consistent record, bypassing the installer. */
+async function patchState(root: string, change: (state: InstallationState) => void) {
+  const value = await state(root)
+  change(value)
+  await writeFile(join(root, 'state.json'), JSON.stringify(value, null, 2) + '\n')
+}
+
+test('a release whose build manifest is unrecorded or not JSON is refused', async () => {
+  const root = join(await temporary(), 'install')
+  await put(root, 1)
+  const { current } = await state(root)
+  const manifest = join(root, current.directory, 'manifest.json')
+  const original = await readFile(manifest)
+  await patchState(root, (value) => {
+    delete value.current.files['manifest.json']
+  })
+  await rejects(launch(root), 'integrity')
+
+  const garbage = Buffer.from('not json\n')
+  await writeFile(manifest, garbage)
+  await patchState(root, (value) => {
+    value.current.files['manifest.json'] = {
+      bytes: garbage.length,
+      sha256: new Bun.CryptoHasher('sha256').update(garbage).digest('hex'),
+      executable: false,
+    }
+  })
+  await rejects(launch(root), 'integrity')
+  await writeFile(manifest, original)
+})
+
 const crashScript = `
 import { launch, reportUnhealthy } from ${JSON.stringify(join(repository, 'scripts/native/lifecycle.ts'))}
 const [root, operation, phase, sha] = process.argv.slice(2)
