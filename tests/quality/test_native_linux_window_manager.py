@@ -83,14 +83,23 @@ FAKE_X = textwrap.dedent(
 
     name, args = sys.argv[1], sys.argv[2:]
     ready = state / "wm-ready"
+    started = state / "wm-started"
     wm_line = "_NET_SUPPORTING_WM_CHECK(WINDOW): window id # 0x200001"
+    client_list_line = "_NET_CLIENT_LIST(WINDOW): window id # "
     if name == "openbox":
         if os.environ.get("FAKE_OPENBOX_EXIT"):
             sys.exit(1)
         # A wide setup window, so loaded runners still see probes finish inside
         # it; still well within the session's five second readiness budget.
         connect(1.5, name)
+        # openbox owns the WM check before it loads its theme and screen state;
+        # client messages in that span go unanswered. _NET_CLIENT_LIST comes last.
         ready.touch()
+        if os.environ.get("FAKE_OPENBOX_NEVER_STARTS"):
+            until_terminated()
+            sys.exit(0)
+        time.sleep(float(os.environ.get("FAKE_OPENBOX_STARTUP_SECONDS", "0")))
+        started.touch()
         until_terminated()
     elif args[:2] == ["-root", "-spy"]:
         connect(0.05, name)
@@ -100,12 +109,21 @@ FAKE_X = textwrap.dedent(
             if ready.exists() and not printed:
                 print(wm_line, flush=True)
                 printed.append(1)
+            if started.exists() and len(printed) == 1:
+                print(client_list_line, flush=True)
+                printed.append(1)
 
         until_terminated(report)
     else:
         connect(0.01, name)
         print(wm_line if ready.exists() else "_NET_SUPPORTING_WM_CHECK:  not found.")
-        event("short probe while window manager " + ("ready" if ready.exists() else "connecting"))
+        if not ready.exists():
+            phase = "connecting"
+        elif started.exists():
+            phase = "ready"
+        else:
+            phase = "still starting"
+        event("short probe while window manager " + phase)
         disconnect()
     """
 )
@@ -204,6 +222,23 @@ class WindowManagerStartTests(unittest.TestCase):
         self.assertIn("short probe while window manager ready", events)
         # Teardown stops the probe and openbox; only then may the server regenerate.
         self.assertEqual(events[-1], "server regenerated")
+        self.assertEqual(leftover, [])
+
+    def test_readiness_waits_for_the_end_of_window_manager_startup(self):
+        result, events, leftover = self.run_session(
+            CURRENT, FAKE_OPENBOX_STARTUP_SECONDS="1"
+        )
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertNotIn("short probe while window manager still starting", events)
+        self.assertIn("short probe while window manager ready", events)
+        self.assertEqual(leftover, [])
+
+    def test_window_manager_that_never_finishes_starting_fails_the_session(self):
+        result, _events, leftover = self.run_session(
+            CURRENT, FAKE_OPENBOX_NEVER_STARTS="1"
+        )
+        self.assertEqual(result.returncode, 1)
+        self.assertIn("The test window manager did not finish starting", result.stderr)
         self.assertEqual(leftover, [])
 
     def test_window_manager_exit_before_ready_still_fails_the_session(self):
