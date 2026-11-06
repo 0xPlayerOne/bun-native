@@ -146,9 +146,15 @@ GPUI already depends on.
   the child's raw bytes, and closing input types ^Z and Enter.
 - **Signals.** `terminate` and `kill` terminate the job and the exit reports
   that signal. `interrupt` on a terminal types ^C, which the console delivers
-  as `CTRL_C_EVENT`. `interrupt` on pipes and `hangup` have no Windows
-  equivalent and return `service_unavailable`. Other exit codes are reported
-  modulo 256, as POSIX does.
+  as `CTRL_C_EVENT`. `interrupt` on pipes (2026-11-06, #305) starts a detached
+  copy of the host executable with `--bun-native-interrupt-console=<pid>`; a
+  process holds one console and the host may have its own, so only a process
+  without one can `AttachConsole` to the child's hidden console, ignore the
+  event itself and `GenerateConsoleCtrlEvent(CTRL_C_EVENT)` there. It is
+  bounded at 3 s and fails with `native_failure`. A child that ends with
+  `STATUS_CONTROL_C_EXIT` reports signal 2. `hangup` has no Windows
+  equivalent and returns `service_unavailable`. Other exit codes are reported
+  modulo 256, as POSIX does. Verified only in hosted Windows CI.
 - **Working directory.** `CreateProcessW` takes only a path. The host walks
   the grant with the ADR 0010 rules and holds the root and every directory
   down to the target open without delete sharing, so none of them can be
@@ -220,7 +226,7 @@ On Windows the Native Platforms `windows-2022` job runs the Windows unit tests
 on real `cmd.exe` children: pipes with an explicit environment and exit code,
 missing, extensionless, non-canonical and directory executables, a sized
 ConPTY, output credit, a leader exit ending a descendant that holds its
-output, `terminate`, refused `interrupt` and `hangup`, release, and a grant
+output, `terminate`, a pipe `interrupt`, refused `hangup`, release, and a grant
 working directory with junction and missing cases. The same native test runs
 there in development and inspected AOT, with an NTFS junction as the escape,
 descendants found through `Get-CimInstance Win32_Process`, and the terminal

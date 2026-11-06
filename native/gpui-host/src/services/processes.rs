@@ -31,6 +31,8 @@ use gpui::{App, BackgroundExecutor, Task};
 use platform::ExitWatch;
 use platform::Wake;
 #[cfg(windows)]
+pub(crate) use platform::interrupt_helper;
+#[cfg(windows)]
 use platform::{Group, Master, Terminal, open_terminal, resize, signal};
 #[cfg(unix)]
 use rustix::event::{PollFd, PollFlags, poll};
@@ -83,6 +85,9 @@ struct State {
     /// The leader's group may no longer be signalled: it is reaped or reaping.
     reaped: bool,
     group: Option<Group>,
+    /// The leader's process ID, which names its console for an interrupt.
+    #[cfg(windows)]
+    leader: Option<u32>,
 }
 
 struct Control {

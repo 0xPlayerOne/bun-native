@@ -380,8 +380,10 @@ async function terminal(window: NativeWindow) {
 }
 
 /**
- * Windows: a pipe child has no console to interrupt and no hangup, so both
- * are refused; terminate ends the whole job, descendants included.
+ * Windows: a pipe child runs on its own hidden console. `interrupt` sends
+ * `CTRL_C_EVENT` there through a detached copy of the host, and the exit
+ * reports it as signal 2 (or the batch's own handling of it); `hangup` has no
+ * equivalent and is refused. Terminate ends the whole job, descendants included.
  */
 async function windowsSignals(window: NativeWindow) {
   const seen = watch()
@@ -398,8 +400,7 @@ async function windowsSignals(window: NativeWindow) {
   const deadline = performance.now() + 10_000
   while (!markedAlive(descendant.marker) && performance.now() < deadline) await Bun.sleep(50)
   assert.equal(markedAlive(descendant.marker), true)
-  for (const refused of ['interrupt', 'hangup'] as const)
-    await assert.rejects(child.signal(refused), rejected('service_unavailable'))
+  await assert.rejects(child.signal('hangup'), rejected('service_unavailable'))
   await child.signal('terminate')
   await seen.until(() => seen.exit !== undefined)
   assert.deepEqual(seen.exit, { signal: 15 })
@@ -407,9 +408,38 @@ async function windowsSignals(window: NativeWindow) {
   await assert.rejects(child.signal('kill'), rejected('invalid_state'))
   record('jobSignalAndExitStopsDescendants', {
     exit: seen.exit,
-    refused: ['interrupt', 'hangup'],
+    refused: ['hangup'],
     descendantStopped: true,
   })
+  await child.release()
+  await windowsInterrupt(window)
+}
+
+/** `interrupt` reaches a pipe child's console: the exit is not a terminate. */
+async function windowsInterrupt(window: NativeWindow) {
+  const seen = watch()
+  const waiting = marked()
+  const child = await window.spawnProcess(
+    'shell',
+    { args: script(`echo ready&${waiting.command} >nul&exit /b 3`), env: PATH },
+    seen.listener
+  )
+  await seen.until(() => (seen.streams['stdout'] ?? '').includes('ready'))
+  const deadline = performance.now() + 10_000
+  while (!markedAlive(waiting.marker) && performance.now() < deadline) await Bun.sleep(50)
+  assert.equal(markedAlive(waiting.marker), true)
+  await child.signal('interrupt')
+  await seen.until(() => seen.exit !== undefined)
+  // cmd.exe either ends with STATUS_CONTROL_C_EXIT (signal 2) or survives the
+  // event and runs its next command; neither is a job terminate (15) or kill (9).
+  const exit = seen.exit as { code?: number; signal?: number }
+  assert.ok(
+    exit.signal === 2 || exit.code === 3,
+    `unexpected exit after interrupt: ${JSON.stringify(exit)}`
+  )
+  assert.equal(await markedStopped(waiting.marker), true)
+  await assert.rejects(child.signal('interrupt'), rejected('invalid_state'))
+  record('pipeInterruptReachesTheChildConsole', { exit, descendantStopped: true })
   await child.release()
 }
 

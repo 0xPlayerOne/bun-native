@@ -19,7 +19,8 @@ use windows_sys::Win32::Foundation::{
     WAIT_OBJECT_0, WAIT_TIMEOUT,
 };
 use windows_sys::Win32::System::Console::{
-    COORD, ClosePseudoConsole, CreatePseudoConsole, HPCON, ResizePseudoConsole,
+    AttachConsole, COORD, CTRL_C_EVENT, ClosePseudoConsole, CreatePseudoConsole, FreeConsole,
+    GenerateConsoleCtrlEvent, HPCON, ResizePseudoConsole, SetConsoleCtrlHandler,
 };
 use windows_sys::Win32::System::JobObjects::{
     CreateJobObjectW, JOB_OBJECT_LIMIT_DIE_ON_UNHANDLED_EXCEPTION,
@@ -87,6 +88,26 @@ impl Job {
         // SAFETY: the job handle is open.
         check(unsafe { TerminateJobObject(self.0.as_raw_handle(), code) })
     }
+}
+
+/// Delivers `CTRL_C_EVENT` to every process on the console that `process` is
+/// attached to. A process holds one console, so this only works in a helper
+/// that has none of its own (started `DETACHED_PROCESS`): it attaches to the
+/// child's console, ignores the event itself, sends it and detaches again.
+pub fn interrupt_console(process: u32) -> io::Result<()> {
+    // SAFETY: detaching a console this helper may not have is harmless.
+    unsafe { FreeConsole() };
+    // SAFETY: attaches to another process's console by ID.
+    check(unsafe { AttachConsole(process) })?;
+    // SAFETY: a null handler with `TRUE` makes this process ignore Ctrl+C.
+    let sent = check(unsafe { SetConsoleCtrlHandler(None, 1) })
+        // SAFETY: group 0 is every process on the attached console.
+        .and_then(|()| check(unsafe { GenerateConsoleCtrlEvent(CTRL_C_EVENT, 0) }));
+    // The event is queued to the console's processes asynchronously.
+    std::thread::sleep(Duration::from_millis(100));
+    // SAFETY: this helper owns the console it attached to.
+    unsafe { FreeConsole() };
+    sent
 }
 
 /// A ConPTY pseudo-console. Closing it (drop) ends the console host, which
