@@ -307,8 +307,29 @@ async function qualification() {
     assert.deepEqual(pointerEvents, [])
     mark = log.length
     await xdnd.offerFiles(many)
-    await xdnd.enter(130, 150)
-    await until('list entry', () => log.length > mark)
+    const largeListEntry = await xdnd.enter(130, 150)
+    try {
+      await until('list entry', () => log.length > mark)
+    } catch (error) {
+      if (backend === 'appkit') {
+        // The independent source reported a screen point but the host did
+        // not report an entry. Re-read the same owned WindowServer window
+        // after the original failure to distinguish target movement from a
+        // missing native drag event. Never replace the first failure.
+        const currentWindow = await xdnd
+          .send('find ' + JSON.stringify({ title, width: 560, height: 380, pid: process.pid }))
+          .catch((lookupError: unknown) => ({ lookupError: String(lookupError) }))
+        console.error(
+          'AppKit large-list entry evidence:',
+          JSON.stringify({
+            sourceEntry: largeListEntry,
+            currentWindow,
+            activeTargets: [left.active, right.active, inner.active],
+          }).slice(0, 2_000)
+        )
+      }
+      throw error
+    }
     await xdnd.drop()
     assert.deepEqual(await since(mark), [
       { target: 'left', type: 'drag_entered' },
