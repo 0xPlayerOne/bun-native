@@ -213,7 +213,7 @@ The existing overlay fixture still passed against the same host.
 
 ### Popup limitations
 
-- **Linux X11 only.** Wayland (GPUI's `AnchoredPopup` there is unused), macOS and Windows do not advertise `popup_windows_v1`. Only Xvfb + openbox at scale 1 is verified; other window managers, compositors, HiDPI and physical GPUs are not.
+- **Linux X11 only.** Wayland (GPUI's `AnchoredPopup` there is unused), macOS and Windows do not advertise `popup_windows_v1`; on Wayland, `tests/native/wayland.ts` checks on headless sway that the capability is absent and that core rejects `surface: 'window'` with `UnsupportedFeatureError`. The `xdg_popup` plan is in [ADR 0017](decisions/0017-wayland.md). Only Xvfb + openbox at scale 1 is verified; other window managers, compositors, HiDPI and physical GPUs are not.
 - **Display.** Clamping uses the whole X screen, like GPUI's X11 display. On a multi-monitor RandR layout a popup can be placed across a monitor gap or on another monitor's area.
 - **Size.** Popups have a fixed declared size; there is no content sizing. Content larger than it is clipped unless the popup scrolls.
 - **Keyboard.** No arrow-key navigation, type-ahead or keyboard activation of popup buttons; Tab stays in the parent window. Editors and nested overlays are rejected inside popups.
