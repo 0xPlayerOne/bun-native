@@ -11,8 +11,16 @@ import {
   MAX_ROWS,
   NODES_PER_ROW,
   StreamingList,
+  bodyStyle,
+  frameStyle,
+  headerStyle,
   listStyle,
+  mainStyle,
+  metaStyle,
   rowStyle,
+  sidebarLines,
+  sidebarStyle,
+  sidebarTextStyle,
   THEMES,
 } from '../native/streaming-list-model.ts'
 
@@ -96,7 +104,11 @@ describe('app-level windowing model', () => {
   test('density changes the window size and keeps the selection in view', () => {
     const list = new StreamingList(100)
     list.key('f8')
-    expect(list.view()).toMatchObject({ density: 'compact', anchor: 100 - 14, follow: true })
+    expect(list.view()).toMatchObject({
+      density: 'compact',
+      anchor: 100 - 14,
+      follow: true,
+    })
     list.key('home')
     for (let step = 0; step < 13; step++) list.key('down')
     list.key('f8')
@@ -136,5 +148,51 @@ describe('app-level windowing model', () => {
     )
     expect(first.view().rows.every((entry) => !entry.streaming)).toBe(true)
     expect(first.digest()).toBe(second.digest())
+  })
+})
+
+describe('framework-independent styles', () => {
+  test('every style is derived from the theme and density tokens', () => {
+    for (const theme of ['dark', 'light'] as const)
+      for (const density of ['comfortable', 'compact'] as const) {
+        const list = new StreamingList(12)
+        // F7/F8 toggle between the two themes and densities.
+        while (list.view().theme !== theme) list.key('f7')
+        while (list.view().density !== density) list.key('f8')
+        const view = list.view()
+        const tokens = THEMES[theme]
+        const sizes = DENSITIES[density]
+        const row = view.rows[0]!
+        expect(frameStyle(view).background).toBe(tokens.background)
+        expect(sidebarStyle(view).background).toBe(tokens.surface)
+        expect(sidebarTextStyle(view)).toEqual({
+          color: tokens.text,
+          font_size: sizes.metaSize,
+        })
+        expect(sidebarTextStyle(view, true).color).toBe(tokens.muted)
+        expect(headerStyle(view).color).toBe(tokens.text)
+        expect(listStyle(view).gap).toBe(sizes.gap)
+        expect(rowStyle(view, row).height).toBe(sizes.rowHeight)
+        expect(rowStyle(view, { ...row, selected: true }).background).toBe(tokens.selected)
+        expect(rowStyle(view, { ...row, selected: false }).background).toBe(tokens.surface)
+        expect(metaStyle(view, { ...row, streaming: true }).color).toBe(tokens.accent)
+        expect(metaStyle(view, { ...row, streaming: false }).color).toBe(tokens.muted)
+        expect(bodyStyle(view)).toEqual({
+          font_size: sizes.fontSize,
+          color: tokens.text,
+        })
+      }
+    expect(mainStyle()).toMatchObject({ flex_grow: 1, min_width: 240 })
+  })
+
+  test('the sidebar reports the theme, density and selection', () => {
+    const list = new StreamingList()
+    const view = list.view()
+    const lines = sidebarLines(view)
+    expect(lines[0]).toBe(`Theme: ${view.theme} (F7)`)
+    expect(lines[1]).toBe(`Density: ${view.density} (F8)`)
+    expect(lines[2]).toBe(view.selected === null ? 'No selection' : `Selected #${view.selected}`)
+    expect(sidebarLines({ ...view, selected: null })[2]).toBe('No selection')
+    expect(list.following).toBe(view.follow)
   })
 })
