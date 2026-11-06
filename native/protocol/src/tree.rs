@@ -514,4 +514,6 @@ impl Tree {
 mod nodes;
 
 #[cfg(test)]
+mod edge_tests;
+#[cfg(test)]
 mod tests;

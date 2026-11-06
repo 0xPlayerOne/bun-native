@@ -157,49 +157,18 @@ impl Shortcuts {
         cx: &mut App,
     ) -> Result<(), Failure> {
         let (id, window, shortcut) = request;
-        if !self.available() {
-            return Err((
-                ErrorCode::ServiceUnavailable,
-                "global shortcuts are implemented only for a local Linux X11 session",
-            ));
-        }
-        if shortcut.get() <= self.0.last_shortcut.get() {
-            return Err((
-                ErrorCode::InvalidHandle,
-                "global shortcut IDs must increase across the session",
-            ));
-        }
-        let key = grab::Key::parse(key).ok_or((
-            ErrorCode::InvalidCommand,
-            "global shortcut key is outside the supported set",
-        ))?;
-        let combination = Combination { key, modifiers };
-        if self.0.registrations.borrow().len() + self.0.releasing.borrow().len()
-            >= MAX_GLOBAL_SHORTCUTS
-        {
-            return Err((
-                ErrorCode::LimitExceeded,
-                "global shortcut registration limit exceeded",
-            ));
-        }
-        if self
-            .0
-            .registrations
-            .borrow()
-            .values()
-            .any(|registration| registration.combination == combination)
-        {
-            return Err((
-                ErrorCode::Conflict,
-                "this key combination is already registered by this application",
-            ));
-        }
-        if self.0.stopping.load(Ordering::Acquire) {
-            return Err((
-                ErrorCode::Cancelled,
-                "global shortcut service is shutting down",
-            ));
-        }
+        let combination = check_register(
+            self.available(),
+            self.0.last_shortcut.get(),
+            (shortcut, key, modifiers),
+            self.0.registrations.borrow().len() + self.0.releasing.borrow().len(),
+            self.0
+                .registrations
+                .borrow()
+                .values()
+                .map(|registration| registration.combination),
+            self.0.stopping.load(Ordering::Acquire),
+        )?;
         self.submit(
             Job::Grab {
                 shortcut,
@@ -568,4 +537,187 @@ fn worker(
         }
     }
     // Dropping the connection makes the X server release every grab it holds.
+}
+
+/// The argument and capacity checks for a new registration, in reply order.
+/// `live` counts registrations plus grabs still being released.
+fn check_register(
+    available: bool,
+    last_shortcut: u64,
+    (shortcut, key, modifiers): (ShortcutId, &str, ShortcutModifiers),
+    live: usize,
+    mut registered: impl Iterator<Item = Combination>,
+    stopping: bool,
+) -> Result<Combination, Failure> {
+    if !available {
+        return Err((
+            ErrorCode::ServiceUnavailable,
+            "global shortcuts are implemented only for a local Linux X11 session",
+        ));
+    }
+    if shortcut.get() <= last_shortcut {
+        return Err((
+            ErrorCode::InvalidHandle,
+            "global shortcut IDs must increase across the session",
+        ));
+    }
+    let key = grab::Key::parse(key).ok_or((
+        ErrorCode::InvalidCommand,
+        "global shortcut key is outside the supported set",
+    ))?;
+    let combination = Combination { key, modifiers };
+    if live >= MAX_GLOBAL_SHORTCUTS {
+        return Err((
+            ErrorCode::LimitExceeded,
+            "global shortcut registration limit exceeded",
+        ));
+    }
+    if registered.any(|existing| existing == combination) {
+        return Err((
+            ErrorCode::Conflict,
+            "this key combination is already registered by this application",
+        ));
+    }
+    if stopping {
+        return Err((
+            ErrorCode::Cancelled,
+            "global shortcut service is shutting down",
+        ));
+    }
+    Ok(combination)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    const CONTROL: ShortcutModifiers = ShortcutModifiers {
+        control: true,
+        alt: false,
+        shift: false,
+        platform: false,
+    };
+
+    fn combination(key: &str, modifiers: ShortcutModifiers) -> Combination {
+        Combination {
+            key: grab::Key::parse(key).unwrap(),
+            modifiers,
+        }
+    }
+
+    /// `request` is (shortcut ID, key, modifiers).
+    fn check(
+        available: bool,
+        last: u64,
+        request: (u64, &str, ShortcutModifiers),
+        live: usize,
+        registered: &[Combination],
+        stopping: bool,
+    ) -> Result<Combination, Failure> {
+        let (shortcut, key, modifiers) = request;
+        check_register(
+            available,
+            last,
+            (ShortcutId::try_from(shortcut).unwrap(), key, modifiers),
+            live,
+            registered.iter().copied(),
+            stopping,
+        )
+    }
+
+    #[test]
+    fn accepts_a_new_combination_below_the_limit() {
+        let existing = [combination("a", CONTROL)];
+        let result = check(true, 1, (2, "f12", CONTROL), 1, &existing, false);
+        assert!(result.ok() == Some(combination("f12", CONTROL)));
+        // The same key with other modifiers is a different combination.
+        let alt = ShortcutModifiers {
+            alt: true,
+            ..CONTROL
+        };
+        assert!(check(true, 1, (2, "a", alt), 1, &existing, false).is_ok());
+    }
+
+    #[test]
+    fn unavailable_service_is_reported_before_any_other_check() {
+        let result = check(false, 9, (1, "", CONTROL), usize::MAX, &[], true);
+        assert_eq!(
+            result.err(),
+            Some((
+                ErrorCode::ServiceUnavailable,
+                "global shortcuts are implemented only for a local Linux X11 session"
+            ))
+        );
+    }
+
+    #[test]
+    fn shortcut_ids_must_strictly_increase() {
+        for (last, shortcut) in [(5, 5), (5, 4), (u64::from(u32::MAX), 1)] {
+            let result = check(true, last, (shortcut, "", CONTROL), usize::MAX, &[], true);
+            assert_eq!(
+                result.err(),
+                Some((
+                    ErrorCode::InvalidHandle,
+                    "global shortcut IDs must increase across the session"
+                )),
+                "{last} -> {shortcut}"
+            );
+        }
+        assert!(check(true, 0, (1, "a", CONTROL), 0, &[], false).is_ok());
+        assert!(check(true, 5, (6, "a", CONTROL), 0, &[], false).is_ok());
+    }
+
+    #[test]
+    fn keys_outside_the_closed_set_are_rejected_before_capacity() {
+        for key in ["", "A", "f0", "f13", "space", "aa"] {
+            assert_eq!(
+                check(true, 0, (1, key, CONTROL), usize::MAX, &[], true).err(),
+                Some((
+                    ErrorCode::InvalidCommand,
+                    "global shortcut key is outside the supported set"
+                )),
+                "{key}"
+            );
+        }
+    }
+
+    #[test]
+    fn registrations_and_pending_releases_share_one_limit() {
+        let last_slot = MAX_GLOBAL_SHORTCUTS - 1;
+        assert!(check(true, 0, (1, "a", CONTROL), last_slot, &[], false).is_ok());
+        // The limit is checked before conflicts and shutdown.
+        let existing = [combination("a", CONTROL)];
+        for live in [MAX_GLOBAL_SHORTCUTS, MAX_GLOBAL_SHORTCUTS + 1] {
+            assert_eq!(
+                check(true, 0, (1, "a", CONTROL), live, &existing, true).err(),
+                Some((
+                    ErrorCode::LimitExceeded,
+                    "global shortcut registration limit exceeded"
+                ))
+            );
+        }
+    }
+
+    #[test]
+    fn a_registered_combination_conflicts_before_shutdown() {
+        let existing = [combination("b", CONTROL), combination("a", CONTROL)];
+        assert_eq!(
+            check(true, 0, (1, "a", CONTROL), 2, &existing, true).err(),
+            Some((
+                ErrorCode::Conflict,
+                "this key combination is already registered by this application"
+            ))
+        );
+    }
+
+    #[test]
+    fn shutdown_is_reported_after_every_argument_check_passes() {
+        assert_eq!(
+            check(true, 0, (1, "a", CONTROL), 0, &[], true).err(),
+            Some((
+                ErrorCode::Cancelled,
+                "global shortcut service is shutting down"
+            ))
+        );
+    }
 }

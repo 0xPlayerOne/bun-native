@@ -9,6 +9,24 @@ The implementation was extracted from the tested Solid adapter when the React
 adapter became its second consumer. Framework-specific owner/effect/reconciler
 scheduling remains in the adapters.
 
+Applications use `@bun-native/solid` or `@bun-native/react`, which re-export
+`inputState` and this package's `RendererNode` type (as `SolidNode` and
+`NativeRef`). Solid also re-exports `RenderOptions` and `RenderRoot`.
+
+## Exports
+
+| Export                                                                                      | Purpose                                                                                           |
+| ------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------- |
+| `createRenderRoot(window, initialize, options?)`                                            | Create one independently disposable native subtree; returns a `RenderRoot`                        |
+| `RenderRoot`, `RenderContext`, `RenderOptions`                                              | Root lifetime handle, the `initialize` context and the optional `{ style }`                       |
+| `createElement(tag)`, `createTextNode(value)`                                               | Create staged `box`, `text`, `button` or `input` nodes and text literals; other tags throw        |
+| `insertNode(parent, node, anchor?)`, `removeNode(parent, node)`, `replaceText(node, value)` | Staged tree mutations used by the framework reconcilers                                           |
+| `setProperty(node, name, value)`                                                            | Set `style`, `text`, `value`, `placeholder`, `disabled` or an event property; unknown names throw |
+| `asNode(reference)`                                                                         | Validate an opaque `RendererNode` as a staged node owned by this package                          |
+| `inputState(reference)`                                                                     | Read the observed `{ value, revision }` of a mounted input                                        |
+| `eventProperties`, `isEventProperty(name)`                                                  | The shared event-property table and its name guard                                                |
+| Types                                                                                       | `Node`, `RendererNode`, `EventHandlers`, `EventProperty`                                          |
+
 ## Ownership and commits
 
 `createRenderRoot(window, initialize, { style })` optionally supplies the initial

@@ -176,3 +176,22 @@ test('Solid may use its universal/reactive exports, with DOM and internal host p
     ).toBe(true)
   }
 })
+
+test('rejects unlisted packages and manifest dependencies outside the package policy', async () => {
+  const root = await fixture(
+    'export type Message = {}',
+    'import { decode } from "external-codec"; import type { Message } from "@bun-native/protocol";',
+    { '@bun-native/protocol': 'workspace:*', 'external-codec': '1.0.0' }
+  )
+  const directory = join(root, 'packages/unlisted')
+  await mkdir(join(directory, 'src'), { recursive: true })
+  await Bun.write(
+    join(directory, 'package.json'),
+    JSON.stringify({ name: '@bun-native/unlisted', exports: { '.': './src/index.ts' } })
+  )
+  await Bun.write(join(directory, 'src/index.ts'), 'export {}')
+  const errors = await checkBoundaries(root)
+  expect(errors).toContain('@bun-native/unlisted: package has no boundary policy')
+  expect(errors).toContain('@bun-native/runtime: forbidden manifest dependency external-codec')
+  expect(errors.some((error) => error.includes('packages/unlisted/src'))).toBe(false)
+})

@@ -25,7 +25,10 @@ def run(
 ):
     observations = {}
     states = application_records()
-    framework = next(row["framework"] for row in states if row.get("type") == "mounted")
+    mounted = next((row for row in states if row.get("type") == "mounted"), None)
+    if mounted is None or "framework" not in mounted:
+        raise RuntimeError("Input viewport application never recorded its mount")
+    framework = mounted["framework"]
     identity = None
 
     def retain():

@@ -129,6 +129,12 @@ numbers as descriptive of that run. macOS and Windows are not wired in: the
 controller samples RSS and load through `/proc`, and the XTest driver is
 Linux-only.
 
+To keep a run in the repository, copy it into a compact record with
+`bun benchmarks/comparison/export.ts ABSOLUTE_RUN_OUTPUT ABSOLUTE_DEST`. The
+destination must not exist yet. The export writes `comparison.json` and
+`launches.jsonl.gz` (every child report plus its stderr tail) and prints a
+Markdown summary table.
+
 ## Not measured here
 
 - A direct Rust GPUI baseline: no Rust application performing this workload

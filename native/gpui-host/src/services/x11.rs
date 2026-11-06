@@ -133,3 +133,87 @@ impl Display {
             .map_err(|_| budget.failure())
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn budget() -> Budget {
+        Budget::new(
+            Arc::new(AtomicBool::new(false)),
+            Arc::new(AtomicBool::new(false)),
+        )
+    }
+
+    #[test]
+    fn a_fresh_budget_admits_work_and_reports_a_generic_failure() {
+        let before = Instant::now();
+        let budget = budget();
+        assert!(budget.check().is_ok());
+        assert!(budget.deadline >= before + TRANSFER_TIMEOUT);
+        assert!(budget.deadline <= Instant::now() + TRANSFER_TIMEOUT);
+        assert_eq!(budget.inbound.load(Ordering::Relaxed), 0);
+        assert_eq!(budget.failure().0, ErrorCode::NativeFailure);
+    }
+
+    #[test]
+    fn revocation_outranks_byte_exhaustion_which_outranks_the_deadline() {
+        let mut budget = budget();
+        budget
+            .inbound
+            .store(MAX_INBOUND_BYTES + 1, Ordering::Relaxed);
+        budget.deadline = Instant::now();
+        assert_eq!(budget.check().unwrap_err().0, ErrorCode::LimitExceeded);
+        budget.stopping.store(true, Ordering::Release);
+        assert_eq!(budget.check().unwrap_err().0, ErrorCode::Cancelled);
+        budget.stopping.store(false, Ordering::Release);
+        budget.cancelled.store(true, Ordering::Release);
+        assert_eq!(budget.failure().0, ErrorCode::Cancelled);
+        budget.cancelled.store(false, Ordering::Release);
+        budget.inbound.store(0, Ordering::Relaxed);
+        // The deadline is inclusive: reaching it is already a timeout.
+        assert_eq!(budget.check().unwrap_err().0, ErrorCode::OperationTimedOut);
+        assert_eq!(budget.failure().0, ErrorCode::OperationTimedOut);
+    }
+
+    #[test]
+    fn inbound_limit_admits_its_exact_size_and_is_shared_across_clones() {
+        let budget = budget();
+        let clone = budget.clone();
+        clone.inbound.store(MAX_INBOUND_BYTES, Ordering::Relaxed);
+        assert!(budget.check().is_ok());
+        clone
+            .inbound
+            .store(MAX_INBOUND_BYTES + 1, Ordering::Relaxed);
+        assert_eq!(budget.check().unwrap_err().0, ErrorCode::LimitExceeded);
+        clone.cancelled.store(true, Ordering::Release);
+        assert_eq!(budget.check().unwrap_err().0, ErrorCode::Cancelled);
+    }
+
+    #[test]
+    fn input_allowance_counts_down_and_poisons_an_exhausted_budget() {
+        let budget = budget();
+        assert_eq!(budget.input_allowance(), MAX_INBOUND_BYTES);
+        budget
+            .inbound
+            .store(MAX_INBOUND_BYTES - 7, Ordering::Relaxed);
+        assert_eq!(budget.input_allowance(), 7);
+        assert!(budget.check().is_ok());
+        // Exactly exhausted: the allowance is zero and the budget now fails,
+        // so a reader cannot spin on zero-length reads.
+        budget.inbound.store(MAX_INBOUND_BYTES, Ordering::Relaxed);
+        assert_eq!(budget.input_allowance(), 0);
+        assert_eq!(
+            budget.inbound.load(Ordering::Relaxed),
+            MAX_INBOUND_BYTES + 1
+        );
+        assert_eq!(budget.check().unwrap_err().0, ErrorCode::LimitExceeded);
+        // Overdrawn counters saturate rather than wrap.
+        budget.inbound.store(usize::MAX, Ordering::Relaxed);
+        assert_eq!(budget.input_allowance(), 0);
+        assert_eq!(
+            budget.inbound.load(Ordering::Relaxed),
+            MAX_INBOUND_BYTES + 1
+        );
+    }
+}

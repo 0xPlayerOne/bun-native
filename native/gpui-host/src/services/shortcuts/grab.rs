@@ -28,7 +28,11 @@ impl Key {
         match name.as_bytes() {
             // Latin-1 keysyms equal their lowercase letter and digit codes.
             [character @ (b'a'..=b'z' | b'0'..=b'9')] => Some(Self(Keysym::from(*character))),
-            [b'f', rest @ ..] if !rest.is_empty() && rest[0] != b'0' => {
+            // Digits only: `u32::from_str` would otherwise admit a `+` sign.
+            [b'f', rest @ ..]
+                if matches!(rest.first(), Some(b'1'..=b'9'))
+                    && rest.iter().all(u8::is_ascii_digit) =>
+            {
                 let number: u32 = std::str::from_utf8(rest).ok()?.parse().ok()?;
                 // XK_F1 is 0xffbe; F1-F12 are contiguous.
                 (1..=12)
@@ -302,5 +306,52 @@ mod tests {
         for name in ["", "A", "f0", "f01", "f13", "ff", "f1x", "space", "aa"] {
             assert_eq!(Key::parse(name), None, "{name}");
         }
+    }
+
+    #[test]
+    fn every_protocol_key_maps_to_a_distinct_keysym() {
+        let mut names: Vec<String> = ('a'..='z').chain('0'..='9').map(String::from).collect();
+        names.extend((1..=12).map(|number| format!("f{number}")));
+        let mut keysyms = std::collections::BTreeSet::new();
+        for name in &names {
+            let key = Key::parse(name).unwrap_or_else(|| panic!("{name}"));
+            assert!(keysyms.insert(key.0), "{name}");
+        }
+        assert_eq!(keysyms.len(), 26 + 10 + 12);
+        assert_eq!(Key::parse("9"), Some(Key(0x39)));
+        assert_eq!(Key::parse("f9"), Some(Key(0xffc6)));
+        assert_eq!(Key::parse("f10"), Some(Key(0xffc7)));
+        assert_eq!(Key::parse("f11"), Some(Key(0xffc8)));
+    }
+
+    #[test]
+    fn signed_padded_or_non_ascii_function_keys_are_rejected() {
+        // A lone "f" is the letter key, not a function key.
+        assert_eq!(Key::parse("f"), Some(Key(0x66)));
+        for name in [
+            "f+1",
+            "f+12",
+            "f-1",
+            "f 1",
+            "f1 ",
+            "F1",
+            "f001",
+            "f100",
+            "f99999999999",
+            "é",
+            "f١",
+            "a\0",
+        ] {
+            assert_eq!(Key::parse(name), None, "{name:?}");
+        }
+    }
+
+    #[test]
+    fn modifier_indices_map_to_single_bit_x11_masks() {
+        assert_eq!(modifier_mask(0), u16::from(ModMask::SHIFT));
+        assert_eq!(modifier_mask(1), u16::from(ModMask::LOCK));
+        assert_eq!(modifier_mask(2), u16::from(ModMask::CONTROL));
+        assert_eq!(modifier_mask(3), u16::from(ModMask::M1));
+        assert_eq!(modifier_mask(7), u16::from(ModMask::M5));
     }
 }

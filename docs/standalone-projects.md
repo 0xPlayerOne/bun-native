@@ -9,8 +9,8 @@ Solid/React TypeScript/JavaScript consumers installed offline, moved to unrelate
 paths, reinstalled with frozen locks, passed strict checks and public import
 inspection, and produced inspected AOT builds. Its eight invalid-input controls
 also passed. No application or native host was executed. The
-[hosted native plan](standalone-native-plan.md) remains a separate, unexecuted
-qualification. The accepted [checkout workflow](getting-started.md) also remains
+[hosted native plan](standalone-native-plan.md) is the separate native
+qualification; it now runs in `native-linux.yml` as `tests/native/cli-standalone.py` (#388). The accepted [checkout workflow](getting-started.md) also remains
 available.
 
 Earlier source-specific failures remain preserved. The
@@ -75,7 +75,8 @@ The project does not extend a checkout configuration or import workspace paths.
 The initial lock contains the complete selected local archive graph, SHA-256
 integrities and the same `file:` overrides as the project manifest. It also
 preserves the original registry tuples and nested versions. A missing local
-root is rejected before installation. With an already populated cache:
+root is rejected before installation. With an already populated cache (for
+example, Bun's default cache after the checkout's own `bun install`):
 
 ```sh
 cd /absolute/new/my-app
@@ -108,6 +109,9 @@ bun run format:check
 bun run dev --host /absolute/path/to/bun-native-host
 bun run build --host /absolute/path/to/bun-native-host --host-profile release
 ```
+
+`build` writes to the project's `dist` directory unless `--outdir` names another;
+the output directory must be empty.
 
 `format` and `format:check` run the installed CLI's built-in formatter command, which uses
 the template style unless the project supplies its own formatter config and skips `vendor/`.
@@ -151,6 +155,6 @@ The resulting AOT directory keeps the existing compiled-program/JIT-omission
 inspections and caller-supplied host digest, plus the package-set source identity.
 It is unsigned. Its manifest continues to mark GUI/input/teardown as `not-run`:
 package creation and compilation are not native window qualification. The
-separate [hosted plan](standalone-native-plan.md) must exercise the actual installed `dev` command and AOT
-application with owned OS input, complete paint and joined cleanup before those
-claims are made.
+separate [hosted plan](standalone-native-plan.md) exercises the actual installed `dev` command and AOT
+application with owned OS input, complete paint and joined cleanup; those claims
+rest on that lane (`tests/native/cli-standalone.py`, merged in #388), not on this manifest.

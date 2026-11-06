@@ -24,8 +24,9 @@ export BUN_NATIVE_HOST=/absolute/path/to/bun-native-host
 bun examples/react-workspace/main.tsx
 ```
 
-Ordinary TypeScript or React edits do not rebuild the Rust host. See the root
-[development guide](../../docs/engineering-quality.md) for host/toolchain gates.
+Ordinary TypeScript or React edits do not rebuild the Rust host. See the
+[developer workflow](../../docs/development.md) and the
+[engineering standard](../../docs/engineering-quality.md) for host/toolchain gates.
 
 ## Build a production AOT executable
 

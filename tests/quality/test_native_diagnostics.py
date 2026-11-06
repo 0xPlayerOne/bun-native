@@ -1,12 +1,15 @@
 """Real-process signal-target guards; these are not native GUI tests."""
 
+import hashlib
 import importlib.util
 import os
 import signal
 import subprocess
 import sys
+import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import Mock, patch
 
 ROOT = Path(__file__).resolve().parents[2]
 SPEC = importlib.util.spec_from_file_location(
@@ -103,6 +106,110 @@ class NativeSignalOwnershipTests(unittest.TestCase):
                 self.app, self.observed, self.child, Path("/bin/false").resolve()
             )
         os.kill(self.child, 0)
+
+
+def process_row(pid, started, state="S"):
+    return {"pid": pid, "start_ticks": started, "state": state}
+
+
+class OwnedHostTableTests(unittest.TestCase):
+    """Recorded-table guards; no process is started or signalled."""
+
+    APP = Mock(pid=100)
+    HOST = Path("/opt/native/bun-native-host")
+
+    def check(self, table, observed, pid, image=HOST, owned=None):
+        resolved = Mock()
+        resolved.return_value.resolve.return_value = image
+        rows = [table[item] for item in (owned or table) if item in table]
+        with (
+            patch.object(DRIVER, "process_table", return_value=table),
+            patch.object(DRIVER, "owned_processes", return_value=rows) as owned_call,
+            patch.object(DIAGNOSTICS, "Path", resolved),
+        ):
+            result = DIAGNOSTICS.require_owned_host(self.APP, observed, pid, self.HOST)
+        owned_call.assert_called_once_with(100, table)
+        resolved.assert_called_once_with(f"/proc/{pid}/exe")
+        return result
+
+    def test_owned_live_identity_with_the_supplied_executable_is_returned(self):
+        table = {100: process_row(100, 1), 101: process_row(101, 2)}
+        self.assertIs(self.check(table, {101: 2}, 101), table[101])
+
+    def test_identity_failures_are_rejected_before_resolving_the_image(self):
+        table = {
+            100: process_row(100, 1),
+            101: process_row(101, 2),
+            102: process_row(102, 3, "Z"),
+            103: process_row(103, 4),
+        }
+        observed = {100: 1, 101: 2, 102: 3, 103: 4}
+        cases = (
+            ("launched app itself", 100, observed, None),
+            ("zombie host", 102, observed, None),
+            ("unobserved host", 101, {}, None),
+            ("changed start ticks", 101, {101: 9}, None),
+            ("absent pid", 104, {104: 5}, None),
+            ("not a descendant", 103, observed, [100, 101, 102]),
+        )
+        for name, pid, claimed, owned in cases:
+            with (
+                self.subTest(name),
+                patch.object(DRIVER, "process_table", return_value=table),
+                patch.object(
+                    DRIVER,
+                    "owned_processes",
+                    return_value=[table[item] for item in (owned or table)],
+                ),
+                patch.object(DIAGNOSTICS, "Path") as resolved,
+            ):
+                with self.assertRaisesRegex(RuntimeError, "ownership or process"):
+                    DIAGNOSTICS.require_owned_host(self.APP, claimed, pid, self.HOST)
+                resolved.assert_not_called()
+
+    def test_wrong_executable_is_rejected(self):
+        table = {100: process_row(100, 1), 101: process_row(101, 2)}
+        with self.assertRaisesRegex(RuntimeError, "explicitly supplied native host"):
+            self.check(table, {101: 2}, 101, image=Path("/usr/bin/bun"))
+
+
+class DiagnosticsHelperTests(unittest.TestCase):
+    def test_fingerprint_hashes_streamed_content_and_size(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "source.ts"
+            data = b"a" * (1024 * 1024 + 3)
+            path.write_bytes(data)
+            self.assertEqual(
+                DIAGNOSTICS.fingerprint(path),
+                {"sha256": hashlib.sha256(data).hexdigest(), "bytes": len(data)},
+            )
+
+    def test_interrupt_ignores_repeated_cancellation_during_cleanup(self):
+        previous = {
+            number: signal.getsignal(number)
+            for number in (signal.SIGTERM, signal.SIGALRM)
+        }
+        self.addCleanup(
+            lambda: [signal.signal(number, item) for number, item in previous.items()]
+        )
+        with self.assertRaisesRegex(InterruptedError, "received signal 15"):
+            DIAGNOSTICS.interrupt(signal.SIGTERM, None)
+        self.assertIs(signal.getsignal(signal.SIGTERM), signal.SIG_IGN)
+        self.assertIs(signal.getsignal(signal.SIGALRM), signal.SIG_IGN)
+
+    def test_every_scenario_name_is_unique_and_has_a_scenario_source(self):
+        self.assertEqual(len(set(DIAGNOSTICS.SCENARIOS)), len(DIAGNOSTICS.SCENARIOS))
+        sources = set(DIAGNOSTICS.source_snapshot.__code__.co_consts)
+        for module in (
+            "native-layout-scenario.py",
+            "native-interactions-scenario.py",
+            "native-clipboard-scenario.py",
+            "native-react-workspace-scenario.py",
+            "native-solid-workspace-scenario.py",
+            "native-input-viewport-scenario.py",
+        ):
+            with self.subTest(module):
+                self.assertIn(f"scripts/quality/{module}", sources)
 
 
 if __name__ == "__main__":

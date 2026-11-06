@@ -1,5 +1,11 @@
 # Standalone lock correction: three remaining parser-only controls
 
+> **Status (2026-11-05):** executed. The three controls ran once at `39d2b878` and
+> met their declared outcomes, as recorded in the
+> [package plan](standalone-packages-plan.md). The later full consumer cohort and
+> its hosted native lane merged in [#388](https://github.com/0xPlayerOne/bun-native/pull/388).
+> This plan is kept as written.
+
 This bounded source check follows the failed `c908049` consumer cohort retained in
 [#394](https://github.com/0xPlayerOne/bun-native/pull/394) and the separately failed
 first parser control at `c16db305`. Both failures remain unchanged. No installation,

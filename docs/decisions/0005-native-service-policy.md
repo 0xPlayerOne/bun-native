@@ -1,8 +1,11 @@
 # ADR 0005 — Native service policy and owned-window display reads
 
 Status: accepted architecture; core/Solid/React Linux development/AOT service
-qualification passed locally with a development-profile host. Hosted release
-and other-platform service qualification remain pending.
+qualification passed locally with a development-profile host, and later with a
+hosted release-profile host (see the
+[hosted source-bound record](../../tests/native/evidence/services-linux-hosted-release.json)
+and [native services](../native-services.md)). Other-platform service
+qualification remains pending.
 
 Date: October 31, 2026
 

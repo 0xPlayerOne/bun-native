@@ -141,13 +141,16 @@ class MacInput:
             raise RuntimeError("macOS OS helper exceeded its output bound")
         try:
             value = json.loads(result.stdout)
-        except (ValueError, UnicodeError) as error:
+            # Valid JSON that is not an object (list, string, number, null)
+            # is just as unbounded as malformed output.
+            status = value.get("status")
+        except (ValueError, UnicodeError, AttributeError) as error:
             raise RuntimeError("macOS OS helper did not return bounded JSON") from error
-        if value.get("status") == "unsupported" and result.returncode == 2:
+        if status == "unsupported" and result.returncode == 2:
             raise InputUnavailable(
                 value.get("error", "macOS session capability is unavailable")
             )
-        if result.returncode != 0 or value.get("status") not in ("ready", "not-ready"):
+        if result.returncode != 0 or status not in ("ready", "not-ready"):
             raise RuntimeError(
                 "macOS OS helper failed: " + str(value.get("error", result.returncode))
             )

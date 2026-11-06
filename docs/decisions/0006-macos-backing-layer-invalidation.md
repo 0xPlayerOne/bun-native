@@ -1,6 +1,11 @@
 # 0006 — Invalidate the owned macOS backing layer after external commits
 
-Status: proposed correction; current hosted native/AOT acceptance is required.
+Status: accepted and implemented in the private
+[`native/macos-surface`](../../native/macos-surface/src/lib.rs) crate, called from
+the host's [view commit path](../../native/gpui-host/src/view.rs). Later hosted
+macOS development/AOT paint and OS-input cases passed; see
+[native platforms](../native-platforms.md#hosted-paint-os-input-and-assigned-device-evidence).
+The failure below remains recorded as failed.
 
 ## Recorded failure
 

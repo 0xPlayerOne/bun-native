@@ -25,7 +25,7 @@ consumers import this same contract. Their type fixtures are compile-only;
 actual framework renderers have separate acceptance.
 
 The initial shared layout increment introduced protocol 3 and `layout_v1`.
-Current protocol 4 additionally requires `interactions_v1`; the [event contract](native-events.md) records the shared native observation and propagation scope. Its [native layout contract](native-layout.md) records
+Protocol 4 additionally required `interactions_v1`; the [event contract](native-events.md) records the shared native observation and propagation scope. Its [native layout contract](native-layout.md) records
 the supported sizing, scrolling and focus behavior and its actual development/AOT
 qualification. Historical BN1 artifacts remain evidence for their original
 protocol-2 sources; old hosts fail negotiation with the current packages.
@@ -66,23 +66,26 @@ fallback remains in the active packages.
 1. Preserve the merged BN1 scheduling, crash/startup, callback ownership and
    native allocation regressions. The final release suite passed; use its
    retained exact-source evidence when comparing future changes.
-2. Continue the first Solid renderer under
-   [#277](https://github.com/0xPlayerOne/bun-native/pull/277). Its isolated branch
-   has actual development/AOT counter, keyed-list and controlled-input evidence.
-   The shared-renderer refactor requires fresh native qualification and matched
-   performance evidence; a failed retention investigation is not a passing
-   comparison.
-3. Complete the React renderer in [#280](https://github.com/0xPlayerOne/bun-native/pull/280),
-   using the same private renderer package and public core as Solid. Preserve
-   its measured handler-lifetime and error-propagation regressions.
-4. Preserve the merged native layout/scroll/focus qualification in
-   [#281](https://github.com/0xPlayerOne/bun-native/pull/281) and Bun command
-   controls in [#278](https://github.com/0xPlayerOne/bun-native/pull/278). Continue
-   shared native interactions and platform qualification by their issue
-   dependencies. Ordinary TS/JS edits reuse a prebuilt host and must not
-   silently invoke Cargo.
+2. Preserve the merged Solid renderer
+   [#277](https://github.com/0xPlayerOne/bun-native/pull/277) and React renderer
+   [#280](https://github.com/0xPlayerOne/bun-native/pull/280), which share one
+   private renderer package and the public core. Keep their recorded native
+   evidence and handler-lifetime/error-propagation regressions; matched
+   performance comparisons and the retention investigation
+   [#287](https://github.com/0xPlayerOne/bun-native/issues/287) remain open.
+3. Preserve the merged native layout/scroll/focus qualification in
+   [#281](https://github.com/0xPlayerOne/bun-native/pull/281), Bun command
+   controls in [#278](https://github.com/0xPlayerOne/bun-native/pull/278) and the
+   [checkout CLI](developer-tooling.md). Ordinary TS/JS edits reuse a prebuilt
+   host and must not silently invoke Cargo.
+4. Preserve the default-denied [native services](native-services.md): display
+   snapshots, clipboard text ([ADR 0007](decisions/0007-native-clipboard.md)),
+   global shortcuts ([ADR 0008](decisions/0008-native-global-shortcuts.md)) and
+   notifications ([ADR 0009](decisions/0009-native-notifications.md)). Their
+   qualification is Linux-only; continue platform qualification by issue
+   dependencies.
 
-The native ownership and schema are described in [protocol 4](native-abi.md),
+The native ownership and current protocol schema are described in the [native ABI](native-abi.md),
 the [public API ADR](decisions/0004-public-api.md) and the
 [security ADR](decisions/0003-bridge-security.md). Inspect actual branch/PR/CI
 state before resuming; a draft implementation is not a completed milestone.

@@ -1,5 +1,6 @@
 //! Coordinates from one actual input paint, shared by drawing and native input.
 
+use super::hit_test::{PaintedLine, painted_index};
 use gpui::{Bounds, Pixels, Point, ShapedLine, point, px};
 use std::ops::Range;
 
@@ -93,25 +94,9 @@ impl InputPaint {
         })
     }
 
-    pub(super) fn mouse_index(&self, content: &str, position: Point<Pixels>) -> Option<usize> {
-        if self.line.text.as_ref() != content {
-            return None;
-        }
-        if position.y < self.viewport.bounds.top() {
-            return Some(0);
-        }
-        if position.y > self.viewport.bounds.bottom() {
-            return Some(content.len());
-        }
-        Some(
-            self.line
-                .closest_index_for_x(self.viewport.line_x(position.x)),
-        )
-    }
-
     pub(super) fn character_index(&self, content: &str, position: Point<Pixels>) -> Option<usize> {
         self.viewport.bounds.localize(&position)?;
-        self.mouse_index(content, position)
+        painted_index(self, content, position)
     }
 
     pub(super) fn bounds_for_range(
@@ -126,6 +111,20 @@ impl InputPaint {
             self.line.x_for_index(range.start),
             self.line.x_for_index(range.end),
         ))
+    }
+}
+
+impl PaintedLine for InputPaint {
+    fn text(&self) -> &str {
+        &self.line.text
+    }
+
+    fn bounds(&self) -> Bounds<Pixels> {
+        self.viewport.bounds
+    }
+
+    fn closest_index_for_window_x(&self, x: Pixels) -> usize {
+        self.line.closest_index_for_x(self.viewport.line_x(x))
     }
 }
 

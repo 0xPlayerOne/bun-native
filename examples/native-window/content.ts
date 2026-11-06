@@ -26,6 +26,33 @@ export function mountContent(window: NativeWindow) {
   })
 }
 
+/** Mounts the counter and wires its increment and input listeners. */
+export async function mountCounter(window: NativeWindow) {
+  const nodes = await mountContent(window)
+  let clicks = 0
+  window.onClick(nodes.button, async (event) => {
+    clicks += 1
+    recordEvidence({
+      type: event.type,
+      sequence: event.sequence,
+      activation: clicks,
+      target: 'increment',
+    })
+    await window.batch((batch) =>
+      batch.set(nodes.label, { kind: 'text', text: `Clicks: ${clicks}` })
+    )
+  })
+  window.onInput(nodes.input, (event) => {
+    recordEvidence({
+      type: event.type,
+      sequence: event.sequence,
+      value: event.value,
+      input_revision: event.revision,
+    })
+  })
+  return nodes
+}
+
 let evidenceBytes = 0
 /** Opt-in, bounded fixture evidence. Ordinary launches do not record input. */
 export function recordEvidence(event: Record<string, unknown>): void {
