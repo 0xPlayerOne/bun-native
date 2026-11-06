@@ -51,6 +51,7 @@ jobs:
             dbus-x11 dunst xdg-desktop-portal xdg-desktop-portal-gtk libglib2.0-bin
             fonts-dejavu-core heaptrack binutils
             x11-xkb-utils xclip at-spi2-core gir1.2-atspi-2.0 python3-gi
+            sway grim wtype
           )
           printf '%s\n' "${packages[@]}" > "$RUNNER_TEMP/native-apt-packages"
           # Outside the runner home so apt's sandboxed _apt user can download into it.
@@ -157,10 +158,10 @@ jobs:
             rustc --version --verbose
             cargo --version
             cc --version
-            dpkg-query -W libvulkan1 mesa-vulkan-drivers libwayland-client0 libxkbcommon0 xvfb openbox xdotool imagemagick dunst xdg-desktop-portal xdg-desktop-portal-gtk heaptrack libheaptrack binutils
+            dpkg-query -W libvulkan1 mesa-vulkan-drivers libwayland-client0 libxkbcommon0 xvfb openbox xdotool imagemagick dunst xdg-desktop-portal xdg-desktop-portal-gtk heaptrack libheaptrack binutils sway grim wtype
             printf 'Vulkan ICD: %s\n' "${VK_DRIVER_FILES:?}"
             sha256sum "$VK_DRIVER_FILES"
-            printf 'Application modes: Bun development and verified machine-code AOT\nNative host profile: release\nDisplay: isolated Xvfb X11\nInput: XTest\nRenderer request: Mesa software Vulkan/GL; actual adapter in result.json\n'
+            printf 'Application modes: Bun development and verified machine-code AOT\nNative host profile: release\nDisplay: isolated Xvfb X11; one Wayland step on headless sway\nInput: XTest; Wayland virtual pointer/keyboard\nRenderer request: Mesa software Vulkan/GL; actual adapter in result.json\n'
           } > "$NATIVE_EVIDENCE/toolchain.txt"
       - name: Keep the runner's Cargo home path out of native binaries
         # Dependency sources live under CARGO_HOME, and their panic locations are
@@ -172,7 +173,7 @@ jobs:
       - name: Build native executable
         id: native-build
         run: |
-          { time -p cargo build --locked --release --manifest-path Cargo.toml -p bun-native-host --bin bun-native-host --example clipboard-peer --example shortcut-peer --example xdnd-source; } 2>&1 | tee "$NATIVE_EVIDENCE/build.log"
+          { time -p cargo build --locked --release --manifest-path Cargo.toml -p bun-native-host --bin bun-native-host --example clipboard-peer --example shortcut-peer --example xdnd-source --example wayland-input-peer; } 2>&1 | tee "$NATIVE_EVIDENCE/build.log"
           echo "${{ steps.target-cache.outputs.cache-matched-key || 'none' }}" > "$NATIVE_EVIDENCE/target-cache-key.txt"
           sha256sum target/release/bun-native-host > "$NATIVE_EVIDENCE/binary-sha256.txt"
           stat --format='%s bytes' target/release/bun-native-host > "$NATIVE_EVIDENCE/binary-size.txt"
@@ -180,6 +181,7 @@ jobs:
           stat --format='%s bytes' target/release/examples/clipboard-peer > "$NATIVE_EVIDENCE/clipboard-peer-size.txt"
           sha256sum target/release/examples/shortcut-peer > "$NATIVE_EVIDENCE/shortcut-peer-sha256.txt"
           sha256sum target/release/examples/xdnd-source > "$NATIVE_EVIDENCE/xdnd-source-sha256.txt"
+          sha256sum target/release/examples/wayland-input-peer > "$NATIVE_EVIDENCE/wayland-input-peer-sha256.txt"
       - name: Lint and test actual native host
         run: |
           cargo clippy --locked --release --manifest-path Cargo.toml -p bun-native-host --all-targets -- -D warnings
@@ -235,7 +237,7 @@ jobs:
             "$NATIVE_EVIDENCE/events-development" event-throughput bun tests/native/event-throughput.ts
       - name: Compile and inspect the actual AOT entries
         run: |
-          for entry in native-window input-race bridge javascript core-lifecycle event-throughput fault scheduling layout interactions services display-semantics clipboard global-shortcuts notifications overlays popups filesystem-grants text-input processes file-dialogs drag-drop solid-drag-drop react-drag-drop solid-services react-services solid solid-input-intent solid-interactions react react-interactions react-behavior react-workload react-workspace react-workspace-flow; do
+          for entry in native-window input-race bridge javascript core-lifecycle event-throughput fault scheduling layout interactions services display-semantics clipboard global-shortcuts notifications overlays popups wayland filesystem-grants text-input processes file-dialogs drag-drop solid-drag-drop react-drag-drop solid-services react-services solid solid-input-intent solid-interactions react react-interactions react-behavior react-workload react-workspace react-workspace-flow; do
             outdir="$NATIVE_EVIDENCE/$entry-package"
             if [[ "$entry" == native-window ]]; then
               outdir="$NATIVE_EVIDENCE/package"
@@ -430,6 +432,34 @@ jobs:
               xvfb-run --auto-servernum --server-args='-screen 0 1280x800x24 -nolisten tcp' \
               dbus-run-session -- bash scripts/quality/native-linux-session.sh \
               "$evidence-session" -- "${command[@]}" 2>&1 | tee "$evidence/run.log"
+          done
+      # A real Wayland compositor: headless sway with no X server reachable.
+      # One development and one inspected AOT run at scale 1, and development
+      # at output scale 2; each run takes seconds after the shared AOT compile.
+      - name: Development and AOT Wayland window, input, pixels, services and close on headless sway
+        timeout-minutes: 3
+        env:
+          BUN_NATIVE_HOST: ${{ github.workspace }}/target/release/bun-native-host
+          BUN_NATIVE_WAYLAND_INPUT_PEER: ${{ github.workspace }}/target/release/examples/wayland-input-peer
+          BUN_NATIVE_STARTUP_LOG: '1'
+          BUN_NATIVE_STARTUP_TRACE: '1'
+        run: |
+          for run in development-scale-1 aot-scale-1 development-scale-2; do
+            mode=${run%%-*}
+            scale=${run##*-}
+            command=(bun tests/native/wayland.ts)
+            if [[ "$mode" == aot ]]; then
+              command=("$NATIVE_EVIDENCE/wayland-package/wayland")
+            fi
+            evidence="$NATIVE_EVIDENCE/wayland-$run"
+            mkdir "$evidence"
+            BUN_NATIVE_WAYLAND_EVIDENCE="$evidence" BUN_NATIVE_WAYLAND_MODE="$mode" \
+              BUN_NATIVE_TEST_SCALE_FACTOR="$scale" \
+              BUN_NATIVE_EVIDENCE_LOG="$evidence/native-evidence.jsonl" \
+              BUN_NATIVE_EVIDENCE_NONCE="$(python3 -c 'import secrets; print(secrets.token_hex(16))')" \
+              dbus-run-session -- bash scripts/quality/native-wayland-session.sh \
+              "$evidence-session" "${command[@]}" 2>&1 | tee "$evidence/run.log"
+            test -s "$evidence/wayland.json"
           done
       - name: Development and AOT X11 drag and drop through core, Solid and React
         timeout-minutes: 6
@@ -986,6 +1016,8 @@ jobs:
             ${{ runner.temp }}/native-evidence/display-semantics-*/
             ${{ runner.temp }}/native-evidence/file-dialogs-*/
             ${{ runner.temp }}/native-evidence/xdnd-source-sha256.txt
+            ${{ runner.temp }}/native-evidence/wayland-input-peer-sha256.txt
+            ${{ runner.temp }}/native-evidence/wayland-*/
             ${{ runner.temp }}/native-evidence/drag-drop-*/
             ${{ runner.temp }}/native-evidence/solid-drag-drop-*/
             ${{ runner.temp }}/native-evidence/react-drag-drop-*/
@@ -1045,6 +1077,7 @@ jobs:
             echo 'Linux filesystem grants run in development and inspected AOT on a private temporary tree checked independently with node:fs: default denial, unknown roots and access above the launch grant refused, read grants refusing writes, actual create/append/truncate/binary effects, directory pages and removal, symbolic links never followed inside or out of the grant, traversal rejected before the wire, a sibling directory left untouched, and native rejection of foreign, stale and reused grant handles. Close, owner close and shutdown revoke grants and withhold in-flight results. This does not qualify filesystem grants on macOS or Windows.'
             echo 'Linux owned processes run in development and inspected AOT with real /bin/sh children: default denial, pipes with separate stdout and stderr, an explicit environment with nothing inherited, a working directory resolved beneath a file grant without following links, a sized pseudo-terminal with resize and input, a group signal reaching descendants, exit stopping the whole group (checked through /proc), credited output delivered completely to a slow consumer, release, owner close and shutdown stopping groups, and native rejection of foreign, stale and reused process handles. This does not qualify owned processes on macOS or Windows.'
             echo 'Linux OS file dialogs run through xdg-desktop-portal and its GTK file chooser on an isolated D-Bus session in development and inspected AOT: default denial, a bus without a portal reported as unavailable, a real dialog transient for the owner window, forged portal responses from an independent bus client ignored, real keyboard selection of one file, several files and a folder, a save selection that creates no file, Escape cancellation, and the OS dialog closed after an aborted signal, owner close and shutdown. Selected paths are data, not filesystem grants. This does not qualify file dialogs on Wayland, in Flatpak/Snap sandboxes, on macOS or Windows, or with other portal backends.'
+            echo 'One Wayland step runs on a headless sway (wlroots) compositor with XWayland disabled and no DISPLAY, in development and inspected AOT at scale 1 and development at output scale 2: the window maps as an xdg-shell view and paints within 10 s on lavapipe Vulkan, a persistent virtual pointer click and virtual-keyboard text reach the app, grim pixels match the painted tree, the display snapshot matches the compositor output, X11-only clipboard/shortcut/drag-drop/popup capabilities are absent and their requests rejected, a dunst notification and an unparented portal file dialog work, the compositor closes the window and shutdown is clean. This does not qualify GNOME/KDE, fractional scaling, IME or physical input/GPU.'
             echo 'Solid runs the exact source-fingerprinted generated module in development and through inspected Bun AOT against the same release GPUI host. Twelve scenarios require keyed identity, every native edit, delayed revision-aware replacement, shared keyboard/pointer/focus phases, caret and selection behavior, complete native paint, OS close and owner cleanup. These correctness cases do not close the separate retained-object investigation or establish matched framework performance.'
             echo 'Bridge acknowledgement timings run with instrumentation disabled; they are not display-presentation timings. The startup/RSS baseline retains one warm-up and five measured fresh-process trials per mode, alternating order, with a two-second idle interval and uncontrolled OS caches.'
             echo 'Separate Heaptrack runs profile only the real native host during the 1,000-cycle lifecycle in both modes. Full compressed allocation traces, tool/host/source hashes and bounded callsite reports are retained; profiler timing/RSS is not mixed into the baseline, and outstanding-at-exit allocations are not automatically leaks.'

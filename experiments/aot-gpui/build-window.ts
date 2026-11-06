@@ -54,6 +54,7 @@ const entries = {
   'file-dialogs': 'tests/native/file-dialogs.ts',
   overlays: 'tests/native/overlays.ts',
   popups: 'tests/native/popups.ts',
+  wayland: 'tests/native/wayland.ts',
   'drag-drop': 'tests/native/drag-drop.ts',
   'solid-drag-drop': 'tests/native/solid-drag-drop.tsx',
   'react-drag-drop': 'tests/native/react-drag-drop.tsx',
@@ -148,6 +149,7 @@ if (
     entry === 'file-dialogs' ||
     entry === 'overlays' ||
     entry === 'popups' ||
+    entry === 'wayland' ||
     entry === 'drag-drop' ||
     entry === 'text-input' ||
     entry === 'platform-smoke' ||
