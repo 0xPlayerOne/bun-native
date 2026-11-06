@@ -194,6 +194,8 @@ export class StreamingList {
     const last = this.messages.length - 1
     const current = Math.max(0, this.indexOf(this.selectedId))
     const move = (index: number) => {
+      // An empty history has nothing to select; keep the anchor in range.
+      if (last < 0) return this.clamp()
       const next = Math.min(Math.max(0, index), last)
       this.selectedId = this.messages[next]!.id
       this.follow = false
@@ -220,7 +222,7 @@ export class StreamingList {
       case 'end':
         this.follow = true
         this.tail()
-        this.selectedId = this.messages[last]!.id
+        this.selectedId = this.messages[last]?.id ?? null
         break
       case 'f7':
         this.theme = this.theme === 'dark' ? 'light' : 'dark'

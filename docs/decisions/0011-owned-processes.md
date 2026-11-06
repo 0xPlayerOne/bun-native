@@ -43,7 +43,7 @@ passes each as a reserved `--bun-native-process=<id>:<path>` argument and
 readiness must report the identical ordered list. No wire command names an
 executable path; `spawn_process` names a policy ID.
 
-`NativeWindow.spawnProcess(id, options)` starts that executable with an
+`NativeWindow.spawnProcess(id, options, listener)` starts that executable with an
 explicit argument vector (no shell) and a complete environment: the host
 clears the inherited environment and sets only the given variables. The
 working directory must come from a file grant owned by the same window, plus
@@ -154,9 +154,15 @@ GPUI already depends on.
   which no grant can reach, could still change that path.
 
 Errors are typed: `permission_denied` (policy), `not_found` (missing
-executable or directory), `invalid_handle` (a grant from another window or
-already closed), `invalid_state` (a finished or released process),
-`limit_exceeded` and `service_unavailable`.
+executable or directory), `path_denied` (the directory crosses a link),
+`wrong_kind` (not a runnable program, or a resize of a pipes process),
+`access_denied` (the OS refused), `invalid_state` (an exited process, or input
+already closed), `limit_exceeded` (eight live processes, 64 KiB of unread
+input, or no OS capacity), `service_unavailable`, `native_failure` and
+`cancelled` (a released process, or a host shutting down). The host answers
+`invalid_handle` for a grant from another window or one already closed; the
+core rejects such a grant with a `TypeError` before any request, so only a
+direct wire client sees that code.
 
 ## Alternatives
 

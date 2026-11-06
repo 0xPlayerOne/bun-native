@@ -16,7 +16,8 @@ from what is **unsupported**. Unsupported or not-run is never reported as passed
   units; conversions clamp and never split a scalar value
   (`native/gpui-host/src/input/editing.rs`).
 - **Clipboard.** Ctrl/Cmd+C, X, V copy, cut and paste the selection. Pasted line
-  breaks become spaces, because the input is single-line.
+  feeds (`\n`) become spaces, because the input is single-line. The host does
+  not translate carriage returns, so a CR LF paste keeps its CR.
 - **States (`input_states_v1`, optional capability, no protocol bump).** The input
   element accepts `disabled` and `read_only` booleans. Only `true` is sent, so
   ordinary inputs keep the same wire form. Core rejects either state locally with
@@ -49,10 +50,13 @@ from what is **unsupported**. Unsupported or not-run is never reported as passed
   boundaries and AT-initiated text edits are not exposed. The roles of every
   other element kind are listed under
   [accessibility roles](#accessibility-roles-accessibility_v1).
-- **Programmatic focus.** There is no `focus(node)` application API. Moving
-  keyboard focus from application code is not implemented. An assistive
-  technology can focus a control through AccessKit's Focus action, but this is
-  not qualified.
+- **Programmatic focus.** On a host advertising `focus_v1`, `batch.focus(node)`
+  (Solid and React: `focusNode(ref)`) focuses an enabled button or input after
+  the batch's tree changes; see the
+  [overlay contract](native-overlays.md#batch-requests-focus_v1-scroll_control_v1).
+  `tests/native/overlays.ts` exercises it on Linux X11; this text fixture does
+  not. An assistive technology can focus a control through AccessKit's Focus
+  action, but this is not qualified. There is no `blur` request.
 
 ## Support matrix
 
@@ -82,7 +86,7 @@ only, not the editing, composition or accessibility rows.
 | Roles of every element kind, modal dialog, split divider value (`accessibility.ts`) | **Observed** at scale 1, development and AOT (see below)                                                 | Not run                                                                                               | Not run (same host code)                                           | Not run (same host code)                                           |
 | Screen reader speech (Orca, VoiceOver, Narrator/NVDA)                               | **Not run**                                                                                              | Not run                                                                                               | Not run                                                            | Not run                                                            |
 | Physical keyboard, physical display DPI, GPU                                        | **Not run** (software Vulkan, XTEST)                                                                     | Not run (software Vulkan, virtual keyboard)                                                           | Not run                                                            | Not run                                                            |
-| Programmatic focus from application code                                            | Unsupported                                                                                              | Unsupported                                                                                           | Unsupported                                                        | Unsupported                                                        |
+| Programmatic focus from application code (`focus_v1`)                               | **Observed** in `tests/native/overlays.ts`, not in this fixture                                          | Not run                                                                                               | Not run                                                            | Not run                                                            |
 | Multi-line text input                                                               | Unsupported                                                                                              | Unsupported                                                                                           | Unsupported                                                        | Unsupported                                                        |
 
 AT-SPI states follow AccessKit 0.24's mapping. A read-only or disabled entry is

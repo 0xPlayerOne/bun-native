@@ -118,7 +118,8 @@ device is never read, written or truncated.
 
 Errors are typed: `permission_denied` (policy), `not_found`, `already_exists`,
 `path_denied` (a link or an escape), `wrong_kind`, `not_empty`,
-`access_denied` (the OS refused), `limit_exceeded` and `cancelled`.
+`access_denied` (the OS refused), `limit_exceeded`, `service_unavailable`,
+`native_failure` and `cancelled`.
 
 ## Alternatives
 

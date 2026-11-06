@@ -302,6 +302,62 @@ identity metadata. This diagnostic changes no posting route, target rule,
 foreground wait, retry behavior or native acceptance criterion. Its SDK build
 and subsequent real input attempt remain hosted checks, not local successes.
 
+## Advertised capabilities by platform
+
+The host builds its `ready` capability list in
+[`session.rs`](../native/gpui-host/src/session.rs) from compile-time `cfg`
+selections and run-time probes. Protocol 11 needs the first five on every
+target; every other row is an optional feature that core checks before use.
+Advertised means only that the host offers the feature. The **Qualification**
+column says what checks it natively. A step in the hosted
+[Native Platforms](../.github/workflows/native-platforms.yml) workflow
+compiles and runs on `macos-15` / `windows-2022`. This repository keeps no
+source-bound evidence record from a passing run of the steps added in #481,
+so their macOS and Windows behavior counts as **unverified** here and not as
+supported. Linux claims are scoped to the isolated Xvfb session.
+
+| Capability             | Linux                                | macOS                        | Windows                                               | Qualification                                                                                                                                                                                                           |
+| ---------------------- | ------------------------------------ | ---------------------------- | ----------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `tree`                 | Always                               | Always                       | Always                                                | Required. Linux native suite; macOS/Windows paint and lifecycle [evidence](#hosted-paint-os-input-and-assigned-device-evidence).                                                                                        |
+| `input_revisions`      | Always                               | Always                       | Always                                                | Required. As `tree`, including the hosted OS-input cases.                                                                                                                                                               |
+| `layout_v1`            | Always                               | Always                       | Always                                                | Required. As `tree`.                                                                                                                                                                                                    |
+| `interactions_v1`      | Always                               | Always                       | Always                                                | Required. As `tree`, including the hosted OS-input cases.                                                                                                                                                               |
+| `window_display_v1`    | Always                               | Always                       | Always                                                | Required. X11 semantics in [`display-semantics.ts`](../tests/native/display-semantics.ts); macOS/Windows in the hosted `display-platform.ts` step, unverified.                                                          |
+| `split_v1`             | Always                               | Always                       | Always                                                | Linux `layout-style` scenes at scale 1 and 2. Not run on macOS/Windows.                                                                                                                                                 |
+| `style_decoration_v1`  | Always                               | Always                       | Always                                                | As `split_v1`.                                                                                                                                                                                                          |
+| `overlays_v1`          | Always                               | Always                       | Always                                                | Linux [`overlays.ts`](../tests/native/overlays.ts). Not run on macOS/Windows.                                                                                                                                           |
+| `scroll_anchor_v1`     | Always                               | Always                       | Always                                                | As `overlays_v1`.                                                                                                                                                                                                       |
+| `focus_v1`             | Always                               | Always                       | Always                                                | As `overlays_v1`.                                                                                                                                                                                                       |
+| `scroll_control_v1`    | Always                               | Always                       | Always                                                | As `overlays_v1`.                                                                                                                                                                                                       |
+| `overlay_keyboard_v1`  | Always                               | Always                       | Always                                                | As `overlays_v1`.                                                                                                                                                                                                       |
+| `input_states_v1`      | Always                               | Always                       | Always                                                | Linux [`text-input.ts`](../tests/native/text-input.ts) read-only and disabled inputs. Not run on macOS/Windows.                                                                                                         |
+| `app_menu_v1`          | Never                                | Always                       | Never                                                 | Hosted macOS [`app-menu.ts`](../tests/native/app-menu.ts) against an accessibility-tree oracle ([`macos-menu-oracle.m`](../tests/native/macos-menu-oracle.m)), unverified. GPUI stores menus only on Linux and Windows. |
+| `split_resize_v1`      | Always                               | Always                       | Always                                                | Linux X11 divider drag and keyboard cases in the native [layout contract](native-layout.md#keyboard-divider-and-resize-events-split_resize_v1). Not run on macOS/Windows.                                               |
+| `accessibility_v1`     | Always                               | Always                       | Always                                                | Linux AT-SPI roles in [`accessibility.ts`](../tests/native/accessibility.ts) ([native text](native-text.md#accessibility-roles-accessibility_v1)). Not run on macOS/Windows.                                            |
+| `display_details_v1`   | Never                                | Always                       | Always                                                | Compile-time `DISPLAY_DETAILS`. Hosted `display-platform.ts` against NSScreen/CoreGraphics and `System.Windows.Forms.Screen` oracles; unverified.                                                                       |
+| `display_changes_v1`   | Never                                | Always                       | Always                                                | Compile-time `DISPLAY_CHANGES`. The same hosted step makes a real display-mode change; it records `displayChange` as unavailable if the runner offers no other mode. Unverified.                                        |
+| `popup_windows_v1`     | Local X11 connection                 | Never                        | Never                                                 | Linux [`popups.ts`](../tests/native/popups.ts).                                                                                                                                                                         |
+| `clipboard_text_v1`    | Local X11 connection                 | Never                        | Never                                                 | Linux X11 [native services](native-services.md#clipboard-text-and-lifecycle).                                                                                                                                           |
+| `global_shortcuts_v1`  | Local X11 connection                 | Never                        | Never                                                 | Linux X11.                                                                                                                                                                                                              |
+| `notifications_v1`     | D-Bus session bus configured         | Never                        | Never                                                 | Linux against `dunst`.                                                                                                                                                                                                  |
+| `file_dialogs_v1`      | D-Bus session bus configured         | Never                        | Never                                                 | Linux xdg-desktop-portal (GTK).                                                                                                                                                                                         |
+| `filesystem_grants_v1` | `openat2` probe succeeds (5.6+)      | `openat` walk probe succeeds | `NtCreateFile` walk probe succeeds (Windows 10 1709+) | Linux [`filesystem-grants.ts`](../tests/native/filesystem-grants.ts); the hosted macOS and Windows steps run the same fixture, unverified.                                                                              |
+| `processes_v1`         | `pidfd_open` probe succeeds          | Always                       | Always                                                | Linux [`processes.ts`](../tests/native/processes.ts); hosted macOS and Windows unit tests and the same fixture (macOS without a working directory; Windows job object and ConPTY), unverified.                          |
+| `drag_drop_files_v1`   | GPUI compositor is X11 (not Wayland) | Always                       | Always                                                | Linux XDND [`drag-drop.ts`](../tests/native/drag-drop.ts) and Solid/React fixtures; hosted macOS `NSDraggingSession` and Windows `DoDragDrop` sources run the same fixtures, unverified.                                |
+
+`app.serviceCapabilities` derives each service record from this list. A missing
+capability reports `unavailable` / `unsupported_platform`, or `details` /
+`changes: 'unavailable'` for the display. Readiness never adds a capability
+that the table leaves out. Windows offers display details, display changes,
+filesystem grants (Windows drive-path launch roots), processes and file drops
+as optional OS services; a POSIX launch root never matches a Windows drop. The
+application menu bar is macOS only, and message and confirm dialogs need no
+capability because core draws them on the modal overlay. See the
+[service matrix](native-services.md#service-and-platform-matrix).
+[`platforms-capabilities.test.ts`](../tests/quality/platforms-capabilities.test.ts)
+fails when this table, the TypeScript capability list, the Rust enum or the
+host's unconditional set disagree.
+
 ## Linux Wayland
 
 GPUI uses its Wayland backend whenever `WAYLAND_DISPLAY` is set, so most Linux

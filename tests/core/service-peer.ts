@@ -14,7 +14,7 @@ import { join, resolve } from 'node:path'
  * that blocks until released (clipboard) is unblocked before shutdown.
  */
 export async function withServicePeer(
-  peer: 'clipboard-peer' | 'file-peer' | 'notification-peer' | 'shortcut-peer',
+  peer: 'clipboard-peer' | 'file-peer' | 'notification-peer' | 'process-peer' | 'shortcut-peer',
   run: (app: NativeApplication, directory: string) => Promise<void>,
   mode: string,
   permissions: ServicePermissions,

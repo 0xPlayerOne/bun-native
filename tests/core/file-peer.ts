@@ -16,6 +16,8 @@ import { join } from 'node:path'
 const directory = process.argv[2] ?? ''
 if (!directory) throw new Error('File peer requires its owned control directory')
 const mode = process.argv[3] ?? 'normal'
+// `<mode>:<code>` answers one command type with that error code.
+const [base, code] = mode.split(':') as [string, string | undefined]
 const roots = filesystemRootsFromArguments(process.argv)
 const policy = {
   window_display: process.argv.includes('--bun-native-allow-window-display'),
@@ -32,6 +34,14 @@ const grants = new Map<number, number>()
 const decoder = new FrameDecoder()
 const output = Bun.stdout.writer()
 let writing = Promise.resolve()
+// `hold` answers file requests only when a close arrives; `batch8` only once
+// the core has the whole eight-request service bound in flight.
+const held: (() => Promise<void>)[] = []
+const flush = async () => {
+  for (const answer of held.splice(0)) await answer()
+}
+const fail = (id: number, error: string) =>
+  emit({ type: 'error', id, code: error, message: 'Headless outcome' })
 
 function emit(value: unknown): Promise<void> {
   writing = writing.then(async () => {
@@ -75,6 +85,10 @@ for await (const chunk of Bun.stdin.stream())
         })
         break
       case 'open_file_grant':
+        if (base === 'open-error') {
+          await fail(command.id, code!)
+          break
+        }
         grants.set(command.grant_id, command.window_id)
         await emit({
           type: 'file_grant_opened',
@@ -84,6 +98,11 @@ for await (const chunk of Bun.stdin.stream())
         })
         break
       case 'close_file_grant':
+        await flush()
+        if (base === 'close-error') {
+          await fail(command.id, code!)
+          break
+        }
         grants.delete(command.grant_id)
         await emit({
           type: 'file_grant_closed',
@@ -93,6 +112,10 @@ for await (const chunk of Bun.stdin.stream())
         })
         break
       case 'file_request': {
+        if (base === 'request-error') {
+          await fail(command.id, code!)
+          break
+        }
         const answer = () =>
           emit({
             type: 'file_result',
@@ -118,10 +141,15 @@ for await (const chunk of Bun.stdin.stream())
                         : { kind: 'done' },
           })
         if (mode === 'slow') setTimeout(() => void answer(), 100)
-        else await answer()
+        else if (mode === 'hold') held.push(answer)
+        else if (mode === 'batch8') {
+          held.push(answer)
+          if (held.length === 8) await flush()
+        } else await answer()
         break
       }
       case 'close':
+        await flush()
         for (const [grant, owner] of grants) if (owner === command.window_id) grants.delete(grant)
         await emit({ type: 'ack', id: command.id })
         await emit({ type: 'closed', sequence: 1, window_id: command.window_id })

@@ -130,7 +130,7 @@ const fileCalls = {
       throw new TypeError('List `after` must be a file name')
     const operation: FileOperation =
       after === undefined ? { kind: 'list' } : { kind: 'list', after: path(after) }
-    if (operation.kind === 'list' && operation.after?.includes('/'))
+    if (operation.kind === 'list' && (operation.after === '' || operation.after?.includes('/')))
       throw new TypeError('List `after` must be a single file name')
     return {
       path: path(target),

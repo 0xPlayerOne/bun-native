@@ -21,6 +21,8 @@ type Spec = {
   target?: string
   key?: string
   shift?: boolean
+  /** Explicit modifier flags, merged over the all-false default. */
+  modifiers?: Partial<Record<'control' | 'alt' | 'shift' | 'platform' | 'function', boolean>>
   control?: boolean
   ratio?: number
   source?: 'pointer' | 'keyboard'
@@ -62,6 +64,7 @@ async function event(window_id: number, tree: PeerTree, spec: Spec) {
     shift: spec.shift === true,
     platform: false,
     function: false,
+    ...spec.modifiers,
   }
   const base = { type: spec.type, window_id, sequence: ++sequence, ...tree.route(target[0]) }
   if (spec.type === 'dismiss') await emit({ ...base, reason: 'window_blur' })

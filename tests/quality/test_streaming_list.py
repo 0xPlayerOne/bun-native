@@ -146,6 +146,56 @@ class StreamingListSummaryTest(unittest.TestCase):
         with self.assertRaisesRegex(RuntimeError, "at least one"):
             SOAK.baseline([])
 
+    def test_baseline_rejects_mixed_fixture_versions_with_one_digest(self):
+        newer = report("React")
+        newer["application"]["fixture"]["version"] = 2
+        with self.assertRaisesRegex(RuntimeError, "different streams"):
+            SOAK.baseline([report(), newer])
+        summary = SOAK.baseline([report()])
+        self.assertEqual(summary["fixtureVersion"], 1)
+        self.assertEqual(summary["fixture"], {"version": 1, "ticks": 2400})
+
+    def test_validation_requires_a_passed_fixture_status(self):
+        value = application()
+        value["status"] = "failed"
+        with self.assertRaisesRegex(RuntimeError, "framework"):
+            SOAK.validate_application(value, "Solid")
+
+    def test_frame_summary_reports_null_rates_without_two_frames(self):
+        for rows in ([], [frame(1, 5)]):
+            summary = SOAK.frame_summary(rows, 1)
+            self.assertEqual(summary["spanMs"], 0)
+            self.assertIsNone(summary["framesPerSecond"])
+            self.assertEqual(summary["intervalMs"]["count"], 0)
+            self.assertEqual(sum(summary["intervalBuckets"].values()), 0)
+        boundary = SOAK.frame_summary([frame(1, 0), frame(2, 16.7)], 1)
+        self.assertEqual(boundary["intervalBuckets"]["<=16.7ms"], 1)
+        self.assertAlmostEqual(boundary["framesPerSecond"], 1000 / 16.7)
+
+    def test_batch_summary_filters_window_and_converts_preflight(self):
+        rows = [
+            {
+                "type": "batch_applied",
+                "window_id": 1,
+                "operation_count": 3,
+                "text_bytes": 10,
+                "preflight_nanos": 2000,
+            },
+            {
+                "type": "batch_applied",
+                "window_id": 2,
+                "operation_count": 99,
+                "text_bytes": 99,
+                "preflight_nanos": 99_000,
+            },
+            {"type": "frame", "window_id": 1},
+        ]
+        summary = SOAK.batch_summary(rows, 1)
+        self.assertEqual(summary["batches"], 1)
+        self.assertEqual(summary["operations"]["max"], 3)
+        self.assertEqual(summary["textBytes"]["p50"], 10)
+        self.assertEqual(summary["preflightUs"]["p50"], 2)
+
 
 if __name__ == "__main__":
     unittest.main()
