@@ -1,5 +1,5 @@
 [workspace]
-members = ["native/protocol", "native/gpui-host", "native/macos-surface"]
+members = ["native/protocol", "native/gpui-host", "native/macos-surface", "native/windows-services"]
 resolver = "2"
 
 [workspace.package]
