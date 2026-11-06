@@ -46,7 +46,10 @@ export function extractPinnedExecutable(
   /** @type {Buffer} */
   let tar
   try {
-    tar = gunzipSync(compressed, { maxOutputLength: maximumBytes })
+    // One output chunk sized to the pinned tar (three members, headers, padding and
+    // end record) avoids concatenating ~130 MB; larger output still fails the bound.
+    const chunkSize = Math.min(maximumBytes, pin.unpackedSize + 3 * 1024 + 10_240)
+    tar = gunzipSync(compressed, { maxOutputLength: maximumBytes, chunkSize })
   } catch {
     throw new Error('Bun package gzip is malformed or exceeds its expanded byte bound')
   }

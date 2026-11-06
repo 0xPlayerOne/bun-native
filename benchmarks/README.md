@@ -73,6 +73,9 @@ Linux x64 with Xvfb and llvmpipe only.
 | [`bn0/`](bn0/README.md), [`bn1/`](bn1/README.md), [`bn2/`](bn2/README.md)                    | Historical milestone evidence records                              |
 | [`comparison/`](comparison/README.md)                                                        | Equivalent-workload comparison harness and recorded runs           |
 | [`solid/`](solid/README.md)                                                                  | Shared core/Solid/React workload and the matched core/Solid runner |
+| [`adapters/`](adapters/README.md)                                                            | Headless React workspace mount/update micro benchmark              |
+| [`protocol/`](protocol/README.md)                                                            | Protocol command/event encode and decode micro benchmark           |
+| [`core/`](core/README.md)                                                                    | Core event delivery fan-out micro benchmark                        |
 | [`retention/`](retention/README.md)                                                          | Fixed-checkpoint retention research                                |
 | [`native-allocations/`](native-allocations/README.md)                                        | Selected native allocation diagnostic                              |
 | [`results/`](results/README.md), [`evidence/`](evidence/README.md)                           | Retained hosted and local result records                           |

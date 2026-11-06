@@ -1,0 +1,56 @@
+# Adapter workspace micro benchmark
+
+`react-workspace.tsx` mounts a realistic styled mail workspace through
+`@bun-native/react`: a 12-folder sidebar, a search toolbar (`input` and
+`button`), `rows` message rows of `box > [box > [text, text], text, button]`
+with a click handler, and a detail pane holding a ~12,000 character log text
+(about 7,100 native nodes at 1,000 rows). The shared state, themes and window
+live in `workspace.ts`. It reports the median of ten fresh `mount`s and of
+`samples` commits of each change:
+
+- `select`: the selection moves, so two rows change background (2 sets);
+- `star`: one row's button text toggles (1 set);
+- `log`: the log drops its first line and appends one (1 large text set);
+- `theme`: light/dark switch, so every coloured node restyles (4,026 sets);
+- `filter`: the search alternately hides and restores the 500 rows that do not
+  match (on average 250 removes and 1,500 creates/inserts).
+
+Every change rerenders the whole `App`, as an unmemoized React app does, so
+each row gets fresh inline `style` objects. `sync` is React's render and commit
+including every host config callback; `total` adds the commit barrier and the
+renderer's snapshot, diff and publish. The window counts native operations and
+acknowledges immediately, so neither includes core validation, IPC, native
+work or paint.
+
+```sh
+NODE_ENV=production bun benchmarks/adapters/react-workspace.tsx [rows=1000] [samples=100]
+```
+
+## Equal inline styles
+
+[Raw records](raw/): source `822086b` (before) and this change (after), pinned
+Bun `da867c60`, Linux 6.18 (4 vCPU cloud container), three processes each,
+1,000 rows. Ranges are per-process medians in µs.
+
+| Change   | before sync | after sync  | before total  | after total   |
+| -------- | ----------- | ----------- | ------------- | ------------- |
+| `select` | 2,012–2,093 | 1,670–1,805 | 10,073–12,684 | 1,774–1,922   |
+| `star`   | 2,073–2,122 | 1,556–2,651 | 12,501–14,791 | 1,626–2,763   |
+| `log`    | 1,968–2,057 | 1,576–1,624 | 10,837–12,771 | 1,648–1,692   |
+| `theme`  | 2,036–2,148 | 2,121–2,230 | 12,791–13,438 | 8,213–8,615   |
+| `filter` | 3,524–4,335 | 3,157–3,389 | 14,812–20,193 | 7,336–8,202   |
+| `mount`  |             |             | 17,931–24,055 | 19,097–23,414 |
+
+Before, the host config compared props by identity, so every rerendered host
+with an inline `style={{ ... }}` handed the renderer a new style object. The
+renderer copies it and invalidates the node and its ancestors, so one changed
+row recaptured and rediffed every styled node (~4,000) to send two sets.
+`commitUpdate` now skips a style with the same own keys, in the same order, and
+`Object.is`-equal values: the renderer would have committed the identical
+element, so the native operations are unchanged.
+
+What remains: `sync` is React rerendering 1,000 rows (an app would memoize
+them). `theme` still spends ~6 ms in the renderer recapturing ~4,000 changed
+nodes, and `mount` ~20 ms for ~7,100 nodes; both are renderer snapshot/diff
+work. The renderer's own `setProperty` still invalidates on an equal style or
+text, which Solid effects that recreate a style object also pay.

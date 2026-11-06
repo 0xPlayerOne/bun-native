@@ -112,6 +112,28 @@ function updateProperty(node: Node, name: string, value: unknown): void {
 
 const reserved = (name: string) => name === 'children' || name === 'ref' || name === 'key'
 
+type StyleObject = Readonly<Record<string, unknown>>
+const isStyleObject = (value: unknown): value is StyleObject =>
+  typeof value === 'object' && value !== null && !Array.isArray(value)
+
+/**
+ * Inline `style={{ ... }}` is a new object on every render. The renderer keeps
+ * a shallow copy, so an object with the same own keys, in the same order, and
+ * the same values commits the identical element and sends no native set;
+ * setting it anyway would only recapture the node and its ancestors.
+ */
+function sameStyle(previous: unknown, next: unknown): boolean {
+  if (!isStyleObject(previous) || !isStyleObject(next)) return false
+  const names = Object.keys(previous)
+  const nextNames = Object.keys(next)
+  if (names.length !== nextNames.length) return false
+  for (let index = 0; index < names.length; index += 1) {
+    const name = names[index]!
+    if (name !== nextNames[index] || !Object.is(previous[name], next[name])) return false
+  }
+  return true
+}
+
 // React commits every rerendered host fiber, so this runs once per row of a
 // rerendered list: compare in place rather than allocating a merged key set.
 function updateProperties(node: Node, previous: Props, next: Props): void {
@@ -120,7 +142,10 @@ function updateProperties(node: Node, previous: Props, next: Props): void {
   for (const name of Object.keys(next)) {
     if (reserved(name)) continue
     const value = next[name]
-    if (Object.hasOwn(previous, name) && Object.is(previous[name], value)) continue
+    if (Object.hasOwn(previous, name)) {
+      const old = previous[name]
+      if (Object.is(old, value) || (name === 'style' && sameStyle(old, value))) continue
+    }
     updateProperty(node, name, value)
   }
 }

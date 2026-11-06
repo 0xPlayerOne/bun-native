@@ -1,0 +1,53 @@
+{
+  "bun": "da867c60bf0bcbf9d6d36994f8ca0efa42075115",
+  "platform": "linux",
+  "arch": "x64",
+  "depth": 8,
+  "results": [
+    {
+      "scenario": "no-listener",
+      "type": "pointer_down",
+      "deliveries": 0,
+      "samples": 5000,
+      "meanUs": 0.349,
+      "p50Us": 0.194,
+      "p95Us": 0.696
+    },
+    {
+      "scenario": "target",
+      "type": "click",
+      "deliveries": 1,
+      "samples": 5000,
+      "meanUs": 3.946,
+      "p50Us": 2.337,
+      "p95Us": 3.826
+    },
+    {
+      "scenario": "ancestor-bubble",
+      "type": "key_down",
+      "deliveries": 1,
+      "samples": 5000,
+      "meanUs": 3.962,
+      "p50Us": 2.508,
+      "p95Us": 3.804
+    },
+    {
+      "scenario": "every-level",
+      "type": "click",
+      "deliveries": 16,
+      "samples": 5000,
+      "meanUs": 11.892,
+      "p50Us": 6.938,
+      "p95Us": 12.357
+    },
+    {
+      "scenario": "input-async",
+      "type": "input",
+      "deliveries": 1,
+      "samples": 5000,
+      "meanUs": 6.156,
+      "p50Us": 3.837,
+      "p95Us": 7.248
+    }
+  ]
+}

@@ -35,12 +35,21 @@ function git(...args: string[]): string {
 async function snapshot(): Promise<PackageSet['source']> {
   if (git('status', '--porcelain', '--untracked-files=all') !== '')
     throw new Error('Package production requires a clean committed source tree')
-  const files: Record<string, FileDigest> = {}
-  for (const path of git('ls-files', '-z').split('\0').filter(Boolean).sort()) {
-    if (!packagePath(path) || !(await lstat(join(repository, path))).isFile())
-      throw new Error(`Source inventory requires portable regular files: ${path}`)
-    files[path] = await fileDigest(join(repository, path))
+  const paths = git('ls-files', '-z').split('\0').filter(Boolean).sort()
+  const digests: FileDigest[] = Array.from({ length: paths.length })
+  let next = 0
+  // A few concurrent readers overlap file I/O; results keep the sorted order.
+  const reader = async () => {
+    for (let index = next++; index < paths.length; index = next++) {
+      const path = paths[index]!
+      if (!packagePath(path) || !(await lstat(join(repository, path))).isFile())
+        throw new Error(`Source inventory requires portable regular files: ${path}`)
+      digests[index] = await fileDigest(join(repository, path))
+    }
   }
+  await Promise.all(Array.from({ length: 8 }, reader))
+  const files: Record<string, FileDigest> = {}
+  for (const [index, path] of paths.entries()) files[path] = digests[index]!
   return {
     commit: git('rev-parse', 'HEAD').trim(),
     tree: git('rev-parse', 'HEAD^{tree}').trim(),

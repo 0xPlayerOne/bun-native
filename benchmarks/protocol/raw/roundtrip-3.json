@@ -1,0 +1,72 @@
+{
+  "bun": "da867c60bf0bcbf9d6d36994f8ca0efa42075115",
+  "platform": "linux",
+  "arch": "x64",
+  "chunkBytes": 9262,
+  "results": [
+    {
+      "scenario": "mount",
+      "phase": "parseCommand",
+      "samples": 2000,
+      "meanUs": 126.181,
+      "p50Us": 34.089,
+      "p95Us": 528.95
+    },
+    {
+      "scenario": "mount",
+      "phase": "encodeFrame",
+      "samples": 2000,
+      "meanUs": 57.655,
+      "p50Us": 26.337,
+      "p95Us": 188.248
+    },
+    {
+      "scenario": "keystroke",
+      "phase": "parseCommand",
+      "samples": 2000,
+      "meanUs": 2.091,
+      "p50Us": 1.104,
+      "p95Us": 2.331
+    },
+    {
+      "scenario": "keystroke",
+      "phase": "encodeFrame",
+      "samples": 2000,
+      "meanUs": 1.965,
+      "p50Us": 0.847,
+      "p95Us": 2.058
+    },
+    {
+      "scenario": "large-text",
+      "phase": "parseCommand",
+      "samples": 2000,
+      "meanUs": 11.013,
+      "p50Us": 1.31,
+      "p95Us": 6.811
+    },
+    {
+      "scenario": "large-text",
+      "phase": "encodeFrame",
+      "samples": 2000,
+      "meanUs": 25.96,
+      "p50Us": 5.899,
+      "p95Us": 32.506
+    },
+    {
+      "scenario": "events",
+      "phase": "FrameDecoder.push",
+      "samples": 2000,
+      "meanUs": 86.157,
+      "p50Us": 27.868,
+      "p95Us": 453.067
+    },
+    {
+      "scenario": "events",
+      "phase": "parseEvent",
+      "samples": 2000,
+      "meanUs": 72.612,
+      "p50Us": 27.075,
+      "p95Us": 319.887
+    }
+  ]
+}
