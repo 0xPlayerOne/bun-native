@@ -64,8 +64,8 @@ impl Element for TextElement {
     ) -> Self::PrepaintState {
         let input = self.input.read(cx);
         let content = input.content.clone();
-        let selected_range = input.selected_range.clone();
-        let cursor = input.cursor_offset();
+        let selected_range = input.selection.range.clone();
+        let cursor = input.selection.cursor();
         let style = window.text_style();
 
         let (display_text, text_color) = if content.is_empty() {

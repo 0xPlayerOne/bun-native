@@ -2,6 +2,8 @@
 
 **Tracked in [Bun Native #287](https://github.com/0xPlayerOne/bun-native/issues/287); not an upstream report.** Related work: BN2 #231 and PR #277. No renderer or benchmark assertion is relaxed by filing this follow-up.
 
+**Status note (2026-11-05):** [settled-collection.md](settled-collection.md) since identified JSC's DFG tier as the source of the development-mode positives described below; the required collectability checks now run with `BUN_JSC_useDFGJIT=0`. The native AOT failure is still unexplained, so work items 1 and 3–6 still apply. The original text below is unchanged.
+
 ## Concrete problem
 
 The matched core/Solid benchmark stopped on its unchanged lifetime assertion when a direct-core AOT run retained two handles from zero-based mount index 61 after two fixed collection checkpoints. All six public ownership/queue counters were zero. A separate fixed ten-run diagnostic of the original instrumented bundle reproduced two retained handles at index 76 in trial 4. The full comparison therefore has no accepted timing result.

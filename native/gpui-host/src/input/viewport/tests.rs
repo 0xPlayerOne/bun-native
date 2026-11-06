@@ -98,7 +98,7 @@ fn scrolled_pointer_and_native_point_queries_use_the_painted_byte_positions() {
     // The visible x=53 is line x=65, the B after a four-byte emoji and
     // combining sequence. Forgetting the inverse offset selects the emoji.
     let position = point(px(53.), px(30.));
-    assert_eq!(paint.mouse_index(&paint.line.text, position), Some(8));
+    assert_eq!(painted_index(&paint, &paint.line.text, position), Some(8));
     assert_eq!(paint.character_index(&paint.line.text, position), Some(8));
     assert_eq!(
         paint.viewport.window_x(paint.line.x_for_index(8)),
@@ -109,11 +109,11 @@ fn scrolled_pointer_and_native_point_queries_use_the_painted_byte_positions() {
         None
     );
     assert_eq!(
-        paint.mouse_index(&paint.line.text, point(px(39.), px(10.))),
+        painted_index(&paint, &paint.line.text, point(px(39.), px(10.))),
         Some(0)
     );
     assert_eq!(
-        paint.mouse_index(&paint.line.text, point(px(91.), px(50.))),
+        painted_index(&paint, &paint.line.text, point(px(91.), px(50.))),
         Some(10)
     );
 }
@@ -144,7 +144,7 @@ fn edited_text_cannot_reuse_old_glyph_byte_offsets_before_the_next_paint() {
     let paint = painted_unicode();
     for replacement in ["", "🌍", "A🌍", "A🌍e\u{301}BD"] {
         assert_eq!(
-            paint.mouse_index(replacement, point(px(53.), px(30.))),
+            painted_index(&paint, replacement, point(px(53.), px(30.))),
             None
         );
         assert_eq!(

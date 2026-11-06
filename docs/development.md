@@ -1,6 +1,6 @@
 # Developer workflow
 
-**Implemented:** the [checkout CLI](developer-tooling.md) creates Solid/React TypeScript or checked JavaScript projects, starts them against an explicitly supplied prebuilt host, optionally watches source with joined full remounts, and produces unsigned same-platform AOT artifacts. These projects use the surrounding repository's dependencies. Published installation, host acquisition, native reload qualification and standalone diagnostics remain open under [BN5 #220](https://github.com/0xPlayerOne/bun-native/issues/220).
+**Implemented:** the [checkout CLI](developer-tooling.md) creates Solid/React TypeScript or checked JavaScript projects, starts them against an explicitly supplied prebuilt host, optionally watches source with joined full remounts, and produces unsigned same-platform AOT artifacts. These projects use the surrounding repository's dependencies; the explicit `create --packages` mode instead generates [standalone projects from local package sets](standalone-projects.md) under [#382](https://github.com/0xPlayerOne/bun-native/issues/382). Registry publication, host acquisition, native reload qualification and standalone diagnostics remain open under [BN5 #220](https://github.com/0xPlayerOne/bun-native/issues/220).
 
 ## The expected workflow
 

@@ -1,10 +1,14 @@
 // Adapted from Zed GPUI examples/input.rs, revision ba63a022c9a22ca66d68ef2a8f0bb9b5b0a9984d.
 // Copyright the Zed contributors. Licensed under Apache-2.0; see LICENSE-APACHE and NOTICE.
 mod binding;
+mod hit_test;
+mod offsets;
 mod paint;
+mod selection;
 mod viewport;
 pub(crate) use binding::InputBinding;
 use paint::TextElement;
+use selection::Selection;
 use std::ops::Range;
 use viewport::InputPaint;
 pub(crate) use viewport::{InputViewportSnapshot, PaintedInputDecorations};
@@ -14,7 +18,6 @@ use gpui::{
     KeyBinding, MouseButton, MouseDownEvent, MouseMoveEvent, MouseUpEvent, Pixels, Point,
     SharedString, UTF16Selection, Window, actions, div, prelude::*, px,
 };
-use unicode_segmentation::UnicodeSegmentation;
 
 actions!(
     text_input,
@@ -40,8 +43,7 @@ pub(crate) struct TextInput {
     focus_handle: FocusHandle,
     content: SharedString,
     placeholder: SharedString,
-    selected_range: Range<usize>,
-    selection_reversed: bool,
+    selection: Selection,
     marked_range: Option<Range<usize>>,
     last_paint: Option<InputPaint>,
     is_selecting: bool,
@@ -59,64 +61,66 @@ fn splice(content: &str, range: &Range<usize>, new_text: &str) -> String {
 
 impl TextInput {
     fn left(&mut self, _: &Left, window: &mut Window, cx: &mut Context<Self>) {
-        if self.selected_range.is_empty() {
-            self.move_to(self.previous_boundary(self.cursor_offset()), window, cx);
-        } else {
-            self.move_to(self.selected_range.start, window, cx);
-        }
+        self.selection.move_left(&self.content);
+        self.selection_changed(window, cx);
     }
 
     fn right(&mut self, _: &Right, window: &mut Window, cx: &mut Context<Self>) {
-        if self.selected_range.is_empty() {
-            self.move_to(self.next_boundary(self.selected_range.end), window, cx);
-        } else {
-            self.move_to(self.selected_range.end, window, cx);
-        }
+        self.selection.move_right(&self.content);
+        self.selection_changed(window, cx);
     }
 
     fn select_left(&mut self, _: &SelectLeft, window: &mut Window, cx: &mut Context<Self>) {
-        self.select_to(self.previous_boundary(self.cursor_offset()), window, cx);
+        self.selection.select_left(&self.content);
+        self.selection_changed(window, cx);
     }
 
     fn select_right(&mut self, _: &SelectRight, window: &mut Window, cx: &mut Context<Self>) {
-        self.select_to(self.next_boundary(self.cursor_offset()), window, cx);
+        self.selection.select_right(&self.content);
+        self.selection_changed(window, cx);
     }
 
     fn select_all(&mut self, _: &SelectAll, window: &mut Window, cx: &mut Context<Self>) {
-        self.move_to(0, window, cx);
-        self.select_to(self.content.len(), window, cx);
+        self.selection = Selection::select_all(&self.content);
+        self.selection_changed(window, cx);
     }
 
     fn home(&mut self, _: &Home, window: &mut Window, cx: &mut Context<Self>) {
-        self.move_to(0, window, cx);
+        self.selection = Selection::caret(0);
+        self.selection_changed(window, cx);
     }
 
     fn end(&mut self, _: &End, window: &mut Window, cx: &mut Context<Self>) {
-        self.move_to(self.content.len(), window, cx);
+        self.selection = Selection::caret(self.content.len());
+        self.selection_changed(window, cx);
     }
 
     fn backspace(&mut self, _: &Backspace, window: &mut Window, cx: &mut Context<Self>) {
-        if self.selected_range.is_empty() {
-            let prev = self.previous_boundary(self.cursor_offset());
-            if self.cursor_offset() == prev {
+        if self.selection.range.is_empty() {
+            let cursor = self.selection.cursor();
+            let prev = offsets::previous_boundary(&self.content, cursor);
+            if cursor == prev {
                 window.play_system_bell();
                 return;
             }
-            self.select_to(prev, window, cx);
+            self.selection.select_to(prev);
+            self.selection_changed(window, cx);
         }
-        self.replace_text_in_range(None, "", window, cx);
+        self.replace_text_in_range(None, "", window, cx)
     }
 
     fn delete(&mut self, _: &Delete, window: &mut Window, cx: &mut Context<Self>) {
-        if self.selected_range.is_empty() {
-            let next = self.next_boundary(self.cursor_offset());
-            if self.cursor_offset() == next {
+        if self.selection.range.is_empty() {
+            let cursor = self.selection.cursor();
+            let next = offsets::next_boundary(&self.content, cursor);
+            if cursor == next {
                 window.play_system_bell();
                 return;
             }
-            self.select_to(next, window, cx);
+            self.selection.select_to(next);
+            self.selection_changed(window, cx);
         }
-        self.replace_text_in_range(None, "", window, cx);
+        self.replace_text_in_range(None, "", window, cx)
     }
 
     fn on_mouse_down(
@@ -129,11 +133,13 @@ impl TextInput {
         window.focus(&self.focus_handle, cx);
         window.request_virtual_keyboard();
 
+        let index = self.index_for_mouse_position(event.position);
         if event.modifiers.shift {
-            self.select_to(self.index_for_mouse_position(event.position), window, cx);
+            self.selection.select_to(index);
         } else {
-            self.move_to(self.index_for_mouse_position(event.position), window, cx);
+            self.selection = Selection::caret(index);
         }
+        self.selection_changed(window, cx);
     }
 
     fn on_mouse_up(&mut self, _: &MouseUpEvent, _window: &mut Window, _: &mut Context<Self>) {
@@ -147,7 +153,9 @@ impl TextInput {
         cx: &mut Context<Self>,
     ) {
         if self.is_selecting {
-            self.select_to(self.index_for_mouse_position(event.position), window, cx);
+            self.selection
+                .select_to(self.index_for_mouse_position(event.position));
+            self.selection_changed(window, cx);
         }
     }
 
@@ -167,116 +175,45 @@ impl TextInput {
     }
 
     fn copy(&mut self, _: &Copy, _: &mut Window, cx: &mut Context<Self>) {
-        if !self.selected_range.is_empty() {
+        if !self.selection.range.is_empty() {
             cx.write_to_clipboard(ClipboardItem::new_string(
-                self.content[self.selected_range.clone()].to_string(),
+                self.content[self.selection.range.clone()].to_string(),
             ));
         }
     }
     fn cut(&mut self, _: &Cut, window: &mut Window, cx: &mut Context<Self>) {
-        if !self.selected_range.is_empty() {
+        if !self.selection.range.is_empty() {
             cx.write_to_clipboard(ClipboardItem::new_string(
-                self.content[self.selected_range.clone()].to_string(),
+                self.content[self.selection.range.clone()].to_string(),
             ));
-            self.replace_text_in_range(None, "", window, cx);
+            self.replace_text_in_range(None, "", window, cx)
         }
     }
 
-    fn move_to(&mut self, offset: usize, window: &Window, cx: &mut Context<Self>) {
-        self.selected_range = offset..offset;
-        self.selection_reversed = false;
+    fn selection_changed(&self, window: &Window, cx: &mut Context<Self>) {
         window.notify_text_selection_changed(&self.focus_handle);
-        cx.notify();
-    }
-
-    fn cursor_offset(&self) -> usize {
-        if self.selection_reversed {
-            self.selected_range.start
-        } else {
-            self.selected_range.end
-        }
+        cx.notify()
     }
 
     fn index_for_mouse_position(&self, position: Point<Pixels>) -> usize {
-        if self.content.is_empty() {
-            return 0;
-        }
-
-        // An edit can arrive before the next paint. Never interpret old glyph
-        // byte indices against new text; retain the current caret instead.
-        self.last_paint
-            .as_ref()
-            .and_then(|paint| paint.mouse_index(&self.content, position))
-            .unwrap_or_else(|| self.cursor_offset())
-    }
-
-    fn select_to(&mut self, offset: usize, window: &Window, cx: &mut Context<Self>) {
-        if self.selection_reversed {
-            self.selected_range.start = offset;
-        } else {
-            self.selected_range.end = offset;
-        }
-        if self.selected_range.end < self.selected_range.start {
-            self.selection_reversed = !self.selection_reversed;
-            self.selected_range = self.selected_range.end..self.selected_range.start;
-        }
-        window.notify_text_selection_changed(&self.focus_handle);
-        cx.notify();
-    }
-
-    fn offset_from_utf16(&self, offset: usize) -> usize {
-        let mut utf8_offset = 0;
-        let mut utf16_count = 0;
-
-        for ch in self.content.chars() {
-            if utf16_count >= offset {
-                break;
-            }
-            utf16_count += ch.len_utf16();
-            utf8_offset += ch.len_utf8();
-        }
-
-        utf8_offset
+        hit_test::index_for_mouse_position(
+            &self.content,
+            self.last_paint.as_ref(),
+            position,
+            self.selection.cursor(),
+        )
     }
 
     fn offset_to_utf16(&self, offset: usize) -> usize {
-        let mut utf16_offset = 0;
-        let mut utf8_count = 0;
-
-        for ch in self.content.chars() {
-            if utf8_count >= offset {
-                break;
-            }
-            utf8_count += ch.len_utf8();
-            utf16_offset += ch.len_utf16();
-        }
-
-        utf16_offset
+        offsets::to_utf16(&self.content, offset)
     }
 
     fn range_to_utf16(&self, range: &Range<usize>) -> Range<usize> {
-        self.offset_to_utf16(range.start)..self.offset_to_utf16(range.end)
+        offsets::range_to_utf16(&self.content, range)
     }
 
     fn range_from_utf16(&self, range_utf16: &Range<usize>) -> Range<usize> {
-        let start = self.offset_from_utf16(range_utf16.start);
-        let end = self.offset_from_utf16(range_utf16.end);
-        start.min(end)..start.max(end)
-    }
-
-    fn previous_boundary(&self, offset: usize) -> usize {
-        self.content
-            .grapheme_indices(true)
-            .rev()
-            .find_map(|(idx, _)| (idx < offset).then_some(idx))
-            .unwrap_or(0)
-    }
-
-    fn next_boundary(&self, offset: usize) -> usize {
-        self.content
-            .grapheme_indices(true)
-            .find_map(|(idx, _)| (idx > offset).then_some(idx))
-            .unwrap_or(self.content.len())
+        offsets::range_from_utf16(&self.content, range_utf16)
     }
 
     pub(crate) fn new(
@@ -291,8 +228,7 @@ impl TextInput {
             focus_handle: cx.focus_handle().tab_stop(true),
             content: content.into(),
             placeholder: placeholder.into(),
-            selected_range: end..end,
-            selection_reversed: false,
+            selection: Selection::caret(end),
             marked_range: None,
             last_paint: None,
             is_selecting: false,
@@ -315,8 +251,7 @@ impl TextInput {
         }
         let end = value.len();
         self.content = value.to_owned().into();
-        self.selected_range = end..end;
-        self.selection_reversed = false;
+        self.selection = Selection::caret(end);
         self.marked_range = None;
         self.last_paint = None;
         self.is_selecting = false;
@@ -350,8 +285,8 @@ impl EntityInputHandler for TextInput {
         _cx: &mut Context<Self>,
     ) -> Option<UTF16Selection> {
         Some(UTF16Selection {
-            range: self.range_to_utf16(&self.selected_range),
-            reversed: self.selection_reversed,
+            range: self.range_to_utf16(&self.selection.range),
+            reversed: self.selection.reversed,
         })
     }
 
@@ -361,10 +296,11 @@ impl EntityInputHandler for TextInput {
         window: &mut Window,
         cx: &mut Context<Self>,
     ) {
-        self.selected_range = self.range_from_utf16(&range_utf16);
-        self.selection_reversed = false;
-        window.notify_text_selection_changed(&self.focus_handle);
-        cx.notify();
+        self.selection = Selection {
+            range: self.range_from_utf16(&range_utf16),
+            reversed: false,
+        };
+        self.selection_changed(window, cx);
     }
 
     fn text_length_utf16(
@@ -402,7 +338,7 @@ impl EntityInputHandler for TextInput {
             .as_ref()
             .map(|range_utf16| self.range_from_utf16(range_utf16))
             .or(self.marked_range.clone())
-            .unwrap_or(self.selected_range.clone());
+            .unwrap_or(self.selection.range.clone());
 
         if new_text.contains('\0')
             || self.content.len() - range.len() + new_text.len()
@@ -417,8 +353,7 @@ impl EntityInputHandler for TextInput {
             return;
         };
         self.content = value;
-        self.selected_range = range.start + new_text.len()..range.start + new_text.len();
-        self.selection_reversed = false;
+        self.selection = Selection::caret(range.start + new_text.len());
         self.marked_range.take();
         window.notify_text_input_changed(&self.focus_handle);
         cx.notify();
@@ -436,7 +371,7 @@ impl EntityInputHandler for TextInput {
             .as_ref()
             .map(|range_utf16| self.range_from_utf16(range_utf16))
             .or(self.marked_range.clone())
-            .unwrap_or(self.selected_range.clone());
+            .unwrap_or(self.selection.range.clone());
 
         if new_text.contains('\0')
             || self.content.len() - range.len() + new_text.len()
@@ -451,22 +386,24 @@ impl EntityInputHandler for TextInput {
             return;
         };
         self.content = value;
-        if new_text.is_empty() {
-            self.marked_range = None;
-        } else {
+        if !new_text.is_empty() {
             self.marked_range = Some(range.start..range.start + new_text.len());
+        } else {
+            self.marked_range = None;
         }
         let insertion_start_utf16 = self.offset_to_utf16(range.start);
         let inserted_length_utf16 = new_text.encode_utf16().count();
-        self.selected_range = new_selected_range_utf16
-            .map(|selected| {
-                self.range_from_utf16(
-                    &(insertion_start_utf16 + selected.start.min(inserted_length_utf16)
-                        ..insertion_start_utf16 + selected.end.min(inserted_length_utf16)),
-                )
-            })
-            .unwrap_or_else(|| range.start + new_text.len()..range.start + new_text.len());
-        self.selection_reversed = false;
+        self.selection = Selection {
+            range: new_selected_range_utf16
+                .map(|selected| {
+                    self.range_from_utf16(
+                        &(insertion_start_utf16 + selected.start.min(inserted_length_utf16)
+                            ..insertion_start_utf16 + selected.end.min(inserted_length_utf16)),
+                    )
+                })
+                .unwrap_or_else(|| range.start + new_text.len()..range.start + new_text.len()),
+            reversed: false,
+        };
 
         window.notify_text_input_changed(&self.focus_handle);
         cx.notify();

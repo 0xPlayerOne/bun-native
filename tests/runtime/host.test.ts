@@ -379,4 +379,82 @@ describe('native process transport (headless protocol peer)', () => {
       }
     }
   )
+
+  test('rejects concurrent event reads without losing the waiting reader', async () => {
+    const host = await NativeHost.launch(options())
+    const events = host[Symbol.asyncIterator]()
+    try {
+      const waiting = events.next()
+      const error = await rejectedError(events.next())
+      expect(error.message).toBe('Concurrent event reads are not supported')
+      await host.send(open)
+      await host.send({ type: 'close', window_id: 1 })
+      expect(await waiting).toEqual({
+        done: false,
+        value: { type: 'closed', sequence: 1, window_id: 1 },
+      })
+    } finally {
+      await host.shutdown()
+    }
+    expect(await host.exited).toBe(0)
+  })
+
+  test('bounds outstanding commands without disturbing accepted ones', async () => {
+    const host = await NativeHost.launch(options())
+    try {
+      const accepted = Array.from({ length: 128 }, (_, index) =>
+        host.send({ ...open, window_id: index + 1, root_id: index + 1 })
+      )
+      const error = await rejectedError(host.send({ ...open, window_id: 129, root_id: 129 }))
+      expect(error.message).toBe('Native command limit exceeded')
+      const replies = await Promise.all(accepted)
+      expect(replies.map((reply) => reply.window_id)).toEqual(
+        Array.from({ length: 128 }, (_, index) => index + 1)
+      )
+    } finally {
+      await host.shutdown()
+    }
+    expect(await host.exited).toBe(0)
+  })
+
+  test('enforces negotiated frame and batch limits before writing a command', async () => {
+    const host = await NativeHost.launch(options('small-limits'))
+    try {
+      await host.send(open)
+      const frame = await rejectedError(
+        host.send({ ...open, window_id: 2, root_id: 2, title: 'x'.repeat(250) })
+      )
+      expect(frame).toBeInstanceOf(ProtocolError)
+      expect(frame.message).toBe('Command exceeds the negotiated frame limit')
+      const operations = await rejectedError(host.send(batch({ kind: 'text', text: 'Two' })))
+      expect(operations).toBeInstanceOf(ProtocolError)
+      expect(operations.message).toBe('Command exceeds the negotiated batch limit')
+      // Neither rejected command reached the host; the session remains usable.
+      expect(
+        await host.send({
+          type: 'batch',
+          window_id: 1,
+          base_revision: 0,
+          operations: [{ type: 'create', node_id: 2, element: { kind: 'text', text: 'One' } }],
+        })
+      ).toEqual({ type: 'applied', id: 5, window_id: 1, tree_revision: 1 })
+    } finally {
+      await host.shutdown()
+    }
+    expect(await host.exited).toBe(0)
+  })
+
+  test('terminates on a native error that names no request', async () => {
+    const host = await NativeHost.launch(options('unsolicited-error'))
+    try {
+      const error = await rejectedError(deadline(host.send(open), 'unsolicited error'))
+      expect(error).toBeInstanceOf(ProtocolError)
+      expect(error.message).toBe('Native native_failure: Unsolicited failure')
+    } finally {
+      await deadline(
+        host.shutdown().catch(() => {}),
+        'failed host cleanup'
+      )
+    }
+  })
 })

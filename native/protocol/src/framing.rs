@@ -147,3 +147,7 @@ pub fn write_event(sink: &mut impl Write, event: &Event) -> Result<(), ProtocolE
 #[cfg(test)]
 #[path = "framing_tests.rs"]
 mod tests;
+
+#[cfg(test)]
+#[path = "framing/tests.rs"]
+mod edge_tests;

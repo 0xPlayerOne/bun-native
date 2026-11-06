@@ -87,27 +87,13 @@ impl Notifications {
         cx: &mut App,
     ) -> Result<(), Failure> {
         let (id, window, notification) = request;
-        if !self.available() {
-            return Err((
-                ErrorCode::ServiceUnavailable,
-                "notifications require a D-Bus session bus",
-            ));
-        }
-        if notification.get() <= self.0.last_notification.get() {
-            return Err((
-                ErrorCode::InvalidHandle,
-                "notification IDs must increase across the session",
-            ));
-        }
-        if self.0.entries.borrow().len() >= MAX_NOTIFICATIONS {
-            return Err((ErrorCode::LimitExceeded, "live notification limit exceeded"));
-        }
-        if self.0.stopping.get() {
-            return Err((
-                ErrorCode::Cancelled,
-                "notification service is shutting down",
-            ));
-        }
+        check_post(
+            self.available(),
+            self.0.last_notification.get(),
+            notification,
+            self.0.entries.borrow().len(),
+            self.0.stopping.get(),
+        )?;
         let link = self.link(cx);
         self.0.last_notification.set(notification.get());
         self.0.entries.borrow_mut().insert(
@@ -636,9 +622,139 @@ fn escape_markup(text: &str) -> String {
     escaped
 }
 
+/// The argument and capacity checks for a new notification, in reply order.
+fn check_post(
+    available: bool,
+    last_notification: u64,
+    notification: NotificationId,
+    live: usize,
+    stopping: bool,
+) -> Result<(), Failure> {
+    if !available {
+        return Err((
+            ErrorCode::ServiceUnavailable,
+            "notifications require a D-Bus session bus",
+        ));
+    }
+    if notification.get() <= last_notification {
+        return Err((
+            ErrorCode::InvalidHandle,
+            "notification IDs must increase across the session",
+        ));
+    }
+    if live >= MAX_NOTIFICATIONS {
+        return Err((ErrorCode::LimitExceeded, "live notification limit exceeded"));
+    }
+    if stopping {
+        return Err((
+            ErrorCode::Cancelled,
+            "notification service is shutting down",
+        ));
+    }
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
-    use super::escape_markup;
+    use super::*;
+
+    const SERVER: &str = ":1.42";
+
+    // A macro, because the body bound names serde, which is not a direct dependency.
+    macro_rules! signal {
+        ($member:expr, $body:expr) => {
+            zbus::Message::signal(PATH, NAME, $member)
+                .unwrap()
+                .sender(SERVER)
+                .unwrap()
+                .build($body)
+                .unwrap()
+        };
+    }
+
+    #[test]
+    fn only_the_default_action_activates_a_notification() {
+        let Some(Signal::Activated { sender, key }) =
+            parse_signal(&signal!("ActionInvoked", &(7_u32, "default")))
+        else {
+            panic!("default action must activate");
+        };
+        assert_eq!(sender.as_str(), SERVER);
+        assert_eq!(key, 7);
+        for action in ["", "Default", "open", "default "] {
+            assert!(
+                parse_signal(&signal!("ActionInvoked", &(7_u32, action))).is_none(),
+                "{action:?}"
+            );
+        }
+    }
+
+    #[test]
+    fn close_reasons_map_and_unknown_reasons_mean_closed() {
+        for (reason, expected) in [
+            (1, NotificationDismissal::Expired),
+            (2, NotificationDismissal::Dismissed),
+            (3, NotificationDismissal::Closed),
+            (4, NotificationDismissal::Closed),
+            (0, NotificationDismissal::Closed),
+            (u32::MAX, NotificationDismissal::Closed),
+        ] {
+            let Some(Signal::Closed {
+                sender,
+                key,
+                reason: parsed,
+            }) = parse_signal(&signal!("NotificationClosed", &(u32::MAX, reason)))
+            else {
+                panic!("reason {reason} must parse");
+            };
+            assert_eq!(sender.as_str(), SERVER);
+            assert_eq!(key, u32::MAX);
+            assert_eq!(parsed, expected, "reason {reason}");
+        }
+    }
+
+    #[test]
+    fn malformed_unknown_or_anonymous_signals_are_ignored() {
+        assert!(parse_signal(&signal!("ActionInvoked", &(7_u32,))).is_none());
+        assert!(parse_signal(&signal!("ActionInvoked", &("default", 7_u32))).is_none());
+        assert!(parse_signal(&signal!("NotificationClosed", &(7_u32, "2"))).is_none());
+        assert!(parse_signal(&signal!("NotificationClosed", &(7_i32, 2_u32))).is_none());
+        assert!(parse_signal(&signal!("ActivationToken", &(7_u32, "token"))).is_none());
+        let anonymous = zbus::Message::signal(PATH, NAME, "NotificationClosed")
+            .unwrap()
+            .build(&(7_u32, 2_u32))
+            .unwrap();
+        assert!(parse_signal(&anonymous).is_none());
+    }
+
+    #[test]
+    fn only_a_missing_server_is_reported_as_unavailable() {
+        let reply = signal!("NotificationClosed", &(1_u32, 1_u32));
+        let method_error = |name: &str| {
+            zbus::Error::MethodError(
+                zbus::names::OwnedErrorName::try_from(name.to_owned()).unwrap(),
+                None,
+                reply.clone(),
+            )
+        };
+        for name in [
+            "org.freedesktop.DBus.Error.ServiceUnknown",
+            "org.freedesktop.DBus.Error.NameHasNoOwner",
+        ] {
+            assert_eq!(
+                bus_failure(&method_error(name)).0,
+                ErrorCode::ServiceUnavailable
+            );
+        }
+        for error in [
+            method_error("org.freedesktop.DBus.Error.AccessDenied"),
+            method_error("org.freedesktop.DBus.Error.NoReply"),
+            zbus::Error::InvalidReply,
+            zbus::Error::Unsupported,
+        ] {
+            assert_eq!(bus_failure(&error).0, ErrorCode::NativeFailure);
+        }
+    }
 
     #[test]
     fn plain_text_is_never_interpreted_as_markup() {
@@ -647,5 +763,64 @@ mod tests {
             "&lt;b&gt;a&lt;/b&gt; &amp; &lt;a href=\"x\"&gt;"
         );
         assert_eq!(escape_markup("line\nnext"), "line\nnext");
+    }
+
+    fn check(
+        available: bool,
+        last: u64,
+        notification: u64,
+        live: usize,
+        stopping: bool,
+    ) -> Result<(), Failure> {
+        let notification = NotificationId::try_from(notification).unwrap();
+        check_post(available, last, notification, live, stopping)
+    }
+
+    #[test]
+    fn accepts_a_new_notification_below_the_limit() {
+        assert_eq!(check(true, 0, 1, 0, false), Ok(()));
+        assert_eq!(check(true, 7, 8, MAX_NOTIFICATIONS - 1, false), Ok(()));
+    }
+
+    #[test]
+    fn unavailable_bus_is_reported_before_any_other_check() {
+        assert_eq!(
+            check(false, 9, 1, usize::MAX, true),
+            Err((
+                ErrorCode::ServiceUnavailable,
+                "notifications require a D-Bus session bus"
+            ))
+        );
+    }
+
+    #[test]
+    fn notification_ids_must_strictly_increase() {
+        for (last, notification) in [(5, 5), (5, 4), (u64::from(u32::MAX), 1)] {
+            assert_eq!(
+                check(true, last, notification, usize::MAX, true),
+                Err((
+                    ErrorCode::InvalidHandle,
+                    "notification IDs must increase across the session"
+                )),
+                "{last} -> {notification}"
+            );
+        }
+    }
+
+    #[test]
+    fn live_notifications_are_limited_before_shutdown_is_reported() {
+        for live in [MAX_NOTIFICATIONS, MAX_NOTIFICATIONS + 1] {
+            assert_eq!(
+                check(true, 0, 1, live, true),
+                Err((ErrorCode::LimitExceeded, "live notification limit exceeded"))
+            );
+        }
+        assert_eq!(
+            check(true, 0, 1, MAX_NOTIFICATIONS - 1, true),
+            Err((
+                ErrorCode::Cancelled,
+                "notification service is shutting down"
+            ))
+        );
     }
 }
