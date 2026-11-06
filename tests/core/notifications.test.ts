@@ -10,53 +10,19 @@ import {
   type ServicePermissions,
 } from '@bun-native/core'
 import assert from 'node:assert/strict'
-import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs'
+import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
+import { peerRequests, settle, withServicePeer } from './service-peer.ts'
 
 const ALLOW: ServicePermissions = { notifications: 'allow' }
 const CONTENT: NotificationOptions = { title: 'Build finished', body: 'All tests passed' }
 
-async function withNotifications(
+const withNotifications = (
   run: (app: NativeApplication, directory: string) => Promise<void>,
   mode = 'normal',
   permissions: ServicePermissions = ALLOW
-) {
-  const directory = mkdtempSync(join(tmpdir(), 'bun-native-notification-peer-'))
-  let app: NativeApplication | undefined
-  try {
-    app = await createApplication({
-      executable: process.execPath,
-      args: [resolve(import.meta.dir, 'notification-peer.ts'), directory, mode],
-      permissions,
-      requestTimeoutMs: 2_000,
-    })
-    await run(app, directory)
-  } finally {
-    await app?.shutdown().catch(() => {})
-    await app?.closed.catch(() => {})
-    if (app) expect(Object.values(app.diagnostics)).toEqual([0, 0, 0, 0, 0, 0, 0])
-    rmSync(directory, { recursive: true, force: true })
-  }
-}
-
-function requests(directory: string, type: string) {
-  const path = join(directory, 'requests.jsonl')
-  if (!existsSync(path)) return []
-  return readFileSync(path, 'utf8')
-    .trim()
-    .split('\n')
-    .map((line) => JSON.parse(line) as Record<string, unknown>)
-    .filter((value) => value['type'] === type)
-}
-
-async function settle(app: NativeApplication) {
-  // Let the transport deliver and the serialized callback queue drain.
-  for (let index = 0; index < 20; index += 1) {
-    await Bun.sleep(5)
-    if (!app.diagnostics.queuedCallbacks && !app.diagnostics.activeCallbacks) return
-  }
-}
+) => withServicePeer('notification-peer', run, mode, permissions)
 
 describe('owned desktop notifications (headless real subprocess)', () => {
   test('reports the implemented backend and the immutable launch grant', async () => {
@@ -111,7 +77,7 @@ describe('owned desktop notifications (headless real subprocess)', () => {
       expect(events[0]!.type).toBe('notification_activated')
       expect(events[0]!.notification).toBe(notification)
       expect(events[0]!.signal.aborted).toBe(false)
-      expect(requests(directory, 'post_notification')).toEqual([
+      expect(peerRequests(directory, 'post_notification')).toEqual([
         {
           id: expect.any(Number),
           type: 'post_notification',
@@ -130,7 +96,7 @@ describe('owned desktop notifications (headless real subprocess)', () => {
       await settle(app)
       // The peer published an activation after withdrawal; it was never delivered.
       expect(events).toHaveLength(1)
-      expect(requests(directory, 'withdraw_notification')).toHaveLength(1)
+      expect(peerRequests(directory, 'withdraw_notification')).toHaveLength(1)
       await window.close()
     }, 'late')
   })
@@ -152,7 +118,7 @@ describe('owned desktop notifications (headless real subprocess)', () => {
       expect(notification.active).toBe(false)
       expect(events[1]!.signal.aborted).toBe(true)
       await notification.withdraw()
-      expect(requests(directory, 'withdraw_notification')).toHaveLength(0)
+      expect(peerRequests(directory, 'withdraw_notification')).toHaveLength(0)
     }, 'dismiss')
   })
 
@@ -179,7 +145,7 @@ describe('owned desktop notifications (headless real subprocess)', () => {
       await notification.withdraw()
       await settle(app)
       expect(delivered).toBe(1)
-      expect(requests(directory, 'withdraw_notification')).toHaveLength(0)
+      expect(peerRequests(directory, 'withdraw_notification')).toHaveLength(0)
       await assert.rejects(
         window.postNotification(CONTENT, () => {}),
         {
@@ -242,7 +208,7 @@ describe('owned desktop notifications (headless real subprocess)', () => {
         window.postNotification(CONTENT, 'listener' as unknown as () => void),
         TypeError
       )
-      expect(requests(directory, 'post_notification')).toHaveLength(0)
+      expect(peerRequests(directory, 'post_notification')).toHaveLength(0)
       const multiline = await window.postNotification(
         { title: 'é'.repeat(128), body: 'one\ntwo' },
         () => {}
