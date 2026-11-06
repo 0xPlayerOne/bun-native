@@ -74,6 +74,7 @@ fn split_and_decoration_contract_matches_javascript() {
             let split = Element::Split {
                 ratio,
                 min_size,
+                accessible_label: None,
                 style: Style::default(),
             };
             assert!(split.validate().is_err());
@@ -89,6 +90,7 @@ fn split() -> Element {
     Element::Split {
         ratio: 0.5,
         min_size: 0.,
+        accessible_label: None,
         style: Style::default(),
     }
 }
@@ -155,6 +157,7 @@ fn a_split_owns_at_most_two_panes_and_keeps_its_children_on_set() {
                 element: Element::Split {
                     ratio: 0.25,
                     min_size: 40.,
+                    accessible_label: None,
                     style: Style {
                         direction: Some(Direction::Column),
                         ..Style::default()

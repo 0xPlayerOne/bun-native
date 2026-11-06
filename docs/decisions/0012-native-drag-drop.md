@@ -124,9 +124,11 @@ suppression are platform-independent. Each backend's own behavior:
 The synthesized release for a drag without files arrives with no GPUI drag
 active, so the active-drag check does not hide it. The host therefore reports
 a `pointer_up` only for a button it saw pressed in that window; a drop's
-release never has one. Launch roots are POSIX paths (ADR 0010), so on Windows
-no dropped path resolves, and filesystem grants are Linux-only, so on macOS a
-resolved path cannot yet be opened. The stale-XDND-state limitation after a
+release never has one. A launch root matches a dropped path by lexical prefix in the
+host's own path syntax (ADR 0010): a POSIX root never matches a Windows drop,
+only a Windows drive root can, and no native test resolves a Windows drop yet.
+macOS and Windows have filesystem grants, so a resolved path can be opened
+there. The stale-XDND-state limitation after a
 mid-drag window close is X11-only; AppKit and OLE start the next drag afresh
 once the host has stopped GPUI's stale drag.
 

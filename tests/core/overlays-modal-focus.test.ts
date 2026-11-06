@@ -114,7 +114,7 @@ describe('active modal scope for focus requests (headless subprocess)', () => {
     }))
 
   test('scrollTo on a split pane container is rejected; its pane child may scroll', () =>
-    withPeer(['--overlays', '--keyboard', '--split'], async (app) => {
+    withPeer(['--overlays', '--keyboard', '--splits'], async (app) => {
       const window = await app.openWindow({ title: 'Split scroll' })
       const { split, pane } = await window.batch((batch) => {
         const split = batch.create({ kind: 'split', ratio: 0.25 })

@@ -388,6 +388,7 @@ export async function qualifyLayoutStyle(
     const names = new Map<number, string>([
       [id.a1, 'A1'],
       [id.a2, 'A2'],
+      [id.split, 'divider'],
       [id.input, 'input'],
       [id.b1, 'B1'],
       [id.done, 'Done'],
@@ -426,11 +427,12 @@ export async function qualifyLayoutStyle(
     assert.equal(clipped.pixels[1], light.paneB, 'the row is clipped at its pane edge')
     outcome('paneClipping', { wide, paneB: b, pixels: clipped.pixels.map((p) => p.toString(16)) })
 
-    // Focus order follows rendered order across both panes and wraps.
+    // Focus order follows rendered order across both panes, with the split
+    // divider between them, and wraps.
     await click(centre(bounds(first, id.a1)))
     await painted(window, (entry) => entry.layout.focused_node_id === id.a1)
     const order: string[] = ['A1']
-    for (const key of ['Tab', 'Tab', 'Tab', 'Tab', 'Tab', 'shift+Tab']) {
+    for (const key of ['Tab', 'Tab', 'Tab', 'Tab', 'Tab', 'Tab', 'shift+Tab']) {
       const previous = order.length
       await press(key)
       const next = await painted(
@@ -441,7 +443,7 @@ export async function qualifyLayoutStyle(
       )
       order.push(names.get(next.layout.focused_node_id!)!)
     }
-    assert.deepEqual(order, ['A1', 'A2', 'input', 'B1', 'Done', 'A1', 'Done'])
+    assert.deepEqual(order, ['A1', 'A2', 'divider', 'input', 'B1', 'Done', 'A1', 'Done'])
     outcome('focusOrder', order)
 
     // Scrolling within a pane, retained by node identity across later updates.

@@ -166,10 +166,15 @@ describe('capability names agree across languages and documentation', () => {
         .filter((name) => name.endsWith('.md'))
         .map((name) => `docs/decisions/${name}`),
     ]
+    // Wayland protocol interface names (`zwp_text_input_v3`, `xdg_activation_v1`,
+    // `wp_fractional_scale_v1`, ...) end in the same `_vN` suffix but are not
+    // host capabilities.
+    const waylandInterface = /^(?:zw[a-z]*|zx[a-z]*|xdg|wp)_/
     const unknown: string[] = []
     for (const document of documents)
       for (const match of read(document).matchAll(/`([a-z][a-z0-9_]*_v[0-9]+)`/g))
-        if (!known.has(match[1]!)) unknown.push(`${document}: ${match[1]}`)
+        if (!known.has(match[1]!) && !waylandInterface.test(match[1]!))
+          unknown.push(`${document}: ${match[1]}`)
     expect(unknown).toEqual([])
   })
 

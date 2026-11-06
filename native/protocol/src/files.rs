@@ -61,20 +61,42 @@ pub fn validate_root_id(id: &str) -> Result<(), &'static str> {
     Ok(())
 }
 
-/// An absolute, normalized path without control characters. The host
-/// resolves it once when a grant opens; later renames follow that directory.
+/// An absolute, normalized path without control characters: a POSIX path
+/// (`/srv/docs`) or a Windows drive path (`C:\srv\docs`; no UNC or `\\?\`
+/// prefix, `/` or further `:`). The host accepts only its own platform's form. It
+/// resolves the path once when a grant opens; later renames follow that
+/// directory.
 pub fn validate_root_path(path: &str) -> Result<(), &'static str> {
-    if !path.starts_with('/')
-        || path.len() > MAX_ROOT_PATH_BYTES
+    if path.len() > MAX_ROOT_PATH_BYTES
         || path.chars().any(char::is_control)
-        || (path != "/"
-            && path[1..]
-                .split('/')
-                .any(|component| component.is_empty() || component == "." || component == ".."))
+        || !(posix_root_path(path) || windows_root_path(path))
     {
         return Err("filesystem root path must be absolute and normalized, at most 4096 bytes, without control characters");
     }
     Ok(())
+}
+
+fn normalized<'a>(mut components: impl Iterator<Item = &'a str>) -> bool {
+    components.all(|component| !component.is_empty() && component != "." && component != "..")
+}
+
+/// `/` or `/`-joined names.
+pub fn posix_root_path(path: &str) -> bool {
+    path == "/"
+        || path
+            .strip_prefix('/')
+            .is_some_and(|rest| normalized(rest.split('/')))
+}
+
+/// `X:\` alone or followed by `\`-joined names without `/` or `:`.
+pub fn windows_root_path(path: &str) -> bool {
+    let bytes = path.as_bytes();
+    bytes.len() >= 3
+        && bytes[0].is_ascii_alphabetic()
+        && bytes[1] == b':'
+        && bytes[2] == b'\\'
+        && (bytes.len() == 3
+            || (!path[3..].contains(['/', ':']) && normalized(path[3..].split('\\'))))
 }
 
 /// A request path is empty (the root itself) or `/`-separated names. No

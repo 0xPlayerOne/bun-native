@@ -107,7 +107,7 @@ describe('owned processes through the public core (headless subprocess)', () => 
           tool: { executable: '/opt/a:b/tool' },
         },
         scope: 'owned_window',
-        backend: 'posix',
+        backend: process.platform === 'win32' ? 'windows_job' : 'posix',
       })
       expect(Object.isFrozen(app.serviceCapabilities.ptyProcess)).toBe(true)
       const argv = JSON.parse(readFileSync(join(directory, 'argv.json'), 'utf8')) as string[]

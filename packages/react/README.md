@@ -59,6 +59,8 @@ colors, and window-close cleanup. It runs through this public adapter in both
 development and the `react-workspace` AOT entry. Its native qualification limits
 and the remaining dialog/menu dependency are documented with the example.
 
+Native services and dialogs are methods of the core window you render into; the adapter adds no wrapper or hook. An event handler may await `window.showMessageDialog(...)` or `window.showConfirmDialog(...)`: the dialog is a core-owned modal overlay appended to the window root beside the rendered tree, and its input does not wait behind the awaiting handler. See [message and confirm dialogs](../../docs/native-services.md#message-and-confirm-dialogs).
+
 ## Commit, refs and effect semantics
 
 React reconciles into staged native nodes in mutation mode. Create/update/delete,

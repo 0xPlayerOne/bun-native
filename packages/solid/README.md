@@ -59,6 +59,8 @@ BUN_NATIVE_HOST="$PWD/target/release/bun-native-host" .bun-native/solid-example/
 
 The same generated JavaScript module drives development and AOT, with production Solid in both modes. Here, development means execution through ordinary Bun; the generated module is still a production framework build. The JSX/build step is not itself AOT; the separate `bun compile` step must be inspected and executed. The script does not build or copy the native host. Artifact provenance, native libraries, signing and distribution retain their existing separate acceptance requirements. The private application records optional nonce-scoped evidence using the existing native fixture conventions.
 
+Native services and dialogs are methods of the core window you pass to `render`; the adapter adds no wrapper. For example, a handler can ask before acting: `onClick={async () => { if (await window.showConfirmDialog({ title: 'Delete', message: 'Delete this item?', destructive: true })) remove() }}`. The dialog is a core-owned modal overlay appended to the window root beside the rendered tree, and a handler may await it; see [message and confirm dialogs](../../docs/native-services.md#message-and-confirm-dialogs).
+
 ## Render ownership and batching
 
 `render(component, window)` returns a `RenderRoot`:

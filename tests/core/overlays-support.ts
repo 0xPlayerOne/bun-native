@@ -12,7 +12,7 @@ import {
 } from '@bun-native/core'
 import { resolve } from 'node:path'
 
-export type PeerFlag = '--overlays' | '--keyboard' | '--popups' | '--split'
+export type PeerFlag = '--overlays' | '--keyboard' | '--popups' | '--splits' | '--split-resize'
 
 export async function withPeer(
   flags: readonly PeerFlag[],

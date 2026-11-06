@@ -18,6 +18,8 @@ const everywhere: Capability[] = [
   'scroll_control_v1',
   'overlay_keyboard_v1',
   'input_states_v1',
+  'split_resize_v1',
+  'accessibility_v1',
 ]
 const advertised: Record<'linux' | 'macos' | 'windows', Capability[]> = {
   linux: [
@@ -38,8 +40,16 @@ const advertised: Record<'linux' | 'macos' | 'windows', Capability[]> = {
     'filesystem_grants_v1',
     'processes_v1',
     'drag_drop_files_v1',
+    'app_menu_v1',
   ],
-  windows: [...everywhere, 'display_details_v1', 'display_changes_v1', 'drag_drop_files_v1'],
+  windows: [
+    ...everywhere,
+    'display_details_v1',
+    'display_changes_v1',
+    'filesystem_grants_v1',
+    'processes_v1',
+    'drag_drop_files_v1',
+  ],
 }
 
 const denied: ServicePolicy = {
@@ -65,10 +75,16 @@ const allowed: ServicePolicy = {
 }
 
 const unsupported = { availability: 'unavailable', reason: 'unsupported_platform' }
-const notImplemented = { availability: 'unavailable', reason: 'not_implemented' }
+const modalOverlay = { availability: 'available', scope: 'owned_window', backend: 'modal_overlay' }
 const dropBackend =
   process.platform === 'darwin' ? 'appkit' : process.platform === 'win32' ? 'ole' : 'x11'
-const filesBackend = process.platform === 'darwin' ? 'openat_walk' : 'openat2'
+const filesBackend =
+  process.platform === 'darwin'
+    ? 'openat_walk'
+    : process.platform === 'win32'
+      ? 'ntcreatefile_walk'
+      : 'openat2'
+const processBackend = process.platform === 'win32' ? 'windows_job' : 'posix'
 
 function availability(record: Readonly<Record<string, unknown>>): unknown {
   return record['availability']
@@ -114,7 +130,7 @@ describe('public service records for each platform advertisement', () => {
       availability: 'available',
       executables: { sh: { executable: '/bin/sh' } },
       scope: 'owned_window',
-      backend: 'posix',
+      backend: processBackend,
     })
   })
 
@@ -132,27 +148,38 @@ describe('public service records for each platform advertisement', () => {
       expect<unknown>(record).toEqual(unsupported)
   })
 
-  test('Windows offers only display details, display changes and file drops', () => {
+  test('Windows offers display details and changes, grants, processes and file drops', () => {
     const services = serviceCapabilities(allowed, advertised.windows)
     expect(services.windowDisplay).toMatchObject({ details: 'available', changes: 'available' })
-    expect(services.dragDrop).toMatchObject({ availability: 'available', backend: dropBackend })
+    for (const record of [services.dragDrop, services.filesystemGrants, services.ptyProcess])
+      expect(availability(record)).toBe('available')
     for (const record of [
       services.clipboardText,
       services.globalShortcuts,
       services.notifications,
       services.fileDialogs,
-      services.filesystemGrants,
-      services.ptyProcess,
+      services.appMenu,
     ])
       expect<unknown>(record).toEqual(unsupported)
   })
 
+  test('only the macOS advertisement offers the application menu bar', () => {
+    expect(serviceCapabilities(allowed, advertised.macos).appMenu).toMatchObject({
+      availability: 'available',
+      scope: 'application',
+      backend: 'appkit',
+    })
+    for (const platform of ['linux', 'windows'] as const)
+      expect<unknown>(serviceCapabilities(allowed, advertised[platform]).appMenu).toEqual(
+        unsupported
+      )
+  })
+
   test.each(Object.keys(advertised) as (keyof typeof advertised)[])(
-    '%s: menus and message dialogs are never implemented, and records are frozen',
+    '%s: message dialogs use the modal overlay, and records are frozen',
     (platform) => {
       const services = serviceCapabilities(allowed, advertised[platform])
-      expect<unknown>(services.systemMenus).toEqual(notImplemented)
-      expect<unknown>(services.messageDialogs).toEqual(notImplemented)
+      expect<unknown>(services.messageDialogs).toEqual(modalOverlay)
       expect(Object.isFrozen(services)).toBe(true)
       for (const record of Object.values(services)) expect(Object.isFrozen(record)).toBe(true)
     }

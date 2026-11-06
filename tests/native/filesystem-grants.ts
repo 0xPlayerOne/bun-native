@@ -1,9 +1,13 @@
 /**
  * Real filesystem grant qualification against the native host: on Linux on an
- * isolated X11 display, on macOS in the runner's own GUI session. Every effect is checked independently through node:fs on a
- * private temporary tree, including a sibling directory the grants must never
- * reach. Raw protocol checks drive the same host through the private runtime
- * to prove foreign, stale and reused grant handles are rejected natively.
+ * isolated X11 display, on macOS and Windows in the runner's own GUI session.
+ * Every effect is checked independently through node:fs on a private
+ * temporary tree, including a sibling directory the grants must never reach.
+ * On Windows the links are NTFS symbolic links and junctions made with mklink,
+ * and the tree adds Windows aliases: alternate data streams, DOS device
+ * names, trailing dots and spaces, and 8.3 short names. Raw protocol checks
+ * drive the same host through the private runtime to prove foreign, stale and
+ * reused grant handles are rejected natively.
  */
 import { createApplication, NativeServiceError, type NativeFileGrant } from '@bun-native/core'
 import { NativeCommandError, NativeHost } from '@bun-native/runtime'
@@ -28,8 +32,9 @@ const output = process.env['BUN_NATIVE_FILESYSTEM_EVIDENCE']
 const executable = process.env['BUN_NATIVE_HOST']
 const mode = process.env['BUN_NATIVE_FILESYSTEM_MODE']
 const macos = process.platform === 'darwin'
-if (process.platform !== 'linux' && !macos)
-  throw new Error('Filesystem grants are qualified only on Linux and macOS')
+const windows = process.platform === 'win32'
+if (process.platform !== 'linux' && !macos && !windows)
+  throw new Error('Filesystem grants are qualified only on Linux, macOS and Windows')
 if (
   !output ||
   !isAbsolute(output) ||
@@ -37,35 +42,55 @@ if (
   !executable ||
   !isAbsolute(executable) ||
   (mode !== 'development' && mode !== 'aot') ||
-  (!macos && (!process.env['DISPLAY'] || process.env['WAYLAND_DISPLAY']))
+  (process.platform === 'linux' && (!process.env['DISPLAY'] || process.env['WAYLAND_DISPLAY']))
 )
   throw new Error('An isolated X11 display, evidence directory, host and mode are required')
 const host = executable
-const backend = macos ? 'openat_walk' : 'openat2'
+const backend = windows ? 'ntcreatefile_walk' : macos ? 'openat_walk' : 'openat2'
+const cmd = join(process.env['SystemRoot'] ?? '', 'System32', 'cmd.exe')
+
+/** Runs one cmd.exe built-in on Windows and returns its trimmed output. */
+function cmdOutput(...args: string[]) {
+  const ran = Bun.spawnSync([cmd, '/d', '/c', ...args])
+  if (!ran.success) throw new Error('cmd.exe failed: ' + args.join(' '))
+  return new TextDecoder().decode(ran.stdout).trim()
+}
+
+/** A symbolic link to a file, or a junction to a directory on Windows. */
+function link(target: string, path: string, directory: boolean) {
+  if (!windows) return symlinkSync(target, path)
+  cmdOutput('mklink', ...(directory ? ['/J'] : []), path, target)
+}
 
 const started = performance.now()
 const outcomes: Record<string, unknown> = {}
 const record = (name: string, value: unknown) => {
   outcomes[name] = value
-  console.log(JSON.stringify({ outcome: name, atMs: Math.round(performance.now() - started) }))
+  console.log(
+    JSON.stringify({
+      outcome: name,
+      atMs: Math.round(performance.now() - started),
+    })
+  )
 }
 
 const rejectsWith = (service: string, code: string) => (error: unknown) =>
   error instanceof NativeServiceError && error.service === service && error.code === code
 const denied = (code: string) => rejectsWith('filesystem_grants', code)
 
-// macOS reaches its temporary directory through the /var link; name the real tree.
-const base = realpathSync(mkdtempSync(join(tmpdir(), 'bun-native-grants-')))
+// macOS reaches its temporary directory through the /var link and Windows
+// runners name it with an 8.3 short name; name the real tree.
+const base = realpathSync.native(mkdtempSync(join(tmpdir(), 'bun-native-grants-')))
 const work = join(base, 'work')
 const docs = join(base, 'docs')
 const outside = join(base, 'outside')
 for (const directory of [work, docs, outside]) mkdirSync(directory)
 writeFileSync(join(outside, 'secret'), 'outside')
 writeFileSync(join(docs, 'readme.txt'), 'read only')
-symlinkSync(join(outside, 'secret'), join(work, 'escape'))
-symlinkSync(outside, join(work, 'outside-dir'))
+link(join(outside, 'secret'), join(work, 'escape'), false)
+link(outside, join(work, 'outside-dir'), true)
 mkdirSync(join(work, 'inner'))
-symlinkSync(join(work, 'inner'), join(work, 'inner-link'))
+link(join(work, 'inner'), join(work, 'inner-link'), true)
 const outsideBefore = readdirSync(outside)
 
 const roots = [
@@ -137,7 +162,9 @@ async function readWrite(grant: NativeFileGrant) {
   const first = await grant.list('many')
   assert.equal(first.entries.length, 64)
   assert.equal(first.complete, false)
-  const second = await grant.list('many', { after: first.entries.at(-1)!.name })
+  const second = await grant.list('many', {
+    after: first.entries.at(-1)!.name,
+  })
   assert.deepEqual(
     [...first.entries, ...second.entries].map((entry) => entry.name),
     readdirSync(join(work, 'many')).sort()
@@ -148,7 +175,9 @@ async function readWrite(grant: NativeFileGrant) {
     await grant.remove('many/' + entry.name)
   await grant.remove('many')
   assert.equal(existsSync(join(work, 'many')), false)
-  record('directoryPagesAndRemoval', { pages: [first.entries.length, second.entries.length] })
+  record('directoryPagesAndRemoval', {
+    pages: [first.entries.length, second.entries.length],
+  })
 
   // Symbolic links are never followed, inside or out of the grant.
   for (const path of ['escape', 'outside-dir/secret', 'inner-link'])
@@ -180,11 +209,64 @@ async function readWrite(grant: NativeFileGrant) {
   await assert.rejects(grant.read('missing'), denied('not_found'))
   await assert.rejects(grant.read('inner'), denied('wrong_kind'))
   assert.deepEqual(readdirSync(outside), outsideBefore)
-  record('confinement', { symlinks: 'path_denied', traversal: 'TypeError', outside: 'unchanged' })
+  record('confinement', {
+    symlinks: 'path_denied',
+    traversal: 'TypeError',
+    outside: 'unchanged',
+  })
+}
+
+/** Windows: every second spelling of an entry is refused before it is opened. */
+async function windowsAliases(grant: NativeFileGrant) {
+  const encoder = new TextEncoder()
+  writeFileSync(join(work, 'long-file-name-alias.txt'), 'long')
+  const aliases = [
+    'notes.txt:hidden',
+    'notes.txt::$DATA',
+    'NUL',
+    'con.txt',
+    'COM1.log',
+    'notes.txt.',
+    'notes.txt ',
+    'inner\\notes.txt',
+  ]
+  // An 8.3 short name is a second spelling; a volume may not generate them.
+  const short = cmdOutput(
+    'for',
+    '%I',
+    'in',
+    `(${join(work, 'long-file-name-alias.txt')})`,
+    'do',
+    '@echo',
+    '%~nxsI'
+  )
+  const hasShort = short !== '' && short.toLowerCase() !== 'long-file-name-alias.txt'
+  if (hasShort) aliases.push(short)
+  for (const path of aliases) {
+    await assert.rejects(grant.read(path), denied('path_denied'), path)
+    await assert.rejects(
+      grant.write(path, encoder.encode('x'), { mode: 'truncate' }),
+      denied('path_denied'),
+      path
+    )
+  }
+  assert.equal(readFileSync(join(work, 'notes.txt'), 'utf8'), 'new')
+  assert.deepEqual(
+    readdirSync(work).filter((name) => name.startsWith('notes')),
+    ['notes.txt']
+  )
+  await grant.remove('long-file-name-alias.txt')
+  record('windowsAliasesRefused', {
+    aliases: aliases.length,
+    shortName: hasShort,
+  })
 }
 
 async function lifecycle() {
-  const app = await createApplication({ executable: host, permissions: { filesystemRoots: roots } })
+  const app = await createApplication({
+    executable: host,
+    permissions: { filesystemRoots: roots },
+  })
   try {
     assert.deepEqual(app.serviceCapabilities.filesystemGrants, {
       availability: 'available',
@@ -192,7 +274,11 @@ async function lifecycle() {
       scope: 'owned_window',
       backend,
     })
-    const owner = await app.openWindow({ title: 'Grant owner', width: 360, height: 200 })
+    const owner = await app.openWindow({
+      title: 'Grant owner',
+      width: 360,
+      height: 200,
+    })
     await assert.rejects(owner.openFileGrant('other'), denied('permission_denied'))
     await assert.rejects(
       owner.openFileGrant('docs', { access: 'read_write' }),
@@ -201,6 +287,7 @@ async function lifecycle() {
     await readOnly(await owner.openFileGrant('docs'))
     const grant = await owner.openFileGrant('work', { access: 'read_write' })
     await readWrite(grant)
+    if (windows) await windowsAliases(grant)
 
     // Closing revokes locally first: an in-flight result is withheld.
     const pending = grant.read('notes.txt')
@@ -350,8 +437,13 @@ writeFileSync(
       revision: Bun.revision,
       platform: process.platform,
       backend,
-      kernel: macos ? release() : readFileSync('/proc/sys/kernel/osrelease', 'utf8').trim(),
-      display: macos ? 'hosted macOS runner GUI session' : 'isolated Xvfb with openbox',
+      kernel:
+        macos || windows ? release() : readFileSync('/proc/sys/kernel/osrelease', 'utf8').trim(),
+      display: macos
+        ? 'hosted macOS runner GUI session'
+        : windows
+          ? 'hosted Windows runner interactive desktop'
+          : 'isolated Xvfb with openbox',
       filesystem: 'private temporary tree, independently checked with node:fs',
       outcomes,
     },

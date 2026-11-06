@@ -127,6 +127,42 @@ reader cleanup are part of the evidence. `test_native_paint_observer.py` exercis
 the real file-watch and cancellation paths; those headless safety tests remain
 separate from actual native qualification.
 
+## Real Linux Wayland session
+
+`scripts/quality/native-wayland-session.sh` is the Wayland counterpart of the
+X11 session helper. Run it under `dbus-run-session`: it starts headless sway
+with XWayland disabled in a private runtime directory, removes `DISPLAY`, pins
+the lavapipe ICD, exports `WAYLAND_DISPLAY` and `SWAYSOCK` and runs the given
+command. `BUN_NATIVE_TEST_SCALE_FACTOR=2` selects output scale 2.
+`tests/native/wayland.ts` drives the window through sway IPC, one persistent
+virtual pointer (`wayland-input-peer`), wtype and grim, and writes
+`wayland.json` beside its screenshots. See
+[native platforms](native-platforms.md#linux-wayland) for what it qualifies.
+
+Reproduce after installing `sway`, `grim`, `wtype`, `dunst`,
+`xdg-desktop-portal`, `xdg-desktop-portal-gtk` and `mesa-vulkan-drivers`:
+
+```sh
+cargo build --locked --release -p bun-native-host --bin bun-native-host --example wayland-input-peer
+mkdir -p .bun-native
+run_dir=$(mktemp -d "$PWD/.bun-native/wayland.XXXXXX")
+mkdir "$run_dir/evidence"
+BUN_NATIVE_HOST="$PWD/target/release/bun-native-host" \
+  BUN_NATIVE_WAYLAND_INPUT_PEER="$PWD/target/release/examples/wayland-input-peer" \
+  BUN_NATIVE_WAYLAND_EVIDENCE="$run_dir/evidence" BUN_NATIVE_WAYLAND_MODE=development \
+  BUN_NATIVE_STARTUP_LOG=1 BUN_NATIVE_STARTUP_TRACE=1 \
+  BUN_NATIVE_EVIDENCE_LOG="$run_dir/evidence/native-evidence.jsonl" \
+  BUN_NATIVE_EVIDENCE_NONCE="$(python3 -c 'import secrets; print(secrets.token_hex(16))')" \
+  dbus-run-session -- bash scripts/quality/native-wayland-session.sh \
+  "$run_dir/session" bun tests/native/wayland.ts
+```
+
+For AOT, compile `--entry wayland` with `experiments/aot-gpui/build-window.ts`,
+pass `BUN_NATIVE_WAYLAND_MODE=aot` and run the emitted `wayland` executable in
+place of `bun tests/native/wayland.ts`. The session owns its compositor and
+never connects to a personal desktop; the scenario refuses to run if an X11
+`DISPLAY` is visible to it.
+
 ## Solid native acceptance
 
 The required Linux release-host workflow compiles the counter, revision-aware
@@ -275,7 +311,7 @@ commands and remaining platform/HiDPI/theme/split-pane acceptance.
 
 `tests/native/fault.ts` has two distinct scenarios. `startup-failure` starts the actual GPUI host with an invalid display and requires a transport EOF/process-exit failure before the request timeout. `host-crash` first requires a real OS-click callback. The controller verifies the child PID, start time, executable and ownership, stops that child, requires two pending transactions, then kills only that child. The application must reject both transactions and `app.closed` with the same transport-exit error, abort the active listener, resolve `window.closed`, clear every public ownership count and exit cleanly. An arbitrary rejected promise or a request timeout cannot pass either scenario. This is process-failure containment, not a sanitizer or native memory-corruption test.
 
-`tests/native/scheduling.ts` keeps 128 legal single-update requests in flight for a three-second producer interval over a 1,031-node native tree. The independent controller injects one actual text edit during that interval. The event must reach Bun while the producer is still active, and native paint traversal must progress during production. Large-tree evidence may omit nodes at the 65,536-byte record bound; those records prove traversal/revision progress only. After the stream, the fixture removes the filler subtree, reorders the surviving label ahead of the heading, and requires the complete six-node painted tree with that child order and preserved input. `scheduling-control` runs the same tree with one acknowledged command and a deliberate one-millisecond application yield. Neither scenario establishes a throughput budget or precise presentation latency.
+`tests/native/scheduling.ts` keeps 128 legal single-update requests in flight over a 1,031-node native tree until a three-second producer deadline or 12,288 commands, whichever comes first. The host writes one evidence record per command and the controller's 4 MiB evidence limit is unchanged; the command cap bounds that file by construction rather than by runner speed (an uncapped hosted stream reached 4.18 MB on a pass and 4.24 MB on a failure), and `tests/quality/test_native_diagnostics.py` checks the worst-case size. The independent controller injects one actual text edit once 3,072 commands have been acknowledged with the queue full, or after 0.5 seconds on a host too slow to get there, and the report records the evidence size. The event must reach Bun while the producer is still active, and native paint traversal must progress during production. Large-tree evidence may omit nodes at the 65,536-byte record bound; those records prove traversal/revision progress only. After the stream, the fixture removes the filler subtree, reorders the surviving label ahead of the heading, and requires the complete six-node painted tree with that child order and preserved input. `scheduling-control` runs the same tree with one acknowledged command and a deliberate one-millisecond application yield. Neither scenario establishes a throughput budget or precise presentation latency.
 
 Run a development diagnostic in a new isolated display, after building the host:
 

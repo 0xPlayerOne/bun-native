@@ -4,7 +4,7 @@ The Linux BN0 application contains a compiled-program record and records the JIT
 
 ## Source-backed interpretation
 
-All source references below use Bun revision `da867c60bf0bcbf9d6d36994f8ca0efa42075115`, matching `toolchain.json`.
+All source references below use Bun revision `da867c60bf0bcbf9d6d36994f8ca0efa42075115`, the pin these inspectors were written against. At the current pin `b1007f1177fd402fae67387b8548cae5ae9b5707`, `state.rs`, `apply.rs`, `macho.rs`, `macho_ranges.rs`, `pe.rs` and `scripts/build/trim/features.ts` are byte-identical; `engine.def` changes only a size threshold (`minimum 30000` to `14000`), `lib.rs` adds two exports, and `decide.rs` and `StandaloneModuleGraph.rs` change, so their line anchors below describe the earlier revision.
 
 - [`engine.def`](https://github.com/oven-sh/bun/blob/da867c60bf0bcbf9d6d36994f8ca0efa42075115/src/trim/features/engine.def#L1-L11) declares JIT, interpreter, built-in source text and image compiler in that order. The [feature generator](https://github.com/oven-sh/bun/blob/da867c60bf0bcbf9d6d36994f8ca0efa42075115/scripts/build/trim/features.ts#L253-L277) numbers engine features from zero.
 - [`all_outside_compiled_programs`](https://github.com/oven-sh/bun/blob/da867c60bf0bcbf9d6d36994f8ca0efa42075115/src/trim/removable_features/lib.rs#L137-L142) includes the JIT and command-line compiler tools. The [default retention decision](https://github.com/oven-sh/bun/blob/da867c60bf0bcbf9d6d36994f8ca0efa42075115/src/trim/decide.rs#L163-L178) excludes these even without `--trim`, unless a used feature requires them. Therefore inspection must check the emitted executable, not assume all AOT programs have the same retained runtime.

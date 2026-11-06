@@ -109,6 +109,6 @@ Follow [engineering-quality.md](engineering-quality.md). The highest-risk paths 
 
 ## Current gaps
 
-The public element API and protocol 11 are experimental and implemented; they are not a compatibility promise. The Solid/React adapters exist in the current source. General native services, complete text accessibility, hot reload and distributable cross-platform releases remain separate acceptance work. Linux software-GPU evidence does not qualify macOS/Windows GUI behavior, Wayland, physical GPUs, IME or assistive technology. The native release-host and retention audits record their exact qualified source; BN4 and BN6 own the corresponding usability and platform acceptance.
+The public element API and protocol 11 are experimental and implemented; they are not a compatibility promise. The Solid/React adapters exist in the current source. General native services, complete text accessibility, hot reload and distributable cross-platform releases remain separate acceptance work. Linux software-GPU evidence does not qualify macOS/Windows GUI behavior, Wayland compositors other than the [headless sway case](native-platforms.md#linux-wayland), physical GPUs, IME or assistive technology. The native release-host and retention audits record their exact qualified source; BN4 and BN6 own the corresponding usability and platform acceptance.
 
 See [decision records](decisions/README.md), [toolchain](toolchain.md), [testing](testing.md) and the [master roadmap](https://github.com/0xPlayerOne/bun-native/issues/1).
