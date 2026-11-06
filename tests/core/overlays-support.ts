@@ -26,8 +26,11 @@ export async function withPeer(
   try {
     await run(app)
   } finally {
-    await app.shutdown().catch(() => {})
-    await app.closed.catch(() => {})
+    // allSettled keeps cleanup failures from masking the test's own error
+    // without leaving never-called catch callbacks that fail the per-file
+    // function coverage threshold.
+    await Promise.allSettled([app.shutdown()])
+    await Promise.allSettled([app.closed])
   }
   expect(app.diagnostics).toMatchObject({
     windows: 0,
