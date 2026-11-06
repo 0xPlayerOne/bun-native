@@ -673,8 +673,8 @@ impl Job {
                     .args(&self.launch.args)
                     .env_clear()
                     .envs(env);
-                if let Some(cwd) = &cwd {
-                    command = command.current_dir(cwd);
+                if let (Some(directory), Some(cwd)) = (&directory, &cwd) {
+                    command = platform::enter_pty(command, directory, cwd);
                 }
                 let child = command.spawn(pts).map_err(|error| match error {
                     pty_process::Error::Io(error) => spawn_failure(&error),
@@ -710,8 +710,8 @@ impl Job {
                     .stderr(Stdio::piped())
                     // Its own group, so one signal reaches every descendant.
                     .process_group(0);
-                if let Some(cwd) = &cwd {
-                    command.current_dir(cwd);
+                if let (Some(directory), Some(cwd)) = (&directory, &cwd) {
+                    platform::enter(&mut command, directory, cwd);
                 }
                 let mut child = command.spawn().map_err(|error| spawn_failure(&error))?;
                 let take = |fd: Option<OwnedFd>| {
@@ -969,11 +969,9 @@ impl Running {
 #[cfg(all(test, unix))]
 mod tests {
     use super::*;
-    #[cfg(target_os = "linux")]
     use std::os::unix::fs::symlink;
     use std::time::Duration;
 
-    #[cfg(target_os = "linux")]
     fn temp() -> std::path::PathBuf {
         let path = std::env::temp_dir().join(format!(
             "bun-native-processes-{}-{}",
@@ -1079,20 +1077,21 @@ mod tests {
         );
     }
 
-    #[cfg(target_os = "linux")]
+    #[cfg(any(target_os = "linux", target_os = "macos"))]
     #[test]
     fn the_working_directory_comes_from_a_grant_descriptor_without_links() {
+        // Linux can name the directory by descriptor alone (`O_PATH`); macOS has
+        // no such flag, and the child enters the descriptor with `fchdir`.
+        #[cfg(target_os = "linux")]
+        const ROOT_FLAGS: OFlags = OFlags::PATH.union(OFlags::DIRECTORY).union(OFlags::CLOEXEC);
+        #[cfg(target_os = "macos")]
+        const ROOT_FLAGS: OFlags = OFlags::DIRECTORY.union(OFlags::CLOEXEC);
         let base = temp();
         std::fs::create_dir_all(base.join("root/sub")).unwrap();
         symlink(&base, base.join("root/up")).unwrap();
         let root = || {
             Arc::new(
-                rustix::fs::open(
-                    base.join("root"),
-                    OFlags::PATH | OFlags::DIRECTORY | OFlags::CLOEXEC,
-                    rustix::fs::Mode::empty(),
-                )
-                .unwrap(),
+                rustix::fs::open(base.join("root"), ROOT_FLAGS, rustix::fs::Mode::empty()).unwrap(),
             )
         };
         let (output, _) = finish(start("pwd -P", &[], Some((root(), "sub")), None));
@@ -1116,27 +1115,6 @@ mod tests {
             started.thread.join().unwrap();
         }
         std::fs::remove_dir_all(base).unwrap();
-    }
-
-    /// macOS cannot start a child in a grant descriptor, so a cwd is refused
-    /// before anything is spawned rather than replaced with a path.
-    #[cfg(target_os = "macos")]
-    #[test]
-    fn a_working_directory_is_refused_rather_than_replaced_with_a_path() {
-        let root = std::sync::Arc::new(
-            rustix::fs::open(
-                "/tmp",
-                OFlags::DIRECTORY | OFlags::CLOEXEC,
-                rustix::fs::Mode::empty(),
-            )
-            .unwrap(),
-        );
-        let started = start("true", &[], Some((root, "")), None);
-        match started.messages.recv_blocking().unwrap() {
-            Message::Spawned(_, Err((code, _))) => assert_eq!(code, ErrorCode::ServiceUnavailable),
-            _ => panic!("a cwd must fail before the process starts"),
-        }
-        started.thread.join().unwrap();
     }
 
     #[test]

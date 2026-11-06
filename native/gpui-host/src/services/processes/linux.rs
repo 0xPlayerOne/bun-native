@@ -89,3 +89,17 @@ pub(super) fn working_directory(
     let cwd = format!("/proc/self/fd/{}", fd.as_raw_fd());
     Ok(Some((fd, cwd)))
 }
+
+/// The child starts in the descriptor through the path that names it.
+pub(super) fn enter(command: &mut std::process::Command, _directory: &OwnedFd, cwd: &str) {
+    command.current_dir(cwd);
+}
+
+/// The same for a pseudo-terminal command.
+pub(super) fn enter_pty(
+    command: pty_process::blocking::Command,
+    _directory: &OwnedFd,
+    cwd: &str,
+) -> pty_process::blocking::Command {
+    command.current_dir(cwd)
+}

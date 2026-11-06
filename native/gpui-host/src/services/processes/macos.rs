@@ -2,10 +2,12 @@
 //! wakes the supervisor, and a watcher thread blocked in
 //! `waitid(P_PID, WEXITED | WNOWAIT)` closes a pipe when the leader exits.
 //! (`kqueue` `EVFILT_PROC` would need no thread, but rustix's `kevent` is
-//! `unsafe` and this crate forbids `unsafe`.)
+//! `unsafe` and this crate forbids `unsafe`.) A working directory is entered
+//! with `fchdir` on the grant descriptor in the child, through the private
+//! `bun-native-macos-services` crate.
 
 use super::Failure;
-use crate::services::files::Directory;
+use crate::services::files::{Directory, directory_beneath, failure as path_failure};
 use bun_native_protocol::ErrorCode;
 use rustix::fs::{OFlags, fcntl_getfl, fcntl_setfl};
 use rustix::io::Errno;
@@ -106,18 +108,33 @@ impl AsFd for ExitWatch {
     }
 }
 
-/// macOS has no `/proc/self/fd` and std offers no safe `fchdir` in the child,
-/// so the child cannot start in a grant directory descriptor. Starting in a
-/// path recovered with `F_GETPATH` would reintroduce the check-then-use race
-/// that grant descriptors exist to remove, so a working directory is refused.
+/// The opened directory the child starts in. macOS has no path that names an
+/// open descriptor, so the string is unused: the child calls `fchdir` on the
+/// descriptor itself (see [`enter`]), never on a path recovered from it.
 pub(super) fn working_directory(
     directory: Option<&(Directory, String)>,
 ) -> Result<Option<(OwnedFd, String)>, Failure> {
-    match directory {
-        None => Ok(None),
-        Some(_) => Err((
-            ErrorCode::ServiceUnavailable,
-            "a process working directory is unavailable on this macOS host",
-        )),
-    }
+    let Some((root, path)) = directory else {
+        return Ok(None);
+    };
+    let fd = directory_beneath(root, path).map_err(|failure| match failure.0 {
+        ErrorCode::NotFound | ErrorCode::WrongKind | ErrorCode::PathDenied => failure,
+        _ => path_failure(Errno::ACCESS),
+    })?;
+    Ok(Some((fd, String::new())))
+}
+
+/// The child changes into the descriptor between fork and exec. The caller
+/// keeps the descriptor open until the spawn returns.
+pub(super) fn enter(command: &mut std::process::Command, directory: &OwnedFd, _cwd: &str) {
+    bun_native_macos_services::start_in_directory(command, directory.as_fd());
+}
+
+/// The same for a pseudo-terminal command.
+pub(super) fn enter_pty(
+    command: pty_process::blocking::Command,
+    directory: &OwnedFd,
+    _cwd: &str,
+) -> pty_process::blocking::Command {
+    bun_native_macos_services::start_pty_in_directory(command, directory.as_fd())
 }

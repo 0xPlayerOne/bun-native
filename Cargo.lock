@@ -619,6 +619,7 @@ dependencies = [
  "ahash",
  "async-channel",
  "base64",
+ "bun-native-macos-services",
  "bun-native-macos-surface",
  "bun-native-protocol",
  "bun-native-windows-services",
@@ -636,6 +637,14 @@ dependencies = [
  "wayland-protocols-wlr",
  "x11rb",
  "zbus",
+]
+
+[[package]]
+name = "bun-native-macos-services"
+version = "0.0.0"
+dependencies = [
+ "libc",
+ "pty-process",
 ]
 
 [[package]]

@@ -93,16 +93,19 @@ the same supervisor and semantics with different primitives:
   exit may find a group of only the zombie, which macOS can report as
   `ESRCH`; that is answered `invalid_state` ("the process has exited") on
   both platforms, and no other process can be reached.
-- **Working directory.** Not supported on macOS. Filesystem grants now have a
-  macOS backend, but there is no safe way to start a child in a grant
-  descriptor: std offers no `fchdir` in the child without
-  `unsafe` `pre_exec`, and there is no `/proc/self/fd`. Recovering the
-  grant's path with `F_GETPATH` and passing it as a path would reintroduce the
-  check-then-use race a grant descriptor exists to remove (a directory renamed
-  or replaced by a link between the lookup and `chdir`), so it was rejected.
-  A `cwd` is refused (`invalid_handle` when no grant of that ID exists,
-  `service_unavailable` from the backend for an opened grant), and no child
-  is started; without a `cwd` the child starts in the host's working directory.
+- **Working directory.** The child enters the grant's directory descriptor with
+  `fchdir` between fork and exec (2026-11-06, #305). macOS has no
+  `/proc/self/fd`, and recovering the grant's path with `F_GETPATH` would
+  reintroduce the check-then-use race a grant descriptor exists to remove, so
+  the path is never used. std offers `fchdir` in the child only through
+  `unsafe` `pre_exec`, which the host forbids; the private
+  `bun-native-macos-services` crate registers it for both a pipes `Command`
+  and a `pty-process` command. Its only unsafe code is a closure that calls
+  `fchdir` (async-signal-safe, allocation-free) on a descriptor number the
+  caller keeps open until the spawn returns. A `cwd` that names a link or a
+  missing directory is refused before anything is spawned, as on Linux.
+  `posix_spawn_file_actions_addchdir_np` was not used: it takes a path, which
+  is the same race. Verified only in hosted macOS CI.
 
 ### Windows
 
@@ -177,11 +180,13 @@ direct wire client sees that code.
   Process groups cover ordinary descendants; a process that calls `setsid` to
   escape is documented as out of scope.
 - **`unsafe` `pre_exec` for session setup.** Equivalent at runtime but would
-  lift the crate's `forbid(unsafe_code)`; `pty-process` is pinned instead.
+  lift the host's `forbid(unsafe_code)`; `pty-process` is pinned instead. The
+  one exception is the macOS `fchdir` above, isolated in its own crate.
 - **macOS `kqueue` for exit.** No watcher thread, but `kevent` is `unsafe` in
   rustix. A watcher thread per process (at most eight) is the safe cost.
 - **macOS working directory through `F_GETPATH`.** A path again, with the race
-  described above; refused rather than claimed as descriptor-confined.
+  described above. Superseded (2026-11-06, #305): the child calls `fchdir` on the
+  grant descriptor between fork and exec.
 
 ## Consequences and verification
 

@@ -91,8 +91,7 @@ const permissions = {
       executable: join(base, windows ? 'missing.exe' : 'missing'),
     },
   ],
-  // The macOS process backend does not accept a grant descriptor as cwd.
-  filesystemRoots: macos ? [] : [{ id: 'work', path: work, access: 'read' as const }],
+  filesystemRoots: [{ id: 'work', path: work, access: 'read' as const }],
 }
 
 /** One process: its decoded output by stream and its exit, all acknowledged. */
@@ -240,32 +239,6 @@ async function deniedByDefault() {
     await app.shutdown()
     await app.closed
   }
-}
-
-/** macOS: pipes and the explicit environment; a working directory is refused. */
-async function pipesWithoutGrants(app: NativeApplication, window: NativeWindow) {
-  const seen = watch()
-  const child = await window.spawnProcess(
-    'shell',
-    {
-      args: ['-c', 'printf out; printf err >&2; printf "|%s|%s|" "$HOME" "$BUN_X"; exit 5'],
-      env: { BUN_X: 'a b' },
-    },
-    seen.listener
-  )
-  await seen.until(() => seen.exit !== undefined)
-  assert.equal(child.terminal, false)
-  assert.deepEqual(seen.exit, { code: 5 })
-  assert.equal(seen.streams['stdout'], 'out||a b|')
-  assert.equal(seen.streams['stderr'], 'err')
-  assert.equal(app.serviceCapabilities.filesystemGrants.availability, 'available')
-  record('pipesAndEnvironment', { exit: seen.exit, inheritedHome: false })
-  await assert.rejects(
-    window.spawnProcess('missing', {}, () => {}),
-    rejected('not_found')
-  )
-  record('executableFailureIsTyped', { missing: 'not_found' })
-  await child.release()
 }
 
 async function pipes(window: NativeWindow) {
@@ -650,8 +623,8 @@ async function rawHandles() {
 
 try {
   await deniedByDefault()
-  await withApp(async (app, window) => {
-    await (macos ? pipesWithoutGrants(app, window) : pipes(window))
+  await withApp(async (_app, window) => {
+    await pipes(window)
     await terminal(window)
     await signals(window)
     await credit(window)
@@ -681,7 +654,7 @@ writeFileSync(
           ? 'Windows runner interactive desktop'
           : 'isolated Xvfb with openbox',
       children: macos
-        ? 'real /bin/sh programs; groups checked through ps; no working directory (macOS process cwd unsupported)'
+        ? 'real /bin/sh programs; groups checked through ps; working directory through a grant descriptor (fchdir in the child)'
         : windows
           ? 'real cmd.exe programs in a job object; descendants checked through Get-CimInstance Win32_Process; working directory through an NTFS grant'
           : 'real /bin/sh programs; groups checked through /proc',

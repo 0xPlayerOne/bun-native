@@ -176,6 +176,14 @@ jobs:
             target/release/deps
             target/release/.fingerprint
           key: native-release-target-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('rust-toolchain.toml', 'Cargo.lock', 'Cargo.toml', 'native/vendor/**') }}
+      - name: Verify the macOS child working-directory boundary
+        if: runner.os == 'macOS'
+        timeout-minutes: 3
+        run: |
+          cargo clippy --locked --release -p bun-native-macos-services --all-targets -- -D warnings
+          if ($LASTEXITCODE -ne 0) { throw 'Native macOS services Clippy failed' }
+          cargo test --locked --release -p bun-native-macos-services
+          if ($LASTEXITCODE -ne 0) { throw 'Native macOS child working-directory tests failed' }
       - name: Verify native macOS layer invalidation and assigned Metal identity
         if: runner.os == 'macOS'
         timeout-minutes: 3

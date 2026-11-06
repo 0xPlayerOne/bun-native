@@ -43,6 +43,7 @@ wayland-protocols-wlr = { version = "=0.3.12", features = ["client"] }
 
 [target.'cfg(target_os = "macos")'.dependencies]
 base64 = "=0.22.1"
+bun-native-macos-services = { path = "../macos-services" }
 bun-native-macos-surface = { path = "../macos-surface" }
 pty-process = "=0.5.4"
 raw-window-handle = "=0.6.2"
