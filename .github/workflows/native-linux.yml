@@ -51,7 +51,7 @@ jobs:
             dbus-x11 dunst xdg-desktop-portal xdg-desktop-portal-gtk libglib2.0-bin
             fonts-dejavu-core heaptrack binutils
             x11-xkb-utils xclip at-spi2-core gir1.2-atspi-2.0 python3-gi
-            sway grim wtype
+            sway grim wtype ibus ibus-hangul
           )
           printf '%s\n' "${packages[@]}" > "$RUNNER_TEMP/native-apt-packages"
           # Outside the runner home so apt's sandboxed _apt user can download into it.
@@ -237,7 +237,7 @@ jobs:
             "$NATIVE_EVIDENCE/events-development" event-throughput bun tests/native/event-throughput.ts
       - name: Compile and inspect the actual AOT entries
         run: |
-          for entry in native-window input-race bridge javascript core-lifecycle event-throughput fault scheduling layout interactions services display-semantics clipboard global-shortcuts notifications overlays message-dialogs popups wayland filesystem-grants text-input accessibility processes file-dialogs drag-drop solid-drag-drop react-drag-drop solid-services react-services solid solid-input-intent solid-interactions react react-interactions react-behavior react-workload react-workspace react-workspace-flow; do
+          for entry in native-window input-race bridge javascript core-lifecycle event-throughput fault scheduling layout interactions services display-semantics clipboard global-shortcuts notifications overlays message-dialogs popups wayland filesystem-grants text-input accessibility ime processes file-dialogs drag-drop solid-drag-drop react-drag-drop solid-services react-services solid solid-input-intent solid-interactions react react-interactions react-behavior react-workload react-workspace react-workspace-flow; do
             outdir="$NATIVE_EVIDENCE/$entry-package"
             if [[ "$entry" == native-window ]]; then
               outdir="$NATIVE_EVIDENCE/package"
@@ -306,6 +306,25 @@ jobs:
                 "${command[@]}" 2>&1 | tee "$evidence/run.log"
               test -s "$evidence/result.json"
             done
+          done
+      - name: Development and AOT X11 input method composition through IBus Hangul
+        timeout-minutes: 4
+        env:
+          BUN_NATIVE_HOST: ${{ github.workspace }}/target/release/bun-native-host
+        run: |
+          for mode in development aot; do
+            command=(bun tests/native/ime.ts)
+            if [[ "$mode" == aot ]]; then
+              command=("$NATIVE_EVIDENCE/ime-package/ime")
+            fi
+            evidence="$NATIVE_EVIDENCE/ime-$mode"
+            mkdir "$evidence"
+            BUN_NATIVE_TEXT_EVIDENCE="$evidence" BUN_NATIVE_TEXT_MODE="$mode" \
+              xvfb-run --auto-servernum --server-args='-screen 0 1280x1024x24 -nolisten tcp' \
+              dbus-run-session -- bash scripts/quality/native-linux-session.sh \
+              "$evidence-session" -- env LC_CTYPE=C.UTF-8 \
+              "${command[@]}" 2>&1 | tee "$evidence/run.log"
+            test -s "$evidence/result.json"
           done
       - name: Development and AOT X11 accessibility roles and keyboard split divider (AT-SPI)
         timeout-minutes: 4
@@ -1069,6 +1088,8 @@ jobs:
             ${{ runner.temp }}/native-evidence/shortcut-peer-sha256.txt
             ${{ runner.temp }}/native-evidence/global-shortcuts-*/
             ${{ runner.temp }}/native-evidence/text-input-*/
+            ${{ runner.temp }}/native-evidence/ime-development/
+            ${{ runner.temp }}/native-evidence/ime-aot/
             ${{ runner.temp }}/native-evidence/accessibility-*/
             ${{ runner.temp }}/native-evidence/notifications-*/
             ${{ runner.temp }}/native-evidence/filesystem-grants-*/
