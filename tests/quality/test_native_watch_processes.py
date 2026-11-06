@@ -216,6 +216,11 @@ class ProcessImageTests(unittest.TestCase):
             self.assertEqual(PROCESS.process_image(7), "")
         with patch.object(PROCESS.Path, "resolve", side_effect=FileNotFoundError):
             self.assertIsNone(PROCESS.process_image(7))
+        # A process that exits between the process table and the image read
+        # reports ESRCH, not ENOENT.
+        gone = ProcessLookupError(3, "No such process")
+        with patch.object(PROCESS.Path, "resolve", side_effect=gone):
+            self.assertIsNone(PROCESS.process_image(7))
         self.assertTrue(PROCESS.process_image(os.getpid()).startswith("/"))
 
 
