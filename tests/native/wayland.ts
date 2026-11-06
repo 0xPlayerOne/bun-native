@@ -386,6 +386,36 @@ async function qualify(app: NativeApplication) {
   })
   let clicks = 0
   window.on(ui.button, 'click', () => void (clicks += 1))
+  // #526: capture protocol delivery at the root before the original click
+  // oracle. Unlike the raw GPUI window trace, these only run after a
+  // hit-tested native target and the JavaScript route are both available.
+  // Limit diagnostics to the first pointer sequence; no click is synthesized.
+  const pointerDeliveries: {
+    type: 'pointer_down' | 'pointer_up'
+    target: string
+    atButton: boolean
+    phase: string
+    x: number
+    y: number
+  }[] = []
+  for (const type of ['pointer_down', 'pointer_up'] as const) {
+    window.on(
+      window.root,
+      type,
+      (event) => {
+        if (pointerDeliveries.length >= 8) return
+        pointerDeliveries.push({
+          type: event.type,
+          target: event.node.kind,
+          atButton: event.node === ui.button,
+          phase: event.phase,
+          x: event.x,
+          y: event.y,
+        })
+      },
+      { capture: true }
+    )
+  }
   const surface = await mapped(TITLE, OPEN_BOUND_MS)
   const initial = await painted(
     window,
@@ -449,6 +479,7 @@ async function qualify(app: NativeApplication) {
           target: center(origin, button),
           paintedRevision: initial.rendered.tree_revision,
           peerReplies: pointer.recentCommands(),
+          pointerDeliveries,
           // Every mapped view and which one the compositor focuses: a second
           // surface taking focus would show here.
           views: (await views().catch(() => [])).map((node) => [
