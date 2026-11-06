@@ -847,7 +847,8 @@ mod tests {
         std::fs::create_dir_all(base.join("root/sub")).unwrap();
         let status = std::process::Command::new(cmd())
             .args(["/d", "/c", "mklink", "/J"])
-            .arg(base.join("root/up"))
+            // `cmd` reads a `/` in the link as a switch, so join by component.
+            .arg(base.join("root").join("up"))
             .arg(&base)
             .status()
             .unwrap();

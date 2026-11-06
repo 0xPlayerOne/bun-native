@@ -504,10 +504,12 @@ mod tests {
 
     /// A directory junction: no privilege is needed, unlike a symbolic link.
     fn junction(link: &Path, target: &Path) {
+        // `cmd` reads a `/` in the link as a switch (`Invalid switch - "up"`).
+        let backslashed = |path: &Path| path.to_string_lossy().replace('/', "\\");
         let status = Command::new("cmd.exe")
             .args(["/d", "/c", "mklink", "/J"])
-            .arg(link)
-            .arg(target)
+            .arg(backslashed(link))
+            .arg(backslashed(target))
             .status()
             .unwrap();
         assert!(status.success());
@@ -750,11 +752,34 @@ mod tests {
         std::fs::remove_dir_all(&base).unwrap();
     }
 
+    /// Pinning is the first step of a working directory; its raw system error
+    /// is asserted on its own so a failure names the call that refused.
+    #[test]
+    fn a_root_and_a_child_can_be_pinned() {
+        let base = temp();
+        std::fs::create_dir_all(base.join("root").join("sub")).unwrap();
+        let root = open_root(base.join("root").to_str().unwrap()).unwrap();
+        let pinned = fs::pin_directory(root.as_handle())
+            .unwrap_or_else(|error| panic!("ReOpenFile on the root: {error:?}"));
+        let child = step(
+            pinned.as_handle(),
+            "sub",
+            Access::LIST,
+            Share::Pinned,
+            Create::Existing,
+            Shape::Directory,
+            false,
+        )
+        .unwrap_or_else(|failure| panic!("opening the child beneath the pin: {failure:?}"));
+        drop((child, pinned, root));
+        std::fs::remove_dir_all(&base).unwrap();
+    }
+
     #[test]
     fn a_working_directory_is_pinned_and_confined() {
         let base = temp();
         std::fs::create_dir_all(base.join("root/sub")).unwrap();
-        junction(&base.join("root/up"), &base);
+        junction(&base.join("root").join("up"), &base);
         let root = open_root(base.join("root").to_str().unwrap()).unwrap();
         let directory = working_directory(&root, "sub").unwrap();
         assert!(same_path(

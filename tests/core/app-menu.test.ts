@@ -341,11 +341,16 @@ describe('application menu bar (headless real subprocess)', () => {
     }, 'fail')
   })
 
-  // One launch per test: each real subprocess gets its own timeout, because a
-  // hosted Windows runner needs seconds to start the peer.
+  // One launch per test, each with the original 5 s deadline and both original
+  // assertions. A bounded internal guard (inside that deadline) reports which
+  // stage stalled and what the peer received, so a stall is attributable.
   for (const mode of ['forged', 'unallocated'] as const)
     test(`a selection ${mode === 'forged' ? 'without the capability' : 'for an unallocated bar'} is a host fault`, async () => {
       const directory = mkdtempSync(join(tmpdir(), 'bun-native-app-menu-peer-'))
+      const started = performance.now()
+      const stages: string[] = []
+      const stage = (name: string) =>
+        stages.push(`${name}@${Math.round(performance.now() - started)}ms`)
       try {
         const app = await createApplication({
           executable: process.execPath,
@@ -353,8 +358,26 @@ describe('application menu bar (headless real subprocess)', () => {
           permissions: ALLOW,
           requestTimeoutMs: 2_000,
         })
-        if (mode === 'unallocated') await app.setMenuBar(BAR, ignore).catch(() => {})
-        await expect(app.closed).rejects.toBeInstanceOf(ProtocolError)
+        stage('ready')
+        if (mode === 'unallocated') {
+          await app.setMenuBar(BAR, ignore).catch(() => {})
+          stage('setMenuBarSettled')
+        }
+        const outcome = await Promise.race([
+          app.closed.then(
+            () => 'resolved' as const,
+            (error: unknown) => error
+          ),
+          Bun.sleep(4_000).then(() => 'stalled' as const),
+        ])
+        stage(outcome === 'stalled' ? 'stalled' : 'closedSettled')
+        if (outcome === 'stalled' || outcome === 'resolved') {
+          const requests = readFileSync(join(directory, 'requests.jsonl'), 'utf8')
+          throw new Error(
+            `${mode}: app.closed ${outcome}; stages ${stages.join(', ')}; peer received:\n${requests}`
+          )
+        }
+        expect(outcome).toBeInstanceOf(ProtocolError)
         await app.shutdown().catch(() => {})
       } finally {
         rmSync(directory, { recursive: true, force: true })
