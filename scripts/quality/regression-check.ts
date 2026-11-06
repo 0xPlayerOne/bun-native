@@ -101,7 +101,7 @@ export function parseMetrics(text: string, what: string): MetricsFile {
         throw new Error(`${what}: accepted ${name}.maxRatio must be a finite number greater than 1`)
       if (
         typeof tradeoff.adr !== 'string' ||
-        !/^docs\\/decisions\\/\\d{4}-[a-z0-9-]+\\.md$/.test(tradeoff.adr)
+        !/^docs\/decisions\/\d{4}-[a-z0-9-]+\.md$/.test(tradeoff.adr)
       )
         throw new Error(`${what}: accepted ${name}.adr must reference docs/decisions/NNNN-name.md`)
     }
