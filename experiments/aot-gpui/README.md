@@ -83,6 +83,7 @@ The same compiler and inspection pipeline supports these explicit entries:
 | `processes`               | `tests/native/processes.ts`             | `processes`            | Existing prebuilt host referenced by absolute path |
 | `file-dialogs`            | `tests/native/file-dialogs.ts`          | `file-dialogs`         | Existing prebuilt host referenced by absolute path |
 | `overlays`                | `tests/native/overlays.ts`              | `overlays`             | Existing prebuilt host referenced by absolute path |
+| `message-dialogs`         | `tests/native/message-dialogs.ts`       | `message-dialogs`      | Existing prebuilt host referenced by absolute path |
 | `popups`                  | `tests/native/popups.ts`                | `popups`               | Existing prebuilt host referenced by absolute path |
 | `drag-drop`               | `tests/native/drag-drop.ts`             | `drag-drop`            | Existing prebuilt host referenced by absolute path |
 | `solid-drag-drop`         | `tests/native/solid-drag-drop.tsx`      | `solid-drag-drop`      | Existing prebuilt host referenced by absolute path |

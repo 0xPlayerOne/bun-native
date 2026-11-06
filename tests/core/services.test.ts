@@ -103,6 +103,9 @@ describe('owned desktop service lifecycle (headless subprocess)', () => {
             availability: 'unavailable',
             reason: 'unsupported_platform',
           })
+        // This peer advertises no overlays, so the modal-overlay dialogs are unavailable.
+        else if (name === 'messageDialogs')
+          expect(value).toEqual({ availability: 'unavailable', reason: 'unsupported_host' })
         else if (name !== 'windowDisplay')
           expect(value).toEqual({
             availability: 'unavailable',
