@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.20.2](https://github.com/0xPlayerOne/bun-native/compare/v0.20.1...v0.20.2) (2026-11-06)
+
+
+### Tests
+
+* macOS qualification on a physical Mac ([#247](https://github.com/0xPlayerOne/bun-native/issues/247) [#223](https://github.com/0xPlayerOne/bun-native/issues/223) [#244](https://github.com/0xPlayerOne/bun-native/issues/244) [#249](https://github.com/0xPlayerOne/bun-native/issues/249) [#297](https://github.com/0xPlayerOne/bun-native/issues/297)) ([#521](https://github.com/0xPlayerOne/bun-native/issues/521)) ([453dba4](https://github.com/0xPlayerOne/bun-native/commit/453dba48ccf7f0ff904a4f8fcbec990f340ef910))
+
 ## [0.20.1](https://github.com/0xPlayerOne/bun-native/compare/v0.20.0...v0.20.1) (2026-11-06)
 
 
