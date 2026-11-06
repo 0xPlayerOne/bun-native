@@ -318,7 +318,7 @@ jobs:
             --host-profile release --outdir $package
           if ($LASTEXITCODE -ne 0) { throw 'The macOS fault AOT compiler or inspection failed' }
           foreach ($mode in @('development', 'aot')) {
-            $command = if ($mode -eq 'aot') { @((Join-Path $package 'fault')) } else { @('bun', 'tests/native/fault.ts') }
+            [string[]]$command = if ($mode -eq 'aot') { @((Join-Path $package 'fault')) } else { @('bun', 'tests/native/fault.ts') }
             & '${{ matrix.python }}' scripts/quality/native-fault-macos.py `
               --output (Join-Path $env:NATIVE_EVIDENCE "fault-$mode") --mode $mode -- @command
             if ($LASTEXITCODE -ne 0) { throw "macOS native fault containment was not verified in $mode" }

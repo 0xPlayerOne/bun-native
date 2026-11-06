@@ -54,17 +54,21 @@ class MacosFaultOwnershipTests(unittest.TestCase):
             ({10: row(10, 1), 11: row(11, 10, str(host), state="Z")}, "found 0"),
             ({10: row(10, 1), 21: row(21, 99, str(host))}, "found 0"),
         ):
-            with mock.patch.object(FAULT, "process_table", return_value=table):
-                with self.assertRaisesRegex(RuntimeError, message):
-                    FAULT.host_row(FakeApp, host.resolve(), {})
+            with (
+                mock.patch.object(FAULT, "process_table", return_value=table),
+                self.assertRaisesRegex(RuntimeError, message),
+            ):
+                FAULT.host_row(FakeApp, host.resolve(), {})
 
     def test_host_row_rejects_a_reused_pid(self):
         host = Path("/tmp/bun-native-host-test").resolve()
         table = {10: row(10, 1), 11: row(11, 10, str(host))}
         observed = {11: "Fri Nov 6 00:00:01 2026"}
-        with mock.patch.object(FAULT, "process_table", return_value=table):
-            with self.assertRaisesRegex(RuntimeError, "identity changed"):
-                FAULT.host_row(FakeApp, host, observed)
+        with (
+            mock.patch.object(FAULT, "process_table", return_value=table),
+            self.assertRaisesRegex(RuntimeError, "identity changed"),
+        ):
+            FAULT.host_row(FakeApp, host, observed)
 
     def test_host_row_accepts_one_owned_host_and_records_its_identity(self):
         host = Path("/tmp/bun-native-host-test").resolve()

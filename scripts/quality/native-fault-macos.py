@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """macOS native fault containment for the real GPUI host (issue #247).
 
 Drives tests/native/fault.ts (`host-crash`) the way native-diagnostics-linux.py
