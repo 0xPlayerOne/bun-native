@@ -1,7 +1,7 @@
 //! Bounded I/O workers keep pipe reads and writes off the native UI thread.
 
 use async_channel::{Receiver, Sender};
-use bun_native_protocol::{Command, CommandReader, Event, EventSequence, write_event};
+use bun_native_protocol::{Command, CommandReader, Event, EventSequence, EventWriter};
 use gpui::App;
 use std::cell::Cell;
 use std::io;
@@ -75,12 +75,13 @@ pub(crate) fn connect() -> (Receiver<Incoming>, EventSink) {
     std::thread::spawn(move || {
         let stdout = io::stdout();
         let mut output = stdout.lock();
+        let mut writer = EventWriter::default();
         while let Ok(outgoing) = events.recv() {
             let (event, completion) = match outgoing {
                 Outgoing::Event(event) => (event, None),
                 Outgoing::Finish(event, completion) => (event, Some(completion)),
             };
-            if write_event(&mut output, &event).is_err() {
+            if writer.write(&mut output, &event).is_err() {
                 let _ = failures.try_send(Incoming::Disconnected);
                 break;
             }

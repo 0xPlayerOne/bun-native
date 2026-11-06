@@ -5,7 +5,9 @@ use crate::{
     state::SharedWindowState,
     style,
 };
-use bun_native_protocol::{Element as NativeElement, Event, NodeId, Overflow, Tree, WindowId};
+use bun_native_protocol::{
+    Element as NativeElement, Event, Node, NodeId, Overflow, Tree, WindowId,
+};
 use gpui::{
     AnyElement, App, Context, Entity, FocusHandle, Focusable, KeyBinding, MouseButton,
     ScrollHandle, SharedString, Subscription, Window, actions, canvas, div, prelude::*, px, rgb,
@@ -31,9 +33,7 @@ pub(crate) struct NativeView {
     inputs: BTreeMap<NodeId, Entity<TextInput>>,
     buttons: BTreeMap<NodeId, FocusHandle>,
     scrolls: BTreeMap<NodeId, ScrollHandle>,
-    /// Text and button labels as shared strings, reused across batches while
-    /// unchanged, so each render bumps a refcount instead of copying text.
-    labels: BTreeMap<NodeId, SharedString>,
+    index: NodeIndex,
     focus_subscriptions: BTreeMap<NodeId, [Subscription; 2]>,
     reported_focus: Option<NodeId>,
     _subscriptions: [Subscription; 2],
@@ -58,13 +58,14 @@ impl NativeView {
             }
         });
         let focus_lost = cx.on_focus_lost(window, |view, window, cx| view.sync_focus(window, cx));
+        let index = NodeIndex::new(&state.borrow().tree);
         Self {
             window_id,
             state,
             inputs: BTreeMap::new(),
             buttons: BTreeMap::new(),
             scrolls: BTreeMap::new(),
-            labels: BTreeMap::new(),
+            index,
             focus_subscriptions: BTreeMap::new(),
             reported_focus: None,
             _subscriptions: [keyboard, focus_lost],
@@ -76,56 +77,43 @@ impl NativeView {
     /// Called synchronously after complete transaction preflight. This method
     /// does not yield or dispatch native input between model and entity updates.
     pub(crate) fn apply(&mut self, tree: Tree, window: &mut Window, cx: &mut Context<Self>) {
-        self.state.borrow_mut().tree = tree;
-        // Snapshot cheap Arc-backed properties before focus/IME notifications:
-        // native callbacks must never run while the shared model is borrowed.
-        let (controls, scroll_modes) = {
+        let previous = std::mem::replace(&mut self.state.borrow_mut().tree, tree);
+        // Snapshot cheap Arc-backed control properties before focus/IME
+        // notifications: native callbacks must never run while the shared
+        // model is borrowed. Sorted by ID, like the index it is read from.
+        let controls: Vec<(NodeId, Node)> = {
             let state = self.state.borrow();
-            let mut controls = BTreeMap::new();
-            let mut scroll_modes = BTreeMap::new();
-            let mut labels = BTreeMap::new();
-            for (id, node) in state.tree.nodes() {
-                if matches!(
-                    node.element(),
-                    NativeElement::Input { .. } | NativeElement::Button { .. }
-                ) {
-                    controls.insert(id, node.clone());
-                }
-                if let NativeElement::Text { text, .. } | NativeElement::Button { text, .. } =
-                    node.element()
-                {
-                    let label = self
-                        .labels
-                        .remove(&id)
-                        .filter(|label| label.as_ref() == text.as_str())
-                        .unwrap_or_else(|| SharedString::from(text));
-                    labels.insert(id, label);
-                }
-                if let Some(mode) = node
-                    .element()
-                    .style()
-                    .overflow
-                    .filter(|mode| mode.scrolls())
-                {
-                    scroll_modes.insert(id, mode);
-                }
-            }
-            self.labels = labels;
-            (controls, scroll_modes)
+            self.index.sync(&previous, &state.tree);
+            self.index
+                .controls
+                .iter()
+                .map(|id| {
+                    let node = state.tree.node(*id).expect("indexed control is committed");
+                    (*id, node.clone())
+                })
+                .collect()
         };
-        self.scrolls.retain(|id, _| scroll_modes.contains_key(id));
-        for (id, mode) in scroll_modes {
-            let handle = self.scrolls.entry(id).or_default();
+        drop(previous);
+        self.scrolls
+            .retain(|id, _| self.index.scroll_modes.contains_key(id));
+        for (id, mode) in &self.index.scroll_modes {
+            let handle = self.scrolls.entry(*id).or_default();
             let mut offset = handle.offset();
-            if mode == Overflow::ScrollX {
+            if *mode == Overflow::ScrollX {
                 offset.y = px(0.);
-            } else if mode == Overflow::ScrollY {
+            } else if *mode == Overflow::ScrollY {
                 offset.x = px(0.);
             }
             handle.set_offset(offset);
         }
+        let control = |id: &NodeId| {
+            controls
+                .binary_search_by_key(id, |(id, _)| *id)
+                .ok()
+                .map(|position| &controls[position].1)
+        };
         self.inputs.retain(|id, input| {
-            if controls.contains_key(id) {
+            if self.index.controls.contains(id) {
                 return true;
             }
             if input.focus_handle(cx).is_focused(window) {
@@ -134,7 +122,8 @@ impl NativeView {
             false
         });
         self.buttons.retain(|id, focus| {
-            let enabled = controls.get(id).is_some_and(|node| {
+            let node = control(id);
+            let enabled = node.is_some_and(|node| {
                 matches!(
                     node.element(),
                     NativeElement::Button {
@@ -146,7 +135,7 @@ impl NativeView {
             if !enabled && focus.is_focused(window) {
                 window.blur(cx);
             }
-            controls.contains_key(id)
+            node.is_some()
         });
         for (node_id, node) in controls {
             match node.element() {
@@ -232,7 +221,8 @@ impl NativeView {
     }
 
     fn label(&self, node_id: NodeId) -> SharedString {
-        self.labels
+        self.index
+            .labels
             .get(&node_id)
             .expect("label reconciled before render")
             .clone()
@@ -249,51 +239,28 @@ impl NativeView {
         let node = tree
             .node(node_id)
             .expect("validated tree contains every child");
-        let mut base = div().flex_shrink_0();
+        let mut base = div();
         if let Some(layout) = layout {
             base = layout.children(base, node.children(), 0, self.scrolls.get(&node_id));
         }
-        let base = pointer.target(base, node_id).id(node_id.get());
+        pointer.target(&mut base, node_id);
+        let mut base = base.id(node_id.get());
+        style::element(base.style(), node.element(), node_id == tree.root_id());
         match node.element() {
-            NativeElement::Box { style: properties } => {
-                let base = if node_id == tree.root_id() {
-                    base.size_full()
-                } else {
-                    base
-                };
-                let mut container = style::apply(base.flex().flex_col(), properties);
+            NativeElement::Box { .. } => {
                 if let Some(handle) = self.scrolls.get(&node_id) {
-                    container = container.track_scroll(handle);
+                    base = base.track_scroll(handle);
                 }
-                container
-                    .children(
-                        node.children()
-                            .iter()
-                            .map(|child| self.render_node(tree, *child, layout, pointer, cx)),
-                    )
-                    .into_any_element()
-            }
-            NativeElement::Text {
-                style: properties, ..
-            } => style::apply(base, properties)
-                .child(self.label(node_id))
-                .into_any_element(),
-            NativeElement::Button {
-                disabled,
-                style: properties,
-                ..
-            } => {
-                let mut button = style::apply(
-                    base.flex()
-                        .items_center()
-                        .justify_center()
-                        .h(px(44.))
-                        .px(px(12.))
-                        .bg(rgb(if *disabled { 0x7a8396 } else { 0x2255cc }))
-                        .text_color(rgb(0xffffff)),
-                    properties,
+                base.children(
+                    node.children()
+                        .iter()
+                        .map(|child| self.render_node(tree, *child, layout, pointer, cx)),
                 )
-                .child(self.label(node_id));
+                .into_any_element()
+            }
+            NativeElement::Text { .. } => base.child(self.label(node_id)).into_any_element(),
+            NativeElement::Button { disabled, .. } => {
+                let mut button = base.child(self.label(node_id));
                 if !disabled {
                     let focus = self
                         .buttons
@@ -314,9 +281,7 @@ impl NativeView {
                 }
                 button.into_any_element()
             }
-            NativeElement::Input {
-                style: properties, ..
-            } => style::apply(base.bg(rgb(0xffffff)), properties)
+            NativeElement::Input { .. } => base
                 .child(
                     self.inputs
                         .get(&node_id)
@@ -420,6 +385,8 @@ impl Render for NativeView {
             )
     }
 }
+mod index;
 mod interactions;
 
+use index::NodeIndex;
 use interactions::PointerFrame;

@@ -10,7 +10,7 @@ mod wire;
 
 pub use events::*;
 pub use files::*;
-pub use framing::{write_event, CommandReader, ProtocolError};
+pub use framing::{write_event, CommandReader, EventWriter, ProtocolError};
 pub use services::*;
 pub use tree::{BatchMetrics, ModelError, Node, PreparedBatch, Tree};
 pub use wire::*;

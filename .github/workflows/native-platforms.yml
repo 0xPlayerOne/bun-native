@@ -33,7 +33,6 @@ jobs:
       run:
         shell: pwsh
     env:
-      CARGO_BUILD_JOBS: 2
       CARGO_INCREMENTAL: 0
       BUN_NATIVE_HOST_PROFILE: release
       PYTHONDONTWRITEBYTECODE: 1
@@ -103,6 +102,22 @@ jobs:
             ~/.cargo/git/db
           key: gpui-downloads-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('toolchain.json', 'bun.lock', 'rust-toolchain.toml', 'Cargo.lock') }}
       - run: bun install --frozen-lockfile
+      # Dependency build outputs come from the last protected-main build of the
+      # same lockfile and toolchain. Workspace crates still rebuild from this
+      # checkout. The scheduled audit restores nothing, keeping a cold build.
+      - name: Restore release dependency build outputs
+        id: target-cache
+        if: github.event_name != 'schedule'
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            target/release/build
+            target/release/deps
+            target/release/.fingerprint
+          key: native-release-target-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('rust-toolchain.toml', 'Cargo.lock', 'Cargo.toml', 'native/vendor/**') }}
+          # Only pull requests fall back to an older key; main rebuilds cold
+          # after a lockfile or toolchain change, so stale outputs never pile up.
+          restore-keys: ${{ github.event_name == 'pull_request' && format('native-release-target-{0}-{1}-', runner.os, runner.arch) || '' }}
       - name: Check portable paint guards on the actual target Python
         run: |
           & '${{ matrix.python }}' -m unittest discover -s tests/quality -p 'test_native_platform*.py' -v
@@ -128,7 +143,7 @@ jobs:
             Tee-Object -FilePath (Join-Path $env:NATIVE_EVIDENCE 'native-build.log')
           $code = $LASTEXITCODE
           $timer.Stop()
-          @{ elapsedMs = $timer.Elapsed.TotalMilliseconds; exitCode = $code; profile = 'release' } |
+          @{ elapsedMs = $timer.Elapsed.TotalMilliseconds; exitCode = $code; profile = 'release'; targetCacheKey = '${{ steps.target-cache.outputs.cache-matched-key || 'none' }}' } |
             ConvertTo-Json | Out-File (Join-Path $env:NATIVE_EVIDENCE 'native-build.json')
           if ($code -ne 0) { throw "Native build failed: $code" }
           $hostPath = (Resolve-Path 'target/release/${{ matrix.binary }}').Path
@@ -145,6 +160,15 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'Native host Clippy failed' }
           cargo test --locked --release -p bun-native-host
           if ($LASTEXITCODE -ne 0) { throw 'Native host tests failed' }
+      - name: Save release dependency build outputs from protected main
+        if: success() && github.event_name == 'push' && github.ref == 'refs/heads/main' && steps.target-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            target/release/build
+            target/release/deps
+            target/release/.fingerprint
+          key: native-release-target-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('rust-toolchain.toml', 'Cargo.lock', 'Cargo.toml', 'native/vendor/**') }}
       - name: Verify native macOS layer invalidation and assigned Metal identity
         if: runner.os == 'macOS'
         timeout-minutes: 3

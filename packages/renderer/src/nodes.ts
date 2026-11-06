@@ -45,6 +45,13 @@ export class Node implements RendererNode {
   owner: Owner | undefined
   scope: object | undefined
   data = ''
+  /** Last immutable capture; cleared by every mutation that can change it. */
+  captured: Snapshot | undefined
+  /**
+   * This node or a staged descendant lacks a current capture. Every dirty node
+   * in a tree has dirty ancestors, so snapshot() walks only dirty paths.
+   */
+  dirty = false
 
   constructor(readonly kind: Element['kind'] | 'text-node') {
     nodes.add(this)
@@ -67,6 +74,20 @@ export function createTextNode(value: string): Node {
   const node = new Node('text-node')
   node.data = String(value)
   return node
+}
+
+/** Discard a cached capture after changing this node's own snapshot inputs. */
+export function invalidate(node: Node | undefined): void {
+  if (!node) return
+  node.captured = undefined
+  // An already dirty ancestor's own ancestors are dirty too.
+  for (let path: Node | undefined = node; path && !path.dirty; path = path.parent) path.dirty = true
+}
+
+/** Solid detaches keyed regions from their end, so the tail is checked before scanning. */
+function childIndex(children: readonly Node[], child: Node): number {
+  const last = children.length - 1
+  return children[last] === child ? last : children.indexOf(child)
 }
 
 export function visit(node: Node, fn: (node: Node) => void): void {
@@ -95,10 +116,19 @@ export function insertNode(parent: Node, node: Node, anchor?: Node): void {
     })
   const previousOwner = node.owner
   if (previousOwner && previousOwner !== owner) previousOwner.detached(node)
-  if (node.parent) node.parent.children.splice(node.parent.children.indexOf(node), 1)
+  if (node.parent) node.parent.children.splice(childIndex(node.parent.children, node), 1)
+  invalidate(node.parent)
+  invalidate(parent)
   node.parent = parent
-  parent.children.splice(anchor ? parent.children.indexOf(anchor) : parent.children.length, 0, node)
+  parent.children.splice(
+    anchor ? childIndex(parent.children, anchor) : parent.children.length,
+    0,
+    node
+  )
+  // Adapters may clear detached nodes directly, so a reinserted subtree is
+  // always captured again from its current state.
   visit(node, (child) => {
+    invalidate(child)
     child.owner = owner
     if (owner) child.scope = owner.token
   })
@@ -111,9 +141,12 @@ export function removeNode(parent: Node, node: Node): void {
     throw new NativeStateError('invalid_handle', 'Removal target belongs to another parent')
   const owner = parent.owner
   owner?.detached(node)
-  parent.children.splice(parent.children.indexOf(node), 1)
+  parent.children.splice(childIndex(parent.children, node), 1)
+  invalidate(parent)
   node.parent = undefined
+  // A detached capture would otherwise retain listeners an adapter releases.
   visit(node, (child) => {
+    invalidate(child)
     child.owner = undefined
   })
   owner?.changed()
@@ -124,6 +157,9 @@ export function replaceText(node: Node, value: string): void {
     throw new NativeStateError('invalid_state', 'Text replacement requires a text node')
   if (node.data === value) return
   node.data = value
+  invalidate(node)
+  // Text and button elements join their text-node children.
+  invalidate(node.parent)
   node.owner?.changed()
 }
 
@@ -135,6 +171,7 @@ export function setProperty(node: Node, name: string, value: unknown): void {
     if (value === undefined) delete props[name]
     else if (typeof value === 'function') props[name] = value as EventListener
     else throw new TypeError(`Native ${name} must be a function`)
+    invalidate(node)
     node.owner?.changed()
     return
   }
@@ -174,17 +211,19 @@ export function setProperty(node: Node, name: string, value: unknown): void {
     default:
       throw new UnsupportedFeatureError('native-property:' + name)
   }
+  invalidate(node)
   node.owner?.changed()
 }
 
-export type Snapshot = {
+/** Immutable once captured: unchanged nodes share it across commits. */
+export type Snapshot = Readonly<{
   element: Element
   children: readonly Node[]
   parent: Node | undefined
   events: Readonly<EventListeners>
   initialValue: string | undefined
   inputIntent: InputIntent | undefined
-}
+}>
 
 function leafStyle(style: Style): NonNullable<Extract<Element, { kind: 'text' }>['style']> {
   const { overflow, ...rest } = style
@@ -193,50 +232,72 @@ function leafStyle(style: Style): NonNullable<Extract<Element, { kind: 'text' }>
   return { ...rest, ...(overflow === undefined ? {} : { overflow }) }
 }
 
-/** Capture values before awaiting the core queue; later effects form another batch. */
+/**
+ * Capture values before awaiting the core queue; later effects form another batch.
+ *
+ * Returns only nodes captured anew: every other staged node keeps the immutable
+ * capture its acknowledged committed record already holds. The walk descends
+ * only dirty paths, so a clean subtree costs nothing. A node can leave its
+ * committed position only through a mutation that invalidates its old parent
+ * and, when it is reinserted, its whole subtree, so the diff finds removals
+ * and moves from the old and new child lists of recaptured nodes alone.
+ */
 export function snapshot(root: Node): Map<Node, Snapshot> {
   const result = new Map<Node, Snapshot>()
-  const capture = (node: Node, parent?: Node): void => {
-    const props = node.properties
-    const style = props.style && node.kind !== 'box' ? { style: leafStyle(props.style) } : {}
-    let element: Element
-    if (node.kind === 'box')
-      element = { kind: 'box', ...(props.style ? { style: { ...props.style } } : {}) }
-    else if (node.kind === 'input')
-      element = {
-        kind: 'input',
-        value: typeof props.value === 'string' ? props.value : (props.value?.value ?? ''),
-        ...(props.placeholder === undefined ? {} : { placeholder: props.placeholder }),
-        ...style,
-      }
-    else {
-      if (props.text !== undefined && node.children.length)
-        throw new TypeError('Choose text properties or text children, not both')
-      const text =
-        node.kind === 'text-node'
-          ? node.data
-          : (props.text ?? node.children.map((child) => child.data).join(''))
-      element =
-        node.kind === 'button'
-          ? {
-              kind: 'button',
-              text,
-              ...(props.disabled === undefined ? {} : { disabled: props.disabled }),
-              ...style,
-            }
-          : { kind: 'text', text, ...style }
+  const current = (node: Node, parent: Node | undefined): boolean =>
+    !node.dirty && node.captured !== undefined && node.captured.parent === parent
+  const capture = (node: Node, parent: Node | undefined): void => {
+    node.dirty = false
+    let captured = node.captured
+    if (!captured || captured.parent !== parent) {
+      captured = build(node, parent)
+      node.captured = captured
+      result.set(node, captured)
     }
-    const children = node.kind === 'box' ? [...node.children] : []
-    result.set(node, {
-      element,
-      children,
-      parent,
-      events: listeners(props),
-      initialValue: typeof props.value === 'string' ? props.value : undefined,
-      inputIntent: typeof props.value === 'object' ? props.value : undefined,
-    })
-    for (const child of children) capture(child, node)
+    for (const child of captured.children) if (!current(child, node)) capture(child, node)
   }
-  capture(root)
+  if (!current(root, undefined)) capture(root, undefined)
   return result
+}
+
+function build(node: Node, parent: Node | undefined): Snapshot {
+  const props = node.properties
+  const style = props.style && node.kind !== 'box' ? { style: leafStyle(props.style) } : {}
+  let element: Element
+  if (node.kind === 'box')
+    element = { kind: 'box', ...(props.style ? { style: { ...props.style } } : {}) }
+  else if (node.kind === 'input')
+    element = {
+      kind: 'input',
+      value: typeof props.value === 'string' ? props.value : (props.value?.value ?? ''),
+      ...(props.placeholder === undefined ? {} : { placeholder: props.placeholder }),
+      ...style,
+    }
+  else {
+    if (props.text !== undefined && node.children.length)
+      throw new TypeError('Choose text properties or text children, not both')
+    // Joined text-node children are part of this capture, not native nodes.
+    for (const child of node.children) child.dirty = false
+    const text =
+      node.kind === 'text-node'
+        ? node.data
+        : (props.text ?? node.children.map((child) => child.data).join(''))
+    element =
+      node.kind === 'button'
+        ? {
+            kind: 'button',
+            text,
+            ...(props.disabled === undefined ? {} : { disabled: props.disabled }),
+            ...style,
+          }
+        : { kind: 'text', text, ...style }
+  }
+  return {
+    element,
+    children: node.kind === 'box' ? [...node.children] : [],
+    parent,
+    events: listeners(props),
+    initialValue: typeof props.value === 'string' ? props.value : undefined,
+    inputIntent: typeof props.value === 'object' ? props.value : undefined,
+  }
 }

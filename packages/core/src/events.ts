@@ -13,17 +13,24 @@ export type RoutedEvent = Exclude<
   WindowEvent,
   { type: 'closed' | 'global_shortcut' | 'notification_activated' | 'notification_dismissed' }
 >
-const eventTypes: readonly string[] = [
-  'click',
-  'input',
-  'key_down',
-  'key_up',
-  'pointer_down',
-  'pointer_up',
-  'focus',
-  'blur',
-]
 type BindingKey = `${NativeEventType}:${'capture' | 'bubble'}`
+type BindingKeys = { readonly capture: BindingKey; readonly bubble: BindingKey }
+const keys = (type: NativeEventType): BindingKeys => ({
+  capture: `${type}:capture`,
+  bubble: `${type}:bubble`,
+})
+/** Interned per-type keys: routing a native event builds no key strings. */
+const bindingKeys: Readonly<Record<NativeEventType, BindingKeys>> = {
+  click: keys('click'),
+  input: keys('input'),
+  key_down: keys('key_down'),
+  key_up: keys('key_up'),
+  pointer_down: keys('pointer_down'),
+  pointer_up: keys('pointer_up'),
+  focus: keys('focus'),
+  blur: keys('blur'),
+}
+const eventTypes: readonly string[] = Object.keys(bindingKeys)
 type Subscription = { remove: (() => void) | undefined }
 type Binding = {
   node: NativeNode
@@ -105,7 +112,10 @@ export interface DispatchPlan {
 
 /** A queued event never gains authority from a later replacement registration. */
 export function prunePlan(plan: DispatchPlan): boolean {
-  plan.deliveries = plan.deliveries.filter(({ binding }) => !binding.controller.signal.aborted)
+  const revoked = ({ binding }: Delivery) => binding.controller.signal.aborted
+  // Replace, never compact in place: an active dispatch may be iterating the old array.
+  if (plan.deliveries.some(revoked))
+    plan.deliveries = plan.deliveries.filter((delivery) => !revoked(delivery))
   return !plan.cancellation.signal.aborted && plan.deliveries.length !== 0
 }
 
@@ -142,7 +152,7 @@ export class EventBindings {
         'invalid_state',
         'Invalid native listener type, function or options'
       )
-    const key: BindingKey = `${type}:${options.capture ? 'capture' : 'bubble'}`
+    const key = bindingKeys[type][options.capture ? 'capture' : 'bubble']
     const bindings = this.nodes.get(id) ?? new Map<BindingKey, Binding>()
     this.nodes.set(id, bindings)
     const previous = bindings.get(key)
@@ -194,20 +204,21 @@ export class EventBindings {
   }
 
   prepare(event: RoutedEvent, path: readonly NativeNode[]): DispatchPlan | undefined {
-    const deliveries: Delivery[] = []
-    const append = (index: number, capture: boolean) => {
-      const binding = this.nodes
-        .get(event.path[index]!)
-        ?.get(`${event.type}:${capture ? 'capture' : 'bubble'}`)
+    // Events without a binding on their path allocate nothing here.
+    const { capture, bubble } = bindingKeys[event.type]
+    const target = path.length - 1
+    let deliveries: Delivery[] | undefined
+    for (let index = 0; index < path.length; index++) {
+      const binding = this.nodes.get(event.path[index]!)?.get(capture)
       if (binding)
-        deliveries.push({
-          binding,
-          phase: index === path.length - 1 ? 'target' : capture ? 'capture' : 'bubble',
-        })
+        (deliveries ??= []).push({ binding, phase: index === target ? 'target' : 'capture' })
     }
-    for (let index = 0; index < path.length; index++) append(index, true)
-    for (let index = path.length - 1; index >= 0; index--) append(index, false)
-    if (!deliveries.length) return
+    for (let index = target; index >= 0; index--) {
+      const binding = this.nodes.get(event.path[index]!)?.get(bubble)
+      if (binding)
+        (deliveries ??= []).push({ binding, phase: index === target ? 'target' : 'bubble' })
+    }
+    if (!deliveries) return
     const plan = {
       targetId: event.node_id,
       cancellation: new AbortController(),
@@ -255,18 +266,31 @@ export async function dispatchPlan(plan: DispatchPlan, targetIsLive: () => boole
         stopPropagation: () => stop(false),
         stopImmediatePropagation: () => stop(true),
       })
-      let cancel!: () => void
-      const cancelled = new Promise<void>((resolve) => {
-        cancel = resolve
-      })
-      signal.addEventListener('abort', cancel, { once: true })
-      plan.cancellation.signal.addEventListener('abort', cancel, { once: true })
+      const planSignal = plan.cancellation.signal
+      let cancel: (() => void) | undefined
       try {
-        await Promise.race([binding.invoke?.(event), cancelled])
+        const result = binding.invoke?.(event)
+        if (result === null || (typeof result !== 'object' && typeof result !== 'function')) {
+          // A synchronous listener needs no cancellation race. Two turns keep
+          // the microtask interleaving of the race path below.
+          await undefined
+          await undefined
+        } else {
+          const cancelled = new Promise<void>((resolve) => {
+            cancel = resolve
+          })
+          // The listener may have revoked its binding or the plan before returning.
+          if (signal.aborted || planSignal.aborted) cancel!()
+          signal.addEventListener('abort', cancel!, { once: true })
+          planSignal.addEventListener('abort', cancel!, { once: true })
+          await Promise.race([result, cancelled])
+        }
       } finally {
         executing = false
-        signal.removeEventListener('abort', cancel)
-        plan.cancellation.signal.removeEventListener('abort', cancel)
+        if (cancel) {
+          signal.removeEventListener('abort', cancel)
+          planSignal.removeEventListener('abort', cancel)
+        }
       }
     }
   } finally {
