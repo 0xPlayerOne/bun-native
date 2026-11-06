@@ -85,6 +85,7 @@ The same compiler and inspection pipeline supports these explicit entries:
 | `solid`                   | `examples/solid-counter/main.tsx`       | `solid`                | Existing prebuilt host referenced by absolute path |
 | `solid-workspace`         | `examples/solid-workspace/main.tsx`     | `solid-workspace`      | Existing prebuilt host referenced by absolute path |
 | `solid-workspace-flow`    | `tests/native/solid-workspace.tsx`      | `solid-workspace-flow` | Existing prebuilt host referenced by absolute path |
+| `solid-workspace-soak`    | `tests/native/solid-workspace-soak.tsx` | `solid-workspace-soak` | Existing prebuilt host referenced by absolute path |
 | `solid-input-intent`      | `tests/native/solid-input-intent.tsx`   | `solid-input-intent`   | Existing prebuilt host referenced by absolute path |
 | `solid-interactions`      | `tests/native/solid-interactions.tsx`   | `solid-interactions`   | Existing prebuilt host referenced by absolute path |
 | `solid-input-viewport`    | `tests/native/solid-input-viewport.tsx` | `solid-input-viewport` | Existing prebuilt host referenced by absolute path |
@@ -162,7 +163,7 @@ those behaviors; follow the [native fixture recipe](../../tests/native/README.md
 ## Solid development and AOT inputs
 
 The Solid entries (`solid`, `solid-workspace`, `solid-workspace-flow`,
-`solid-input-intent`, `solid-interactions`, `solid-input-viewport`,
+`solid-workspace-soak`, `solid-input-intent`, `solid-interactions`, `solid-input-viewport`,
 `solid-platform` and `solid-services`) first run the repository's pinned universal JSX transform,
 then compile that exact generated `development/application.js` with the same Bun
 machine-code AOT path and strict executable inspection. The generated module is
