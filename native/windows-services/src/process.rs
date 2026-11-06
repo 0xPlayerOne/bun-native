@@ -95,6 +95,11 @@ impl Job {
 /// that has none of its own (started `DETACHED_PROCESS`): it attaches to the
 /// child's console, ignores the event itself, sends it and detaches again.
 pub fn interrupt_console(process: u32) -> io::Result<()> {
+    // `AttachConsole` reads `u32::MAX` as `ATTACH_PARENT_PROCESS`, which would
+    // send the event to this helper's parent console, and 0 names no process.
+    if process == 0 || process == u32::MAX {
+        return Err(io::Error::from(io::ErrorKind::InvalidInput));
+    }
     // SAFETY: detaching a console this helper may not have is harmless.
     unsafe { FreeConsole() };
     // SAFETY: attaches to another process's console by ID.
@@ -434,6 +439,17 @@ pub fn spawn(command: &Command<'_>) -> io::Result<Child> {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn an_interrupt_never_targets_the_parent_console_or_process_zero() {
+        // Neither value reaches `AttachConsole`, so no event can be sent.
+        for process in [0, u32::MAX] {
+            assert_eq!(
+                interrupt_console(process).unwrap_err().kind(),
+                io::ErrorKind::InvalidInput
+            );
+        }
+    }
+
     use super::*;
 
     #[test]

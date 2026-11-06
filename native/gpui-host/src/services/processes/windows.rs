@@ -892,11 +892,15 @@ mod tests {
             ]),
             Some(2)
         );
-        // No console of that ID exists, so the helper reports failure.
-        assert_eq!(
-            interrupt_helper([argument("--bun-native-interrupt-console=4294967295")]),
-            Some(1)
-        );
+        // `u32::MAX` is `ATTACH_PARENT_PROCESS` and 0 names no process: both are
+        // refused before any console is touched, so this test cannot signal the
+        // console it runs on.
+        for process in ["0", "4294967295"] {
+            assert_eq!(
+                interrupt_helper([argument(&format!("{INTERRUPT_HELPER_ARGUMENT}{process}"))]),
+                Some(1)
+            );
+        }
     }
 
     #[test]
