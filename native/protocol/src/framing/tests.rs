@@ -3,9 +3,9 @@
 
 use super::*;
 use crate::{
-    Capability, Element, ErrorCode, EventSequence, Limits, NodeId, Operation, RequestId,
-    ServicePolicy, WindowId, MAX_ID, MAX_NODES_PER_WINDOW, MAX_OPERATIONS, MAX_TEXT_BYTES,
-    MAX_TITLE_BYTES, PROTOCOL_VERSION,
+    Capability, DialogId, Element, ErrorCode, EventSequence, FileDialogResult, Limits, NodeId,
+    Operation, RequestId, ServicePolicy, WindowId, MAX_ID, MAX_NODES_PER_WINDOW, MAX_OPERATIONS,
+    MAX_TEXT_BYTES, MAX_TITLE_BYTES, PROTOCOL_VERSION,
 };
 use serde_json::{json, Value};
 use std::io::{BufReader, Cursor, Read};
@@ -210,23 +210,31 @@ fn invalid_events_write_nothing() {
 
 #[test]
 fn oversized_events_write_nothing_and_the_limit_is_inclusive() {
-    let error = |message: String| Event::Error {
-        id: None,
-        code: ErrorCode::NativeFailure,
-        message,
+    // Dialog selections are the largest events that pass validation, so
+    // their last path is sized to land the frame exactly on the limit.
+    let event = |last: usize| Event::FileDialogCompleted {
+        sequence: EventSequence::try_from(1).unwrap(),
+        window_id: WindowId::try_from(1).unwrap(),
+        dialog_id: DialogId::try_from(1).unwrap(),
+        result: FileDialogResult::Selected {
+            paths: std::iter::repeat_n(format!("/{}", "a".repeat(3_000)), 21)
+                .chain([format!("/{}", "a".repeat(last))])
+                .collect(),
+        },
     };
-    let envelope = serde_json::to_vec(&error(String::new())).unwrap().len();
+    let base = serde_json::to_vec(&event(0)).unwrap().len();
+    let exact = event(MAX_FRAME_BYTES - base);
+    assert!(exact.validate().is_ok());
     let mut bytes = Vec::new();
-    write_event(&mut bytes, &error("x".repeat(MAX_FRAME_BYTES - envelope))).unwrap();
+    write_event(&mut bytes, &exact).unwrap();
     assert_eq!(bytes.len(), MAX_FRAME_BYTES + 1);
     assert_eq!(bytes.last(), Some(&b'\n'));
 
+    let over = event(MAX_FRAME_BYTES - base + 1);
+    assert!(over.validate().is_ok());
     let mut bytes = Vec::new();
     assert!(matches!(
-        write_event(
-            &mut bytes,
-            &error("x".repeat(MAX_FRAME_BYTES - envelope + 1))
-        ),
+        write_event(&mut bytes, &over),
         Err(ProtocolError::Oversized)
     ));
     assert!(bytes.is_empty());

@@ -237,4 +237,176 @@ mod tests {
         write();
         assert!(!enabled());
     }
+
+    static NEXT_FILE: std::sync::atomic::AtomicUsize = std::sync::atomic::AtomicUsize::new(0);
+
+    struct TemporaryTrace(std::path::PathBuf);
+
+    impl Drop for TemporaryTrace {
+        fn drop(&mut self) {
+            let _ = std::fs::remove_file(&self.0);
+        }
+    }
+
+    /// Installs a trace on this test thread, as `install_from_environment` does.
+    fn install() -> (TemporaryTrace, Instant) {
+        let path = std::env::temp_dir().join(format!(
+            "bun-native-phase-trace-test-{}-{}.json",
+            std::process::id(),
+            NEXT_FILE.fetch_add(1, std::sync::atomic::Ordering::Relaxed)
+        ));
+        OpenOptions::new()
+            .write(true)
+            .create_new(true)
+            .open(&path)
+            .unwrap();
+        let origin = Instant::now();
+        TRACE.with(|trace| {
+            *trace.borrow_mut() = Some(Trace {
+                path: path.to_str().unwrap().to_owned(),
+                origin,
+                batches: Vec::with_capacity(MAX_BATCHES),
+                frames: Vec::with_capacity(MAX_FRAMES),
+                dropped_batches: 0,
+                dropped_frames: 0,
+                renders: 0,
+            });
+        });
+        (TemporaryTrace(path), origin)
+    }
+
+    fn times(started: Instant, step: u64) -> BatchTimes {
+        let at = |steps: u64| started + std::time::Duration::from_nanos(step * steps);
+        BatchTimes {
+            started,
+            prepared: at(1),
+            applied: at(3),
+            replied: at(6),
+        }
+    }
+
+    fn paint_end(frame: usize) -> Option<u64> {
+        TRACE.with(|trace| trace.borrow().as_ref().unwrap().frames[frame].paint_end)
+    }
+
+    fn read(path: &std::path::Path) -> serde_json::Value {
+        serde_json::from_slice(&std::fs::read(path).unwrap()).unwrap()
+    }
+
+    #[test]
+    fn enabled_trace_writes_batches_frames_and_render_counts_once() {
+        let (file, origin) = install();
+        assert!(enabled());
+        assert!(now().is_some());
+        let window = WindowId::try_from(1).unwrap();
+        batch(
+            RequestId::try_from(7).unwrap(),
+            window,
+            1,
+            times(origin, 1_000),
+        );
+        let frame = render(window, origin, 1001).unwrap();
+        assert_eq!(frame, 0);
+        painted(frame);
+        let first_paint = paint_end(frame).unwrap();
+        // Only the first paint callback after a render ends its frame.
+        std::thread::sleep(std::time::Duration::from_millis(1));
+        painted(frame);
+        assert_eq!(paint_end(frame), Some(first_paint));
+        // An unknown frame index is ignored.
+        painted(99);
+        let unpainted = render(WindowId::try_from(2).unwrap(), origin, 3).unwrap();
+        assert_eq!(unpainted, 1);
+        batch(
+            RequestId::try_from(8).unwrap(),
+            window,
+            100,
+            times(origin, 10),
+        );
+        write();
+        assert!(!enabled());
+        assert!(now().is_none());
+
+        let record = read(&file.0);
+        assert_eq!(record["schemaVersion"], 1);
+        assert_eq!(record["renders"], 2);
+        assert_eq!(record["droppedBatches"], 0);
+        assert_eq!(record["droppedFrames"], 0);
+        assert_eq!(
+            record["batchColumns"],
+            json!([
+                "id",
+                "windowId",
+                "operations",
+                "startedNanos",
+                "prepareNanos",
+                "applyNanos",
+                "replyEnqueueNanos",
+                "rendersBefore"
+            ])
+        );
+        assert_eq!(
+            record["batches"],
+            json!([
+                [7, 1, 1, 0, 1_000, 2_000, 3_000, 0],
+                [8, 1, 100, 0, 10, 20, 30, 2]
+            ])
+        );
+        let frames = record["frames"].as_array().unwrap();
+        assert_eq!(frames.len(), 2);
+        assert_eq!(frames[0][0], 1);
+        assert_eq!(frames[0][1], 0);
+        assert_eq!(frames[0][4], 1001);
+        let render_nanos = frames[0][2].as_u64().unwrap();
+        let paint_nanos = frames[0][3].as_u64().unwrap();
+        assert!(paint_nanos >= render_nanos);
+        assert_eq!(paint_nanos, first_paint);
+        assert_eq!(frames[1][0], 2);
+        assert!(frames[1][3].is_null());
+        assert_eq!(frames[1][4], 3);
+
+        // Later writes do nothing and leave the file intact.
+        write();
+        assert_eq!(read(&file.0), record);
+    }
+
+    #[test]
+    fn full_trace_counts_dropped_records_instead_of_growing() {
+        let (file, origin) = install();
+        let window = WindowId::try_from(1).unwrap();
+        let id = RequestId::try_from(1).unwrap();
+        for _ in 0..=MAX_BATCHES {
+            batch(id, window, 1, times(origin, 1));
+        }
+        for _ in 0..MAX_FRAMES {
+            assert!(render(window, origin, 1).is_some());
+        }
+        assert!(render(window, origin, 1).is_none());
+        assert!(render(window, origin, 1).is_none());
+        TRACE.with(|trace| {
+            let trace = trace.borrow();
+            let trace = trace.as_ref().unwrap();
+            assert_eq!(trace.batches.len(), MAX_BATCHES);
+            assert_eq!(trace.batches.capacity(), MAX_BATCHES);
+            assert_eq!(trace.frames.len(), MAX_FRAMES);
+            assert_eq!(trace.frames.capacity(), MAX_FRAMES);
+        });
+        write();
+        let record = read(&file.0);
+        assert_eq!(record["droppedBatches"], 1);
+        assert_eq!(record["droppedFrames"], 2);
+        assert_eq!(record["renders"], MAX_FRAMES + 2);
+        assert_eq!(record["batches"].as_array().unwrap().len(), MAX_BATCHES);
+        assert_eq!(record["frames"].as_array().unwrap().len(), MAX_FRAMES);
+    }
+
+    #[test]
+    fn failed_write_disables_the_trace_without_panicking() {
+        let (file, _) = install();
+        std::fs::remove_file(&file.0).unwrap();
+        // The trace never recreates a removed file.
+        write();
+        assert!(!enabled());
+        assert!(!file.0.exists());
+    }
 }

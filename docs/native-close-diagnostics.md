@@ -20,16 +20,17 @@ The existing `BUN_NATIVE_EVIDENCE_LOG` and `BUN_NATIVE_EVIDENCE_NONCE` opt-in
 enables these records. The Linux driver already supplies both variables in its
 owned evidence directory.
 
-| Observation                                                | What it establishes                                                                                                                                                           |
-| ---------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `os_close_requested_ms` and `os_close_command_returned_ms` | The driver invoked Alt+F4 and the xdotool command returned. These do not establish WM delivery.                                                                               |
-| `native_window_closed`, stage `native-lifecycle`           | The host's existing GPUI window-closed callback reached its evidence hook. It does not establish protocol transmission or receipt, and does not identify who requested close. |
-| `waiting_for_os_close`                                     | The public fixture completed its workload and reached the deliberately unresolved callback.                                                                                   |
-| `launch_callback_aborted`                                  | The existing listener's cancellation signal fired. An abort alone does not identify OS close as its cause.                                                                    |
-| `public_window_closed`                                     | The fixture's existing `window.closed` await resolved.                                                                                                                        |
-| `shutdown_requested` / `shutdown_resolved`                 | The fixture entered and returned from its existing `app.shutdown()` call.                                                                                                     |
-| `application_closed`                                       | Its existing `app.closed` await resolved.                                                                                                                                     |
-| `final_report_ready`                                       | The fixture constructed its final report; the following report write may still fail.                                                                                          |
+| Observation                                                | What it establishes                                                                                                                                                                |
+| ---------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `os_close_requested_ms` and `os_close_command_returned_ms` | The driver invoked Alt+F4 and the xdotool command returned. These do not establish WM delivery.                                                                                    |
+| `native_close_requested`, stage `native-lifecycle`         | GPUI received the window manager's close request (`WM_DELETE_WINDOW` on X11) for an owned window. The callback still allows the close. It does not establish who sent the request. |
+| `native_window_closed`, stage `native-lifecycle`           | The host's existing GPUI window-closed callback reached its evidence hook. It does not establish protocol transmission or receipt, and does not identify who requested close.      |
+| `waiting_for_os_close`                                     | The public fixture completed its workload and reached the deliberately unresolved callback.                                                                                        |
+| `launch_callback_aborted`                                  | The existing listener's cancellation signal fired. An abort alone does not identify OS close as its cause.                                                                         |
+| `public_window_closed`                                     | The fixture's existing `window.closed` await resolved.                                                                                                                             |
+| `shutdown_requested` / `shutdown_resolved`                 | The fixture entered and returned from its existing `app.shutdown()` call.                                                                                                          |
+| `application_closed`                                       | Its existing `app.closed` await resolved.                                                                                                                                          |
+| `final_report_ready`                                       | The fixture constructed its final report; the following report write may still fail.                                                                                               |
 
 Fixture phase records include the seven scalar public ownership counters. They
 retain no nodes, callbacks, windows or application work. There are seven fixed
@@ -37,10 +38,15 @@ record sites, with no polling or new event subscriptions. Diagnostic write
 errors do not replace the original lifecycle outcome.
 
 Native records reuse the existing maximum 65,536-byte record writer, one record
-per existing window-closed callback. The driver retains its 4 MiB event-log
+per close request and per window-closed callback. With `BUN_NATIVE_POINTER_TRACE=1`
+the host also records up to 64 `key_trace` records for key downs that GPUI
+received with Control, Alt or the platform modifier; plain typing is never
+recorded. The driver retains its 4 MiB event-log
 limit. Fixture records share its existing 1 MiB application-evidence limit.
-The driver's result includes at most 32 close-phase records and explicitly marks
-truncation; the original JSONL file remains available.
+The driver's result includes at most 32 close-phase records
+(`native_close_requested`, `native_window_closed`, `lifecycle_phase` and
+`key_trace`) in `close_diagnostics.phases` and marks truncation in
+`phases_truncated`; the original JSONL file remains available.
 
 ## One observation after the close decision
 
@@ -62,28 +68,6 @@ properties are observations at that instant; they do not prove the history of
 WM message delivery or exclude window-ID reuse by the same process. No action
 is taken against a foreign or unverified owner. Existing identity-checked
 process cleanup remains authoritative.
-
-## Additional observations after a failed close
-
-Only when that existing check records `os_close` as failed, and still before
-forced cleanup, the driver adds two read-only observations to
-`close_diagnostics`:
-
-- `window_manager` runs one `xprop -root _NET_ACTIVE_WINDOW _NET_CLIENT_LIST`
-  query under the same three-second bound. It reports whether the previously
-  owned window ID is still `active` and `managed`. This is window-manager state
-  at that instant, not WM close delivery.
-- `thread_sample` reads `/proc` for at most 8 previously observed processes whose
-  PID and start ticks still match, and at most 64 threads each. Each thread
-  records its `tid`, `comm`, scheduler `state`, `wchan` and the first `syscall`
-  field; `threads_truncated` marks a larger thread list. It distinguishes, for
-  example, a host main thread blocked in a driver or futex wait from one idle in
-  its event-loop poll. It never signals, traces or adopts a process.
-
-A successful close records neither field. Errors in these observations are kept
-as `snapshot_error` and never change the close result.
-
-## Clocks and unchanged gates
 
 Each clock's origin is explicit: driver start, fixture initialization, or native
 evidence initialization. Timestamps describe observation, not OS delivery or

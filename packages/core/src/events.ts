@@ -11,7 +11,20 @@ import {
 
 export type RoutedEvent = Exclude<
   WindowEvent,
-  { type: 'closed' | 'global_shortcut' | 'notification_activated' | 'notification_dismissed' }
+  {
+    type:
+      | 'closed'
+      | 'global_shortcut'
+      | 'notification_activated'
+      | 'notification_dismissed'
+      | 'process_output'
+      | 'process_exited'
+      | 'display_changed'
+      | 'file_dialog_completed'
+      | 'drop_target_drag'
+      | 'drop_received'
+      | 'drop_rejected'
+  }
 >
 type BindingKey = `${NativeEventType}:${'capture' | 'bubble'}`
 type BindingKeys = { readonly capture: BindingKey; readonly bubble: BindingKey }
@@ -29,6 +42,7 @@ const bindingKeys: Readonly<Record<NativeEventType, BindingKeys>> = {
   pointer_up: keys('pointer_up'),
   focus: keys('focus'),
   blur: keys('blur'),
+  dismiss: keys('dismiss'),
 }
 const eventTypes: readonly string[] = Object.keys(bindingKeys)
 type Subscription = { remove: (() => void) | undefined }
@@ -100,6 +114,13 @@ function payload(event: RoutedEvent, node: NativeNode, path: readonly NativeNode
     case 'focus':
     case 'blur':
       return { ...common, type: event.type }
+    case 'dismiss':
+      return {
+        ...common,
+        type: event.type,
+        node: node as NativeNode<'overlay'>,
+        reason: event.reason,
+      }
   }
 }
 

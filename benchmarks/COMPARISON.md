@@ -28,8 +28,10 @@ A comparison is rejected, not summarized, unless:
   `stats.ts`);
 - the instrumented calibration of every artifact paints the same initial and
   final native trees and reports the same renderer identity;
-- the generated module rebuilds byte-identically, and the source snapshot,
-  artifacts and host hash are unchanged before every launch and after all trials.
+- the generated module rebuilds byte-identically; every artifact's hash is
+  unchanged before each of its launches; the source snapshot is unchanged after
+  compilation and after all trials; and the host hash is unchanged after all
+  trials.
 
 Timed launches disable native evidence serialization. Development calibration
 uses `BUN_JSC_useDFGJIT=0`, matching native CI's handling of the known DFG
@@ -119,21 +121,28 @@ every input-latency launch.
 ## CI
 
 `.github/workflows/benchmark-comparison.yml` runs the comparison on hosted
-`ubuntu-24.04` (Xvfb, Mesa lavapipe) weekly, on manual dispatch (trial counts
-are inputs) and on ready pull requests that change the harness. It is not a
-required check and never gates a merge. Every run uploads the raw output
-directory (except the AOT executables) plus the exported record as the
-`benchmark-comparison-linux-X64` artifact, kept for 30 days, and writes the
-summary table to the job summary. Hosted runners are shared, so treat those
-numbers as descriptive of that run. macOS and Windows are not wired in: the
+`ubuntu-24.04` (Xvfb, Mesa lavapipe) weekly, on manual dispatch (`trials` and
+`input-trials` are inputs) and on non-draft pull requests to `main` that change
+the workflow, `benchmarks/comparison/`, `benchmarks/solid/` or the XTest
+input/paint-observer scripts. The job is skipped unless the repository variable
+`CI_BILLING_PAUSED` is `false`. Scheduled and pull request runs use 5 timed
+trials and 5 input-latency trials. It is not a required check and never gates
+a merge. Every run uploads the raw output directory (except the AOT
+executables and the session runtime directory), the host build log and
+SHA-256, and the exported record as the `benchmark-comparison-linux-X64`
+artifact, kept for 30 days, and writes the summary table to the job summary.
+Hosted runners are shared, so treat those numbers as descriptive of that run. macOS and Windows are not wired in: the
 controller samples RSS and load through `/proc`, and the XTest driver is
 Linux-only.
 
 To keep a run in the repository, copy it into a compact record with
 `bun benchmarks/comparison/export.ts ABSOLUTE_RUN_OUTPUT ABSOLUTE_DEST`. The
-destination must not exist yet. The export writes `comparison.json` and
-`launches.jsonl.gz` (every child report plus its stderr tail) and prints a
-Markdown summary table.
+destination must not exist yet. The export writes `comparison.json`,
+`launches.jsonl.gz` (every child report plus its last 4,000 stderr characters)
+and, when the run has input-latency launches, `input-launches.jsonl.gz` (each
+child report plus its driver `result.json`). It prints Markdown summary tables
+for per-launch metrics (with input latency when present), pooled operation
+samples and builds.
 
 ## Not measured here
 

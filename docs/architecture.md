@@ -21,7 +21,7 @@ flowchart TD
 
 ### Development and release modes
 
-- **Development:** ordinary Bun executes application TS/JS against an explicitly selected prebuilt host. Watchers and framework reload are BN5 work; they are not implemented by launching the current example.
+- **Development:** ordinary Bun executes application TS/JS against an explicitly selected prebuilt host. `bun run native dev --watch` rebuilds and remounts the app and host after a successful edit, resetting state ([CLI reference](developer-tooling.md)); state-preserving framework reload remains BN5 work.
 - **Production:** Bun's experimental `bun compile` checks/compiles supported program logic to machine code on the target host. A reduced Bun runtime, event loop and GC may still ship; no JIT is claimed only after inspecting the real AOT artifact.
 - **Native host:** GPUI or another approved native renderer is compiled by framework maintainers and distributed as versioned host artifacts. A consumer editing a TSX component must not silently invoke Cargo.
 
@@ -29,21 +29,25 @@ AOT is an execution mechanism, **not** a JSX/CSS-to-Rust compiler. The Solid/Rea
 
 ## Implemented foundation
 
-| Source                   | Responsibility                                                                      | Dependency direction                          |
-| ------------------------ | ----------------------------------------------------------------------------------- | --------------------------------------------- |
-| `packages/protocol`      | Portable framing and validated command/event contracts                              | No runtime or renderer dependencies           |
-| `packages/runtime`       | Own one prebuilt native process, handshake, requests, events and shutdown           | Protocol public exports and Bun platform APIs |
-| `packages/core`          | Opaque handles, atomic batches, input revisions and owned application callbacks     | Protocol and runtime public exports           |
-| `native/protocol`        | Rust validation and framing matching the TypeScript contract                        | Serde and standard library                    |
-| `native/gpui-host`       | Main-thread GPUI window, widgets and native input                                   | Rust protocol and pinned GPUI                 |
-| `examples/native-window` | Bun-owned counter state and native event observation                                | Core public exports                           |
-| `experiments/aot-gpui`   | Compiler interoperability, negative controls, binary inspection and artifact recipe | Pinned compiler and explicit prebuilt host    |
+| Source                   | Responsibility                                                                       | Dependency direction                          |
+| ------------------------ | ------------------------------------------------------------------------------------ | --------------------------------------------- |
+| `packages/protocol`      | Portable framing and validated command/event contracts                               | No runtime or renderer dependencies           |
+| `packages/runtime`       | Own one prebuilt native process, handshake, requests, events and shutdown            | Protocol public exports and Bun platform APIs |
+| `packages/core`          | Opaque handles, atomic batches, input revisions and owned application callbacks      | Protocol and runtime public exports           |
+| `packages/renderer`      | Framework-neutral staged native tree that both adapters commit through               | Core public exports                           |
+| `packages/solid`         | Solid universal renderer and JSX surface                                             | Core, renderer and pinned Solid               |
+| `packages/react`         | React reconciler host config and JSX surface                                         | Core, renderer and pinned React/reconciler    |
+| `scripts/native.ts`      | Checkout CLI: create, check, format, doctor, dev (with full-remount watch) and build | Workspace packages, pinned Bun, supplied host |
+| `native/protocol`        | Rust validation and framing matching the TypeScript contract                         | Serde and standard library                    |
+| `native/gpui-host`       | Main-thread GPUI window, widgets and native input                                    | Rust protocol and pinned GPUI                 |
+| `examples/native-window` | Bun-owned counter state and native event observation                                 | Core public exports                           |
+| `experiments/aot-gpui`   | Compiler interoperability, negative controls, binary inspection and artifact recipe  | Pinned compiler and explicit prebuilt host    |
 
 `scripts/quality/boundaries.ts` checks TypeScript import direction and runtime dependency use. Both Rust crates share the root Cargo workspace and lock. The example never invokes Cargo. Its `BUN_NATIVE_HOST` setting selects an already-built executable; the AOT recipe copies that same host into the output and records its hash.
 
-Protocol 9 requires shared layout, interaction and immutable service-policy contracts on the BN1 tree and replaces protocol 8 without a compatibility decoder. Its `hello`, `open`, `batch`, `close` and `shutdown` commands operate on a bounded multi-window tree of boxes, text, buttons and editable inputs; `display_snapshot` adds an explicitly granted owned-window display read. Separately granted bounded clipboard reads/writes and owned global shortcut registrations run on local Linux X11, each with a dedicated worker and optional capability; other platforms remain unavailable for both. Separately granted owned desktop notifications use the freedesktop.org notification service on the Linux D-Bus session bus. The native input owns editing state; explicit application replacements require its current edit revision. Atomic tree batches carry a separate base revision. The [ABI contract](native-abi.md) defines ownership, identity, limits, reply validation, thread authority and failure semantics.
+Protocol 11 requires shared layout, interaction and immutable service-policy contracts on the BN1 tree and replaces earlier protocols without a compatibility decoder. Its `hello`, `open`, `batch`, `close` and `shutdown` commands operate on a bounded multi-window tree of boxes, text, buttons and editable inputs; `display_snapshot` adds an explicitly granted owned-window display read. Separately granted bounded clipboard reads/writes and owned global shortcut registrations run on local Linux X11, each with a dedicated worker and optional capability; other platforms remain unavailable for both. Separately granted owned desktop notifications use the freedesktop.org notification service on the Linux D-Bus session bus. On Linux, separately granted launch filesystem roots back bounded owned-window file operations ([ADR 0010](decisions/0010-filesystem-grants.md)). Separately granted owned drop targets receive X11 file drops as untrusted display names; paths stay in the host and resolve only beneath a launch filesystem root. The native input owns editing state; explicit application replacements require its current edit revision. Atomic tree batches carry a separate base revision. The [ABI contract](native-abi.md) defines ownership, identity, limits, reply validation, thread authority and failure semantics.
 
-## Planned package boundaries
+## Package boundaries
 
 | Area                      | Responsibility                                                   | May depend on                                  |
 | ------------------------- | ---------------------------------------------------------------- | ---------------------------------------------- |
@@ -105,6 +109,6 @@ Follow [engineering-quality.md](engineering-quality.md). The highest-risk paths 
 
 ## Current gaps
 
-The public element API and protocol 9 are experimental and implemented; they are not a compatibility promise. The Solid/React adapters exist in the current source. General native services, complete text accessibility, hot reload and distributable cross-platform releases remain separate acceptance work. Linux software-GPU evidence does not qualify macOS/Windows GUI behavior, Wayland, physical GPUs, IME or assistive technology. The native release-host and retention audits record their exact qualified source; BN4 and BN6 own the corresponding usability and platform acceptance.
+The public element API and protocol 11 are experimental and implemented; they are not a compatibility promise. The Solid/React adapters exist in the current source. General native services, complete text accessibility, hot reload and distributable cross-platform releases remain separate acceptance work. Linux software-GPU evidence does not qualify macOS/Windows GUI behavior, Wayland, physical GPUs, IME or assistive technology. The native release-host and retention audits record their exact qualified source; BN4 and BN6 own the corresponding usability and platform acceptance.
 
 See [decision records](decisions/README.md), [toolchain](toolchain.md), [testing](testing.md) and the [master roadmap](https://github.com/0xPlayerOne/bun-native/issues/1).

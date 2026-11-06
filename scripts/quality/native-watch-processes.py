@@ -167,6 +167,20 @@ class Capture:
             return list(self.records)
 
 
+def process_image(pid):
+    """Resolved executable of a live process, "" when hidden, None when gone."""
+    try:
+        return str(Path(f"/proc/{pid}/exe").resolve(strict=True))
+    except FileNotFoundError:
+        return None
+    except PermissionError:
+        # A non-dumpable helper (the xdg-desktop-portal or a session bus it was
+        # activated from) hides its image from the owner. It stays in the owned
+        # set and the audits, but cannot be mistaken for the host or Bun, whose
+        # images are always readable.
+        return ""
+
+
 class ProcessAudit:
     """Retain immutable PID/start-tick ownership and sample remount overlap."""
 
@@ -204,12 +218,9 @@ class ProcessAudit:
                         raise RuntimeError("Watch process evidence exceeded its bound")
                     for row in rows:
                         pid = row["pid"]
-                        try:
-                            self.images[pid] = str(
-                                Path(f"/proc/{pid}/exe").resolve(strict=True)
-                            )
-                        except FileNotFoundError:
-                            continue
+                        image = process_image(pid)
+                        if image is not None:
+                            self.images[pid] = image
                     live = [row for row in rows if row["state"] != "Z"]
                     hosts = [
                         row["pid"]

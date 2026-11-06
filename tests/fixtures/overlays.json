@@ -1,0 +1,266 @@
+{
+  "capabilities": ["overlays_v1", "scroll_anchor_v1", "overlay_keyboard_v1"],
+  "max_overlay_depth": 8,
+  "cases": [
+    {
+      "name": "window-overlay-defaults",
+      "element": {
+        "kind": "overlay"
+      },
+      "normalized": {
+        "kind": "overlay",
+        "anchor": "window",
+        "modal": false,
+        "style": {}
+      },
+      "valid": true
+    },
+    {
+      "name": "modal-dialog-layer",
+      "element": {
+        "kind": "overlay",
+        "anchor": "window",
+        "modal": true,
+        "style": {
+          "align_items": "center",
+          "justify_content": "center",
+          "background": 3355443
+        }
+      },
+      "normalized": {
+        "kind": "overlay",
+        "anchor": "window",
+        "modal": true,
+        "style": {
+          "align_items": "center",
+          "justify_content": "center",
+          "background": 3355443
+        }
+      },
+      "valid": true
+    },
+    {
+      "name": "parent-anchored-popover",
+      "element": {
+        "kind": "overlay",
+        "anchor": "parent",
+        "style": {
+          "padding": 4
+        }
+      },
+      "normalized": {
+        "kind": "overlay",
+        "anchor": "parent",
+        "modal": false,
+        "style": {
+          "padding": 4
+        }
+      },
+      "valid": true
+    },
+    {
+      "name": "scrolling-overlay-with-end-anchor",
+      "element": {
+        "kind": "overlay",
+        "style": {
+          "overflow": "scroll_y",
+          "scroll_anchor": "end"
+        }
+      },
+      "normalized": {
+        "kind": "overlay",
+        "anchor": "window",
+        "modal": false,
+        "style": {
+          "overflow": "scroll_y",
+          "scroll_anchor": "end"
+        }
+      },
+      "valid": true
+    },
+    {
+      "name": "box-end-anchor-two-axis",
+      "element": {
+        "kind": "box",
+        "style": {
+          "overflow": "scroll",
+          "scroll_anchor": "end"
+        }
+      },
+      "valid": true
+    },
+    {
+      "name": "box-start-anchor",
+      "element": {
+        "kind": "box",
+        "style": {
+          "overflow": "scroll_y",
+          "scroll_anchor": "start"
+        }
+      },
+      "valid": true
+    },
+    {
+      "name": "modal-parent-anchor-rejected",
+      "element": {
+        "kind": "overlay",
+        "anchor": "parent",
+        "modal": true
+      },
+      "valid": false
+    },
+    {
+      "name": "unknown-anchor-rejected",
+      "element": {
+        "kind": "overlay",
+        "anchor": "cursor"
+      },
+      "valid": false
+    },
+    {
+      "name": "null-modal-rejected",
+      "element": {
+        "kind": "overlay",
+        "modal": null
+      },
+      "valid": false
+    },
+    {
+      "name": "string-modal-rejected",
+      "element": {
+        "kind": "overlay",
+        "modal": "true"
+      },
+      "valid": false
+    },
+    {
+      "name": "unknown-overlay-field-rejected",
+      "element": {
+        "kind": "overlay",
+        "z_index": 10
+      },
+      "valid": false
+    },
+    {
+      "name": "anchor-without-scroll-rejected",
+      "element": {
+        "kind": "box",
+        "style": {
+          "scroll_anchor": "end"
+        }
+      },
+      "valid": false
+    },
+    {
+      "name": "anchor-horizontal-scroll-rejected",
+      "element": {
+        "kind": "box",
+        "style": {
+          "overflow": "scroll_x",
+          "scroll_anchor": "end"
+        }
+      },
+      "valid": false
+    },
+    {
+      "name": "unknown-scroll-anchor-rejected",
+      "element": {
+        "kind": "box",
+        "style": {
+          "overflow": "scroll_y",
+          "scroll_anchor": "middle"
+        }
+      },
+      "valid": false
+    },
+    {
+      "name": "leaf-scroll-anchor-rejected",
+      "element": {
+        "kind": "text",
+        "text": "x",
+        "style": {
+          "scroll_anchor": "end"
+        }
+      },
+      "valid": false
+    },
+    {
+      "name": "autofocus-menu-popover",
+      "element": {
+        "kind": "overlay",
+        "anchor": "parent",
+        "autofocus": true,
+        "navigation": "menu",
+        "style": {
+          "padding": 4
+        }
+      },
+      "normalized": {
+        "kind": "overlay",
+        "anchor": "parent",
+        "modal": false,
+        "autofocus": true,
+        "navigation": "menu",
+        "style": {
+          "padding": 4
+        }
+      },
+      "valid": true
+    },
+    {
+      "name": "keyboard-defaults-are-omitted",
+      "element": {
+        "kind": "overlay",
+        "autofocus": false,
+        "navigation": "tab"
+      },
+      "normalized": {
+        "kind": "overlay",
+        "anchor": "window",
+        "modal": false,
+        "style": {}
+      },
+      "valid": true
+    },
+    {
+      "name": "modal-menu-layer",
+      "element": {
+        "kind": "overlay",
+        "modal": true,
+        "navigation": "menu"
+      },
+      "normalized": {
+        "kind": "overlay",
+        "anchor": "window",
+        "modal": true,
+        "navigation": "menu",
+        "style": {}
+      },
+      "valid": true
+    },
+    {
+      "name": "unknown-navigation-rejected",
+      "element": {
+        "kind": "overlay",
+        "navigation": "grid"
+      },
+      "valid": false
+    },
+    {
+      "name": "non-boolean-autofocus-rejected",
+      "element": {
+        "kind": "overlay",
+        "autofocus": "yes"
+      },
+      "valid": false
+    },
+    {
+      "name": "null-navigation-rejected",
+      "element": {
+        "kind": "overlay",
+        "navigation": null
+      },
+      "valid": false
+    }
+  ]
+}

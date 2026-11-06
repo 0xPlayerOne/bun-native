@@ -337,12 +337,31 @@ def pointer_delivery(
     }
 
 
-def pixel_counts(pixels, size, observation, mode):
+FOCUS_RING_WIDTH = 3
+
+
+def in_ring(node, x, y):
+    """Whether a pixel centre lies in the focus-ring band along a node's edge."""
+    left, top, width, height = node
+    inside = left <= x < left + width and top <= y < top + height
+    deeper = (
+        left + FOCUS_RING_WIDTH <= x < left + width - FOCUS_RING_WIDTH
+        and top + FOCUS_RING_WIDTH <= y < top + height - FOCUS_RING_WIDTH
+    )
+    return inside and not deeper
+
+
+def pixel_counts(pixels, size, observation, mode, node=None):
     """Detect actual white glyphs/blue caret, including the unclipped tail gutter.
 
     The whitespace prefix contains no glyph pixels. End must show TAIL; Home
     must show none, even in the visible gutter where an unclipped TAIL would lie.
     These predicates also reject deliberately untranslated/unclipped RGB controls.
+
+    `node` is the focused input's layout bounds [x, y, w, h]. Its keyboard focus
+    ring (an inset white edge over a dark band, FOCUS_RING_WIDTH pixels deep) is
+    host chrome, not text, so those edge pixels are skipped; the padding between
+    the ring and the text viewport and everything beyond the node still count.
     """
     width, height = size
     if len(pixels) != width * height * 3 or mode not in (
@@ -370,6 +389,8 @@ def pixel_counts(pixels, size, observation, mode):
         expected_caret = observation["caret"]
     for py in range(max(0, math.ceil(y)), min(height, math.floor(y + h))):
         for px in range(max(0, math.ceil(x)), width - 24):
+            if node is not None and in_ring(node, px + 0.5, py + 0.5):
+                continue
             offset = (py * width + px) * 3
             red, green, blue = pixels[offset : offset + 3]
             inside = x <= px + 0.5 < x + w

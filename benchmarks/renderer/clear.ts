@@ -29,6 +29,9 @@ function fakeWindow() {
     insert: () => void (operations.insert += 1),
     append: () => void (operations.insert += 1),
     remove: () => void (operations.remove += 1),
+    focus: () => {},
+    scrollTo: () => {},
+    scrollIntoView: () => {},
   }
   const window = {
     root: handle('box'),

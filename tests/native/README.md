@@ -29,6 +29,11 @@ Its output directory must be new, and the application command is explicit.
 | `aot-react-services`   | Compiled `react-services`                | The same React consumer and native service operation through Bun AOT.                                                                                                    |
 | `--`                   | An explicit command                      | Create the isolated display environment for a benchmark runner, the diagnostics driver or a self-checking fixture; the supplied command defines its own checks.          |
 
+`tests/native/text-input.ts` is self-driving: it qualifies grapheme editing,
+Hebrew input, dead-key composition, selection/clipboard, read-only and disabled
+inputs, Tab order, scale factor 1 or 2 and an AT-SPI tree read. See
+[native text](../../docs/native-text.md) for its environment and support matrix.
+
 The input driver verifies that the target window belongs to the launched
 application, focuses it, injects XTest input and requires matching Bun events and
 complete native paint snapshots. It waits for the mounted tree before injecting
@@ -352,6 +357,10 @@ input, display-presentation latency or macOS/Windows GUI behavior.
 
 ## Shared layout diagnostics
 
+`tests/native/overlays.ts` consumes only public core and drives itself with XTest (xdotool) inside the isolated session, reading click positions from the host's nonce-tagged paint evidence (`BUN_NATIVE_EVIDENCE_LOG`/`BUN_NATIVE_EVIDENCE_NONCE` must be set by the caller because the host inherits the launching environment). It covers modal focus trapping, backdrop pointer blocking, nested Escape, focus/selection return, popover z-order with screenshot pixels, end-anchored streaming scroll, an autofocus menu popover with arrow keys, type-ahead and a screenshot-verified focus ring, and programmatic focus, `scrollTo`, `scrollIntoView` and Tab reveal in development and through `--entry overlays` AOT. See the [overlay contract](../../docs/native-overlays.md).
+
+`tests/native/popups.ts` (`BUN_NATIVE_POPUP_EVIDENCE`, `BUN_NATIVE_POPUP_MODE`, plus the evidence log and nonce) qualifies popup window overlays the same way and also through `--entry popups` AOT. Popup geometry, override-redirect state, `WM_TRANSIENT_FOR`, `_NET_WM_WINDOW_TYPE` and stacking come from the X server (`xwininfo`, `xprop`); it covers placement beyond the parent window, pointer routing and coordinates, Escape with focus kept in the parent, following a parent move, blur dismissal, display clamping with an upward flip and closing with the parent. See [popup windows](../../docs/native-overlays.md#popup-windows-beyond-the-parent-window).
+
 `tests/native/layout.ts` consumes only public core and is driven by the `layout` scenario in `scripts/quality/native-diagnostics-linux.py`. It uses the same isolated session and owned-window cleanup, with actual pointer/wheel/key/resize actions. Both development and the shared AOT helper's `--entry layout` must pass against the matching current host. The [layout contract](../../docs/native-layout.md) records exact commands, geometry bounds, source status and unsupported coverage. This diagnostic is separate from the repeated window baseline.
 
 ## Shared interaction diagnostics
@@ -433,6 +442,24 @@ retains the release host build identity and both inspected AOT application
 hashes. The host's native source is byte-identical across the explicitly named
 host/application commits. Neither binary was executed during that compilation;
 this record does not qualify the native recipe above.
+
+## Streaming-list soak
+
+The `solid-streaming-list` and `react-streaming-list` entries render one
+app-level windowed model over a 10,000-message history and replay the
+versioned `benchmarks/streaming-list-fixture.ts` stream. Build each with
+`experiments/aot-gpui/build-window.ts --entry ENTRY`. Then pass its
+`development/application.js` or AOT executable to `tests/native/streaming-list.py
+--framework solid|react --mode development|aot --host-profile release --output
+NEW_DIRECTORY -- APPLICATION`. Run it inside the isolated session.
+
+The controller uses real XTest navigation, pointer selection, theme/density
+keys, a window-manager resize and Alt+F4. The fixture requires an unmoved
+detached window, visible-window node/listener bounds and zero owners after
+close. `streaming-list.py summarize --output FILE REPORT...` requires one final
+digest across runs and writes the compact baseline. See
+[streaming lists](../../docs/native-lists.md) for the oracle, the opt-in
+`BUN_NATIVE_FRAME_TRACE` record and unsupported scope.
 
 ## Portable target-host paint smoke
 

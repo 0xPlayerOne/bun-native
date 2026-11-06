@@ -53,7 +53,7 @@ export function parseRootId(value: unknown): string {
   return value
 }
 
-function parseRootPath(value: unknown): string {
+export function parseRootPath(value: unknown): string {
   const path = string(value, 'filesystem root path', MAX_ROOT_PATH_BYTES)
   if (
     !path.startsWith('/') ||
@@ -133,7 +133,7 @@ export function parseFilePath(value: unknown): string {
   return path
 }
 
-function parseChunk(value: unknown): string {
+export function parseChunk(value: unknown): string {
   if (
     typeof value !== 'string' ||
     value.length > MAX_FILE_CHUNK_BASE64 ||

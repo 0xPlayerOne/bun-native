@@ -17,6 +17,9 @@ function recordingWindow() {
     insert: () => {},
     append: () => {},
     remove: () => {},
+    focus: () => {},
+    scrollTo: () => {},
+    scrollIntoView: () => {},
   } as NativeBatch
   const window = {
     root: handle('box'),

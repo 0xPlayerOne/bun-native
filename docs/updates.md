@@ -29,27 +29,27 @@ INSTALL_DIR/
   lock         single-writer lock holding the owning process ID
 ```
 
-`install` takes the lock, discards uncommitted work, rejects another product's installation and refuses an equal or lower sequence (replay/downgrade). It then streams each file into a fresh staging directory. A file that ends early, exceeds its declared size or has a different digest fails the install. The staged build `manifest.json` must agree with the signed inventory on target, Bun revision and executable application/host hashes. The staging directory is renamed into `versions/`, then a fully written and synced `state.json` replaces the old one by atomic rename. Until that rename the previous release remains current. Afterwards the prior current release is retained as `previous`, and older versions are removed.
+`install` takes the lock, discards uncommitted work, rejects another product's installation and refuses an equal or lower sequence (replay/downgrade). It then streams each file into a fresh staging directory. A file that ends early, exceeds its declared size or has a different digest fails the install. The staged build `manifest.json` must agree with the signed inventory on target, Bun revision and executable application/host hashes. The staging directory is renamed into `versions/`, then a fully written and synced `state.json` replaces the old one by atomic rename. Until that rename the previous release remains current. Afterwards the prior current release is retained as `previous`, and older versions are removed. After a rollback, the newer release is the retained `previous`. Installing it again is refused even though its sequence is higher, so use `rollback` to roll forward.
 
 A crash at any point leaves a stale lock and possibly staged or unreferenced files. The next `install`, `rollback` or `recover` takes over a lock whose process is no longer alive, removes those leftovers and leaves exactly the last committed release. A lock held by a live process fails as `busy`. Process ID reuse after a crash can make a stale lock look live. Remove it once you know no updater is running.
 
-`rollback` re-hashes the retained previous release, refuses it if any file is missing or modified, and swaps current and previous with the same atomic commit. Running it again rolls forward. Neither operation touches `data/`. The launcher resolves the active directory from `state.json` (`currentRelease`). Payloads come from a local directory or an HTTPS base URL. Plain HTTP is accepted only for loopback test servers, and redirects are refused.
+`rollback` re-hashes the retained previous release, refuses it if any file is missing or modified, and swaps current and previous with the same atomic commit. Running it again rolls forward. Neither operation touches `data/`. `status` resolves the active directory from `state.json` and fails if that directory is missing. Generated launchers read the derived `current` pointer instead (see below). Payloads come from a local directory or an HTTPS base URL. Plain HTTP is accepted only for loopback test servers, and redirects are refused.
 
 ## Launchers, desktop integration and uninstall
 
-`state.json` stays authoritative. After each commit, the installer atomically rewrites `current`, a one-line copy of the current release directory, because shell and `cmd` launchers cannot parse JSON safely. A crash between the two renames leaves `current` on the retained previous release, which is still complete and verified. The next locked operation repairs it.
+`state.json` stays authoritative. After each commit, the installer atomically rewrites `current`, a one-line copy of the current release directory, because shell and `cmd` launchers cannot parse JSON safely. A crash between the two renames leaves `current` on the retained previous release, which is still complete and verified. The next `install`, `rollback`, `recover` or `uninstall` repairs or removes it.
 
-`integrate` writes `bin/<product>`, or `bin/<product>.cmd` on Windows. The launcher reads `current`, refuses a pointer outside `versions/`, sets `BUN_NATIVE_DATA_DIR` to `data/` and executes that release's `application`. It also creates one per-user menu entry:
+`integrate` writes `bin/<product>`, or `bin/<product>.cmd` on Windows. The launcher reads `current`, sets `BUN_NATIVE_DATA_DIR` to `data/` and executes that release's `application` (`application.exe` on Windows). The POSIX launcher also refuses a pointer outside `versions/`. The Windows launcher only checks that the pointer is not empty. It also creates one per-user menu entry:
 
 - **Linux:** a `.desktop` file in the given applications directory, normally `~/.local/share/applications`.
 - **macOS:** a minimal unsigned `Name.app` wrapper with `Info.plist` and `Contents/MacOS/<product>` in the given directory, normally `~/Applications`. Gatekeeper treats it as an app from an unidentified developer.
 - **Windows:** a `Name.cmd` in the given Start-menu Programs directory.
 
-Paths that end up inside shell, `.desktop` or plist text are limited to plain characters. Every created entry is recorded in `integration.json`.
+Paths that end up inside shell, `.desktop`, plist or `cmd` text are limited to letters, digits, space, `_ . / : \ ~ -`. The display name is limited to letters, digits, space, `.`, `_` and `-`. On macOS an existing `Name.app` is replaced. Every created entry is recorded in `integration.json`.
 
 `uninstall` takes the lock and removes the recorded entries. It then deletes `state.json`, which is the uninstall's commit point, followed by releases, staging, the pointer and launchers. `data/` is kept unless `--purge-data` is given; a purge removes the whole root. A kill before the commit leaves a working installation. A kill after it leaves orphaned releases, which `recover` removes; rerunning `uninstall` finishes the job. Reinstalling into a kept root reuses the preserved data.
 
-`bundle` lays out a distributable directory: `update.json`, `update.json.sig` when the manifest is signed, `payload/` and a `README.txt` that labels the package unsigned at the OS level. Each payload file is checked against the manifest as it is copied. A trust-mode/signature mismatch is rejected. Archive the directory with the platform's `tar` or zip tool.
+`bundle` creates a new `<product>-<version>-<os>-<architecture>` directory inside an existing output directory and refuses one that already exists. It contains `update.json`, `update.json.sig` when the manifest is signed, `payload/` and a `README.txt` that labels the package unsigned at the OS level. Each payload file is checked against the manifest as it is copied. An `ed25519` manifest without a signature, or an unsigned manifest with one, is rejected. The signature is copied, not verified. Archive the directory with the platform's `tar` or zip tool.
 
 ## Commands
 
@@ -65,25 +65,27 @@ bun scripts/release-update.ts integrate --root ~/Apps/example --name "Example Ap
 bun scripts/release-update.ts uninstall --root ~/Apps/example [--purge-data]
 ```
 
-For unsigned experimental releases, use `--unsigned-experimental` instead of `--signed`, skip `sign`, and pass `--unsigned-experimental` instead of `--public-key` to `install`. Keys are read from caller-supplied files at the time of the command. The tool neither stores nor prints them.
+`manifest`, `sign` and `bundle` never overwrite an existing output. `install` reads the detached signature from `<manifest>.sig` beside the manifest when that file exists. `--payload` is a build directory or an `https://` base URL. `--public-key` can be repeated. `--private-key` must be an absolute path. For unsigned experimental releases, use `--unsigned-experimental` instead of `--signed`, skip `sign`, and pass `--unsigned-experimental` instead of `--public-key` to `install`. Keys are read from caller-supplied files at the time of the command. The tool neither stores nor prints them.
 
 ## Verified behavior
 
-`bun test tests/tooling/update.test.ts` (Linux x64, pinned Bun `da867c60`) covers these cases with synthetic build outputs:
+`bun test tests/tooling/update.test.ts tests/tooling/installer.test.ts` (Linux x64, pinned Bun `da867c60`) covers these cases with synthetic build outputs:
 
 - signed install, update, rollback, roll-forward and eviction of older releases, with `data/` preserved
 - unsigned, tampered, wrongly keyed, malformed-signature, empty-trust and trust-mode-downgrade manifests
 - explicit unsigned experimental installation, which is recorded as such
 - incompatible OS, CPU, protocol and Bun revision
-- malformed manifests
+- malformed manifests, oversized or non-JSON manifest bytes and non-Ed25519 trust keys
+- a build output containing a symbolic link
 - truncated, oversized, corrupted and failed downloads, with state, data and the current release unchanged
-- a build manifest that disagrees with the signed inventory
+- a build manifest that disagrees with the signed inventory or is not JSON
 - replay, downgrade and foreign-product updates
-- rollback of a modified retained release
+- rollback of a modified or incomplete retained release, and reinstalling a retained release
+- corrupt or unsupported installation state
 - a live lock
 - an installer killed with `SIGKILL` at each of five phases, followed by recovery to exactly the old or the new release
 - HTTP loopback and HTTPS-only enforcement
-- the end-to-end CLI, including `bundle`, `integrate` and `uninstall`
+- the end-to-end CLI, including `bundle`, `integrate` and `uninstall`, its usage errors and its refusal to overwrite outputs
 - `current` pointer maintenance and repair
 - the POSIX launcher executing the current release with `BUN_NATIVE_DATA_DIR` and refusing a tampered pointer
 - the Linux, macOS and Windows integration files, as generated text
@@ -91,7 +93,7 @@ For unsigned experimental releases, use `--unsigned-experimental` instead of `--
 - an uninstall killed with `SIGKILL` at each of three phases, then completed
 - bundle contents, labels and mismatch rejection
 
-The crash and launcher-execution tests are skipped on Windows, because they rely on POSIX signals and `sh`. On macOS and Windows, the integration files are checked as generated text only. No hosted or clean-machine run has opened them through Finder, Gatekeeper or the Start menu.
+The crash, launcher-execution and symbolic-link tests are skipped on Windows, because they rely on POSIX signals, `sh` and unprivileged symbolic links. On macOS and Windows, the integration files are checked as generated text only. No hosted or clean-machine run has opened them through Finder, Gatekeeper or the Start menu.
 
 ## Remaining for #249
 

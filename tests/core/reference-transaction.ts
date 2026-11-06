@@ -27,9 +27,9 @@ function textSizesOf(element: Element): readonly number[] {
   const texts =
     element.kind === 'input'
       ? [element.value, element.placeholder ?? '']
-      : element.kind === 'box'
-        ? []
-        : [element.text]
+      : 'text' in element
+        ? [element.text]
+        : []
   return texts.map((text) => encoder.encode(text).byteLength)
 }
 
@@ -122,7 +122,7 @@ export class ReferenceTransaction {
     if (parent.element.kind !== 'box' || child.id === this.rootId)
       throw new NativeStateError(
         'invalid_state',
-        'Only boxes accept children and the root cannot move'
+        'Only boxes, splits and overlays accept children and the root cannot move'
       )
     let ancestor: NodeState | undefined = parent
     while (ancestor) {

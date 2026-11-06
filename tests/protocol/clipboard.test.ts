@@ -29,7 +29,9 @@ describe('shared clipboard wire contract (headless)', () => {
             clipboard_write,
             global_shortcuts: false,
             notifications: false,
+            drag_drop: false,
             filesystem_roots: [],
+            processes: [],
           },
         } satisfies NativeEvent
         expect(parseEvent(ready)).toEqual(ready)
