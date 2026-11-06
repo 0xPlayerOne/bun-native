@@ -78,6 +78,12 @@ function supported(element: Element, capabilities: readonly Capability[]): Eleme
     !capabilities.includes('input_states_v1')
   )
     throw new UnsupportedFeatureError('input:' + (element.disabled ? 'disabled' : 'read_only'))
+  if (
+    (element.kind === 'split' || element.kind === 'overlay') &&
+    element.accessible_label !== undefined &&
+    !capabilities.includes('accessibility_v1')
+  )
+    throw new UnsupportedFeatureError(element.kind + ':accessible_label')
   return element
 }
 
@@ -149,7 +155,9 @@ function textSizesOf(element: Element): readonly number[] {
         ? [element.value, element.placeholder ?? '']
         : 'text' in element
           ? [element.text]
-          : []
+          : 'accessible_label' in element && element.accessible_label !== undefined
+            ? [element.accessible_label]
+            : []
     sizes = texts.map((text) => encoder.encode(text).byteLength)
     textSizes.set(element, sizes)
   }

@@ -330,6 +330,8 @@ const CAPABILITIES = [
   'drag_drop_files_v1',
   'input_states_v1',
   'app_menu_v1',
+  'split_resize_v1',
+  'accessibility_v1',
 ] as const
 export type Capability = (typeof CAPABILITIES)[number]
 
@@ -344,6 +346,8 @@ export interface KeyModifiers {
 export type PointerButton = 'left' | 'right' | 'middle' | 'back' | 'forward'
 /** Why the host asks the application to close a popup window overlay. */
 export type DismissReason = 'window_blur'
+/** What moved a split divider (`split_resize_v1`). */
+export type ResizeSource = 'pointer' | 'keyboard'
 
 interface NodeEventRoute {
   sequence: number
@@ -387,6 +391,7 @@ type RoutedEvent = NodeEventRoute &
         modifiers: KeyModifiers
       }
     | { type: 'dismiss'; reason: DismissReason }
+    | { type: 'split_resize'; ratio: number; source: ResizeSource }
   )
 
 export type NativeEvent =
@@ -1184,6 +1189,19 @@ export function parseEvent(value: unknown): NativeEvent {
       if (message['reason'] !== 'window_blur')
         throw new ProtocolError('Unknown native dismissal reason')
       return { type: 'dismiss', ...route(message), reason: 'window_blur' }
+    case 'split_resize': {
+      keys(message, [...ROUTE_KEYS, 'ratio', 'source'])
+      const source = (['pointer', 'keyboard'] as const).find(
+        (source) => source === message['source']
+      )
+      if (!source) throw new ProtocolError('Unknown split resize source')
+      return {
+        type: 'split_resize',
+        ...route(message),
+        ratio: number(message['ratio'], 'split ratio', 0, 1),
+        source,
+      }
+    }
     case 'closed':
       keys(message, ['type', 'sequence', 'window_id'])
       return {

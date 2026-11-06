@@ -91,6 +91,7 @@ The same compiler and inspection pipeline supports these explicit entries:
 | `solid-drag-drop`         | `tests/native/solid-drag-drop.tsx`      | `solid-drag-drop`      | Existing prebuilt host referenced by absolute path |
 | `react-drag-drop`         | `tests/native/react-drag-drop.tsx`      | `react-drag-drop`      | Existing prebuilt host referenced by absolute path |
 | `text-input`              | `tests/native/text-input.ts`            | `text-input`           | Existing prebuilt host referenced by absolute path |
+| `accessibility`           | `tests/native/accessibility.ts`         | `accessibility`        | Existing prebuilt host referenced by absolute path |
 | `solid-services`          | `tests/native/solid-services.tsx`       | `solid-services`       | Existing prebuilt host referenced by absolute path |
 | `react-services`          | `tests/native/react-services.tsx`       | `react-services`       | Existing prebuilt host referenced by absolute path |
 | `platform-smoke`          | `tests/native/platform-smoke.ts`        | `platform-smoke`       | Existing prebuilt host referenced by absolute path |

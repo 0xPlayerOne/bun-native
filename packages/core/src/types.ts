@@ -1,6 +1,7 @@
 import type {
   Capability,
   DismissReason,
+  ResizeSource,
   Element,
   KeyModifiers,
   Limits,
@@ -117,6 +118,18 @@ export interface DismissRequestEvent extends EventContext {
   readonly reason: DismissReason
 }
 
+/**
+ * Requires `split_resize_v1`. The user moved a split's divider: once after a
+ * pointer drag that changed the ratio ends, and once per keyboard step that
+ * changed it. `ratio` is the host-owned leading-pane share the window now
+ * shows; declaring a different `ratio` later replaces it.
+ */
+export interface SplitResizeEvent extends EventContext<'split'> {
+  readonly type: 'split_resize'
+  readonly ratio: number
+  readonly source: ResizeSource
+}
+
 export interface NativeEventMap {
   click: ClickEvent
   input: InputEvent
@@ -127,6 +140,7 @@ export interface NativeEventMap {
   focus: FocusEvent<'focus'>
   blur: FocusEvent<'blur'>
   dismiss: DismissRequestEvent
+  split_resize: SplitResizeEvent
 }
 
 export type NativeEventType = keyof NativeEventMap

@@ -24,6 +24,8 @@ pub use tree::{BatchMetrics, ModelError, Node, PreparedBatch, Tree, ViewRequest}
 pub use wire::*;
 
 #[cfg(test)]
+mod accessibility_tests;
+#[cfg(test)]
 mod app_menu_tests;
 #[cfg(test)]
 mod dialog_tests;

@@ -61,6 +61,7 @@ const entries = {
   'solid-drag-drop': 'tests/native/solid-drag-drop.tsx',
   'react-drag-drop': 'tests/native/react-drag-drop.tsx',
   'text-input': 'tests/native/text-input.ts',
+  accessibility: 'tests/native/accessibility.ts',
   'solid-services': 'tests/native/solid-services.tsx',
   'react-services': 'tests/native/react-services.tsx',
   'platform-smoke': 'tests/native/platform-smoke.ts',
@@ -156,6 +157,7 @@ if (
     entry === 'wayland' ||
     entry === 'drag-drop' ||
     entry === 'text-input' ||
+    entry === 'accessibility' ||
     entry === 'platform-smoke' ||
     solidEntry ||
     reactEntry) &&

@@ -2,7 +2,7 @@
 //! return after dismissal. The model tree remains the only ownership graph;
 //! these entries are derived on each commit and hold no native callbacks.
 
-use super::NativeView;
+use super::{NativeView, split::tab_order};
 use bun_native_protocol::{Element as NativeElement, NodeId, OverlayAnchor, Tree};
 use gpui::{
     AnyElement, App, Context, Div, Focusable, Pixels, Size, Stateful, Window, anchored, deferred,
@@ -85,6 +85,7 @@ impl NativeView {
                     input.focus_handle(cx).is_focused(window).then_some(*id)
                 })
             })
+            .or_else(|| self.splits.focused(window))
     }
 
     pub(super) fn can_focus(&self, tree: &Tree, id: NodeId) -> bool {
@@ -93,22 +94,15 @@ impl NativeView {
                 disabled: false, ..
             }) => self.buttons.contains_key(&id),
             Some(NativeElement::Input { .. }) => self.inputs.contains_key(&id),
+            // The split's divider.
+            Some(NativeElement::Split { .. }) => self.splits.contains(id),
             _ => false,
         }
     }
 
     /// Enabled controls in rendered tree order beneath `scope`.
     fn focusable(&self, tree: &Tree, scope: NodeId) -> Vec<NodeId> {
-        let mut result = Vec::new();
-        let mut pending = vec![scope];
-        while let Some(id) = pending.pop() {
-            let Some(node) = tree.node(id) else { continue };
-            if self.can_focus(tree, id) {
-                result.push(id);
-            }
-            pending.extend(node.children().iter().rev().copied());
-        }
-        result
+        tab_order(tree, scope, true, |id| self.can_focus(tree, id))
     }
 
     pub(super) fn focus_control(&self, id: NodeId, window: &mut Window, cx: &mut Context<Self>) {
@@ -116,6 +110,8 @@ impl NativeView {
             window.focus(focus, cx);
         } else if let Some(input) = self.inputs.get(&id) {
             window.focus(&input.focus_handle(cx), cx);
+        } else if let Some(divider) = self.splits.focus_handle(id) {
+            window.focus(divider, cx);
         }
     }
 

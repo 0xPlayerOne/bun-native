@@ -247,6 +247,8 @@ impl Session {
                 if self.app_menu.available() {
                     capabilities.push(Capability::AppMenuV1);
                 }
+                capabilities.push(Capability::SplitResizeV1);
+                capabilities.push(Capability::AccessibilityV1);
                 self.events.send(
                     Event::Ready {
                         protocol: PROTOCOL_VERSION,
