@@ -28,8 +28,9 @@ Three constraints shape the design:
    and stall every other window, command and timer for as long as the dialog
    is open.
 2. **Common Controls 6.** `TaskDialogIndirect` exists only in comctl32
-   version 6, which a process gets from a side-by-side manifest. The host has
-   no manifest today, so the import would fail to resolve.
+   version 6, which a process gets from a side-by-side manifest. A statically
+   linked import would stop the whole process from starting if that manifest
+   were ever missing.
 3. **Programmatic close.** The overlay can be removed on abort, owner close
    and shutdown. A native dialog needs the same: a pending dialog must lose
    authority without leaked modality or a late result.
@@ -62,10 +63,13 @@ ignored. `TDF_ALLOW_DIALOG_CANCELLATION` is set exactly when the dialog has a
 nothing, as on the overlay. A cancellation resolves to `cancelButton`, else
 `dismissed`.
 
-**Manifest.** `build.rs` for the Windows MSVC target passes
-`/MANIFEST:EMBED` and a `/MANIFESTDEPENDENCY` on Common-Controls 6.0.0.0 to
-the linker for the host binary. If the import still cannot be resolved the
-host reports `service_unavailable` instead of advertising the capability.
+**Manifest.** The host needs no manifest of its own: GPUI embeds
+`gpui.manifest.xml` through its `windows-manifest` feature, and that manifest
+already depends on Common-Controls 6.0.0.0 (a first attempt to embed a second
+one failed to link with `CVT1100: duplicate resource`). The entry point is
+still resolved at run time, so if it does not resolve the host does not
+advertise the capability and reports `service_unavailable` instead of failing
+to start.
 
 **Revocation.** The UI thread owns the registry. Removing an entry stops
 delivery at once, then `TDM_CLICK_BUTTON` is posted to the dialog window to
@@ -75,7 +79,7 @@ and reports a stuck dialog instead of waiting forever.
 
 ## Consequences
 
-- The Windows host gains a manifest and a capability, a launch flag, two
+- The Windows host gains a capability, a launch flag, two
   commands and events following the file-dialog shape, and a TypeScript core
   routing branch.
 - Native dialogs block the owner window at the OS level and play system

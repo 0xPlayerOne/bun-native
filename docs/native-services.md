@@ -874,10 +874,9 @@ abort, owner-close and result shape are the same. See
   the result) or is `dismissible`; otherwise they do nothing.
 - Abort, owner close and shutdown end the dialog by posting `TDM_CLICK_BUTTON`
   to it; a result that races the close is dropped.
-- `TaskDialogIndirect` is in Common Controls 6. The host's `build.rs` embeds a
-  manifest dependency on it for the MSVC target, and the entry point is
-  resolved at run time, so a host built without it reports the capability
-  absent instead of failing to start.
+- `TaskDialogIndirect` is in Common Controls 6, which the manifest GPUI embeds
+  in the host already requests. The entry point is resolved at run time, so a
+  host without it reports the capability absent instead of failing to start.
 - Evidence is hosted only: [`task-dialogs.ts`](../tests/native/task-dialogs.ts)
   reads and presses the real dialog through a UI Automation oracle. Nothing
   has been run on a physical Windows desktop.
