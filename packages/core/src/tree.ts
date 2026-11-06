@@ -75,31 +75,129 @@ function textSizesOf(element: Element): readonly number[] {
   return sizes
 }
 
+function textBytesOf(element: Element | undefined): number {
+  let bytes = 0
+  if (element) for (const size of textSizesOf(element)) bytes += size
+  return bytes
+}
+
+/**
+ * Text totals of a committed graph, kept current by commits and native edits
+ * so a batch checks the window budget without walking the window.
+ */
+export class CommittedText {
+  bytes = 0
+  /** Committed nodes above the per-text limit; only a native edit leaves one. */
+  readonly oversized = new Set<number>()
+
+  constructor(
+    private readonly maxTextBytes: number,
+    nodes: Iterable<NodeState> = []
+  ) {
+    for (const node of nodes) this.replace(node.id, undefined, node.element)
+  }
+
+  /** Account node `id` holding `next` (absent once removed) instead of `previous`. */
+  replace(id: number, previous: Element | undefined, next: Element | undefined): void {
+    this.bytes += textBytesOf(next) - textBytesOf(previous)
+    if (next && textSizesOf(next).some((size) => size > this.maxTextBytes)) this.oversized.add(id)
+    else this.oversized.delete(id)
+  }
+}
+
+/**
+ * The candidate graph: this transaction's own node copies and removals over
+ * the committed map, which it never writes, so opening a batch costs nothing
+ * per window node.
+ */
+class Overlay implements ReadonlyMap<number, NodeState> {
+  /** Nodes this transaction created or wrote; each is its own copy. */
+  readonly writes = new Map<number, NodeState>()
+  /** Committed nodes this transaction removed. */
+  readonly deletes = new Set<number>()
+  size: number
+
+  constructor(readonly base: ReadonlyMap<number, NodeState>) {
+    this.size = base.size
+  }
+
+  get(id: number): NodeState | undefined {
+    return this.writes.get(id) ?? (this.deletes.has(id) ? undefined : this.base.get(id))
+  }
+
+  has(id: number): boolean {
+    return this.get(id) !== undefined
+  }
+
+  /** Node IDs are never reused, so a removed node is never written again. */
+  write(node: NodeState): void {
+    if (!this.has(node.id)) this.size += 1
+    this.writes.set(node.id, node)
+  }
+
+  delete(id: number): void {
+    if (!this.has(id)) return
+    this.size -= 1
+    this.writes.delete(id)
+    if (this.base.has(id)) this.deletes.add(id)
+  }
+
+  /** Committed order, then created nodes in creation order, as a full copy had. */
+  *entries(): MapIterator<[number, NodeState]> {
+    for (const id of this.base.keys()) {
+      const node = this.get(id)
+      if (node) yield [id, node]
+    }
+    for (const entry of this.writes) if (!this.base.has(entry[0])) yield entry
+  }
+
+  *keys(): MapIterator<number> {
+    for (const [id] of this.entries()) yield id
+  }
+
+  *values(): MapIterator<NodeState> {
+    for (const [, node] of this.entries()) yield node
+  }
+
+  [Symbol.iterator](): MapIterator<[number, NodeState]> {
+    return this.entries()
+  }
+
+  forEach(
+    callback: (node: NodeState, id: number, map: ReadonlyMap<number, NodeState>) => void
+  ): void {
+    for (const [id, node] of this.entries()) callback(node, id, this)
+  }
+}
+
 /**
  * A bounded candidate graph; native preflight remains authoritative. Nodes are
  * shared with the committed graph until this transaction first writes one.
  */
 export class Transaction implements NativeBatch {
-  readonly nodes: Map<number, NodeState>
+  readonly nodes: Overlay
   readonly operations: Operation[] = []
-  private readonly copied = new Set<number>()
+  /** Created and moved nodes: the only places a batch can break ownership or depth. */
+  private readonly attached: number[] = []
   private active = true
 
+  /** `text` describes `current`, and both stay unchanged until `commit`. */
   constructor(
     current: ReadonlyMap<number, NodeState>,
     private readonly rootId: number,
     private readonly allocateId: () => number,
-    private readonly limits: Readonly<Limits>
+    private readonly limits: Readonly<Limits>,
+    private readonly text: CommittedText
   ) {
-    this.nodes = new Map(current)
+    this.nodes = new Overlay(current)
   }
 
   /** The candidate's own copy of a node, made on its first write. */
   private writable(node: NodeState): NodeState {
-    if (this.copied.has(node.id)) return this.nodes.get(node.id)!
+    const written = this.nodes.writes.get(node.id)
+    if (written) return written
     const copy = { ...node, children: [...node.children] }
-    this.nodes.set(node.id, copy)
-    this.copied.add(node.id)
+    this.nodes.write(copy)
     return copy
   }
 
@@ -120,8 +218,8 @@ export class Transaction implements NativeBatch {
       throw new NativeStateError('limit_exceeded', 'Window node limit exceeded')
     const normalized = normalize(element)
     const node = makeNode(this.allocateId(), normalized)
-    this.nodes.set(node.id, node)
-    this.copied.add(node.id)
+    this.nodes.write(node)
+    this.attached.push(node.id)
     this.operations.push({ type: 'create', node_id: node.id, element: node.element })
     return node.handle as NativeNode<E['kind']>
   }
@@ -196,6 +294,7 @@ export class Transaction implements NativeBatch {
     parent = this.writable(parent)
     parent.children.splice(index, 0, child.id)
     child.parent = parent.id
+    this.attached.push(child.id)
     this.operations.push({ type: 'insert', parent_id: parent.id, child_id: child.id, index })
   }
 
@@ -227,7 +326,56 @@ export class Transaction implements NativeBatch {
     this.operations.push({ type: 'delete', node_id: node.id })
   }
 
+  /** The candidate's window text bytes, from the committed total and this batch's writes. */
+  private textBytes(): number {
+    const { base, writes, deletes } = this.nodes
+    let bytes = this.text.bytes
+    for (const [id, node] of writes)
+      bytes += textBytesOf(node.element) - textBytesOf(base.get(id)?.element)
+    for (const id of deletes) bytes -= textBytesOf(base.get(id)?.element)
+    return bytes
+  }
+
+  /**
+   * The committed graph was valid, and create, insert and remove keep parent
+   * and child links consistent and reject cycles. A batch can then break depth
+   * or attachment only at or below a node it created or moved, and a text
+   * limit only through a node it wrote. When none of those can fail, the batch
+   * is valid without walking the window; otherwise the whole-graph walk runs
+   * to report the first failure in its own order.
+   */
   validate(): void {
+    const { limits, nodes } = this
+    if (this.text.oversized.size || this.textBytes() > limits.max_text_bytes_per_window)
+      return this.walk()
+    for (const node of nodes.writes.values())
+      for (const size of textSizesOf(node.element))
+        if (size > limits.max_text_bytes) return this.walk()
+    const seen = new Set<number>()
+    // Flat (id, depth) pairs.
+    const pending: number[] = []
+    for (const id of this.attached) {
+      let top = nodes.get(id)
+      if (!top || seen.has(id)) continue
+      let depth = 0
+      while (top.parent !== undefined) {
+        top = nodes.get(top.parent)!
+        depth += 1
+      }
+      if (top.id !== this.rootId) return this.walk()
+      pending.push(id, depth)
+      while (pending.length) {
+        const level = pending.pop()!
+        const next = pending.pop()!
+        if (level > limits.max_depth) return this.walk()
+        if (seen.has(next)) continue
+        seen.add(next)
+        for (const child of nodes.get(next)!.children) pending.push(child, level + 1)
+      }
+    }
+  }
+
+  private walk(): void {
     let seen = 0
     let bytes = 0
     // Breadth-first, one level at a time, so the depth needs no per-node record.
@@ -255,5 +403,37 @@ export class Transaction implements NativeBatch {
         'invalid_state',
         'Every created node must be attached before commit'
       )
+  }
+
+  /**
+   * Apply this validated, acknowledged batch to the committed graph and text
+   * totals it was opened over, in time proportional to the batch.
+   */
+  commit(nodes: Map<number, NodeState>, text: CommittedText): void {
+    if (nodes !== this.nodes.base || text !== this.text)
+      throw new NativeStateError(
+        'invalid_state',
+        'Batch commits only to the graph it was opened on'
+      )
+    for (const id of this.nodes.deletes) {
+      text.replace(id, nodes.get(id)?.element, undefined)
+      nodes.delete(id)
+    }
+    for (const [id, candidate] of this.nodes.writes) {
+      const current = nodes.get(id)
+      // Native input can arrive while an unrelated batch is in flight. Preserve
+      // every newer edit instead of replacing it with a cloned candidate value.
+      if (
+        current &&
+        current.inputRevision > candidate.inputRevision &&
+        current.element.kind === 'input' &&
+        candidate.element.kind === 'input'
+      ) {
+        candidate.inputRevision = current.inputRevision
+        candidate.element = { ...candidate.element, value: current.element.value }
+      }
+      text.replace(id, current?.element, candidate.element)
+      nodes.set(id, candidate)
+    }
   }
 }
