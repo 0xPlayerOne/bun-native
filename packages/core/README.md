@@ -57,18 +57,21 @@ Plain JavaScript uses the same imports and runtime checks. Add `// @ts-check` an
 
 ## Handles and tree operations
 
-`NativeNode<'box' | 'text' | 'button' | 'input'>` is an opaque identity. Its `kind` is readable, but copying the object does not create another usable handle. Each node belongs to one window and one application session. Passing a foreign, forged or disposed handle fails at runtime, including from JavaScript. Native IDs, request IDs, process streams and GPUI objects are not part of this API.
+`NativeNode<'box' | 'text' | 'button' | 'input' | 'split' | 'overlay'>` is an opaque identity. Its `kind` is readable, but copying the object does not create another usable handle. Each node belongs to one window and one application session. Passing a foreign, forged or disposed handle fails at runtime, including from JavaScript. Native IDs, request IDs, process streams and GPUI objects are not part of this API.
 
-Every window starts with a root box. Create and attach new elements in the same batch. A committed tree cannot contain unattached nodes or cycles. Only boxes own children; closing the window disposes its root.
+Every window starts with a root box. Create and attach new elements in the same batch. A committed tree cannot contain unattached nodes or cycles. Only boxes, splits (at most two panes) and overlays own children; closing the window disposes its root.
 
 | Operation                             | Contract                                                                                                               |
 | ------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
 | `batch.create(element)`               | Creates a typed handle in the candidate tree. Return it from the callback and use it after the batch promise succeeds. |
 | `batch.set(node, element)`            | Replaces all properties of the same element kind. Omitted optional properties return to their defaults.                |
 | `batch.set(input, element, revision)` | Replaces input properties using its current observed edit revision.                                                    |
-| `batch.append(parent, child)`         | Attaches or moves a child to the end of a box.                                                                         |
+| `batch.append(parent, child)`         | Attaches or moves a child to the end of a box, split or overlay.                                                       |
 | `batch.insert(parent, child, index)`  | Attaches or reorders a child; the index is evaluated after detaching it from its old position.                         |
 | `batch.remove(node)`                  | Deletes the entire subtree. Its handles and listeners are revoked after successful commit.                             |
+| `batch.focus(node)`                   | `focus_v1`: focuses an enabled button or an input after the batch's tree changes, inside the active modal overlay.     |
+| `batch.scrollTo(node, { x, y })`      | `scroll_control_v1`: sets a scrolling box or overlay's offset, 0–1,000,000 logical pixels on each given axis.          |
+| `batch.scrollIntoView(node)`          | `scroll_control_v1`: scrolls the node's scrolling ancestors, up to its own overlay layer, to reveal it.                |
 
 `window.batch` callbacks must be synchronous. Their native work is committed atomically, and the returned promise resolves after the native acknowledgement. Fetch or compute asynchronous data before entering the callback. Retaining a `NativeBatch` and using it after the callback returns is an error. If validation or native preflight rejects a batch, its mutations do not commit; escaped handles created by that failed batch are unusable.
 
@@ -318,12 +321,12 @@ launch access (default `read`). Paths are relative `/`-joined names; `..`,
 absolute paths and empty or control-character names are rejected before any
 native request, and the host resolves every path beneath the granted
 directory without following symbolic links: Linux with `openat2`, macOS one
-name at a time with `openat(O_NOFOLLOW | O_NOFOLLOW_ANY)`. The frozen
+name at a time with `openat(O_NOFOLLOW | O_NOFOLLOW_ANY)`, Windows one name at
+a time with handle-relative `NtCreateFile` that never follows a reparse point. The frozen
 `NativeFileGrant` offers `stat`, `list` (pages of 64), `read` and `write`
 (16 KiB chunks), `createDirectory`, `remove` and an idempotent `close()`.
 Closing the grant, its window or the application revokes it and withholds
-late results. Windows and other targets report `unavailable` /
-`unsupported_platform`.
+late results. Other targets report `unavailable` / `unsupported_platform`.
 See the [service contract](../../docs/native-services.md#filesystem-grants).
 
 ### Owned processes
@@ -353,8 +356,9 @@ arrives in order in chunks of at most 16 KiB, each acknowledged when its
 callback settles, and the exit event is always last. The frozen
 `NativeProcess` offers `write`, `closeInput`, `resize`, `signal` (to the whole
 process group) and an idempotent `release()`. Releasing it, closing its window
-or stopping the application kills and reaps its group. Other targets report
-`unavailable` / `unsupported_platform`. See the
+or stopping the application kills and reaps its group. macOS refuses a `cwd`
+(`service_unavailable`); other targets report `unavailable` /
+`unsupported_platform`. See the
 [service contract](../../docs/native-services.md#owned-processes).
 
 ### File dialogs
@@ -398,6 +402,42 @@ is a separate operation. A window has at most one file dialog. Aborting the
 signal, closing the window or shutting down closes the OS dialog. See
 [ADR 0013](../../docs/decisions/0013-native-file-dialogs.md).
 
+### Drag and drop
+
+```ts
+const app = await createApplication({
+  executable,
+  permissions: {
+    dragDrop: "allow",
+    filesystemRoots: [{ id: "work", path: "/home/me/project", access: "read" }],
+  },
+});
+const target = await window.registerDropTarget(zone, async (event) => {
+  if (event.type !== "drop") return;
+  for (const item of event.items) {
+    const { root, path } = await item.resolve("work"); // path_denied if outside
+    console.log(item.name, root, path);
+  }
+});
+await target.close();
+```
+
+`window.registerDropTarget(node, listener)` makes a committed node an owned
+drop target for local files under the `dragDrop` launch permission (default
+`deny`); Solid and React export `registerDropTarget(ref, listener)` for a
+mounted element. `app.serviceCapabilities.dragDrop` reports `owned_target`
+scope, `files` payload and backend `x11`, `appkit` or `ole`; Wayland and other
+targets report `unavailable` / `unsupported_platform`. Listeners receive frozen
+`drag_entered`, `drag_left`, `drop` (1-64 items) and `drop_rejected` (`empty`
+or `limit_exceeded`) events. **An item carries only an untrusted display
+`name`**; `item.resolve(rootId)` returns a path relative to a launch root the
+application already holds, and grants nothing. At most 32 targets are live
+per session, one per node. `close()`, removing the node, closing the window or
+shutting down revokes the target at once: its signal aborts, later events are
+dropped and older items reject with `cancelled`. See the
+[service contract](../../docs/native-services.md#drag-and-drop) and
+[ADR 0012](../../docs/decisions/0012-native-drag-drop.md).
+
 ### Application menu bar
 
 ```ts
@@ -434,7 +474,7 @@ with `NativeServiceError` code `service_unavailable`. See the
 
 ## Supported scope
 
-The elements are `box`, `text`, `button`, single-line `input` and, when the host advertises `split_v1`, a two-pane `split` with a host-owned draggable divider. `Style` explicitly supports `direction`, `gap`, `padding`, `width`, `height`, `min_width`, `max_width`, `min_height`, `max_height`, `flex_grow`, `flex_shrink`, `align_items`, `justify_content`, `overflow`, `background`, `color` and `font_size`, plus `border_width`, `border_color`, `corner_radius`, `opacity` and `font_weight` when the host advertises `style_decoration_v1`. `defineTheme` and `defaultTheme` resolve named color, spacing, radius and font-size tokens to these plain values in JavaScript. Dimensions are numeric logical native pixels, with `fill` available for width and height; colors are unsigned 24-bit RGB values. These fields are validated and bounded by the [shared layout contract](../../docs/native-layout.md). Scroll overflow is accepted only for `box` and `overlay` containers; leaf element types also enforce this restriction. Hosts advertising `overlays_v1` accept the `overlay` container and `scroll_anchor_v1` the `scroll_anchor` style field; `onDismiss(window, overlay, listener)` reports Escape and backdrop presses. See the [overlay contract](../../docs/native-overlays.md). Styles are shared by every framework adapter.
+The elements are `box`, `text`, `button`, single-line `input`, a two-pane `split` with a host-owned draggable divider when the host advertises `split_v1`, and an `overlay` layer when it advertises `overlays_v1`. `Style` explicitly supports `direction`, `gap`, `padding`, `width`, `height`, `min_width`, `max_width`, `min_height`, `max_height`, `flex_grow`, `flex_shrink`, `align_items`, `justify_content`, `overflow`, `scroll_anchor`, `background`, `color` and `font_size`, plus `border_width`, `border_color`, `corner_radius`, `opacity` and `font_weight` when the host advertises `style_decoration_v1`. `defineTheme` and `defaultTheme` resolve named color, spacing, radius and font-size tokens to these plain values in JavaScript; an unknown token name or an invalid token value throws a `TypeError` before anything is staged. Dimensions are numeric logical native pixels, with `fill` available for width and height; colors are unsigned 24-bit RGB values. These fields are validated and bounded by the [shared layout contract](../../docs/native-layout.md). Scroll overflow is accepted only for `box` and `overlay` containers; leaf element types also enforce this restriction. Hosts advertising `overlays_v1` accept the `overlay` container and `scroll_anchor_v1` the `scroll_anchor` style field; `onDismiss(window, overlay, listener)` reports Escape and backdrop presses, plus parent-window blur for `surface: 'window'` popups (`popup_windows_v1`). See the [overlay contract](../../docs/native-overlays.md). Styles are shared by every framework adapter.
 
 There is no DOM, HTML, CSS parser, browser navigation, WebView, CEF, React DOM or automatic compatibility with web component libraries. Native service APIs for OS context menus, OS alerts and other desktop integrations not listed in the [service matrix](../../docs/native-services.md#service-and-platform-matrix) remain separate roadmap work. The current renderer does not claim complete scrolling, IME, focus traversal or accessibility coverage. See [the native host limitations](../../native/gpui-host/README.md) and [testing evidence](../../docs/testing.md) before treating a platform as supported.
 

@@ -99,7 +99,8 @@ for await (const chunk of Bun.stdin.stream())
           })
           break
         }
-        live.set(dialog_id, window_id)
+        // `forget`: the host finished the dialog without a result reaching the client yet.
+        if (mode !== 'forget') live.set(dialog_id, window_id)
         await emit({
           type: 'file_dialog_opened',
           id: command.id,
@@ -132,7 +133,13 @@ for await (const chunk of Bun.stdin.stream())
             code: 'payload_too_large',
           })
         }
+        if (mode === 'native-failure') {
+          live.delete(dialog_id)
+          await complete(window_id, dialog_id, { kind: 'failed', code: 'native_failure' })
+        }
         if (mode === 'foreign') await complete(window_id, dialog_id + 1, { kind: 'cancelled' })
+        // A live dialog's completion addressed to another (open) window.
+        if (mode === 'cross') await complete(window_id + 1, dialog_id, { kind: 'cancelled' })
         break
       }
       case 'close_file_dialog':
