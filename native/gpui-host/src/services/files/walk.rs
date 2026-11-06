@@ -23,11 +23,44 @@ use super::Confine;
 use rustix::fs::{AtFlags, FileType, Mode, OFlags, openat, statat};
 use rustix::io::Errno;
 use std::os::fd::{AsFd, BorrowedFd, OwnedFd};
+use std::sync::OnceLock;
 
+/// Flag sets that make one open refuse a link, strongest first. macOS 11 and
+/// later offer `O_NOFOLLOW_ANY`, which refuses a link anywhere in the path.
+/// Every step already names one validated entry beneath a held descriptor, so
+/// plain `O_NOFOLLOW` keeps the same guarantee for it; the kernel's own check
+/// is an extra layer used where it accepts the flag.
 #[cfg(target_os = "macos")]
-const NO_LINKS: OFlags = OFlags::NOFOLLOW.union(OFlags::NOFOLLOW_ANY);
+const LINK_FLAGS: [OFlags; 3] = [
+    OFlags::NOFOLLOW_ANY,
+    OFlags::NOFOLLOW.union(OFlags::NOFOLLOW_ANY),
+    OFlags::NOFOLLOW,
+];
 #[cfg(not(target_os = "macos"))]
-const NO_LINKS: OFlags = OFlags::NOFOLLOW;
+const LINK_FLAGS: [OFlags; 1] = [OFlags::NOFOLLOW];
+
+/// The first flag set the running kernel accepts for a directory step.
+fn no_links() -> OFlags {
+    static CHOSEN: OnceLock<OFlags> = OnceLock::new();
+    *CHOSEN.get_or_init(|| {
+        let accepted = |flags: OFlags| {
+            rustix::fs::open("/", DIRECTORY | OFlags::CLOEXEC, Mode::empty())
+                .and_then(|root| {
+                    openat(
+                        &root,
+                        ".",
+                        DIRECTORY | flags | OFlags::CLOEXEC,
+                        Mode::empty(),
+                    )
+                })
+                .is_ok()
+        };
+        LINK_FLAGS
+            .into_iter()
+            .find(|flags| accepted(*flags))
+            .unwrap_or(OFlags::NOFOLLOW)
+    })
+}
 
 const DIRECTORY: OFlags = OFlags::RDONLY.union(OFlags::DIRECTORY);
 
@@ -40,7 +73,7 @@ fn step(
     flags: OFlags,
     mode: Mode,
 ) -> Result<OwnedFd, Errno> {
-    let flags = flags | NO_LINKS | OFlags::CLOEXEC | OFlags::NOCTTY;
+    let flags = flags | no_links() | OFlags::CLOEXEC | OFlags::NOCTTY;
     openat(directory, name, flags, mode).map_err(|error| {
         // A link opened with O_DIRECTORY may report ENOTDIR rather than ELOOP;
         // report every link refusal the same way.
