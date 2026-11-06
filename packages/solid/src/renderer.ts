@@ -3,7 +3,9 @@ import {
   asNode,
   createElement,
   createTextNode,
+  firstChild,
   insertNode,
+  nextSibling,
   removeNode,
   replaceText,
   setProperty,
@@ -22,9 +24,6 @@ export const renderer = createRenderer<RendererNode>({
     insertNode(asNode(parent), asNode(node), anchor == null ? undefined : asNode(anchor)),
   removeNode: (parent, node) => removeNode(asNode(parent), asNode(node)),
   getParentNode: (node) => asNode(node).parent,
-  getFirstChild: (node) => asNode(node).children[0],
-  getNextSibling: (value) => {
-    const node = asNode(value)
-    return node.parent?.children[node.parent.children.indexOf(node) + 1]
-  },
+  getFirstChild: (node) => firstChild(asNode(node)),
+  getNextSibling: (node) => nextSibling(asNode(node)),
 })

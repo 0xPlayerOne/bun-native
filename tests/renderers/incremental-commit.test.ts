@@ -150,13 +150,26 @@ function random(seed: number) {
   }
 }
 
-for (const seed of [1, 7, 42, 1234, 99991]) {
-  test(`incremental commits converge on the staged tree (seed ${seed})`, async () => {
+// Wide variants start with many root children, so most commits visit only the
+// registered dirty children of a current parent, and also reinsert detached
+// subtrees and edit several siblings out of order in one batch.
+const variants = [
+  ...[1, 7, 42, 1234, 99991].map((seed) => ({ seed, width: 0 })),
+  ...[3, 77, 4242].map((seed) => ({ seed, width: 96 })),
+]
+for (const { seed, width } of variants) {
+  test(`incremental commits converge on the staged tree (seed ${seed}, width ${width})`, async () => {
     const next = random(seed)
     const model = modelWindow()
     let container!: Node
+    const detached: Node[] = []
     const root = createRenderRoot(model.window, (context) => {
       container = context.container
+      for (let index = 0; index < width; index += 1) {
+        const text = createElement('text')
+        insertNode(text, createTextNode('w' + index))
+        insertNode(container, text)
+      }
     })
     await root.ready
     const live = () => {
@@ -194,7 +207,7 @@ for (const seed of [1, 7, 42, 1234, 99991]) {
       const anchor = parent.children.length
         ? parent.children[next(parent.children.length)]
         : undefined
-      switch (next(6)) {
+      switch (next(width ? 8 : 6)) {
         case 0:
           insertNode(parent, fresh(), next(2) ? anchor : undefined)
           break
@@ -208,7 +221,10 @@ for (const seed of [1, 7, 42, 1234, 99991]) {
           break
         }
         case 2:
-          if (target !== container) removeNode(target.parent!, target)
+          if (target !== container) {
+            removeNode(target.parent!, target)
+            if (width) detached.push(target)
+          }
           break
         case 3:
           if (target.kind === 'text' && target.children[0])
@@ -218,6 +234,20 @@ for (const seed of [1, 7, 42, 1234, 99991]) {
           if (target.kind === 'button')
             setProperty(target, 'onClick', next(2) ? () => {} : undefined)
           break
+        case 6: {
+          // Reinsert a detached subtree, possibly into its former parent.
+          const node = detached.splice(next(detached.length + 1), 1)[0]
+          if (node) insertNode(parent, node, next(2) ? anchor : undefined)
+          break
+        }
+        case 7: {
+          // Several sibling edits in one batch, made in reverse child order.
+          const texts = parent.children.filter((child) => child.kind === 'text')
+          for (let index = texts.length - 1; index >= 0; index -= 1)
+            if (next(3) === 0 && texts[index]!.children[0])
+              replaceText(texts[index]!.children[0]!, 's' + next(100))
+          break
+        }
         default:
           setProperty(parent, 'style', { padding: next(4) })
       }

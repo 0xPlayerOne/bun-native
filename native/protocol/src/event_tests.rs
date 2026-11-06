@@ -148,3 +148,31 @@ fn invalid_native_coordinates_are_rejected_before_any_bytes_are_written() {
         assert!(bytes.is_empty());
     }
 }
+
+#[test]
+fn routes_with_a_repeated_identity_are_rejected_at_every_length() {
+    for len in [2, 3, 17, MAX_EVENT_PATH_NODES] {
+        let unique: Vec<NodeId> = (1..=len as u64).map(node).collect();
+        let click = |path: Vec<NodeId>| Event::Click {
+            sequence: EventSequence::try_from(1).unwrap(),
+            window_id: WindowId::try_from(1).unwrap(),
+            node_id: *path.last().unwrap(),
+            tree_revision: 0,
+            path,
+        };
+        for (first, second) in [(0, 1), (0, len - 1), (len / 2, len - 2)] {
+            if first >= second {
+                continue;
+            }
+            let mut path = unique.clone();
+            path[second] = path[first];
+            let mut bytes = Vec::new();
+            assert!(matches!(
+                write_event(&mut bytes, &click(path)),
+                Err(ProtocolError::InvalidEvent(_))
+            ));
+            assert!(bytes.is_empty());
+        }
+        assert!(click(unique).validate().is_ok());
+    }
+}

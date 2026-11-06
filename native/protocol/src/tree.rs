@@ -134,7 +134,25 @@ impl Tree {
 
     /// Snapshot the committed root-to-target route before an event leaves the
     /// UI thread. A later move must not rewrite an already-emitted event path.
-    pub fn path(&self, id: NodeId) -> Option<Vec<NodeId>> {
+    pub fn path(&self, target: NodeId) -> Option<Vec<NodeId>> {
+        // A committed tree is at most `MAX_DEPTH` edges deep, so its route
+        // fits this stack buffer and costs one exact allocation per event.
+        let mut route = [target; MAX_DEPTH + 1];
+        let mut len = 0;
+        let mut current = Some(target);
+        while let Some(id) = current {
+            let node = self.nodes.get(id)?;
+            let Some(slot) = route.get_mut(len) else {
+                return self.unbounded_path(target);
+            };
+            *slot = id;
+            len += 1;
+            current = node.parent;
+        }
+        Some(route[..len].iter().rev().copied().collect())
+    }
+
+    fn unbounded_path(&self, id: NodeId) -> Option<Vec<NodeId>> {
         let mut path = Vec::new();
         let mut current = Some(id);
         while let Some(id) = current {
