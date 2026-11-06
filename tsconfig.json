@@ -36,5 +36,10 @@
     "tests/**/*.tsx",
     "benchmarks/**/*.tsx"
   ],
-  "exclude": ["**/dist/**", "**/node_modules/**", "tests/fixtures/**"]
+  "exclude": [
+    "**/dist/**",
+    "**/node_modules/**",
+    "tests/fixtures/**",
+    "benchmarks/electrobun/app/**"
+  ]
 }

@@ -313,6 +313,23 @@ jobs:
           cargo test --locked --release -p bun-native-windows-services -p bun-native-host services::files -- --test-threads=1 2>&1 |
             Tee-Object -FilePath (Join-Path $env:NATIVE_EVIDENCE 'filesystem-grants-unit.log')
           if ($LASTEXITCODE -ne 0) { throw 'Windows filesystem grant unit tests failed' }
+      - name: Development and AOT macOS native fault containment
+        if: ${{ runner.os == 'macOS' && !cancelled() && steps.native-build.outcome == 'success' }}
+        timeout-minutes: 5
+        run: |
+          # Real OS click parks a public callback; the owned host is SIGSTOPped,
+          # two batches queue behind it, then it is SIGKILLed (#247).
+          $package = Join-Path $env:NATIVE_EVIDENCE 'fault-package'
+          bun experiments/aot-gpui/build-window.ts --entry fault `
+            --source $env:GITHUB_WORKSPACE --host $env:BUN_NATIVE_HOST `
+            --host-profile release --outdir $package
+          if ($LASTEXITCODE -ne 0) { throw 'The macOS fault AOT compiler or inspection failed' }
+          foreach ($mode in @('development', 'aot')) {
+            [string[]]$command = if ($mode -eq 'aot') { @((Join-Path $package 'fault')) } else { @('bun', 'tests/native/fault.ts') }
+            & '${{ matrix.python }}' scripts/quality/native-fault-macos.py `
+              --output (Join-Path $env:NATIVE_EVIDENCE "fault-$mode") --mode $mode -- @command
+            if ($LASTEXITCODE -ne 0) { throw "macOS native fault containment was not verified in $mode" }
+          }
       - name: Development and AOT owned processes
         if: ${{ runner.os != 'Linux' && !cancelled() && steps.native-build.outcome == 'success' }}
         timeout-minutes: 6

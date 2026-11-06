@@ -1,0 +1,9 @@
+{
+  "name": "bun-native-electrobun-baseline",
+  "version": "0.0.1",
+  "private": true,
+  "description": "Electrobun system-WebView port of the matched Bun Native renderer workload (#244)",
+  "devDependencies": {
+    "@types/bun": "latest"
+  }
+}

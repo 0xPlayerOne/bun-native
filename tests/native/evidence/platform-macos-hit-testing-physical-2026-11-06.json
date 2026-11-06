@@ -1,0 +1,93 @@
+{
+  "schemaVersion": 1,
+  "issue": "https://github.com/0xPlayerOne/bun-native/issues/297",
+  "scope": "Actual AppKit hit-target and Quartz metadata controls on a physical Mac, not GPUI input delivery. No input was posted.",
+  "status": "passed",
+  "inputPosted": false,
+  "sourceCommit": "59cc47a80a1d5cfbeb8c8dd4607d2d6ee60df16a",
+  "sourceFiles": {
+    "scripts/quality/native-platform-macos.m": {
+      "sha256": "60c2ff70019d4834be4241bdc6b4aa95253891046fcc35b44b533e1ea4c6ca8f",
+      "bytes": 21856
+    },
+    "tests/native/macos-input-events.m": {
+      "sha256": "182fae8a961b6edcddb047f7593e9ad9ea24bec18a3e0925e9d0a13d9dafe36c",
+      "bytes": 9445
+    },
+    "tests/native/macos-window-hit.m": {
+      "sha256": "4fc38dbed6722b0f9e172b7b10bab5ccf52f52764312b3b4f50991050fa0333b",
+      "bytes": 7118
+    },
+    "tests/native/macos-cross-process-hit.m": {
+      "sha256": "d9355f010b166dca761549e7126f7c34d12810278e9b08c8d93e66dad1efc8c0",
+      "bytes": 7542
+    }
+  },
+  "environment": {
+    "macOS": "27.2",
+    "architecture": "arm64",
+    "xcode": "Xcode 27.2 | Build version 27B52 |",
+    "compiler": "Apple clang version 21.0.0 (clang-2100.4.1.1)",
+    "display": "Screen Sharing Virtual Display (3840x2160 logical 1920x1080)"
+  },
+  "compileArguments": [
+    "xcrun",
+    "clang",
+    "-fobjc-arc",
+    "-Wall",
+    "-Wextra",
+    "-Werror",
+    "-framework",
+    "AppKit",
+    "-framework",
+    "CoreGraphics"
+  ],
+  "controls": [
+    {
+      "name": "macos-input-events",
+      "exitCode": 0,
+      "executableSha256": "b76b75be6afd953f937eab51cfc6c5b7e89647c2dc4505b8f522b125364fdbd4",
+      "stdout": {
+        "status": "passed",
+        "coordinateControlsChecked": 4,
+        "targetRejectionDiagnosticsChecked": 4,
+        "targetIdentityGuardsChecked": 2,
+        "scope": "Actual Quartz construction and pure target-guard controls only; WindowServer delivery is separately required",
+        "inputPosted": false,
+        "identityGuardsChecked": 4,
+        "globalEventsChecked": 9,
+        "windowTargetControlsChecked": 11
+      }
+    },
+    {
+      "name": "macos-window-hit",
+      "exitCode": 0,
+      "executableSha256": "0161c6224edd767161e6cfed477b43ef7879036c1069163117ecb1a186765d4f",
+      "stdout": {
+        "clickThroughAccepted": true,
+        "inputPosted": false,
+        "inputTakingOverlayRejected": true,
+        "ownedWindowCount": 2,
+        "scope": "Actual AppKit mouse-down hit testing and Quartz identity/geometry; not GPUI input delivery",
+        "status": "passed",
+        "uncoveredTargetAccepted": true
+      }
+    },
+    {
+      "name": "macos-cross-process-hit",
+      "exitCode": 0,
+      "executableSha256": "d0bf4ddff88728ffd873cdae9092a736581dc9cf32e4184a70ba024137097569",
+      "stdout": {
+        "status": "passed",
+        "scope": "Real cross-process AppKit/WindowServer hit testing; no OS input delivery",
+        "crossProcessTargetAccepted": true,
+        "foreignOwnerRejected": true,
+        "foregroundUnchanged": true,
+        "inputPosted": false,
+        "rawHitBeforeAppKit": 0
+      }
+    }
+  ],
+  "helperExecutableSha256": "2d4d2a62e26f81a44272ba48d7351533fef80cb434c0dd93100c0fdc1633c2c5",
+  "postEventAccess": "unavailable in this session (CoreGraphics posting not permitted); GPUI delivery through this helper was not attempted"
+}
