@@ -771,6 +771,11 @@ jobs:
             ${{ runner.temp }}/native-evidence/global-shortcuts-*/
             ${{ runner.temp }}/native-evidence/notifications-*/
             ${{ runner.temp }}/native-evidence/filesystem-grants-*/
+            # The compiled service fixtures (about 71 MB each) are build outputs;
+            # their manifests record each executable's size and SHA-256.
+            !${{ runner.temp }}/native-evidence/global-shortcuts-package/global-shortcuts
+            !${{ runner.temp }}/native-evidence/notifications-package/notifications
+            !${{ runner.temp }}/native-evidence/filesystem-grants-package/filesystem-grants
             ${{ runner.temp }}/native-evidence/development/
             ${{ runner.temp }}/native-evidence/aot/
             ${{ runner.temp }}/native-evidence/input-race-aot/
