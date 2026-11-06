@@ -341,8 +341,10 @@ describe('application menu bar (headless real subprocess)', () => {
     }, 'fail')
   })
 
-  test('a selection without the capability or for an unallocated bar is a host fault', async () => {
-    for (const mode of ['forged', 'unallocated']) {
+  // One launch per test: each real subprocess gets its own timeout, because a
+  // hosted Windows runner needs seconds to start the peer.
+  for (const mode of ['forged', 'unallocated'] as const)
+    test(`a selection ${mode === 'forged' ? 'without the capability' : 'for an unallocated bar'} is a host fault`, async () => {
       const directory = mkdtempSync(join(tmpdir(), 'bun-native-app-menu-peer-'))
       try {
         const app = await createApplication({
@@ -357,6 +359,5 @@ describe('application menu bar (headless real subprocess)', () => {
       } finally {
         rmSync(directory, { recursive: true, force: true })
       }
-    }
-  })
+    })
 })
