@@ -16,6 +16,7 @@ use std::time::Instant;
 
 const MAX_BATCHES: usize = 4096;
 const MAX_FRAMES: usize = 16384;
+const MAX_DRAG_STEPS: usize = 512;
 
 struct Batch {
     id: RequestId,
@@ -47,6 +48,32 @@ struct Trace {
     dropped_batches: u64,
     dropped_frames: u64,
     renders: u64,
+    drag: Vec<(u64, DragStep)>,
+    dropped_drag: u64,
+}
+
+/// Where an external file drag was observed on the host's UI thread. GPUI's
+/// platform layer turns the OS drag-entered callback into an active drag; the
+/// steps tell a drag the platform never delivered from one it delivered and a
+/// target never saw (#303).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum DragStep {
+    /// A render found GPUI's active drag newly set.
+    Active,
+    /// A drop target's drag-move handler ran.
+    TargetMove,
+    /// A render found GPUI's active drag newly cleared.
+    Cleared,
+}
+
+impl DragStep {
+    fn name(self) -> &'static str {
+        match self {
+            Self::Active => "active",
+            Self::TargetMove => "target_move",
+            Self::Cleared => "cleared",
+        }
+    }
 }
 
 impl Trace {
@@ -81,6 +108,8 @@ pub(crate) fn install_from_environment() {
             dropped_batches: 0,
             dropped_frames: 0,
             renders: 0,
+            drag: Vec::with_capacity(MAX_DRAG_STEPS),
+            dropped_drag: 0,
         });
     });
 }
@@ -148,6 +177,22 @@ pub(crate) fn render(window_id: WindowId, started: Instant, nodes: usize) -> Opt
     })
 }
 
+/// Record one external-drag observation. Inert when tracing is disabled.
+pub(crate) fn drag(step: DragStep) {
+    TRACE.with(|trace| {
+        let mut trace = trace.borrow_mut();
+        let Some(trace) = trace.as_mut() else {
+            return;
+        };
+        if trace.drag.len() == MAX_DRAG_STEPS {
+            trace.dropped_drag += 1;
+            return;
+        }
+        let at = trace.nanos(Instant::now());
+        trace.drag.push((at, step));
+    });
+}
+
 pub(crate) fn painted(frame: usize) {
     TRACE.with(|trace| {
         let mut trace = trace.borrow_mut();
@@ -210,6 +255,9 @@ pub(crate) fn write() {
         "renders": trace.renders,
         "droppedBatches": trace.dropped_batches,
         "droppedFrames": trace.dropped_frames,
+        "dragColumns": ["atNanos", "step"],
+        "droppedDrag": trace.dropped_drag,
+        "drag": trace.drag.iter().map(|(at, step)| json!([at, step.name()])).collect::<Vec<_>>(),
         "batches": batches,
         "frames": frames,
     });
@@ -234,8 +282,29 @@ mod tests {
         assert!(now().is_none());
         assert!(render(WindowId::try_from(1).unwrap(), Instant::now(), 1).is_none());
         painted(0);
+        drag(DragStep::Active);
         write();
         assert!(!enabled());
+    }
+
+    #[test]
+    fn drag_steps_are_recorded_in_order_and_bounded() {
+        let (file, _) = install();
+        drag(DragStep::Active);
+        drag(DragStep::TargetMove);
+        for _ in 0..MAX_DRAG_STEPS {
+            drag(DragStep::TargetMove);
+        }
+        write();
+        let record = read(&file.0);
+        let steps = record["drag"].as_array().unwrap();
+        assert_eq!(steps.len(), MAX_DRAG_STEPS);
+        assert_eq!(steps[0][1], "active");
+        assert_eq!(steps[1][1], "target_move");
+        assert!(steps[0][0].as_u64().unwrap() <= steps[1][0].as_u64().unwrap());
+        assert_eq!(record["droppedDrag"], 2);
+        assert_eq!(record["dragColumns"], json!(["atNanos", "step"]));
+        assert_eq!(DragStep::Cleared.name(), "cleared");
     }
 
     static NEXT_FILE: std::sync::atomic::AtomicUsize = std::sync::atomic::AtomicUsize::new(0);
@@ -270,6 +339,8 @@ mod tests {
                 dropped_batches: 0,
                 dropped_frames: 0,
                 renders: 0,
+                drag: Vec::new(),
+                dropped_drag: 0,
             });
         });
         (TemporaryTrace(path), origin)

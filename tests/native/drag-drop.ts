@@ -17,7 +17,15 @@ import {
 } from '@bun-native/core'
 import { NativeCommandError, NativeHost } from '@bun-native/runtime'
 import assert from 'node:assert/strict'
-import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from 'node:fs'
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  realpathSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import {
@@ -141,6 +149,32 @@ function layout(window: NativeWindow): Promise<Layout> {
     batch.append(right, inner)
     return { left, right, inner }
   })
+}
+
+/**
+ * AppKit only: the host records when GPUI saw an active drag begin or end and
+ * when a drop target's move handler ran (`BUN_NATIVE_PHASE_TRACE`, inherited
+ * by the spawned host). On a missing entry this tells a drag GPUI never saw
+ * from a drag whose target handler never ran.
+ */
+const dragTrace = backend === 'appkit' ? join(output, `drag-trace-${process.pid}.json`) : undefined
+if (dragTrace !== undefined) process.env['BUN_NATIVE_PHASE_TRACE'] = dragTrace
+function dragTraceEvidence(): unknown {
+  if (dragTrace === undefined || !existsSync(dragTrace)) return null
+  try {
+    const trace = JSON.parse(readFileSync(dragTrace, 'utf8')) as {
+      dragColumns?: string[]
+      drag?: [number, string][]
+      droppedDrag?: number
+    }
+    return {
+      columns: trace.dragColumns,
+      droppedDrag: trace.droppedDrag,
+      drag: trace.drag?.map(([nanos, step]) => [Math.round(nanos / 1e6), step]),
+    }
+  } catch (error) {
+    return { unreadable: String(error) }
+  }
 }
 
 async function qualification() {
@@ -449,6 +483,8 @@ async function qualification() {
       await xdnd.close()
       await app.shutdown()
       await app.closed
+      if (failure !== undefined && backend === 'appkit')
+        console.error('AppKit host drag trace (ms, step):', JSON.stringify(dragTraceEvidence()))
       assert.deepEqual(Object.values(app.diagnostics), [0, 0, 0, 0, 0, 0, 0])
     }
     if (failure === undefined) await cleanup()

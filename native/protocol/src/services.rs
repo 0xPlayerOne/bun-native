@@ -31,6 +31,9 @@ pub struct ServicePolicy {
     /// Optional on the wire like `file_dialogs`: the application menu bar.
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub app_menu: bool,
+    /// Optional on the wire like `file_dialogs`: OS message dialogs.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub task_dialogs: bool,
 }
 
 /// OS-wide modifier state. Shift alone cannot form a global shortcut: at least
