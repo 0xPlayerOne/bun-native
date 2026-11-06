@@ -5,8 +5,8 @@
  * process-group teardown are checked independently (through /proc and node:fs
  * on Linux, through ps on macOS). Raw protocol checks drive the same host
  * through the private runtime to prove foreign, stale and reused process
- * handles are rejected natively. macOS has no filesystem grants, so there a
- * working directory must be refused instead of resolved.
+ * handles are rejected natively. This macOS process fixture supplies no
+ * filesystem roots, and its process backend refuses working directories.
  */
 import {
   createApplication,
@@ -68,8 +68,7 @@ const permissions = {
     { id: 'shell', executable: '/bin/sh' },
     { id: 'missing', executable: join(base, 'missing') },
   ],
-  // macOS grants no roots here: its child cannot start in a grant directory
-  // (refused in the host's unit tests), so only pipes are qualified.
+  // The macOS process backend does not accept a grant descriptor as cwd.
   filesystemRoots: macos ? [] : [{ id: 'work', path: work, access: 'read' as const }],
 }
 
@@ -199,7 +198,6 @@ async function pipesWithoutGrants(app: NativeApplication, window: NativeWindow) 
   assert.deepEqual(seen.exit, { code: 5 })
   assert.equal(seen.streams['stdout'], 'out||a b|')
   assert.equal(seen.streams['stderr'], 'err')
-  // The grant service itself exists on macOS; with no root configured it names nothing.
   assert.equal(app.serviceCapabilities.filesystemGrants.availability, 'available')
   record('pipesAndEnvironment', { exit: seen.exit, inheritedHome: false })
   await assert.rejects(
@@ -471,7 +469,7 @@ writeFileSync(
       kernel: macos ? release() : readFileSync('/proc/sys/kernel/osrelease', 'utf8').trim(),
       display: macos ? 'macOS runner window session' : 'isolated Xvfb with openbox',
       children: macos
-        ? 'real /bin/sh programs; groups checked through ps; no working directory (no filesystem grants)'
+        ? 'real /bin/sh programs; groups checked through ps; no working directory (macOS process cwd unsupported)'
         : 'real /bin/sh programs; groups checked through /proc',
       outcomes,
     },
