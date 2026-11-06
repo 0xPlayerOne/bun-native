@@ -162,9 +162,14 @@ adapters use this same public window method.
 `app.serviceCapabilities.windowDisplay` reports implementation availability,
 the negotiated permission and `owned_window` scope. The application menu bar
 is a separate grant-gated service (`app.setMenuBar`, macOS only; see the
-[application menu bar](../../docs/native-services.md#application-menu-bar)). `window.showMessageDialog` and
-`window.showConfirmDialog` draw a modal overlay in the window and need no
-grant; see [message and confirm dialogs](../../docs/native-services.md#message-and-confirm-dialogs). This policy constrains the selected native
+[application menu bar](../../docs/native-services.md#application-menu-bar)).
+`window.showMessageDialog` and `window.showConfirmDialog` draw a modal overlay
+in the window and need no grant; see
+[message and confirm dialogs](../../docs/native-services.md#message-and-confirm-dialogs).
+Clipboard, global shortcut, application menu, file dialog, notification,
+drag/drop, filesystem-grant and PTY/process entries report `available` only
+when the host negotiates their capability, and `unavailable` /
+`unsupported_platform` otherwise. This policy constrains the selected native
 host, not trusted Bun code's ordinary OS APIs.
 
 An aborted queued read sends no native command. After submission, cancellation
@@ -205,8 +210,9 @@ queue saturation and stale handles retain their ordinary `NativeStateError`;
 malformed native replies retain `ProtocolError`. The native worker is joined
 before shutdown completes. `app.diagnostics.serviceRequests` exposes the
 bounded count. See [the full service contract](../../docs/native-services.md).
-This draft's source/contract tests do not yet qualify actual clipboard GUI/AOT
-execution; the existing display evidence describes its previous exact source.
+The [Native Linux workflow](../../.github/workflows/native-linux.yml) exercises
+the clipboard against an independent owned X11 peer in development and
+inspected AOT; this does not qualify Wayland, macOS or Windows.
 
 ### Global shortcuts
 

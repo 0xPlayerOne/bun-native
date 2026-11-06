@@ -3,7 +3,9 @@ import {
   createWorkspace,
   MAX_TASKS,
   MAX_TITLE_LENGTH,
+  PLAN_INTERVAL_MS,
   PLAN_STEPS,
+  schedulePlanStep,
   selectedPlan,
   visibleTasks,
   workspaceReducer,
@@ -75,6 +77,8 @@ describe('React workspace task workflows', () => {
     for (const task of state.tasks) state = workspaceReducer(state, { type: 'remove', id: task.id })
     expect(state.tasks).toHaveLength(0)
     expect(state.selectedId).toBeNull()
+    expect(workspaceReducer(state, { type: 'plan-start' })).toBe(state)
+    expect(selectedPlan(state)).toBeNull()
     state = workspaceReducer(state, { type: 'add', title: 'Start again' })
     expect(state.selectedId).toBe(state.tasks[0]!.id)
   })
@@ -139,5 +143,25 @@ describe('React workspace task workflows', () => {
     expect(state.plan).toBeNull()
     expect(state.selectedId).toBe(3)
     expect(workspaceReducer(state, { type: 'plan-step', id: 4 })).toBe(state)
+  })
+
+  test('the real plan timer fires once after its interval and cancellation prevents firing', async () => {
+    let fired = 0
+    let cancelledFired = 0
+    const started = performance.now()
+    let elapsed = 0
+    schedulePlanStep(() => {
+      fired++
+      elapsed = performance.now() - started
+    })
+    const cancel = schedulePlanStep(() => {
+      cancelledFired++
+    })
+    cancel()
+    expect(fired).toBe(0)
+    await Bun.sleep(PLAN_INTERVAL_MS * 2)
+    expect(fired).toBe(1)
+    expect(elapsed).toBeGreaterThanOrEqual(PLAN_INTERVAL_MS - 1)
+    expect(cancelledFired).toBe(0)
   })
 })

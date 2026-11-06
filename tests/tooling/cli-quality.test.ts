@@ -12,6 +12,8 @@ import {
 } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
+import toolchain from '../../toolchain.json'
+import { diagnose } from '../../scripts/native/doctor.ts'
 import { createProject, readProject } from '../../scripts/native/project.ts'
 import { cliSourceClosure } from '../../scripts/native/package-source.ts'
 import {
@@ -210,6 +212,91 @@ describe('native doctor (no host is launched)', () => {
       expect(bare.stdout).toContain('skipped host')
     })
   }, 30_000)
+})
+
+describe('diagnose (in process)', () => {
+  test('skips the optional host and project checks when neither is given', async () => {
+    expect(await diagnose(repository, {})).toEqual([
+      { name: 'bun', status: 'ok', detail: `pinned revision ${toolchain.bun.cliRevision}` },
+      {
+        name: 'platform',
+        status: 'ok',
+        detail: `${process.platform}-${process.arch} has a pinned Bun distribution`,
+      },
+      {
+        name: 'host',
+        status: 'skipped',
+        detail: 'pass --host /absolute/path/to/bun-native-host to check a prebuilt host',
+      },
+      { name: 'project', status: 'skipped', detail: 'pass a project directory' },
+    ])
+  })
+
+  test('reports a readable matching host and a checkout project as ok', async () => {
+    await fixture(async (directory) => {
+      const host = join(directory, 'header-only-host')
+      writeFileSync(host, hostHeader(process.platform as 'linux', process.arch as 'x64'))
+      chmodSync(host, 0o755)
+      const project = join(directory, 'doctor app')
+      await createProject(repository, project, 'react', 'javascript')
+      const [, , hostResult, projectResult] = await diagnose(repository, { host, project })
+      expect(hostResult).toEqual({
+        name: 'host',
+        status: 'ok',
+        detail: `${realpathSync(host)} is a readable ${process.platform}/${process.arch} executable (protocol handshake not run)`,
+      })
+      expect(projectResult).toEqual({
+        name: 'project',
+        status: 'ok',
+        detail: `react project ${realpathSync(project)} in this checkout`,
+      })
+    })
+  }, 30_000)
+
+  test('turns host and project errors into failed lines instead of throwing', async () => {
+    await fixture(async (directory) => {
+      const [, , hostResult, projectResult] = await diagnose(repository, {
+        host: 'bun-native-host',
+        project: join(directory, 'missing'),
+      })
+      expect(hostResult?.status).toBe('failed')
+      expect(hostResult?.detail).toContain('--host must be an absolute path')
+      expect(projectResult?.status).toBe('failed')
+      expect(projectResult?.detail).toContain('ENOENT')
+    })
+  })
+
+  test('fails an unpinned Bun revision and a platform without a pinned distribution', async () => {
+    const { revision, packages } = toolchain.bun
+    const target = `${process.platform}-${process.arch}`
+    // The imported JSON module is shared, so swap and restore its fields rather than mocking modules.
+    toolchain.bun.revision = '0'.repeat(40)
+    toolchain.bun.packages = Object.fromEntries(
+      Object.entries(packages).filter(([key]) => key !== target)
+    ) as typeof packages
+    try {
+      const [bun, platform] = await diagnose(repository, {})
+      expect(bun).toEqual({
+        name: 'bun',
+        status: 'failed',
+        detail: `running ${Bun.version} (${Bun.revision}); dev, build and package sets require ${toolchain.bun.cliRevision} from toolchain.json`,
+      })
+      expect(platform).toEqual({
+        name: 'platform',
+        status: 'failed',
+        detail: `${target} has no pinned Bun distribution; supported: ${Object.keys(packages)
+          .filter((key) => key !== target)
+          .join(', ')}`,
+      })
+    } finally {
+      toolchain.bun.revision = revision
+      toolchain.bun.packages = packages
+    }
+    expect((await diagnose(repository, {})).slice(0, 2).map((result) => result.status)).toEqual([
+      'ok',
+      'ok',
+    ])
+  })
 })
 
 describe('checkProject (in process)', () => {
