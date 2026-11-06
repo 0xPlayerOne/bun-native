@@ -1,6 +1,6 @@
 import { afterEach, expect, test } from 'bun:test'
 import { existsSync } from 'node:fs'
-import { mkdir, readdir, readFile, rm, writeFile } from 'node:fs/promises'
+import { copyFile, mkdir, readdir, readFile, rm, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import {
   dataDirectory,
@@ -135,10 +135,19 @@ test('each launcher refuses a pointer that is not exactly versions/<name>', asyn
     'versions/a\n../x',
   ])
     expect([pointer, (await run(pointer + '\n')).exitCode]).toEqual([pointer, 1])
-  // A well-formed pointer passes validation and fails only at the missing application.
-  const missing = await run('versions/1.0.0-dev.1\n')
-  expect(missing.exitCode).not.toBe(0)
-  expect(missing.exitCode).not.toBe(1)
+  // A well-formed pointer passes validation and reaches the application.
+  const release = join(root, 'versions', '1.0.0-dev.1')
+  await mkdir(release, { recursive: true })
+  if (posix)
+    await writeFile(join(release, 'application'), '#!/bin/sh\necho reached\n', { mode: 0o755 })
+  else await copyFile(process.execPath, join(release, 'application.exe'))
+  await writeFile(join(root, 'current'), 'versions/1.0.0-dev.1\n')
+  const reached = Bun.spawnSync([launcher, ...(posix ? [] : ['--version'])], {
+    stdout: 'pipe',
+    stderr: 'pipe',
+  })
+  expect(reached.exitCode).toBe(0)
+  expect(reached.stdout.toString().trim()).not.toBe('')
 })
 
 test('platform integrations write a desktop entry, an app wrapper and a Start-menu command', async () => {
