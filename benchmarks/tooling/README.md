@@ -41,3 +41,12 @@ process; the cost is about 6–8 ms median per bundle on this machine, against
 edit-to-ready intervals near 200 ms in the native watch run. The table is a
 finite compiler-only observation, not native watch RSS, a plateau or a
 leak-freedom claim.
+
+## Solid transform follow-up
+
+[`controller-solid-stages.ts`](controller-solid-stages.ts) splits the Solid path
+into the full `bundleProject` call, the Babel transform alone, and Bun.build
+without per-edit Babel. Its [Linux results](results/solid-transform-linux-x64/README.md)
+attribute most of Solid's remaining growth under purge 0 to the Babel stage, with
+the live JS heap bounded. They also show that reusing the loaded Babel preset does
+not change RSS, so no transform change is adopted.

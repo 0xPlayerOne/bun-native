@@ -6,6 +6,23 @@ import { join } from 'node:path'
 
 // Actual UI scheduling regression. The controller injects one XTest edit while
 // bounded legal commands remain in flight. This is not a throughput benchmark.
+//
+// The stream ends at the producer deadline or after `maximumCommands`, whichever
+// comes first. The host appends one native evidence record per command, and the
+// controller refuses evidence above 4 MiB. Capping the commands bounds that file
+// by construction instead of by how fast the host runner happens to be: 23,000
+// commands in three seconds already reached 4.18 MB (a pass) and 4.24 MB (an
+// evidence-limit failure) on hosted Linux. tests/quality/test_native_diagnostics.py
+// proves the cap leaves the evidence well under the unchanged limit. The
+// controller injects its edit once `saturationPoint` commands have been
+// acknowledged with the queue full (or after `saturationDelayMs`, the earlier
+// fixed delay, on a host too slow to get there), so the stream is still
+// saturated well after the edit lands.
+const producerDeadlineMs = 3000
+const pendingLimit = 128
+const maximumCommands = 12_288
+const saturationPoint = 3_072
+const saturationDelayMs = 500
 const directory = process.env['BUN_NATIVE_DIAGNOSTICS_DIR']
 const executable = process.env['BUN_NATIVE_HOST']
 const nonce = process.env['BUN_NATIVE_EVIDENCE_NONCE']
@@ -117,11 +134,17 @@ try {
   }
   const streamStarted = performance.now()
   producing = true
-  record('stream-start', { pendingLimit: queued ? 128 : 1, producerDurationMs: 3000 })
-  function stopProducer(): void {
+  record('stream-start', {
+    pendingLimit: queued ? pendingLimit : 1,
+    producerDurationMs: producerDeadlineMs,
+    ...(queued ? { maximumCommands, saturationPoint, saturationDelayMs } : {}),
+  })
+  let stoppedBy = 'deadline'
+  function stopProducer(reason = 'deadline'): void {
     if (!producing) return
     producing = false
-    record('producer-stopped', { sent, acknowledged, outstanding })
+    stoppedBy = reason
+    record('producer-stopped', { sent, acknowledged, outstanding, stoppedBy })
   }
   function command(): Extract<WindowCommand, { type: 'batch' }> {
     return {
@@ -133,9 +156,11 @@ try {
   }
   if (queued) {
     const drained = Promise.withResolvers<void>()
+    let saturated = false
     const send = () => {
-      if (performance.now() - streamStarted >= 3000) {
-        stopProducer()
+      const exhausted = sent >= maximumCommands
+      if (exhausted || performance.now() - streamStarted >= producerDeadlineMs) {
+        stopProducer(exhausted ? 'command-limit' : 'deadline')
         if (!outstanding) drained.resolve()
         return
       }
@@ -150,18 +175,35 @@ try {
           durationsMs.push(performance.now() - requestStarted)
           if (acknowledged % 100 === 0) record('progress', { sent, acknowledged, outstanding })
           if (producing) send()
+          // After the refill the queue is full again. Release the controller at
+          // the saturation point, or after the original half second on a host
+          // too slow to reach it, whichever comes first.
+          if (!saturated && producing) {
+            const elapsed = performance.now() - streamStarted
+            if (acknowledged >= saturationPoint || elapsed >= saturationDelayMs) {
+              saturated = true
+              record('saturated', {
+                sent,
+                acknowledged,
+                outstanding,
+                pendingLimit,
+                elapsedMs: elapsed,
+                after: acknowledged >= saturationPoint ? 'commands' : 'time',
+              })
+            }
+          }
           if (!producing && !outstanding) drained.resolve()
         },
         (error: unknown) => {
-          stopProducer()
+          stopProducer('error')
           drained.reject(error)
         }
       )
     }
-    for (let index = 0; index < 128; index++) send()
+    for (let index = 0; index < pendingLimit; index++) send()
     await drained.promise
   } else {
-    while (performance.now() - streamStarted < 3000) {
+    while (performance.now() - streamStarted < producerDeadlineMs) {
       const requestStarted = performance.now()
       sent += 1
       outstanding = 1
@@ -179,6 +221,7 @@ try {
     acknowledged,
     outstanding,
     maximumOutstanding,
+    stoppedBy,
     elapsedMs: performance.now() - streamStarted,
   })
   // Permit a delayed event to be reported before failing the fairness assertion;
@@ -218,6 +261,8 @@ try {
         sent,
         acknowledged,
         maximumOutstanding,
+        stoppedBy,
+        ...(queued ? { maximumCommands } : {}),
         requestAcknowledgementMs: durationsMs,
         inputEvents,
         scope:

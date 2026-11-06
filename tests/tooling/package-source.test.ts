@@ -24,7 +24,7 @@ async function fixture(exercise: (directory: string) => Promise<void>): Promise<
 describe('package export/import materialization (source reads only)', () => {
   test('the actual CLI closure includes both compilers, inspectors and configuration without producer-only dependencies', async () => {
     const closure = await cliSourceClosure(repository)
-    expect(closure.external).toEqual(['@babel/core', 'babel-preset-solid'])
+    expect(closure.external).toEqual(['@babel/core', 'babel-preset-solid', 'oxlint'])
     for (const path of [
       'scripts/native.ts',
       'scripts/native/host.ts',
@@ -49,7 +49,10 @@ describe('package export/import materialization (source reads only)', () => {
   })
 
   test('preserves all real library exports and every TS source file, with exact framework and public type dependencies', async () => {
-    const manifests = await materializedManifests(repository, ['@babel/core', 'babel-preset-solid'])
+    const manifests = await materializedManifests(
+      repository,
+      (await cliSourceClosure(repository)).external
+    )
     for (const name of ['core', 'protocol', 'runtime', 'renderer', 'solid', 'react']) {
       const directory = join(repository, 'packages', name)
       const source = await Bun.file(join(directory, 'package.json')).json()
@@ -82,6 +85,7 @@ describe('package export/import materialization (source reads only)', () => {
     expect(manifests['@bun-native/cli']!.dependencies).toEqual({
       '@babel/core': '7.29.7',
       'babel-preset-solid': '1.9.16',
+      oxlint: '1.90.0',
     })
     const consumers = await consumerDefinitions(repository, manifests)
     for (const framework of ['solid', 'react'] as const) {

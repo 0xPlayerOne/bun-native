@@ -697,6 +697,23 @@ jobs:
             "$NATIVE_EVIDENCE/boundary-offline" -- bun tests/native/boundary.ts \
             | tee "$NATIVE_EVIDENCE/boundary-offline.json"
           grep -q '"offline":true' "$NATIVE_EVIDENCE/boundary-offline.json"
+          grep -q '"display":true' "$NATIVE_EVIDENCE/boundary-online.json"
+          grep -q '"display":true' "$NATIVE_EVIDENCE/boundary-offline.json"
+      - name: Release host with no display, a real GPUI startup panic and offline inspected AOT
+        timeout-minutes: 5
+        env:
+          BUN_NATIVE_HOST: ${{ github.workspace }}/target/release/bun-native-host
+        run: |
+          if [[ -e /proc/sys/kernel/apparmor_restrict_unprivileged_userns ]]; then
+            sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
+          fi
+          bun test tests/native/release-host.test.ts \
+            --reporter=junit --reporter-outfile "$NATIVE_EVIDENCE/release-host.xml"
+          # Every case must run here: a skip on this runner is a failure.
+          if grep -q '<skipped' "$NATIVE_EVIDENCE/release-host.xml"; then
+            echo 'release-host.test.ts skipped a case on the native runner' >&2
+            exit 1
+          fi
       - name: Development bridge acknowledgement measurements
         timeout-minutes: 4
         run: |

@@ -62,16 +62,20 @@ export class UpdateError extends Error {
 export const maximumManifestBytes = 1 << 20
 export const maximumFiles = 4096
 export const maximumFileBytes = 2 ** 31
-const productPattern = /^[a-z0-9][a-z0-9.-]{0,127}$/
+export const productPattern = /^[a-z0-9][a-z0-9.-]{0,127}$/
 const versionPattern = /^\d{1,9}\.\d{1,9}\.\d{1,9}(?:-[0-9A-Za-z.-]{1,64})?$/
 const revisionPattern = /^[0-9a-f]{40}$/
 const sha256Pattern = /^[0-9a-f]{64}$/
 
-function fail(message: string): never {
+export function fail(message: string): never {
   throw new UpdateError('malformed', message)
 }
 
-function record(value: unknown, name: string, keys: readonly string[]): Record<string, unknown> {
+export function record(
+  value: unknown,
+  name: string,
+  keys: readonly string[]
+): Record<string, unknown> {
   if (value === null || typeof value !== 'object' || Array.isArray(value))
     fail(`${name} must be an object`)
   const object = value as Record<string, unknown>
@@ -81,12 +85,12 @@ function record(value: unknown, name: string, keys: readonly string[]): Record<s
   return object
 }
 
-function text(value: unknown, name: string, pattern: RegExp): string {
+export function text(value: unknown, name: string, pattern: RegExp): string {
   if (typeof value !== 'string' || !pattern.test(value)) fail(`${name} is invalid`)
   return value
 }
 
-function integer(value: unknown, name: string, minimum: number, maximum: number): number {
+export function integer(value: unknown, name: string, minimum: number, maximum: number): number {
   if (!Number.isSafeInteger(value) || (value as number) < minimum || (value as number) > maximum)
     fail(`${name} is invalid`)
   return value as number
@@ -202,6 +206,18 @@ export function verifyUpdate(
       )
     trust = { kind: 'unsigned-experimental' }
   }
+  return admitAuthenticatedUpdate(bytes, trust, requirements)
+}
+
+/**
+ * Parse and check manifest bytes whose signer the caller has already authenticated as
+ * `trust`. Only verifyUpdate and verifyKeyedUpdate (update-keys.ts) may call this.
+ */
+export function admitAuthenticatedUpdate(
+  bytes: Uint8Array,
+  trust: VerifiedTrust,
+  requirements: HostRequirements
+): VerifiedUpdate {
   let json: unknown
   try {
     json = JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(bytes))

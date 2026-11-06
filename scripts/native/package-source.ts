@@ -213,6 +213,8 @@ export async function consumerDefinitions(
     const devDependencies: Record<string, string> = {
       '@bun-native/cli': manifests['@bun-native/cli']!.version,
       '@types/bun': workspace.devDependencies['@types/bun']!,
+      // The same pin the packaged CLI depends on, so `oxlint` is also a direct project tool.
+      oxlint: workspace.devDependencies['oxlint']!,
     }
     if (framework === 'react') {
       devDependencies['@types/react'] = workspace.devDependencies['@types/react']!

@@ -2,7 +2,9 @@
 
 import hashlib
 import importlib.util
+import json
 import os
+import re
 import signal
 import subprocess
 import sys
@@ -210,6 +212,56 @@ class DiagnosticsHelperTests(unittest.TestCase):
         ):
             with self.subTest(module):
                 self.assertIn(f"scripts/quality/{module}", sources)
+
+
+class SchedulingEvidenceBudgetTests(unittest.TestCase):
+    """The scheduling stream's native evidence is bounded by its command count."""
+
+    source = (ROOT / "tests/native/scheduling.ts").read_text()
+
+    def constant(self, name):
+        found = re.search(rf"^const {name} = ([\d_]+)$", self.source, re.MULTILINE)
+        self.assertIsNotNone(found, f"scheduling.ts must declare const {name}")
+        return int(found.group(1).replace("_", ""))
+
+    def test_command_cap_bounds_native_evidence_far_below_the_unchanged_limit(self):
+        cap = self.constant("maximumCommands")
+        # Mount, filler and completion batches precede and follow the stream.
+        revisions = cap + 64
+        self.assertLess(revisions, 100_000)
+        # One host `batch_applied` record per command, at its widest: a five digit
+        # revision, the 1,031 node tree and a ten digit preflight time.
+        record = json.dumps(
+            {
+                "nonce": "f" * 32,
+                "type": "batch_applied",
+                "window_id": 1,
+                "tree_revision": 99_999,
+                "operation_count": 1,
+                "node_count": 1031,
+                "text_bytes": 99_999,
+                "preflight_nanos": 9_999_999_999,
+            },
+            separators=(",", ":"),
+        )
+        batches = cap * (len(record) + 1)
+        # Paint, layout, renderer and close records scale with frames, not
+        # commands; hosted runs wrote about 46 KB of them over the whole stream.
+        other = 256 * 1024
+        self.assertLessEqual(batches + other, DRIVER.MAX_LOG_BYTES * 3 // 4)
+
+    def test_saturation_release_precedes_the_end_of_the_stream(self):
+        cap = self.constant("maximumCommands")
+        self.assertEqual(self.constant("pendingLimit"), 128)
+        self.assertLessEqual(self.constant("saturationPoint"), cap // 2)
+        self.assertLess(
+            self.constant("saturationDelayMs"), self.constant("producerDeadlineMs")
+        )
+
+    def test_the_serial_control_stays_bounded_by_its_deadline(self):
+        # Each control command is followed by a 1 ms application yield.
+        self.assertIn("await Bun.sleep(1)", self.source)
+        self.assertLessEqual(self.constant("producerDeadlineMs"), 3000)
 
 
 if __name__ == "__main__":

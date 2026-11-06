@@ -15,6 +15,15 @@ import { dirname, isAbsolute, join, resolve } from 'node:path'
 import { fileDigest, type FileDigest } from './artifact.ts'
 import { packagePath } from './paths.ts'
 import {
+  assertKeySetSuccessor,
+  assertReleaseTrusted,
+  decodeKeySet,
+  rotateKeySet,
+  type KeySet,
+} from './update-keys.ts'
+import {
+  maximumFileBytes,
+  maximumFiles,
   UpdateError,
   verifyBuildManifest,
   type UpdateFile,
@@ -28,6 +37,7 @@ import {
  *   current      derived one-line copy of the current release directory for launchers
  *   bin/         generated launchers
  *   integration.json  external menu entries/bundles created for this installation
+ *   keys.json    accepted update key set after a rotation (docs/update-lifecycle.md)
  *   versions/    immutable verified release directories
  *   staging/     in-progress downloads, discarded by recovery
  *   data/        application user data; never written or removed by the updater
@@ -42,12 +52,28 @@ export type Release = {
   files: Record<string, UpdateFile>
 }
 
+/** The current release awaits a health confirmation; see docs/update-lifecycle.md. */
+export type HealthCheck = { status: 'pending'; attempts: number; limit: number }
+
+/** The last release rolled back automatically; installs must advance past its sequence. */
+export type FailedRelease = {
+  version: string
+  sequence: number
+  manifestSha256: string
+  reason: 'failed' | 'unconfirmed'
+}
+
 export type InstallationState = {
   schemaVersion: 1
   product: string
   current: Release
   previous: Release | null
+  /** Absent in states written before health checks existed; null means confirmed. */
+  health: HealthCheck | null
+  failed: FailedRelease | null
 }
+
+export const maximumHealthAttempts = 16
 
 export type InstallPhase = 'locked' | 'downloaded' | 'staged' | 'promoted' | 'committed'
 
@@ -80,7 +106,8 @@ export function httpSource(base: URL): PayloadSource {
 const stateFile = 'state.json'
 const pointerFile = 'current'
 const integrationFile = 'integration.json'
-const ownedFiles = [stateFile, pointerFile, integrationFile]
+const keysFile = 'keys.json'
+const ownedFiles = [stateFile, pointerFile, integrationFile, keysFile]
 
 export function dataDirectory(root: string): string {
   return join(resolve(root), 'data')
@@ -131,6 +158,19 @@ async function syncDirectory(path: string): Promise<void> {
   }
 }
 
+const sha256Pattern = /^[0-9a-f]{64}$/
+
+function validFile(file: UpdateFile | undefined): boolean {
+  return (
+    Number.isSafeInteger(file?.bytes) &&
+    file!.bytes >= 0 &&
+    file!.bytes <= maximumFileBytes &&
+    typeof file!.sha256 === 'string' &&
+    sha256Pattern.test(file!.sha256) &&
+    typeof file!.executable === 'boolean'
+  )
+}
+
 function parseRelease(value: unknown): Release {
   const release = value as Release
   if (
@@ -138,14 +178,49 @@ function parseRelease(value: unknown): Release {
     !/^versions\/[0-9A-Za-z.-]+$/.test(release.directory) ||
     typeof release.version !== 'string' ||
     !Number.isSafeInteger(release.sequence) ||
-    !/^[0-9a-f]{64}$/.test(release.manifestSha256) ||
+    !sha256Pattern.test(release.manifestSha256) ||
     (release.trust?.kind !== 'ed25519' && release.trust?.kind !== 'unsigned-experimental') ||
+    (release.trust.kind === 'ed25519' && !/^[0-9a-f]{16}$/.test(release.trust.key)) ||
     release.files === null ||
     typeof release.files !== 'object' ||
-    !Object.keys(release.files).every(packagePath)
+    Array.isArray(release.files) ||
+    Object.keys(release.files).length > maximumFiles ||
+    !Object.entries(release.files).every(([path, file]) => packagePath(path) && validFile(file))
   )
     throw new UpdateError('state', 'Installation state has an invalid release record')
   return release
+}
+
+function parseHealth(value: unknown): HealthCheck | null {
+  if (value === undefined || value === null) return null
+  const health = value as HealthCheck
+  if (
+    Object.keys(health).length !== 3 ||
+    health.status !== 'pending' ||
+    !Number.isSafeInteger(health.limit) ||
+    health.limit < 1 ||
+    health.limit > maximumHealthAttempts ||
+    !Number.isSafeInteger(health.attempts) ||
+    health.attempts < 0 ||
+    health.attempts > health.limit
+  )
+    throw new UpdateError('state', 'Installation state has an invalid health record')
+  return { status: 'pending', attempts: health.attempts, limit: health.limit }
+}
+
+function parseFailed(value: unknown): FailedRelease | null {
+  if (value === undefined || value === null) return null
+  const failed = value as FailedRelease
+  if (
+    Object.keys(failed).length !== 4 ||
+    typeof failed.version !== 'string' ||
+    !Number.isSafeInteger(failed.sequence) ||
+    typeof failed.manifestSha256 !== 'string' ||
+    !sha256Pattern.test(failed.manifestSha256) ||
+    (failed.reason !== 'failed' && failed.reason !== 'unconfirmed')
+  )
+    throw new UpdateError('state', 'Installation state has an invalid failed-release record')
+  return { ...failed }
 }
 
 export async function readState(root: string): Promise<InstallationState | null> {
@@ -164,12 +239,17 @@ export async function readState(root: string): Promise<InstallationState | null>
   }
   if (value?.schemaVersion !== 1 || typeof value.product !== 'string')
     throw new UpdateError('state', 'Unsupported installation state')
-  return {
+  const state: InstallationState = {
     schemaVersion: 1,
     product: value.product,
     current: parseRelease(value.current),
     previous: value.previous === null ? null : parseRelease(value.previous),
+    health: parseHealth(value.health),
+    failed: parseFailed(value.failed),
   }
+  if (state.health && !state.previous)
+    throw new UpdateError('state', 'A release awaiting its health check needs a retained release')
+  return state
 }
 
 async function writeAtomic(root: string, name: string, text: string): Promise<void> {
@@ -266,7 +346,7 @@ async function download(
 }
 
 /** Re-hash a release directory against its recorded inventory. */
-async function verifyRelease(root: string, release: Release): Promise<void> {
+export async function verifyRelease(root: string, release: Release): Promise<void> {
   for (const [path, expected] of Object.entries(release.files)) {
     let actual: FileDigest
     try {
@@ -288,9 +368,19 @@ export async function install(
   root: string,
   update: VerifiedUpdate,
   source: PayloadSource,
-  options: { onPhase?: (phase: InstallPhase) => void | Promise<void> } = {}
+  options: {
+    onPhase?: (phase: InstallPhase) => void | Promise<void>
+    /** Activate the release as pending-health with this many unconfirmed starts allowed. */
+    health?: { limit: number }
+  } = {}
 ): Promise<InstallationState> {
   const { manifest } = update
+  const limit = options.health?.limit
+  if (
+    limit !== undefined &&
+    (!Number.isSafeInteger(limit) || limit < 1 || limit > maximumHealthAttempts)
+  )
+    throw new UpdateError('state', `Health check limit must be 1 to ${maximumHealthAttempts}`)
   const directory = await prepare(root)
   const unlock = await lock(directory)
   try {
@@ -304,6 +394,18 @@ export async function install(
         'downgrade',
         `Update sequence ${manifest.sequence} does not advance ${state.current.sequence}`
       )
+    if (state?.health)
+      throw new UpdateError(
+        'state',
+        `Release ${state.current.version} is awaiting its health check; confirm it or roll back`
+      )
+    if (state?.failed && manifest.sequence <= state.failed.sequence)
+      throw new UpdateError(
+        'downgrade',
+        `Update sequence ${manifest.sequence} does not advance failed release ${state.failed.sequence}`
+      )
+    if (limit !== undefined && !state)
+      throw new UpdateError('state', 'A health check needs an installed release to fall back to')
     const id = `${manifest.version}-${manifest.sequence}-${update.manifestSha256.slice(0, 12)}`
     const release: Release = {
       directory: `versions/${id}`,
@@ -336,6 +438,8 @@ export async function install(
       product: manifest.product,
       current: release,
       previous: state?.current ?? null,
+      health: limit === undefined ? null : { status: 'pending', attempts: 0, limit },
+      failed: state?.failed ?? null,
     }
     await writeState(directory, next)
     await options.onPhase?.('committed')
@@ -346,21 +450,43 @@ export async function install(
   }
 }
 
-/** Swap back to the retained release after re-verifying its files. Data is untouched. */
-export async function rollback(root: string): Promise<InstallationState> {
-  const directory = await prepare(root)
-  const unlock = await lock(directory)
-  try {
-    const state = await readState(directory)
-    await sweep(directory, state)
+/**
+ * Swap back to the retained release after re-verifying its files. Data is untouched.
+ * With `keys`, a retained release from a revoked signer or below the minimum is refused.
+ * A manual rollback also ends a pending health check.
+ */
+export async function rollback(
+  root: string,
+  options: { keys?: KeySet } = {}
+): Promise<InstallationState> {
+  const next = await transition(root, async (directory, state) => {
     if (!state?.previous) throw new UpdateError('state', 'No previous release is retained')
     await verifyRelease(directory, state.previous)
-    const next: InstallationState = { ...state, current: state.previous, previous: state.current }
+    if (options.keys) assertReleaseTrusted(options.keys, state.previous)
+    return { ...state, current: state.previous, previous: state.current, health: null }
+  })
+  return next!
+}
+
+/**
+ * Locked state transition: recover interrupted work, then atomically commit the state that
+ * `change` returns. Returning the given state commits nothing. `onCommitted` is a test hook.
+ */
+export async function transition(
+  root: string,
+  change: (directory: string, state: InstallationState | null) => Promise<InstallationState | null>,
+  onCommitted?: () => void | Promise<void>
+): Promise<InstallationState | null> {
+  return locked(root, async (directory) => {
+    const state = await readState(directory)
+    await sweep(directory, state)
+    const next = await change(directory, state)
+    if (next === state || !next) return state
     await writeState(directory, next)
+    await onCommitted?.()
+    await sweep(directory, next)
     return next
-  } finally {
-    await unlock()
-  }
+  })
 }
 
 /** Resolve the committed current release directory for a launcher. */
@@ -378,6 +504,62 @@ export async function currentRelease(
   }
   if (!directory) throw new UpdateError('integrity', 'The current release directory is missing')
   return { directory: path, release: state.current }
+}
+
+/** Strictly read the persisted key set, or null before any rotation. */
+export async function readKeySet(root: string): Promise<KeySet | null> {
+  let bytes: Buffer
+  try {
+    bytes = await readFile(join(resolve(root), keysFile))
+  } catch (error) {
+    if (code(error) === 'ENOENT') return null
+    throw error
+  }
+  try {
+    return decodeKeySet(bytes)
+  } catch (error) {
+    throw new UpdateError('state', `Stored key set is invalid (${(error as Error).message})`)
+  }
+}
+
+const canonicalKeySet = (keys: KeySet) => JSON.stringify(keys)
+
+/**
+ * The effective key set: the persisted one or the caller's bootstrap set, whichever has the
+ * higher version. The newer set must be a valid successor of the older one, and two
+ * different sets with the same version are a conflict.
+ */
+export async function trustedKeySet(root: string, bootstrap: KeySet): Promise<KeySet> {
+  const stored = await readKeySet(root)
+  if (!stored) return bootstrap
+  if (stored.version > bootstrap.version) {
+    assertKeySetSuccessor(bootstrap, stored)
+    return stored
+  }
+  if (stored.version < bootstrap.version) {
+    assertKeySetSuccessor(stored, bootstrap)
+    return bootstrap
+  }
+  if (canonicalKeySet(stored) !== canonicalKeySet(bootstrap))
+    throw new UpdateError(
+      'state',
+      `Stored key set conflicts with the bootstrap key set at version ${stored.version}`
+    )
+  return stored
+}
+
+/** Accept a rotation signed by a currently trusted key and persist it atomically. */
+export async function acceptKeySet(
+  root: string,
+  bootstrap: KeySet,
+  bytes: Uint8Array,
+  signature: Uint8Array | undefined
+): Promise<KeySet> {
+  return locked(root, async (directory) => {
+    const next = rotateKeySet(await trustedKeySet(directory, bootstrap), bytes, signature)
+    await writeAtomic(directory, keysFile, JSON.stringify(next, null, 2) + '\n')
+    return next
+  })
 }
 
 async function locked<T>(root: string, run: (directory: string) => Promise<T>): Promise<T> {
@@ -436,6 +618,7 @@ export async function uninstall(
     await syncDirectory(directory)
     await options.onPhase?.('committed')
     await sweep(directory, null)
+    await rm(join(directory, keysFile), { force: true })
     await rm(join(directory, 'bin'), { recursive: true, force: true })
     for (const name of ['versions', 'staging']) await rm(join(directory, name), { recursive: true })
     if (options.purgeData) await rm(join(directory, 'data'), { recursive: true, force: true })

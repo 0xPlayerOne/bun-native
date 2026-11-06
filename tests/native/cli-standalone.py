@@ -532,6 +532,17 @@ def prepare(args):
                 60,
                 deadline,
             )
+            # The installed CLI's pinned oxlint; vendored archives are never linted.
+            run_owned(
+                report,
+                output,
+                "lint-" + name,
+                [bun, "--no-install", "run", "lint"],
+                project,
+                env,
+                60,
+                deadline,
+            )
             run_owned(
                 report,
                 output,
@@ -614,7 +625,14 @@ def prepare(args):
             shutil.copytree(project / "dist/development", receipt / "aot-development")
             invariant(output, report)
             save(output, report)
-        for prefix in ("create-", "install-", "check-", "imports-", "build-"):
+        for prefix in (
+            "create-",
+            "install-",
+            "check-",
+            "lint-",
+            "imports-",
+            "build-",
+        ):
             require(
                 sum(item["name"].startswith(prefix) for item in report["commands"])
                 == 4,
