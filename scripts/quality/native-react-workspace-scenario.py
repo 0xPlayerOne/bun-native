@@ -231,9 +231,27 @@ def run(
         action("mousemove", "--window", window, x, y, "click", "1")
 
     def button(label):
-        target = node("button", label)
-        assert not target["element"]["disabled"], f"{label} must be enabled"
-        click(target["node_id"])
+        # A control is enabled by React's commit for the state the typed text
+        # produced. The host reports the typed value as soon as it owns it, and
+        # that commit can arrive in a later frame, so wait for the labelled
+        # button to be enabled rather than judging the first settled frame.
+        def enabled(current):
+            return next(
+                (
+                    item
+                    for item in current["paint"]["nodes"]
+                    if item["element"]["kind"] == "button"
+                    and item["element"].get("text") == label
+                    and not item["element"]["disabled"]
+                ),
+                None,
+            )
+
+        current = wait_frame(
+            lambda current: enabled(current) is not None,
+            f"the enabled {label!r} button",
+        )
+        click(enabled(current)["node_id"])
 
     def input_value(label, value):
         def matches():
