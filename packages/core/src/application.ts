@@ -69,7 +69,7 @@ import {
   type SaveDialogOptions,
   type SaveDialogResult,
 } from './dialogs.ts'
-import { makeNode, own, Transaction, type NodeState } from './tree.ts'
+import { CommittedText, makeNode, own, Transaction, type NodeState } from './tree.ts'
 import {
   NativeStateError,
   type ClickEvent,
@@ -560,7 +560,9 @@ class Window implements NativeWindow {
   readonly root: NativeNode<'box'>
   readonly closed: Promise<void>
   readonly listeners: EventBindings
+  // Replaced, never cleared, on close: an open batch still reads its own base.
   nodes = new Map<number, NodeState>()
+  text: CommittedText
   revision = 0
   private active = true
   private resolveClosed!: () => void
@@ -575,6 +577,7 @@ class Window implements NativeWindow {
     const node = makeNode(rootId, { kind: 'box' })
     this.root = node.handle
     this.nodes.set(rootId, node)
+    this.text = new CommittedText(application.limits.max_text_bytes, [node])
     this.listeners = new EventBindings(() => this.application.cancelCallbacks(this.id))
     this.closed = new Promise((resolve) => {
       this.resolveClosed = resolve
@@ -593,7 +596,8 @@ class Window implements NativeWindow {
         this.rootId,
         () => this.application.allocateNode(),
         this.application.limits,
-        this.application.capabilities
+        this.application.capabilities,
+        this.text
       )
       let value: T
       try {
@@ -620,21 +624,7 @@ class Window implements NativeWindow {
         operations: transaction.operations,
       })
       this.assertActive()
-      // Native input can arrive while an unrelated batch is in flight. Preserve
-      // every newer edit instead of replacing it with a cloned candidate value.
-      for (const [id, candidate] of transaction.nodes) {
-        const current = this.nodes.get(id)
-        if (
-          current &&
-          current.inputRevision > candidate.inputRevision &&
-          current.element.kind === 'input' &&
-          candidate.element.kind === 'input'
-        ) {
-          candidate.inputRevision = current.inputRevision
-          candidate.element = { ...candidate.element, value: current.element.value }
-        }
-      }
-      this.nodes = transaction.nodes
+      transaction.commit(this.nodes, this.text)
       this.revision = reply.tree_revision
       this.listeners.retain(this.nodes)
       // The host revokes a target whose node a committed tree removed.
@@ -1598,7 +1588,8 @@ class Window implements NativeWindow {
     }
     this.active = false
     this.listeners.clear()
-    this.nodes.clear()
+    this.nodes = new Map()
+    this.text = new CommittedText(this.application.limits.max_text_bytes)
     this.revokeDisplayChanges()
     this.closing = this.application.enqueue(async () => {
       try {
@@ -1619,7 +1610,8 @@ class Window implements NativeWindow {
   revoke(): void {
     this.active = false
     this.listeners.clear()
-    this.nodes.clear()
+    this.nodes = new Map()
+    this.text = new CommittedText(this.application.limits.max_text_bytes)
     this.revokeDisplayChanges()
     for (const registration of this.application.shortcuts.values())
       if (registration.windowId === this.id) {
@@ -1718,8 +1710,10 @@ class Window implements NativeWindow {
     if (event.type === 'input') {
       if (node.element.kind !== 'input' || event.input_revision <= node.inputRevision)
         throw new ProtocolError('Native input kind or edit revision is invalid')
+      const element = { ...node.element, value: event.value }
+      this.text.replace(node.id, node.element, element)
       node.inputRevision = event.input_revision
-      node.element = { ...node.element, value: event.value }
+      node.element = element
     } else if (event.type === 'click') {
       if (node.element.kind !== 'button')
         throw new ProtocolError('Native click targeted a non-button node')

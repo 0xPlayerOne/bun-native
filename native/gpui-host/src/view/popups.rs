@@ -9,6 +9,7 @@
 //! shifted onto the X screen. Keyboard focus never moves to a popup.
 
 use super::{DropScope, NativeView, PointerFrame};
+use crate::style;
 use bun_native_protocol::{
     DismissReason, Element as NativeElement, Event, NodeId, OverlaySurface, Tree,
 };
@@ -351,22 +352,24 @@ impl NativeView {
     ) -> Option<AnyElement> {
         let state = self.state.borrow();
         let tree = &state.tree;
+        let element = tree.node(node_id)?.element();
         let NativeElement::Overlay {
             surface: OverlaySurface::Window,
-            style,
             ..
-        } = tree.node(node_id)?.element()
+        } = element
         else {
             return None;
         };
-        let base = pointer
-            .target(div().flex_shrink_0(), node_id)
-            .id(node_id.get());
+        let mut base = div();
+        pointer.target(&mut base, node_id);
+        let base = base.id(node_id.get());
+        let mut base = base;
+        style::element(base.style(), element, false);
         // External drags target the parent window; a popup surface holds no
         // drop target of its own.
         let drop_scope = DropScope::new(Default::default());
         Some(
-            self.container(tree, node_id, base, style, None, pointer, &drop_scope, cx)
+            self.container(tree, node_id, base, None, pointer, &drop_scope, cx)
                 .size_full()
                 .into_any_element(),
         )

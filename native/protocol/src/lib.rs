@@ -15,7 +15,7 @@ pub use dialogs::*;
 pub use drops::*;
 pub use events::*;
 pub use files::*;
-pub use framing::{write_event, CommandReader, ProtocolError};
+pub use framing::{write_event, CommandReader, EventWriter, ProtocolError};
 pub use processes::*;
 pub use services::*;
 pub use tree::{BatchMetrics, ModelError, Node, PreparedBatch, Tree, ViewRequest};

@@ -4,7 +4,7 @@
 //! value and otherwise keeps the user's latest drag, like a scroll offset.
 
 use super::{DropScope, NativeView, interactions::PointerFrame};
-use crate::{evidence::LayoutFrame, style};
+use crate::evidence::LayoutFrame;
 use bun_native_protocol::{
     Direction, Element as NativeElement, NodeId, SPLIT_DIVIDER, Style, Tree,
 };
@@ -103,11 +103,6 @@ impl NativeView {
     ) -> AnyElement {
         let row = properties.direction != Some(Direction::Column);
         let ratio = self.splits.ratio(node_id);
-        let base = if row {
-            base.flex().flex_row()
-        } else {
-            base.flex().flex_col()
-        };
         let children = tree
             .node(node_id)
             .expect("validated tree contains every split")
@@ -151,36 +146,35 @@ impl NativeView {
         };
         // Padding and border inset the panes from the bounds GPUI reports.
         let inset = properties.padding.unwrap_or(0.) + properties.border_width.unwrap_or(0.);
-        style::apply(base, properties)
-            .on_drag_move(
-                cx.listener(move |view, event: &DragMoveEvent<SplitDrag>, _, cx| {
-                    if event.drag(cx).0 != node_id {
-                        return;
-                    }
-                    let bounds = event.bounds;
-                    let (position, start, length) = if row {
-                        (event.event.position.x, bounds.origin.x, bounds.size.width)
-                    } else {
-                        (event.event.position.y, bounds.origin.y, bounds.size.height)
-                    };
-                    let ratio = ratio_at(
-                        pixels(position),
-                        pixels(start) + inset,
-                        pixels(length) - 2. * inset,
-                        min_size,
-                    );
-                    if let Some(state) = view.splits.0.get_mut(&node_id)
-                        && state.ratio != ratio
-                    {
-                        state.ratio = ratio;
-                        cx.notify();
-                    }
-                }),
-            )
-            .child(leading)
-            .child(divider)
-            .child(trailing)
-            .into_any_element()
+        base.on_drag_move(
+            cx.listener(move |view, event: &DragMoveEvent<SplitDrag>, _, cx| {
+                if event.drag(cx).0 != node_id {
+                    return;
+                }
+                let bounds = event.bounds;
+                let (position, start, length) = if row {
+                    (event.event.position.x, bounds.origin.x, bounds.size.width)
+                } else {
+                    (event.event.position.y, bounds.origin.y, bounds.size.height)
+                };
+                let ratio = ratio_at(
+                    pixels(position),
+                    pixels(start) + inset,
+                    pixels(length) - 2. * inset,
+                    min_size,
+                );
+                if let Some(state) = view.splits.0.get_mut(&node_id)
+                    && state.ratio != ratio
+                {
+                    state.ratio = ratio;
+                    cx.notify();
+                }
+            }),
+        )
+        .child(leading)
+        .child(divider)
+        .child(trailing)
+        .into_any_element()
     }
 }
 

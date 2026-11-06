@@ -7,8 +7,8 @@ use crate::{
     style,
 };
 use bun_native_protocol::{
-    DropTargetId, Element as NativeElement, Event, NodeId, Overflow, OverlaySurface, ScrollAnchor,
-    Style, Tree, ViewRequest, WindowId,
+    DropTargetId, Element as NativeElement, Event, Node, NodeId, Overflow, OverlaySurface,
+    ScrollAnchor, Tree, ViewRequest, WindowId,
 };
 use gpui::{
     AnyElement, AnyWindowHandle, App, Context, Div, Entity, ExternalPaths, FocusHandle, Focusable,
@@ -44,9 +44,7 @@ pub(crate) struct NativeView {
     inputs: BTreeMap<NodeId, Entity<TextInput>>,
     buttons: BTreeMap<NodeId, FocusHandle>,
     scrolls: BTreeMap<NodeId, ScrollHandle>,
-    /// Text and button labels as shared strings, reused across batches while
-    /// unchanged, so each render bumps a refcount instead of copying text.
-    labels: BTreeMap<NodeId, SharedString>,
+    index: NodeIndex,
     splits: Splits,
     focus_subscriptions: BTreeMap<NodeId, [Subscription; 2]>,
     reported_focus: Option<NodeId>,
@@ -95,13 +93,14 @@ impl NativeView {
             view.popups.invalidate();
             view.place_popups(window, cx);
         });
+        let index = NodeIndex::new(&state.borrow().tree);
         Self {
             window_id,
             state,
             inputs: BTreeMap::new(),
             buttons: BTreeMap::new(),
             scrolls: BTreeMap::new(),
-            labels: BTreeMap::new(),
+            index,
             splits: Splits::default(),
             focus_subscriptions: BTreeMap::new(),
             reported_focus: None,
@@ -130,57 +129,44 @@ impl NativeView {
     ) {
         let focused_before = self.focused_control(window, cx);
         self.drops.retain_nodes(self.window_id, &tree);
-        self.state.borrow_mut().tree = tree;
+        let previous = std::mem::replace(&mut self.state.borrow_mut().tree, tree);
         self.splits.reconcile(&self.state.borrow().tree);
-        // Snapshot cheap Arc-backed properties before focus/IME notifications:
-        // native callbacks must never run while the shared model is borrowed.
-        let (controls, scroll_modes) = {
+        // Snapshot cheap Arc-backed control properties before focus/IME
+        // notifications: native callbacks must never run while the shared
+        // model is borrowed. Sorted by ID, like the index it is read from.
+        let controls: Vec<(NodeId, Node)> = {
             let state = self.state.borrow();
-            let mut controls = BTreeMap::new();
-            let mut scroll_modes = BTreeMap::new();
-            let mut labels = BTreeMap::new();
-            for (id, node) in state.tree.nodes() {
-                if matches!(
-                    node.element(),
-                    NativeElement::Input { .. } | NativeElement::Button { .. }
-                ) {
-                    controls.insert(id, node.clone());
-                }
-                if let NativeElement::Text { text, .. } | NativeElement::Button { text, .. } =
-                    node.element()
-                {
-                    let label = self
-                        .labels
-                        .remove(&id)
-                        .filter(|label| label.as_ref() == text.as_str())
-                        .unwrap_or_else(|| SharedString::from(text));
-                    labels.insert(id, label);
-                }
-                if let Some(mode) = node
-                    .element()
-                    .style()
-                    .overflow
-                    .filter(|mode| mode.scrolls())
-                {
-                    scroll_modes.insert(id, mode);
-                }
-            }
-            self.labels = labels;
-            (controls, scroll_modes)
+            self.index.sync(&previous, &state.tree);
+            self.index
+                .controls
+                .iter()
+                .map(|id| {
+                    let node = state.tree.node(*id).expect("indexed control is committed");
+                    (*id, node.clone())
+                })
+                .collect()
         };
-        self.scrolls.retain(|id, _| scroll_modes.contains_key(id));
-        for (id, mode) in scroll_modes {
-            let handle = self.scrolls.entry(id).or_default();
+        drop(previous);
+        self.scrolls
+            .retain(|id, _| self.index.scroll_modes.contains_key(id));
+        for (id, mode) in &self.index.scroll_modes {
+            let handle = self.scrolls.entry(*id).or_default();
             let mut offset = handle.offset();
-            if mode == Overflow::ScrollX {
+            if *mode == Overflow::ScrollX {
                 offset.y = px(0.);
-            } else if mode == Overflow::ScrollY {
+            } else if *mode == Overflow::ScrollY {
                 offset.x = px(0.);
             }
             handle.set_offset(offset);
         }
+        let control = |id: &NodeId| {
+            controls
+                .binary_search_by_key(id, |(id, _)| *id)
+                .ok()
+                .map(|position| &controls[position].1)
+        };
         self.inputs.retain(|id, input| {
-            if controls.contains_key(id) {
+            if self.index.controls.contains(id) {
                 return true;
             }
             if input.focus_handle(cx).is_focused(window) {
@@ -189,7 +175,8 @@ impl NativeView {
             false
         });
         self.buttons.retain(|id, focus| {
-            let enabled = controls.get(id).is_some_and(|node| {
+            let node = control(id);
+            let enabled = node.is_some_and(|node| {
                 matches!(
                     node.element(),
                     NativeElement::Button {
@@ -201,7 +188,7 @@ impl NativeView {
             if !enabled && focus.is_focused(window) {
                 window.blur(cx);
             }
-            controls.contains_key(id)
+            node.is_some()
         });
         for (node_id, node) in controls {
             match node.element() {
@@ -293,7 +280,8 @@ impl NativeView {
     }
 
     fn label(&self, node_id: NodeId) -> SharedString {
-        self.labels
+        self.index
+            .labels
             .get(&node_id)
             .expect("label reconciled before render")
             .clone()
@@ -311,61 +299,35 @@ impl NativeView {
         let node = tree
             .node(node_id)
             .expect("validated tree contains every child");
-        let mut base = div().flex_shrink_0();
+        let mut base = div();
         // A split reports each pane's child from inside its pane wrapper.
         if let Some(layout) = layout
             && !matches!(node.element(), NativeElement::Split { .. })
         {
             base = layout.children(base, node.children(), 0, self.scrolls.get(&node_id));
         }
-        let mut base = pointer.target(base, node_id).id(node_id.get());
+        pointer.target(&mut base, node_id);
+        let mut base = base.id(node_id.get());
+        style::element(base.style(), node.element(), node_id == tree.root_id());
         let drop_scope = drop_scope.enter(node_id);
         if let Some(chain) = drop_scope.target() {
             base = drop_target(base, chain, &self.drops);
         }
         match node.element() {
-            NativeElement::Box { style: properties } => {
-                let base = if node_id == tree.root_id() {
-                    base.size_full()
-                } else {
-                    base
-                };
-                self.container(
-                    tree,
-                    node_id,
-                    base,
-                    properties,
-                    layout,
-                    pointer,
-                    &drop_scope,
-                    cx,
-                )
-                .into_any_element()
-            }
+            NativeElement::Box { .. } => self
+                .container(tree, node_id, base, layout, pointer, &drop_scope, cx)
+                .into_any_element(),
             NativeElement::Overlay {
                 surface: OverlaySurface::Window,
                 ..
             } if self.popups.active() => self
                 .popup_anchor(node_id)
                 .unwrap_or_else(|| div().into_any_element()),
-            NativeElement::Overlay {
-                anchor,
-                style: properties,
-                ..
-            } => {
+            NativeElement::Overlay { anchor, .. } => {
                 // Occlusion keeps pointer input from reaching anything beneath
                 // the layer; a window layer is itself the modal backdrop.
                 let content = self
-                    .container(
-                        tree,
-                        node_id,
-                        base,
-                        properties,
-                        layout,
-                        pointer,
-                        &drop_scope,
-                        cx,
-                    )
+                    .container(tree, node_id, base, layout, pointer, &drop_scope, cx)
                     .occlude();
                 self.overlay_layer(node_id, *anchor, content, self.viewport)
             }
@@ -384,27 +346,9 @@ impl NativeView {
                 &drop_scope,
                 cx,
             ),
-            NativeElement::Text {
-                style: properties, ..
-            } => style::apply(base, properties)
-                .child(self.label(node_id))
-                .into_any_element(),
-            NativeElement::Button {
-                disabled,
-                style: properties,
-                ..
-            } => {
-                let mut button = style::apply(
-                    base.flex()
-                        .items_center()
-                        .justify_center()
-                        .h(px(44.))
-                        .px(px(12.))
-                        .bg(rgb(if *disabled { 0x7a8396 } else { 0x2255cc }))
-                        .text_color(rgb(0xffffff)),
-                    properties,
-                )
-                .child(self.label(node_id));
+            NativeElement::Text { .. } => base.child(self.label(node_id)).into_any_element(),
+            NativeElement::Button { disabled, .. } => {
+                let mut button = base.child(self.label(node_id));
                 if !disabled {
                     let focus = self
                         .buttons
@@ -426,9 +370,7 @@ impl NativeView {
                 }
                 button.into_any_element()
             }
-            NativeElement::Input {
-                style: properties, ..
-            } => style::apply(base.bg(rgb(0xffffff)), properties)
+            NativeElement::Input { .. } => base
                 .child(
                     self.inputs
                         .get(&node_id)
@@ -447,17 +389,19 @@ impl NativeView {
         tree: &Tree,
         node_id: NodeId,
         base: Stateful<Div>,
-        properties: &Style,
         layout: Option<&LayoutFrame>,
         pointer: &PointerFrame,
         drop_scope: &DropScope,
         cx: &mut Context<Self>,
     ) -> Stateful<Div> {
-        let mut container = style::apply(base.flex().flex_col(), properties);
+        let node = tree
+            .node(node_id)
+            .expect("validated tree contains every container");
+        let mut container = base;
         if let Some(handle) = self.scrolls.get(&node_id) {
             // A viewport already showing its end stays there as content or
             // the viewport changes; a user scroll away from the end releases it.
-            if properties.scroll_anchor == Some(ScrollAnchor::End)
+            if node.element().style().scroll_anchor == Some(ScrollAnchor::End)
                 && !self.held_scrolls.borrow().contains(&node_id)
                 && handle.offset().y <= -handle.max_offset().y + px(1.)
             {
@@ -466,9 +410,7 @@ impl NativeView {
             container = container.track_scroll(handle);
         }
         container.children(
-            tree.node(node_id)
-                .expect("validated tree contains every child")
-                .children()
+            node.children()
                 .iter()
                 .map(|child| self.render_node(tree, *child, layout, pointer, drop_scope, cx)),
         )
@@ -678,12 +620,14 @@ fn drop_target(
         .on_drop::<ExternalPaths>(move |paths, _, cx| dropped.dropped(&chain, paths.paths(), cx))
 }
 
+mod index;
 mod interactions;
 mod keyboard;
 mod overlays;
 mod popups;
 mod split;
 
+use index::NodeIndex;
 use interactions::PointerFrame;
 use keyboard::{MenuMove, TypeAhead};
 use overlays::{OBSERVER_PRIORITY, Overlays};

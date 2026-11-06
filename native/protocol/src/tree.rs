@@ -6,8 +6,9 @@ use crate::{
     MAX_DEPTH, MAX_ID, MAX_NODES_PER_WINDOW, MAX_OPERATIONS, MAX_OVERLAY_DEPTH,
     MAX_TEXT_BYTES_PER_WINDOW,
 };
+use nodes::NodeMap;
 use serde::Serialize;
-use std::collections::{BTreeMap, HashSet};
+use std::collections::HashSet;
 use std::fmt;
 use std::sync::Arc;
 use std::time::Instant;
@@ -16,8 +17,8 @@ use std::time::Instant;
 pub struct Node {
     element: Arc<Element>,
     parent: Option<NodeId>,
-    // Shared like `element`: preflight clones the whole graph per batch, so a
-    // child list is copied only when that batch actually reorders it.
+    // Shared like `element`: a write copies its node, so a child list is
+    // copied only when that batch actually reorders it.
     children: Arc<Vec<NodeId>>,
     input_revision: Option<u64>,
 }
@@ -39,7 +40,7 @@ pub struct Tree {
     root_id: NodeId,
     revision: u64,
     text_bytes: usize,
-    nodes: BTreeMap<NodeId, Node>,
+    nodes: NodeMap,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -113,21 +114,23 @@ fn text_budget(bytes: usize) -> Result<usize, ModelError> {
 
 impl Tree {
     pub fn new(root_id: NodeId) -> Self {
+        let mut nodes = NodeMap::default();
+        nodes.insert(
+            root_id,
+            Node {
+                element: Arc::new(Element::Box {
+                    style: Style::default(),
+                }),
+                parent: None,
+                children: Arc::default(),
+                input_revision: None,
+            },
+        );
         Self {
             root_id,
             revision: 0,
             text_bytes: 0,
-            nodes: BTreeMap::from([(
-                root_id,
-                Node {
-                    element: Arc::new(Element::Box {
-                        style: Style::default(),
-                    }),
-                    parent: None,
-                    children: Arc::default(),
-                    input_revision: None,
-                },
-            )]),
+            nodes,
         }
     }
 
@@ -138,19 +141,37 @@ impl Tree {
         self.revision
     }
     pub fn node(&self, id: NodeId) -> Option<&Node> {
-        self.nodes.get(&id)
+        self.nodes.get(id)
     }
-    pub fn nodes(&self) -> impl Iterator<Item = (NodeId, &Node)> {
-        self.nodes.iter().map(|(id, node)| (*id, node))
+    pub fn nodes(&self) -> impl ExactSizeIterator<Item = (NodeId, &Node)> {
+        self.nodes.iter()
     }
 
     /// Snapshot the committed root-to-target route before an event leaves the
     /// UI thread. A later move must not rewrite an already-emitted event path.
-    pub fn path(&self, id: NodeId) -> Option<Vec<NodeId>> {
+    pub fn path(&self, target: NodeId) -> Option<Vec<NodeId>> {
+        // A committed tree is at most `MAX_DEPTH` edges deep, so its route
+        // fits this stack buffer and costs one exact allocation per event.
+        let mut route = [target; MAX_DEPTH + 1];
+        let mut len = 0;
+        let mut current = Some(target);
+        while let Some(id) = current {
+            let node = self.nodes.get(id)?;
+            let Some(slot) = route.get_mut(len) else {
+                return self.unbounded_path(target);
+            };
+            *slot = id;
+            len += 1;
+            current = node.parent;
+        }
+        Some(route[..len].iter().rev().copied().collect())
+    }
+
+    fn unbounded_path(&self, id: NodeId) -> Option<Vec<NodeId>> {
         let mut path = Vec::new();
         let mut current = Some(id);
         while let Some(id) = current {
-            let node = self.nodes.get(&id)?;
+            let node = self.nodes.get(id)?;
             path.push(id);
             current = node.parent;
         }
@@ -182,8 +203,7 @@ impl Tree {
         if last_node_id > MAX_ID
             || self
                 .nodes
-                .keys()
-                .next_back()
+                .last_id()
                 .is_some_and(|id| id.get() > last_node_id)
         {
             return Err(error(
@@ -192,16 +212,16 @@ impl Tree {
             ));
         }
         let operation_count = operations.len();
-        // Property payloads and child lists are immutable Arc values: cloning
-        // the bounded graph copies its links, not every text string or child
-        // list on each keypress or update.
+        // Node storage is persistent: this clone is a refcount, and each write
+        // below copies only its own path, so the committed tree stays intact
+        // and keeps sharing every untouched node and element `Arc`.
         let mut next = self.clone();
-        // `set` cannot change an element kind, so a batch of only sets keeps
-        // the committed, already validated ownership graph.
-        let mut graph_changed = false;
+        // Created and moved nodes: the only places a batch can break the
+        // committed, already validated ownership graph. A `set` of an overlay
+        // is included because its surface decides what its subtree may hold.
+        let mut attached = Vec::new();
         let mut requests = Vec::new();
         for operation in operations {
-            graph_changed |= !matches!(operation, Operation::Set { .. });
             match operation {
                 Operation::Create { node_id, element } => {
                     element
@@ -231,6 +251,7 @@ impl Tree {
                         },
                     );
                     last_node_id = node_id.get();
+                    attached.push(node_id);
                 }
                 Operation::Set {
                     node_id,
@@ -240,7 +261,7 @@ impl Tree {
                     element
                         .validate()
                         .map_err(|message| error(ErrorCode::InvalidCommand, message))?;
-                    let node = next.nodes.get_mut(&node_id).ok_or_else(invalid_handle)?;
+                    let node = next.nodes.get_mut(node_id).ok_or_else(invalid_handle)?;
                     if !node.element.same_kind(&element) {
                         return Err(error(
                             ErrorCode::InvalidState,
@@ -274,13 +295,20 @@ impl Tree {
                     next.text_bytes = text_budget(
                         next.text_bytes - node.element.text_bytes() + element.text_bytes(),
                     )?;
+                    let overlay = matches!(element, Element::Overlay { .. });
                     node.element = Arc::new(element);
+                    if overlay {
+                        attached.push(node_id);
+                    }
                 }
                 Operation::Insert {
                     parent_id,
                     child_id,
                     index,
-                } => next.insert(parent_id, child_id, index)?,
+                } => {
+                    next.insert(parent_id, child_id, index)?;
+                    attached.push(child_id);
+                }
                 Operation::Delete { node_id } => next.delete(node_id)?,
                 Operation::Focus { node_id } => requests.push(ViewRequest::Focus(node_id)),
                 Operation::ScrollTo { node_id, x, y } => {
@@ -291,11 +319,9 @@ impl Tree {
                 }
             }
         }
-        if graph_changed {
-            next.validate_graph()?;
-        } else {
-            debug_assert!(next.validate_graph().is_ok());
-        }
+        let verdict = next.validate_attached(&attached);
+        debug_assert_eq!(verdict, next.validate_graph());
+        verdict?;
         for request in &requests {
             next.validate_request(*request)?;
         }
@@ -321,7 +347,7 @@ impl Tree {
         let mut active: Option<(usize, NodeId)> = None;
         let mut pending = vec![(self.root_id, 0)];
         while let Some((id, outer)) = pending.pop() {
-            let Some(node) = self.nodes.get(&id) else {
+            let Some(node) = self.nodes.get(id) else {
                 continue;
             };
             let depth = match node.element.as_ref() {
@@ -341,7 +367,7 @@ impl Tree {
     fn validate_request(&self, request: ViewRequest) -> Result<(), ModelError> {
         match request {
             ViewRequest::Focus(node_id) => {
-                let node = self.nodes.get(&node_id).ok_or_else(invalid_handle)?;
+                let node = self.nodes.get(node_id).ok_or_else(invalid_handle)?;
                 if !matches!(
                     node.element.as_ref(),
                     Element::Button {
@@ -366,7 +392,7 @@ impl Tree {
                 }
             }
             ViewRequest::ScrollTo { node_id, x, y } => {
-                let node = self.nodes.get(&node_id).ok_or_else(invalid_handle)?;
+                let node = self.nodes.get(node_id).ok_or_else(invalid_handle)?;
                 let overflow = node.element.style().overflow;
                 if !overflow.is_some_and(Overflow::scrolls) {
                     return Err(error(
@@ -388,7 +414,7 @@ impl Tree {
                 }
             }
             ViewRequest::ScrollIntoView(node_id) => {
-                self.nodes.get(&node_id).ok_or_else(invalid_handle)?;
+                self.nodes.get(node_id).ok_or_else(invalid_handle)?;
             }
         }
         Ok(())
@@ -403,7 +429,7 @@ impl Tree {
         value: String,
     ) -> Result<Option<u64>, ModelError> {
         validate_text(&value).map_err(|message| error(ErrorCode::InvalidCommand, message))?;
-        let node = self.nodes.get_mut(&node_id).ok_or_else(invalid_handle)?;
+        let node = self.nodes.get_mut(node_id).ok_or_else(invalid_handle)?;
         let Element::Input { value: old, .. } = node.element.as_ref() else {
             return Err(error(ErrorCode::InvalidState, "node is not an input"));
         };
@@ -426,7 +452,7 @@ impl Tree {
         child_id: NodeId,
         index: usize,
     ) -> Result<(), ModelError> {
-        let parent = self.nodes.get(&parent_id).ok_or_else(invalid_handle)?;
+        let parent = self.nodes.get(parent_id).ok_or_else(invalid_handle)?;
         if !parent.element.is_container() {
             return Err(error(
                 ErrorCode::InvalidState,
@@ -439,7 +465,7 @@ impl Tree {
                 "the window root cannot be reparented",
             ));
         }
-        let old_parent = self.nodes.get(&child_id).ok_or_else(invalid_handle)?.parent;
+        let old_parent = self.nodes.get(child_id).ok_or_else(invalid_handle)?.parent;
         let mut ancestor = Some(parent_id);
         while let Some(id) = ancestor {
             if id == child_id {
@@ -448,12 +474,12 @@ impl Tree {
                     "insert would create a cycle",
                 ));
             }
-            ancestor = self.nodes.get(&id).ok_or_else(invalid_handle)?.parent;
+            ancestor = self.nodes.get(id).ok_or_else(invalid_handle)?.parent;
         }
         if let Some(old_parent) = old_parent {
             let siblings = &mut self
                 .nodes
-                .get_mut(&old_parent)
+                .get_mut(old_parent)
                 .ok_or_else(invalid_handle)?
                 .children;
             Arc::make_mut(siblings).retain(|id| *id != child_id);
@@ -461,7 +487,7 @@ impl Tree {
         let children = Arc::make_mut(
             &mut self
                 .nodes
-                .get_mut(&parent_id)
+                .get_mut(parent_id)
                 .ok_or_else(invalid_handle)?
                 .children,
         );
@@ -473,7 +499,7 @@ impl Tree {
         }
         children.insert(index, child_id);
         self.nodes
-            .get_mut(&child_id)
+            .get_mut(child_id)
             .ok_or_else(invalid_handle)?
             .parent = Some(parent_id);
         Ok(())
@@ -486,20 +512,91 @@ impl Tree {
                 "close the window to delete its root",
             ));
         }
-        let parent = self.nodes.get(&node_id).ok_or_else(invalid_handle)?.parent;
+        let parent = self.nodes.get(node_id).ok_or_else(invalid_handle)?.parent;
         if let Some(parent) = parent {
             let siblings = &mut self
                 .nodes
-                .get_mut(&parent)
+                .get_mut(parent)
                 .ok_or_else(invalid_handle)?
                 .children;
             Arc::make_mut(siblings).retain(|id| *id != node_id);
         }
         let mut pending = vec![node_id];
         while let Some(id) = pending.pop() {
-            let node = self.nodes.remove(&id).ok_or_else(invalid_handle)?;
+            let node = self.nodes.remove(id).ok_or_else(invalid_handle)?;
             self.text_bytes -= node.element.text_bytes();
             pending.extend(node.children.iter().copied());
+        }
+        Ok(())
+    }
+
+    /// Committed trees are validated graphs, and create, insert and delete keep
+    /// parent and child links consistent and reject cycles. A batch can then
+    /// break only depth or attachment, and only at or below a node it created
+    /// or moved, so checking those subtrees reaches `validate_graph`'s verdict
+    /// (depth before detachment, as its walk from the root reports them)
+    /// without walking the untouched window.
+    fn validate_attached(&self, attached: &[NodeId]) -> Result<(), ModelError> {
+        let too_deep = || error(ErrorCode::LimitExceeded, "tree depth exceeds 64 edges");
+        let mut detached = false;
+        let mut seen = HashSet::new();
+        let mut pending = Vec::new();
+        for &id in attached {
+            if seen.contains(&id) || self.nodes.get(id).is_none() {
+                continue;
+            }
+            let mut depth = 0;
+            let mut top = id;
+            // Overlay layers and the popup flag come from the ancestors, so a
+            // subtree is checked exactly as the walk from the root would.
+            let mut layers = Vec::new();
+            while let Some(parent) = self.nodes.get(top).ok_or_else(invalid_handle)?.parent {
+                depth += 1;
+                top = parent;
+                layers.push(top);
+                if depth > self.nodes.len() {
+                    return Err(error(
+                        ErrorCode::InvalidState,
+                        "tree contains duplicate ownership or a cycle",
+                    ));
+                }
+            }
+            if top != self.root_id {
+                detached = true;
+                continue;
+            }
+            let (mut overlays, mut popup) = (0, false);
+            for ancestor in layers.iter().rev() {
+                let node = self.nodes.get(*ancestor).ok_or_else(invalid_handle)?;
+                (overlays, popup) = check_node(node, overlays, popup)?;
+            }
+            if let Some(parent) = layers.first() {
+                let parent = self.nodes.get(*parent).ok_or_else(invalid_handle)?;
+                if parent.children.len() > parent.element.max_children() {
+                    return Err(split_panes());
+                }
+            }
+            pending.push((id, depth, overlays, popup));
+            while let Some((id, depth, overlays, popup)) = pending.pop() {
+                if depth > MAX_DEPTH {
+                    return Err(too_deep());
+                }
+                if seen.insert(id) {
+                    let node = self.nodes.get(id).ok_or_else(invalid_handle)?;
+                    let (overlays, popup) = check_node(node, overlays, popup)?;
+                    pending.extend(
+                        node.children
+                            .iter()
+                            .map(|child| (*child, depth + 1, overlays, popup)),
+                    );
+                }
+            }
+        }
+        if detached {
+            return Err(error(
+                ErrorCode::InvalidState,
+                "batch leaves detached nodes",
+            ));
         }
         Ok(())
     }
@@ -524,39 +621,8 @@ impl Tree {
                     "tree contains duplicate ownership or a cycle",
                 ));
             }
-            let node = self.nodes.get(&id).ok_or_else(invalid_handle)?;
-            if node.children.len() > node.element.max_children() {
-                return Err(error(
-                    ErrorCode::LimitExceeded,
-                    "a split owns at most two panes",
-                ));
-            }
-            let overlays = overlays + usize::from(matches!(*node.element, Element::Overlay { .. }));
-            if overlays > MAX_OVERLAY_DEPTH {
-                return Err(error(
-                    ErrorCode::LimitExceeded,
-                    "overlay nesting exceeds 8 layers",
-                ));
-            }
-            if popup
-                && matches!(
-                    *node.element,
-                    Element::Input { .. } | Element::Overlay { .. }
-                )
-            {
-                return Err(error(
-                    ErrorCode::InvalidState,
-                    "popup window content cannot contain inputs or overlays",
-                ));
-            }
-            let popup = popup
-                || matches!(
-                    *node.element,
-                    Element::Overlay {
-                        surface: OverlaySurface::Window,
-                        ..
-                    }
-                );
+            let node = self.nodes.get(id).ok_or_else(invalid_handle)?;
+            let (overlays, popup) = check_node(node, overlays, popup)?;
             if node.parent != parent {
                 return Err(error(
                     ErrorCode::InvalidState,
@@ -578,6 +644,48 @@ impl Tree {
         Ok(())
     }
 }
+
+fn split_panes() -> ModelError {
+    error(ErrorCode::LimitExceeded, "a split owns at most two panes")
+}
+
+/// What one node requires of its position: its own child count, overlay
+/// nesting and popup content. Returns the overlay layers and popup flag its
+/// children inherit.
+fn check_node(node: &Node, overlays: usize, popup: bool) -> Result<(usize, bool), ModelError> {
+    if node.children.len() > node.element.max_children() {
+        return Err(split_panes());
+    }
+    let overlays = overlays + usize::from(matches!(*node.element, Element::Overlay { .. }));
+    if overlays > MAX_OVERLAY_DEPTH {
+        return Err(error(
+            ErrorCode::LimitExceeded,
+            "overlay nesting exceeds 8 layers",
+        ));
+    }
+    if popup
+        && matches!(
+            *node.element,
+            Element::Input { .. } | Element::Overlay { .. }
+        )
+    {
+        return Err(error(
+            ErrorCode::InvalidState,
+            "popup window content cannot contain inputs or overlays",
+        ));
+    }
+    let popup = popup
+        || matches!(
+            *node.element,
+            Element::Overlay {
+                surface: OverlaySurface::Window,
+                ..
+            }
+        );
+    Ok((overlays, popup))
+}
+
+mod nodes;
 
 #[cfg(test)]
 mod tests;

@@ -35,12 +35,13 @@ fn button(value: MouseButton) -> PointerButton {
 pub(super) struct PointerFrame(Rc<Cell<Option<NodeId>>>);
 
 impl PointerFrame {
-    pub(super) fn target(&self, element: Div, node_id: NodeId) -> Div {
+    /// Registers in place: `InteractiveElement` builders move the >1 KB `Div`.
+    pub(super) fn target(&self, element: &mut Div, node_id: NodeId) {
         let down = self.0.clone();
         let up = self.0.clone();
-        element
-            .capture_any_mouse_down(move |_, _, _| down.set(Some(node_id)))
-            .capture_any_mouse_up(move |_, _, _| up.set(Some(node_id)))
+        let interactivity = element.interactivity();
+        interactivity.capture_any_mouse_down(move |_, _, _| down.set(Some(node_id)));
+        interactivity.capture_any_mouse_up(move |_, _, _| up.set(Some(node_id)));
     }
 
     /// `origin` is this window's content origin in the owning native window's

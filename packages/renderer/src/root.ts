@@ -8,7 +8,15 @@ import {
   type NativeWindow,
   type Style,
 } from '@bun-native/core'
-import { Node, setProperty, snapshot, visit, type Owner, type Snapshot } from './nodes.ts'
+import {
+  invalidate,
+  Node,
+  setProperty,
+  snapshot,
+  visit,
+  type Owner,
+  type Snapshot,
+} from './nodes.ts'
 import { commitNativeTree, type Committed, type Counts } from './native-tree.ts'
 import { observeInput } from './input-intent.ts'
 import { watchWindow } from './window-lifetime.ts'
@@ -261,6 +269,7 @@ class Root implements RenderRoot, Owner {
     }
     for (const node of this.registrations.keys()) this.revoke(node)
     visit(this.root, (node) => {
+      invalidate(node)
       node.owner = undefined
       for (const name of Object.keys(node.properties))
         if (isEventProperty(name)) delete node.properties[name]
@@ -274,6 +283,7 @@ class Root implements RenderRoot, Owner {
     this.unwatch = undefined
     this.committed.clear()
     this.root.children.length = 0
+    invalidate(this.root)
     if (this.failure) this.rejectClosed(this.failure)
     else this.resolveClosed()
   }
@@ -288,26 +298,31 @@ class Root implements RenderRoot, Owner {
     this.finish()
   }
 
-  private async commit(desired: ReadonlyMap<Node, Snapshot>): Promise<void> {
-    const previous = this.committed
-    const { nodes: next, counts } = await commitNativeTree(
+  private async commit(changes: ReadonlyMap<Node, Snapshot>): Promise<void> {
+    const { updates, removed, counts } = await commitNativeTree(
       this.window,
       this.root,
-      previous,
-      desired
+      this.committed,
+      changes
     )
     if (this.windowEnded) return
-    this.committed = next
+    // Publish in place only after acknowledgement; unchanged records stay shared.
+    for (const node of removed) this.committed.delete(node)
+    for (const [node, state] of updates) this.committed.set(node, state)
     if (Object.values(counts).some((count) => count > 0)) this.commits += 1
     for (const field of ['create', 'set', 'insert', 'remove'] as const)
       this.mutations[field] += counts[field]
     if (this.phase !== 'active') return
     // Native snapshots own immutable transaction state, never live unsubscribe
-    // functions. A detach during acknowledgement revokes this separate registry.
-    for (const node of this.registrations.keys())
-      if (!next.has(node) || node.owner !== this) this.revoke(node)
-    for (const [node, state] of next) {
-      if (node.owner !== this) continue
+    // functions. A detach during acknowledgement revokes this separate registry,
+    // and every unchanged record's registrations were reconciled when it was
+    // published, so only removed and changed nodes need reconciliation.
+    for (const node of removed) this.revoke(node)
+    for (const [node, state] of updates) {
+      if (node.owner !== this) {
+        this.revoke(node)
+        continue
+      }
       for (const [name, registration] of this.registrations.get(node) ?? [])
         if (state.events[name] !== registration.listener) this.revoke(node, name)
       for (const [name, listener] of Object.entries(state.events)) {
