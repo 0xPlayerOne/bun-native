@@ -5,7 +5,10 @@ inspected AOT with a development-profile host on an isolated Xvfb display.
 Hosted release-host qualification runs in Native Linux. A macOS backend
 (below) is compile-checked locally for `aarch64-apple-darwin` and runs only in
 the hosted Native Platforms macOS 15 job; its evidence comes from that CI job
-alone. Windows reports the service unavailable.
+alone. A Windows backend (below) is type-checked and linted locally for
+`x86_64-pc-windows-gnu`, and its command-line quoting and environment block
+run in the Linux unit tests; its only Windows execution evidence is the hosted
+Native Platforms `windows-2022` job.
 
 Date: 2026-11-05.
 
@@ -101,6 +104,55 @@ the same supervisor and semantics with different primitives:
   `service_unavailable` from the backend for an opened grant), and no child
   is started; without a `cwd` the child starts in the host's working directory.
 
+### Windows
+
+Windows has no process groups, signals, pidfds or PTYs. The backend keeps the
+same supervisor contract (credit, ordering, release and exit last) with
+Windows primitives. All Win32 calls live in the private
+`bun-native-windows-services` crate, built on the `windows-sys` crate that
+GPUI already depends on.
+
+- **Executable.** Launch paths may be Windows drive paths (`C:\tools\x.exe`),
+  never UNC or `\\?\` forms, and each host accepts only its own form. The
+  host opens the granted file with read-only sharing and holds it until the
+  child has started, so it cannot be written, replaced or renamed in between.
+  Its normalized final path (`GetFinalPathNameByHandleW`) must equal the
+  granted path, compared without case, so a policy entry that crosses a link
+  or uses a short name is refused (`path_denied`). `CreateProcessW` runs that
+  path as `lpApplicationName`: no search, no shell, and a file without an
+  extension is refused (`wrong_kind`) because Windows would append `.exe`.
+- **Arguments and environment.** The command line is built as the exact
+  inverse of `CommandLineToArgvW` (the MSVC rules), so a program that parses
+  its arguments that way receives the given vector. Programs that parse their
+  own command line, notably `cmd.exe`, see that quoting literally; nothing is
+  run through a shell. The environment block holds only the given variables,
+  as on Linux, so a child that needs `SystemRoot` or `PATH` must be given them.
+- **Tree.** Each child starts inside its own job object, attached with
+  `PROC_THREAD_ATTRIBUTE_JOB_LIST` before its first instruction, with
+  `JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE`. Descendants inherit the job. When the
+  leader exits the host terminates the job, so descendants holding the output
+  open end, then drains output to end of file and reports the exit last. The
+  host's own exit or crash closes the job and ends the tree.
+- **Pipes.** Anonymous pipes; `PROC_THREAD_ATTRIBUTE_HANDLE_LIST` makes the
+  child inherit exactly its three ends, and it runs on its own hidden console.
+  One reader thread per output stream and one writer replace `poll`. Each
+  reader holds the chunk it read until the delivery credit admits it, so the
+  same four-chunk credit back-pressures the child.
+- **Terminal.** A ConPTY pseudo-console (Windows 10 1809 or later), resized
+  with `ResizePseudoConsole`. The output is ConPTY's rendered VT stream, not
+  the child's raw bytes, and closing input types ^Z and Enter.
+- **Signals.** `terminate` and `kill` terminate the job and the exit reports
+  that signal. `interrupt` on a terminal types ^C, which the console delivers
+  as `CTRL_C_EVENT`. `interrupt` on pipes and `hangup` have no Windows
+  equivalent and return `service_unavailable`. Other exit codes are reported
+  modulo 256, as POSIX does.
+- **Working directory.** `CreateProcessW` takes only a path. The host walks
+  the grant with the ADR 0010 rules and holds the root and every directory
+  down to the target open without delete sharing, so none of them can be
+  renamed, removed or replaced by a link. The child starts at the target's
+  final path while those handles are held. Only a rename above the grant root,
+  which no grant can reach, could still change that path.
+
 Errors are typed: `permission_denied` (policy), `not_found` (missing
 executable or directory), `invalid_handle` (a grant from another window or
 already closed), `invalid_state` (a finished or released process),
@@ -151,5 +203,15 @@ a test that a `cwd` is refused), plus a test that a leader's exit stops a
 descendant still holding its output open. The same native test runs in
 development and inspected AOT there, without filesystem roots, checking group
 teardown through `ps` and that a `cwd` is refused. None of this was run
-locally: macOS behavior is claimed only from that CI evidence. Windows remains
-unavailable until it has an equivalent (ConPTY, job objects).
+locally: macOS behavior is claimed only from that CI evidence.
+
+On Windows the Native Platforms `windows-2022` job runs the Windows unit tests
+on real `cmd.exe` children: pipes with an explicit environment and exit code,
+missing, extensionless, non-canonical and directory executables, a sized
+ConPTY, output credit, a leader exit ending a descendant that holds its
+output, `terminate`, refused `interrupt` and `hangup`, release, and a grant
+working directory with junction and missing cases. The same native test runs
+there in development and inspected AOT, with an NTFS junction as the escape,
+descendants found through `Get-CimInstance Win32_Process`, and the terminal
+size read back with `mode con`. None of this was run locally: Windows behavior
+is claimed only from that CI evidence.

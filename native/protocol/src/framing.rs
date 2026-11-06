@@ -1,4 +1,6 @@
-use crate::{Command, Event, MAX_FRAME_BYTES};
+use crate::wire::safe_integer;
+use crate::{Command, Event, Operation, RequestId, WindowId, MAX_FRAME_BYTES};
+use serde::{de, Deserialize, Deserializer};
 use std::fmt;
 use std::io::{self, BufRead, Write};
 
@@ -101,7 +103,66 @@ impl CommandReader {
 /// keys, error variants and messages are unchanged. Failures poison the reader,
 /// so the second parse happens at most once per session.
 pub(crate) fn decode_command(frame: &[u8]) -> Result<Command, ProtocolError> {
+    if let Some(batch) = decode_batch_frame(frame) {
+        return Ok(batch);
+    }
     serde_json::from_slice(frame).or_else(|_| decode_command_last_wins(frame))
+}
+
+/// The batch command's own members, in a plain struct. `Command` is internally
+/// tagged, so decoding a batch through it first copies the whole frame, every
+/// operation included, into a buffered tree and then replays it. Batches are
+/// nearly all of the bytes the host reads, and the typed path here reads them
+/// once. It accepts exactly the objects `Command::Batch` accepts: unknown and
+/// duplicate members fail, so no object is skipped unread.
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct BatchFrame {
+    id: RequestId,
+    #[serde(rename = "type", deserialize_with = "batch_tag")]
+    _kind: (),
+    window_id: WindowId,
+    #[serde(deserialize_with = "safe_integer")]
+    base_revision: u64,
+    operations: Vec<Operation>,
+}
+
+/// Only the string `"batch"`. A derived unit variant would also accept its index.
+fn batch_tag<'de, D: Deserializer<'de>>(deserializer: D) -> Result<(), D::Error> {
+    struct Tag;
+    impl de::Visitor<'_> for Tag {
+        type Value = ();
+        fn expecting(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+            formatter.write_str("\"batch\"")
+        }
+        fn visit_str<E: de::Error>(self, value: &str) -> Result<(), E> {
+            if value == "batch" {
+                Ok(())
+            } else {
+                Err(E::invalid_value(de::Unexpected::Str(value), &self))
+            }
+        }
+    }
+    deserializer.deserialize_str(Tag)
+}
+
+/// Decodes a batch frame without the buffered tag path. `None` for any other
+/// frame and for any failure, which the general decoder then judges.
+fn decode_batch_frame(frame: &[u8]) -> Option<Command> {
+    // The runtime writes `id` before `type`; a differently ordered batch just
+    // takes the general path.
+    const TAG: &[u8] = b"\"type\":\"batch\"";
+    let head = &frame[..frame.len().min(64)];
+    head.windows(TAG.len())
+        .any(|window| window == TAG)
+        .then_some(())?;
+    let batch: BatchFrame = serde_json::from_slice(frame).ok()?;
+    Some(Command::Batch {
+        id: batch.id,
+        window_id: batch.window_id,
+        base_revision: batch.base_revision,
+        operations: batch.operations,
+    })
 }
 
 /// The reference decoder. Parsing rejects invalid UTF-8, BOMs, empty frames

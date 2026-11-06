@@ -299,13 +299,20 @@ jobs:
             --mode aot --host-profile release --os-input @telemetry -- `
             (Join-Path $env:NATIVE_EVIDENCE 'aot-package/${{ matrix.application }}')
           if ($LASTEXITCODE -ne 0) { throw 'Actual AOT window/pointer/keyboard input was not verified; inspect the precise unsupported or failed report' }
-      - name: Owned process unit tests on real macOS children
-        if: ${{ runner.os == 'macOS' && !cancelled() && steps.native-build.outcome == 'success' }}
+      - name: Owned process unit tests on real ${{ runner.os }} children
+        if: ${{ runner.os != 'Linux' && !cancelled() && steps.native-build.outcome == 'success' }}
         timeout-minutes: 5
         run: |
           cargo test --locked --release -p bun-native-host services::processes -- --test-threads=1 2>&1 |
             Tee-Object -FilePath (Join-Path $env:NATIVE_EVIDENCE 'processes-unit.log')
-          if ($LASTEXITCODE -ne 0) { throw 'macOS owned process unit tests failed' }
+          if ($LASTEXITCODE -ne 0) { throw '${{ runner.os }} owned process unit tests failed' }
+      - name: Windows filesystem grant and service unit tests on NTFS
+        if: ${{ runner.os == 'Windows' && !cancelled() && steps.native-build.outcome == 'success' }}
+        timeout-minutes: 5
+        run: |
+          cargo test --locked --release -p bun-native-windows-services -p bun-native-host services::files -- --test-threads=1 2>&1 |
+            Tee-Object -FilePath (Join-Path $env:NATIVE_EVIDENCE 'filesystem-grants-unit.log')
+          if ($LASTEXITCODE -ne 0) { throw 'Windows filesystem grant unit tests failed' }
       - name: Development and AOT macOS native fault containment
         if: ${{ runner.os == 'macOS' && !cancelled() && steps.native-build.outcome == 'success' }}
         timeout-minutes: 5
@@ -324,7 +331,7 @@ jobs:
             if ($LASTEXITCODE -ne 0) { throw "macOS native fault containment was not verified in $mode" }
           }
       - name: Development and AOT owned processes
-        if: ${{ runner.os == 'macOS' && !cancelled() && steps.native-build.outcome == 'success' }}
+        if: ${{ runner.os != 'Linux' && !cancelled() && steps.native-build.outcome == 'success' }}
         timeout-minutes: 6
         run: |
           $package = Join-Path $env:NATIVE_EVIDENCE 'processes-package'
@@ -332,6 +339,7 @@ jobs:
             --source $env:GITHUB_WORKSPACE --host $env:BUN_NATIVE_HOST `
             --host-profile release --outdir $package
           if ($LASTEXITCODE -ne 0) { throw 'The owned process AOT compiler or inspection failed' }
+          $manifest = Get-Content -Raw (Join-Path $package 'manifest.json') | ConvertFrom-Json
           foreach ($mode in @('development', 'aot')) {
             $evidence = Join-Path $env:NATIVE_EVIDENCE "processes-$mode"
             New-Item -ItemType Directory $evidence | Out-Null
@@ -340,9 +348,14 @@ jobs:
             if ($mode -eq 'development') {
               bun tests/native/processes.ts 2>&1 | Tee-Object -FilePath (Join-Path $evidence 'run.log')
             } else {
-              & (Join-Path $package 'processes') 2>&1 | Tee-Object -FilePath (Join-Path $evidence 'run.log')
+              & (Join-Path $package $manifest.application.file) 2>&1 | Tee-Object -FilePath (Join-Path $evidence 'run.log')
             }
-            if ($LASTEXITCODE -ne 0) { throw "macOS owned processes were not verified in $mode" }
+            if ($LASTEXITCODE -ne 0) { throw "${{ runner.os }} owned processes were not verified in $mode" }
+            $report = Get-Content -Raw (Join-Path $evidence 'processes.json') | ConvertFrom-Json
+            $backend = if ($IsWindows) { 'windows_job' } else { 'posix' }
+            if ($report.backend -ne $backend -or $report.mode -ne $mode) {
+              throw "${{ runner.os }} $mode owned process evidence does not name the $backend backend"
+            }
           }
       - name: Solid and React development/AOT owned native input and cleanup
         if: ${{ !cancelled() && steps.native-build.outcome == 'success' }}
@@ -385,8 +398,8 @@ jobs:
             }
           }
           if ($failures.Count -gt 0) { throw ($failures -join '; ') }
-      - name: macOS development and AOT filesystem grants
-        if: ${{ runner.os == 'macOS' && !cancelled() && steps.native-build.outcome == 'success' }}
+      - name: macOS and Windows development and AOT filesystem grants
+        if: ${{ runner.os != 'Linux' && !cancelled() && steps.native-build.outcome == 'success' }}
         timeout-minutes: 6
         run: |
           $package = Join-Path $env:NATIVE_EVIDENCE 'filesystem-grants-package'
@@ -394,6 +407,9 @@ jobs:
             --source $env:GITHUB_WORKSPACE --host $env:BUN_NATIVE_HOST `
             --host-profile release --outdir $package
           if ($LASTEXITCODE -ne 0) { throw 'The filesystem grants AOT compiler or inspection failed' }
+          $manifest = Get-Content -Raw (Join-Path $package 'manifest.json') | ConvertFrom-Json
+          $platform = if ($IsWindows) { 'win32' } else { 'darwin' }
+          $backend = if ($IsWindows) { 'ntcreatefile_walk' } else { 'openat_walk' }
           foreach ($mode in @('development', 'aot')) {
             $evidence = Join-Path $env:NATIVE_EVIDENCE "filesystem-grants-$mode"
             New-Item -ItemType Directory $evidence | Out-Null
@@ -402,12 +418,45 @@ jobs:
             if ($mode -eq 'development') {
               bun tests/native/filesystem-grants.ts 2>&1 | Tee-Object -FilePath (Join-Path $evidence 'run.log')
             } else {
-              & (Join-Path $package 'filesystem-grants') 2>&1 | Tee-Object -FilePath (Join-Path $evidence 'run.log')
+              & (Join-Path $package $manifest.application.file) 2>&1 | Tee-Object -FilePath (Join-Path $evidence 'run.log')
             }
-            if ($LASTEXITCODE -ne 0) { throw "macOS $mode filesystem grants were not verified" }
+            if ($LASTEXITCODE -ne 0) { throw "${{ runner.os }} $mode filesystem grants were not verified" }
             $report = Get-Content -Raw (Join-Path $evidence 'filesystem-grants.json') | ConvertFrom-Json
-            if ($report.platform -ne 'darwin' -or $report.backend -ne 'openat_walk' -or $report.mode -ne $mode) {
-              throw "macOS $mode filesystem grant evidence does not name the macOS backend"
+            if ($report.platform -ne $platform -or $report.backend -ne $backend -or $report.mode -ne $mode) {
+              throw "${{ runner.os }} $mode filesystem grant evidence does not name the $backend backend"
+            }
+          }
+      - name: macOS development and AOT application menu bar (#239)
+        if: ${{ runner.os == 'macOS' && !cancelled() && steps.native-build.outcome == 'success' }}
+        timeout-minutes: 6
+        run: |
+          $oracle = Join-Path $env:NATIVE_EVIDENCE 'macos-menu-oracle'
+          xcrun clang -fobjc-arc -Wall -Wextra -Werror -framework AppKit -framework ApplicationServices `
+            tests/native/macos-menu-oracle.m -o $oracle
+          if ($LASTEXITCODE -ne 0) { throw 'The independent Accessibility menu oracle did not compile' }
+          $env:BUN_NATIVE_MACOS_MENU_ORACLE = $oracle
+          $package = Join-Path $env:NATIVE_EVIDENCE 'app-menu-package'
+          bun experiments/aot-gpui/build-window.ts --entry app-menu `
+            --source $env:GITHUB_WORKSPACE --host $env:BUN_NATIVE_HOST `
+            --host-profile release --outdir $package
+          if ($LASTEXITCODE -ne 0) { throw 'The application menu AOT compiler or inspection failed' }
+          foreach ($mode in @('development', 'aot')) {
+            $evidence = Join-Path $env:NATIVE_EVIDENCE "app-menu-$mode"
+            New-Item -ItemType Directory $evidence | Out-Null
+            $env:BUN_NATIVE_APP_MENU_EVIDENCE = $evidence
+            $env:BUN_NATIVE_APP_MENU_MODE = $mode
+            if ($mode -eq 'development') {
+              bun tests/native/app-menu.ts 2>&1 | Tee-Object -FilePath (Join-Path $evidence 'run.log')
+            } else {
+              & (Join-Path $package 'app-menu') 2>&1 | Tee-Object -FilePath (Join-Path $evidence 'run.log')
+            }
+            if ($LASTEXITCODE -ne 0) { throw "macOS $mode application menu bar failed" }
+            $report = Get-Content -Raw (Join-Path $evidence 'app-menu.json') | ConvertFrom-Json
+            if ($report.platform -ne 'darwin' -or $report.mode -ne $mode) {
+              throw "macOS $mode application menu evidence does not name its platform and mode"
+            }
+            if ($report.status -ne 'verified') {
+              Write-Output "::warning::macOS $mode menu bar contents and selections are unverified: $($report.oracle)"
             }
           }
       - name: Display snapshot, work area, identity and display-change qualification (#299)
@@ -535,11 +584,13 @@ jobs:
             !${{ runner.temp }}/bun-native-platform-evidence/aot-package/platform-smoke
             !${{ runner.temp }}/bun-native-platform-evidence/aot-package/platform-smoke.exe
             !${{ runner.temp }}/bun-native-platform-evidence/processes-package/processes
+            !${{ runner.temp }}/bun-native-platform-evidence/processes-package/processes.exe
             !${{ runner.temp }}/bun-native-platform-evidence/solid-platform-package/solid-platform
             !${{ runner.temp }}/bun-native-platform-evidence/solid-platform-package/solid-platform.exe
             !${{ runner.temp }}/bun-native-platform-evidence/react-platform-package/react-platform
             !${{ runner.temp }}/bun-native-platform-evidence/react-platform-package/react-platform.exe
             !${{ runner.temp }}/bun-native-platform-evidence/filesystem-grants-package/filesystem-grants
+            !${{ runner.temp }}/bun-native-platform-evidence/filesystem-grants-package/filesystem-grants.exe
             !${{ runner.temp }}/bun-native-platform-evidence/display-platform-package/display-platform
             !${{ runner.temp }}/bun-native-platform-evidence/display-platform-package/display-platform.exe
             !${{ runner.temp }}/bun-native-platform-evidence/drag-drop-package/drag-drop

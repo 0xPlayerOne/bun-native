@@ -83,19 +83,30 @@ def run(command, timeout=3):
 
 
 def process_table():
+    """Rows for every readable /proc/<pid>/stat.
+
+    Read as bytes: the table is rebuilt on every wait_for poll, and decoding
+    each stat file costs more than parsing it. A process whose name is not valid
+    UTF-8 is kept, where a text read would have dropped it from ownership.
+    """
     result = {}
-    for entry in Path("/proc").iterdir():
-        if not entry.name.isdigit():
+    # Looked up here, once per table: importing this module must work on
+    # Windows, which has no os.sysconf, where the portable evidence tests load it.
+    page_size = os.sysconf("SC_PAGE_SIZE")
+    for name in os.listdir("/proc"):
+        if not name.isdigit():
             continue
         try:
-            fields = (entry / "stat").read_text().rsplit(")", 1)[1].split()
-            result[int(entry.name)] = {
-                "pid": int(entry.name),
-                "state": fields[0],
+            with open(f"/proc/{name}/stat", "rb") as stat:
+                fields = stat.read().rsplit(b")", 1)[1].split()
+            pid = int(name)
+            result[pid] = {
+                "pid": pid,
+                "state": fields[0].decode("ascii"),
                 "parent_pid": int(fields[1]),
                 "process_group": int(fields[2]),
                 "start_ticks": int(fields[19]),
-                "rss_bytes": int(fields[21]) * os.sysconf("SC_PAGE_SIZE"),
+                "rss_bytes": int(fields[21]) * page_size,
             }
         except (OSError, ValueError, IndexError, ProcessLookupError):
             continue
@@ -299,6 +310,10 @@ def read_events(path, nonce, offset):
         data = stream.read(MAX_LOG_BYTES + 1)
     if len(data) > MAX_LOG_BYTES:
         raise RuntimeError("Application event evidence exceeded the 4 MiB limit")
+    return parse_events(data, nonce)
+
+
+def parse_events(data, nonce):
     events = []
     # Ignore an unfinished final record until the next polling pass.
     for line in data.split(b"\n")[:-1]:
@@ -309,6 +324,47 @@ def read_events(path, nonce, offset):
             )
         events.append(value)
     return events
+
+
+class EventLog:
+    """`read_events(path, nonce, offset)` for a loop that polls the same log.
+
+    Every call still reads and bounds the whole file, so limits, errors and
+    results are those of `read_events`. What it skips is parsing again the
+    complete records it already parsed: the bytes it consumed are compared with
+    the start of the new read, and only the records after them are decoded. Any
+    change to bytes it already consumed (a rewrite or truncation) is parsed from
+    the start. A bad record raises every time until the file changes, as a fresh
+    read would. The returned list is new on each call; its records are shared
+    with earlier calls and must not be modified.
+    """
+
+    def __init__(self, path, nonce, offset=0):
+        self.path = path
+        self.nonce = nonce
+        self.offset = offset
+        self.consumed = b""
+        self.events = []
+
+    def read(self):
+        if not self.path.exists():
+            self.consumed, self.events = b"", []
+            return []
+        if self.path.stat().st_size > MAX_LOG_BYTES:
+            raise RuntimeError("Application event evidence exceeded the 4 MiB limit")
+        with self.path.open("rb") as stream:
+            stream.seek(self.offset)
+            data = stream.read(MAX_LOG_BYTES + 1)
+        if len(data) > MAX_LOG_BYTES:
+            raise RuntimeError("Application event evidence exceeded the 4 MiB limit")
+        complete = data[: data.rfind(b"\n") + 1]
+        if complete.startswith(self.consumed):
+            fresh = parse_events(complete[len(self.consumed) :], self.nonce)
+            self.events.extend(fresh)
+        else:
+            self.events = parse_events(complete, self.nonce)
+        self.consumed = complete
+        return list(self.events)
 
 
 def matches(event, expected):
@@ -761,6 +817,7 @@ def main():
     args.output.mkdir(parents=True, exist_ok=False)
     nonce = secrets.token_hex(16)
     evidence_path = args.output.resolve() / "app-events.jsonl"
+    first_paint_log = EventLog(evidence_path, nonce)
     report = {
         "schema_version": 1,
         "status": "failed",
@@ -828,7 +885,7 @@ def main():
         return {row["pid"] for row in rows}
 
     def observe_first_paint():
-        records = read_events(evidence_path, nonce, 0)
+        records = first_paint_log.read()
         key = "time_to_first_paint_report_observed_ms"
         if key not in report["measurements"] and any(
             event.get("type") == "rendered" and event.get("stage") == "native-paint"
@@ -1104,6 +1161,7 @@ def main():
         focus()
         screenshot("before.png")
         offset = evidence_path.stat().st_size if evidence_path.exists() else 0
+        input_log = EventLog(evidence_path, nonce, offset)
         if render is not None and isinstance(render.get("nodes"), list):
             report["checks"]["native_paint_file_observation"] = "failed"
             paint_observer = PAINT_OBSERVER.PaintObserver(
@@ -1195,7 +1253,7 @@ def main():
         input_ok = render_ok = False
         while time.monotonic() < deadline:
             sample()
-            events = read_events(evidence_path, nonce, offset)
+            events = input_log.read()
             input_ok = bool(expectations) and all(
                 any(matches(event, item) for event in events) for item in expectations
             )

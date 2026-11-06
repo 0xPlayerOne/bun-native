@@ -51,6 +51,7 @@ type Properties = EventListeners & {
   navigation?: 'tab' | 'menu'
   surface?: 'layer' | 'window'
   readOnly?: boolean
+  accessibleLabel?: string
 }
 
 const isContainer = (kind: Node['kind']) => kind === 'box' || kind === 'split' || kind === 'overlay'
@@ -416,6 +417,13 @@ export function setProperty(node: Node, name: string, value: unknown): void {
       else if (value === 'layer' || value === 'window') props.surface = value
       else throw new TypeError('Native overlay surface must be layer or window')
       break
+    case 'accessibleLabel':
+      if (node.kind !== 'split' && node.kind !== 'overlay')
+        throw new TypeError('Only splits and overlays accept accessibleLabel')
+      if (value === undefined) delete props.accessibleLabel
+      else if (typeof value === 'string') props.accessibleLabel = value
+      else throw new TypeError('Native accessibleLabel must be a string')
+      break
     case 'readOnly':
       if (node.kind !== 'input') throw new TypeError('Only inputs accept readOnly')
       if (value === undefined) delete props.readOnly
@@ -522,6 +530,7 @@ function build(node: Node, parent: Node | undefined): Snapshot {
       kind: 'split',
       ...(props.ratio === undefined ? {} : { ratio: props.ratio }),
       ...(props.min_size === undefined ? {} : { min_size: props.min_size }),
+      ...(props.accessibleLabel === undefined ? {} : { accessible_label: props.accessibleLabel }),
       ...(props.style ? { style: leafStyle(props.style) } : {}),
     }
   else if (node.kind === 'overlay')
@@ -534,6 +543,7 @@ function build(node: Node, parent: Node | undefined): Snapshot {
       ...(props.autofocus === undefined ? {} : { autofocus: props.autofocus }),
       ...(props.navigation === undefined ? {} : { navigation: props.navigation }),
       ...(props.surface === undefined ? {} : { surface: props.surface }),
+      ...(props.accessibleLabel === undefined ? {} : { accessible_label: props.accessibleLabel }),
       ...(props.style ? { style: { ...props.style } } : {}),
     } as Element
   else if (node.kind === 'input')

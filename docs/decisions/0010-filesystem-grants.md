@@ -5,7 +5,10 @@ inspected AOT with a development-profile host on an isolated Xvfb display.
 Hosted release-host qualification runs in Native Linux. The macOS backend is
 type-checked and linted locally for `aarch64-apple-darwin` and its walk logic
 runs in the Linux unit tests; its only macOS execution evidence is the hosted
-`macos-15` Native Platforms job. Windows reports the service unavailable.
+`macos-15` Native Platforms job. The Windows backend is type-checked and
+linted locally for `x86_64-pc-windows-gnu` and its name rules run in the Linux
+unit tests; its only Windows execution evidence is the hosted `windows-2022`
+Native Platforms job.
 
 Date: 2026-11-05.
 
@@ -75,6 +78,36 @@ volume matches `A.TXT` to `a.txt` within the grant. Both backends share the
 operation code, so wire semantics and error codes are identical. The capability
 record names the backend: `openat2` on Linux, `openat_walk` on macOS.
 
+Windows has neither, so its host also walks one validated name at a time. The
+grant root is opened once with `CreateFileW` and `FILE_FLAG_BACKUP_SEMANTICS`
+and must be a directory; each later step is `NtCreateFile` with the previous
+handle as `RootDirectory` and a single name, opened with `OBJ_DONT_REPARSE`
+and `FILE_OPEN_REPARSE_POINT`. A symbolic link, junction or mount point is
+therefore opened as itself, never followed, and refused as `path_denied`
+(only `stat`, `list` and `remove` look at it, as `symlink`, or `other` for a
+reparse point that is not a name surrogate). Before any system call the host
+also refuses names that Windows reads as more than one plain entry: `\`, `:`
+(drives and alternate data streams) and the other reserved characters, a
+trailing dot or space (which Win32 strips), and DOS device names such as
+`CON`, `NUL` or `COM1.txt`, with any case or extension. After each open the
+handle's normalized NT final path (`GetFinalPathNameByHandleW`) must equal the
+root's followed by exactly the requested names, compared without case as NTFS
+does. That refuses an 8.3 short name, which would otherwise reach a long name
+by a second spelling, and anything else that resolved outside the root. NTFS
+does not normalize Unicode, so a differently normalized name is a different
+entry, not an alias. Drive, UNC and `\\?\` forms cannot occur in a name: the
+wire already refuses `/`, and the host refuses `\` and `:`. Root paths in the
+launch policy are POSIX paths or Windows drive paths such as `C:\data`, never
+UNC or `\\?\` forms, and each host accepts only its own form. Differences
+from Linux: intermediate directories must be traversable, names resolve
+without case, and a file that another process holds open without
+`FILE_SHARE_DELETE` cannot be removed (`access_denied`). `OBJ_DONT_REPARSE`
+needs Windows 10 1709 or later; the host probes it at start and otherwise
+does not advertise `filesystem_grants_v1`. The capability record names the
+backend `ntcreatefile_walk`. The NT calls live in the private
+`bun-native-windows-services` crate, the only place besides the macOS surface
+crate where the host allows `unsafe`.
+
 Operations are `stat`, `list` (pages of 64 entries sorted by UTF-8 bytes, with
 an `after` cursor and a count of unrepresentable names), `read` and `write` of
 at most 16,384 bytes per request (base64 on the wire), `create_directory` and
@@ -124,5 +157,10 @@ against both the `openat2` backend and the macOS walk (without
 `O_NOFOLLOW_ANY`, which Linux lacks). The Native Platforms `macos-15` job runs
 the same Rust unit tests and the same native test in development and inspected
 AOT; that hosted job is the only macOS execution evidence, and no local Mac
-has run it. Windows remains unavailable until it has an equivalent
-kernel-enforced confinement.
+has run it. The Native Platforms `windows-2022` job runs the Windows Rust unit
+tests on NTFS (junctions made with `mklink /J`, an optional symbolic link,
+alternate data streams, device names, trailing characters and a real 8.3 short
+name) and the same native test in development and inspected AOT, where the
+links are `mklink` links and junctions and a Windows step checks that every
+alias is refused. That hosted job is the only Windows execution evidence; no
+local Windows machine has run it.

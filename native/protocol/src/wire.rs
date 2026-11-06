@@ -3,6 +3,10 @@
 use serde::{de, Deserialize, Deserializer, Serialize};
 use std::fmt;
 
+mod decode;
+#[cfg(test)]
+mod oracle_tests;
+
 pub const PROTOCOL_VERSION: u32 = 11;
 pub const MAX_ID: u64 = 9_007_199_254_740_991;
 pub const MAX_FRAME_BYTES: usize = 65_536;
@@ -67,6 +71,7 @@ identifier!(ProcessId);
 identifier!(DialogId);
 identifier!(DropTargetId);
 identifier!(DropId);
+identifier!(AppMenuId);
 
 /// JSON has one number type. Match JavaScript's safe-integer validation even
 /// when a sender spells an integer as `1.0` or `1e0` instead of canonical `1`.
@@ -112,10 +117,6 @@ fn safe_usize<'de, D: Deserializer<'de>>(deserializer: D) -> Result<usize, D::Er
 
 pub(crate) fn safe_u32<'de, D: Deserializer<'de>>(deserializer: D) -> Result<u32, D::Error> {
     u32::try_from(safe_integer(deserializer)?).map_err(de::Error::custom)
-}
-
-fn non_null_revision<'de, D: Deserializer<'de>>(deserializer: D) -> Result<Option<u64>, D::Error> {
-    safe_integer(deserializer).map(Some)
 }
 
 fn non_null_color<'de, D: Deserializer<'de>>(deserializer: D) -> Result<Option<u32>, D::Error> {
@@ -406,70 +407,65 @@ fn half() -> f64 {
     0.5
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[serde(tag = "kind", rename_all = "snake_case", deny_unknown_fields)]
+/// Decoded by hand in `decode.rs`; unknown, duplicate and null members are rejected.
+#[derive(Debug, Clone, PartialEq, Serialize)]
+#[serde(tag = "kind", rename_all = "snake_case")]
 pub enum Element {
     Box {
-        #[serde(default)]
         style: Style,
     },
     Text {
         text: String,
-        #[serde(default)]
         style: Style,
     },
     Button {
         text: String,
-        #[serde(default)]
         disabled: bool,
-        #[serde(default)]
         style: Style,
     },
     Input {
         value: String,
-        #[serde(default)]
         placeholder: String,
         /// Requires `input_states_v1`. Not focusable, editable or selectable.
-        #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+        #[serde(skip_serializing_if = "std::ops::Not::not")]
         disabled: bool,
         /// Requires `input_states_v1`. Focusable, selectable and copyable;
         /// native edits, paste, cut and composition are rejected.
-        #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+        #[serde(skip_serializing_if = "std::ops::Not::not")]
         read_only: bool,
-        #[serde(default)]
         style: Style,
     },
     /// `split_v1`: at most two panes separated by a host-owned draggable
     /// divider. `style.direction` chooses the axis (row by default).
     Split {
         /// The leading pane's share of the space left after the divider.
-        #[serde(default = "half")]
         ratio: f64,
         /// The smallest main-axis size of each pane, in logical pixels.
-        #[serde(default)]
         min_size: f64,
-        #[serde(default)]
+        /// Requires `accessibility_v1`: the divider's accessible name.
+        #[serde(skip_serializing_if = "Option::is_none")]
+        accessible_label: Option<String>,
         style: Style,
     },
     /// A container painted above the ordinary tree. Nested overlays paint
     /// above shallower ones; equal depths follow tree order.
     Overlay {
-        #[serde(default)]
         anchor: OverlayAnchor,
         /// Traps keyboard focus and Tab order until removed.
-        #[serde(default)]
         modal: bool,
         /// Moves focus to the first enabled control when the layer opens.
         /// Requires `overlay_keyboard_v1`; omitted when false.
-        #[serde(default, skip_serializing_if = "is_false")]
+        #[serde(skip_serializing_if = "is_false")]
         autofocus: bool,
         /// Requires `overlay_keyboard_v1`; omitted when `tab`.
-        #[serde(default, skip_serializing_if = "OverlayNavigation::is_tab")]
+        #[serde(skip_serializing_if = "OverlayNavigation::is_tab")]
         navigation: OverlayNavigation,
         /// Omitted from normalized output while it is the default layer.
-        #[serde(default, skip_serializing_if = "OverlaySurface::is_layer")]
+        #[serde(skip_serializing_if = "OverlaySurface::is_layer")]
         surface: OverlaySurface,
-        #[serde(default)]
+        /// Requires `accessibility_v1`: the dialog's accessible name.
+        #[serde(skip_serializing_if = "Option::is_none")]
+        accessible_label: Option<String>,
         style: Style,
     },
 }
@@ -477,8 +473,9 @@ pub enum Element {
 /// Main-axis thickness of a split divider, in logical pixels.
 pub const SPLIT_DIVIDER: f64 = 6.;
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[serde(tag = "type", rename_all = "snake_case", deny_unknown_fields)]
+/// Decoded by hand in `decode.rs`; unknown, duplicate and null members are rejected.
+#[derive(Debug, Clone, PartialEq, Serialize)]
+#[serde(tag = "type", rename_all = "snake_case")]
 pub enum Operation {
     Create {
         node_id: NodeId,
@@ -487,17 +484,12 @@ pub enum Operation {
     Set {
         node_id: NodeId,
         element: Element,
-        #[serde(
-            default,
-            skip_serializing_if = "Option::is_none",
-            deserialize_with = "non_null_revision"
-        )]
+        #[serde(skip_serializing_if = "Option::is_none")]
         expected_input_revision: Option<u64>,
     },
     Insert {
         parent_id: NodeId,
         child_id: NodeId,
-        #[serde(deserialize_with = "safe_usize")]
         index: usize,
     },
     Delete {
@@ -512,17 +504,9 @@ pub enum Operation {
     /// its content start; an omitted axis keeps its offset. Clamped natively.
     ScrollTo {
         node_id: NodeId,
-        #[serde(
-            default,
-            skip_serializing_if = "Option::is_none",
-            deserialize_with = "non_null"
-        )]
+        #[serde(skip_serializing_if = "Option::is_none")]
         x: Option<f64>,
-        #[serde(
-            default,
-            skip_serializing_if = "Option::is_none",
-            deserialize_with = "non_null"
-        )]
+        #[serde(skip_serializing_if = "Option::is_none")]
         y: Option<f64>,
     },
     /// Requires `scroll_control_v1`. Scrolls every scrolling ancestor so the
@@ -691,6 +675,13 @@ pub enum Command {
         item: u32,
         root: String,
     },
+    /// Replace the application menu bar; an empty `menus` removes it. Every
+    /// item of the previous bar is revoked. `menu_id` increases per session.
+    SetAppMenu {
+        id: RequestId,
+        menu_id: AppMenuId,
+        menus: Vec<crate::AppMenu>,
+    },
     Shutdown {
         id: RequestId,
     },
@@ -748,6 +739,13 @@ pub enum Capability {
     PopupWindowsV1,
     DragDropFilesV1,
     InputStatesV1,
+    /// A native application menu bar (macOS).
+    AppMenuV1,
+    /// The split divider is a keyboard Tab stop and reports `split_resize`.
+    SplitResizeV1,
+    /// Every element kind has an accessibility role, and overlays and splits
+    /// accept an `accessible_label`.
+    AccessibilityV1,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -877,6 +875,7 @@ impl Command {
             | Self::RegisterDropTarget { id, .. }
             | Self::UnregisterDropTarget { id, .. }
             | Self::ResolveDroppedItem { id, .. }
+            | Self::SetAppMenu { id, .. }
             | Self::Shutdown { id } => *id,
         }
     }
@@ -980,6 +979,7 @@ impl Command {
                 }
             }
             Self::ShowFileDialog { options, .. } => options.validate()?,
+            Self::SetAppMenu { menus, .. } => crate::validate_app_menus(menus)?,
             Self::ResolveDroppedItem { item, root, .. } => {
                 crate::validate_drop_item_index(*item)?;
                 crate::validate_root_id(root)?;
@@ -1010,7 +1010,26 @@ impl Element {
             Self::Input {
                 value, placeholder, ..
             } => value.len() + placeholder.len(),
-            Self::Box { .. } | Self::Split { .. } | Self::Overlay { .. } => 0,
+            Self::Split {
+                accessible_label, ..
+            }
+            | Self::Overlay {
+                accessible_label, ..
+            } => accessible_label.as_ref().map_or(0, String::len),
+            Self::Box { .. } => 0,
+        }
+    }
+
+    /// The `accessibility_v1` name an overlay or split declares.
+    pub fn accessible_label(&self) -> Option<&str> {
+        match self {
+            Self::Split {
+                accessible_label, ..
+            }
+            | Self::Overlay {
+                accessible_label, ..
+            } => accessible_label.as_deref(),
+            Self::Box { .. } | Self::Text { .. } | Self::Button { .. } | Self::Input { .. } => None,
         }
     }
 
@@ -1093,6 +1112,7 @@ impl Element {
                 ratio,
                 min_size,
                 style,
+                ..
             } => {
                 bounded(*ratio, 0., 1., "split ratio must be between 0 and 1")?;
                 bounded(
@@ -1109,6 +1129,9 @@ impl Element {
                 }
             }
             Self::Box { .. } | Self::Overlay { .. } => {}
+        }
+        if let Some(label) = self.accessible_label() {
+            validate_text(label)?;
         }
         self.style().validate()
     }

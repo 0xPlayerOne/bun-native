@@ -10,6 +10,7 @@ import {
   PROTOCOL_VERSION,
 } from '@bun-native/protocol'
 import fixtures from '../fixtures/native-filesystem-grants.json'
+import launchPaths from '../fixtures/native-launch-paths.json'
 
 describe('shared filesystem grant wire contract (headless)', () => {
   test('grants are an optional capability bounded by negotiated limits', () => {
@@ -38,6 +39,15 @@ describe('shared filesystem grant wire contract (headless)', () => {
       { id: 'work', path: '/a', access: 'read', extra: true },
     ])
       expect(() => filesystemRootArgument(root as never)).toThrow()
+  })
+
+  test('launch paths are POSIX or Windows drive paths, shared with Rust', () => {
+    for (const path of [...launchPaths.posix, ...launchPaths.windows]) {
+      const root = { id: 'root', path, access: 'read' } as const
+      expect(filesystemRootsFromArguments(['host', filesystemRootArgument(root)])).toEqual([root])
+    }
+    for (const path of launchPaths.invalid)
+      expect(() => filesystemRootArgument({ id: 'root', path, access: 'read' })).toThrow()
   })
 
   for (const [kind, cases, parse] of [

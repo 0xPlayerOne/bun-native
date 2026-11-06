@@ -43,6 +43,7 @@ fn overlay(modal: bool) -> Element {
         autofocus: false,
         navigation: OverlayNavigation::Tab,
         surface: OverlaySurface::Layer,
+        accessible_label: None,
         style: Style::default(),
     }
 }

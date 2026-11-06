@@ -76,6 +76,7 @@ function repositoryPins(): Map<string, string> {
     ],
     ['babel-preset-solid', rootManifest.devDependencies['babel-preset-solid']],
     ['@babel/core', rootManifest.devDependencies['@babel/core']],
+    ['oxlint', rootManifest.devDependencies.oxlint],
     [
       'react',
       agreed('react', [reactManifest.dependencies.react, rootManifest.devDependencies.react]),

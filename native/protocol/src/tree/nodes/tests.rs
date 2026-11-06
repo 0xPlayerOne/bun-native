@@ -125,3 +125,103 @@ fn missing_keys_never_copy_shared_blocks() {
     };
     assert!(Arc::ptr_eq(before, after));
 }
+
+type Change = (NodeId, Option<u64>, Option<u64>);
+
+/// What `diff` must report, by comparing both versions key by key. A node is
+/// identified by its element allocation, as in `Tree::diff_elements`.
+fn naive_diff(old: &NodeMap, new: &NodeMap) -> Vec<Change> {
+    let label = |node: &Node| node.input_revision.unwrap();
+    let mut keys: Vec<NodeId> = old.iter().chain(new.iter()).map(|(key, _)| key).collect();
+    keys.sort();
+    keys.dedup();
+    keys.into_iter()
+        .filter_map(|key| match (old.get(key), new.get(key)) {
+            (Some(left), Some(right)) if Arc::ptr_eq(&left.element, &right.element) => None,
+            (left, right) => Some((key, left.map(label), right.map(label))),
+        })
+        .collect()
+}
+
+fn trie_diff(old: &NodeMap, new: &NodeMap) -> Vec<Change> {
+    let mut changes = Vec::new();
+    new.diff(
+        old,
+        &|left, right| Arc::ptr_eq(&left.element, &right.element),
+        &mut |key, left, right| {
+            changes.push((
+                key,
+                left.map(|node| node.input_revision.unwrap()),
+                right.map(|node| node.input_revision.unwrap()),
+            ));
+        },
+    );
+    changes
+}
+
+#[test]
+fn diff_matches_a_key_by_key_comparison_across_every_height() {
+    for seed in 1..=24u64 {
+        let mut rng = Rng(seed.wrapping_mul(0xD1B5_4A32_D192_ED03));
+        let span = [64, 5_000, 1 << 40, MAX_ID][usize::try_from(seed % 4).unwrap()];
+        let mut map = NodeMap::default();
+        let mut versions = vec![map.clone()];
+        for step in 0..600u64 {
+            let key = id(1 + rng.below(span.min(MAX_ID)));
+            match rng.below(10) {
+                0..=4 => {
+                    map.insert(key, node(step));
+                }
+                5..=6 => {
+                    map.remove(key);
+                }
+                // A write that keeps the element allocation, like a move.
+                7 => {
+                    if let Some(found) = map.get_mut(key) {
+                        found.input_revision = found.input_revision.map(|value| value + 1);
+                    }
+                }
+                8 if versions.len() < 9 => versions.push(map.clone()),
+                _ => {}
+            }
+        }
+        versions.push(map);
+        for (left, old) in versions.iter().enumerate() {
+            for new in &versions[left..] {
+                // `input_revision` differs for a rewritten node, so compare the
+                // reported keys and presence; `naive_diff` labels are only for
+                // nodes whose element allocation differs.
+                assert_eq!(trie_diff(old, new), naive_diff(old, new));
+                assert_eq!(trie_diff(new, old), naive_diff(new, old));
+            }
+        }
+    }
+}
+
+#[test]
+fn diff_of_identical_clones_reads_nothing() {
+    let mut map = NodeMap::default();
+    for key in 1..=3_000 {
+        map.insert(id(key), node(key));
+    }
+    let clone = map.clone();
+    let mut visited = 0;
+    map.diff(
+        &clone,
+        &|_, _| panic!("a shared block is never compared"),
+        &mut |_, _, _| {
+            visited += 1;
+        },
+    );
+    assert_eq!(visited, 0);
+    // One replaced element reports exactly that node.
+    let mut changed = map.clone();
+    changed.get_mut(id(77)).unwrap().element = Arc::new(Element::Text {
+        text: "new".to_string(),
+        style: Style::default(),
+    });
+    assert_eq!(
+        trie_diff(&clone, &changed),
+        vec![(id(77), Some(77), Some(77))]
+    );
+}

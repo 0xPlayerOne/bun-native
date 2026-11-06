@@ -1,5 +1,5 @@
-// Real subprocess transport for the overlay contract. It advertises the
-// optional overlay capabilities only when asked and emits deterministic routed
+// Real subprocess transport for the overlay and split contracts. It advertises
+// the optional capabilities only when asked and emits deterministic routed
 // events; it does not render, trap focus or substitute for the native fixture.
 import {
   DEFAULT_LIMITS,
@@ -11,19 +11,29 @@ import {
 } from '@bun-native/protocol'
 import { PeerTree } from './peer-tree.ts'
 
-/** `target` is a button label or `overlay#N`, the Nth created overlay. */
+/**
+ * `target` is a button label, `overlay#N` or `split#N`, the Nth created one.
+ * `activate` clicks the button the last focus request moved to, as Enter does
+ * natively.
+ */
 type Spec = {
-  type: 'key_down' | 'pointer_down' | 'dismiss'
-  target: string
+  type: 'key_down' | 'pointer_down' | 'dismiss' | 'click' | 'activate' | 'split_resize'
+  target?: string
   key?: string
   shift?: boolean
+  control?: boolean
+  ratio?: number
+  source?: 'pointer' | 'keyboard'
 }
 const windows = new Map<number, PeerTree>()
+const focused = new Map<number, number>()
 const output = Bun.stdout.writer()
 const decoder = new FrameDecoder()
 const overlays = process.argv.includes('--overlays')
 const keyboard = process.argv.includes('--keyboard')
 const popups = process.argv.includes('--popups')
+const splits = process.argv.includes('--splits')
+const splitResize = process.argv.includes('--split-resize')
 let sequence = 0
 async function emit(value: unknown) {
   output.write(encodeFrame(value))
@@ -31,15 +41,23 @@ async function emit(value: unknown) {
 }
 
 async function event(window_id: number, tree: PeerTree, spec: Spec) {
-  const created = [...tree.nodes].filter(([, node]) => node.element.kind === 'overlay')
-  const target = spec.target.startsWith('overlay#')
-    ? created[Number(spec.target.slice(8))]
+  if (spec.type === 'activate') {
+    const node_id = focused.get(window_id)
+    if (node_id === undefined || !tree.nodes.has(node_id)) throw new Error('Nothing is focused')
+    await emit({ type: 'click', window_id, sequence: ++sequence, ...tree.route(node_id) })
+    return
+  }
+  if (spec.target === undefined) throw new Error('Fixture event needs a target')
+  const kind = spec.target.split('#')[0]
+  const created = [...tree.nodes].filter(([, node]) => node.element.kind === kind)
+  const target = spec.target.includes('#')
+    ? created[Number(spec.target.split('#')[1])]
     : [...tree.nodes].find(
         ([, node]) => node.element.kind === 'button' && node.element.text === spec.target
       )
   if (!target) throw new Error('Unknown fixture event target')
   const modifiers = {
-    control: false,
+    control: spec.control === true,
     alt: false,
     shift: spec.shift === true,
     platform: false,
@@ -47,6 +65,9 @@ async function event(window_id: number, tree: PeerTree, spec: Spec) {
   }
   const base = { type: spec.type, window_id, sequence: ++sequence, ...tree.route(target[0]) }
   if (spec.type === 'dismiss') await emit({ ...base, reason: 'window_blur' })
+  else if (spec.type === 'click') await emit(base)
+  else if (spec.type === 'split_resize')
+    await emit({ ...base, ratio: spec.ratio, source: spec.source })
   else if (spec.type === 'key_down') await emit({ ...base, key: spec.key ?? 'escape', modifiers })
   else await emit({ ...base, button: 'left', x: 4, y: 4, modifiers })
 }
@@ -73,6 +94,8 @@ for await (const chunk of Bun.stdin.stream()) {
           ...(overlays ? ['overlays_v1', 'scroll_anchor_v1'] : []),
           ...(keyboard ? ['focus_v1', 'scroll_control_v1', 'overlay_keyboard_v1'] : []),
           ...(popups ? ['popup_windows_v1'] : []),
+          ...(splits ? ['split_v1'] : []),
+          ...(splitResize ? ['split_resize_v1', 'accessibility_v1'] : []),
         ],
         limits: { ...DEFAULT_LIMITS },
       })
@@ -98,13 +121,15 @@ for await (const chunk of Bun.stdin.stream()) {
       // A host reports a requested focus move as an ordinary focus event; the
       // peer gives scroll requests no observable effect.
       for (const operation of command.operations)
-        if (operation.type === 'focus')
+        if (operation.type === 'focus') {
+          focused.set(command.window_id, operation.node_id)
           await emit({
             type: 'focus',
             window_id: command.window_id,
             sequence: ++sequence,
             ...tree.route(operation.node_id),
           })
+        }
       for (const operation of command.operations)
         if (
           operation.type === 'set' &&

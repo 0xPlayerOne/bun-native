@@ -1,0 +1,32 @@
+[package]
+name = "bun-native-windows-services"
+version = "0.0.0"
+edition = "2024"
+license = "MIT"
+publish = false
+
+# Already in the lockfile through GPUI; only the API families below are used.
+[target.'cfg(windows)'.dependencies]
+windows-sys = { version = "=0.61.2", features = [
+  "Wdk_Foundation",
+  "Wdk_Storage_FileSystem",
+  "Win32_Foundation",
+  "Win32_Security",
+  "Win32_Storage_FileSystem",
+  "Win32_System_Console",
+  "Win32_System_IO",
+  "Win32_System_JobObjects",
+  "Win32_System_SystemInformation",
+  "Win32_System_Threading",
+] }
+
+# Only this private platform boundary permits its reviewed Win32 and NT calls
+# (`fs` and `process`). The protocol and host keep the workspace-wide
+# unsafe_code = forbid policy; the name and command-line rules here are safe
+# code and are tested on every platform.
+[lints.rust]
+unsafe_code = "deny"
+unsafe_op_in_unsafe_fn = "forbid"
+
+[lints.clippy]
+all = "warn"

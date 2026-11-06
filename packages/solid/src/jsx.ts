@@ -23,8 +23,14 @@ export namespace JSX {
       /** Requires the host's `input_states_v1` capability. */
       readOnly?: boolean
     }
-    /** At most two pane children; the host owns the divider drag. */
-    split: Base<'split'> & { children?: Element; ratio?: number; min_size?: number }
+    /** At most two pane children; the host owns the divider drag and keyboard steps. */
+    split: Base<'split'> & {
+      children?: Element
+      ratio?: number
+      min_size?: number
+      /** Requires `accessibility_v1`: the divider's accessible name. */
+      accessibleLabel?: string
+    }
     /** Painted above the ordinary tree; only window-anchored overlays may be modal. */
     overlay: Base<'overlay'> & {
       children?: Element
@@ -32,6 +38,8 @@ export namespace JSX {
       autofocus?: boolean
       /** Requires `overlay_keyboard_v1`: `menu` adds arrow-key roving focus and type-ahead. */
       navigation?: 'tab' | 'menu'
+      /** Requires `accessibility_v1`: the dialog's accessible name. */
+      accessibleLabel?: string
     } & (
         | { anchor?: 'window'; modal?: boolean; surface?: 'layer' }
         | { anchor: 'parent'; modal?: false; surface?: 'layer' | 'window' }

@@ -145,9 +145,19 @@ fn in_viewport(position: Point<Pixels>, window: &Window) -> bool {
 
 impl NativeView {
     pub(super) fn reconcile_focus(&mut self, window: &mut Window, cx: &mut Context<Self>) {
-        self.focus_subscriptions
-            .retain(|id, _| self.inputs.contains_key(id) || self.buttons.contains_key(id));
-        for id in self.inputs.keys().chain(self.buttons.keys()) {
+        self.focus_subscriptions.retain(|id, _| {
+            self.inputs.contains_key(id)
+                || self.buttons.contains_key(id)
+                || self.splits.contains(*id)
+        });
+        let ids: Vec<NodeId> = self
+            .inputs
+            .keys()
+            .chain(self.buttons.keys())
+            .copied()
+            .chain(self.splits.focus_handles().map(|(id, _)| id))
+            .collect();
+        for id in &ids {
             if self.focus_subscriptions.contains_key(id) {
                 continue;
             }
@@ -156,6 +166,7 @@ impl NativeView {
                 .get(id)
                 .map(|input| input.focus_handle(cx))
                 .or_else(|| self.buttons.get(id).cloned())
+                .or_else(|| self.splits.focus_handle(*id).cloned())
                 .expect("live control has focus ownership");
             let gained = cx.on_focus(&focus, window, |view, window, cx| {
                 view.sync_focus(window, cx)
@@ -171,14 +182,7 @@ impl NativeView {
         if !window.is_window_active() {
             return None;
         }
-        self.buttons
-            .iter()
-            .find_map(|(id, focus)| focus.is_focused(window).then_some(*id))
-            .or_else(|| {
-                self.inputs.iter().find_map(|(id, input)| {
-                    input.focus_handle(cx).is_focused(window).then_some(*id)
-                })
-            })
+        self.focused_control(window, cx)
     }
 
     pub(super) fn sync_focus(&mut self, window: &Window, cx: &mut Context<Self>) {

@@ -68,7 +68,7 @@ describe('owned OS file dialogs (headless real subprocess)', () => {
           })
           expect(app.serviceCapabilities.messageDialogs).toEqual({
             availability: 'unavailable',
-            reason: 'not_implemented',
+            reason: 'unsupported_host',
           })
           expect(Object.isFrozen(app.serviceCapabilities.fileDialogs)).toBe(true)
         },
