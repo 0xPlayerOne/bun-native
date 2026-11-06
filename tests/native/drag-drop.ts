@@ -305,52 +305,6 @@ async function qualification() {
         : []
     )
     assert.deepEqual(pointerEvents, [])
-    if (backend === 'appkit') {
-      // EXPERIMENT for #538, never merged: does a file drag started right after
-      // a rejected text drag reach GPUI, by gap and by list length?
-      const trials: unknown[] = []
-      const one = [join(work, 'a.txt')]
-      for (const [gap, list] of [
-        [0, many],
-        [0, one],
-        [300, many],
-        [300, one],
-        [1000, many],
-        [1000, one],
-        [0, many],
-        [0, one],
-        [300, many],
-        [300, one],
-        [1000, many],
-        [1000, one],
-      ] as const) {
-        await xdnd.offerText('plain text, not a file')
-        await xdnd.enter(130, 150)
-        await xdnd.drop()
-        await Bun.sleep(gap)
-        const before = log.length
-        const started = performance.now()
-        await xdnd.offerFiles([...list])
-        await xdnd.enter(130, 150)
-        let enteredMs: number | null = null
-        while (performance.now() - started < 2_000) {
-          if (log.length > before) {
-            enteredMs = Math.round(performance.now() - started)
-            break
-          }
-          await Bun.sleep(10)
-        }
-        await xdnd.drop()
-        await Bun.sleep(300)
-        trials.push({
-          gap,
-          files: list.length,
-          enteredMs,
-          events: log.slice(before).map((e) => e.type),
-        })
-      }
-      console.error('EXPERIMENT text-then-files:', JSON.stringify(trials))
-    }
     mark = log.length
     await xdnd.offerFiles(many)
     const largeListEntry = await xdnd.enter(130, 150)
@@ -365,10 +319,24 @@ async function qualification() {
         const currentWindow = await xdnd
           .send('find ' + JSON.stringify({ title, width: 560, height: 380, pid: process.pid }))
           .catch((lookupError: unknown) => ({ lookupError: String(lookupError) }))
+        const failedAt = performance.now()
+        // Measured: a healthy runner delivers this entry in 0.9-1.5 s for 65
+        // files and 0.4-0.6 s for one. Keep watching after the failure (the
+        // original error is still thrown) so a late entry is told apart from
+        // a missing one.
+        let lateEntryMs: number | null = null
+        while (performance.now() - failedAt < 10_000) {
+          if (log.length > mark) {
+            lateEntryMs = Math.round(performance.now() - failedAt)
+            break
+          }
+          await Bun.sleep(25)
+        }
         console.error(
           'AppKit large-list entry evidence:',
           JSON.stringify({
             sourceEntry: largeListEntry,
+            lateEntryMs,
             currentWindow,
             activeTargets: [left.active, right.active, inner.active],
           }).slice(0, 2_000)
