@@ -295,6 +295,7 @@ impl NativeView {
 
 impl Render for NativeView {
     fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        let render_started = crate::phases::now();
         let state = self.state.borrow();
         let layout = self.evidence.enabled().then(|| {
             let focus = self
@@ -325,6 +326,9 @@ impl Render for NativeView {
             &pointer,
             cx,
         );
+        let phase_frame = render_started.and_then(|started| {
+            crate::phases::render(self.window_id, started, state.tree.nodes().count())
+        });
         let view = cx.weak_entity();
         let evidence = self.evidence.clone();
         let paint_state = self.state.clone();
@@ -370,6 +374,9 @@ impl Render for NativeView {
                         // Registered after native children: capture has already
                         // selected the deepest GPUI hit before default actions.
                         pointer.observe(window, &view);
+                        if let Some(frame) = phase_frame {
+                            crate::phases::painted(frame);
+                        }
                         let state = paint_state.borrow();
                         evidence.painted(
                             window_id,

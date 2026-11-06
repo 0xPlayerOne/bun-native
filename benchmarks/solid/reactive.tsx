@@ -2,14 +2,15 @@ import { batch, createSignal, onCleanup } from 'solid-js'
 import { For, render, type SolidNode } from '@bun-native/solid'
 import { CONTENT_STYLE, LIST_STYLE, ROW_STYLE, runWorkload } from './workload.ts'
 
-await runWorkload('solid', async (window, initial) => {
+await runWorkload('solid', async (window, initial, onClick) => {
   const [text, setText] = createSignal('Initial')
   const [rows, setRows] = createSignal(initial)
   let rowsCreated = 0
   let rowsDisposed = 0
   let unexpectedClicks = 0
   const listener = () => {
-    unexpectedClicks++
+    if (onClick) onClick()
+    else unexpectedClicks++
   }
   let content!: SolidNode
   const view = render(

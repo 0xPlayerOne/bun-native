@@ -160,6 +160,11 @@ jobs:
             sha256sum "$VK_DRIVER_FILES"
             printf 'Application modes: Bun development and verified machine-code AOT\nNative host profile: release\nDisplay: isolated Xvfb X11\nInput: XTest\nRenderer request: Mesa software Vulkan/GL; actual adapter in result.json\n'
           } > "$NATIVE_EVIDENCE/toolchain.txt"
+      - name: Keep the runner's Cargo home path out of native binaries
+        # Dependency sources live under CARGO_HOME, and their panic locations are
+        # otherwise embedded verbatim, so equal sources built under another home
+        # differ. See docs/reproducible-builds.md.
+        run: printf 'CARGO_ENCODED_RUSTFLAGS=--remap-path-prefix=%s=/cargo\n' "${CARGO_HOME:-$HOME/.cargo}" >> "$GITHUB_ENV"
       - name: Check native source formatting
         run: cargo fmt --manifest-path Cargo.toml --all -- --check
       - name: Build native executable
@@ -526,6 +531,30 @@ jobs:
                 --host-profile release -- "${command[@]}"
             done
           done
+      - name: Development release-host boundary rejection, online and in an empty network namespace
+        timeout-minutes: 3
+        env:
+          BUN_NATIVE_HOST: ${{ github.workspace }}/target/release/bun-native-host
+        run: |
+          # Raw frames to the actual host: version mismatch, pre-hello and
+          # duplicate hello, non-increasing ids, invalid/forbidden/oversized
+          # frames and a real window round trip (#247).
+          timeout 60s xvfb-run --auto-servernum --server-args='-screen 0 1280x800x24 -nolisten tcp' \
+            dbus-run-session -- bash scripts/quality/native-linux-session.sh \
+            "$NATIVE_EVIDENCE/boundary-online" -- bun tests/native/boundary.ts \
+            | tee "$NATIVE_EVIDENCE/boundary-online.json"
+          # Ubuntu 24.04 restricts unprivileged user namespaces through AppArmor.
+          # Lift it on this ephemeral runner so the same fixture runs with only
+          # loopback; the fixture itself asserts that no other interface exists.
+          if [[ -e /proc/sys/kernel/apparmor_restrict_unprivileged_userns ]]; then
+            sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
+          fi
+          BUN_NATIVE_REQUIRE_OFFLINE=1 timeout 60s unshare --map-root-user --net \
+            xvfb-run --auto-servernum --server-args='-screen 0 1280x800x24 -nolisten tcp' \
+            dbus-run-session -- bash scripts/quality/native-linux-session.sh \
+            "$NATIVE_EVIDENCE/boundary-offline" -- bun tests/native/boundary.ts \
+            | tee "$NATIVE_EVIDENCE/boundary-offline.json"
+          grep -q '"offline":true' "$NATIVE_EVIDENCE/boundary-offline.json"
       - name: Development bridge acknowledgement measurements
         timeout-minutes: 4
         run: |
@@ -592,6 +621,29 @@ jobs:
               "$evidence-session" -- python3 scripts/quality/native-diagnostics-linux.py \
               --scenario solid-workspace --mode "$mode" --host-profile release \
               --output "$evidence" -- "${command[@]}"
+          done
+      - name: Solid workspace long-session ownership in development and AOT
+        if: ${{ !cancelled() && steps.native-build.outcome == 'success' }}
+        timeout-minutes: 6
+        env:
+          BUN_NATIVE_HOST: ${{ github.workspace }}/target/release/bun-native-host
+        run: |
+          bun experiments/aot-gpui/build-window.ts \
+            --source "$GITHUB_WORKSPACE" \
+            --host "$BUN_NATIVE_HOST" --host-profile release \
+            --entry solid-workspace-soak --outdir "$NATIVE_EVIDENCE/solid-workspace-soak-package"
+          for mode in development aot; do
+            command=(bun "$NATIVE_EVIDENCE/solid-workspace-soak-package/development/application.js")
+            if [[ "$mode" == aot ]]; then
+              command=("$NATIVE_EVIDENCE/solid-workspace-soak-package/solid-workspace-soak")
+            fi
+            evidence="$NATIVE_EVIDENCE/diagnostics-$mode-solid-workspace-soak"
+            mkdir "$evidence"
+            BUN_NATIVE_DIAGNOSTICS_DIR="$evidence" \
+              xvfb-run --auto-servernum --server-args='-screen 0 1280x800x24 -nolisten tcp' \
+              dbus-run-session -- bash scripts/quality/native-linux-session.sh \
+              "$evidence-session" -- timeout 150s "${command[@]}" 2>&1 | tee "$evidence/fixture.log"
+            python3 scripts/quality/native-solid-workspace-soak.py "$evidence/soak-result.json"
           done
       - name: Generated Solid and React templates in development and inspected AOT
         if: ${{ !cancelled() && steps.native-build.outcome == 'success' }}
@@ -682,7 +734,17 @@ jobs:
         run: |
           sha256sum --check "$NATIVE_EVIDENCE/binary-sha256.txt"
           archive="$NATIVE_EVIDENCE/unsigned-native-host.tar.gz"
-          tar -czf "$archive" -C target/release bun-native-host
+          SOURCE_DATE_EPOCH="$(git log -1 --format=%ct)"
+          export SOURCE_DATE_EPOCH
+          bun scripts/native/host-archive.ts --output "$archive" target/release/bun-native-host
+          # Repack a copy from another directory with a different mtime: the
+          # archive must depend only on the executable bytes and the commit time.
+          copy="$RUNNER_TEMP/host-archive-repack"
+          mkdir "$copy"
+          cp target/release/bun-native-host "$copy/"
+          touch -d '2001-02-03 04:05:06' "$copy/bun-native-host"
+          bun scripts/native/host-archive.ts --output "$copy/repacked.tar.gz" "$copy/bun-native-host"
+          cmp "$archive" "$copy/repacked.tar.gz"
           sha256sum "$archive" > "$archive.sha256"
       - name: Retain native evidence even after failure
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2

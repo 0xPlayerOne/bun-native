@@ -5,7 +5,7 @@ import { CONTENT_STYLE, LIST_STYLE, ROW_STYLE, runWorkload, type Row } from './w
 
 // Share the exact workload, bounds and retention oracle with Solid/direct core.
 // The benchmark directory will become framework-neutral when the branches join.
-await runWorkload('react', async (window, initial) => {
+await runWorkload('react', async (window, initial, onClick) => {
   let setText!: Dispatch<SetStateAction<string>>
   let setRows!: Dispatch<SetStateAction<readonly Row[]>>
   let rowsCreated = 0
@@ -13,7 +13,8 @@ await runWorkload('react', async (window, initial) => {
   let unexpectedClicks = 0
   const content = createRef<NativeRef>()
   const listener = () => {
-    unexpectedClicks++
+    if (onClick) onClick()
+    else unexpectedClicks++
   }
 
   function RowView({ row }: { row: Row }) {

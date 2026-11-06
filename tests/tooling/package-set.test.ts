@@ -230,6 +230,8 @@ describe('standalone package source contracts (inert fixtures; no install, app b
           })
           const pkg = await Bun.file(join(project, 'package.json')).json()
           expect(pkg.scripts.dev).toContain('./node_modules/@bun-native/cli/src/scripts/native.ts')
+          expect(pkg.scripts.dev).toStartWith('MIMALLOC_PURGE_DELAY=0 bun --no-install ')
+          expect(pkg.scripts.build).not.toContain('MIMALLOC')
           expect(pkg.dependencies[framework === 'solid' ? 'solid-js' : 'react']).toBe(
             framework === 'solid' ? '1.9.18' : '19.3.1'
           )
