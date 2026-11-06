@@ -179,6 +179,42 @@ impl NodeMap {
         }
     }
 
+    /// Calls `visit(id, old, new)`, in ID order, for every key whose entry is
+    /// missing from one map or for which `same` is false. Blocks that are the
+    /// same allocation in both maps are skipped without being read, so two
+    /// versions of one persistent map are compared in time proportional to what
+    /// separates them, not to their size.
+    pub(super) fn diff<'a>(
+        &'a self,
+        old: &'a Self,
+        same: &impl Fn(&Node, &Node) -> bool,
+        visit: &mut impl FnMut(NodeId, Option<&'a Node>, Option<&'a Node>),
+    ) {
+        match (&old.root, &self.root) {
+            (Some(before), Some(after)) if old.shift == self.shift => {
+                diff_blocks(Some(before), Some(after), same, visit);
+            }
+            (None, None) => {}
+            // Different heights share no blocks: walk both in order.
+            _ => {
+                let mut before = old.iter().peekable();
+                for (id, node) in self.iter() {
+                    while let Some((gone, gone_node)) = before.next_if(|(key, _)| *key < id) {
+                        visit(gone, Some(gone_node), None);
+                    }
+                    match before.next_if(|(key, _)| *key == id) {
+                        Some((_, previous)) if same(previous, node) => {}
+                        Some((_, previous)) => visit(id, Some(previous), Some(node)),
+                        None => visit(id, None, Some(node)),
+                    }
+                }
+                for (gone, gone_node) in before {
+                    visit(gone, Some(gone_node), None);
+                }
+            }
+        }
+    }
+
     pub(super) fn iter(&self) -> Iter<'_> {
         let mut iter = Iter {
             branches: [(&[], 0); MAX_BRANCHES],
@@ -195,6 +231,59 @@ impl NodeMap {
             None => {}
         }
         iter
+    }
+}
+
+fn diff_blocks<'a>(
+    old: Option<&'a Block>,
+    new: Option<&'a Block>,
+    same: &impl Fn(&Node, &Node) -> bool,
+    visit: &mut impl FnMut(NodeId, Option<&'a Node>, Option<&'a Node>),
+) {
+    match (old, new) {
+        (None, None) => {}
+        (Some(Block::Branch(before)), Some(Block::Branch(after))) => {
+            if Arc::ptr_eq(before, after) {
+                return;
+            }
+            for (before, after) in before.iter().zip(after.iter()) {
+                diff_blocks(before.as_ref(), after.as_ref(), same, visit);
+            }
+        }
+        (Some(Block::Leaf(before)), Some(Block::Leaf(after))) => {
+            if Arc::ptr_eq(before, after) {
+                return;
+            }
+            for (before, after) in before.iter().zip(after.iter()) {
+                match (before, after) {
+                    (Some((id, old)), Some((_, new))) if !same(old, new) => {
+                        visit(*id, Some(old), Some(new));
+                    }
+                    (Some((id, old)), None) => visit(*id, Some(old), None),
+                    (None, Some((id, new))) => visit(*id, None, Some(new)),
+                    _ => {}
+                }
+            }
+        }
+        (Some(block), None) => each_entry(block, &mut |id, node| visit(id, Some(node), None)),
+        (None, Some(block)) => each_entry(block, &mut |id, node| visit(id, None, Some(node))),
+        // Blocks at one depth are all branches or all leaves.
+        (Some(_), Some(_)) => unreachable!("trie blocks at one depth have one kind"),
+    }
+}
+
+fn each_entry<'a>(block: &'a Block, f: &mut impl FnMut(NodeId, &'a Node)) {
+    match block {
+        Block::Branch(slots) => {
+            for child in slots.iter().flatten() {
+                each_entry(child, f);
+            }
+        }
+        Block::Leaf(slots) => {
+            for (id, node) in slots.iter().flatten() {
+                f(*id, node);
+            }
+        }
     }
 }
 
