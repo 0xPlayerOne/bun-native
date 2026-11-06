@@ -85,11 +85,12 @@ bun test tests/react/workspace-model.test.ts tests/react/workspace.test.tsx
 ```
 
 The model tests cover full edit/filter/delete flows, capacity boundaries, plan
-ordering and stale or duplicate plan steps. The adapter tests use real
-public-core IPC with the existing headless event peer to exercise native event
-routing, input revisions, React commits, plan timer ownership through stop,
-selection, stale delivery and window close, and window-close cleanup. They do
-not prove OS rendering, scrolling or focus.
+ordering, stale or duplicate plan steps and the real 300 ms plan timer and its
+cancellation. The adapter tests use real public-core IPC with the existing
+headless event peer to exercise native event routing, input revisions, React
+commits, deleting every task through the empty state, plan timer ownership
+through stop, selection change and stale delivery, and window-close cleanup.
+They do not prove OS rendering, scrolling or focus.
 
 The Native Linux workflow builds the `react-workspace` example and the
 `react-workspace-flow` fixture with the same AOT helper. The fixture mounts this
@@ -140,16 +141,16 @@ Both apps run on the same core, renderer primitives and GPUI host, and use the
 same development/AOT helper, owned X11 driver and native evidence records. They
 are different fixtures, so no equal-workload performance comparison is made.
 
-| Behavior                                         | React task workspace                                   | Solid conversation workspace                   |
-| ------------------------------------------------ | ------------------------------------------------------ | ---------------------------------------------- |
-| Text entry, native focus, latest input revisions | Native flow (add, rename, search)                      | Native flow (per-conversation drafts)          |
-| Keyed list add/edit/delete, filtering            | Native flow                                            | Native flow (history, new/close conversation)  |
-| Native scroll, theme, resize                     | Native flow, dark input pixels sampled                 | Native flow, dark composer pixels sampled      |
-| Bounded local streaming with keyed row retention | Native flow: 8-step plan, effect-owned timer           | Native flow: 8-update reply, model-owned timer |
-| Stop and cancellation on selection change        | Native flow                                            | Native flow                                    |
-| OS close with pending work, zero timers after    | Native flow, plus no timer fires after disposal        | Native flow                                    |
-| In-app confirmation panel                        | None                                                   | Clear-history confirmation                     |
-| Screenshots                                      | scrolled, dark, resized, edited, filtered, after, plan | Per-scenario captures in its native evidence   |
+| Behavior                                         | React task workspace                                                                          | Solid conversation workspace                   |
+| ------------------------------------------------ | --------------------------------------------------------------------------------------------- | ---------------------------------------------- |
+| Text entry, native focus, latest input revisions | Native flow (add, rename, search)                                                             | Native flow (per-conversation drafts)          |
+| Keyed list add/edit/delete, filtering            | Native flow                                                                                   | Native flow (history, new/close conversation)  |
+| Native scroll, theme, resize                     | Native flow, dark input pixels sampled                                                        | Native flow, dark composer pixels sampled      |
+| Bounded local streaming with keyed row retention | Native flow: 8-step plan, effect-owned timer                                                  | Native flow: 8-update reply, model-owned timer |
+| Stop and cancellation on selection change        | Native flow                                                                                   | Native flow                                    |
+| OS close with pending work, zero timers after    | Native flow, plus no timer fires after disposal                                               | Native flow                                    |
+| In-app confirmation panel                        | None                                                                                          | Clear-history confirmation                     |
+| Screenshots                                      | scrolled, dark, resized, edited, filtered, after, plan-streaming, plan-complete, plan-stopped | Per-scenario captures in its native evidence   |
 
 Unsupported or unqualified for both: OS menus and dialogs (#239), accessibility
 and screen readers, IME (#241), virtualization and long-session memory (#257),

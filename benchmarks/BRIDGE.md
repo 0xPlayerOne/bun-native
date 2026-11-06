@@ -214,11 +214,12 @@ python3 benchmarks/bridge-phases.py --result /tmp/bridge-01/result.json --trace 
 
 The analyzer selects exactly the 20 warmups, 1,000 measured single-operation
 requests and ten 100-operation batches on window 1, requires contiguous request
-IDs, and fails on dropped records or incomplete samples. `requestAndReplyTransportMs`
-is the acknowledgement minus the native UI-thread time; it includes pipe
-transport, reader/scheduler queueing and any render that ran between requests.
-Phase-traced runs are instrumented diagnostics and must not be merged with the
-uninstrumented baseline.
+IDs across the measured requests and batches, and fails on a bridge result that
+did not pass, an unknown trace schema, dropped records or incomplete samples.
+`requestAndReplyTransportMs` is the acknowledgement minus the native UI-thread
+time; it includes pipe transport, reader/scheduler queueing and any render that
+ran between requests. Phase-traced runs are instrumented diagnostics and must
+not be merged with the uninstrumented baseline.
 
 ### Local measurement, November 5, 2026
 

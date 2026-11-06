@@ -9,14 +9,14 @@
 | Output                                                                      | Status                          | How it is checked                                                                                      |
 | --------------------------------------------------------------------------- | ------------------------------- | ------------------------------------------------------------------------------------------------------ |
 | `bun-native build`: AOT `application` executable                            | Reproducible (same target)      | `tests/tooling/build-reproducibility.test.ts` (two clean builds, compared)                             |
-| `bun-native build`: `development/application.js` and `.js.map`              | Reproducible after this change  | Same test; the module previously embedded the caller's working directory                               |
+| `bun-native build`: `development/application.js` and `.js.map`              | Reproducible (fixed)            | Same test; the module previously embedded the caller's working directory                               |
 | `bun-native build`: `launcher.ts`, bundled host copy                        | Reproducible                    | Same test                                                                                              |
-| `bun-native build`: `manifest.json`                                         | Reproducible after this change  | Same test; it previously held absolute paths and wall-clock timing                                     |
+| `bun-native build`: `manifest.json`                                         | Reproducible (fixed)            | Same test; it previously held absolute paths and wall-clock timing                                     |
 | `bun-native build`: `build-metrics.json`, `compile-aot.*.log`               | Not reproducible, by design     | Declared under `manifest.reproducibility.diagnostics`                                                  |
 | `scripts/package-native.ts` source package set (`archives/*.tgz`, manifest) | Reproducible                    | Two runs into different output directories produced identical archives and manifest (manual, recorded) |
 | `scripts/package-native.ts` `logs/`                                         | Not reproducible, by design     | They record absolute commands and output                                                               |
-| CI `unsigned-native-host.tar.gz`                                            | Reproducible after this change  | `tests/tooling/host-archive.test.ts`, and the Linux native job repacks and `cmp`s                      |
-| Release `bun-native-host` (Cargo) on one machine, different dirs and times  | Reproducible after this change  | Manual two-build comparison                                                                            |
+| CI `unsigned-native-host.tar.gz`                                            | Reproducible (fixed)            | `tests/tooling/host-archive.test.ts`, and the Linux native job repacks and `cmp`s                      |
+| Release `bun-native-host` (Cargo) on one machine, different dirs and times  | Reproducible (fixed)            | Manual two-build comparison                                                                            |
 | Release `bun-native-host` across machines with different `CARGO_HOME`       | Fixed in CI with path remapping | Mechanism demonstrated; cross-runner hash comparison not yet recorded                                  |
 | Across OS/CPU targets                                                       | Not applicable                  | Each target has its own binaries; compare only within a target                                         |
 
