@@ -182,6 +182,7 @@ for await (const chunk of Bun.stdin.stream())
       }
       case 'acknowledge_process_output':
         if (mode === 'ack-error') await fail(command.id, 'invalid_handle')
+        else if (mode === 'ack-failure') await fail(command.id, 'native_failure')
         else
           await emit({
             type: 'process_updated',
@@ -246,6 +247,8 @@ for await (const chunk of Bun.stdin.stream())
         })
         break
       case 'close':
+        // A control still held when the close reaches the host names a closed window.
+        for (const item of held.splice(0)) await fail(item.id, 'invalid_handle')
         if (mode === 'late-close')
           for (const [id, entry] of live)
             if (entry.window === command.window_id) {

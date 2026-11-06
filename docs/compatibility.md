@@ -12,7 +12,9 @@ release-readiness decision and its blocking risks. The [BN0 audit][bn0] and
 ## Exact pins
 
 These are exact selections, not promised compatibility ranges or a stable
-release API. The accepted [lockfile][lock] binds dependency integrity.
+release API. The current [lockfile][lock] binds dependency integrity. Pin sources link to the
+files in this checkout; the accepted-source snapshot links below stay fixed to
+their commit.
 [`tests/quality/compatibility-pins.test.ts`](../tests/quality/compatibility-pins.test.ts)
 fails `bun run test` when a row here differs from the repository source it
 names, or when two sources for one pin disagree.
@@ -101,14 +103,14 @@ Read [architecture](architecture.md), [testing](testing.md), [releasing](releasi
 [snapshot]: https://github.com/0xPlayerOne/bun-native/tree/3863459588378532a4af4fb27188f051fa0955df
 [bn0]: https://github.com/0xPlayerOne/bun-native/blob/3863459588378532a4af4fb27188f051fa0955df/docs/bn0-audit.md
 [bn1]: https://github.com/0xPlayerOne/bun-native/blob/3863459588378532a4af4fb27188f051fa0955df/docs/bn1-audit.md
-[lock]: https://github.com/0xPlayerOne/bun-native/blob/3863459588378532a4af4fb27188f051fa0955df/bun.lock
-[toolchain]: https://github.com/0xPlayerOne/bun-native/blob/3863459588378532a4af4fb27188f051fa0955df/toolchain.json
-[host-manifest]: https://github.com/0xPlayerOne/bun-native/blob/3863459588378532a4af4fb27188f051fa0955df/native/gpui-host/Cargo.toml
-[root-manifest]: https://github.com/0xPlayerOne/bun-native/blob/3863459588378532a4af4fb27188f051fa0955df/package.json
-[solid-pin]: https://github.com/0xPlayerOne/bun-native/blob/3863459588378532a4af4fb27188f051fa0955df/packages/solid/package.json
-[react-pin]: https://github.com/0xPlayerOne/bun-native/blob/3863459588378532a4af4fb27188f051fa0955df/packages/react/package.json
-[protocol-ts]: https://github.com/0xPlayerOne/bun-native/blob/cbcced75/packages/protocol/src/messages.ts#L44
-[protocol-rs]: https://github.com/0xPlayerOne/bun-native/blob/cbcced75/native/protocol/src/wire.rs#L6
+[lock]: ../bun.lock
+[toolchain]: ../toolchain.json
+[host-manifest]: ../native/gpui-host/Cargo.toml
+[root-manifest]: ../package.json
+[solid-pin]: ../packages/solid/package.json
+[react-pin]: ../packages/react/package.json
+[protocol-ts]: ../packages/protocol/src/messages.ts
+[protocol-rs]: ../native/protocol/src/wire.rs
 [core]: https://github.com/0xPlayerOne/bun-native/blob/3863459588378532a4af4fb27188f051fa0955df/packages/core/README.md
 [solid]: https://github.com/0xPlayerOne/bun-native/blob/3863459588378532a4af4fb27188f051fa0955df/packages/solid/README.md
 [react]: https://github.com/0xPlayerOne/bun-native/blob/3863459588378532a4af4fb27188f051fa0955df/packages/react/README.md

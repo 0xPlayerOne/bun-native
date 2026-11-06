@@ -260,14 +260,17 @@ class Application implements NativeApplication {
     this.startDispatch()
   }
 
+  /** Record the first failure and end the application with it. */
+  async fail(cause: unknown): Promise<void> {
+    this.failure ??= cause instanceof Error ? cause : new Error(String(cause))
+    await this.shutdown().catch(() => {})
+  }
+
   private startDispatch(): void {
     if (!this.callbacks.length) return
     if (this.dispatching) return
     this.dispatching = this.dispatchCallbacks()
-      .catch(async (cause) => {
-        this.failure ??= cause instanceof Error ? cause : new Error(String(cause))
-        await this.shutdown().catch(() => {})
-      })
+      .catch((cause) => this.fail(cause))
       .finally(() => {
         this.dispatching = undefined
         this.startDispatch()
@@ -1185,13 +1188,13 @@ class Window implements NativeWindow {
           operation: call.operation,
         })
         // Revocation withholds a result the worker already produced.
-        this.assertActive()
         if (!registration.live) throw revoked()
+        this.assertActive()
         return call.finish(response.result)
       } catch (error) {
         if (error instanceof ProtocolError) throw error
-        this.assertActive()
         if (!registration.live) throw revoked()
+        this.assertActive()
         throw this.fileError(error)
       }
     })
@@ -1298,8 +1301,8 @@ class Window implements NativeWindow {
         })
       } catch (error) {
         if (error instanceof ProtocolError) throw error
-        this.assertActive()
         if (!registration.live) throw revoked()
+        this.assertActive()
         throw this.processError(error)
       }
     })
@@ -1376,6 +1379,8 @@ class Window implements NativeWindow {
     // The settled callback returns one delivery credit to the host.
     if (event.type !== 'process_output' || !registration.live) return
     if (!this.active || !this.application.running) return
+    // A lost delivery credit stalls the stream, so a failed acknowledgement ends
+    // the application with that error instead of an unhandled rejection.
     void this.application.track(
       this.application.host
         .send({
@@ -1390,7 +1395,8 @@ class Window implements NativeWindow {
             // Release or window close can race the acknowledgement.
             if (error instanceof NativeCommandError && error.code === 'invalid_handle') return
             if (!this.application.running) return
-            throw error
+            // Not awaited: shutdown waits for this tracked operation.
+            void this.application.fail(error)
           }
         )
     )
@@ -1787,6 +1793,7 @@ class Window implements NativeWindow {
     this.nodes = new Map()
     this.text = new CommittedText(this.application.limits.max_text_bytes)
     this.revokeDisplayChanges()
+    this.revokeOwned()
     this.closing = this.application.enqueue(async () => {
       try {
         await this.application.host.send({ type: 'close', window_id: this.id })
@@ -1803,12 +1810,12 @@ class Window implements NativeWindow {
     await this.closing
   }
 
-  revoke(): void {
-    this.active = false
-    this.listeners.clear()
-    this.nodes = new Map()
-    this.text = new CommittedText(this.application.limits.max_text_bytes)
-    this.revokeDisplayChanges()
+  /**
+   * Revoke every service registration this window owns. `close()` runs it as
+   * soon as the close starts, so an in-flight grant or process call settles as
+   * `cancelled`, not as `invalid_handle` after the host acknowledges the close.
+   */
+  private revokeOwned(): void {
     for (const registration of this.application.shortcuts.values())
       if (registration.windowId === this.id) {
         registration.revoke()
@@ -1829,15 +1836,24 @@ class Window implements NativeWindow {
         registration.revoke()
         this.application.processes.delete(registration.id)
       }
-    for (const dialog of this.application.dialogs.values())
-      if (dialog.windowId === this.id) {
-        dialog.fail(new NativeStateError('invalid_handle', 'File dialog owner window was closed'))
-        this.application.dialogs.delete(dialog.id)
-      }
     for (const registration of this.application.dropTargets.values())
       if (registration.windowId === this.id) {
         registration.revoke()
         this.application.dropTargets.delete(registration.id)
+      }
+  }
+
+  revoke(): void {
+    this.active = false
+    this.listeners.clear()
+    this.nodes = new Map()
+    this.text = new CommittedText(this.application.limits.max_text_bytes)
+    this.revokeDisplayChanges()
+    this.revokeOwned()
+    for (const dialog of this.application.dialogs.values())
+      if (dialog.windowId === this.id) {
+        dialog.fail(new NativeStateError('invalid_handle', 'File dialog owner window was closed'))
+        this.application.dialogs.delete(dialog.id)
       }
     this.messages.revoke()
     this.application.windows.delete(this.id)

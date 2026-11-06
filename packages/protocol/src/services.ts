@@ -29,11 +29,20 @@ export interface ServicePolicy {
   app_menu?: boolean
 }
 
+type Characters<S extends string> = S extends `${infer Head}${infer Tail}`
+  ? Head | Characters<Tail>
+  : never
+
+/** A layout-level key name: a-z, 0-9 or f1-f12. */
+export type GlobalShortcutKey =
+  | Characters<'abcdefghijklmnopqrstuvwxyz0123456789'>
+  | `f${1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12}`
+
 /** The closed set of layout-level keys a global shortcut may name. */
 export const GLOBAL_SHORTCUT_KEYS = Object.freeze([
   ...'abcdefghijklmnopqrstuvwxyz0123456789',
   ...Array.from({ length: 12 }, (_, index) => `f${index + 1}`),
-] as const) as readonly string[]
+] as GlobalShortcutKey[]) as readonly GlobalShortcutKey[]
 
 export interface ShortcutModifiers {
   control: boolean
@@ -62,7 +71,7 @@ export function parseShortcutModifiers(value: unknown): ShortcutModifiers {
 }
 
 export function parseShortcutKey(value: unknown): string {
-  if (typeof value !== 'string' || !GLOBAL_SHORTCUT_KEYS.includes(value))
+  if (typeof value !== 'string' || !(GLOBAL_SHORTCUT_KEYS as readonly string[]).includes(value))
     throw new ProtocolError('Global shortcut key must be one of a-z, 0-9 or f1-f12')
   return value
 }

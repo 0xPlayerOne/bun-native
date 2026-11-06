@@ -103,6 +103,7 @@ export {
   NOTIFICATION_DISMISSALS,
   type ClipboardText,
   type DisplaySnapshot,
+  type GlobalShortcutKey,
   type NotificationDismissal,
   type ServicePolicy,
   type ShortcutModifiers,

@@ -7,8 +7,10 @@ import {
   removeNode,
   replaceText,
   setProperty,
+  type ElementTag,
   type EventProperty,
   type Node,
+  type PropertyName,
   type RendererNode,
 } from '@bun-native/renderer'
 import { createContext } from 'react'
@@ -107,7 +109,8 @@ function updateEvent(node: Node, name: EventProperty, value: unknown): void {
 
 function updateProperty(node: Node, name: string, value: unknown): void {
   if (isEventProperty(name)) updateEvent(node, name, value)
-  else setProperty(node, name, value)
+  // React props arrive as strings; the renderer rejects unknown names at runtime.
+  else setProperty(node, name as PropertyName, value)
 }
 
 const reserved = (name: string) => name === 'children' || name === 'ref' || name === 'key'
@@ -171,7 +174,8 @@ const host: Config = {
     return log.bind(console, ...args)
   },
   createInstance(type, props) {
-    const node = createElement(type)
+    // The host config types an element as any string; the renderer rejects unknown tags.
+    const node = createElement(type as ElementTag)
     createProperties(node, props)
     return node
   },

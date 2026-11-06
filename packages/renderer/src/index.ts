@@ -22,7 +22,7 @@ export {
   replaceText,
   setProperty,
 } from './nodes.ts'
-export type { Node, RendererNode } from './nodes.ts'
+export type { ElementTag, Node, PropertyName, RendererNode } from './nodes.ts'
 export { eventProperties, isEventProperty } from './event-properties.ts'
 export type { EventHandlers, EventProperty } from './event-properties.ts'
 

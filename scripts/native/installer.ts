@@ -41,8 +41,13 @@ export function launcherScript(platform: Platform, root: string): string {
       '@echo off',
       'setlocal',
       `set "BUN_NATIVE_ROOT=${base}"`,
+      'set "release="',
       'set /p release=<"%BUN_NATIVE_ROOT%\\current"',
       'if not defined release exit /b 1',
+      // Check the file before %release% is ever expanded: every line must be versions/<name>
+      // of letters, digits, dot and hyphen, and the name must not be only dots.
+      'findstr /r /v /x /c:"versions/[0-9A-Za-z.-][0-9A-Za-z.-]*" "%BUN_NATIVE_ROOT%\\current" >nul 2>&1 && exit /b 1',
+      'findstr /r /x /c:"versions/\\.*" "%BUN_NATIVE_ROOT%\\current" >nul 2>&1 && exit /b 1',
       'set "release=%release:/=\\%"',
       'set "BUN_NATIVE_DATA_DIR=%BUN_NATIVE_ROOT%\\data"',
       '"%BUN_NATIVE_ROOT%\\%release%\\application.exe" %*',
@@ -52,7 +57,9 @@ export function launcherScript(platform: Platform, root: string): string {
     '#!/bin/sh',
     `BUN_NATIVE_ROOT='${base}'`,
     'release=$(cat "$BUN_NATIVE_ROOT/current") || exit 1',
-    'case "$release" in versions/*) ;; *) echo "Invalid Bun Native release pointer" >&2; exit 1 ;; esac',
+    // Exactly versions/<name> of letters, digits, dot and hyphen, never only dots.
+    'case "$release" in versions/*[!0-9A-Za-z.-]*) release= ;; versions/*[!.]*) ;; *) release= ;; esac',
+    '[ -n "$release" ] || { echo "Invalid Bun Native release pointer" >&2; exit 1; }',
     'BUN_NATIVE_DATA_DIR="$BUN_NATIVE_ROOT/data"',
     'export BUN_NATIVE_DATA_DIR',
     'exec "$BUN_NATIVE_ROOT/$release/application" "$@"',
