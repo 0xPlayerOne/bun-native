@@ -171,7 +171,10 @@ def process_image(pid):
     """Resolved executable of a live process, "" when hidden, None when gone."""
     try:
         return str(Path(f"/proc/{pid}/exe").resolve(strict=True))
-    except FileNotFoundError:
+    except (FileNotFoundError, ProcessLookupError):
+        # ENOENT, or ESRCH when the process exits between the table read and
+        # this one: a short-lived child of a remount is gone, not an error
+        # (hosted run 42215968086, "[Errno 3] No such process: '/proc/37298/exe'").
         return None
     except PermissionError:
         # A non-dumpable helper (the xdg-desktop-portal or a session bus it was
