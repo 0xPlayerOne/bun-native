@@ -20,7 +20,7 @@
 
 ### Bug Fixes
 
-* **ci:** run React development calibration without DFG ([#423](https://github.com/0xPlayerOne/bun-native/issues/423)) ([15344d5](https://github.com/0xPlayerOne/bun-native/commit/15344d56d8cc0cd9662061f6b9a95a13a68fb79e)), closes [#287](https://github.com/0xPlayerOne/bun-native/issues/287)
+* **ci:** run React development calibration without DFG ([#423](https://github.com/0xPlayerOne/bun-native/issues/423)) ([15344d5](https://github.com/0xPlayerOne/bun-native/commit/15344d56d8cc0cd9662061f6b9a95a13a68fb79e)), refs [#287](https://github.com/0xPlayerOne/bun-native/issues/287)
 * **core:** commit transactions above the native batch limit in staged batches ([#512](https://github.com/0xPlayerOne/bun-native/issues/512)) ([0b389b4](https://github.com/0xPlayerOne/bun-native/commit/0b389b4b1e6cd3af9c518c1473088209453514a4))
 * **quality:** settle Linux test sessions and capture screenshots in-process ([#487](https://github.com/0xPlayerOne/bun-native/issues/487)) ([66d7ff0](https://github.com/0xPlayerOne/bun-native/commit/66d7ff004b4408d22a38c9062b29ee694db64d6c))
 
@@ -43,7 +43,7 @@
 
 ### Tests
 
-* **solid:** enforce the JSX plugin Babel peer and bot major exclusion ([#430](https://github.com/0xPlayerOne/bun-native/issues/430)) ([3863459](https://github.com/0xPlayerOne/bun-native/commit/3863459588378532a4af4fb27188f051fa0955df)), closes [#316](https://github.com/0xPlayerOne/bun-native/issues/316)
+* **solid:** enforce the JSX plugin Babel peer and bot major exclusion ([#430](https://github.com/0xPlayerOne/bun-native/issues/430)) ([3863459](https://github.com/0xPlayerOne/bun-native/commit/3863459588378532a4af4fb27188f051fa0955df)), refs [#316](https://github.com/0xPlayerOne/bun-native/issues/316)
 
 
 ### CI
@@ -51,7 +51,7 @@
 * cache Windows protocol dependency builds and skip the AOT jobs' Rust install ([#514](https://github.com/0xPlayerOne/bun-native/issues/514)) ([fe4e799](https://github.com/0xPlayerOne/bun-native/commit/fe4e7995ffe904e6c1b327a4a505833447164415))
 * fail the required gate on draft runs instead of skipping it ([#456](https://github.com/0xPlayerOne/bun-native/issues/456)) ([d37c9cf](https://github.com/0xPlayerOne/bun-native/commit/d37c9cfefd4e65f748fd1c1d5fb2d05d4214a31d))
 * **linux:** keep compiled service fixtures out of the evidence artifact ([#511](https://github.com/0xPlayerOne/bun-native/issues/511)) ([1741eaa](https://github.com/0xPlayerOne/bun-native/commit/1741eaa1ec9187d53ce426a24741cee5172d4b89))
-* **linux:** read the software GPU driver into the page cache before the first open ([#442](https://github.com/0xPlayerOne/bun-native/issues/442)) ([4dbc1d7](https://github.com/0xPlayerOne/bun-native/commit/4dbc1d7e64cbf34bc7085868b7d22393446a7fac)), closes [#296](https://github.com/0xPlayerOne/bun-native/issues/296)
+* **linux:** read the software GPU driver into the page cache before the first open ([#442](https://github.com/0xPlayerOne/bun-native/issues/442)) ([4dbc1d7](https://github.com/0xPlayerOne/bun-native/commit/4dbc1d7e64cbf34bc7085868b7d22393446a7fac)), refs [#296](https://github.com/0xPlayerOne/bun-native/issues/296)
 
 ## [0.19.0](https://github.com/0xPlayerOne/bun-native/compare/v0.18.0...v0.19.0) (2026-11-05)
 
