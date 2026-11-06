@@ -126,3 +126,6 @@ fn apply<T: Styled>(mut element: T, style: &Style) -> T {
 
 #[cfg(test)]
 mod tests;
+
+#[cfg(test)]
+mod unit_tests;

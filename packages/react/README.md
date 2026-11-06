@@ -41,6 +41,18 @@ try {
 Application changes use Bun or the pinned Bun AOT compiler. They do not compile
 Rust. The application supplies an existing native host with the matching protocol.
 
+## Exports
+
+| Import path                         | Exports                                                                                   |
+| ----------------------------------- | ----------------------------------------------------------------------------------------- |
+| `@bun-native/react`                 | `render`, `inputState`; types `ReactRenderRoot`, `ReactRenderOptions`, `NativeRef`, `JSX` |
+| `@bun-native/react/jsx-runtime`     | `jsx`, `jsxs`, `Fragment` from React, with this package's native `JSX` namespace          |
+| `@bun-native/react/jsx-dev-runtime` | `jsxDEV`, `Fragment` from React, with this package's native `JSX` namespace               |
+
+Select the JSX runtime per file with `/** @jsxImportSource @bun-native/react */`,
+as the examples do, or set `jsxImportSource` in your `tsconfig.json`. Hooks,
+components and other React APIs are imported from `react` itself.
+
 For a larger consumer, the [React workspace](../../examples/react-workspace/README.md)
 combines editable tasks, keyed rows, native scrolling, search, filters, light/dark
 colors, and window-close cleanup. It runs through this public adapter in both
@@ -55,8 +67,12 @@ Solid. Render-phase instances never acquire native handles or subscriptions.
 The initial React commit completes before `ready` can observe a native
 acknowledgement.
 
-`render(children, window)` returns a root with `ready`, `closed`, `render(next)`,
-`flush()`, `dispose()` and mutation diagnostics. `render(next)` submits a new tree.
+`render(children, window, options?)` returns a `ReactRenderRoot` with `ready`,
+`closed`, `render(next)`, `flush()`, `dispose()` and `diagnostics` (owned node and
+listener counts, pending work, commits and acknowledged mutation counts).
+`render(next)` submits a new tree and resolves after its native acknowledgement.
+`ReactRenderOptions` accepts `style` and `onRecoverableError`; any other option
+name is rejected.
 
 For a full-window app, pass
 `render(children, window, { style: { width: 'fill', height: 'fill' } })`.
@@ -126,15 +142,33 @@ callback follows the public core's terminal application-error policy; observe
 `application.closed` to receive that failure.
 
 An input accepts an initial string or `{ value, revision }`. Store the actual
-`onInput` event in state to observe native typing without writing it back:
+`onInput` event in state to observe native typing without writing it back. To
+replace text intentionally, take `inputState(ref)` and submit a new
+`{ value, revision }`:
 
 ```tsx
-const [input, setInput] = useState<InputState>({ value: '', revision: 0 })
-return <input value={input} onInput={setInput} />
+/** @jsxImportSource @bun-native/react */
+import type { InputState } from '@bun-native/core'
+import { inputState, type JSX, type NativeRef } from '@bun-native/react'
+import { useRef, useState } from 'react'
+
+function Editor(): JSX.Element {
+  const editor = useRef<NativeRef>(null)
+  const [input, setInput] = useState<InputState>({ value: '', revision: 0 })
+  function clear() {
+    if (!editor.current) return
+    setInput({ value: '', revision: inputState(editor.current).revision })
+  }
+  return (
+    <box style={{ direction: 'row', gap: 8 }}>
+      <input ref={editor} value={input} onInput={setInput} />
+      <button onClick={clear}>Clear</button>
+    </box>
+  )
+}
 ```
 
-`InputState` is imported from `@bun-native/core`. To replace text intentionally,
-take `inputState(ref)` and submit a new `{ value, revision }`. The shared driver
+`InputState` is imported from `@bun-native/core`. The shared driver
 retains that expected revision. A stale replacement fails rather than overwriting
 a newer edit. Changing an initial string after mount is rejected because it lacks
 an observed revision.

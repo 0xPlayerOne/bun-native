@@ -65,3 +65,12 @@ test('ignores a trailing marker that has no valid length and bounds', () => {
   const bytes = Buffer.concat([envelope(), Buffer.alloc(40), Buffer.from('\n---- Bun! ----\n')])
   expect(inspect(bytes).hasCompiledProgram).toBe(true)
 })
+
+test.each([
+  ['macho', (bytes: Buffer) => bytes.writeUInt32LE(0xfeedfacf, 0)],
+  ['pe', (bytes: Buffer) => bytes.write('MZ\0\0', 0, 'latin1')],
+] as const)('recognizes a %s executable header', (format, header) => {
+  const bytes = envelope()
+  header(bytes)
+  expect(inspect(bytes)).toMatchObject({ format, hasCompiledProgram: true })
+})

@@ -1,4 +1,5 @@
 import { describe, expect, test } from 'bun:test'
+import { NativeStateError } from '@bun-native/core'
 import {
   createComponent,
   createElement,
@@ -14,6 +15,7 @@ import {
 import { asNode } from '@bun-native/renderer'
 import { batch, createEffect, createSignal, onCleanup } from 'solid-js'
 import assert from 'node:assert/strict'
+import { resolve } from 'node:path'
 
 import { observeWindow, withApp } from '../renderers/support.ts'
 import { observeScenario } from '../renderers/collectability.ts'
@@ -546,4 +548,37 @@ describe('Solid universal adapter over the public core (headless subprocess)', (
       expect(root.diagnostics.nodes).toBe(4)
       await root.dispose()
     }))
+
+  test('render rejects a non-function component before touching the window', () =>
+    withApp(async (app) => {
+      const window = await app.openWindow({ title: 'Solid component contract' })
+      for (const component of [null, 'text', { type: 'text' }])
+        assert.throws(
+          () => render(component as never, window),
+          (error: unknown) =>
+            error instanceof NativeStateError &&
+            error.code === 'invalid_state' &&
+            error.message === 'Solid render requires a component function'
+        )
+      expect(app.diagnostics.nodes).toBe(1)
+    }))
+
+  test('render refuses the non-reactive Solid server exports', () => {
+    // A child process without --conditions=browser or the test preload resolves
+    // solid-js to its server build, where signals never propagate.
+    const child = Bun.spawnSync({
+      cmd: [
+        process.execPath,
+        '-e',
+        "import { render } from '@bun-native/solid'; try { render(() => null, {}) } catch (error) { console.log(error.message) }",
+      ],
+      cwd: resolve(import.meta.dir, '../..'),
+      stdout: 'pipe',
+      stderr: 'pipe',
+    })
+    expect(child.exitCode).toBe(0)
+    expect(child.stdout.toString().trim()).toBe(
+      'Solid native rendering requires Bun --conditions=browser (reactive Solid exports)'
+    )
+  })
 })

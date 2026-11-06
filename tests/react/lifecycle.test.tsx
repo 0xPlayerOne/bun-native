@@ -3,7 +3,7 @@ import { expect, test } from 'bun:test'
 import assert from 'node:assert/strict'
 import { render, type NativeRef, type ReactRenderRoot } from '@bun-native/react'
 import { Activity, useEffect, useLayoutEffect, useState } from 'react'
-import { withApp } from '../renderers/support.ts'
+import { scheduledWindow, withApp } from '../renderers/support.ts'
 
 test('immediate React disposal rejects readiness and runs effect and callback-ref cleanup once', () =>
   withApp(async (app) => {
@@ -112,4 +112,33 @@ test('unsupported hidden Activity fails explicitly and disposes its native subtr
     await assert.rejects(root.closed, /react-hidden-subtrees/)
     expect(root.diagnostics.nodes).toBe(0)
     expect(app.diagnostics.nodes).toBe(1)
+  }))
+
+test('React disposal racing the initial acknowledgement never reports a closed root as ready', () =>
+  withApp(async (app) => {
+    const native = await app.openWindow({ title: 'React acknowledgement race' })
+    const { window, control } = scheduledWindow(native)
+    const outcomes = new Set<string>()
+    for (let depth = 0; depth < 16; depth += 1) {
+      let disposing: Promise<void> | undefined
+      const root = render(<text>Raced</text>, window)
+      control.afterAck = { depth, run: () => (disposing = root.dispose()) }
+      await root.ready.then(
+        () => outcomes.add('ready'),
+        (error: unknown) => {
+          assert.ok(error instanceof Error)
+          outcomes.add(error.message)
+        }
+      )
+      await root.closed
+      await disposing
+      expect(root.diagnostics.nodes).toBe(0)
+      expect(app.diagnostics.nodes).toBe(1)
+    }
+    // Disposal after the native acknowledgement but before React observes it.
+    expect(outcomes).toContain('React root closed before initial native acknowledgement')
+    for (const outcome of outcomes)
+      expect(['ready', 'React root closed before initial native acknowledgement']).toContain(
+        outcome
+      )
   }))

@@ -65,3 +65,17 @@ records first-launch and repeated startup, RSS, build/compile time, artifact
 bytes and bootstrap intervals. The first
 [recorded run](comparison/results/linux-x64-llvmpipe-2026-11-05/README.md) is
 Linux x64 with Xvfb and llvmpipe only.
+
+## Directory index
+
+| Path                                                                                         | Content                                                            |
+| -------------------------------------------------------------------------------------------- | ------------------------------------------------------------------ |
+| [`bn0/`](bn0/README.md), [`bn1/`](bn1/README.md), [`bn2/`](bn2/README.md)                    | Historical milestone evidence records                              |
+| [`comparison/`](comparison/README.md)                                                        | Equivalent-workload comparison harness and recorded runs           |
+| [`solid/`](solid/README.md)                                                                  | Shared core/Solid/React workload and the matched core/Solid runner |
+| [`retention/`](retention/README.md)                                                          | Fixed-checkpoint retention research                                |
+| [`native-allocations/`](native-allocations/README.md)                                        | Selected native allocation diagnostic                              |
+| [`results/`](results/README.md), [`evidence/`](evidence/README.md)                           | Retained hosted and local result records                           |
+| [`BRIDGE.md`](BRIDGE.md), [`BRIDGE_PAIRS.md`](BRIDGE_PAIRS.md)                               | Native bridge benchmark and historical bridge pairs                |
+| [`NATIVE_BASELINE.md`](NATIVE_BASELINE.md), [`NATIVE_PAINT.md`](NATIVE_PAINT.md)             | Development/AOT baseline and input-to-paint-record observation     |
+| [`ALLOCATIONS.md`](ALLOCATIONS.md), [`REACT.md`](REACT.md), [`COMPARISON.md`](COMPARISON.md) | Native allocations, React lifecycle workload, comparison method    |
