@@ -161,10 +161,28 @@ async function sourceFiles() {
   )
 }
 
-// Linux process-tree RSS sampling; other platforms report null rather than a guess.
+// Process-tree RSS sampling on Linux (/proc) and macOS (ps); other platforms report null rather than a guess.
+const rssSupported = platform() === 'linux' || platform() === 'darwin'
 const pageSize = Number(optionalVersion(['getconf', 'PAGESIZE']) ?? '4096')
+/** pid -> parent pid, and (macOS only) resident bytes from one consistent `ps` snapshot. */
 function processTable() {
   const parents = new Map<number, number>()
+  const resident = new Map<number, number>()
+  if (platform() === 'darwin') {
+    const listing = Bun.spawnSync(['ps', '-axo', 'pid=,ppid=,rss='], {
+      stdout: 'pipe',
+      stderr: 'pipe',
+      timeout: 5_000,
+    })
+    for (const line of listing.stdout.toString().split('\n')) {
+      const [pid, parent, kib] = line.trim().split(/\s+/).map(Number)
+      if (pid === undefined || parent === undefined || kib === undefined || Number.isNaN(kib))
+        continue
+      parents.set(pid, parent)
+      resident.set(pid, kib * 1024)
+    }
+    return { parents, resident }
+  }
   for (const entry of readdirSync('/proc')) {
     if (!/^\d+$/.test(entry)) continue
     try {
@@ -176,9 +194,11 @@ function processTable() {
       // The process exited between listing and reading.
     }
   }
-  return parents
+  return { parents, resident }
 }
-function residentBytes(pid: number) {
+function residentBytes(pid: number, resident: Map<number, number>) {
+  const known = resident.get(pid)
+  if (known !== undefined) return known
   try {
     return Number(readFileSync(`/proc/${pid}/statm`, 'utf8').split(' ')[1]) * pageSize
   } catch {
@@ -186,7 +206,7 @@ function residentBytes(pid: number) {
   }
 }
 function treeRss(root: number) {
-  const parents = processTable()
+  const { parents, resident } = processTable()
   const tree = new Set([root])
   let grew = true
   while (grew) {
@@ -197,10 +217,16 @@ function treeRss(root: number) {
         grew = true
       }
   }
-  const application = residentBytes(root)
+  const application = residentBytes(root, resident)
   let descendants = 0
-  for (const pid of tree) if (pid !== root) descendants += residentBytes(pid)
+  for (const pid of tree) if (pid !== root) descendants += residentBytes(pid, resident)
   return { application, descendants, total: application + descendants }
+}
+/** One-line system load: /proc/loadavg on Linux, `sysctl vm.loadavg` on macOS. */
+function loadAverage() {
+  if (platform() === 'darwin')
+    return optionalVersion(['sysctl', '-n', 'vm.loadavg']) ?? 'unavailable'
+  return readFileSync('/proc/loadavg', 'utf8').trim()
 }
 
 async function launch(
@@ -228,7 +254,7 @@ async function launch(
   void child.exited.then(() => {
     exited = true
   })
-  if (platform() === 'linux') {
+  if (rssSupported) {
     peakTree = peakApplication = peakHost = 0
     while (!exited) {
       const rss = treeRss(child.pid)
@@ -319,6 +345,11 @@ function workloadArguments(
 }
 
 function osRelease() {
+  if (platform() === 'darwin') {
+    const version = optionalVersion(['sw_vers', '-productVersion'])
+    const build = optionalVersion(['sw_vers', '-buildVersion'])
+    return version ? `macOS ${version}${build ? ` (${build})` : ''}` : null
+  }
   try {
     return /^PRETTY_NAME="?([^"\n]*)"?$/m.exec(readFileSync('/etc/os-release', 'utf8'))?.[1] ?? null
   } catch {
@@ -361,7 +392,17 @@ const report: Record<string, unknown> = {
     cpuModels: [...new Set(cpus().map((cpu) => cpu.model))],
     logicalCpus: cpus().length,
     memoryBytes: totalmem(),
-    powerAndOtherLoad: 'uncontrolled; /proc/loadavg is recorded before every launch',
+    powerAndOtherLoad: `uncontrolled; ${platform() === 'darwin' ? 'sysctl vm.loadavg' : '/proc/loadavg'} is recorded before every launch`,
+    ...(platform() === 'darwin'
+      ? {
+          macos: {
+            xcode: optionalVersion(['xcodebuild', '-version']),
+            powerSource: optionalVersion(['pmset', '-g', 'batt']),
+            thermal: optionalVersion(['pmset', '-g', 'therm']),
+            displays: optionalVersion(['system_profiler', 'SPDisplaysDataType']),
+          },
+        }
+      : {}),
     cacheState: 'uncontrolled; no page-cache flushing',
   },
   displayRequest: {
@@ -384,7 +425,7 @@ const report: Record<string, unknown> = {
       'failed launches are retained with logs and excluded from distributions; they are never retried',
     intervals:
       'per-launch metrics use each fresh process as the independent unit (percentile bootstrap, 2000 resamples, seed 244); pooled per-operation samples are described but not bootstrapped',
-    rss: `controller samples /proc statm of the launched process and its descendants (native host) every ${rssInterval} ms; peaks can be missed and shared pages are counted per process`,
+    rss: `controller samples ${platform() === 'darwin' ? 'ps rss' : '/proc statm'} of the launched process and its descendants (native host) every ${rssInterval} ms; peaks can be missed and shared pages are counted per process`,
     startup:
       'controller spawn epoch combined with child performance.timeOrigin milestones; window open and view mount are acknowledged native states, not display presentation',
     aotVerification:
@@ -440,7 +481,7 @@ async function runInput(build: Built, name: string, trial: number) {
   const path = join(inputDirectory, `${name}.json`)
   const evidence = join(inputDirectory, name)
   const nonce = crypto.randomUUID()
-  loads[name] = readFileSync('/proc/loadavg', 'utf8').trim()
+  loads[name] = loadAverage()
   const argv = [
     'python3',
     INPUT_DRIVER,
@@ -516,7 +557,7 @@ async function run(build: Built, name: string, trial: number, warmup: boolean) {
   assert.deepEqual(await digest(build.argv.at(-1)!), build.artifact, 'Artifact changed')
   const path = join(launchesDirectory, `${name}.json`)
   const nonce = crypto.randomUUID()
-  loads[name] = readFileSync('/proc/loadavg', 'utf8').trim()
+  loads[name] = loadAverage()
   const processResult = await launch(
     name,
     [...build.argv, ...workloadArguments(path, nonce, build.mode, false)],

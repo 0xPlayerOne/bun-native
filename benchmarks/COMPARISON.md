@@ -131,9 +131,10 @@ a merge. Every run uploads the raw output directory (except the AOT
 executables and the session runtime directory), the host build log and
 SHA-256, and the exported record as the `benchmark-comparison-linux-X64`
 artifact, kept for 30 days, and writes the summary table to the job summary.
-Hosted runners are shared, so treat those numbers as descriptive of that run. macOS and Windows are not wired in: the
-controller samples RSS and load through `/proc`, and the XTest driver is
-Linux-only.
+Hosted runners are shared, so treat those numbers as descriptive of that run. macOS and Windows are not wired into CI.
+On macOS the controller samples RSS through `ps` and load through `sysctl vm.loadavg`
+and runs locally without a display server; `--input-trials` stays Linux-only because
+the XTest driver is. Windows is not supported.
 
 To keep a run in the repository, copy it into a compact record with
 `bun benchmarks/comparison/export.ts ABSOLUTE_RUN_OUTPUT ABSOLUTE_DEST`. The
@@ -148,9 +149,12 @@ samples and builds.
 
 - A direct Rust GPUI baseline: no Rust application performing this workload
   exists, and adding one is separate work.
-- Electrobun/WebView baselines, display presentation, per-keystroke or text
-  input latency, CPU/GPU utilization, hardware GPUs, macOS and Windows.
+- Display presentation, per-keystroke or text input latency, CPU/GPU
+  utilization and Windows. The Electrobun WebView baseline
+  ([`benchmarks/electrobun`](electrobun/README.md)) covers process-level metrics
+  only; its operation timings are not comparable.
 
 ## Recorded results
 
 - [Linux x64, Xvfb + llvmpipe, release host](comparison/results/linux-x64-llvmpipe-2026-11-05/README.md)
+- [macOS arm64, Apple M2 Max (Metal), release host](comparison/results/macos-arm64-m2max-metal-2026-11-06/README.md)
