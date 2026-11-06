@@ -86,7 +86,11 @@ export function parseMetrics(text: string, what: string): MetricsFile {
   // JSON value. A numeric string, blank ADR or unrelated metric must not turn
   // an otherwise confirmed regression into a pass via JS coercion.
   if (value.accepted !== undefined) {
-    if (typeof value.accepted !== 'object' || value.accepted === null || Array.isArray(value.accepted))
+    if (
+      typeof value.accepted !== 'object' ||
+      value.accepted === null ||
+      Array.isArray(value.accepted)
+    )
       throw new Error(`${what}: accepted must be a map of recorded tradeoffs`)
     for (const [name, tradeoff] of Object.entries(value.accepted)) {
       if (!Object.hasOwn(value.metrics, name))
