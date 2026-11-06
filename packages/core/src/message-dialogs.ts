@@ -198,7 +198,7 @@ export interface NativeMessageDialogBackend {
 }
 
 /** The wire form of a validated spec; button `kind` has no OS equivalent. */
-export function wireOptions(spec: MessageDialogSpec): WireMessageDialogOptions {
+function wireOptions(spec: MessageDialogSpec): WireMessageDialogOptions {
   return {
     title: spec.title,
     message: spec.message,
