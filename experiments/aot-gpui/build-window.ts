@@ -51,6 +51,7 @@ const entries = {
   notifications: 'tests/native/notifications.ts',
   'filesystem-grants': 'tests/native/filesystem-grants.ts',
   processes: 'tests/native/processes.ts',
+  'file-dialogs': 'tests/native/file-dialogs.ts',
   'solid-services': 'tests/native/solid-services.tsx',
   'react-services': 'tests/native/react-services.tsx',
   'platform-smoke': 'tests/native/platform-smoke.ts',
@@ -134,6 +135,7 @@ if (
     entry === 'notifications' ||
     entry === 'filesystem-grants' ||
     entry === 'processes' ||
+    entry === 'file-dialogs' ||
     entry === 'platform-smoke' ||
     solidEntry ||
     reactEntry) &&

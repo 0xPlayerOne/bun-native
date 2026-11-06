@@ -47,6 +47,24 @@ export {
   type TerminalSize,
 } from './processes.ts'
 export {
+  FILE_DIALOG_MODES,
+  MAX_DIALOG_FILTER_NAME_BYTES,
+  MAX_DIALOG_FILTER_PATTERNS,
+  MAX_DIALOG_FILTERS,
+  MAX_DIALOG_LABEL_BYTES,
+  MAX_DIALOG_NAME_BYTES,
+  MAX_DIALOG_PATH_BYTES,
+  MAX_DIALOG_PATHS,
+  MAX_DIALOG_PATTERN_BYTES,
+  MAX_DIALOG_TITLE_BYTES,
+  MAX_FILE_DIALOGS,
+  parseFileDialogOptions,
+  type FileDialogMode,
+  type FileDialogOptions,
+  type FileDialogResult,
+  type FileFilter,
+} from './dialogs.ts'
+export {
   GLOBAL_SHORTCUT_KEYS,
   MAX_CLIPBOARD_BYTES,
   MAX_GLOBAL_SHORTCUTS,

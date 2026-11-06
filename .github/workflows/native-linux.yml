@@ -44,7 +44,8 @@ jobs:
             pkg-config libfontconfig-dev libglib2.0-dev libssl-dev libwayland-dev \
             libx11-xcb-dev libxkbcommon-x11-dev libvulkan1 libzstd-dev \
             mesa-vulkan-drivers xvfb xauth x11-utils x11-xserver-utils openbox xdotool imagemagick \
-            dbus-x11 dunst fonts-dejavu-core heaptrack binutils
+            dbus-x11 dunst xdg-desktop-portal xdg-desktop-portal-gtk libglib2.0-bin \
+            fonts-dejavu-core heaptrack binutils
       - name: Pin the installed Mesa CPU Vulkan ICD for isolated Xvfb
         run: |
           echo 'Installed Mesa Vulkan ICD files:'
@@ -76,7 +77,7 @@ jobs:
             rustc --version --verbose
             cargo --version
             cc --version
-            dpkg-query -W libvulkan1 mesa-vulkan-drivers libwayland-client0 libxkbcommon0 xvfb openbox xdotool imagemagick dunst heaptrack libheaptrack binutils
+            dpkg-query -W libvulkan1 mesa-vulkan-drivers libwayland-client0 libxkbcommon0 xvfb openbox xdotool imagemagick dunst xdg-desktop-portal xdg-desktop-portal-gtk heaptrack libheaptrack binutils
             printf 'Vulkan ICD: %s\n' "${VK_DRIVER_FILES:?}"
             sha256sum "$VK_DRIVER_FILES"
             printf 'Application modes: Bun development and verified machine-code AOT\nNative host profile: release\nDisplay: isolated Xvfb X11\nInput: XTest\nRenderer request: Mesa software Vulkan/GL; actual adapter in result.json\n'
@@ -132,7 +133,7 @@ jobs:
             "$NATIVE_EVIDENCE/events-development" event-throughput bun tests/native/event-throughput.ts
       - name: Compile and inspect the actual AOT entries
         run: |
-          for entry in native-window input-race bridge javascript core-lifecycle event-throughput fault scheduling layout interactions services display-semantics clipboard global-shortcuts notifications filesystem-grants processes solid-services react-services solid solid-input-intent solid-interactions react react-interactions react-behavior react-workload react-workspace react-workspace-flow; do
+          for entry in native-window input-race bridge javascript core-lifecycle event-throughput fault scheduling layout interactions services display-semantics clipboard global-shortcuts notifications filesystem-grants processes file-dialogs solid-services react-services solid solid-input-intent solid-interactions react react-interactions react-behavior react-workload react-workspace react-workspace-flow; do
             outdir="$NATIVE_EVIDENCE/$entry-package"
             if [[ "$entry" == native-window ]]; then
               outdir="$NATIVE_EVIDENCE/package"
@@ -245,6 +246,23 @@ jobs:
             evidence="$NATIVE_EVIDENCE/processes-$mode"
             mkdir "$evidence"
             BUN_NATIVE_PROCESS_EVIDENCE="$evidence" BUN_NATIVE_PROCESS_MODE="$mode" \
+              xvfb-run --auto-servernum --server-args='-screen 0 1280x800x24 -nolisten tcp' \
+              dbus-run-session -- bash scripts/quality/native-linux-session.sh \
+              "$evidence-session" -- "${command[@]}" 2>&1 | tee "$evidence/run.log"
+          done
+      - name: Development and AOT OS file dialogs through xdg-desktop-portal
+        timeout-minutes: 3
+        env:
+          BUN_NATIVE_HOST: ${{ github.workspace }}/target/release/bun-native-host
+        run: |
+          for mode in development aot; do
+            command=(bun tests/native/file-dialogs.ts)
+            if [[ "$mode" == aot ]]; then
+              command=("$NATIVE_EVIDENCE/file-dialogs-package/file-dialogs")
+            fi
+            evidence="$NATIVE_EVIDENCE/file-dialogs-$mode"
+            mkdir "$evidence"
+            BUN_NATIVE_DIALOG_EVIDENCE="$evidence" BUN_NATIVE_DIALOG_MODE="$mode" \
               xvfb-run --auto-servernum --server-args='-screen 0 1280x800x24 -nolisten tcp' \
               dbus-run-session -- bash scripts/quality/native-linux-session.sh \
               "$evidence-session" -- "${command[@]}" 2>&1 | tee "$evidence/run.log"
@@ -720,6 +738,7 @@ jobs:
             ${{ runner.temp }}/native-evidence/filesystem-grants-*/
             ${{ runner.temp }}/native-evidence/processes-*/
             ${{ runner.temp }}/native-evidence/display-semantics-*/
+            ${{ runner.temp }}/native-evidence/file-dialogs-*/
             ${{ runner.temp }}/native-evidence/development/
             ${{ runner.temp }}/native-evidence/aot/
             ${{ runner.temp }}/native-evidence/input-race-aot/
@@ -770,6 +789,7 @@ jobs:
             echo 'Linux freedesktop notifications run against the real dunst server on an isolated D-Bus session in development and inspected AOT: default denial, an isolated bus without a server reported as unavailable, posting, server-action activation, user dismissal, forged signals from an independent bus client ignored, and server-side withdrawal on request, owner close and shutdown. This does not qualify notifications on macOS or Windows, or with other notification servers.'
             echo 'Linux filesystem grants run in development and inspected AOT on a private temporary tree checked independently with node:fs: default denial, unknown roots and access above the launch grant refused, read grants refusing writes, actual create/append/truncate/binary effects, directory pages and removal, symbolic links never followed inside or out of the grant, traversal rejected before the wire, a sibling directory left untouched, and native rejection of foreign, stale and reused grant handles. Close, owner close and shutdown revoke grants and withhold in-flight results. This does not qualify filesystem grants on macOS or Windows.'
             echo 'Linux owned processes run in development and inspected AOT with real /bin/sh children: default denial, pipes with separate stdout and stderr, an explicit environment with nothing inherited, a working directory resolved beneath a file grant without following links, a sized pseudo-terminal with resize and input, a group signal reaching descendants, exit stopping the whole group (checked through /proc), credited output delivered completely to a slow consumer, release, owner close and shutdown stopping groups, and native rejection of foreign, stale and reused process handles. This does not qualify owned processes on macOS or Windows.'
+            echo 'Linux OS file dialogs run through xdg-desktop-portal and its GTK file chooser on an isolated D-Bus session in development and inspected AOT: default denial, a bus without a portal reported as unavailable, a real dialog transient for the owner window, forged portal responses from an independent bus client ignored, real keyboard selection of one file, several files and a folder, a save selection that creates no file, Escape cancellation, and the OS dialog closed after an aborted signal, owner close and shutdown. Selected paths are data, not filesystem grants. This does not qualify file dialogs on Wayland, in Flatpak/Snap sandboxes, on macOS or Windows, or with other portal backends.'
             echo 'Solid runs the exact source-fingerprinted generated module in development and through inspected Bun AOT against the same release GPUI host. Twelve scenarios require keyed identity, every native edit, delayed revision-aware replacement, shared keyboard/pointer/focus phases, caret and selection behavior, complete native paint, OS close and owner cleanup. These correctness cases do not close the separate retained-object investigation or establish matched framework performance.'
             echo 'Bridge acknowledgement timings run with instrumentation disabled; they are not display-presentation timings. The startup/RSS baseline retains one warm-up and five measured fresh-process trials per mode, alternating order, with a two-second idle interval and uncontrolled OS caches.'
             echo 'Separate Heaptrack runs profile only the real native host during the 1,000-cycle lifecycle in both modes. Full compressed allocation traces, tool/host/source hashes and bounded callsite reports are retained; profiler timing/RSS is not mixed into the baseline, and outstanding-at-exit allocations are not automatically leaks.'

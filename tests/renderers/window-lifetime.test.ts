@@ -37,6 +37,8 @@ async function assertObserverLifetime(watch: Watch) {
       postNotification: actual.postNotification.bind(actual),
       openFileGrant: actual.openFileGrant.bind(actual),
       spawnProcess: actual.spawnProcess.bind(actual),
+      showOpenDialog: actual.showOpenDialog.bind(actual),
+      showSaveDialog: actual.showSaveDialog.bind(actual),
       input: actual.input.bind(actual),
       on: actual.on.bind(actual),
       onClick: actual.onClick.bind(actual),

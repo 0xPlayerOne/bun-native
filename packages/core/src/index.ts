@@ -30,6 +30,13 @@ export type {
 } from './files.ts'
 export type { NativeProcess, NativeProcessExit, ProcessEvent, ProcessOptions } from './processes.ts'
 export type {
+  FileDialogFilter,
+  OpenDialogOptions,
+  OpenDialogResult,
+  SaveDialogOptions,
+  SaveDialogResult,
+} from './dialogs.ts'
+export type {
   ApplicationOptions,
   ClickEvent,
   ContainerKind,

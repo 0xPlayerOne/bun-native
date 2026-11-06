@@ -14,6 +14,11 @@ pub(crate) mod clipboard;
 #[cfg(not(target_os = "linux"))]
 #[path = "services/clipboard_unavailable.rs"]
 pub(crate) mod clipboard;
+#[cfg(target_os = "linux")]
+pub(crate) mod file_dialogs;
+#[cfg(not(target_os = "linux"))]
+#[path = "services/file_dialogs_unavailable.rs"]
+pub(crate) mod file_dialogs;
 #[cfg(any(target_os = "linux", target_os = "macos"))]
 pub(crate) mod files;
 #[cfg(not(any(target_os = "linux", target_os = "macos")))]
@@ -86,6 +91,8 @@ fn filesystem_root(argument: &str) -> Result<FilesystemRoot, &'static str> {
     Ok(root)
 }
 
+pub(crate) const FILE_DIALOGS_ARGUMENT: &str = "--bun-native-allow-file-dialogs";
+
 pub(crate) fn policy(
     arguments: impl IntoIterator<Item = OsString>,
 ) -> Result<ServicePolicy, &'static str> {
@@ -117,6 +124,8 @@ pub(crate) fn policy(
             &mut policy.global_shortcuts
         } else if argument == NOTIFICATIONS_ARGUMENT {
             &mut policy.notifications
+        } else if argument == FILE_DIALOGS_ARGUMENT {
+            &mut policy.file_dialogs
         } else {
             return Err("unknown native host argument");
         };
@@ -223,6 +232,7 @@ mod tests {
                 notifications: false,
                 filesystem_roots: Vec::new(),
                 processes: Vec::new(),
+                file_dialogs: false,
             }
         );
         assert_eq!(
@@ -239,11 +249,19 @@ mod tests {
                 ..ServicePolicy::default()
             }
         );
+        assert_eq!(
+            policy([OsString::from(FILE_DIALOGS_ARGUMENT)]).unwrap(),
+            ServicePolicy {
+                file_dialogs: true,
+                ..ServicePolicy::default()
+            }
+        );
         for argument in [
             CLIPBOARD_READ_ARGUMENT,
             CLIPBOARD_WRITE_ARGUMENT,
             GLOBAL_SHORTCUTS_ARGUMENT,
             NOTIFICATIONS_ARGUMENT,
+            FILE_DIALOGS_ARGUMENT,
         ] {
             assert!(policy([argument, argument].map(OsString::from)).is_err());
         }

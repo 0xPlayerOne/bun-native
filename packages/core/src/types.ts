@@ -22,6 +22,12 @@ import type {
 import type { NativeNotification, NotificationEvent, NotificationOptions } from './notifications.ts'
 import type { FileGrantOptions, NativeFileGrant } from './files.ts'
 import type { NativeProcess, ProcessEvent, ProcessOptions } from './processes.ts'
+import type {
+  OpenDialogOptions,
+  OpenDialogResult,
+  SaveDialogOptions,
+  SaveDialogResult,
+} from './dialogs.ts'
 
 export type { Element, KeyModifiers, PointerButton, Style }
 export type ApplicationOptions = HostOptions
@@ -201,6 +207,21 @@ export interface NativeWindow {
     options: ProcessOptions,
     listener: (event: ProcessEvent) => void | Promise<void>
   ): Promise<NativeProcess>
+  /**
+   * Show an OS file-open or folder dialog owned by this window. Requires the
+   * immutable fileDialogs launch grant; at most one file dialog per window.
+   * The returned paths are data, never a filesystem grant. Aborting the signal,
+   * closing the window or shutting down closes the dialog.
+   */
+  showOpenDialog(
+    options: OpenDialogOptions,
+    request?: ServiceRequestOptions
+  ): Promise<OpenDialogResult>
+  /** Show an OS save dialog owned by this window. Nothing is written or created. */
+  showSaveDialog(
+    options: SaveDialogOptions,
+    request?: ServiceRequestOptions
+  ): Promise<SaveDialogResult>
   /** Idempotent. Revokes listeners before requesting native window removal. */
   close(): Promise<void>
 }

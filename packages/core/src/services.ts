@@ -15,6 +15,7 @@ type ServiceName =
   | 'notifications'
   | 'filesystem_grants'
   | 'processes'
+  | 'file_dialogs'
 
 export type ServicePermissions = NonNullable<
   import('@bun-native/runtime').HostOptions['permissions']
@@ -83,7 +84,17 @@ export interface ServiceCapabilities {
       }>
     | Readonly<{ availability: 'unavailable'; reason: 'unsupported_platform' }>
   readonly systemMenus: UnavailableService
-  readonly dialogs: UnavailableService
+  /** OS file open/save/folder dialogs. Selected paths are data, not filesystem grants. */
+  readonly fileDialogs:
+    | Readonly<{
+        availability: 'available'
+        permission: 'allow' | 'deny'
+        scope: 'owned_window'
+        backend: 'xdg_desktop_portal'
+      }>
+    | Readonly<{ availability: 'unavailable'; reason: 'unsupported_platform' }>
+  /** OS message/confirm alerts. Use an in-window modal overlay meanwhile. */
+  readonly messageDialogs: UnavailableService
   readonly notifications:
     | Readonly<{
         availability: 'available'
@@ -175,7 +186,15 @@ export function serviceCapabilities(
         })
       : Object.freeze({ availability: 'unavailable', reason: 'unsupported_platform' }),
     systemMenus: unavailable,
-    dialogs: unavailable,
+    fileDialogs: capabilities.includes('file_dialogs_v1')
+      ? Object.freeze({
+          availability: 'available',
+          permission: policy.file_dialogs ? 'allow' : 'deny',
+          scope: 'owned_window',
+          backend: 'xdg_desktop_portal',
+        })
+      : Object.freeze({ availability: 'unavailable', reason: 'unsupported_platform' }),
+    messageDialogs: unavailable,
     notifications: capabilities.includes('notifications_v1')
       ? Object.freeze({
           availability: 'available',

@@ -95,11 +95,18 @@ describe('owned desktop service lifecycle (headless subprocess)', () => {
             'notifications',
             'filesystemGrants',
             'ptyProcess',
+            'fileDialogs',
           ].includes(name)
         )
-          expect(value).toEqual({ availability: 'unavailable', reason: 'unsupported_platform' })
+          expect(value).toEqual({
+            availability: 'unavailable',
+            reason: 'unsupported_platform',
+          })
         else if (name !== 'windowDisplay')
-          expect(value).toEqual({ availability: 'unavailable', reason: 'not_implemented' })
+          expect(value).toEqual({
+            availability: 'unavailable',
+            reason: 'not_implemented',
+          })
       }
       const window = await app.openWindow({ title: 'Denied service' })
       await assert.rejects(window.displaySnapshot(), {
@@ -149,7 +156,9 @@ describe('owned desktop service lifecycle (headless subprocess)', () => {
   test('a cancelled in-flight read is drained without delivering data or poisoning the next read', () =>
     withService(
       async (app, directory) => {
-        const window = await app.openWindow({ title: 'In-flight cancellation' })
+        const window = await app.openWindow({
+          title: 'In-flight cancellation',
+        })
         const cancellation = new AbortController()
         const pending = window.displaySnapshot({ signal: cancellation.signal })
         const rejected = assert.rejects(pending, { code: 'cancelled' })
@@ -167,7 +176,9 @@ describe('owned desktop service lifecycle (headless subprocess)', () => {
   test('window close revokes an in-flight response and stale handles cannot submit another read', () =>
     withService(
       async (app, directory) => {
-        const window = await app.openWindow({ title: 'Owned service lifetime' })
+        const window = await app.openWindow({
+          title: 'Owned service lifetime',
+        })
         const pending = window.displaySnapshot()
         const rejected = assert.rejects(pending, NativeStateError)
         await received(directory)
@@ -175,7 +186,9 @@ describe('owned desktop service lifecycle (headless subprocess)', () => {
         writeFileSync(join(directory, 'release'), '')
         await rejected
         await closing
-        await assert.rejects(window.displaySnapshot(), { code: 'invalid_handle' })
+        await assert.rejects(window.displaySnapshot(), {
+          code: 'invalid_handle',
+        })
         expect(requests(directory)).toHaveLength(1)
       },
       'hold',
@@ -185,7 +198,9 @@ describe('owned desktop service lifecycle (headless subprocess)', () => {
   test('shutdown withholds a late service result and drains every owned transaction', () =>
     withService(
       async (app, directory) => {
-        const window = await app.openWindow({ title: 'Shutdown service lifetime' })
+        const window = await app.openWindow({
+          title: 'Shutdown service lifetime',
+        })
         const pending = window.displaySnapshot()
         const rejected = assert.rejects(pending, { code: 'invalid_handle' })
         await received(directory)
@@ -229,7 +244,9 @@ describe('owned desktop service lifecycle (headless subprocess)', () => {
   test('cancellation cannot conceal a malformed in-flight native response', () =>
     withService(
       async (app, directory) => {
-        const window = await app.openWindow({ title: 'Cancelled malformed response' })
+        const window = await app.openWindow({
+          title: 'Cancelled malformed response',
+        })
         const cancellation = new AbortController()
         const pending = window.displaySnapshot({ signal: cancellation.signal })
         const rejected = assert.rejects(pending, ProtocolError)

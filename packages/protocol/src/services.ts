@@ -21,6 +21,8 @@ export interface ServicePolicy {
   filesystem_roots: FilesystemRoot[]
   /** Executables a window may start as owned processes, in launch order. */
   processes: ProcessExecutable[]
+  /** Optional on the wire, so existing peers stay exact: absence is a denial. */
+  file_dialogs?: boolean
 }
 
 /** The closed set of layout-level keys a global shortcut may name. */
@@ -136,6 +138,7 @@ export function parseServicePolicy(value: unknown): ServicePolicy {
     'notifications',
     'filesystem_roots',
     'processes',
+    'file_dialogs',
   ])
   const grant = (key: keyof ServicePolicy) => {
     if (typeof data[key] !== 'boolean')
@@ -150,6 +153,7 @@ export function parseServicePolicy(value: unknown): ServicePolicy {
     notifications: grant('notifications'),
     filesystem_roots: parseFilesystemRoots(data['filesystem_roots']),
     processes: parseProcessExecutables(data['processes']),
+    ...('file_dialogs' in data ? { file_dialogs: grant('file_dialogs') } : {}),
   }
 }
 

@@ -19,6 +19,7 @@ Record a decision when selecting or changing:
 
 ```markdown
 # ADR NNNN — concise title
+
 Status: proposed | accepted | superseded
 Date:
 Related milestone/issues:
@@ -45,6 +46,7 @@ The implementation agent may accept an ADR autonomously within the owner's exper
 - [0009 — Owned desktop notifications](0009-native-notifications.md)
 - [0010 — Scoped filesystem grants](0010-filesystem-grants.md)
 - [0011 — Owned child processes](0011-owned-processes.md)
+- [0013 — Owned OS file dialogs](0013-native-file-dialogs.md)
 - [Native host protocol 10](../native-abi.md)
 - [Active roadmap](https://github.com/0xPlayerOne/bun-native/issues/1)
 - [Architecture overview](../architecture.md)

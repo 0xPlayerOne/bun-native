@@ -1,9 +1,9 @@
 //! Native event payloads carry the committed ownership route, never callbacks.
 
 use crate::{
-    validate_text, Capability, ClipboardText, DisplaySnapshot, ErrorCode, EventSequence, Limits,
-    NodeId, NotificationDismissal, NotificationId, RequestId, ServicePolicy, ShortcutId, WindowId,
-    MAX_DEPTH, MAX_ID,
+    validate_text, Capability, ClipboardText, DialogId, DisplaySnapshot, ErrorCode, EventSequence,
+    FileDialogResult, Limits, NodeId, NotificationDismissal, NotificationId, RequestId,
+    ServicePolicy, ShortcutId, WindowId, MAX_DEPTH, MAX_ID,
 };
 use serde::{Deserialize, Serialize};
 
@@ -169,6 +169,25 @@ pub enum Event {
         window_id: WindowId,
         notification_id: NotificationId,
         reason: NotificationDismissal,
+    },
+    /// The OS dialog is shown for this owned window.
+    FileDialogOpened {
+        id: RequestId,
+        window_id: WindowId,
+        dialog_id: DialogId,
+    },
+    /// The application closed its dialog; no completion follows.
+    FileDialogClosed {
+        id: RequestId,
+        window_id: WindowId,
+        dialog_id: DialogId,
+    },
+    /// The user finished a live dialog owned by this window. It is no longer owned.
+    FileDialogCompleted {
+        sequence: EventSequence,
+        window_id: WindowId,
+        dialog_id: DialogId,
+        result: FileDialogResult,
     },
     Click {
         sequence: EventSequence,
@@ -377,6 +396,7 @@ impl Event {
                 crate::validate_process_output(data)?
             }
             Self::ProcessExited { exit, .. } => exit.validate()?,
+            Self::FileDialogCompleted { result, .. } => result.validate()?,
             Self::KeyDown { key, key_char, .. } | Self::KeyUp { key, key_char, .. } => {
                 validate_text(key)?;
                 if key.is_empty() || key.len() > MAX_KEY_BYTES {

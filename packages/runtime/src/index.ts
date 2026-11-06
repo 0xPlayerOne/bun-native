@@ -49,6 +49,8 @@ export type WindowCommand = WithoutId<
         | 'signal_process'
         | 'acknowledge_process_output'
         | 'release_process'
+        | 'show_file_dialog'
+        | 'close_file_dialog'
     }
   >
 >
@@ -73,6 +75,8 @@ export type HostResponse = Extract<
       | 'process_spawned'
       | 'process_updated'
       | 'process_released'
+      | 'file_dialog_opened'
+      | 'file_dialog_closed'
   }
 >
 
@@ -95,6 +99,8 @@ export interface ServicePermissions {
    * `executable` is an absolute normalized path; nothing else can be started.
    */
   readonly processes?: readonly Readonly<{ id: string; executable: string }>[]
+  /** OS file open/save/folder dialogs owned by a window. Paths are data, never grants. */
+  readonly fileDialogs?: 'allow' | 'deny'
 }
 
 export class NativeCommandError extends Error {
@@ -131,6 +137,7 @@ function launchPolicy(value: unknown = {}): Readonly<ServicePolicy> {
           'notifications',
           'filesystemRoots',
           'processes',
+          'fileDialogs',
         ].includes(key)
     )
   )
@@ -149,6 +156,7 @@ function launchPolicy(value: unknown = {}): Readonly<ServicePolicy> {
     notifications: grant('notifications'),
     filesystem_roots: filesystemRoots(value),
     processes: processes(value),
+    file_dialogs: grant('fileDialogs'),
   })
 }
 
@@ -190,6 +198,7 @@ function samePolicy(left: Readonly<ServicePolicy>, right: Readonly<ServicePolicy
     left.clipboard_write === right.clipboard_write &&
     left.global_shortcuts === right.global_shortcuts &&
     left.notifications === right.notifications &&
+    (left.file_dialogs ?? false) === (right.file_dialogs ?? false) &&
     left.filesystem_roots.length === right.filesystem_roots.length &&
     left.filesystem_roots.every(
       (root, index) =>
@@ -278,6 +287,7 @@ export class NativeHost implements AsyncIterable<WindowEvent> {
         ...(requestedPolicy.notifications ? ['--bun-native-allow-notifications'] : []),
         ...requestedPolicy.filesystem_roots.map(filesystemRootArgument),
         ...requestedPolicy.processes.map(processArgument),
+        ...(requestedPolicy.file_dialogs ? ['--bun-native-allow-file-dialogs'] : []),
       ],
       stdin: 'pipe',
       stdout: 'pipe',
@@ -392,6 +402,12 @@ export class NativeHost implements AsyncIterable<WindowEvent> {
       }
     >
   ): Promise<Extract<HostResponse, { type: 'process_updated' }>>
+  send(
+    command: Extract<WindowCommand, { type: 'show_file_dialog' }>
+  ): Promise<Extract<HostResponse, { type: 'file_dialog_opened' }>>
+  send(
+    command: Extract<WindowCommand, { type: 'close_file_dialog' }>
+  ): Promise<Extract<HostResponse, { type: 'file_dialog_closed' }>>
   send(command: WindowCommand): Promise<HostResponse>
   send(command: WindowCommand): Promise<HostResponse> {
     if (this.phase !== 'running') return Promise.reject(this.closedError())
@@ -634,6 +650,8 @@ export class NativeHost implements AsyncIterable<WindowEvent> {
       event.type === 'process_spawned' ||
       event.type === 'process_updated' ||
       event.type === 'process_released' ||
+      event.type === 'file_dialog_opened' ||
+      event.type === 'file_dialog_closed' ||
       event.type === 'error'
     ) {
       if (event.type === 'error' && event.id === undefined)
@@ -731,6 +749,18 @@ export class NativeHost implements AsyncIterable<WindowEvent> {
                 : 'process_updated') &&
           response.window_id === command.window_id &&
           response.process_id === command.process_id
+        )
+      case 'show_file_dialog':
+        return (
+          response.type === 'file_dialog_opened' &&
+          response.window_id === command.window_id &&
+          response.dialog_id === command.dialog_id
+        )
+      case 'close_file_dialog':
+        return (
+          response.type === 'file_dialog_closed' &&
+          response.window_id === command.window_id &&
+          response.dialog_id === command.dialog_id
         )
       case 'open':
         return (

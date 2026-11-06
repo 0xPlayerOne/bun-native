@@ -20,6 +20,7 @@ export type RoutedEvent = Exclude<
       | 'process_output'
       | 'process_exited'
       | 'display_changed'
+      | 'file_dialog_completed'
   }
 >
 const eventTypes: readonly string[] = [

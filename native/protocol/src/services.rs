@@ -22,6 +22,10 @@ pub struct ServicePolicy {
     pub filesystem_roots: Vec<crate::FilesystemRoot>,
     /// Executables a window may start as owned processes, in launch order.
     pub processes: Vec<crate::ProcessExecutable>,
+    /// Optional on the wire: an absent field is a denial, so a host or peer
+    /// without file dialogs keeps the protocol's exact policy object.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub file_dialogs: bool,
 }
 
 /// OS-wide modifier state. Shift alone cannot form a global shortcut: at least

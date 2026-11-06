@@ -39,34 +39,36 @@ Other native services retain the explicit deferrals in the matrix below.
 ## Policy and capability contract
 
 ```ts
-import { createApplication, NativeServiceError } from '@bun-native/core'
+import { createApplication, NativeServiceError } from "@bun-native/core";
 
-const executable = process.env['BUN_NATIVE_HOST']
-if (!executable) throw new Error('Set an absolute BUN_NATIVE_HOST path')
+const executable = process.env["BUN_NATIVE_HOST"];
+if (!executable) throw new Error("Set an absolute BUN_NATIVE_HOST path");
 const app = await createApplication({
   executable,
-  permissions: { windowDisplay: 'allow' },
-})
+  permissions: { windowDisplay: "allow" },
+});
 try {
-  const window = await app.openWindow({ title: 'Display information' })
-  const display = await window.displaySnapshot()
-  console.log(display.bounds, display.scaleFactor)
-  await window.close()
+  const window = await app.openWindow({ title: "Display information" });
+  const display = await window.displaySnapshot();
+  console.log(display.bounds, display.scaleFactor);
+  await window.close();
 } catch (error) {
-  if (error instanceof NativeServiceError) console.error(error.code, error.service)
-  else throw error
+  if (error instanceof NativeServiceError)
+    console.error(error.code, error.service);
+  else throw error;
 } finally {
-  await app.shutdown()
-  await app.closed
+  await app.shutdown();
+  await app.closed;
 }
 ```
 
 The default permission is `deny`. The accepted keys are `windowDisplay`,
-`clipboardRead`, `clipboardWrite`, `globalShortcuts` and `notifications`, each
-independently `allow` or `deny`; `filesystemRoots`, a list of launch
-directories described under [filesystem grants](#filesystem-grants); and
-`processes`, a list of launch executables described under
-[owned processes](#owned-processes).
+`clipboardRead`, `clipboardWrite`, `globalShortcuts`, `notifications` and
+`fileDialogs`, each independently `allow` or `deny`; `filesystemRoots`, a list
+of launch directories described under [filesystem grants](#filesystem-grants);
+and `processes`, a list of launch executables described under
+[owned processes](#owned-processes). The `file_dialogs` policy field is
+optional on the wire and omitted when denied.
 The runtime translates each explicit grant into its reserved native launch argument. The Rust process
 parses that immutable policy before starting GPUI or its private channel.
 Unknown or duplicate native arguments fail startup. A wire message cannot
@@ -290,16 +292,16 @@ still fails the channel even if the caller cancelled in the meantime.
 ```ts
 const app = await createApplication({
   executable,
-  permissions: { clipboardRead: 'allow', clipboardWrite: 'allow' },
-})
-const window = await app.openWindow({ title: 'Explicit clipboard operations' })
+  permissions: { clipboardRead: "allow", clipboardWrite: "allow" },
+});
+const window = await app.openWindow({ title: "Explicit clipboard operations" });
 try {
-  await window.writeClipboardText('Text the application intentionally copies')
-  const result = await window.readClipboardText()
-  if (result.kind === 'text') console.log(result.text)
+  await window.writeClipboardText("Text the application intentionally copies");
+  const result = await window.readClipboardText();
+  if (result.kind === "text") console.log(result.text);
 } finally {
-  await app.shutdown()
-  await app.closed
+  await app.shutdown();
+  await app.closed;
 }
 ```
 
@@ -456,14 +458,16 @@ permission:
 const app = await createApplication({
   executable,
   permissions: {
-    filesystemRoots: [{ id: 'workspace', path: '/home/me/project', access: 'read_write' }],
+    filesystemRoots: [
+      { id: "workspace", path: "/home/me/project", access: "read_write" },
+    ],
   },
-})
-const window = await app.openWindow({ title: 'Workspace' })
-const grant = await window.openFileGrant('workspace', { access: 'read' })
-const page = await grant.list('src')
-const chunk = await grant.read('src/main.ts', { offset: 0, length: 16_384 })
-await grant.close()
+});
+const window = await app.openWindow({ title: "Workspace" });
+const grant = await window.openFileGrant("workspace", { access: "read" });
+const page = await grant.list("src");
+const chunk = await grant.read("src/main.ts", { offset: 0, length: 16_384 });
+await grant.close();
 ```
 
 Each root has an ID of lowercase letters, digits, `-` and `_`, an absolute
@@ -570,8 +574,8 @@ nothing is inherited from the host), with arguments and environment together
 at most 32,768 bytes. A working directory comes only from a live file grant of
 the same window; the host resolves `path` beneath the grant descriptor with the
 same `openat2` rules as file requests, so links are never followed. macOS
-has no filesystem grants, so a process there cannot be given a working
-directory and starts in the host's.
+cannot start a child in a grant descriptor, so a working directory is refused
+there (`service_unavailable`).
 
 Without `terminal`, standard input, output and error are three pipes and output
 events name `stdout` or `stderr`. With `terminal: { columns, rows }` the child
@@ -628,6 +632,78 @@ host unit tests and the same native test in development and AOT in the
 checking groups through `ps`. It is compile-checked locally only; macOS
 behavior is claimed from that CI job. Windows remains unavailable.
 
+## File dialogs
+
+```ts
+const app = await createApplication({
+  executable,
+  permissions: { fileDialogs: "allow" },
+});
+const window = await app.openWindow({ title: "Editor" });
+const opened = await window.showOpenDialog({
+  title: "Open a document",
+  select: "file", // 'files' for several, 'directory' for a folder
+  filters: [{ name: "Text", patterns: ["*.txt", "*.md"] }],
+});
+if (opened.kind === "selected") console.log(opened.paths); // data, not a grant
+const saved = await window.showSaveDialog({
+  title: "Save as",
+  name: "notes.txt",
+});
+```
+
+`showOpenDialog` and `showSaveDialog` show the operating system's file
+chooser, owned by the window, under the separate `fileDialogs` grant. The
+optional `file_dialogs_v1` feature is advertised on Linux when a D-Bus session
+bus is configured; the host talks to `org.freedesktop.portal.FileChooser`
+(xdg-desktop-portal) on that bus. A bus without a portal, or a portal without
+a file chooser backend, rejects with `service_unavailable` when a dialog is
+shown. Every bus call is bounded to two seconds; waiting for the user is not.
+
+Options are bounded and validated by both language implementations: a
+one-line `title` of at most 256 UTF-8 bytes, an optional `acceptLabel` of at
+most 64, an optional absolute starting `folder` (a hint), an optional save
+`name` that is one path component of at most 255 bytes, and at most 16
+`filters` of 1-16 glob patterns. A folder dialog takes no filters.
+
+The result is frozen: `{ kind: 'selected', paths }` from an open dialog,
+`{ kind: 'selected', path }` from a save dialog, or `{ kind: 'cancelled' }`
+when the user dismisses it (Cancel, Escape or the window manager's close
+button). **Paths are data, not authority.** A selection attaches no handle and
+grants nothing through Bun Native; a save selection does not create or write
+the file. A chosen path cannot become a scoped filesystem grant: grants open
+only on launch-policy roots (see [filesystem grants](#filesystem-grants)), and
+converting a user selection into one
+([#304](https://github.com/0xPlayerOne/bun-native/issues/304)) would be a
+separate, explicit operation. Non-local URIs, NUL bytes and non-UTF-8 names fail the
+whole selection with `native_failure`; more than 256 paths, or a result that
+would not fit one frame, fails with `payload_too_large`. No partial selection
+is returned.
+
+A window owns at most one file dialog (`limit_exceeded` otherwise). The OS
+dialog is parented to the owner's X11 window. Aborting the request's
+`signal` before dispatch sends nothing; after the dialog is shown it rejects
+with `cancelled` immediately and closes the OS dialog through the portal.
+Owner close rejects with `NativeStateError` `invalid_handle` and shutdown
+rejects pending dialogs; both close the OS dialog. Only a portal response from
+the bus connection that answered the request is accepted, so another bus
+client cannot forge a selection.
+
+The [Native Linux workflow](../.github/workflows/native-linux.yml) runs
+[`tests/native/file-dialogs.ts`](../tests/native/file-dialogs.ts) in
+development and inspected AOT on an isolated Xvfb with openbox and its own
+D-Bus session, against xdg-desktop-portal with the GTK backend. It requires
+default denial with no dialog, `service_unavailable` on a bus without a portal,
+a real GTK dialog transient for the owner window with the requested title,
+folder, filter and accept label, forged `Response` signals ignored, real
+keyboard selection of one file, several files and a folder, a save selection
+that creates no file, Escape cancellation, and the OS dialog closed after an
+aborted signal, owner close and shutdown. Wayland (unparented), Flatpak/Snap
+document-portal paths, other portal backends, macOS and Windows are not
+qualified. Message/confirm dialogs are not implemented: Linux has no portal
+for alerts, so use a modal overlay. See
+[ADR 0013](decisions/0013-native-file-dialogs.md).
+
 ## Service and platform matrix
 
 All services listed here share the core's policy boundary. The unavailable rows
@@ -641,7 +717,8 @@ already exists. The linked follow-ups belong to
 | Clipboard text    | `readClipboardText` / `writeClipboardText`; separate grants   | X11 dev+AOT verified with release host                                                              | Unavailable                  | Unavailable                  | Additional platforms/formats and extended lifecycle coverage. [#300](https://github.com/0xPlayerOne/bun-native/issues/300).                                                                       |
 | Global shortcuts  | `registerGlobalShortcut`; `globalShortcuts` grant             | X11 dev+AOT verified with release host                                                              | Unavailable                  | Unavailable                  | macOS/Windows backends, Wayland portal design and keyboard-map change tracking. [#301](https://github.com/0xPlayerOne/bun-native/issues/301).                                                     |
 | System menus      | Capability `systemMenus`; unavailable                         | Unavailable                                                                                         | Unavailable                  | Unavailable                  | Typed action identities, owned menu lifetime, keyboard/accessibility behavior and safe action revocation. [#239](https://github.com/0xPlayerOne/bun-native/issues/239).                           |
-| Dialogs           | Capability `dialogs`; unavailable                             | Unavailable                                                                                         | Unavailable                  | Unavailable                  | Owned-window modality, explicit cancellation, shutdown and file selection distinct from a file grant. [#239](https://github.com/0xPlayerOne/bun-native/issues/239).                               |
+| File dialogs      | `showOpenDialog` / `showSaveDialog`; `fileDialogs` grant      | xdg-desktop-portal (GTK) dev+AOT verified                                                           | Unavailable                  | Unavailable                  | macOS/Windows panels, Wayland parenting, sandboxed document-portal paths and explicit file-grant conversion. [#239](https://github.com/0xPlayerOne/bun-native/issues/239).                        |
+| Message dialogs   | Capability `messageDialogs`; unavailable                      | Unavailable (no portal; use a modal overlay)                                                        | Unavailable                  | Unavailable                  | Native `NSAlert`/task dialogs with owned modality, programmatic close and qualification. [#239](https://github.com/0xPlayerOne/bun-native/issues/239).                                            |
 | Notifications     | `postNotification`; `notifications` grant                     | Freedesktop D-Bus (dunst) dev+AOT verified                                                          | Unavailable                  | Unavailable                  | macOS/Windows backends, additional notification servers, named actions and replacement. [#302](https://github.com/0xPlayerOne/bun-native/issues/302).                                             |
 | Drag/drop         | Capability `dragDrop`; unavailable                            | Unavailable                                                                                         | Unavailable                  | Unavailable                  | Bounded untrusted payload, owned target, native cancellation and explicit file-grant conversion. [#303](https://github.com/0xPlayerOne/bun-native/issues/303).                                    |
 | Filesystem grants | `openFileGrant`; `filesystemRoots` launch roots               | openat2 dev+AOT verified locally                                                                    | `openat` walk; CI-only       | Unavailable                  | OS file selection and dropped files as explicit user grants, Windows confinement. [#304](https://github.com/0xPlayerOne/bun-native/issues/304).                                                   |

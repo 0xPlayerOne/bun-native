@@ -56,6 +56,8 @@ export function observeWindow(window: NativeWindow) {
     postNotification: window.postNotification.bind(window),
     openFileGrant: window.openFileGrant.bind(window),
     spawnProcess: window.spawnProcess.bind(window),
+    showOpenDialog: window.showOpenDialog.bind(window),
+    showSaveDialog: window.showSaveDialog.bind(window),
     input: window.input.bind(window),
     on(node, type, listener, options) {
       if (type === 'input' && node.kind === 'input')
