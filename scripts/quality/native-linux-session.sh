@@ -21,7 +21,15 @@ mkdir "$evidence_dir"
 evidence_dir=$(cd "$evidence_dir" && pwd)
 export XDG_RUNTIME_DIR="$evidence_dir/runtime"
 mkdir -m 700 "$XDG_RUNTIME_DIR"
-export GPUI_X11_SCALE_FACTOR=1
+# A HiDPI qualification may request one fixed integer scale; all other
+# evidence keeps the reproducible scale of 1.
+case "${BUN_NATIVE_TEST_SCALE_FACTOR:-1}" in
+  1|2) export GPUI_X11_SCALE_FACTOR="${BUN_NATIVE_TEST_SCALE_FACTOR:-1}" ;;
+  *)
+    echo 'BUN_NATIVE_TEST_SCALE_FACTOR must be 1 or 2' >&2
+    exit 1
+    ;;
+esac
 export LIBGL_ALWAYS_SOFTWARE=1
 unset WAYLAND_DISPLAY WAYLAND_SOCKET ZED_HEADLESS
 

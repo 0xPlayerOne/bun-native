@@ -21,7 +21,7 @@ function committed() {
   const root = makeNode(next++, { kind: 'box' })
   const base = new Map([[root.id, root]])
   const text = new CommittedText(limits.max_text_bytes, base.values())
-  const first = new Transaction(base, root.id, () => next++, limits, text)
+  const first = new Transaction(base, root.id, () => next++, limits, [], text)
   const box = first.create({ kind: 'box' })
   const label = first.create({ kind: 'text', text: 'abc' })
   first.append(root.handle as NativeNode<'box'>, box)
@@ -46,7 +46,7 @@ function committed() {
     label,
     snapshot,
     begin: (nodes: ReadonlyMap<number, NodeState>) =>
-      new Transaction(nodes, root.id, () => next++, limits, text),
+      new Transaction(nodes, root.id, () => next++, limits, [], text),
   }
 }
 

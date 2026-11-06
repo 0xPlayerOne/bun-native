@@ -1,0 +1,701 @@
+{
+  "schemaVersion": 1,
+  "issue": 257,
+  "recorded": "2026-11-05",
+  "sourceCommit": "1049a3b09d946748c7e7fc6029e45845c630829c",
+  "sourceCommitNote": "Measured before rebasing onto main 3863459; rebased as 6aefa26 with only unrelated main changes (protocol framing, Solid Babel peer). Each run records the tested host sha256; the per-file source hashes stayed in the uncommitted local run reports.",
+  "status": "passed",
+  "scope": "Local isolated Xvfb/openbox session, Mesa llvmpipe software Vulkan at scale 1, development-profile (unoptimized) GPUI host on a shared 4-core VM under concurrent load. Frame figures are native paint-callback cadence, not presentation timing. Baselines only; release-host CI artifacts (streaming-list-baseline.json) supersede these for comparison. No thresholds are derived from this single record.",
+  "commands": [
+    "bun experiments/aot-gpui/build-window.ts --source <repo> --host <dev host> --host-profile dev --entry {solid,react}-streaming-list --outdir <package>",
+    "xvfb-run ... dbus-run-session -- bash scripts/quality/native-linux-session.sh <session> -- python3 tests/native/streaming-list.py --framework {solid,react} --mode {development,aot} --host-profile dev --output <run> -- <application>",
+    "python3 tests/native/streaming-list.py summarize --output <baseline> <run>/result.json..."
+  ],
+  "toolchain": {
+    "schemaVersion": 2,
+    "bun": {
+      "version": "1.4.4-canary.1",
+      "revision": "da867c60bf0bcbf9d6d36994f8ca0efa42075115",
+      "cliRevision": "1.4.4-canary.1+da867c60b",
+      "source": "https://github.com/oven-sh/bun/tree/da867c60bf0bcbf9d6d36994f8ca0efa42075115",
+      "compileArguments": ["compile", "--no-script", "--production"],
+      "distribution": "npm",
+      "packages": {
+        "linux-x64": {
+          "name": "@oven/bun-linux-x64",
+          "version": "1.4.4-canary.20261029.1+da867c6",
+          "url": "https://registry.npmjs.org/@oven/bun-linux-x64/-/bun-linux-x64-1.4.4-canary.20261029.1.tgz",
+          "integrity": "sha512-fs1Yta+8YNs62dxxBGjCccg3tu1sn2xw8SqWx9KaNM/KkEeVp+NWcylDJQs6JFPndE1jA8PIOmmxXvzpnhvkdg==",
+          "unpackedSize": 138468972
+        },
+        "linux-arm64": {
+          "name": "@oven/bun-linux-aarch64",
+          "version": "1.4.4-canary.20261029.1+da867c6",
+          "url": "https://registry.npmjs.org/@oven/bun-linux-aarch64/-/bun-linux-aarch64-1.4.4-canary.20261029.1.tgz",
+          "integrity": "sha512-wdsFsIb7HCnGHu90SHCK5GFQDhm7GeKahWHJoYwIpRzDw3DBVr6jED7vVmTLWK6YMJjpZz1/7omVeJ/uU9gdOw==",
+          "unpackedSize": 139523940
+        },
+        "darwin-x64": {
+          "name": "@oven/bun-darwin-x64",
+          "version": "1.4.4-canary.20261029.1+da867c6",
+          "url": "https://registry.npmjs.org/@oven/bun-darwin-x64/-/bun-darwin-x64-1.4.4-canary.20261029.1.tgz",
+          "integrity": "sha512-No+ciNCX3xdS9WZKpm1riQBHeLfWsY4PTuFJfsS+djYUb2d1gJJVrNWxuLN8J3EeTCqaz4EkKHr2WgD+//kTbQ==",
+          "unpackedSize": 131941441
+        },
+        "darwin-arm64": {
+          "name": "@oven/bun-darwin-aarch64",
+          "version": "1.4.4-canary.20261029.1+da867c6",
+          "url": "https://registry.npmjs.org/@oven/bun-darwin-aarch64/-/bun-darwin-aarch64-1.4.4-canary.20261029.1.tgz",
+          "integrity": "sha512-dfhnbTwtbjme43X1KTtZ/U/pXeKx7L5GunsPfJ/83imaHNmQFddsCg6DvAlvM9f64UX6Vx7e/q8bwMvX85C/+g==",
+          "unpackedSize": 121110360
+        },
+        "win32-x64": {
+          "name": "@oven/bun-windows-x64",
+          "version": "1.4.4-canary.20261029.1+da867c6",
+          "url": "https://registry.npmjs.org/@oven/bun-windows-x64/-/bun-windows-x64-1.4.4-canary.20261029.1.tgz",
+          "integrity": "sha512-APMIvCsv+dckccAqvii/8V4HEMadAIZIcIEVZZTYcS8OKMdfaD2hgUAk8AGScB8zL/3IUCAy05nFyLAGIRzgKg==",
+          "unpackedSize": 149863939
+        },
+        "win32-arm64": {
+          "name": "@oven/bun-windows-aarch64",
+          "version": "1.4.4-canary.20261029.1+da867c6",
+          "url": "https://registry.npmjs.org/@oven/bun-windows-aarch64/-/bun-windows-aarch64-1.4.4-canary.20261029.1.tgz",
+          "integrity": "sha512-fueVZ65A5h/sJfkABrFIquI2KnHv3Xsw3idoLUGZI3eW/FWs9Vi+5Ay0Pn6uQf5fKJmi3yICV/aoXoJs3Idi9g==",
+          "unpackedSize": 131153931
+        }
+      }
+    },
+    "rust": {
+      "version": "1.98.1",
+      "components": ["rustfmt", "clippy"]
+    },
+    "gpui": {
+      "repository": "https://github.com/zed-industries/zed",
+      "revision": "ba63a022c9a22ca66d68ef2a8f0bb9b5b0a9984d",
+      "version": "0.2.2"
+    }
+  },
+  "fixtureVersion": 1,
+  "finalDigest": "23f90d78",
+  "fixture": {
+    "version": 1,
+    "historyMessages": 10000,
+    "ticks": 2400,
+    "tickIntervalMs": 4,
+    "tokensPerMessage": 16,
+    "historyWords": 10,
+    "seed": 628097025
+  },
+  "system": {
+    "platform": "Linux-6.18.44-fc-v236-x86_64-with-glibc2.39",
+    "architecture": "x86_64"
+  },
+  "renderer": {
+    "is_software_emulated": true,
+    "device_name": "llvmpipe (LLVM 20.1.2, 256 bits)",
+    "driver_name": "llvmpipe",
+    "driver_info": "Mesa 25.2.8-0ubuntu0.24.04.4 (LLVM 20.1.2)"
+  },
+  "runs": [
+    {
+      "framework": "Solid",
+      "mode": "development",
+      "hostProfile": "dev",
+      "hostSha256": "b9580b70248e80b5482d93554fd7e9260725d85493aaf63937d9be759f8af5bc",
+      "stream": {
+        "ticks": 2400,
+        "durationMs": 11906.051341999999,
+        "commits": 935,
+        "mutations": {
+          "create": 378,
+          "set": 1665,
+          "insert": 378,
+          "remove": 121
+        },
+        "detachedTicks": 1137,
+        "detachedStructuralChanges": 0,
+        "updateToAck": {
+          "count": 507,
+          "p50Ms": 1.8821210000005522,
+          "p95Ms": 69.43312800000058,
+          "p99Ms": 131.76030199999968,
+          "maxMs": 440.78088000000025
+        }
+      },
+      "bounds": {
+        "nodeBound": 51,
+        "listenerBound": 14,
+        "maxNodes": 51,
+        "maxListeners": 14,
+        "maxCallbacks": 15
+      },
+      "frames": {
+        "frames": 288,
+        "framesPerSecond": 23.452288743493504,
+        "intervalMs": {
+          "count": 287,
+          "p50": 35.85243499999979,
+          "p95": 68.96398899999986,
+          "p99": 110.15581900000006,
+          "max": 193.11712199999988
+        },
+        "intervalBuckets": {
+          "<=8.4ms": 1,
+          "<=16.7ms": 1,
+          "<=33.4ms": 124,
+          "<=50.0ms": 117,
+          "<=100.0ms": 41,
+          ">100.0ms": 3
+        },
+        "renderToPaintMs": {
+          "count": 288,
+          "p50": 6.704959,
+          "p95": 15.305991,
+          "p99": 31.499164,
+          "max": 46.447586
+        },
+        "nodeCount": {
+          "count": 288,
+          "p50": 52,
+          "p95": 52,
+          "p99": 52,
+          "max": 52
+        }
+      },
+      "batches": {
+        "batches": 936,
+        "operations": {
+          "count": 936,
+          "p50": 1,
+          "p95": 12,
+          "p99": 12,
+          "max": 101
+        },
+        "textBytes": {
+          "count": 936,
+          "p50": 1288,
+          "p95": 1932,
+          "p99": 1947,
+          "max": 1956
+        },
+        "preflightUs": {
+          "count": 936,
+          "p50": 67.541,
+          "p95": 113.327,
+          "p99": 181.279,
+          "max": 654.592
+        }
+      },
+      "processes": {
+        "host": {
+          "rssBytes": {
+            "samples": 109,
+            "first": 188112896,
+            "min": 188112896,
+            "max": 198459392,
+            "last": 197406720,
+            "firstQuarterMedian": 191918080,
+            "lastQuarterMedian": 197406720
+          },
+          "threads": {
+            "samples": 109,
+            "first": 36,
+            "min": 36,
+            "max": 36,
+            "last": 36,
+            "firstQuarterMedian": 36,
+            "lastQuarterMedian": 36
+          },
+          "fds": {
+            "samples": 109,
+            "first": 24,
+            "min": 24,
+            "max": 24,
+            "last": 24,
+            "firstQuarterMedian": 24,
+            "lastQuarterMedian": 24
+          }
+        },
+        "application": {
+          "rssBytes": {
+            "samples": 109,
+            "first": 35688448,
+            "min": 35688448,
+            "max": 52875264,
+            "last": 51683328,
+            "firstQuarterMedian": 46194688,
+            "lastQuarterMedian": 51683328
+          },
+          "threads": {
+            "samples": 109,
+            "first": 9,
+            "min": 9,
+            "max": 10,
+            "last": 10,
+            "firstQuarterMedian": 9,
+            "lastQuarterMedian": 10
+          },
+          "fds": {
+            "samples": 109,
+            "first": 9,
+            "min": 9,
+            "max": 9,
+            "last": 9,
+            "firstQuarterMedian": 9,
+            "lastQuarterMedian": 9
+          }
+        }
+      }
+    },
+    {
+      "framework": "Solid",
+      "mode": "aot",
+      "hostProfile": "dev",
+      "hostSha256": "b9580b70248e80b5482d93554fd7e9260725d85493aaf63937d9be759f8af5bc",
+      "stream": {
+        "ticks": 2400,
+        "durationMs": 14084.576664,
+        "commits": 1050,
+        "mutations": {
+          "create": 408,
+          "set": 1946,
+          "insert": 408,
+          "remove": 131
+        },
+        "detachedTicks": 974,
+        "detachedStructuralChanges": 0,
+        "updateToAck": {
+          "count": 594,
+          "p50Ms": 1.5283839999992779,
+          "p95Ms": 79.26194100000066,
+          "p99Ms": 157.91951899999913,
+          "maxMs": 407.8560269999998
+        }
+      },
+      "bounds": {
+        "nodeBound": 51,
+        "listenerBound": 14,
+        "maxNodes": 51,
+        "maxListeners": 14,
+        "maxCallbacks": 15
+      },
+      "frames": {
+        "frames": 312,
+        "framesPerSecond": 21.512058590599146,
+        "intervalMs": {
+          "count": 311,
+          "p50": 46.396005000000514,
+          "p95": 79.39817500000026,
+          "p99": 93.97261399999843,
+          "max": 171.91341999999997
+        },
+        "intervalBuckets": {
+          "<=8.4ms": 0,
+          "<=16.7ms": 4,
+          "<=33.4ms": 107,
+          "<=50.0ms": 107,
+          "<=100.0ms": 91,
+          ">100.0ms": 2
+        },
+        "renderToPaintMs": {
+          "count": 312,
+          "p50": 6.912062,
+          "p95": 17.961134,
+          "p99": 34.758701,
+          "max": 71.688717
+        },
+        "nodeCount": {
+          "count": 312,
+          "p50": 52,
+          "p95": 52,
+          "p99": 52,
+          "max": 52
+        }
+      },
+      "batches": {
+        "batches": 1051,
+        "operations": {
+          "count": 1051,
+          "p50": 2,
+          "p95": 12,
+          "p99": 12,
+          "max": 101
+        },
+        "textBytes": {
+          "count": 1051,
+          "p50": 1300,
+          "p95": 1932,
+          "p99": 1948,
+          "max": 1955
+        },
+        "preflightUs": {
+          "count": 1051,
+          "p50": 61.84,
+          "p95": 113.645,
+          "p99": 159.667,
+          "max": 345.218
+        }
+      },
+      "processes": {
+        "host": {
+          "rssBytes": {
+            "samples": 136,
+            "first": 190533632,
+            "min": 186937344,
+            "max": 198057984,
+            "last": 196964352,
+            "firstQuarterMedian": 191660032,
+            "lastQuarterMedian": 196972544
+          },
+          "threads": {
+            "samples": 136,
+            "first": 36,
+            "min": 36,
+            "max": 36,
+            "last": 36,
+            "firstQuarterMedian": 36,
+            "lastQuarterMedian": 36
+          },
+          "fds": {
+            "samples": 136,
+            "first": 24,
+            "min": 24,
+            "max": 24,
+            "last": 24,
+            "firstQuarterMedian": 24,
+            "lastQuarterMedian": 24
+          }
+        },
+        "application": {
+          "rssBytes": {
+            "samples": 136,
+            "first": 31285248,
+            "min": 31285248,
+            "max": 39112704,
+            "last": 37081088,
+            "firstQuarterMedian": 35717120,
+            "lastQuarterMedian": 37056512
+          },
+          "threads": {
+            "samples": 136,
+            "first": 3,
+            "min": 3,
+            "max": 4,
+            "last": 4,
+            "firstQuarterMedian": 3,
+            "lastQuarterMedian": 4
+          },
+          "fds": {
+            "samples": 136,
+            "first": 10,
+            "min": 10,
+            "max": 10,
+            "last": 10,
+            "firstQuarterMedian": 10,
+            "lastQuarterMedian": 10
+          }
+        }
+      }
+    },
+    {
+      "framework": "React",
+      "mode": "development",
+      "hostProfile": "dev",
+      "hostSha256": "b9580b70248e80b5482d93554fd7e9260725d85493aaf63937d9be759f8af5bc",
+      "stream": {
+        "ticks": 2400,
+        "durationMs": 12003.64165,
+        "commits": 1032,
+        "mutations": {
+          "create": 411,
+          "set": 1909,
+          "insert": 411,
+          "remove": 132
+        },
+        "detachedTicks": 954,
+        "detachedStructuralChanges": 0,
+        "updateToAck": {
+          "count": 577,
+          "p50Ms": 1.8990410000001248,
+          "p95Ms": 67.63060199999927,
+          "p99Ms": 109.84667999999965,
+          "maxMs": 153.58049500000016
+        }
+      },
+      "bounds": {
+        "nodeBound": 51,
+        "listenerBound": 14,
+        "maxNodes": 51,
+        "maxListeners": 14,
+        "maxCallbacks": 15
+      },
+      "frames": {
+        "frames": 307,
+        "framesPerSecond": 24.582972820254415,
+        "intervalMs": {
+          "count": 306,
+          "p50": 33.30830700000024,
+          "p95": 64.06778900000063,
+          "p99": 81.01562500000011,
+          "max": 313.32084399999985
+        },
+        "intervalBuckets": {
+          "<=8.4ms": 1,
+          "<=16.7ms": 2,
+          "<=33.4ms": 153,
+          "<=50.0ms": 107,
+          "<=100.0ms": 42,
+          ">100.0ms": 1
+        },
+        "renderToPaintMs": {
+          "count": 307,
+          "p50": 6.838696,
+          "p95": 14.574942,
+          "p99": 22.846284,
+          "max": 65.394215
+        },
+        "nodeCount": {
+          "count": 307,
+          "p50": 52,
+          "p95": 52,
+          "p99": 52,
+          "max": 52
+        }
+      },
+      "batches": {
+        "batches": 1033,
+        "operations": {
+          "count": 1033,
+          "p50": 2,
+          "p95": 12,
+          "p99": 12,
+          "max": 101
+        },
+        "textBytes": {
+          "count": 1033,
+          "p50": 1278,
+          "p95": 1930,
+          "p99": 1944,
+          "max": 1956
+        },
+        "preflightUs": {
+          "count": 1033,
+          "p50": 62.27,
+          "p95": 107.319,
+          "p99": 271.134,
+          "max": 1185.352
+        }
+      },
+      "processes": {
+        "host": {
+          "rssBytes": {
+            "samples": 118,
+            "first": 190300160,
+            "min": 187531264,
+            "max": 198197248,
+            "last": 197152768,
+            "firstQuarterMedian": 191528960,
+            "lastQuarterMedian": 197152768
+          },
+          "threads": {
+            "samples": 118,
+            "first": 36,
+            "min": 36,
+            "max": 36,
+            "last": 36,
+            "firstQuarterMedian": 36,
+            "lastQuarterMedian": 36
+          },
+          "fds": {
+            "samples": 118,
+            "first": 24,
+            "min": 24,
+            "max": 24,
+            "last": 24,
+            "firstQuarterMedian": 24,
+            "lastQuarterMedian": 24
+          }
+        },
+        "application": {
+          "rssBytes": {
+            "samples": 118,
+            "first": 39493632,
+            "min": 39489536,
+            "max": 85868544,
+            "last": 60190720,
+            "firstQuarterMedian": 55218176,
+            "lastQuarterMedian": 60313600
+          },
+          "threads": {
+            "samples": 118,
+            "first": 9,
+            "min": 9,
+            "max": 10,
+            "last": 10,
+            "firstQuarterMedian": 9,
+            "lastQuarterMedian": 10
+          },
+          "fds": {
+            "samples": 118,
+            "first": 9,
+            "min": 9,
+            "max": 9,
+            "last": 9,
+            "firstQuarterMedian": 9,
+            "lastQuarterMedian": 9
+          }
+        }
+      }
+    },
+    {
+      "framework": "React",
+      "mode": "aot",
+      "hostProfile": "dev",
+      "hostSha256": "b9580b70248e80b5482d93554fd7e9260725d85493aaf63937d9be759f8af5bc",
+      "stream": {
+        "ticks": 2400,
+        "durationMs": 12120.726403,
+        "commits": 1016,
+        "mutations": {
+          "create": 390,
+          "set": 1870,
+          "insert": 390,
+          "remove": 125
+        },
+        "detachedTicks": 1070,
+        "detachedStructuralChanges": 0,
+        "updateToAck": {
+          "count": 570,
+          "p50Ms": 1.536088999999265,
+          "p95Ms": 62.68970999999965,
+          "p99Ms": 133.72955099999945,
+          "maxMs": 188.1621580000001
+        }
+      },
+      "bounds": {
+        "nodeBound": 51,
+        "listenerBound": 14,
+        "maxNodes": 51,
+        "maxListeners": 14,
+        "maxCallbacks": 15
+      },
+      "frames": {
+        "frames": 298,
+        "framesPerSecond": 21.886981970706785,
+        "intervalMs": {
+          "count": 297,
+          "p50": 38.185308999999506,
+          "p95": 64.24764500000038,
+          "p99": 121.66695900000013,
+          "max": 1028.9798229999997
+        },
+        "intervalBuckets": {
+          "<=8.4ms": 0,
+          "<=16.7ms": 0,
+          "<=33.4ms": 126,
+          "<=50.0ms": 126,
+          "<=100.0ms": 42,
+          ">100.0ms": 3
+        },
+        "renderToPaintMs": {
+          "count": 298,
+          "p50": 6.589809,
+          "p95": 18.10534,
+          "p99": 36.098139,
+          "max": 94.094315
+        },
+        "nodeCount": {
+          "count": 298,
+          "p50": 52,
+          "p95": 52,
+          "p99": 52,
+          "max": 52
+        }
+      },
+      "batches": {
+        "batches": 1017,
+        "operations": {
+          "count": 1017,
+          "p50": 2,
+          "p95": 12,
+          "p99": 12,
+          "max": 101
+        },
+        "textBytes": {
+          "count": 1017,
+          "p50": 1298,
+          "p95": 1929,
+          "p99": 1942,
+          "max": 1957
+        },
+        "preflightUs": {
+          "count": 1017,
+          "p50": 63.611,
+          "p95": 113.983,
+          "p99": 195.619,
+          "max": 2116.786
+        }
+      },
+      "processes": {
+        "host": {
+          "rssBytes": {
+            "samples": 115,
+            "first": 188239872,
+            "min": 187129856,
+            "max": 198144000,
+            "last": 197091328,
+            "firstQuarterMedian": 191614976,
+            "lastQuarterMedian": 197148672
+          },
+          "threads": {
+            "samples": 115,
+            "first": 35,
+            "min": 35,
+            "max": 35,
+            "last": 35,
+            "firstQuarterMedian": 35,
+            "lastQuarterMedian": 35
+          },
+          "fds": {
+            "samples": 115,
+            "first": 24,
+            "min": 24,
+            "max": 24,
+            "last": 24,
+            "firstQuarterMedian": 24,
+            "lastQuarterMedian": 24
+          }
+        },
+        "application": {
+          "rssBytes": {
+            "samples": 115,
+            "first": 31657984,
+            "min": 31657984,
+            "max": 38166528,
+            "last": 36016128,
+            "firstQuarterMedian": 35549184,
+            "lastQuarterMedian": 37453824
+          },
+          "threads": {
+            "samples": 115,
+            "first": 3,
+            "min": 3,
+            "max": 4,
+            "last": 4,
+            "firstQuarterMedian": 3,
+            "lastQuarterMedian": 4
+          },
+          "fds": {
+            "samples": 115,
+            "first": 10,
+            "min": 10,
+            "max": 10,
+            "last": 10,
+            "firstQuarterMedian": 10,
+            "lastQuarterMedian": 10
+          }
+        }
+      }
+    }
+  ]
+}

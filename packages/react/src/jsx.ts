@@ -25,6 +25,23 @@ export namespace JSX {
     input: Base<'input'> & {
       value?: string | InputState
       placeholder?: string
+      /** Requires the host's `input_states_v1` capability. */
+      disabled?: boolean
+      /** Requires the host's `input_states_v1` capability. */
+      readOnly?: boolean
     }
+    /** At most two pane children; the host owns the divider drag. */
+    split: Base<'split'> & { children?: ReactNode; ratio?: number; min_size?: number }
+    /** Painted above the ordinary tree; only window-anchored overlays may be modal. */
+    overlay: Base<'overlay'> & {
+      children?: ReactNode
+      /** Requires `overlay_keyboard_v1`: focus the first enabled control on open. */
+      autofocus?: boolean
+      /** Requires `overlay_keyboard_v1`: `menu` adds arrow-key roving focus and type-ahead. */
+      navigation?: 'tab' | 'menu'
+    } & (
+        | { anchor?: 'window'; modal?: boolean; surface?: 'layer' }
+        | { anchor: 'parent'; modal?: false; surface?: 'layer' | 'window' }
+      )
   }
 }

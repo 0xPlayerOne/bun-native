@@ -1,6 +1,9 @@
 import {
   NativeStateError,
+  type DropTargetEvent,
   type InputState,
+  type NativeBatch,
+  type NativeDropTarget,
   type NativeNode,
   type NativeWindow,
   type Style,
@@ -168,6 +171,19 @@ class Root implements RenderRoot, Owner {
     }
   }
 
+  registerDropTarget(
+    node: Node,
+    listener: (event: DropTargetEvent) => void | Promise<void>
+  ): Promise<NativeDropTarget> {
+    const state = this.committed.get(node)
+    if (this.phase !== 'active' || !state)
+      return Promise.reject(
+        new NativeStateError('invalid_handle', 'Node is unmounted or not yet committed')
+      )
+    // The native target is revoked when a later commit removes this node.
+    return this.window.registerDropTarget(state.handle, listener)
+  }
+
   input(node: Node): InputState {
     const state = this.committed.get(node)
     if (this.phase !== 'active' || !state || state.handle.kind !== 'input')
@@ -176,6 +192,14 @@ class Root implements RenderRoot, Owner {
         'Input is unmounted or has no committed native handle'
       )
     return this.window.input(state.handle as NativeNode<'input'>)
+  }
+
+  async request(node: Node, send: (batch: NativeBatch, handle: NativeNode) => void): Promise<void> {
+    await this.flush()
+    const state = this.committed.get(node)
+    if (this.phase !== 'active' || !state)
+      throw new NativeStateError('invalid_handle', 'Node is unmounted or has no committed handle')
+    await this.window.batch((batch) => send(batch, state.handle))
   }
 
   private start(): void {

@@ -79,6 +79,8 @@ function element(rng: Rng, kind: Element['kind']): Element {
       return rng.chance(30)
         ? { kind: 'input', value: label, placeholder: rng.pick(labels) }
         : { kind: 'input', value: label }
+    default:
+      throw new Error('This equivalence test builds only boxes, text, buttons and inputs')
   }
 }
 
@@ -129,7 +131,7 @@ class Pair {
       () => referenceNext++,
       limits
     )
-    const candidate = new Transaction(this.nodes, this.rootId, () => next++, limits, this.text)
+    const candidate = new Transaction(this.nodes, this.rootId, () => next++, limits, [], this.text)
     const beforeReference = snapshot(this.reference)
     const before = snapshot(this.nodes)
     // Pairs of handles by node ID: [oracle's, overlay's].
@@ -264,7 +266,7 @@ describe('overlay transaction equivalence', () => {
     const root = makeNode(1, { kind: 'box' })
     const nodes = new Map([[root.id, root]])
     const text = new CommittedText(limits.max_text_bytes, nodes.values())
-    const batch = new Transaction(nodes, root.id, () => 2, limits, text)
+    const batch = new Transaction(nodes, root.id, () => 2, limits, [], text)
     batch.append(root.handle as NativeNode<'box'>, batch.create({ kind: 'box' }))
     batch.validate()
     expect(() => batch.commit(new Map(nodes), text)).toThrow(

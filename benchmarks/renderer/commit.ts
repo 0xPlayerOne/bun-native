@@ -43,6 +43,9 @@ function fakeWindow() {
     remove: () => {
       operations.remove += 1
     },
+    focus: () => {},
+    scrollTo: () => {},
+    scrollIntoView: () => {},
   }
   let close!: () => void
   const closed = new Promise<void>((resolve) => (close = resolve))

@@ -1,12 +1,14 @@
 // Adapted from Zed GPUI examples/input.rs, revision ba63a022c9a22ca66d68ef2a8f0bb9b5b0a9984d.
 // Copyright the Zed contributors. Licensed under Apache-2.0; see LICENSE-APACHE and NOTICE.
 mod binding;
+mod editing;
 mod hit_test;
 mod offsets;
 mod paint;
 mod selection;
 mod viewport;
 pub(crate) use binding::InputBinding;
+pub(crate) use editing::EditPolicy;
 use paint::TextElement;
 use selection::Selection;
 use std::ops::Range;
@@ -15,7 +17,7 @@ pub(crate) use viewport::{InputViewportSnapshot, PaintedInputDecorations};
 
 use gpui::{
     App, Bounds, ClipboardItem, Context, CursorStyle, EntityInputHandler, FocusHandle, Focusable,
-    KeyBinding, MouseButton, MouseDownEvent, MouseMoveEvent, MouseUpEvent, Pixels, Point,
+    KeyBinding, MouseButton, MouseDownEvent, MouseMoveEvent, MouseUpEvent, Pixels, Point, Role,
     SharedString, UTF16Selection, Window, actions, div, prelude::*, px,
 };
 
@@ -31,6 +33,8 @@ actions!(
         SelectAll,
         Home,
         End,
+        SelectHome,
+        SelectEnd,
         ShowCharacterPalette,
         Paste,
         Cut,
@@ -47,6 +51,7 @@ pub(crate) struct TextInput {
     marked_range: Option<Range<usize>>,
     last_paint: Option<InputPaint>,
     is_selecting: bool,
+    policy: EditPolicy,
 }
 
 /// Builds the edited value in one exact allocation. Chained `+` regrows the
@@ -95,7 +100,29 @@ impl TextInput {
         self.selection_changed(window, cx);
     }
 
+    fn select_home(&mut self, _: &SelectHome, window: &mut Window, cx: &mut Context<Self>) {
+        self.selection.select_to(0);
+        self.selection_changed(window, cx);
+    }
+
+    fn select_end(&mut self, _: &SelectEnd, window: &mut Window, cx: &mut Context<Self>) {
+        self.selection.select_to(self.content.len());
+        self.selection_changed(window, cx);
+    }
+
+    /// Rejected edits keep the value and caret and ring the platform bell.
+    fn reject_unless_editable(&self, window: &mut Window) -> bool {
+        if self.policy.editable() {
+            return false;
+        }
+        window.play_system_bell();
+        true
+    }
+
     fn backspace(&mut self, _: &Backspace, window: &mut Window, cx: &mut Context<Self>) {
+        if self.reject_unless_editable(window) {
+            return;
+        }
         if self.selection.range.is_empty() {
             let cursor = self.selection.cursor();
             let prev = offsets::previous_boundary(&self.content, cursor);
@@ -110,6 +137,9 @@ impl TextInput {
     }
 
     fn delete(&mut self, _: &Delete, window: &mut Window, cx: &mut Context<Self>) {
+        if self.reject_unless_editable(window) {
+            return;
+        }
         if self.selection.range.is_empty() {
             let cursor = self.selection.cursor();
             let next = offsets::next_boundary(&self.content, cursor);
@@ -129,6 +159,9 @@ impl TextInput {
         window: &mut Window,
         cx: &mut Context<Self>,
     ) {
+        if !self.policy.interactive() {
+            return;
+        }
         self.is_selecting = true;
         window.focus(&self.focus_handle, cx);
         window.request_virtual_keyboard();
@@ -169,6 +202,9 @@ impl TextInput {
     }
 
     fn paste(&mut self, _: &Paste, window: &mut Window, cx: &mut Context<Self>) {
+        if self.reject_unless_editable(window) {
+            return;
+        }
         if let Some(text) = cx.read_from_clipboard().and_then(|item| item.text()) {
             self.replace_text_in_range(None, &text.replace('\n', " "), window, cx);
         }
@@ -182,6 +218,9 @@ impl TextInput {
         }
     }
     fn cut(&mut self, _: &Cut, window: &mut Window, cx: &mut Context<Self>) {
+        if self.reject_unless_editable(window) {
+            return;
+        }
         if !self.selection.range.is_empty() {
             cx.write_to_clipboard(ClipboardItem::new_string(
                 self.content[self.selection.range.clone()].to_string(),
@@ -219,6 +258,7 @@ impl TextInput {
     pub(crate) fn new(
         content: String,
         placeholder: String,
+        policy: EditPolicy,
         binding: InputBinding,
         cx: &mut Context<Self>,
     ) -> Self {
@@ -232,6 +272,7 @@ impl TextInput {
             marked_range: None,
             last_paint: None,
             is_selecting: false,
+            policy,
         }
     }
 
@@ -239,9 +280,15 @@ impl TextInput {
         &mut self,
         value: &str,
         placeholder: &str,
+        policy: EditPolicy,
         window: &Window,
         cx: &mut Context<Self>,
     ) {
+        if self.policy != policy {
+            self.policy = policy;
+            self.is_selecting = false;
+            cx.notify();
+        }
         if self.placeholder.as_ref() != placeholder {
             self.placeholder = placeholder.to_owned().into();
             cx.notify();
@@ -340,7 +387,8 @@ impl EntityInputHandler for TextInput {
             .or(self.marked_range.clone())
             .unwrap_or(self.selection.range.clone());
 
-        if new_text.contains('\0')
+        if !self.policy.editable()
+            || new_text.contains('\0')
             || self.content.len() - range.len() + new_text.len()
                 > bun_native_protocol::MAX_TEXT_BYTES
         {
@@ -373,7 +421,8 @@ impl EntityInputHandler for TextInput {
             .or(self.marked_range.clone())
             .unwrap_or(self.selection.range.clone());
 
-        if new_text.contains('\0')
+        if !self.policy.editable()
+            || new_text.contains('\0')
             || self.content.len() - range.len() + new_text.len()
                 > bun_native_protocol::MAX_TEXT_BYTES
         {
@@ -449,12 +498,68 @@ impl EntityInputHandler for TextInput {
 }
 
 impl Render for TextInput {
-    fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
-        div()
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        let policy = self.policy;
+        // AccessKit exposes the value, caret and selection through one text run
+        // whose characters are grapheme clusters, matching native caret motion.
+        let text = window.is_a11y_active().then(|| {
+            let lengths = editing::accessible_characters(&self.content);
+            let index = |offset| editing::accessible_index(&lengths, offset);
+            let (anchor, focus) = if self.selection.reversed {
+                (self.selection.range.end, self.selection.range.start)
+            } else {
+                (self.selection.range.start, self.selection.range.end)
+            };
+            let (anchor, focus) = (index(anchor), index(focus));
+            (self.content.clone(), lengths, anchor, focus)
+        });
+        let field = div()
+            .id("native-text-input")
+            .role(Role::TextInput)
+            .aria_placeholder(self.placeholder.clone())
+            .a11y_synthetic_children(move |builder| {
+                if let Some((value, lengths, anchor, focus)) = text {
+                    let run_id = builder.synthetic_node_id(0);
+                    let mut run = accesskit::Node::new(Role::TextRun);
+                    run.set_value(value.to_string());
+                    run.set_character_lengths(lengths);
+                    builder.push_child(run_id, run);
+                    let position = |character_index| accesskit::TextPosition {
+                        node: run_id,
+                        character_index,
+                    };
+                    builder
+                        .parent_node()
+                        .set_text_selection(accesskit::TextSelection {
+                            anchor: position(anchor),
+                            focus: position(focus),
+                        });
+                }
+                let node = builder.parent_node();
+                if policy.disabled {
+                    node.set_disabled();
+                }
+                if policy.read_only {
+                    node.set_read_only();
+                }
+            })
             .flex()
             .w_full()
+            .child(
+                div()
+                    .min_h(px(32.))
+                    .w_full()
+                    .p(px(4.))
+                    .child(TextElement { input: cx.entity() }),
+            );
+        if !policy.interactive() {
+            // Without tracked focus, GPUI keeps it out of Tab order and pointer focus.
+            return field;
+        }
+        field
             .key_context("TextInput")
             .track_focus(&self.focus_handle(cx))
+            .focus(|style| style.shadow(crate::style::focus_ring()))
             .cursor(CursorStyle::IBeam)
             .on_action(cx.listener(Self::backspace))
             .on_action(cx.listener(Self::delete))
@@ -465,6 +570,8 @@ impl Render for TextInput {
             .on_action(cx.listener(Self::select_all))
             .on_action(cx.listener(Self::home))
             .on_action(cx.listener(Self::end))
+            .on_action(cx.listener(Self::select_home))
+            .on_action(cx.listener(Self::select_end))
             .on_action(cx.listener(Self::show_character_palette))
             .on_action(cx.listener(Self::paste))
             .on_action(cx.listener(Self::cut))
@@ -473,13 +580,6 @@ impl Render for TextInput {
             .on_mouse_up(MouseButton::Left, cx.listener(Self::on_mouse_up))
             .on_mouse_up_out(MouseButton::Left, cx.listener(Self::on_mouse_up))
             .on_mouse_move(cx.listener(Self::on_mouse_move))
-            .child(
-                div()
-                    .min_h(px(32.))
-                    .w_full()
-                    .p(px(4.))
-                    .child(TextElement { input: cx.entity() }),
-            )
     }
 }
 
@@ -507,6 +607,8 @@ pub(crate) fn bind_keys(cx: &mut App) {
         KeyBinding::new("ctrl-x", Cut, Some("TextInput")),
         KeyBinding::new("home", Home, Some("TextInput")),
         KeyBinding::new("end", End, Some("TextInput")),
+        KeyBinding::new("shift-home", SelectHome, Some("TextInput")),
+        KeyBinding::new("shift-end", SelectEnd, Some("TextInput")),
         KeyBinding::new("ctrl-cmd-space", ShowCharacterPalette, Some("TextInput")),
     ]);
 }

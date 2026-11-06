@@ -1,0 +1,248 @@
+{
+  "protocol": 11,
+  "capability": "file_dialogs_v1",
+  "commands": [
+    {
+      "name": "open one file",
+      "wire": "{\"type\":\"show_file_dialog\",\"id\":3,\"window_id\":1,\"dialog_id\":1,\"options\":{\"mode\":\"open_file\",\"title\":\"Open\"}}",
+      "valid": true
+    },
+    {
+      "name": "open several files with filters",
+      "wire": "{\"type\":\"show_file_dialog\",\"id\":3,\"window_id\":1,\"dialog_id\":1,\"options\":{\"mode\":\"open_files\",\"title\":\"Import\",\"accept_label\":\"Import\",\"folder\":\"/home/user\",\"filters\":[{\"name\":\"Text\",\"patterns\":[\"*.txt\",\"*.md\"]}]}}",
+      "valid": true
+    },
+    {
+      "name": "open a folder",
+      "wire": "{\"type\":\"show_file_dialog\",\"id\":3,\"window_id\":1,\"dialog_id\":1,\"options\":{\"mode\":\"open_directory\",\"title\":\"Choose folder\"}}",
+      "valid": true
+    },
+    {
+      "name": "save with a suggested name",
+      "wire": "{\"type\":\"show_file_dialog\",\"id\":3,\"window_id\":1,\"dialog_id\":1,\"options\":{\"mode\":\"save_file\",\"title\":\"Save\",\"folder\":\"/tmp\",\"name\":\"report.txt\"}}",
+      "valid": true
+    },
+    {
+      "name": "owned close",
+      "wire": "{\"type\":\"close_file_dialog\",\"id\":4,\"window_id\":1,\"dialog_id\":1}",
+      "valid": true
+    },
+    {
+      "name": "title at the byte bound",
+      "wire": "{\"type\":\"show_file_dialog\",\"id\":3,\"window_id\":1,\"dialog_id\":1,\"options\":{\"mode\":\"open_file\",\"title\":\"éééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééé\"}}",
+      "valid": true
+    },
+    {
+      "name": "title over the byte bound",
+      "wire": "{\"type\":\"show_file_dialog\",\"id\":3,\"window_id\":1,\"dialog_id\":1,\"options\":{\"mode\":\"open_file\",\"title\":\"ééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééx\"}}",
+      "valid": false
+    },
+    {
+      "name": "empty title",
+      "wire": "{\"type\":\"show_file_dialog\",\"id\":3,\"window_id\":1,\"dialog_id\":1,\"options\":{\"mode\":\"open_file\",\"title\":\"\"}}",
+      "valid": false
+    },
+    {
+      "name": "control character in title",
+      "wire": "{\"type\":\"show_file_dialog\",\"id\":3,\"window_id\":1,\"dialog_id\":1,\"options\":{\"mode\":\"open_file\",\"title\":\"a\\nb\"}}",
+      "valid": false
+    },
+    {
+      "name": "unknown mode",
+      "wire": "{\"type\":\"show_file_dialog\",\"id\":3,\"window_id\":1,\"dialog_id\":1,\"options\":{\"mode\":\"open_anything\",\"title\":\"Open\"}}",
+      "valid": false
+    },
+    {
+      "name": "missing mode",
+      "wire": "{\"type\":\"show_file_dialog\",\"id\":3,\"window_id\":1,\"dialog_id\":1,\"options\":{\"title\":\"Open\"}}",
+      "valid": false
+    },
+    {
+      "name": "relative folder",
+      "wire": "{\"type\":\"show_file_dialog\",\"id\":3,\"window_id\":1,\"dialog_id\":1,\"options\":{\"mode\":\"open_file\",\"title\":\"Open\",\"folder\":\"home/user\"}}",
+      "valid": false
+    },
+    {
+      "name": "NUL in folder",
+      "wire": "{\"type\":\"show_file_dialog\",\"id\":3,\"window_id\":1,\"dialog_id\":1,\"options\":{\"mode\":\"open_file\",\"title\":\"Open\",\"folder\":\"/tmp/\\u0000x\"}}",
+      "valid": false
+    },
+    {
+      "name": "folder over 4096 bytes",
+      "wire": "{\"type\":\"show_file_dialog\",\"id\":3,\"window_id\":1,\"dialog_id\":1,\"options\":{\"mode\":\"open_file\",\"title\":\"Open\",\"folder\":\"/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"}}",
+      "valid": false
+    },
+    {
+      "name": "null folder",
+      "wire": "{\"type\":\"show_file_dialog\",\"id\":3,\"window_id\":1,\"dialog_id\":1,\"options\":{\"mode\":\"open_file\",\"title\":\"Open\",\"folder\":null}}",
+      "valid": false
+    },
+    {
+      "name": "name outside a save dialog",
+      "wire": "{\"type\":\"show_file_dialog\",\"id\":3,\"window_id\":1,\"dialog_id\":1,\"options\":{\"mode\":\"open_file\",\"title\":\"Open\",\"name\":\"a.txt\"}}",
+      "valid": false
+    },
+    {
+      "name": "name with a separator",
+      "wire": "{\"type\":\"show_file_dialog\",\"id\":3,\"window_id\":1,\"dialog_id\":1,\"options\":{\"mode\":\"save_file\",\"title\":\"Save\",\"name\":\"../a.txt\"}}",
+      "valid": false
+    },
+    {
+      "name": "dot-dot name",
+      "wire": "{\"type\":\"show_file_dialog\",\"id\":3,\"window_id\":1,\"dialog_id\":1,\"options\":{\"mode\":\"save_file\",\"title\":\"Save\",\"name\":\"..\"}}",
+      "valid": false
+    },
+    {
+      "name": "name over 255 bytes",
+      "wire": "{\"type\":\"show_file_dialog\",\"id\":3,\"window_id\":1,\"dialog_id\":1,\"options\":{\"mode\":\"save_file\",\"title\":\"Save\",\"name\":\"nnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnn\"}}",
+      "valid": false
+    },
+    {
+      "name": "filters on a folder dialog",
+      "wire": "{\"type\":\"show_file_dialog\",\"id\":3,\"window_id\":1,\"dialog_id\":1,\"options\":{\"mode\":\"open_directory\",\"title\":\"Folder\",\"filters\":[{\"name\":\"Text\",\"patterns\":[\"*.txt\"]}]}}",
+      "valid": false
+    },
+    {
+      "name": "filter without patterns",
+      "wire": "{\"type\":\"show_file_dialog\",\"id\":3,\"window_id\":1,\"dialog_id\":1,\"options\":{\"mode\":\"open_file\",\"title\":\"Open\",\"filters\":[{\"name\":\"Text\",\"patterns\":[]}]}}",
+      "valid": false
+    },
+    {
+      "name": "seventeen filters",
+      "wire": "{\"type\":\"show_file_dialog\",\"id\":3,\"window_id\":1,\"dialog_id\":1,\"options\":{\"mode\":\"open_file\",\"title\":\"Open\",\"filters\":[{\"name\":\"F\",\"patterns\":[\"*\"]},{\"name\":\"F\",\"patterns\":[\"*\"]},{\"name\":\"F\",\"patterns\":[\"*\"]},{\"name\":\"F\",\"patterns\":[\"*\"]},{\"name\":\"F\",\"patterns\":[\"*\"]},{\"name\":\"F\",\"patterns\":[\"*\"]},{\"name\":\"F\",\"patterns\":[\"*\"]},{\"name\":\"F\",\"patterns\":[\"*\"]},{\"name\":\"F\",\"patterns\":[\"*\"]},{\"name\":\"F\",\"patterns\":[\"*\"]},{\"name\":\"F\",\"patterns\":[\"*\"]},{\"name\":\"F\",\"patterns\":[\"*\"]},{\"name\":\"F\",\"patterns\":[\"*\"]},{\"name\":\"F\",\"patterns\":[\"*\"]},{\"name\":\"F\",\"patterns\":[\"*\"]},{\"name\":\"F\",\"patterns\":[\"*\"]},{\"name\":\"F\",\"patterns\":[\"*\"]}]}}",
+      "valid": false
+    },
+    {
+      "name": "seventeen patterns",
+      "wire": "{\"type\":\"show_file_dialog\",\"id\":3,\"window_id\":1,\"dialog_id\":1,\"options\":{\"mode\":\"open_file\",\"title\":\"Open\",\"filters\":[{\"name\":\"F\",\"patterns\":[\"*\",\"*\",\"*\",\"*\",\"*\",\"*\",\"*\",\"*\",\"*\",\"*\",\"*\",\"*\",\"*\",\"*\",\"*\",\"*\",\"*\"]}]}}",
+      "valid": false
+    },
+    {
+      "name": "pattern over 64 bytes",
+      "wire": "{\"type\":\"show_file_dialog\",\"id\":3,\"window_id\":1,\"dialog_id\":1,\"options\":{\"mode\":\"open_file\",\"title\":\"Open\",\"filters\":[{\"name\":\"F\",\"patterns\":[\"*****************************************************************\"]}]}}",
+      "valid": false
+    },
+    {
+      "name": "empty accept label",
+      "wire": "{\"type\":\"show_file_dialog\",\"id\":3,\"window_id\":1,\"dialog_id\":1,\"options\":{\"mode\":\"open_file\",\"title\":\"Open\",\"accept_label\":\"\"}}",
+      "valid": false
+    },
+    {
+      "name": "accept label over 64 bytes",
+      "wire": "{\"type\":\"show_file_dialog\",\"id\":3,\"window_id\":1,\"dialog_id\":1,\"options\":{\"mode\":\"open_file\",\"title\":\"Open\",\"accept_label\":\"xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\"}}",
+      "valid": false
+    },
+    {
+      "name": "unknown option",
+      "wire": "{\"type\":\"show_file_dialog\",\"id\":3,\"window_id\":1,\"dialog_id\":1,\"options\":{\"mode\":\"open_file\",\"title\":\"Open\",\"multiple\":true}}",
+      "valid": false
+    },
+    {
+      "name": "unknown command field",
+      "wire": "{\"type\":\"show_file_dialog\",\"id\":3,\"window_id\":1,\"dialog_id\":1,\"options\":{\"mode\":\"open_file\",\"title\":\"Open\"},\"grant\":true}",
+      "valid": false
+    },
+    {
+      "name": "zero dialog id",
+      "wire": "{\"type\":\"close_file_dialog\",\"id\":4,\"window_id\":1,\"dialog_id\":0}",
+      "valid": false
+    }
+  ],
+  "events": [
+    {
+      "name": "opened",
+      "wire": "{\"type\":\"file_dialog_opened\",\"id\":3,\"window_id\":1,\"dialog_id\":1}",
+      "valid": true
+    },
+    {
+      "name": "closed",
+      "wire": "{\"type\":\"file_dialog_closed\",\"id\":4,\"window_id\":1,\"dialog_id\":1}",
+      "valid": true
+    },
+    {
+      "name": "one selected path",
+      "wire": "{\"type\":\"file_dialog_completed\",\"sequence\":7,\"window_id\":1,\"dialog_id\":1,\"result\":{\"kind\":\"selected\",\"paths\":[\"/home/user/a.txt\"]}}",
+      "valid": true
+    },
+    {
+      "name": "several selected paths",
+      "wire": "{\"type\":\"file_dialog_completed\",\"sequence\":7,\"window_id\":1,\"dialog_id\":1,\"result\":{\"kind\":\"selected\",\"paths\":[\"/a\",\"/b c/ü.txt\"]}}",
+      "valid": true
+    },
+    {
+      "name": "256 paths",
+      "wire": "{\"type\":\"file_dialog_completed\",\"sequence\":7,\"window_id\":1,\"dialog_id\":1,\"result\":{\"kind\":\"selected\",\"paths\":[\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\"]}}",
+      "valid": true
+    },
+    {
+      "name": "cancelled",
+      "wire": "{\"type\":\"file_dialog_completed\",\"sequence\":7,\"window_id\":1,\"dialog_id\":1,\"result\":{\"kind\":\"cancelled\"}}",
+      "valid": true
+    },
+    {
+      "name": "failed natively",
+      "wire": "{\"type\":\"file_dialog_completed\",\"sequence\":7,\"window_id\":1,\"dialog_id\":1,\"result\":{\"kind\":\"failed\",\"code\":\"native_failure\"}}",
+      "valid": true
+    },
+    {
+      "name": "failed oversized",
+      "wire": "{\"type\":\"file_dialog_completed\",\"sequence\":7,\"window_id\":1,\"dialog_id\":1,\"result\":{\"kind\":\"failed\",\"code\":\"payload_too_large\"}}",
+      "valid": true
+    },
+    {
+      "name": "empty selection",
+      "wire": "{\"type\":\"file_dialog_completed\",\"sequence\":7,\"window_id\":1,\"dialog_id\":1,\"result\":{\"kind\":\"selected\",\"paths\":[]}}",
+      "valid": false
+    },
+    {
+      "name": "257 paths",
+      "wire": "{\"type\":\"file_dialog_completed\",\"sequence\":7,\"window_id\":1,\"dialog_id\":1,\"result\":{\"kind\":\"selected\",\"paths\":[\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\",\"/p\"]}}",
+      "valid": false
+    },
+    {
+      "name": "relative path",
+      "wire": "{\"type\":\"file_dialog_completed\",\"sequence\":7,\"window_id\":1,\"dialog_id\":1,\"result\":{\"kind\":\"selected\",\"paths\":[\"a.txt\"]}}",
+      "valid": false
+    },
+    {
+      "name": "URI instead of path",
+      "wire": "{\"type\":\"file_dialog_completed\",\"sequence\":7,\"window_id\":1,\"dialog_id\":1,\"result\":{\"kind\":\"selected\",\"paths\":[\"file:///a.txt\"]}}",
+      "valid": false
+    },
+    {
+      "name": "NUL in path",
+      "wire": "{\"type\":\"file_dialog_completed\",\"sequence\":7,\"window_id\":1,\"dialog_id\":1,\"result\":{\"kind\":\"selected\",\"paths\":[\"/a\\u0000b\"]}}",
+      "valid": false
+    },
+    {
+      "name": "path over 4096 bytes",
+      "wire": "{\"type\":\"file_dialog_completed\",\"sequence\":7,\"window_id\":1,\"dialog_id\":1,\"result\":{\"kind\":\"selected\",\"paths\":[\"/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"]}}",
+      "valid": false
+    },
+    {
+      "name": "unknown failure",
+      "wire": "{\"type\":\"file_dialog_completed\",\"sequence\":7,\"window_id\":1,\"dialog_id\":1,\"result\":{\"kind\":\"failed\",\"code\":\"permission_denied\"}}",
+      "valid": false
+    },
+    {
+      "name": "cancelled with paths",
+      "wire": "{\"type\":\"file_dialog_completed\",\"sequence\":7,\"window_id\":1,\"dialog_id\":1,\"result\":{\"kind\":\"cancelled\",\"paths\":[\"/a\"]}}",
+      "valid": false
+    },
+    {
+      "name": "grant attached to a result",
+      "wire": "{\"type\":\"file_dialog_completed\",\"sequence\":7,\"window_id\":1,\"dialog_id\":1,\"result\":{\"kind\":\"selected\",\"paths\":[\"/a\"],\"grant\":1}}",
+      "valid": false
+    },
+    {
+      "name": "unknown result",
+      "wire": "{\"type\":\"file_dialog_completed\",\"sequence\":7,\"window_id\":1,\"dialog_id\":1,\"result\":{\"kind\":\"granted\"}}",
+      "valid": false
+    },
+    {
+      "name": "missing sequence",
+      "wire": "{\"type\":\"file_dialog_completed\",\"window_id\":1,\"dialog_id\":1,\"result\":{\"kind\":\"cancelled\"}}",
+      "valid": false
+    }
+  ]
+}

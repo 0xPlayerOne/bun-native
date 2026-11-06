@@ -3,7 +3,7 @@
 use serde::{de, Deserialize, Deserializer, Serialize};
 use std::fmt;
 
-pub const PROTOCOL_VERSION: u32 = 9;
+pub const PROTOCOL_VERSION: u32 = 11;
 pub const MAX_ID: u64 = 9_007_199_254_740_991;
 pub const MAX_FRAME_BYTES: usize = 65_536;
 pub const MAX_TEXT_BYTES: usize = 16_384;
@@ -13,6 +13,11 @@ pub const MAX_OPERATIONS: usize = 256;
 pub const MAX_NODES_PER_WINDOW: usize = 4_096;
 pub const MAX_WINDOWS: usize = 16;
 pub const MAX_DEPTH: usize = 64;
+/// Overlays nested inside overlays, the outermost counting as one. GPUI
+/// processes each nested deferred layer in its own bounded prepaint round.
+pub const MAX_OVERLAY_DEPTH: usize = 8;
+/// Largest programmatic scroll offset, in logical pixels from the content start.
+pub const MAX_SCROLL_OFFSET: f64 = 1_000_000.;
 
 macro_rules! identifier {
     ($name:ident) => {
@@ -58,6 +63,10 @@ identifier!(EventSequence);
 identifier!(ShortcutId);
 identifier!(NotificationId);
 identifier!(FileGrantId);
+identifier!(ProcessId);
+identifier!(DialogId);
+identifier!(DropTargetId);
+identifier!(DropId);
 
 /// JSON has one number type. Match JavaScript's safe-integer validation even
 /// when a sender spells an integer as `1.0` or `1e0` instead of canonical `1`.
@@ -101,7 +110,7 @@ fn safe_usize<'de, D: Deserializer<'de>>(deserializer: D) -> Result<usize, D::Er
     usize::try_from(safe_integer(deserializer)?).map_err(de::Error::custom)
 }
 
-fn safe_u32<'de, D: Deserializer<'de>>(deserializer: D) -> Result<u32, D::Error> {
+pub(crate) fn safe_u32<'de, D: Deserializer<'de>>(deserializer: D) -> Result<u32, D::Error> {
     u32::try_from(safe_integer(deserializer)?).map_err(de::Error::custom)
 }
 
@@ -156,6 +165,64 @@ impl Overflow {
     }
 }
 
+/// Which edge a vertical scroll viewport keeps visible as its content changes.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum ScrollAnchor {
+    Start,
+    End,
+}
+
+/// Where an overlay's layer is placed.
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum OverlayAnchor {
+    /// A layer covering the whole window viewport, blocking pointer input beneath it.
+    #[default]
+    Window,
+    /// A content-sized layer below its parent's bottom-left corner, kept inside the window.
+    Parent,
+}
+
+/// How arrow keys move focus among an overlay's own controls.
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum OverlayNavigation {
+    /// Only Tab and Shift-Tab move focus.
+    #[default]
+    Tab,
+    /// Up/Down/Home/End move a roving focus and printable keys type ahead.
+    Menu,
+}
+
+impl OverlayNavigation {
+    fn is_tab(&self) -> bool {
+        *self == Self::Tab
+    }
+}
+
+fn is_false(value: &bool) -> bool {
+    !*value
+}
+
+/// What an overlay paints into. A `window` surface is an owned OS popup
+/// window: it may extend beyond its parent window and is kept on the display.
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum OverlaySurface {
+    /// A deferred GPUI layer inside the parent window.
+    #[default]
+    Layer,
+    /// An owned popup window placed below its parent node in screen coordinates.
+    Window,
+}
+
+impl OverlaySurface {
+    pub fn is_layer(&self) -> bool {
+        *self == Self::Layer
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum Fill {
@@ -169,7 +236,7 @@ pub enum Dimension {
     Fill(Fill),
 }
 
-fn non_null<'de, D, T>(deserializer: D) -> Result<Option<T>, D::Error>
+pub(crate) fn non_null<'de, D, T>(deserializer: D) -> Result<Option<T>, D::Error>
 where
     D: Deserializer<'de>,
     T: Deserialize<'de>,
@@ -267,6 +334,12 @@ pub struct Style {
     #[serde(
         default,
         skip_serializing_if = "Option::is_none",
+        deserialize_with = "non_null"
+    )]
+    pub scroll_anchor: Option<ScrollAnchor>,
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
         deserialize_with = "non_null_color"
     )]
     pub background: Option<u32>,
@@ -282,6 +355,55 @@ pub struct Style {
         deserialize_with = "non_null"
     )]
     pub font_size: Option<f64>,
+    /// `style_decoration_v1`: one uniform border, in logical pixels.
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "non_null"
+    )]
+    pub border_width: Option<f64>,
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "non_null_color"
+    )]
+    pub border_color: Option<u32>,
+    /// `style_decoration_v1`: one radius for all four corners.
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "non_null"
+    )]
+    pub corner_radius: Option<f64>,
+    /// `style_decoration_v1`: multiplies this element and its descendants.
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "non_null"
+    )]
+    pub opacity: Option<f64>,
+    /// `style_decoration_v1`: an inherited 100-900 weight in steps of 100.
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "non_null"
+    )]
+    pub font_weight: Option<f64>,
+}
+
+impl Style {
+    /// Fields an older host rejects as unknown; gated by `style_decoration_v1`.
+    pub fn uses_decoration(&self) -> bool {
+        self.border_width.is_some()
+            || self.border_color.is_some()
+            || self.corner_radius.is_some()
+            || self.opacity.is_some()
+            || self.font_weight.is_some()
+    }
+}
+
+fn half() -> f64 {
+    0.5
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -307,10 +429,53 @@ pub enum Element {
         value: String,
         #[serde(default)]
         placeholder: String,
+        /// Requires `input_states_v1`. Not focusable, editable or selectable.
+        #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+        disabled: bool,
+        /// Requires `input_states_v1`. Focusable, selectable and copyable;
+        /// native edits, paste, cut and composition are rejected.
+        #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+        read_only: bool,
+        #[serde(default)]
+        style: Style,
+    },
+    /// `split_v1`: at most two panes separated by a host-owned draggable
+    /// divider. `style.direction` chooses the axis (row by default).
+    Split {
+        /// The leading pane's share of the space left after the divider.
+        #[serde(default = "half")]
+        ratio: f64,
+        /// The smallest main-axis size of each pane, in logical pixels.
+        #[serde(default)]
+        min_size: f64,
+        #[serde(default)]
+        style: Style,
+    },
+    /// A container painted above the ordinary tree. Nested overlays paint
+    /// above shallower ones; equal depths follow tree order.
+    Overlay {
+        #[serde(default)]
+        anchor: OverlayAnchor,
+        /// Traps keyboard focus and Tab order until removed.
+        #[serde(default)]
+        modal: bool,
+        /// Moves focus to the first enabled control when the layer opens.
+        /// Requires `overlay_keyboard_v1`; omitted when false.
+        #[serde(default, skip_serializing_if = "is_false")]
+        autofocus: bool,
+        /// Requires `overlay_keyboard_v1`; omitted when `tab`.
+        #[serde(default, skip_serializing_if = "OverlayNavigation::is_tab")]
+        navigation: OverlayNavigation,
+        /// Omitted from normalized output while it is the default layer.
+        #[serde(default, skip_serializing_if = "OverlaySurface::is_layer")]
+        surface: OverlaySurface,
         #[serde(default)]
         style: Style,
     },
 }
+
+/// Main-axis thickness of a split divider, in logical pixels.
+pub const SPLIT_DIVIDER: f64 = 6.;
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(tag = "type", rename_all = "snake_case", deny_unknown_fields)]
@@ -336,6 +501,33 @@ pub enum Operation {
         index: usize,
     },
     Delete {
+        node_id: NodeId,
+    },
+    /// Requires `focus_v1`. Focuses an enabled button or input after the
+    /// batch's tree changes commit.
+    Focus {
+        node_id: NodeId,
+    },
+    /// Requires `scroll_control_v1`. Sets a scrolling container's offset from
+    /// its content start; an omitted axis keeps its offset. Clamped natively.
+    ScrollTo {
+        node_id: NodeId,
+        #[serde(
+            default,
+            skip_serializing_if = "Option::is_none",
+            deserialize_with = "non_null"
+        )]
+        x: Option<f64>,
+        #[serde(
+            default,
+            skip_serializing_if = "Option::is_none",
+            deserialize_with = "non_null"
+        )]
+        y: Option<f64>,
+    },
+    /// Requires `scroll_control_v1`. Scrolls every scrolling ancestor so the
+    /// child containing the node is visible.
+    ScrollIntoView {
         node_id: NodeId,
     },
 }
@@ -423,6 +615,82 @@ pub enum Command {
         path: String,
         operation: crate::FileOperation,
     },
+    SpawnProcess {
+        id: RequestId,
+        window_id: WindowId,
+        process_id: ProcessId,
+        launch: crate::ProcessLaunch,
+    },
+    WriteProcess {
+        id: RequestId,
+        window_id: WindowId,
+        process_id: ProcessId,
+        data: String,
+    },
+    CloseProcessInput {
+        id: RequestId,
+        window_id: WindowId,
+        process_id: ProcessId,
+    },
+    ResizeProcess {
+        id: RequestId,
+        window_id: WindowId,
+        process_id: ProcessId,
+        size: crate::TerminalSize,
+    },
+    SignalProcess {
+        id: RequestId,
+        window_id: WindowId,
+        process_id: ProcessId,
+        signal: crate::ProcessSignal,
+    },
+    /// Acknowledge output through `chunk`, returning that delivery credit.
+    AcknowledgeProcessOutput {
+        id: RequestId,
+        window_id: WindowId,
+        process_id: ProcessId,
+        #[serde(deserialize_with = "safe_integer")]
+        chunk: u64,
+    },
+    /// Stop the process group, reap it and release the identity.
+    ReleaseProcess {
+        id: RequestId,
+        window_id: WindowId,
+        process_id: ProcessId,
+    },
+    ShowFileDialog {
+        id: RequestId,
+        window_id: WindowId,
+        dialog_id: DialogId,
+        options: crate::FileDialogOptions,
+    },
+    CloseFileDialog {
+        id: RequestId,
+        window_id: WindowId,
+        dialog_id: DialogId,
+    },
+    RegisterDropTarget {
+        id: RequestId,
+        window_id: WindowId,
+        target_id: DropTargetId,
+        node_id: NodeId,
+    },
+    UnregisterDropTarget {
+        id: RequestId,
+        window_id: WindowId,
+        target_id: DropTargetId,
+    },
+    /// Map one item of the target's latest drop to a path relative to a
+    /// launch root. The host matches its own retained path; no path is sent.
+    ResolveDroppedItem {
+        id: RequestId,
+        window_id: WindowId,
+        target_id: DropTargetId,
+        drop_id: DropId,
+        #[serde(deserialize_with = "safe_u32")]
+        item: u32,
+        root: String,
+    },
     Shutdown {
         id: RequestId,
     },
@@ -464,6 +732,22 @@ pub enum Capability {
     GlobalShortcutsV1,
     NotificationsV1,
     FilesystemGrantsV1,
+    ProcessesV1,
+    SplitV1,
+    StyleDecorationV1,
+    /// Snapshots carry the work area and platform display UUID (macOS, Windows).
+    DisplayDetailsV1,
+    /// Owned windows report `display_changed` (macOS, Windows).
+    DisplayChangesV1,
+    FileDialogsV1,
+    OverlaysV1,
+    ScrollAnchorV1,
+    FocusV1,
+    ScrollControlV1,
+    OverlayKeyboardV1,
+    PopupWindowsV1,
+    DragDropFilesV1,
+    InputStatesV1,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -482,6 +766,9 @@ pub struct Limits {
     pub max_notifications: usize,
     pub max_file_grants: usize,
     pub max_file_chunk_bytes: usize,
+    pub max_processes: usize,
+    pub max_drop_targets: usize,
+    pub max_drop_items: usize,
 }
 
 impl Default for Limits {
@@ -500,7 +787,64 @@ impl Default for Limits {
             max_notifications: crate::MAX_NOTIFICATIONS,
             max_file_grants: crate::MAX_FILE_GRANTS,
             max_file_chunk_bytes: crate::MAX_FILE_CHUNK_BYTES,
+            max_processes: crate::MAX_PROCESSES,
+            max_drop_targets: crate::MAX_DROP_TARGETS,
+            max_drop_items: crate::MAX_DROP_ITEMS,
         }
+    }
+}
+
+impl Limits {
+    /// Advertised limits may only narrow the protocol defaults, never widen or
+    /// disable a resource (the TypeScript reader bounds each to `1..=default`).
+    pub fn validate(&self) -> Result<(), &'static str> {
+        let Self {
+            max_frame_bytes,
+            max_operations,
+            max_nodes_per_window,
+            max_windows,
+            max_depth,
+            max_text_bytes,
+            max_text_bytes_per_window,
+            max_clipboard_bytes,
+            max_service_requests,
+            max_global_shortcuts,
+            max_notifications,
+            max_file_grants,
+            max_file_chunk_bytes,
+            max_processes,
+            max_drop_targets,
+            max_drop_items,
+        } = *self;
+        let defaults = Self::default();
+        let pairs = [
+            (max_frame_bytes, defaults.max_frame_bytes),
+            (max_operations, defaults.max_operations),
+            (max_nodes_per_window, defaults.max_nodes_per_window),
+            (max_windows, defaults.max_windows),
+            (max_depth, defaults.max_depth),
+            (max_text_bytes, defaults.max_text_bytes),
+            (
+                max_text_bytes_per_window,
+                defaults.max_text_bytes_per_window,
+            ),
+            (max_clipboard_bytes, defaults.max_clipboard_bytes),
+            (max_service_requests, defaults.max_service_requests),
+            (max_global_shortcuts, defaults.max_global_shortcuts),
+            (max_notifications, defaults.max_notifications),
+            (max_file_grants, defaults.max_file_grants),
+            (max_file_chunk_bytes, defaults.max_file_chunk_bytes),
+            (max_processes, defaults.max_processes),
+            (max_drop_targets, defaults.max_drop_targets),
+            (max_drop_items, defaults.max_drop_items),
+        ];
+        if pairs
+            .into_iter()
+            .any(|(value, default)| value == 0 || value > default)
+        {
+            return Err("ready limits must be between 1 and the protocol default");
+        }
+        Ok(())
     }
 }
 
@@ -521,6 +865,18 @@ impl Command {
             | Self::OpenFileGrant { id, .. }
             | Self::CloseFileGrant { id, .. }
             | Self::FileRequest { id, .. }
+            | Self::SpawnProcess { id, .. }
+            | Self::WriteProcess { id, .. }
+            | Self::CloseProcessInput { id, .. }
+            | Self::ResizeProcess { id, .. }
+            | Self::SignalProcess { id, .. }
+            | Self::AcknowledgeProcessOutput { id, .. }
+            | Self::ReleaseProcess { id, .. }
+            | Self::ShowFileDialog { id, .. }
+            | Self::CloseFileDialog { id, .. }
+            | Self::RegisterDropTarget { id, .. }
+            | Self::UnregisterDropTarget { id, .. }
+            | Self::ResolveDroppedItem { id, .. }
             | Self::Shutdown { id } => *id,
         }
     }
@@ -584,7 +940,23 @@ impl Command {
                         Operation::Insert { index, .. } if *index > MAX_NODES_PER_WINDOW => {
                             return Err("child index exceeds the node limit")
                         }
-                        Operation::Insert { .. } | Operation::Delete { .. } => {}
+                        Operation::ScrollTo { x, y, .. } => {
+                            if x.is_none() && y.is_none() {
+                                return Err("scroll_to requires x or y");
+                            }
+                            for value in [x, y].into_iter().flatten() {
+                                bounded(
+                                    *value,
+                                    0.,
+                                    MAX_SCROLL_OFFSET,
+                                    "scroll offsets must be between 0 and 1000000",
+                                )?;
+                            }
+                        }
+                        Operation::Insert { .. }
+                        | Operation::Delete { .. }
+                        | Operation::Focus { .. }
+                        | Operation::ScrollIntoView { .. } => {}
                     }
                 }
             }
@@ -599,6 +971,19 @@ impl Command {
             Self::FileRequest {
                 path, operation, ..
             } => operation.validate(path)?,
+            Self::SpawnProcess { launch, .. } => launch.validate()?,
+            Self::WriteProcess { data, .. } => crate::validate_process_output(data)?,
+            Self::ResizeProcess { size, .. } => size.validate()?,
+            Self::AcknowledgeProcessOutput { chunk, .. } => {
+                if *chunk == 0 || *chunk > MAX_ID {
+                    return Err("process output chunk must be a positive safe integer");
+                }
+            }
+            Self::ShowFileDialog { options, .. } => options.validate()?,
+            Self::ResolveDroppedItem { item, root, .. } => {
+                crate::validate_drop_item_index(*item)?;
+                crate::validate_root_id(root)?;
+            }
             Self::Hello { .. }
             | Self::Close { .. }
             | Self::DisplaySnapshot { .. }
@@ -606,6 +991,12 @@ impl Command {
             | Self::UnregisterGlobalShortcut { .. }
             | Self::WithdrawNotification { .. }
             | Self::CloseFileGrant { .. }
+            | Self::CloseProcessInput { .. }
+            | Self::SignalProcess { .. }
+            | Self::ReleaseProcess { .. }
+            | Self::CloseFileDialog { .. }
+            | Self::RegisterDropTarget { .. }
+            | Self::UnregisterDropTarget { .. }
             | Self::Shutdown { .. } => {}
         }
         Ok(())
@@ -619,8 +1010,25 @@ impl Element {
             Self::Input {
                 value, placeholder, ..
             } => value.len() + placeholder.len(),
-            Self::Box { .. } => 0,
+            Self::Box { .. } | Self::Split { .. } | Self::Overlay { .. } => 0,
         }
+    }
+
+    /// The most children this element may own.
+    pub fn max_children(&self) -> usize {
+        match self {
+            Self::Box { .. } | Self::Overlay { .. } => MAX_NODES_PER_WINDOW,
+            Self::Split { .. } => 2,
+            Self::Text { .. } | Self::Button { .. } | Self::Input { .. } => 0,
+        }
+    }
+
+    /// Boxes, splits and overlays own ordered children.
+    pub fn is_container(&self) -> bool {
+        matches!(
+            self,
+            Self::Box { .. } | Self::Split { .. } | Self::Overlay { .. }
+        )
     }
 
     pub fn style(&self) -> &Style {
@@ -628,7 +1036,9 @@ impl Element {
             Self::Box { style }
             | Self::Text { style, .. }
             | Self::Button { style, .. }
-            | Self::Input { style, .. } => style,
+            | Self::Input { style, .. }
+            | Self::Split { style, .. }
+            | Self::Overlay { style, .. } => style,
         }
     }
 
@@ -637,9 +1047,39 @@ impl Element {
     }
 
     pub fn validate(&self) -> Result<(), &'static str> {
-        if !matches!(self, Self::Box { .. }) && self.style().overflow.is_some_and(Overflow::scrolls)
+        if !matches!(self, Self::Box { .. } | Self::Overlay { .. })
+            && self.style().overflow.is_some_and(Overflow::scrolls)
         {
-            return Err("scrolling is supported only on box elements");
+            return Err("scrolling is supported only on box and overlay elements");
+        }
+        if let Self::Overlay {
+            anchor: OverlayAnchor::Parent,
+            modal: true,
+            ..
+        } = self
+        {
+            return Err("a modal overlay must be anchored to the window");
+        }
+        if let Self::Overlay {
+            anchor,
+            surface: OverlaySurface::Window,
+            autofocus,
+            navigation,
+            style,
+            ..
+        } = self
+        {
+            if *anchor != OverlayAnchor::Parent {
+                return Err("a popup window overlay must be anchored to its parent");
+            }
+            // Keyboard focus stays on the parent window while a popup is open.
+            if *autofocus || *navigation != OverlayNavigation::Tab {
+                return Err("a popup window overlay does not take keyboard focus");
+            }
+            let sized = |value: Option<Dimension>| matches!(value, Some(Dimension::Pixels(pixels)) if pixels >= 1.);
+            if !sized(style.width) || !sized(style.height) {
+                return Err("a popup window overlay needs a fixed width and height");
+            }
         }
         match self {
             Self::Text { text, .. } | Self::Button { text, .. } => validate_text(text)?,
@@ -649,7 +1089,26 @@ impl Element {
                 validate_text(value)?;
                 validate_text(placeholder)?;
             }
-            Self::Box { .. } => {}
+            Self::Split {
+                ratio,
+                min_size,
+                style,
+            } => {
+                bounded(*ratio, 0., 1., "split ratio must be between 0 and 1")?;
+                bounded(
+                    *min_size,
+                    0.,
+                    16_384.,
+                    "split min_size must be between 0 and 16384 pixels",
+                )?;
+                if style.gap.is_some()
+                    || style.align_items.is_some()
+                    || style.justify_content.is_some()
+                {
+                    return Err("split panes do not accept gap or alignment");
+                }
+            }
+            Self::Box { .. } | Self::Overlay { .. } => {}
         }
         self.style().validate()
     }
@@ -705,6 +1164,11 @@ impl Style {
         for value in [self.flex_grow, self.flex_shrink].into_iter().flatten() {
             bounded(value, 0., 1_000., "flex factors must be between 0 and 1000")?;
         }
+        if self.scroll_anchor.is_some()
+            && !matches!(self.overflow, Some(Overflow::ScrollY | Overflow::Scroll))
+        {
+            return Err("scroll_anchor requires vertical scrolling overflow");
+        }
         if let Some(value) = self.font_size {
             bounded(
                 value,
@@ -713,7 +1177,37 @@ impl Style {
                 "font_size must be between 1 and 512 pixels",
             )?;
         }
-        if [self.background, self.color]
+        if let Some(value) = self.border_width {
+            bounded(
+                value,
+                0.,
+                64.,
+                "border_width must be between 0 and 64 pixels",
+            )?;
+        }
+        if let Some(value) = self.corner_radius {
+            bounded(
+                value,
+                0.,
+                4_096.,
+                "corner_radius must be between 0 and 4096 pixels",
+            )?;
+        }
+        if let Some(value) = self.opacity {
+            bounded(value, 0., 1., "opacity must be between 0 and 1")?;
+        }
+        if let Some(value) = self.font_weight {
+            bounded(
+                value,
+                100.,
+                900.,
+                "font_weight must be 100-900 in steps of 100",
+            )?;
+            if value % 100. != 0. {
+                return Err("font_weight must be 100-900 in steps of 100");
+            }
+        }
+        if [self.background, self.color, self.border_color]
             .into_iter()
             .flatten()
             .any(|value| value > 0xff_ffff)
