@@ -67,8 +67,13 @@ function run(name: string, command: string[], expected = 0, cwd = root): string 
 run('bun-revision', [process.execPath, '--revision'])
 run('aot-help', [process.execPath, 'compile', '--no-script', '--help'])
 run('cc-version', [compiler, '--version'])
-const rust = run('rustc-version', ['rustc', '--version'])
-if (!rust.startsWith(`rustc ${manifest.rust.version} `)) throw new Error('Rust version mismatch')
+// The probes build no Rust, so no compiler is installed for them. The pin that
+// every Rust-building job resolves through rustup must still agree.
+const rustChannel = /^channel = "([^"]+)"$/m.exec(
+  readFileSync(join(root, '../../rust-toolchain.toml'), 'utf8')
+)?.[1]
+if (rustChannel !== manifest.rust.version) throw new Error('Rust version mismatch')
+const rust = `rust-toolchain.toml channel ${rustChannel}; no Rust compiler is used by this probe`
 const libraryFlags = process.platform === 'darwin' ? ['-dynamiclib'] : ['-shared']
 const positionIndependent = process.platform === 'win32' ? [] : ['-fPIC']
 run('build-library', [
@@ -210,6 +215,7 @@ const report = {
     '../../tests/tooling/inspect-runtime-formats.test.ts',
     'native.c',
     'tsconfig.json',
+    '../../rust-toolchain.toml',
   ].map((name) => ({
     name,
     sha256: createHash('sha256')
