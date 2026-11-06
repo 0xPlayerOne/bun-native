@@ -1,10 +1,11 @@
-import { ProtocolError, type Capability, type Limits } from '@bun-native/protocol'
+import { ProtocolError, type Capability, type Limits, type Operation } from '@bun-native/protocol'
 import {
   NativeCommandError,
   NativeHost,
   type HostOptions,
   type WindowEvent,
 } from '@bun-native/runtime'
+import { planStagedCommit, sendStagedCommit } from './commit-plan.ts'
 import { dispatchPlan, EventBindings, prunePlan, type DispatchPlan } from './events.ts'
 import {
   checkServiceCancellation,
@@ -471,30 +472,55 @@ class Window implements NativeWindow {
         transaction.finish()
       }
       if (!transaction.operations.length) return value
-      const reply = await this.application.host.send({
-        type: 'batch',
-        window_id: this.id,
-        base_revision: this.revision,
-        operations: transaction.operations,
-      })
-      this.assertActive()
-      // Native input can arrive while an unrelated batch is in flight. Preserve
-      // every newer edit instead of replacing it with a cloned candidate value.
-      for (const [id, candidate] of transaction.nodes) {
-        const current = this.nodes.get(id)
-        if (
-          current &&
-          current.inputRevision > candidate.inputRevision &&
-          current.element.kind === 'input' &&
-          candidate.element.kind === 'input'
-        ) {
-          candidate.inputRevision = current.inputRevision
-          candidate.element = { ...candidate.element, value: current.element.value }
+      const send = (operations: readonly Operation[]) =>
+        this.application.host.send({
+          type: 'batch',
+          window_id: this.id,
+          base_revision: this.revision,
+          operations,
+        })
+      // Publish in the reply's own continuation, before any later native event.
+      const publish = (nodes: Map<number, NodeState>, revision: number) => {
+        this.assertActive()
+        // Native input can arrive while an unrelated batch is in flight. Preserve
+        // every newer edit instead of replacing it with a cloned candidate value.
+        for (const [id, candidate] of nodes) {
+          const current = this.nodes.get(id)
+          if (
+            current &&
+            current.inputRevision > candidate.inputRevision &&
+            current.element.kind === 'input' &&
+            candidate.element.kind === 'input'
+          ) {
+            candidate.inputRevision = current.inputRevision
+            candidate.element = { ...candidate.element, value: current.element.value }
+          }
         }
+        this.nodes = nodes
+        this.revision = revision
+        this.listeners.retain(this.nodes)
       }
-      this.nodes = transaction.nodes
-      this.revision = reply.tree_revision
-      this.listeners.retain(this.nodes)
+      if (transaction.operations.length <= this.application.limits.max_operations) {
+        const reply = await send(transaction.operations)
+        publish(transaction.nodes, reply.tree_revision)
+        return value
+      }
+      const plan = planStagedCommit(
+        this.nodes,
+        transaction.nodes,
+        transaction.operations,
+        this.rootId,
+        () => this.application.allocateNode(),
+        this.application.limits
+      )
+      await sendStagedCommit(plan, send, (reply, final) => {
+        if (final) publish(plan.nodes, reply.tree_revision)
+        else {
+          this.assertActive()
+          // Staging changed only nodes this window has not committed.
+          this.revision = reply.tree_revision
+        }
+      })
       return value
     })
   }

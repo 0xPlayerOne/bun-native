@@ -1,0 +1,239 @@
+import type { Element, Limits, Operation } from '@bun-native/protocol'
+import { rebind, type NodeState } from './tree.ts'
+import { NativeStateError } from './types.ts'
+
+/**
+ * A logical transaction larger than one native batch.
+ *
+ * The native host validates and paints each batch atomically, rejects a batch
+ * above `max_operations`, and rejects any batch that leaves a node detached.
+ * Splitting the application's operation sequence would therefore expose (and
+ * be unable to roll back) its intermediate states. Instead, new nodes are
+ * first built under a zero-size, clipped staging box appended to the window
+ * root. Those staging batches touch only nodes the application has not yet
+ * committed, so they change nothing it or the user can see. One final batch
+ * then applies every change to committed nodes at once: sets, moves of new
+ * subtrees and retained nodes into place, deletions, and the staging box's
+ * removal. A failure before or in that batch removes the staging box, which
+ * restores the committed tree exactly. The wire protocol is unchanged.
+ *
+ * New nodes receive fresh identities in pre-order so that each parent exists
+ * before its children while native identities keep increasing. Their handles
+ * are rebound; none was observable as committed before this point.
+ */
+export interface StagedCommit {
+  readonly staging: readonly (readonly Operation[])[]
+  readonly visible: readonly Operation[]
+  readonly discard: Operation
+  readonly nodes: Map<number, NodeState>
+}
+
+const STAGING: Element = {
+  kind: 'box',
+  style: { width: 0, height: 0, max_width: 0, max_height: 0, flex_shrink: 0, overflow: 'hidden' },
+}
+// The command envelope (id, type, window and revision) and the array brackets.
+const FRAME_OVERHEAD = 256
+
+function bytes(operation: Operation): number {
+  return Buffer.byteLength(JSON.stringify(operation)) + 1
+}
+
+/** Split units that must stay together into frames within both native limits. */
+function frames(units: readonly Operation[][], limits: Readonly<Limits>): Operation[][] {
+  const budget = limits.max_frame_bytes - FRAME_OVERHEAD
+  const result: Operation[][] = []
+  let current: Operation[] = []
+  let size = 0
+  for (const unit of units) {
+    const unitSize = unit.reduce((total, operation) => total + bytes(operation), 0)
+    if (
+      current.length &&
+      (current.length + unit.length > limits.max_operations || size + unitSize > budget)
+    ) {
+      result.push(current)
+      current = []
+      size = 0
+    }
+    current.push(...unit)
+    size += unitSize
+  }
+  if (current.length) result.push(current)
+  return result
+}
+
+/** The longest subsequence of `target` already in `current` order. */
+function stableChildren(current: readonly number[], target: readonly number[]): Set<number> {
+  const positions = new Map(current.map((id, index) => [id, index]))
+  const tails: { id: number; position: number }[] = []
+  const preceding = new Map<number, number | undefined>()
+  for (const id of target) {
+    const position = positions.get(id)
+    if (position === undefined) continue
+    let start = 0
+    let end = tails.length
+    while (start < end) {
+      const middle = (start + end) >>> 1
+      if (tails[middle]!.position < position) start = middle + 1
+      else end = middle
+    }
+    preceding.set(id, tails[start - 1]?.id)
+    tails[start] = { id, position }
+  }
+  const stable = new Set<number>()
+  for (let id = tails.at(-1)?.id; id !== undefined; id = preceding.get(id)) stable.add(id)
+  return stable
+}
+
+export function planStagedCommit(
+  committed: ReadonlyMap<number, NodeState>,
+  candidate: ReadonlyMap<number, NodeState>,
+  operations: readonly Operation[],
+  rootId: number,
+  allocate: () => number,
+  limits: Readonly<Limits>
+): StagedCommit {
+  const order: number[] = []
+  for (const pending = [rootId]; pending.length;) {
+    const id = pending.pop()!
+    order.push(id)
+    pending.push(...[...candidate.get(id)!.children].reverse())
+  }
+  const staging = allocate()
+  const identity = new Map<number, number>()
+  for (const id of order) if (!committed.has(id)) identity.set(id, allocate())
+  const map = (id: number) => identity.get(id) ?? id
+
+  const nodes = new Map<number, NodeState>()
+  for (const [id, node] of candidate) {
+    const next = map(id)
+    if (next !== id) rebind(node.handle, next)
+    nodes.set(next, {
+      ...node,
+      id: next,
+      parent: node.parent === undefined ? undefined : map(node.parent),
+      children: node.children.map(map),
+    })
+  }
+
+  const units: Operation[][] = [
+    [
+      { type: 'create', node_id: staging, element: STAGING },
+      {
+        type: 'insert',
+        parent_id: rootId,
+        child_id: staging,
+        index: committed.get(rootId)!.children.length,
+      },
+    ],
+  ]
+  // The simulated native children after staging, for placing nodes below.
+  const children = new Map<number, number[]>()
+  const parents = new Map<number, number>()
+  for (const [id, node] of committed) {
+    children.set(id, [...node.children])
+    if (node.parent !== undefined) parents.set(id, node.parent)
+  }
+  children.get(rootId)!.push(staging)
+  children.set(staging, [])
+  parents.set(staging, rootId)
+  for (const id of order) {
+    const next = identity.get(id)
+    if (next === undefined) continue
+    const node = nodes.get(next)!
+    // Pre-order: a new parent is already staged; otherwise wait in the box.
+    const parent = identity.has(candidate.get(id)!.parent!) ? node.parent! : staging
+    const siblings = children.get(parent)!
+    units.push([
+      { type: 'create', node_id: next, element: node.element },
+      { type: 'insert', parent_id: parent, child_id: next, index: siblings.length },
+    ])
+    siblings.push(next)
+    children.set(next, [])
+    parents.set(next, parent)
+    // A new input's edit revision counts its sets in this transaction.
+    if (node.element.kind === 'input')
+      for (let revision = 0; revision < node.inputRevision; revision += 1)
+        units.push([
+          {
+            type: 'set',
+            node_id: next,
+            element: node.element,
+            expected_input_revision: revision,
+          },
+        ])
+  }
+
+  const visible: Operation[] = operations.filter(
+    (operation) =>
+      operation.type === 'set' &&
+      committed.has(operation.node_id) &&
+      candidate.has(operation.node_id)
+  )
+  for (const id of order) {
+    const next = map(id)
+    const target = nodes.get(next)!.children
+    const current = children.get(next)!
+    // Keep a longest already ordered run and move only the other children,
+    // last first, each before its placed successor. Nodes that are not in the
+    // target stay behind until they move to a later parent or are deleted.
+    const stable = stableChildren(current, target)
+    let anchor: number | undefined
+    for (let index = target.length - 1; index >= 0; index -= 1) {
+      const child = target[index]!
+      if (!stable.has(child)) {
+        const previous = children.get(parents.get(child)!)!
+        previous.splice(previous.indexOf(child), 1)
+        const before = anchor === undefined ? current.length : current.indexOf(anchor)
+        current.splice(before, 0, child)
+        parents.set(child, next)
+        visible.push({ type: 'insert', parent_id: next, child_id: child, index: before })
+      }
+      anchor = child
+    }
+  }
+  for (const [id, node] of committed)
+    if (!candidate.has(id) && node.parent !== undefined && candidate.has(node.parent))
+      visible.push({ type: 'delete', node_id: id })
+  visible.push({ type: 'delete', node_id: staging })
+  if (visible.length > limits.max_operations)
+    throw new NativeStateError(
+      'limit_exceeded',
+      'Batch operation limit exceeded by changes to committed nodes'
+    )
+  return {
+    staging: frames(units, limits),
+    visible,
+    discard: { type: 'delete', node_id: staging },
+    nodes,
+  }
+}
+
+/**
+ * Send a staged commit. `acknowledge` runs in each reply's own continuation,
+ * so a native event after that batch never sees an older revision.
+ */
+export async function sendStagedCommit<Reply>(
+  plan: StagedCommit,
+  send: (operations: readonly Operation[]) => Promise<Reply>,
+  acknowledge: (reply: Reply, final: boolean) => void
+): Promise<void> {
+  let staged = false
+  try {
+    for (const operations of plan.staging) {
+      acknowledge(await send(operations), false)
+      staged = true
+    }
+    acknowledge(await send(plan.visible), true)
+  } catch (error) {
+    // Removing the box (and every new node still in it) restores the
+    // committed tree; the original rejection is the transaction's result.
+    if (staged)
+      try {
+        acknowledge(await send([plan.discard]), false)
+      } catch {
+        // A closed window or failed host already ended this tree's lifetime.
+      }
+    throw error
+  }
+}

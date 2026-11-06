@@ -546,4 +546,46 @@ describe('Solid universal adapter over the public core (headless subprocess)', (
       expect(root.diagnostics.nodes).toBe(4)
       await root.dispose()
     }))
+
+  test('a keyed pane remount above the native batch limit commits as one Solid update', () =>
+    withApp(async (app) => {
+      const window = await app.openWindow({ title: 'Solid large remount' })
+      // Each row is three nodes, created and inserted: 60 rows exceed 256 operations.
+      const pane = (name: string, count: number) => {
+        const box = createElement('box')
+        for (let index = 0; index < count; index += 1) {
+          const row = createElement('box')
+          insertNode(row, label(`${name} ${index}`))
+          insertNode(row, label('detail'))
+          insertNode(box, row)
+        }
+        return box
+      }
+      const [selected, select] = createSignal<'a' | 'b'>('a')
+      const container = createElement('box')
+      const root = render(() => {
+        insert(container, () => (selected() === 'a' ? pane('A', 60) : pane('B', 70)))
+        return container
+      }, window)
+      await root.ready
+      const text = () => asNode(container).children[0]?.children[0]?.children[0]?.properties.text
+      // The initial mount is itself one commit above the batch limit.
+      const mounted = root.diagnostics.nodes
+      expect(mounted).toBeGreaterThan(60 * 3)
+      expect(text()).toBe('A 0')
+      const before = root.diagnostics
+      select('b')
+      await root.flush()
+      expect(root.diagnostics.commits - before.commits).toBe(1)
+      expect(root.diagnostics.mutations.create - before.mutations.create).toBe(1 + 70 * 3)
+      expect(root.diagnostics.nodes).toBe(mounted + 10 * 3)
+      expect(app.diagnostics.nodes).toBe(1 + mounted + 10 * 3)
+      expect(text()).toBe('B 0')
+      select('a')
+      await root.flush()
+      expect(root.diagnostics.nodes).toBe(mounted)
+      expect(text()).toBe('A 0')
+      await root.dispose()
+      expect(app.diagnostics.nodes).toBe(1)
+    }))
 })

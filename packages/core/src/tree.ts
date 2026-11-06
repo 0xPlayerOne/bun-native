@@ -47,6 +47,19 @@ export function makeNode<E extends Element>(
   }
 }
 
+/** Move a handle to a new native identity; its old identity was never committed. */
+export function rebind(handle: NativeNode, id: number): void {
+  identities.set(handle, id)
+}
+
+/**
+ * One logical transaction may exceed a native batch (see commit-plan.ts), but
+ * it stays bounded: a full-window mount needs a create and an insert per node.
+ */
+function logicalOperationLimit(limits: Readonly<Limits>): number {
+  return 2 * limits.max_nodes_per_window + limits.max_operations
+}
+
 export function own(nodes: ReadonlyMap<number, NodeState>, handle: NativeNode): NodeState {
   const id = identities.get(handle)
   const node = id === undefined ? undefined : nodes.get(id)
@@ -78,7 +91,7 @@ export class Transaction implements NativeBatch {
   private check(): void {
     if (!this.active)
       throw new NativeStateError('invalid_state', 'Batch callback has already returned')
-    if (this.operations.length >= this.limits.max_operations)
+    if (this.operations.length >= logicalOperationLimit(this.limits))
       throw new NativeStateError('limit_exceeded', 'Batch operation limit exceeded')
   }
 
