@@ -20,6 +20,10 @@ const COMMAND_TIME_BUDGET: Duration = Duration::from_millis(4);
 const COMMAND_YIELD_DELAY: Duration = Duration::from_millis(1);
 
 fn main() {
+    #[cfg(windows)]
+    if let Some(code) = services::console_interrupt_helper(std::env::args_os().skip(1)) {
+        std::process::exit(code);
+    }
     let policy = match services::policy(std::env::args_os().skip(1)) {
         Ok(policy) => policy,
         Err(message) => {

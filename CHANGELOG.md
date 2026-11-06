@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.22.0](https://github.com/0xPlayerOne/bun-native/compare/v0.21.0...v0.22.0) (2026-11-06)
+
+
+### Features
+
+* **windows:** OS message dialogs through TaskDialogIndirect ([#239](https://github.com/0xPlayerOne/bun-native/issues/239)) ([#547](https://github.com/0xPlayerOne/bun-native/issues/547)) ([f27fbc0](https://github.com/0xPlayerOne/bun-native/commit/f27fbc00eabe18b74faa86c6255c77e9edf8ddf0))
+
 ## [0.21.0](https://github.com/0xPlayerOne/bun-native/compare/v0.20.3...v0.21.0) (2026-11-06)
 
 

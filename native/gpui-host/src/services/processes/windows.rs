@@ -28,8 +28,10 @@
 //!   so its ID cannot be reused while signals are accepted.
 //! - **Signals.** `terminate` and `kill` end the whole job; the exit reports
 //!   that signal number. `interrupt` on a terminal types ^C, which the
-//!   console delivers as `CTRL_C_EVENT`. `interrupt` on pipes and `hangup`
-//!   have no Windows equivalent and are refused.
+//!   console delivers as `CTRL_C_EVENT`. `interrupt` on pipes types ^C into
+//!   the child's hidden console through a short-lived helper process (the
+//!   host binary, so the host never attaches to a child's console itself);
+//!   `hangup` has no Windows equivalent and is refused.
 //! - **Working directory.** The grant directory and every directory down to
 //!   it from the root are held open without delete sharing while
 //!   `CreateProcessW` starts the child in that directory's final path, so the
@@ -70,6 +72,10 @@ const INPUT_CHUNK: usize = 4_096;
 /// The console's interrupt character.
 const CONTROL_C: u8 = 0x03;
 
+const INTERRUPT_FAILED: Failure = (
+    ErrorCode::NativeFailure,
+    "cannot send the interrupt to the process",
+);
 const EXITED: Failure = (ErrorCode::InvalidState, "the process has exited");
 const NOT_CANONICAL: Failure = (
     ErrorCode::PathDenied,
@@ -107,8 +113,11 @@ impl Wake {
     }
 }
 
-/// Signals reach the whole job.
-pub(super) type Group = Arc<native::Job>;
+/// Signals reach the whole job; the leader's console receives interrupts.
+pub(super) struct Group {
+    job: Arc<native::Job>,
+    leader: u32,
+}
 
 /// The pseudo-console; the supervisor closes it once the child has exited.
 pub(super) struct Master(Mutex<Option<PseudoConsole>>);
@@ -165,11 +174,12 @@ pub(super) fn signal(
     signal: ProcessSignal,
     terminal: bool,
 ) -> Result<(), Failure> {
-    let job = state
+    let group = state
         .group
         .as_ref()
         .filter(|_| !state.reaped)
         .ok_or(EXITED)?;
+    let job = &group.job;
     let number = match signal {
         ProcessSignal::Terminate => 15,
         ProcessSignal::Kill => 9,
@@ -183,10 +193,15 @@ pub(super) fn signal(
             state.input.push_back(CONTROL_C);
             return Ok(());
         }
-        ProcessSignal::Interrupt | ProcessSignal::Hangup => {
+        ProcessSignal::Interrupt => {
+            // A pipe child has a hidden console of its own; ^C is typed into it.
+            let helper = std::env::current_exe().map_err(|_| INTERRUPT_FAILED)?;
+            return native::interrupt_console(&helper, group.leader).map_err(|_| INTERRUPT_FAILED);
+        }
+        ProcessSignal::Hangup => {
             return Err((
                 ErrorCode::ServiceUnavailable,
-                "this signal has no Windows equivalent for this process",
+                "a hangup has no Windows equivalent",
             ));
         }
     };
@@ -346,7 +361,10 @@ impl Job {
             }
         };
         drop((directory, executable));
-        self.control.lock().group = Some(job.clone());
+        self.control.lock().group = Some(Group {
+            job: job.clone(),
+            leader: child.id(),
+        });
         Ok(Running {
             child,
             job,
@@ -801,14 +819,12 @@ mod tests {
     fn terminate_ends_the_job_and_reports_the_signal() {
         let started = start("ping -n 30 127.0.0.1 >nul", base_environment(), None, None);
         spawned(&started);
-        for refused in [ProcessSignal::Interrupt, ProcessSignal::Hangup] {
-            assert_eq!(
-                signal(&mut started.control.lock(), refused, false)
-                    .unwrap_err()
-                    .0,
-                ErrorCode::ServiceUnavailable
-            );
-        }
+        assert_eq!(
+            signal(&mut started.control.lock(), ProcessSignal::Hangup, false)
+                .unwrap_err()
+                .0,
+            ErrorCode::ServiceUnavailable
+        );
         signal(&mut started.control.lock(), ProcessSignal::Terminate, false).unwrap();
         let begun = Instant::now();
         let (_, exit) = finish(started);

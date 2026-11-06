@@ -93,16 +93,19 @@ the same supervisor and semantics with different primitives:
   exit may find a group of only the zombie, which macOS can report as
   `ESRCH`; that is answered `invalid_state` ("the process has exited") on
   both platforms, and no other process can be reached.
-- **Working directory.** Not supported on macOS. Filesystem grants now have a
-  macOS backend, but there is no safe way to start a child in a grant
-  descriptor: std offers no `fchdir` in the child without
-  `unsafe` `pre_exec`, and there is no `/proc/self/fd`. Recovering the
-  grant's path with `F_GETPATH` and passing it as a path would reintroduce the
-  check-then-use race a grant descriptor exists to remove (a directory renamed
-  or replaced by a link between the lookup and `chdir`), so it was rejected.
-  A `cwd` is refused (`invalid_handle` when no grant of that ID exists,
-  `service_unavailable` from the backend for an opened grant), and no child
-  is started; without a `cwd` the child starts in the host's working directory.
+- **Working directory.** The child runs `fchdir` on a duplicate of the grant's
+  directory descriptor between `fork` and `exec`, so the descriptor, not a
+  path, names the directory. std's `Command::current_dir` takes only a path,
+  and recovering the grant's path with `F_GETPATH` would reintroduce the
+  check-then-use race a grant descriptor exists to remove (a directory
+  renamed or replaced by a link between the lookup and `chdir`). Registering
+  the step needs `unsafe` `pre_exec`, so it lives in the small
+  `bun-native-posix-services` crate (`deny(unsafe_code)` with two reviewed
+  calls); the host keeps `forbid(unsafe_code)`. The step is a raw system call
+  on a close-on-exec duplicate and allocates nothing. The directory is
+  resolved beneath the grant without following links before the spawn, so a
+  link or missing path is `path_denied` / `not_found` and no child is started.
+  Without a `cwd` the child starts in the host's working directory.
 
 ### Windows
 
@@ -143,9 +146,17 @@ GPUI already depends on.
   the child's raw bytes, and closing input types ^Z and Enter.
 - **Signals.** `terminate` and `kill` terminate the job and the exit reports
   that signal. `interrupt` on a terminal types ^C, which the console delivers
-  as `CTRL_C_EVENT`. `interrupt` on pipes and `hangup` have no Windows
-  equivalent and return `service_unavailable`. Other exit codes are reported
-  modulo 256, as POSIX does.
+  as `CTRL_C_EVENT`. `interrupt` on pipes types ^C into the child's hidden
+  console. Windows delivers a console control event only to processes attached
+  to that console, and a process has one console at a time, so the host does
+  not attach itself (that would detach it from its own and race every other
+  interrupt). It starts its own binary with `--bun-native-console-interrupt
+  <pid>` and no console; that helper releases its fresh console, attaches to
+  the child's, ignores ^C for itself, sends `CTRL_C_EVENT` to the console's
+  processes (the child's own job) and exits. The call waits at most three
+  seconds and then ends the helper. `hangup` has no Windows equivalent and
+  returns `service_unavailable`. Other exit codes are reported modulo 256, as
+  POSIX does (`STATUS_CONTROL_C_EXIT` is therefore code 58, not a signal).
 - **Working directory.** `CreateProcessW` takes only a path. The host walks
   the grant with the ADR 0010 rules and holds the root and every directory
   down to the target open without delete sharing, so none of them can be
@@ -181,7 +192,7 @@ direct wire client sees that code.
 - **macOS `kqueue` for exit.** No watcher thread, but `kevent` is `unsafe` in
   rustix. A watcher thread per process (at most eight) is the safe cost.
 - **macOS working directory through `F_GETPATH`.** A path again, with the race
-  described above; refused rather than claimed as descriptor-confined.
+  described above; rejected in favour of `fchdir` on the descriptor.
 
 ## Consequences and verification
 

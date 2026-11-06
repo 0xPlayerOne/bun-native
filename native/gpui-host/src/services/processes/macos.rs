@@ -2,15 +2,18 @@
 //! wakes the supervisor, and a watcher thread blocked in
 //! `waitid(P_PID, WEXITED | WNOWAIT)` closes a pipe when the leader exits.
 //! (`kqueue` `EVFILT_PROC` would need no thread, but rustix's `kevent` is
-//! `unsafe` and this crate forbids `unsafe`.)
+//! `unsafe` and this crate forbids `unsafe`.) The child starts in a grant
+//! directory through `bun-native-posix-services`, the one place that may
+//! register a `pre_exec` step.
 
 use super::Failure;
-use crate::services::files::Directory;
+use crate::services::files::{Directory, directory_beneath, failure as path_failure};
 use bun_native_protocol::ErrorCode;
 use rustix::fs::{OFlags, fcntl_getfl, fcntl_setfl};
 use rustix::io::Errno;
 use rustix::process::{Pid, WaitId, WaitIdOptions, waitid};
 use std::os::fd::{AsFd, BorrowedFd, OwnedFd};
+use std::process::Command;
 use std::thread::JoinHandle;
 
 pub(super) fn available() -> bool {
@@ -106,18 +109,36 @@ impl AsFd for ExitWatch {
     }
 }
 
-/// macOS has no `/proc/self/fd` and std offers no safe `fchdir` in the child,
-/// so the child cannot start in a grant directory descriptor. Starting in a
-/// path recovered with `F_GETPATH` would reintroduce the check-then-use race
-/// that grant descriptors exist to remove, so a working directory is refused.
+/// The opened directory the child starts in. macOS has no `/proc/self/fd`
+/// and `Command::current_dir` takes only a path, which would reintroduce the
+/// check-then-use race that grant descriptors exist to remove, so the child
+/// runs `fchdir` on the descriptor itself before `exec`.
 pub(super) fn working_directory(
     directory: Option<&(Directory, String)>,
-) -> Result<Option<(OwnedFd, String)>, Failure> {
-    match directory {
-        None => Ok(None),
-        Some(_) => Err((
-            ErrorCode::ServiceUnavailable,
-            "a process working directory is unavailable on this macOS host",
-        )),
-    }
+) -> Result<Option<OwnedFd>, Failure> {
+    let Some((root, path)) = directory else {
+        return Ok(None);
+    };
+    directory_beneath(root, path)
+        .map(Some)
+        .map_err(|failure| match failure.0 {
+            ErrorCode::NotFound | ErrorCode::WrongKind | ErrorCode::PathDenied => failure,
+            _ => path_failure(Errno::ACCESS),
+        })
+}
+
+const DIRECTORY_STEP: Failure = (
+    ErrorCode::NativeFailure,
+    "cannot prepare the process working directory",
+);
+
+pub(super) fn start_in(command: &mut Command, directory: &OwnedFd) -> Result<(), Failure> {
+    bun_native_posix_services::start_in(command, directory).map_err(|_| DIRECTORY_STEP)
+}
+
+pub(super) fn start_in_terminal(
+    command: pty_process::blocking::Command,
+    directory: &OwnedFd,
+) -> Result<pty_process::blocking::Command, Failure> {
+    bun_native_posix_services::start_in_terminal(command, directory).map_err(|_| DIRECTORY_STEP)
 }
