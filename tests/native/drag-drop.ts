@@ -307,8 +307,43 @@ async function qualification() {
     assert.deepEqual(pointerEvents, [])
     mark = log.length
     await xdnd.offerFiles(many)
-    await xdnd.enter(130, 150)
-    await until('list entry', () => log.length > mark)
+    const largeListEntry = await xdnd.enter(130, 150)
+    try {
+      await until('list entry', () => log.length > mark)
+    } catch (error) {
+      if (backend === 'appkit') {
+        // The independent source reported a screen point but the host did
+        // not report an entry. Re-read the same owned WindowServer window
+        // after the original failure to distinguish target movement from a
+        // missing native drag event. Never replace the first failure.
+        const currentWindow = await xdnd
+          .send('find ' + JSON.stringify({ title, width: 560, height: 380, pid: process.pid }))
+          .catch((lookupError: unknown) => ({ lookupError: String(lookupError) }))
+        const failedAt = performance.now()
+        // Measured: a healthy runner delivers this entry in 0.9-1.5 s for 65
+        // files and 0.4-0.6 s for one. Keep watching after the failure (the
+        // original error is still thrown) so a late entry is told apart from
+        // a missing one.
+        let lateEntryMs: number | null = null
+        while (performance.now() - failedAt < 10_000) {
+          if (log.length > mark) {
+            lateEntryMs = Math.round(performance.now() - failedAt)
+            break
+          }
+          await Bun.sleep(25)
+        }
+        console.error(
+          'AppKit large-list entry evidence:',
+          JSON.stringify({
+            sourceEntry: largeListEntry,
+            lateEntryMs,
+            currentWindow,
+            activeTargets: [left.active, right.active, inner.active],
+          }).slice(0, 2_000)
+        )
+      }
+      throw error
+    }
     await xdnd.drop()
     assert.deepEqual(await since(mark), [
       { target: 'left', type: 'drag_entered' },
