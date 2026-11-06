@@ -2,7 +2,7 @@
 
 This directory documents the **new native Bun + AOT desktop framework**, not the retired Bunly/CEF implementation.
 
-**Current state:** BN0 and BN1 are complete within their documented Linux native scope. The [BN0 audit](bn0-audit.md) preserves the first native/AOT release baseline. The [BN1 audit](bn1-audit.md) records the merged shared native tree, [public TS/JS API](../packages/core/README.md), historical protocol-2 contract, bounded callbacks and passed release-host scheduling/fault/lifecycle/allocator verification. Its retained archive includes eight inspected AOT applications and the exact tested source. Solid [#277](https://github.com/0xPlayerOne/bun-native/pull/277), React [#280](https://github.com/0xPlayerOne/bun-native/pull/280), and the merged shared layout [#281](https://github.com/0xPlayerOne/bun-native/pull/281) are separate implementation increments; the [current private protocol](native-abi.md) is version 4; full adapter, component and platform support retain their own acceptance.
+**Current state:** BN0 and BN1 are complete within their documented Linux native scope. The [BN0 audit](bn0-audit.md) preserves the first native/AOT release baseline. The [BN1 audit](bn1-audit.md) records the merged shared native tree, [public TS/JS API](../packages/core/README.md), historical protocol-2 contract, bounded callbacks and passed release-host scheduling/fault/lifecycle/allocator verification. Its retained archive includes eight inspected AOT applications and the exact tested source. The merged Solid [#277](https://github.com/0xPlayerOne/bun-native/pull/277), React [#280](https://github.com/0xPlayerOne/bun-native/pull/280) and shared layout [#281](https://github.com/0xPlayerOne/bun-native/pull/281) increments, the checkout CLI and the initial native services are separate later increments. The [native ABI](native-abi.md) records the current private protocol version; full adapter, component and platform support retain their own acceptance.
 
 ## Product and architecture
 
@@ -14,13 +14,15 @@ This directory documents the **new native Bun + AOT desktop framework**, not the
 
 The [current implementation handoff](bun-native-handoff.md) records source removal, current checks and next actions. The [BN0 audit](bn0-audit.md) maps foundation evidence to #227/#258/#226; the [BN1 audit](bn1-audit.md) maps bridge, safety, security and public API evidence to #219 and its implementation tasks.
 
-The initial [shared native layout contract](native-layout.md) extends this tree with bounded sizing, alignment, clipping and retained scroll state. The current protocol 4 also adds the [shared interaction contract](native-events.md). Both documents separate implemented native verification from remaining milestone acceptance.
+The initial [shared native layout contract](native-layout.md) extends this tree with bounded sizing, alignment, clipping and retained scroll state. Protocol 4 added the [shared interaction contract](native-events.md). Both documents separate implemented native verification from remaining milestone acceptance.
+
+Later protocol versions added default-denied, owned [native services](native-services.md): window display snapshots, bounded clipboard text ([ADR 0007](decisions/0007-native-clipboard.md)), global shortcuts ([ADR 0008](decisions/0008-native-global-shortcuts.md)) and desktop notifications ([ADR 0009](decisions/0009-native-notifications.md)). Clipboard and global shortcuts are qualified only on local Linux X11, and notifications only against a Linux freedesktop.org notification server; other platforms remain unavailable.
 
 ## Build and operate
 
-6. [Getting started](getting-started.md) — first contributor steps and what does not work yet
+6. [Getting started](getting-started.md) — create, run and package a Solid/React app in a checkout with a prebuilt host
 7. [Development workflow](development.md) — current and intended edit loop; [checkout CLI](developer-tooling.md) — implemented create/dev/build commands and limitations; [reproducible builds](reproducible-builds.md) — which outputs are byte-identical and how that is checked
-8. [Testing and validation](testing.md) — hosted CI, connected Mac native checks and evidence
+8. [Testing and validation](testing.md) — hosted CI, native Linux/macOS/Windows checks and evidence; [native fixtures](../tests/native/README.md)
 9. [Benchmark design](../benchmarks/README.md) — performance fixtures, comparators and raw measurements
 10. [Releasing](releasing.md) — native AOT targets, installers, signing, updates and rollback; [experimental updates](updates.md) — verified manifest, atomic install and rollback
 

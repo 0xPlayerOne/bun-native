@@ -27,7 +27,7 @@ Its output directory must be new, and the application command is explicit.
 | `aot-solid-services`   | Compiled `solid-services`                | The same Solid consumer and native service operation through Bun AOT.                                                                                                    |
 | `react-services`       | `bun PACKAGE/development/application.js` | The same shared public-core display operation from a React button, complete native paint and effect/listener/owner cleanup.                                              |
 | `aot-react-services`   | Compiled `react-services`                | The same React consumer and native service operation through Bun AOT.                                                                                                    |
-| `--`                   | An explicit benchmark command            | Create the isolated display environment for the bridge or repeated baseline runner; the supplied runner defines its own checks.                                          |
+| `--`                   | An explicit command                      | Create the isolated display environment for a benchmark runner, the diagnostics driver or a self-checking fixture; the supplied command defines its own checks.          |
 
 The input driver verifies that the target window belongs to the launched
 application, focuses it, injects XTest input and requires matching Bun events and
@@ -109,8 +109,9 @@ whether an arbitrary supplied executable contains Bun AOT code.
 
 The [native services recipe](../../docs/native-services.md#reproduction-and-evidence-boundaries)
 builds and executes the core, Solid and React display-service consumers in
-development and AOT modes. Each uses the current explicit prebuilt protocol-9 host;
-the older retained protocol-4 artifacts cannot qualify these scenarios.
+development and AOT modes. Each uses an explicit prebuilt host built for the
+[current protocol](../../docs/native-abi.md); older retained protocol-4 and
+protocol-5 artifacts cannot qualify these scenarios.
 The framework modes execute the exact generated production modules recorded
 by `--entry solid-services` and `--entry react-services` before compiling them
 to AOT. They share the core operation, policy and native implementation.
@@ -167,6 +168,37 @@ source hashes. It also records the actual compiler's official npm acquisition;
 the older GitHub archive configuration in the source manifest is not a download
 receipt. These local runs use the development Rust host profile, while the
 hosted job builds and tests its own release host.
+
+### Global shortcuts and notifications
+
+`global-shortcuts.ts` ([ADR 0008](../../docs/decisions/0008-native-global-shortcuts.md))
+and `notifications.ts` ([ADR 0009](../../docs/decisions/0009-native-notifications.md))
+are self-checking fixtures run directly inside the isolated session, not through
+the diagnostics driver. Both require an X11 `DISPLAY` without `WAYLAND_DISPLAY`,
+an absolute existing evidence directory and an absolute `BUN_NATIVE_HOST`.
+Shortcuts also need the `shortcut-peer` example as `BUN_NATIVE_SHORTCUT_PEER`
+plus `BUN_NATIVE_SHORTCUT_EVIDENCE`/`BUN_NATIVE_SHORTCUT_MODE`; notifications
+need the D-Bus session's `dunst` server plus
+`BUN_NATIVE_NOTIFICATION_EVIDENCE`/`BUN_NATIVE_NOTIFICATION_MODE`. The mode is
+`development` or `aot`; AOT runs the inspected `--entry global-shortcuts` or
+`--entry notifications` executable. The Native Linux workflow's steps are the
+exact recipe:
+
+```sh
+cargo build --locked --release -p bun-native-host --bin bun-native-host --example shortcut-peer
+export BUN_NATIVE_HOST="$PWD/target/release/bun-native-host"
+mkdir "$run_dir/global-shortcuts-development"
+BUN_NATIVE_SHORTCUT_PEER="$PWD/target/release/examples/shortcut-peer" \
+  BUN_NATIVE_SHORTCUT_EVIDENCE="$run_dir/global-shortcuts-development" \
+  BUN_NATIVE_SHORTCUT_MODE=development \
+  xvfb-run --auto-servernum --server-args='-screen 0 1280x800x24 -nolisten tcp' \
+  dbus-run-session -- bash scripts/quality/native-linux-session.sh \
+  "$run_dir/global-shortcuts-development-session" -- bun tests/native/global-shortcuts.ts
+```
+
+These cover local Linux X11 global shortcuts and the freedesktop.org
+notification service against `dunst` only; macOS, Windows, Wayland and other
+notification servers remain unqualified.
 
 ### Shared native desktop service
 

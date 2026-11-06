@@ -1,5 +1,12 @@
 # Standalone local-package qualification plan
 
+> **Status (2026-11-05):** implemented and merged in
+> [#388](https://github.com/0xPlayerOne/bun-native/pull/388); see
+> [standalone projects](standalone-projects.md) for usage. The hosted follow-up
+> described under "Native follow-up and limits" merged in the same change (see the
+> [hosted plan](standalone-native-plan.md) status). This plan and its recorded
+> outcomes are kept as written.
+
 Issue [#382](https://github.com/0xPlayerOne/bun-native/issues/382) extends the
 accepted checkout-only CLI in [#242](https://github.com/0xPlayerOne/bun-native/issues/242).
 It contributes to [#254](https://github.com/0xPlayerOne/bun-native/issues/254);
