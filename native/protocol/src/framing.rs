@@ -31,8 +31,12 @@ impl fmt::Display for ProtocolError {
 impl std::error::Error for ProtocolError {}
 
 /// Owns at most one bounded frame. Reading cannot grow with an untrusted line.
+/// The frame buffer is reused across frames. A longer line is rejected before
+/// it is copied, so retained capacity stays within one frame plus `Vec` growth
+/// slack, and it is released once the reader is poisoned or finished.
 #[derive(Default)]
 pub struct CommandReader {
+    frame: Vec<u8>,
     poisoned: bool,
     finished: bool,
 }
@@ -48,15 +52,18 @@ impl CommandReader {
         let result = self.read_inner(source);
         if result.is_err() {
             self.poisoned = true;
+            self.frame = Vec::new();
         }
         if matches!(result, Ok(None)) {
             self.finished = true;
+            self.frame = Vec::new();
         }
         result
     }
 
     fn read_inner(&mut self, source: &mut impl BufRead) -> Result<Option<Command>, ProtocolError> {
-        let mut frame = Vec::new();
+        let frame = &mut self.frame;
+        frame.clear();
         loop {
             let available = source.fill_buf().map_err(ProtocolError::Io)?;
             if available.is_empty() {
@@ -74,14 +81,7 @@ impl CommandReader {
             frame.extend_from_slice(&available[..count]);
             source.consume(count + usize::from(newline.is_some()));
             if newline.is_some() {
-                // Match JSON.parse's last-member semantics for duplicate keys.
-                // The frame bounds both passes. Parsing still rejects invalid
-                // UTF-8, BOMs, empty frames and trailing junk; typed conversion
-                // then rejects unknown fields and invalid command shapes.
-                let value: serde_json::Value =
-                    serde_json::from_slice(&frame).map_err(ProtocolError::InvalidJson)?;
-                let command: Command =
-                    serde_json::from_value(value).map_err(ProtocolError::InvalidJson)?;
+                let command = decode_command(frame)?;
                 command.validate().map_err(ProtocolError::InvalidCommand)?;
                 return Ok(Some(command));
             }
@@ -89,17 +89,65 @@ impl CommandReader {
     }
 }
 
-/// Writes one complete event and flushes before returning. Never logs on stdout.
-pub fn write_event(sink: &mut impl Write, event: &Event) -> Result<(), ProtocolError> {
-    event.validate().map_err(ProtocolError::InvalidEvent)?;
-    let mut bytes = serde_json::to_vec(event).map_err(ProtocolError::InvalidJson)?;
-    if bytes.len() > MAX_FRAME_BYTES {
-        return Err(ProtocolError::Oversized);
+/// Decodes one frame with `JSON.parse`'s last-member semantics for duplicate
+/// keys, without paying for an intermediate `Value` on ordinary frames.
+///
+/// The typed decoder rejects every duplicate key it can see: serde's derived
+/// struct visitors report `duplicate field`, internal tags report a duplicate
+/// tag, and every command type denies unknown fields, so no object is skipped
+/// unread. A typed success therefore proves the frame has no duplicate keys,
+/// where collapsing through `Value` is the identity and both paths agree. Any
+/// typed failure is decided by the reference `Value` path alone, so duplicate
+/// keys, error variants and messages are unchanged. Failures poison the reader,
+/// so the second parse happens at most once per session.
+pub(crate) fn decode_command(frame: &[u8]) -> Result<Command, ProtocolError> {
+    serde_json::from_slice(frame).or_else(|_| decode_command_last_wins(frame))
+}
+
+/// The reference decoder. Parsing rejects invalid UTF-8, BOMs, empty frames
+/// and trailing junk; typed conversion then rejects unknown fields and invalid
+/// command shapes.
+pub(crate) fn decode_command_last_wins(frame: &[u8]) -> Result<Command, ProtocolError> {
+    let value: serde_json::Value =
+        serde_json::from_slice(frame).map_err(ProtocolError::InvalidJson)?;
+    serde_json::from_value(value).map_err(ProtocolError::InvalidJson)
+}
+
+/// Writes events through one reused, bounded encode buffer. Never logs on stdout.
+#[derive(Default)]
+pub struct EventWriter {
+    buffer: Vec<u8>,
+}
+
+impl EventWriter {
+    /// Writes one complete event and flushes before returning.
+    pub fn write(&mut self, sink: &mut impl Write, event: &Event) -> Result<(), ProtocolError> {
+        event.validate().map_err(ProtocolError::InvalidEvent)?;
+        self.buffer.clear();
+        let encoded = serde_json::to_writer(&mut self.buffer, event);
+        if encoded.is_err() || self.buffer.len() > MAX_FRAME_BYTES {
+            // Keep retained capacity bounded by one frame after a rejected event.
+            self.buffer.clear();
+            self.buffer.shrink_to(MAX_FRAME_BYTES + 1);
+            encoded.map_err(ProtocolError::InvalidJson)?;
+            return Err(ProtocolError::Oversized);
+        }
+        self.buffer.push(b'\n');
+        sink.write_all(&self.buffer).map_err(ProtocolError::Io)?;
+        sink.flush().map_err(ProtocolError::Io)
     }
-    bytes.push(b'\n');
-    sink.write_all(&bytes).map_err(ProtocolError::Io)?;
-    sink.flush().map_err(ProtocolError::Io)
+}
+
+/// Writes one complete event and flushes before returning. Never logs on stdout.
+/// Long-lived writers should keep an [`EventWriter`] to reuse its buffer.
+pub fn write_event(sink: &mut impl Write, event: &Event) -> Result<(), ProtocolError> {
+    EventWriter::default().write(sink, event)
 }
 
 #[cfg(test)]
+#[path = "framing_tests.rs"]
 mod tests;
+
+#[cfg(test)]
+#[path = "framing/tests.rs"]
+mod edge_tests;

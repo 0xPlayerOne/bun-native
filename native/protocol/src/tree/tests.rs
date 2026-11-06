@@ -1,5 +1,8 @@
 use super::*;
 
+mod equivalence;
+mod reference;
+
 fn id(value: u64) -> NodeId {
     NodeId::try_from(value).unwrap()
 }
@@ -242,7 +245,7 @@ fn tree_revision_and_input_revision_exhaustion_are_explicit() {
     let mut tree = populated();
     let error = tree.prepare(0, vec![delete(2)], 4).err().unwrap();
     assert_eq!(error.code, ErrorCode::StaleRevision);
-    tree.nodes.get_mut(&id(4)).unwrap().input_revision = Some(MAX_ID);
+    tree.nodes.get_mut(id(4)).unwrap().input_revision = Some(MAX_ID);
     assert_eq!(
         tree.replace_input(id(4), "x".into()).unwrap_err().code,
         ErrorCode::LimitExceeded
@@ -453,4 +456,34 @@ fn preflight_shares_child_lists_until_a_batch_reorders_them() {
     assert!(shared(&edited, &moved, 1) && !shared(&edited, &moved, 2));
     assert_eq!(edited.node(id(2)).unwrap().children(), &[id(3), id(4)]);
     assert_eq!(moved.node(id(2)).unwrap().children(), &[id(4), id(3)]);
+}
+
+#[test]
+fn incremental_validation_keeps_depth_before_detachment_precedence() {
+    let chain = |from: u64, under: u64, length: u64| {
+        (from..from + length).flat_map(move |node| {
+            let parent = if node == from { under } else { node - 1 };
+            [create(node, box_element()), insert(parent, node, 0)]
+        })
+    };
+    let tree = Tree::new(id(1));
+    // Detached first, then an attached chain past the limit: depth wins, as a
+    // walk from the root reports it before counting detached nodes.
+    let mut operations = vec![create(2, text("detached"))];
+    operations.extend(chain(3, 1, MAX_DEPTH as u64 + 1));
+    rejected(&tree, operations, 1, ErrorCode::LimitExceeded);
+    // A chain past the limit below a detached box is unreachable, so only
+    // detachment applies.
+    let mut operations = vec![create(2, box_element())];
+    operations.extend(chain(3, 2, MAX_DEPTH as u64 + 1));
+    let error = tree.prepare(0, operations, 1).err().unwrap();
+    assert_eq!(error.message, "batch leaves detached nodes");
+    // Moving an existing subtree deepens nodes the batch never named.
+    let tree = tree
+        .prepare(0, chain(2, 1, 40).chain(chain(42, 1, 30)).collect(), 1)
+        .unwrap()
+        .tree;
+    rejected(&tree, vec![insert(41, 42, 0)], 71, ErrorCode::LimitExceeded);
+    let moved = tree.prepare(1, vec![insert(30, 42, 0)], 71).unwrap().tree;
+    assert_eq!(moved.path(id(71)).unwrap().len(), 60);
 }
