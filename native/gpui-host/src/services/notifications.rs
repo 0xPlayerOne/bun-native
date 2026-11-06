@@ -11,9 +11,8 @@ use crate::channel::EventSink;
 use bun_native_protocol::{
     ErrorCode, Event, MAX_NOTIFICATIONS, NotificationDismissal, NotificationId, RequestId, WindowId,
 };
-use futures::FutureExt;
 use futures::future::Shared;
-use futures_lite::StreamExt;
+use futures::{FutureExt, StreamExt};
 use gpui::{App, AsyncApp, Task};
 use std::cell::{Cell, RefCell};
 use std::collections::{BTreeMap, HashMap, VecDeque};
@@ -441,14 +440,18 @@ async fn bounded<T>(
     work: impl Future<Output = Result<T, Failure>>,
 ) -> Result<T, Failure> {
     let timer = cx.background_executor().timer(TIMEOUT);
-    futures_lite::future::or(work, async move {
+    let timeout = async move {
         timer.await;
         Err((
             ErrorCode::OperationTimedOut,
             "notification server did not answer within two seconds",
         ))
-    })
-    .await
+    };
+    // `select` polls `work` first, so a ready answer wins over the timer.
+    futures::future::select(std::pin::pin!(work), std::pin::pin!(timeout))
+        .await
+        .factor_first()
+        .0
 }
 
 fn bus_failure(error: &zbus::Error) -> Failure {
