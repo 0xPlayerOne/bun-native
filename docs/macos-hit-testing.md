@@ -20,3 +20,5 @@ The same owned-window control fails at the intended authorization boundary with 
 **Update (2026-11-05):** CI now compiles all three controls with `-Werror` against the hosted `macos-15` SDK and runs them in the "Build the bounded macOS OS controller" step of [`native-platforms.yml`](../.github/workflows/native-platforms.yml), before the development and AOT input scenarios. The `Validation / Gate` job in [`bun-native.yml`](../.github/workflows/bun-native.yml) requires that lane. [Native platforms](native-platforms.md) holds the run history and failure records.
 
 Reference: Apple's `NSWindow.windowNumber(at:belowWindowWithWindowNumber:)` documentation explicitly describes mouse-down hit testing, including transparent pixels and windows with `ignoresMouseEvents`.
+
+**Update (2026-11-06):** the three controls were rebuilt and re-run on a physical Mac (macOS 27.2, Xcode 27.2) and passed. The new record, with current source hashes, is [`platform-macos-hit-testing-physical-2026-11-06.json`](../tests/native/evidence/platform-macos-hit-testing-physical-2026-11-06.json); see [macOS qualification](macos-qualification.md). It still does not establish GPUI input delivery.

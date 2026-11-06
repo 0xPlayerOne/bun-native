@@ -12,6 +12,9 @@ const directory = process.env['BUN_NATIVE_DIAGNOSTICS_DIR']
 const executable = process.env['BUN_NATIVE_HOST']
 const scenario = process.env['BUN_NATIVE_DIAGNOSTICS_SCENARIO']
 const nonce = process.env['BUN_NATIVE_EVIDENCE_NONCE']
+// The macOS driver sets this to 0 when CoreGraphics event posting is not permitted.
+// The default requires one real OS click that parks a public callback.
+const osClick = process.env['BUN_NATIVE_FAULT_OS_CLICK'] !== '0'
 if (
   !directory ||
   !executable ||
@@ -96,16 +99,20 @@ try {
       return { label, button }
     })
     let callbackSignal: AbortSignal | undefined
-    window.onClick(button, (event) => {
-      assert.equal(callbackSignal, undefined, 'Fault injection requires one actual click')
-      callbackSignal = event.signal
-      record('callback-waiting', { sequence: event.sequence })
-      return new Promise<void>(() => {})
-    })
+    if (osClick) {
+      window.onClick(button, (event) => {
+        assert.equal(callbackSignal, undefined, 'Fault injection requires one actual click')
+        callbackSignal = event.signal
+        record('callback-waiting', { sequence: event.sequence })
+        return new Promise<void>(() => {})
+      })
+    }
     record('mounted')
     await waitFor('queue-after-stop')
-    assert(callbackSignal && !callbackSignal.aborted)
-    assert.equal(app.diagnostics.activeCallbacks, 1)
+    if (osClick) {
+      assert(callbackSignal && !callbackSignal.aborted)
+      assert.equal(app.diagnostics.activeCallbacks, 1)
+    } else assert.equal(app.diagnostics.activeCallbacks, 0)
     const pending = [
       rejection(
         window.batch((batch) =>
@@ -127,7 +134,7 @@ try {
       assert.equal(error, failure)
     }
     await window.closed
-    assert.equal(callbackSignal.aborted, true)
+    if (callbackSignal) assert.equal(callbackSignal.aborted, true)
     zeroOwnership(app)
     const stopped = await rejection(app.shutdown())
     assert.equal(stopped, failure)
@@ -142,7 +149,8 @@ try {
       errorName: failure.name,
       errorMessage: failure.message,
       pendingRejected: pendingErrors.length,
-      callbackAborted: callbackSignal.aborted,
+      callbackAborted: callbackSignal ? callbackSignal.aborted : null,
+      osClick,
       ownership: app.diagnostics,
     })
   }
