@@ -1,8 +1,7 @@
 # ADR 0018 — Windows task dialogs for message and confirm dialogs
 
-Status: proposed; the plan is implemented in stages on one branch. Nothing here
-is qualified on a real Windows desktop; hosted Windows CI is the only runtime
-evidence.
+Status: accepted; implemented. Nothing here is qualified on a real Windows
+desktop; hosted Windows CI is the only runtime evidence, and it has not run yet.
 
 Date: 2026-11-06.
 

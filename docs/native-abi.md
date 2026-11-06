@@ -24,7 +24,12 @@ optional `app_menu_v1` capability (macOS only), the `set_app_menu` command
 with its `app_menu_set` response, and `app_menu_item`, the first sequenced
 event that is application-scoped and carries no `window_id`; the policy's
 `app_menu` field is optional and omitted when denied. Menu items carry
-application ids, never native action names.
+application ids, never native action names. OS message dialogs
+([ADR 0018](decisions/0018-windows-task-dialogs.md)) add the optional
+`task_dialogs_v1` capability (Windows only), the `show_message_dialog`/
+`close_message_dialog` commands, `message_dialog_opened`/`message_dialog_closed`
+responses and a sequenced `message_dialog_completed` event; the policy's
+`task_dialogs` field is optional and omitted when denied.
 The optional
 `overlays_v1` and `scroll_anchor_v1` capabilities add the `overlay` container
 element and the `scroll_anchor` style field defined by the
