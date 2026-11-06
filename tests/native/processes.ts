@@ -68,7 +68,8 @@ const permissions = {
     { id: 'shell', executable: '/bin/sh' },
     { id: 'missing', executable: join(base, 'missing') },
   ],
-  // macOS has no filesystem grants to name a working directory with.
+  // macOS grants no roots here: its child cannot start in a grant directory
+  // (refused in the host's unit tests), so only pipes are qualified.
   filesystemRoots: macos ? [] : [{ id: 'work', path: work, access: 'read' as const }],
 }
 
@@ -198,7 +199,8 @@ async function pipesWithoutGrants(app: NativeApplication, window: NativeWindow) 
   assert.deepEqual(seen.exit, { code: 5 })
   assert.equal(seen.streams['stdout'], 'out||a b|')
   assert.equal(seen.streams['stderr'], 'err')
-  assert.equal(app.serviceCapabilities.filesystemGrants.availability, 'unavailable')
+  // The grant service itself exists on macOS; with no root configured it names nothing.
+  assert.equal(app.serviceCapabilities.filesystemGrants.availability, 'available')
   record('pipesAndEnvironment', { exit: seen.exit, inheritedHome: false })
   await assert.rejects(
     window.spawnProcess('missing', {}, () => {}),

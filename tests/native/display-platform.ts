@@ -280,12 +280,18 @@ async function open(app: NativeApplication, title: string) {
   return window
 }
 
-async function waitFor<T>(what: string, ms: number, probe: () => T | undefined): Promise<T> {
+async function waitFor<T>(
+  what: string,
+  ms: number,
+  probe: () => T | undefined,
+  detail: () => string = () => ''
+): Promise<T> {
   const deadline = performance.now() + ms
   for (;;) {
     const value = probe()
     if (value !== undefined) return value
-    if (performance.now() >= deadline) throw new Error(`${what} did not happen within ${ms} ms`)
+    if (performance.now() >= deadline)
+      throw new Error(`${what} did not happen within ${ms} ms${detail()}`)
     await Bun.sleep(20)
   }
 }
@@ -488,8 +494,17 @@ try {
           !close(os.bounds.height, display.bounds.height),
         'the OS reports a new display size'
       )
-      const event = await waitFor('display_change matching the OS', 10_000, () =>
-        matching(changes, after)
+      const event = await waitFor(
+        'display_change matching the OS',
+        10_000,
+        () => matching(changes, after),
+        // A missing event and a mismatching one need different fixes.
+        () =>
+          `; ${changes.length} event(s) arrived, the OS reports ` +
+          JSON.stringify(after.map((item) => [item.id, item.bounds, item.scale])) +
+          (changes.length
+            ? ', the latest event reports ' + JSON.stringify(changes.at(-1)!.snapshot)
+            : '')
       )
       assert(Object.isFrozen(event) && event.type === 'display_change')
       assert(!event.signal.aborted)
