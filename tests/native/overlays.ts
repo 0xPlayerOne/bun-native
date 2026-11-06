@@ -13,6 +13,7 @@ import {
   type NativeWindow,
 } from '@bun-native/core'
 import assert from 'node:assert/strict'
+import { completeJsonLines } from './complete-jsonl.ts'
 import { readFileSync, statSync, writeFileSync } from 'node:fs'
 import { isAbsolute, join } from 'node:path'
 
@@ -93,8 +94,7 @@ function records<T>(type: string): T[] {
     return []
   }
   const result: T[] = []
-  for (const line of text.split('\n')) {
-    if (!line) continue
+  for (const line of completeJsonLines(text)) {
     const value = JSON.parse(line) as { nonce?: string; type?: string; window_id?: number }
     if (value.nonce === nonce && value.type === type) result.push(value as T)
   }
