@@ -107,7 +107,7 @@ async function scenarios(app: NativeApplication, window: NativeWindow) {
           .catch(() => '(no host trace)')
         throw new Error(`${String(error)} (the dialog promise is ${settled}; host trace: ${trace})`)
       })
-    ) as { texts: string[]; buttons: string[] }
+    ) as { texts: string[]; buttons: string[]; tree: string[] }
     assert.ok(shown.texts.some((text) => text.includes('Save the document before closing?')))
     assert.ok(shown.texts.some((text) => text.includes('Unsaved edits are lost.')))
     for (const label of ['Save', 'Discard', 'Cancel'])

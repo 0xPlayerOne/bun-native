@@ -47,6 +47,21 @@ function Descendants($dialog, $type) {
     ForEach-Object { $_.Current.Name })
 }
 
+# The buttons a user can press: every named element that supports Invoke.
+function Invokables($dialog) {
+  $condition = New-Object System.Windows.Automation.PropertyCondition(
+    [System.Windows.Automation.AutomationElement]::IsInvokePatternAvailableProperty, $true)
+  @($dialog.FindAll([System.Windows.Automation.TreeScope]::Descendants, $condition) |
+    ForEach-Object { $_.Current.Name } | Where-Object { $_ })
+}
+
+# Diagnostics: every element under the dialog as type:class:name.
+function Everything($dialog) {
+  @($dialog.FindAll([System.Windows.Automation.TreeScope]::Descendants,
+    [System.Windows.Automation.Condition]::TrueCondition) |
+    ForEach-Object { "$($_.Current.ControlType.ProgrammaticName):$($_.Current.ClassName):$($_.Current.Name)" })
+}
+
 if ($Command -eq 'absent') {
   $null = Wait-Dialog $false
   if ($null -ne (Find-Dialog)) { Write-Error "dialog '$Title' is still open"; exit 1 }
@@ -68,17 +83,24 @@ if ($null -eq $dialog) {
 
 switch ($Command) {
   'find' {
+    # The buttons are built after the window exists: wait for them.
+    $deadline = [DateTime]::UtcNow.AddMilliseconds($TimeoutMs)
+    do {
+      $buttons = @(Invokables $dialog)
+      if ($buttons.Count -gt 0) { break }
+      Start-Sleep -Milliseconds 50
+    } while ([DateTime]::UtcNow -lt $deadline)
     [pscustomobject]@{
       title = $dialog.Current.Name
       texts = @(Descendants $dialog ([System.Windows.Automation.ControlType]::Text))
-      buttons = @(Descendants $dialog ([System.Windows.Automation.ControlType]::Button))
+      buttons = $buttons
+      tree = @(Everything $dialog)
     } | ConvertTo-Json -Compress
   }
   'invoke' {
     $condition = New-Object System.Windows.Automation.AndCondition(
       (New-Object System.Windows.Automation.PropertyCondition(
-        [System.Windows.Automation.AutomationElement]::ControlTypeProperty,
-        [System.Windows.Automation.ControlType]::Button)),
+        [System.Windows.Automation.AutomationElement]::IsInvokePatternAvailableProperty, $true)),
       (New-Object System.Windows.Automation.PropertyCondition(
         [System.Windows.Automation.AutomationElement]::NameProperty, $Name)))
     $button = $dialog.FindFirst([System.Windows.Automation.TreeScope]::Descendants, $condition)
