@@ -2,6 +2,7 @@ use crate::{
     channel::EventSink,
     evidence::Evidence,
     services,
+    services::app_menu::AppMenus,
     services::clipboard::{Clipboard, Operation as ClipboardOperation},
     services::drops::Drops,
     services::file_dialogs::FileDialogs,
@@ -58,6 +59,7 @@ pub(crate) struct Session {
     processes: Processes,
     file_dialogs: FileDialogs,
     drops: Drops,
+    app_menu: AppMenus,
 }
 
 impl Session {
@@ -77,6 +79,7 @@ impl Session {
         let processes = Processes::new(events.clone(), policy.processes.clone(), cx);
         let file_dialogs = FileDialogs::new(events.clone(), cx);
         let drops = Drops::new(events.clone(), cx);
+        let app_menu = AppMenus::new(events.clone(), cx);
         cx.on_window_closed({
             let windows = windows.clone();
             let finishing = finishing.clone();
@@ -148,6 +151,7 @@ impl Session {
             processes,
             file_dialogs,
             drops,
+            app_menu,
         }
     }
 
@@ -240,6 +244,9 @@ impl Session {
                     capabilities.push(Capability::DragDropFilesV1);
                 }
                 capabilities.push(Capability::InputStatesV1);
+                if self.app_menu.available() {
+                    capabilities.push(Capability::AppMenuV1);
+                }
                 self.events.send(
                     Event::Ready {
                         protocol: PROTOCOL_VERSION,
@@ -445,6 +452,20 @@ impl Session {
                 root,
                 ..
             } => self.resolve_dropped_item((id, window_id, target_id), drop_id, item, root, cx),
+            Command::SetAppMenu { menu_id, menus, .. } => {
+                let result = if self.policy.app_menu {
+                    self.app_menu.set(id, menu_id, &menus, cx)
+                } else {
+                    Err((
+                        ErrorCode::PermissionDenied,
+                        "the application menu was not granted at native process launch",
+                    ))
+                };
+                match result {
+                    Ok(event) => self.events.send(event, cx),
+                    Err((code, message)) => self.error(id, code, message, cx),
+                }
+            }
             Command::Shutdown { .. } => self.finish(Event::Ack { id }, cx),
             Command::Hello { .. } => unreachable!("hello handled before command dispatch"),
         }
@@ -1099,6 +1120,7 @@ impl Session {
     /// must complete before the final reply or process exit.
     fn stop_services(&self, cx: &mut App) -> Vec<gpui::Task<()>> {
         self.revoke();
+        self.app_menu.stop(cx);
         [
             self.clipboard.stop(cx),
             self.shortcuts.stop(cx),
