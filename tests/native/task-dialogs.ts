@@ -110,7 +110,8 @@ async function scenarios(app: NativeApplication, window: NativeWindow) {
     ) as { texts: string[]; buttons: string[] }
     assert.ok(shown.texts.some((text) => text.includes('Save the document before closing?')))
     assert.ok(shown.texts.some((text) => text.includes('Unsaved edits are lost.')))
-    for (const label of ['Save', 'Discard', 'Cancel']) assert.ok(shown.buttons.includes(label))
+    for (const label of ['Save', 'Discard', 'Cancel'])
+      assert.ok(shown.buttons.includes(label), `${label} missing from ${JSON.stringify(shown)}`)
     record('shownTextAndButtons', shown)
     await ui('invoke', title, 'Discard')
     assert.deepEqual(await pending, { kind: 'button', id: 'discard' })
