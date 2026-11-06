@@ -7,13 +7,14 @@ import type { Project } from './project.ts'
 export const templateFormatterConfig = join(import.meta.dir, '../../.oxfmtrc.json')
 
 export type QualityStep = {
-  name: 'typecheck' | 'format'
+  name: 'typecheck' | 'format' | 'lint'
   command: string[]
   exitCode: number
   output: string
 }
 
-function run(project: Project, args: string[]): Omit<QualityStep, 'name'> {
+/** Runs the pinned Bun with `args` in the project directory and captures its combined output. */
+export function runQualityStep(project: Project, args: string[]): Omit<QualityStep, 'name'> {
   const command = [process.execPath, ...args]
   const result = Bun.spawnSync(command, {
     cwd: project.directory,
@@ -45,7 +46,7 @@ export function formatArguments(project: Project, check: boolean): string[] {
 }
 
 export function formatProject(project: Project, check: boolean): QualityStep {
-  return { name: 'format', ...run(project, formatArguments(project, check)) }
+  return { name: 'format', ...runQualityStep(project, formatArguments(project, check)) }
 }
 
 /** Built-in type checking, then formatting; both steps always run so one report covers both. */
@@ -53,7 +54,7 @@ export function checkProject(project: Project): QualityStep[] {
   return [
     {
       name: 'typecheck',
-      ...run(project, ['--no-install', 'check', '--no-script', '--no-pretty']),
+      ...runQualityStep(project, ['--no-install', 'check', '--no-script', '--no-pretty']),
     },
     formatProject(project, true),
   ]

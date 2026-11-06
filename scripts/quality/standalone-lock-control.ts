@@ -13,8 +13,8 @@ const measuredSource = {
   tree: '4e944901d40ee3761d163cfc157e75d8f786469b',
 }
 const compiler = {
-  bytes: 138_468_432,
-  sha256: 'fe406996b9915f388e3fad9e6e29ece9c7cb81e06257bbcb4c50f91691b46810',
+  bytes: 140_680_448,
+  sha256: '8f55345e8a878f2b4f9b233184ffa424fdd67667fa70c16b1f11a1ae8387e9ab',
 }
 const previousControl = {
   source: {

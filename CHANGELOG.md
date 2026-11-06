@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.20.1](https://github.com/0xPlayerOne/bun-native/compare/v0.20.0...v0.20.1) (2026-11-06)
+
+
+### Performance
+
+* audit batch 5 (typed batch decode, trie-diff node index, incremental evidence parsing) ([#518](https://github.com/0xPlayerOne/bun-native/issues/518)) ([40ea121](https://github.com/0xPlayerOne/bun-native/commit/40ea121d6cdc8746d53feb6b41df11cd0e792874))
+
 ## [0.20.0](https://github.com/0xPlayerOne/bun-native/compare/v0.19.0...v0.20.0) (2026-11-06)
 
 
