@@ -15,12 +15,14 @@ const usage = `Bun Native application tooling
   bun run native build apps/my-app --host /absolute/path/to/bun-native-host --host-profile dev|release [--outdir directory]
   bun run native check apps/my-app
   bun run native format apps/my-app [--check]
+  bun run native lint apps/my-app
   bun run native doctor [apps/my-app] [--host /absolute/path/to/bun-native-host]
 
 Projects use checkout dependencies unless --packages selects a standalone local package set.
 Standalone scripts use their own installed CLI. Native hosts must be supplied explicitly.
 dev starts once; --watch remounts the app after edits and resets state. build produces unsigned same-platform AOT artifacts.
-check runs Bun's built-in type checker and formatter check; format applies the formatter.
+check runs Bun's built-in type checker, formatter check and the pinned oxlint; format applies the formatter.
+lint runs only the pinned oxlint, never on vendored packages or generated output.
 doctor reports Bun, platform, host-header and project compatibility without launching anything.
 No command downloads a host or runs Cargo. See docs/developer-tooling.md.`
 
@@ -62,7 +64,7 @@ async function main(args: string[]): Promise<void> {
     )
     return
   }
-  if (command === 'check' || command === 'format') {
+  if (command === 'check' || command === 'format' || command === 'lint') {
     const { values, positionals } = parseArgs({
       args: rest,
       allowPositionals: true,
@@ -73,8 +75,14 @@ async function main(args: string[]): Promise<void> {
       throw new Error(`${command} requires exactly one project directory`)
     const project = await readProject(repository, positionals[0]!)
     const { checkProject, formatProject } = await import('./native/quality.ts')
-    const steps =
-      command === 'check' ? checkProject(project) : [formatProject(project, values.check === true)]
+    const steps = []
+    if (command === 'format') steps.push(formatProject(project, values.check === true))
+    else {
+      if (command === 'check') steps.push(...checkProject(project))
+      // Only check and lint load the CLI's pinned oxlint; format never depends on it.
+      const { lintProject } = await import('./native/lint.ts')
+      steps.push(lintProject(project))
+    }
     for (const step of steps) {
       if (step.output) console.log(step.output)
       console.log(`${step.name}: ${step.exitCode === 0 ? 'passed' : 'failed'}`)
