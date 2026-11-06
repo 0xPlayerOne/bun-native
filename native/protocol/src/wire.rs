@@ -67,6 +67,7 @@ identifier!(ProcessId);
 identifier!(DialogId);
 identifier!(DropTargetId);
 identifier!(DropId);
+identifier!(AppMenuId);
 
 /// JSON has one number type. Match JavaScript's safe-integer validation even
 /// when a sender spells an integer as `1.0` or `1e0` instead of canonical `1`.
@@ -691,6 +692,13 @@ pub enum Command {
         item: u32,
         root: String,
     },
+    /// Replace the application menu bar; an empty `menus` removes it. Every
+    /// item of the previous bar is revoked. `menu_id` increases per session.
+    SetAppMenu {
+        id: RequestId,
+        menu_id: AppMenuId,
+        menus: Vec<crate::AppMenu>,
+    },
     Shutdown {
         id: RequestId,
     },
@@ -748,6 +756,8 @@ pub enum Capability {
     PopupWindowsV1,
     DragDropFilesV1,
     InputStatesV1,
+    /// A native application menu bar (macOS).
+    AppMenuV1,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -877,6 +887,7 @@ impl Command {
             | Self::RegisterDropTarget { id, .. }
             | Self::UnregisterDropTarget { id, .. }
             | Self::ResolveDroppedItem { id, .. }
+            | Self::SetAppMenu { id, .. }
             | Self::Shutdown { id } => *id,
         }
     }
@@ -980,6 +991,7 @@ impl Command {
                 }
             }
             Self::ShowFileDialog { options, .. } => options.validate()?,
+            Self::SetAppMenu { menus, .. } => crate::validate_app_menus(menus)?,
             Self::ResolveDroppedItem { item, root, .. } => {
                 crate::validate_drop_item_index(*item)?;
                 crate::validate_root_id(root)?;
