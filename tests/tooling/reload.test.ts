@@ -346,6 +346,9 @@ describe('development remounts (real Bun processes and headless protocol peer, n
       mkdirSync(join(path, 'dist'))
       writeFileSync(join(path, 'dist/ignored.ts'), 'invalid syntax <\n')
       writeFileSync(join(path, 'README.md'), 'A documentation edit does not reload the app.\n')
+      // A save that leaves the imported bytes unchanged still raises a file event
+      // (macOS FSEvents also replays the setup writes late); only changed bytes remount.
+      writeFileSync(component, readFileSync(component))
       await Bun.sleep(100)
       expect(output.filter((line) => line.startsWith('bun-native:ready ')).length).toBe(1)
       writeFileSync(component, 'export const message = <\n')
