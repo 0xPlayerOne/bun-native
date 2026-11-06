@@ -1,5 +1,6 @@
 import { expect, test } from 'bun:test'
 import { createElement, insertNode, setProperty } from '@bun-native/renderer'
+import { snapshot } from '../../packages/renderer/src/nodes.ts'
 
 test('overlay intrinsics own element children and validate their own properties', () => {
   const overlay = createElement('overlay')
@@ -22,4 +23,19 @@ test('overlay intrinsics own element children and validate their own properties'
     [createElement('button'), 'anchor', 'parent'],
   ] as const)
     expect(() => setProperty(node, name, value)).toThrow()
+})
+
+test('a split keeps its own style in the shared snapshot', () => {
+  const root = createElement('box')
+  const split = createElement('split')
+  setProperty(split, 'ratio', 0.25)
+  setProperty(split, 'style', { width: 'fill', height: 200, background: 0x123456 })
+  insertNode(root, split)
+  insertNode(split, createElement('box'))
+  insertNode(split, createElement('box'))
+  expect(snapshot(root).get(split)?.element).toEqual({
+    kind: 'split',
+    ratio: 0.25,
+    style: { width: 'fill', height: 200, background: 0x123456 },
+  })
 })

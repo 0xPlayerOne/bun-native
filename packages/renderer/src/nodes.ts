@@ -500,7 +500,7 @@ function build(node: Node, parent: Node | undefined): Snapshot {
       kind: 'split',
       ...(props.ratio === undefined ? {} : { ratio: props.ratio }),
       ...(props.min_size === undefined ? {} : { min_size: props.min_size }),
-      ...style,
+      ...(props.style ? { style: leafStyle(props.style) } : {}),
     }
   else if (node.kind === 'overlay')
     // Core validation rejects a modal parent-anchored overlay and an
