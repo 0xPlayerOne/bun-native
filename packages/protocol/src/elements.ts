@@ -52,14 +52,22 @@ export const DECORATION_FIELDS = Object.freeze([
 /** Overlays nested inside overlays, the outermost counting as one. */
 export const MAX_OVERLAY_DEPTH = 8
 
+/** Requires the `overlay_keyboard_v1` capability; defaults are omitted when normalized. */
+export interface OverlayKeyboard {
+  /** Focus the layer's first enabled control when it opens. */
+  autofocus?: boolean
+  /** `menu`: Up/Down/Home/End rove focus among the layer's controls and printable keys type ahead. */
+  navigation?: 'tab' | 'menu'
+}
+
 /**
  * `window` covers the viewport and blocks pointer input beneath it; `parent`
  * is content-sized below its parent's bottom-left corner. Only window
  * overlays may be modal.
  */
 export type OverlayElement =
-  | { kind: 'overlay'; anchor?: 'window'; modal?: boolean; style?: Style }
-  | { kind: 'overlay'; anchor: 'parent'; modal?: false; style?: Style }
+  | ({ kind: 'overlay'; anchor?: 'window'; modal?: boolean; style?: Style } & OverlayKeyboard)
+  | ({ kind: 'overlay'; anchor: 'parent'; modal?: false; style?: Style } & OverlayKeyboard)
 
 export type Element =
   | { kind: 'box'; style?: Style }
@@ -219,17 +227,25 @@ export function parseElement(value: unknown): Element {
       }
     }
     case 'overlay': {
-      keys(element, ['kind', 'anchor', 'modal', 'style'])
+      keys(element, ['kind', 'anchor', 'modal', 'autofocus', 'navigation', 'style'])
       const anchor =
         'anchor' in element ? choice(element['anchor'], 'anchor', ['window', 'parent']) : 'window'
-      if ('modal' in element && typeof element['modal'] !== 'boolean')
-        throw new ProtocolError('modal must be a boolean')
+      for (const flag of ['modal', 'autofocus'])
+        if (flag in element && typeof element[flag] !== 'boolean')
+          throw new ProtocolError(flag + ' must be a boolean')
       const modal = element['modal'] === true
+      const keyboard: OverlayKeyboard = {
+        ...(element['autofocus'] === true ? { autofocus: true } : {}),
+        ...('navigation' in element &&
+        choice(element['navigation'], 'navigation', ['tab', 'menu']) === 'menu'
+          ? { navigation: 'menu' as const }
+          : {}),
+      }
       if (anchor === 'parent') {
         if (modal) throw new ProtocolError('A modal overlay must be anchored to the window')
-        return { kind: 'overlay', anchor, modal: false, style }
+        return { kind: 'overlay', anchor, modal: false, ...keyboard, style }
       }
-      return { kind: 'overlay', anchor, modal, style }
+      return { kind: 'overlay', anchor, modal, ...keyboard, style }
     }
     default:
       throw new ProtocolError('Unknown native element kind')

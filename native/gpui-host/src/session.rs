@@ -192,6 +192,9 @@ impl Session {
                     Capability::StyleDecorationV1,
                     Capability::OverlaysV1,
                     Capability::ScrollAnchorV1,
+                    Capability::FocusV1,
+                    Capability::ScrollControlV1,
+                    Capability::OverlayKeyboardV1,
                 ];
                 if services::DISPLAY_DETAILS {
                     capabilities.push(Capability::DisplayDetailsV1);
@@ -570,7 +573,9 @@ impl Session {
             }
         };
         let revision = prepared.tree.revision();
-        let result = handle.update(cx, |view, window, cx| view.apply(prepared.tree, window, cx));
+        let result = handle.update(cx, |view, window, cx| {
+            view.apply(prepared.tree, &prepared.requests, window, cx)
+        });
         if result.is_ok() {
             self.last_node_id = prepared.last_node_id;
             self.evidence.batch(window_id, revision, &prepared.metrics);

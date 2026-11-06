@@ -17,6 +17,7 @@ const windows = new Map<number, PeerTree>()
 const output = Bun.stdout.writer()
 const decoder = new FrameDecoder()
 const overlays = process.argv.includes('--overlays')
+const keyboard = process.argv.includes('--keyboard')
 let sequence = 0
 async function emit(value: unknown) {
   output.write(encodeFrame(value))
@@ -62,6 +63,7 @@ for await (const chunk of Bun.stdin.stream()) {
         capabilities: [
           ...REQUIRED_CAPABILITIES,
           ...(overlays ? ['overlays_v1', 'scroll_anchor_v1'] : []),
+          ...(keyboard ? ['focus_v1', 'scroll_control_v1', 'overlay_keyboard_v1'] : []),
         ],
         limits: { ...DEFAULT_LIMITS },
       })
@@ -84,6 +86,16 @@ for await (const chunk of Bun.stdin.stream()) {
         window_id: command.window_id,
         tree_revision: tree.revision,
       })
+      // A host reports a requested focus move as an ordinary focus event; the
+      // peer gives scroll requests no observable effect.
+      for (const operation of command.operations)
+        if (operation.type === 'focus')
+          await emit({
+            type: 'focus',
+            window_id: command.window_id,
+            sequence: ++sequence,
+            ...tree.route(operation.node_id),
+          })
       for (const operation of command.operations)
         if (
           operation.type === 'set' &&

@@ -117,6 +117,15 @@ export type Operation =
     }
   | { type: 'insert'; parent_id: number; child_id: number; index: number }
   | { type: 'delete'; node_id: number }
+  /** Requires `focus_v1`; applied after the batch's tree changes. */
+  | { type: 'focus'; node_id: number }
+  /** Requires `scroll_control_v1`; offsets from the content start, clamped natively. */
+  | { type: 'scroll_to'; node_id: number; x?: number; y?: number }
+  /** Requires `scroll_control_v1`. */
+  | { type: 'scroll_into_view'; node_id: number }
+
+/** Largest programmatic scroll offset, in logical pixels. */
+export const MAX_SCROLL_OFFSET = 1_000_000
 
 export type Command =
   | { id: number; type: 'hello'; protocol: typeof PROTOCOL_VERSION }
@@ -279,6 +288,9 @@ const CAPABILITIES = [
   'file_dialogs_v1',
   'overlays_v1',
   'scroll_anchor_v1',
+  'focus_v1',
+  'scroll_control_v1',
+  'overlay_keyboard_v1',
 ] as const
 export type Capability = (typeof CAPABILITIES)[number]
 
@@ -489,8 +501,17 @@ function operation(value: unknown): Operation {
         index: integer(data['index'], 'index', 0, MAX_NODES_PER_WINDOW),
       }
     case 'delete':
+    case 'focus':
+    case 'scroll_into_view':
       keys(data, ['type', 'node_id'])
-      return { type: 'delete', node_id: id(data['node_id']) }
+      return { type: data['type'], node_id: id(data['node_id']) }
+    case 'scroll_to': {
+      keys(data, ['type', 'node_id', 'x', 'y'])
+      if (!('x' in data) && !('y' in data)) throw new ProtocolError('scroll_to requires x or y')
+      const offset = (axis: 'x' | 'y') =>
+        axis in data ? { [axis]: number(data[axis], 'scroll ' + axis, 0, MAX_SCROLL_OFFSET) } : {}
+      return { type: 'scroll_to', node_id: id(data['node_id']), ...offset('x'), ...offset('y') }
+    }
     default:
       throw new ProtocolError('Unknown native operation')
   }

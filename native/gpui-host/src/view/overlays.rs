@@ -45,20 +45,21 @@ impl Overlays {
     }
 }
 
-/// Overlays in pre-order with their layer, and whether each is modal.
+/// Overlays in pre-order with their layer, and whether each takes focus
+/// when it opens without being modal.
 fn layers(tree: &Tree) -> Vec<(NodeId, Layer, bool)> {
     let mut result = Vec::new();
     let mut pending = vec![(tree.root_id(), 0)];
     while let Some((id, outer)) = pending.pop() {
         let Some(node) = tree.node(id) else { continue };
-        let depth = if let NativeElement::Overlay { modal, .. } = node.element() {
+        let depth = if let NativeElement::Overlay { autofocus, .. } = node.element() {
             result.push((
                 id,
                 Layer {
                     depth: outer + 1,
                     order: result.len(),
                 },
-                *modal,
+                *autofocus,
             ));
             outer + 1
         } else {
@@ -86,7 +87,7 @@ impl NativeView {
             })
     }
 
-    fn can_focus(&self, tree: &Tree, id: NodeId) -> bool {
+    pub(super) fn can_focus(&self, tree: &Tree, id: NodeId) -> bool {
         match tree.node(id).map(|node| node.element()) {
             Some(NativeElement::Button {
                 disabled: false, ..
@@ -110,7 +111,7 @@ impl NativeView {
         result
     }
 
-    fn focus_control(&self, id: NodeId, window: &mut Window, cx: &mut Context<Self>) {
+    pub(super) fn focus_control(&self, id: NodeId, window: &mut Window, cx: &mut Context<Self>) {
         if let Some(focus) = self.buttons.get(&id) {
             window.focus(focus, cx);
         } else if let Some(input) = self.inputs.get(&id) {
@@ -122,6 +123,8 @@ impl NativeView {
     /// focused before the commit. Opening an overlay records it; closing one
     /// returns focus there when the closed layer took focus with it. A modal
     /// layer then owns focus: its first control, or none so keys reach it.
+    /// A newly opened `autofocus` layer allowed by the modal scope takes
+    /// focus last, at its own first control.
     pub(super) fn reconcile_overlays(
         &mut self,
         before: Option<NodeId>,
@@ -135,6 +138,7 @@ impl NativeView {
             let tree = &state.tree;
             let current = layers(tree);
             let mut closed: Vec<(Layer, Option<NodeId>)> = Vec::new();
+            let mut opened: Vec<(Layer, NodeId)> = Vec::new();
             self.overlays.live.retain(|id, entry| {
                 let alive = current.iter().any(|(live, ..)| live == id);
                 if !alive {
@@ -142,21 +146,22 @@ impl NativeView {
                 }
                 alive
             });
-            for (id, layer, _) in &current {
+            for (id, layer, autofocus) in &current {
                 self.overlays
                     .live
                     .entry(*id)
                     .and_modify(|entry| entry.layer = *layer)
-                    .or_insert(Entry {
-                        layer: *layer,
-                        returns_to: before,
+                    .or_insert_with(|| {
+                        if *autofocus {
+                            opened.push((*layer, *id));
+                        }
+                        Entry {
+                            layer: *layer,
+                            returns_to: before,
+                        }
                     });
             }
-            let modal = current
-                .iter()
-                .filter(|(_, _, modal)| *modal)
-                .max_by_key(|(_, layer, _)| *layer)
-                .map(|(id, ..)| *id);
+            let modal = tree.active_modal();
             self.overlays.active_modal = modal;
             let allowed = |id: NodeId| modal.is_none_or(|modal| within(tree, id, modal));
             // Outermost closed layer first: closing nested layers together
@@ -169,7 +174,13 @@ impl NativeView {
                     .find(|id| allowed(*id) && self.can_focus(tree, *id))
             });
             let effective = restore.flatten().or(focused);
+            let autofocus = opened
+                .iter()
+                .filter(|(_, id)| allowed(*id))
+                .max_by_key(|(layer, _)| *layer)
+                .and_then(|(_, id)| self.layer_controls(tree, *id).first().copied());
             match modal {
+                _ if autofocus.is_some() => autofocus.map(Some),
                 Some(modal) if !effective.is_some_and(|id| within(tree, id, modal)) => {
                     match self.focusable(tree, modal).first() {
                         Some(first) => Some(Some(*first)),
@@ -181,7 +192,7 @@ impl NativeView {
             }
         };
         match target {
-            Some(Some(id)) => self.focus_control(id, window, cx),
+            Some(Some(id)) => self.move_focus(id, window, cx),
             Some(None) => window.blur(cx),
             None => {}
         }
@@ -199,6 +210,9 @@ impl NativeView {
                 window.focus_next(cx);
             } else {
                 window.focus_prev(cx);
+            }
+            if let Some(id) = self.focused_control(window, cx) {
+                self.reveal(id);
             }
             return;
         };
@@ -219,7 +233,7 @@ impl NativeView {
             None if forward => 0,
             None => count - 1,
         };
-        self.focus_control(order[next], window, cx);
+        self.move_focus(order[next], window, cx);
     }
 
     /// Place an overlay's rendered container in its deferred layer. The

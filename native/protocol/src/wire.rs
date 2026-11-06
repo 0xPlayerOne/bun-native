@@ -16,6 +16,8 @@ pub const MAX_DEPTH: usize = 64;
 /// Overlays nested inside overlays, the outermost counting as one. GPUI
 /// processes each nested deferred layer in its own bounded prepaint round.
 pub const MAX_OVERLAY_DEPTH: usize = 8;
+/// Largest programmatic scroll offset, in logical pixels from the content start.
+pub const MAX_SCROLL_OFFSET: f64 = 1_000_000.;
 
 macro_rules! identifier {
     ($name:ident) => {
@@ -178,6 +180,27 @@ pub enum OverlayAnchor {
     Window,
     /// A content-sized layer below its parent's bottom-left corner, kept inside the window.
     Parent,
+}
+
+/// How arrow keys move focus among an overlay's own controls.
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum OverlayNavigation {
+    /// Only Tab and Shift-Tab move focus.
+    #[default]
+    Tab,
+    /// Up/Down/Home/End move a roving focus and printable keys type ahead.
+    Menu,
+}
+
+impl OverlayNavigation {
+    fn is_tab(&self) -> bool {
+        *self == Self::Tab
+    }
+}
+
+fn is_false(value: &bool) -> bool {
+    !*value
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -409,6 +432,13 @@ pub enum Element {
         /// Traps keyboard focus and Tab order until removed.
         #[serde(default)]
         modal: bool,
+        /// Moves focus to the first enabled control when the layer opens.
+        /// Requires `overlay_keyboard_v1`; omitted when false.
+        #[serde(default, skip_serializing_if = "is_false")]
+        autofocus: bool,
+        /// Requires `overlay_keyboard_v1`; omitted when `tab`.
+        #[serde(default, skip_serializing_if = "OverlayNavigation::is_tab")]
+        navigation: OverlayNavigation,
         #[serde(default)]
         style: Style,
     },
@@ -441,6 +471,33 @@ pub enum Operation {
         index: usize,
     },
     Delete {
+        node_id: NodeId,
+    },
+    /// Requires `focus_v1`. Focuses an enabled button or input after the
+    /// batch's tree changes commit.
+    Focus {
+        node_id: NodeId,
+    },
+    /// Requires `scroll_control_v1`. Sets a scrolling container's offset from
+    /// its content start; an omitted axis keeps its offset. Clamped natively.
+    ScrollTo {
+        node_id: NodeId,
+        #[serde(
+            default,
+            skip_serializing_if = "Option::is_none",
+            deserialize_with = "non_null"
+        )]
+        x: Option<f64>,
+        #[serde(
+            default,
+            skip_serializing_if = "Option::is_none",
+            deserialize_with = "non_null"
+        )]
+        y: Option<f64>,
+    },
+    /// Requires `scroll_control_v1`. Scrolls every scrolling ancestor so the
+    /// child containing the node is visible.
+    ScrollIntoView {
         node_id: NodeId,
     },
 }
@@ -633,6 +690,9 @@ pub enum Capability {
     FileDialogsV1,
     OverlaysV1,
     ScrollAnchorV1,
+    FocusV1,
+    ScrollControlV1,
+    OverlayKeyboardV1,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -814,7 +874,23 @@ impl Command {
                         Operation::Insert { index, .. } if *index > MAX_NODES_PER_WINDOW => {
                             return Err("child index exceeds the node limit")
                         }
-                        Operation::Insert { .. } | Operation::Delete { .. } => {}
+                        Operation::ScrollTo { x, y, .. } => {
+                            if x.is_none() && y.is_none() {
+                                return Err("scroll_to requires x or y");
+                            }
+                            for value in [x, y].into_iter().flatten() {
+                                bounded(
+                                    *value,
+                                    0.,
+                                    MAX_SCROLL_OFFSET,
+                                    "scroll offsets must be between 0 and 1000000",
+                                )?;
+                            }
+                        }
+                        Operation::Insert { .. }
+                        | Operation::Delete { .. }
+                        | Operation::Focus { .. }
+                        | Operation::ScrollIntoView { .. } => {}
                     }
                 }
             }

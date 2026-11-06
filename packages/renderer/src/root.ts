@@ -1,6 +1,7 @@
 import {
   NativeStateError,
   type InputState,
+  type NativeBatch,
   type NativeNode,
   type NativeWindow,
   type Style,
@@ -168,6 +169,14 @@ class Root implements RenderRoot, Owner {
         'Input is unmounted or has no committed native handle'
       )
     return this.window.input(state.handle as NativeNode<'input'>)
+  }
+
+  async request(node: Node, send: (batch: NativeBatch, handle: NativeNode) => void): Promise<void> {
+    await this.flush()
+    const state = this.committed.get(node)
+    if (this.phase !== 'active' || !state)
+      throw new NativeStateError('invalid_handle', 'Node is unmounted or has no committed handle')
+    await this.window.batch((batch) => send(batch, state.handle))
   }
 
   private start(): void {

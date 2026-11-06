@@ -29,6 +29,8 @@ fn overlay(modal: bool) -> Element {
     Element::Overlay {
         anchor: OverlayAnchor::Window,
         modal,
+        autofocus: false,
+        navigation: OverlayNavigation::Tab,
         style: Style::default(),
     }
 }
@@ -54,7 +56,8 @@ fn shared_overlay_contract_has_the_same_acceptance_in_both_languages() {
         fixtures["capabilities"],
         json!([
             serde_json::to_value(Capability::OverlaysV1).unwrap(),
-            serde_json::to_value(Capability::ScrollAnchorV1).unwrap()
+            serde_json::to_value(Capability::ScrollAnchorV1).unwrap(),
+            serde_json::to_value(Capability::OverlayKeyboardV1).unwrap()
         ])
     );
     assert_eq!(fixtures["max_overlay_depth"], json!(MAX_OVERLAY_DEPTH));
@@ -136,6 +139,8 @@ fn modal_overlays_reject_parent_anchoring_and_set_keeps_the_kind() {
     assert!(Element::Overlay {
         anchor: OverlayAnchor::Parent,
         modal: true,
+        autofocus: false,
+        navigation: OverlayNavigation::Tab,
         style: Style::default(),
     }
     .validate()

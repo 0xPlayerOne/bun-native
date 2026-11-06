@@ -4,6 +4,8 @@ This is the first implemented slice of [BN4 #239](https://github.com/0xPlayerOne
 
 There is no protocol version change. The host advertises two **optional** capabilities on protocol 8: `overlays_v1` (the `overlay` element) and `scroll_anchor_v1` (the `scroll_anchor` style field). Public core rejects either feature locally with `UnsupportedFeatureError` (`element:overlay`, `style:scroll_anchor`) when the connected host does not advertise it, so an older host never receives an unknown element. The current GPUI host always advertises both, on every platform it builds for.
 
+Keyboard-driven overlays add three more optional capabilities, still on protocol 8: `focus_v1` (the batch `focus` request), `scroll_control_v1` (the batch `scroll_to` and `scroll_into_view` requests) and `overlay_keyboard_v1` (the overlay `autofocus` and `navigation` fields). Core rejects them locally on a host that lacks them (`operation:focus`, `operation:scroll_to`, `operation:scroll_into_view`, `overlay:autofocus`, `overlay:navigation`). Explicit defaults (`autofocus: false`, `navigation: 'tab'`) normalize away and still reach an older overlay host. See [Keyboard menus, programmatic focus and scrolling](#keyboard-menus-programmatic-focus-and-scrolling).
+
 ## Element contract
 
 ```ts
@@ -61,11 +63,50 @@ The helper occupies the overlay's bubbling `key_down` and `pointer_down` registr
 
 `scroll_anchor: 'end'` is valid only with `overflow: 'scroll_y'` or `'scroll'`, on boxes and overlays. Before each render, a viewport whose vertical offset is within one logical pixel of its previous maximum is pinned: GPUI places it at the new end during that frame's layout, after appended content or a viewport resize. A user wheel scroll away from the end releases it, and later appends preserve that offset exactly. Scrolling back to the end pins it again. An initially empty or non-overflowing viewport starts pinned. `start` and omission keep the ordinary top-anchored behavior. The anchor is vertical only; horizontal anchoring is rejected.
 
+## Keyboard menus, programmatic focus and scrolling
+
+### Overlay fields (`overlay_keyboard_v1`)
+
+| Field        | Values                   | Meaning                                                                                                                                                                                                                                                                                                         |
+| ------------ | ------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `autofocus`  | boolean, default `false` | When the layer first commits, focus moves to its first enabled control (controls of nested overlays excluded). This lets a **non-modal** popover, including a parent-anchored one, take focus; focus returns on close by the rule above. Inside an active modal, only a layer within that modal can take focus. |
+| `navigation` | `tab` (default), `menu`  | `menu` makes the layer a roving-focus menu, described below. Tab and Shift-Tab are unchanged.                                                                                                                                                                                                                   |
+
+With `navigation: 'menu'`, while focus is on a control whose innermost overlay is the menu layer:
+
+- **Down/Up** move focus to the next/previous enabled button or input of that layer in tree order and wrap; **Home/End** move to the first/last. Disabled buttons and controls inside nested overlays are skipped. A focused input keeps its own Home/End caret keys, but Up/Down leave it, so a filter field above the items works.
+- **Type-ahead**: a printable key without Control, Alt, Platform or Function, while a menu **button** is focused, moves focus to the next button whose label (leading whitespace ignored) starts with the typed text, case-insensitively. Keys within one second extend the search; repeating one character cycles through the labels that start with it. Space and Enter still activate the focused button.
+- These keys are still delivered as ordinary `key_down`/`key_up` events. `onDismiss` handles Escape as before, so an autofocused menu closes on Escape.
+
+### Batch requests (`focus_v1`, `scroll_control_v1`)
+
+```ts
+await window.batch((batch) => {
+  batch.focus(saveButton) // an enabled button or an input
+  batch.scrollTo(list, { y: 0 }) // logical pixels from the content start; omitted axis unchanged
+  batch.scrollIntoView(selectedRow)
+})
+```
+
+The requests travel as `focus`, `scroll_to` and `scroll_into_view` batch operations. Both validators check them against the batch's **final** tree, after every create, set, insert and delete, so a request can target a node created in the same batch and the whole batch fails if the target is removed, disabled or (for `focus`) outside the active modal (`invalid_handle` or `invalid_state`). `scroll_to` needs a scrolling box or overlay whose overflow scrolls on each given axis; offsets must be finite, between 0 and 1 000 000 (`MAX_SCROLL_OFFSET`), and at least one axis is required. The host applies requests in order after the tree commit and after modal or `autofocus` focus moves, so an explicit request wins. It clamps `scroll_to` to the laid-out maximum during the next frame, and a programmatic scroll is not re-pinned by an `end` scroll anchor in that frame.
+
+`scrollIntoView(node)` scrolls each scrolling ancestor, from the node outward and stopping at the node's own overlay layer, so that the ancestor's **child on the node's route** is fully visible with the least movement (its top if it is taller than the viewport). For a direct child, such as a menu or list item, that is the node itself; for a deeper descendant the whole containing child is revealed.
+
+**Focus scrolls into view.** Every focus move the host makes (`focus` requests, Tab and Shift-Tab, menu arrows, type-ahead, modal and `autofocus` entry, focus return) reveals the focused control the same way. Pointer focus never scrolls.
+
+Solid and React expose the same requests on refs: `focusNode(ref)`, `scrollNodeTo(ref, { x, y })` and `scrollNodeIntoView(ref)` wait for staged renderer changes to commit, then send one request batch; overlays accept `autofocus` and `navigation` properties.
+
+### Focus rings
+
+A keyboard-focused enabled button draws an inset ring: a 1-pixel white edge over a 2-pixel dark (`0x101828`) band, visible on light and dark backgrounds. A focused input always draws it. Buttons follow GPUI's focus-visible rule: the ring appears only after keyboard input, not after a click. The ring is inset, so it never changes layout and ancestor clipping never hides it; it is not themeable.
+
 ## Verification
 
 | Check                                                                                                                                                         | Command                                                                                             |
 | ------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------- |
 | Shared accept/reject corpus ([`overlays.json`](../tests/fixtures/overlays.json)), normalization, nesting bound, modal anchoring and kind-preserving `set`     | `cargo test --locked -p bun-native-protocol overlay` and `bun test tests/protocol/overlays.test.ts` |
+| Request wire shape, final-tree validation, active modal scope and offset bounds                                                                               | `cargo test --locked -p bun-native-protocol request` and `bun test tests/core/focus-scroll.test.ts` |
+| Capability gating of each request and overlay field, focus events, adapter refs and properties (headless subprocess)                                          | `bun test tests/core/focus-scroll.test.ts tests/react/focus.test.tsx`                               |
 | Capability gating, preflight nesting, innermost Escape, backdrop targeting, unsubscribe/removal disposal and discarded queued callbacks (headless subprocess) | `bun test tests/core/overlays.test.ts`                                                              |
 | Shared renderer `overlay` intrinsic properties                                                                                                                | `bun test tests/renderers/overlay-nodes.test.ts`                                                    |
 | Real host, real XTest input, native paint geometry and screenshots, development and AOT                                                                       | [`tests/native/overlays.ts`](../tests/native/overlays.ts), below                                    |
@@ -90,26 +131,33 @@ for mode in development aot; do
 done
 ```
 
-The required Native Linux job runs this in development and AOT against its release host. Locally, both modes passed on Linux X11 (Xvfb + openbox, XTest via xdotool, Mesa llvmpipe, scale 1) with a development-profile host; the AOT manifest recorded the JIT as unused. Each run writes `overlays.json` plus two screenshots:
+The required Native Linux job runs this in development and AOT against its release host. Locally, both modes passed on Linux X11 (Xvfb + openbox, XTest via xdotool, Mesa llvmpipe, scale 1) with a development-profile host; the AOT manifest recorded the JIT as unused. Each run writes `overlays.json` plus three screenshots:
 
-| Outcome                    | Observed                                                                                                                                                                                                                                        |
-| -------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Modal focus trap           | Opening moved focus to `Confirm`; Tab, Tab, Shift-Tab produced `confirm, cancel, confirm, cancel` and never left the dialog. The screenshot pixel over the covered opener was the backdrop color.                                               |
-| Backdrop blocks pointer    | A real click on the covered opener targeted the overlay (`backdrop`), produced no button click and left focus in the dialog.                                                                                                                    |
-| Nested modal               | Focus moved to the inner control and stayed there through Tab/Shift-Tab. Escape dismissed only the inner layer, focus returned to `Cancel`, and its dismissal registrations were revoked.                                                       |
-| Focus and selection return | Escape closed the dialog; focus returned to the editor with its `lo` selection intact, so typing `X` produced `helX`. The dialog's callbacks were revoked.                                                                                      |
-| Control-less modal         | Opening blurred the editor; Escape reached the overlay node, closed it and focus returned to the editor.                                                                                                                                        |
-| Parent-anchored popover    | Its item painted 4 pixels (the popover padding) below its parent, over the next sibling; the displayed pixel was the popover color, a real click activated only the popover item, and focus never moved.                                        |
-| Streaming scroll           | Eight 4-row appends kept the 64-pixel viewport at its growing end (maximum 52 → 864). Two wheel-ups released it at −690; a further append kept −690 while the maximum grew; wheeling back to the end pinned it again (offset −1096 = −maximum). |
-| Ownership                  | Window close and shutdown left all seven public ownership counters at zero.                                                                                                                                                                     |
+| Outcome                    | Observed                                                                                                                                                                                                                                                |
+| -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Modal focus trap           | Opening moved focus to `Confirm`; Tab, Tab, Shift-Tab produced `confirm, cancel, confirm, cancel` and never left the dialog. The screenshot pixel over the covered opener was the backdrop color.                                                       |
+| Backdrop blocks pointer    | A real click on the covered opener targeted the overlay (`backdrop`), produced no button click and left focus in the dialog.                                                                                                                            |
+| Nested modal               | Focus moved to the inner control and stayed there through Tab/Shift-Tab. Escape dismissed only the inner layer, focus returned to `Cancel`, and its dismissal registrations were revoked.                                                               |
+| Focus and selection return | Escape closed the dialog; focus returned to the editor with its `lo` selection intact, so typing `X` produced `helX`. The dialog's callbacks were revoked.                                                                                              |
+| Control-less modal         | Opening blurred the editor; Escape reached the overlay node, closed it and focus returned to the editor.                                                                                                                                                |
+| Parent-anchored popover    | Its item painted 4 pixels (the popover padding) below its parent, over the next sibling; the displayed pixel was the popover color, a real click activated only the popover item, and focus never moved.                                                |
+| Streaming scroll           | Eight 4-row appends kept the 64-pixel viewport at its growing end (maximum 52 → 864). Two wheel-ups released it at −690; a further append kept −690 while the maximum grew; wheeling back to the end pinned it again (offset −1096 = −maximum).         |
+| Keyboard menu              | A parent-anchored `autofocus` + `menu` popover took focus on `Copy` without being modal. Down, Down, Down (skipping disabled `Rename`), Up, End, Home, Up (wrap) and Down (wrap) visited `cut, paste, delete, paste, duplicate, copy, duplicate, copy`. |
+| Type-ahead                 | `d` → `Delete`, `d` → `Duplicate` (cycling), then after a pause `pa` → `Paste`, `c` → `Copy`, `u` (extending `cu`) → `Cut`.                                                                                                                             |
+| Focus ring                 | Screenshot pixels on the keyboard-focused `Cut`: edge `ffffff`, band `101828`; the same offset on unfocused `Copy` was the plain `2255cc`.                                                                                                              |
+| Menu activation and return | Enter clicked only `Cut`; Escape dismissed the popover and focus returned to the editor focused before it opened.                                                                                                                                       |
+| Programmatic focus         | `focus(Option 9)` in a 100-pixel list of twelve 44-pixel buttons focused it and scrolled the list to −340 so it was fully visible.                                                                                                                      |
+| Programmatic scroll        | `scrollTo` y 0 → 0, y 50 → −50 exactly, y 100 000 → clamped to −428 (= −maximum); `scrollIntoView(Option 11)` → −428.                                                                                                                                   |
+| Tab reveals focus          | Tab, Tab from `Option 1` focused `Option 3` and scrolled the list to −76 to show it.                                                                                                                                                                    |
+| Ownership                  | Window close and shutdown left all seven public ownership counters at zero.                                                                                                                                                                             |
 
 ## Limitations
 
 - **Platforms.** Only Linux X11 with software rendering at scale 1 is exercised. macOS and Windows build the same GPUI code but their overlay, focus and pointer behavior is unverified, as are Wayland, HiDPI, physical GPUs and touchpads.
 - **No native OS menus or dialogs.** These are in-window GPUI layers. Application menu bars, OS context menus, native file/message dialogs and child popup windows that extend beyond the window are not implemented.
 - **Anchoring.** A parent-anchored overlay always opens below its parent's bottom-left corner and is shifted, not flipped, to fit the window. There is no anchoring to an arbitrary node, the pointer position or a side other than below; no arrow, sizing to the trigger or collision-aware flipping.
-- **Keyboard.** There is no programmatic focus API. Non-modal popovers never take focus, so a menu that needs keyboard navigation must be modal (and therefore window-anchored) or be reached with Tab. Arrow-key menu navigation, type-ahead and roving focus are not implemented. Escape for a non-modal popover reaches it only when focus is inside it.
+- **Keyboard.** Menu navigation is vertical only: Left/Right, submenus opening on Right, grid or tree navigation and roving focus outside overlays are not implemented. Type-ahead matches button labels only and is not locale-aware beyond Unicode lower-casing. There is no `blur` request and no way to make a box or text node focusable. A non-modal popover without `autofocus` still never takes focus, and Escape reaches a non-modal popover only while focus is inside it. Arrow keys used by the menu are still reported to the application, which must not also act on them.
 - **Modal scope.** Overlays above the active modal in paint order (deeper non-modal popovers) remain interactive by pointer. Modality affects this window only; other windows of the application are not blocked.
 - **Dismissal.** Outside-press detection for parent-anchored popovers is left to the application; `onDismiss` reports only Escape and presses on the overlay node itself.
-- **Scrolling.** The anchor is vertical. Programmatic scroll positioning, scroll-into-view of a focused control, visible scrollbars, nested scroll chaining and virtualization remain separate work. Wheel deltas are GPUI's native X11 steps.
-- **Accessibility.** No accessibility roles, labels or focus announcements are exposed for overlays; focus rings are still not drawn.
+- **Scrolling.** The anchor is vertical. Scroll-into-view reveals the scroll container's child on the target's route, not the exact descendant bounds; there is no alignment option (start/center/end), no smooth scrolling and no scroll position read-back or scroll event. Visible scrollbars, nested scroll chaining and virtualization remain separate work. Wheel deltas are GPUI's native X11 steps.
+- **Accessibility.** No accessibility roles (`menu`, `menuitem`, `dialog`), labels or focus announcements are exposed. Focus rings are drawn for buttons and inputs but are fixed in color and width; there is no high-contrast or reduced-motion adaptation. The ring was verified by screenshot on Linux X11 only.

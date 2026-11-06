@@ -153,6 +153,21 @@ async function screenshot(name: string, [x, y]: [number, number]): Promise<numbe
   return Number.parseInt(hex[1]!, 16)
 }
 
+/**
+ * Paint evidence can precede the presented frame under a loaded software
+ * renderer, so read the pixel until it shows the expected color or a bounded
+ * deadline passes. The caller still asserts the final displayed value.
+ */
+async function displayed(name: string, [x, y]: [number, number], expected: number) {
+  const until = performance.now() + 2_000
+  let value = await screenshot(name, [Math.floor(x), Math.floor(y)])
+  while (value !== expected && performance.now() < until) {
+    await Bun.sleep(50)
+    value = await screenshot(name, [Math.floor(x), Math.floor(y)])
+  }
+  return value
+}
+
 async function clickLabel(window: NativeWindow, label: string) {
   await click(bounds(await painted(window), nodeId(label)))
 }
@@ -262,7 +277,7 @@ async function qualify(app: NativeApplication) {
   await waitFor(() => focus.at(-1) === 'confirm', 'modal initial focus')
   // The modal backdrop paints over the opener button at the window origin.
   const opener = bounds(await painted(window), nodeId('Open dialog'))
-  const covered = await screenshot('modal-dialog', [opener[0] + 4, opener[1] + 4])
+  const covered = await displayed('modal-dialog', [opener[0] + 4, opener[1] + 4], 0x334455)
   assert.equal(covered, 0x334455, 'the backdrop is displayed above the covered button')
   const opened = focus.length - 1
   const callbacksWithDialog = app.diagnostics.callbacks
@@ -346,7 +361,7 @@ async function qualify(app: NativeApplication) {
   assert.ok(Math.abs(item[1] - (menuBox[1] + menuBox[3] + 4)) <= 1, 'opens below its parent')
   assert.ok(item[1] < under[1] + under[3] && item[1] + item[3] > under[1], 'overlaps Under')
   // The popover's own padding is displayed over the button beneath it.
-  const padding = await screenshot('anchored-popover', [item[0] - 2, item[1] + 8])
+  const padding = await displayed('anchored-popover', [item[0] - 2, item[1] + 8], 0xdde6f0)
   assert.equal(padding, 0xdde6f0, 'the popover is displayed above the later sibling')
   await quiet(() => focus.at(-1), 'field', 'a non-modal popover does not take focus')
   const overlapClicks = clicks.length
@@ -428,7 +443,218 @@ async function qualify(app: NativeApplication) {
   assert.ok(pinned(resumed), 'returning to the end pins it again')
   record('scrollAnchorUnderStreaming', { followed, released, held, resumed })
 
+  await keyboardMenu(window, base.menuHost, { track, focus, clicks, dismissals })
+  await programmaticFocusAndScroll(window, { track, focus })
+
   await window.close()
+}
+
+type Observed = {
+  track: <K extends 'button' | 'input'>(node: NativeNode<K>, label: string) => NativeNode<K>
+  focus: string[]
+  clicks?: string[]
+  dismissals?: string[]
+}
+
+/**
+ * A keyboard-driven menu: a non-modal parent-anchored popover that takes
+ * focus on open, roves focus with arrows/Home/End, types ahead, draws a
+ * visible focus ring, activates with Enter and returns focus on Escape.
+ */
+async function keyboardMenu(
+  window: NativeWindow,
+  host: NativeNode<'box'>,
+  { track, focus, clicks, dismissals }: Observed
+) {
+  assert.ok(app.capabilities.includes('overlay_keyboard_v1'))
+  const before = focus.at(-1)
+  const labels = ['Copy', 'Cut', 'Paste', 'Rename', 'Delete', 'Duplicate']
+  const menu = await window.batch((batch) => {
+    const layer = batch.create({
+      kind: 'overlay',
+      anchor: 'parent',
+      autofocus: true,
+      navigation: 'menu',
+      style: { padding: 4, gap: 2, background: 0xdde6f0 },
+    })
+    for (const label of labels)
+      batch.append(
+        layer,
+        track(
+          batch.create({
+            kind: 'button',
+            text: label,
+            disabled: label === 'Rename',
+            style: { width: 150 },
+          }),
+          label.toLowerCase()
+        )
+      )
+    batch.append(host, layer)
+    return layer
+  })
+  onDismiss(window, menu, async ({ reason }) => {
+    dismissals!.push('menu:' + reason)
+    if (reason === 'escape') await window.batch((b) => b.remove(menu))
+  })
+  await waitFor(() => focus.at(-1) === 'copy', 'a non-modal autofocus menu takes focus')
+  const moves: [string, string][] = []
+  const step = async (key: string, expected: string) => {
+    await press(key)
+    await waitFor(() => focus.at(-1) === expected, key + ' moves focus to ' + expected)
+    moves.push([key, expected])
+  }
+  await step('Down', 'cut')
+  await step('Down', 'paste')
+  // The disabled item is skipped.
+  await step('Down', 'delete')
+  await step('Up', 'paste')
+  await step('End', 'duplicate')
+  await step('Home', 'copy')
+  await step('Up', 'duplicate')
+  await step('Down', 'copy')
+  record('menuArrowNavigation', { opened: 'copy', moves })
+
+  // Type-ahead: a repeated letter cycles; a pause starts a new search.
+  const typed: [string, string][] = []
+  const typeAhead = async (text: string, expected: string) => {
+    await type(text)
+    await waitFor(() => focus.at(-1) === expected, `typing ${text} focuses ${expected}`)
+    typed.push([text, expected])
+  }
+  await typeAhead('d', 'delete')
+  await typeAhead('d', 'duplicate')
+  await Bun.sleep(1_200)
+  await typeAhead('pa', 'paste')
+  await Bun.sleep(1_200)
+  await typeAhead('c', 'copy')
+  await typeAhead('u', 'cut')
+  record('menuTypeAhead', { typed })
+
+  // The keyboard-focused item draws an inset ring: a white edge over a dark
+  // band, while an unfocused item shows its plain background there.
+  const geometry = await painted(window, (entry) => entry.layout.focused_node_id === nodeId('Cut'))
+  const cut = bounds(geometry, nodeId('Cut'))
+  const copy = bounds(geometry, nodeId('Copy'))
+  const middle = (rect: Rect) => rect[1] + rect[3] / 2
+  const edge = await displayed('menu-focus-ring', [cut[0], middle(cut)], 0xffffff)
+  const band = await displayed('menu-focus-ring', [cut[0] + 2, middle(cut)], 0x101828)
+  const plain = await displayed('menu-focus-ring', [copy[0] + 2, middle(copy)], 0x2255cc)
+  assert.equal(edge, 0xffffff, 'the ring has a white outer edge')
+  assert.equal(band, 0x101828, 'the ring has a dark inner band')
+  assert.equal(plain, 0x2255cc, 'an unfocused button has no ring')
+  record('visibleFocusRing', {
+    focused: 'cut',
+    edge: edge.toString(16),
+    band: band.toString(16),
+    unfocused: plain.toString(16),
+  })
+
+  // Enter activates the roving item; Escape reaches the focused popover and
+  // focus returns to the control focused before it opened.
+  const activated = clicks!.length
+  await press('Return')
+  await waitFor(() => clicks!.length > activated, 'Enter activates the menu item')
+  assert.deepEqual(clicks!.slice(activated), ['cut'])
+  await press('Escape')
+  await waitFor(() => dismissals!.at(-1) === 'menu:escape', 'Escape dismisses the popover')
+  await waitFor(() => focus.at(-1) === before, 'focus returns after the menu closes')
+  record('menuActivationAndReturn', { activated: 'cut', returnedTo: before })
+}
+
+/**
+ * Programmatic focus scrolls the target into view; scrollTo and
+ * scrollIntoView position a viewport; Tab focus reveals the next control.
+ */
+async function programmaticFocusAndScroll(window: NativeWindow, { track, focus }: Observed) {
+  assert.ok(app.capabilities.includes('focus_v1'))
+  assert.ok(app.capabilities.includes('scroll_control_v1'))
+  const { list, options } = await window.batch((batch) => {
+    const list = batch.create({
+      kind: 'box',
+      style: { width: 220, height: 100, overflow: 'scroll_y', background: 0xeef2f6 },
+    })
+    const options = Array.from({ length: 12 }, (_, index) =>
+      track(
+        batch.create({ kind: 'button', text: 'Option ' + index, style: { width: 200 } }),
+        'option' + index
+      )
+    )
+    for (const option of options) batch.append(list, option)
+    batch.append(window.root, list)
+    return { list, options }
+  })
+  let listId = 0
+  await waitFor(() => {
+    const node = records<Rendered>('rendered')
+      .at(-1)
+      ?.nodes.find(
+        (entry) => (entry.element.style as { height?: number } | undefined)?.height === 100
+      )
+    listId = node?.node_id ?? 0
+    return listId !== 0
+  }, 'the rendered option list')
+  const viewportOf = (layout: Layout) => bounds(layout, listId)
+  const scrollOf = (layout: Layout) =>
+    layout.layout.scrolls.find((entry) => entry.node_id === listId)!
+  const visible = (layout: Layout, label: string) => {
+    const [, top, , height] = viewportOf(layout)
+    const [, y, , h] = bounds(layout, nodeId(label))
+    return y >= top - 0.5 && y + h <= top + height + 0.5
+  }
+  const initial = scrollOf(await painted(window))
+  assert.equal(initial.offset[1], 0)
+
+  await window.batch((batch) => batch.focus(options[9]!))
+  await waitFor(() => focus.at(-1) === 'option9', 'programmatic focus')
+  const focused = await painted(
+    window,
+    (entry) => entry.layout.focused_node_id === nodeId('Option 9') && visible(entry, 'Option 9')
+  )
+  const revealed = scrollOf(focused)
+  assert.ok(revealed.offset[1] < 0, 'focusing a hidden option scrolled the list')
+  record('programmaticFocusRevealsTarget', { focused: 'option9', offset: revealed.offset })
+
+  await window.batch((batch) => batch.scrollTo(list, { y: 0 }))
+  const top = scrollOf(await painted(window, (entry) => scrollOf(entry).offset[1] === 0))
+  assert.ok(visible(await painted(window), 'Option 0'))
+  await window.batch((batch) => batch.scrollTo(list, { y: 50 }))
+  const exact = scrollOf(await painted(window, (entry) => scrollOf(entry).offset[1] === -50))
+  // Requests beyond the content are clamped to the laid-out maximum.
+  await window.batch((batch) => batch.scrollTo(list, { y: 100_000 }))
+  const clamped = scrollOf(
+    await painted(window, (entry) => {
+      const scroll = scrollOf(entry)
+      return Math.abs(scroll.offset[1] + scroll.maximum[1]) <= 0.5
+    })
+  )
+  await window.batch((batch) => batch.scrollTo(list, { y: 0 }))
+  await painted(window, (entry) => scrollOf(entry).offset[1] === 0)
+  await window.batch((batch) => batch.scrollIntoView(options[11]!))
+  const last = await painted(window, (entry) => visible(entry, 'Option 11'))
+  assert.ok(Math.abs(scrollOf(last).offset[1] + scrollOf(last).maximum[1]) <= 0.5)
+  record('programmaticScroll', {
+    top: top.offset,
+    exact: exact.offset,
+    clamped: { offset: clamped.offset, maximum: clamped.maximum },
+    intoView: scrollOf(last).offset,
+  })
+
+  // Keyboard Tab focus scrolls the newly focused control into view.
+  await window.batch((batch) => {
+    batch.scrollTo(list, { y: 0 })
+    batch.focus(options[1]!)
+  })
+  await waitFor(() => focus.at(-1) === 'option1', 'focus on the second option')
+  await press('Tab')
+  await press('Tab')
+  await waitFor(() => focus.at(-1) === 'option3', 'Tab moves through the list')
+  const tabbed = await painted(
+    window,
+    (entry) => entry.layout.focused_node_id === nodeId('Option 3') && visible(entry, 'Option 3')
+  )
+  assert.ok(scrollOf(tabbed).offset[1] < 0, 'Tab revealed the focused option')
+  record('tabFocusRevealsTarget', { focused: 'option3', offset: scrollOf(tabbed).offset })
 }
 
 const app = await createApplication({ executable })

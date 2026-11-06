@@ -508,6 +508,7 @@ impl Render for TextInput {
             .w_full()
             .key_context("TextInput")
             .track_focus(&self.focus_handle(cx))
+            .focus(|style| style.shadow(crate::style::focus_ring()))
             .cursor(CursorStyle::IBeam)
             .on_action(cx.listener(Self::backspace))
             .on_action(cx.listener(Self::delete))

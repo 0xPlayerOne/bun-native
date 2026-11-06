@@ -132,6 +132,28 @@ export interface NativeBatch {
   append(parent: NativeNode<ContainerKind>, child: NativeNode): void
   /** Deletes the complete subtree; deleting a revoked node is an error. */
   remove(node: NativeNode): void
+  /**
+   * Requires `focus_v1`. Focus an enabled button or input after this batch's
+   * tree changes commit, and scroll it into view. The target must still be
+   * focusable in the committed tree and lie inside the active modal overlay.
+   */
+  focus(node: NativeNode<'button' | 'input'>): void
+  /**
+   * Requires `scroll_control_v1`. Set a scrolling container's offset from its
+   * content start in logical pixels; an omitted axis keeps its offset. The
+   * host clamps the offset to the laid-out maximum.
+   */
+  scrollTo(node: NativeNode<ContainerKind>, offset: ScrollOffset): void
+  /**
+   * Requires `scroll_control_v1`. Scroll every scrolling ancestor inside the
+   * node's own layer so the ancestor's child on the node's route is visible.
+   */
+  scrollIntoView(node: NativeNode): void
+}
+
+export interface ScrollOffset {
+  readonly x?: number
+  readonly y?: number
 }
 
 export interface WindowOptions {

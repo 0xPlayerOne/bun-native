@@ -16,7 +16,7 @@ pub use files::*;
 pub use framing::{write_event, CommandReader, ProtocolError};
 pub use processes::*;
 pub use services::*;
-pub use tree::{BatchMetrics, ModelError, Node, PreparedBatch, Tree};
+pub use tree::{BatchMetrics, ModelError, Node, PreparedBatch, Tree, ViewRequest};
 pub use wire::*;
 
 #[cfg(test)]
@@ -27,6 +27,8 @@ mod event_tests;
 mod layout_v2_tests;
 #[cfg(test)]
 mod overlay_tests;
+#[cfg(test)]
+mod request_tests;
 #[cfg(test)]
 mod security_tests;
 #[cfg(test)]

@@ -29,6 +29,9 @@ for (const [name, mount] of mounts) {
             insert: batch.insert.bind(batch),
             append: batch.append.bind(batch),
             remove: batch.remove.bind(batch),
+            focus: batch.focus.bind(batch),
+            scrollTo: batch.scrollTo.bind(batch),
+            scrollIntoView: batch.scrollIntoView.bind(batch),
           })
         )
       const style: Style = { width: 'fill', height: 'fill', overflow: 'hidden' }

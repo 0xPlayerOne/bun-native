@@ -1,6 +1,7 @@
 import {
   DECORATION_FIELDS,
   MAX_OVERLAY_DEPTH,
+  MAX_SCROLL_OFFSET,
   parseElement,
   type Capability,
   type Element,
@@ -15,6 +16,7 @@ import {
   type ElementKind,
   type NativeBatch,
   type NativeNode,
+  type ScrollOffset,
 } from './types.ts'
 
 const identities = new WeakMap<NativeNode, number>()
@@ -52,7 +54,31 @@ function supported(element: Element, capabilities: readonly Capability[]): Eleme
     !capabilities.includes('scroll_anchor_v1')
   )
     throw new UnsupportedFeatureError('style:scroll_anchor')
+  if (
+    element.kind === 'overlay' &&
+    (element.autofocus !== undefined || element.navigation !== undefined) &&
+    !capabilities.includes('overlay_keyboard_v1')
+  )
+    throw new UnsupportedFeatureError(
+      element.autofocus === undefined ? 'overlay:navigation' : 'overlay:autofocus'
+    )
   return element
+}
+
+function requireCapability(
+  capabilities: readonly Capability[],
+  capability: Capability,
+  feature: string
+) {
+  if (!capabilities.includes(capability)) throw new UnsupportedFeatureError(feature)
+}
+
+/** A focus or scroll request checked against the final candidate tree. */
+type Request = {
+  type: 'focus' | 'scroll_to' | 'scroll_into_view'
+  id: number
+  x?: number
+  y?: number
 }
 
 export interface NodeState {
@@ -95,6 +121,7 @@ export function own(nodes: ReadonlyMap<number, NodeState>, handle: NativeNode): 
 export class Transaction implements NativeBatch {
   readonly nodes: Map<number, NodeState>
   readonly operations: Operation[] = []
+  private readonly requests: Request[] = []
   private active = true
 
   constructor(
@@ -230,6 +257,99 @@ export class Transaction implements NativeBatch {
     this.operations.push({ type: 'delete', node_id: node.id })
   }
 
+  focus(handle: NativeNode<'button' | 'input'>): void {
+    this.check()
+    requireCapability(this.capabilities, 'focus_v1', 'operation:focus')
+    const node = own(this.nodes, handle)
+    this.requests.push({ type: 'focus', id: node.id })
+    this.operations.push({ type: 'focus', node_id: node.id })
+  }
+
+  scrollTo(handle: NativeNode<ContainerKind>, offset: ScrollOffset): void {
+    this.check()
+    requireCapability(this.capabilities, 'scroll_control_v1', 'operation:scroll_to')
+    const node = own(this.nodes, handle)
+    if (offset === null || typeof offset !== 'object')
+      throw new TypeError('A scroll offset must be an object')
+    const axes: { x?: number; y?: number } = {}
+    for (const axis of ['x', 'y'] as const) {
+      const value = offset[axis]
+      if (value === undefined) continue
+      if (
+        typeof value !== 'number' ||
+        !Number.isFinite(value) ||
+        value < 0 ||
+        value > MAX_SCROLL_OFFSET
+      )
+        throw new RangeError('Scroll offsets must be finite and between 0 and ' + MAX_SCROLL_OFFSET)
+      axes[axis] = value
+    }
+    if (axes.x === undefined && axes.y === undefined)
+      throw new TypeError('A scroll offset requires x or y')
+    this.requests.push({ type: 'scroll_to', id: node.id, ...axes })
+    this.operations.push({ type: 'scroll_to', node_id: node.id, ...axes })
+  }
+
+  scrollIntoView(handle: NativeNode): void {
+    this.check()
+    requireCapability(this.capabilities, 'scroll_control_v1', 'operation:scroll_into_view')
+    const node = own(this.nodes, handle)
+    this.requests.push({ type: 'scroll_into_view', id: node.id })
+    this.operations.push({ type: 'scroll_into_view', node_id: node.id })
+  }
+
+  /** The modal overlay highest in paint order: deepest, then later in tree order. */
+  private activeModal(): number | undefined {
+    let active: { depth: number; id: number } | undefined
+    const pending = [{ id: this.rootId, outer: 0 }]
+    while (pending.length) {
+      const { id, outer } = pending.pop()!
+      const node = this.nodes.get(id)!
+      let depth = outer
+      if (node.element.kind === 'overlay') {
+        depth += 1
+        if (node.element.modal && (!active || depth >= active.depth)) active = { depth, id }
+      }
+      for (let index = node.children.length - 1; index >= 0; index -= 1)
+        pending.push({ id: node.children[index]!, outer: depth })
+    }
+    return active?.id
+  }
+
+  private validateRequests(): void {
+    for (const request of this.requests) {
+      const node = this.nodes.get(request.id)
+      if (!node)
+        throw new NativeStateError('invalid_handle', 'Request target is removed by this batch')
+      const element = node.element
+      if (request.type === 'focus') {
+        if (element.kind !== 'input' && (element.kind !== 'button' || element.disabled))
+          throw new NativeStateError(
+            'invalid_state',
+            'Only an enabled button or an input can take focus'
+          )
+        const modal = this.activeModal()
+        let ancestor: NodeState | undefined = node
+        while (modal !== undefined && ancestor && ancestor.id !== modal)
+          ancestor = ancestor.parent === undefined ? undefined : this.nodes.get(ancestor.parent)
+        if (modal !== undefined && !ancestor)
+          throw new NativeStateError(
+            'invalid_state',
+            'Focus target is outside the active modal overlay'
+          )
+      } else if (request.type === 'scroll_to') {
+        const overflow = isContainer(element) ? element.style?.overflow : undefined
+        const horizontal = overflow === 'scroll_x' || overflow === 'scroll'
+        const vertical = overflow === 'scroll_y' || overflow === 'scroll'
+        if ((request.x !== undefined && !horizontal) || (request.y !== undefined && !vertical))
+          throw new NativeStateError(
+            'invalid_state',
+            'scrollTo requires a container scrolling on each given axis'
+          )
+      }
+    }
+  }
+
   validate(): void {
     let seen = 0
     let bytes = 0
@@ -266,5 +386,6 @@ export class Transaction implements NativeBatch {
         'invalid_state',
         'Every created node must be attached before commit'
       )
+    this.validateRequests()
   }
 }
