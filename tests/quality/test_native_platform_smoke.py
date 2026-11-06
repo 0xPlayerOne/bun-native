@@ -469,6 +469,38 @@ class MacInputGuardTests(unittest.TestCase):
                 driver.click(104, 144, [560, 380])
             driver._call.assert_not_called()
 
+    def helper_call(self, stdout, returncode=0):
+        driver = SMOKE.OS_INPUT.MacInput.__new__(SMOKE.OS_INPUT.MacInput)
+        driver.app_pid, driver.host, driver.title = 1, "host", ""
+        driver.helper = Path("/helper")
+        completed = mock.Mock(stdout=stdout, stderr=b"", returncode=returncode)
+        with mock.patch.object(
+            SMOKE.OS_INPUT.subprocess, "run", return_value=completed
+        ):
+            return driver._call("identity")
+
+    def test_non_object_helper_json_is_rejected_as_unbounded(self):
+        for stdout, returncode in (
+            (b"[]", 0),
+            (b'"ready"', 0),
+            (b"7", 0),
+            (b"null", 0),
+            (b'["unsupported"]', 2),
+            (b"not json", 0),
+        ):
+            with (
+                self.subTest(stdout=stdout),
+                self.assertRaisesRegex(RuntimeError, "did not return bounded JSON"),
+            ):
+                self.helper_call(stdout, returncode)
+
+    def test_object_helper_json_keeps_its_status_handling(self):
+        self.assertEqual(self.helper_call(b'{"status":"ready"}'), {"status": "ready"})
+        with self.assertRaises(SMOKE.OS_INPUT.InputUnavailable):
+            self.helper_call(b'{"status":"unsupported"}', 2)
+        with self.assertRaisesRegex(RuntimeError, "helper failed: denied"):
+            self.helper_call(b'{"status":"failed","error":"denied"}', 1)
+
     def test_observed_permission_preserves_the_fresh_native_identity_check(self):
         state = {"status": "ready", "postEventAccess": True, "window": {"id": 123}}
         driver = self.driver(state)

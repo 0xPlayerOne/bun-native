@@ -66,7 +66,9 @@ One warm-up per mode is the default. Those trials run the full correctness
 scenario, retain evidence and are excluded from the reported distributions.
 Measured trials alternate development/AOT order on every repetition. The default
 is five measured samples per mode; `--samples` accepts three through thirty and
-`--warmups` accepts zero through five. The selected values are part of the report.
+`--warmups` accepts zero through five. `--idle-seconds` accepts one through ten
+and `--timeout` (the per-trial driver deadline, default 30) accepts 15 through
+60 seconds. The selected values are part of the report.
 
 ## Read the results
 
