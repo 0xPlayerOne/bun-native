@@ -36,12 +36,12 @@ use windows_sys::Win32::Storage::FileSystem::{
     FILE_ATTRIBUTE_REPARSE_POINT, FILE_ATTRIBUTE_TAG_INFO, FILE_BASIC_INFO,
     FILE_DISPOSITION_FLAG_DELETE, FILE_DISPOSITION_FLAG_POSIX_SEMANTICS, FILE_DISPOSITION_INFO,
     FILE_DISPOSITION_INFO_EX, FILE_FLAG_BACKUP_SEMANTICS, FILE_FLAG_OPEN_REPARSE_POINT,
-    FILE_FULL_DIR_INFO, FILE_LIST_DIRECTORY, FILE_NAME_NORMALIZED, FILE_READ_ATTRIBUTES,
-    FILE_READ_DATA, FILE_SHARE_DELETE, FILE_SHARE_READ, FILE_SHARE_WRITE, FILE_STANDARD_INFO,
-    FILE_TRAVERSE, FILE_TYPE_DISK, FILE_WRITE_DATA, FileAttributeTagInfo, FileBasicInfo,
-    FileDispositionInfo, FileDispositionInfoEx, FileFullDirectoryInfo,
-    FileFullDirectoryRestartInfo, FileStandardInfo, GetFileInformationByHandleEx, GetFileType,
-    GetFinalPathNameByHandleW, OPEN_EXISTING, ReOpenFile, SYNCHRONIZE, SetFileInformationByHandle,
+    FILE_FULL_DIR_INFO, FILE_ID_INFO, FILE_LIST_DIRECTORY, FILE_NAME_NORMALIZED,
+    FILE_READ_ATTRIBUTES, FILE_READ_DATA, FILE_SHARE_DELETE, FILE_SHARE_READ, FILE_SHARE_WRITE,
+    FILE_STANDARD_INFO, FILE_TRAVERSE, FILE_TYPE_DISK, FILE_WRITE_DATA, FileAttributeTagInfo,
+    FileBasicInfo, FileDispositionInfo, FileDispositionInfoEx, FileFullDirectoryInfo,
+    FileFullDirectoryRestartInfo, FileIdInfo, FileStandardInfo, GetFileInformationByHandleEx,
+    GetFileType, GetFinalPathNameByHandleW, OPEN_EXISTING, SYNCHRONIZE, SetFileInformationByHandle,
     VOLUME_NAME_DOS, VOLUME_NAME_NT,
 };
 use windows_sys::Win32::System::IO::IO_STATUS_BLOCK;
@@ -233,16 +233,39 @@ pub fn open_executable(path: &Path) -> io::Result<OwnedHandle> {
 
 /// A second handle to the directory `handle` names, sharing only reads and
 /// writes so the directory cannot be renamed or deleted while it is open.
+///
+/// `ReOpenFile` is refused with `ERROR_ACCESS_DENIED` for these handles on
+/// hosted Windows, so the directory is opened again by its final path and the
+/// two handles must name the same volume and file ID: a directory swapped in
+/// between is rejected rather than pinned.
 pub fn pin_directory(handle: BorrowedHandle<'_>) -> io::Result<OwnedHandle> {
-    // SAFETY: the borrowed handle is open for the duration of the call.
-    owned(unsafe {
-        ReOpenFile(
-            handle.as_raw_handle(),
+    let path = final_path(handle, true)?;
+    let wide = terminated(&path)?;
+    // SAFETY: `wide` is NUL-terminated and outlives the call; no security
+    // attributes or template handle are passed.
+    let pinned = owned(unsafe {
+        CreateFileW(
+            wide.as_ptr(),
             FILE_LIST_DIRECTORY | FILE_TRAVERSE | FILE_READ_ATTRIBUTES | SYNCHRONIZE,
             Share::Pinned.mode(),
+            std::ptr::null(),
+            OPEN_EXISTING,
             FILE_FLAG_BACKUP_SEMANTICS | FILE_FLAG_OPEN_REPARSE_POINT,
+            std::ptr::null_mut(),
         )
-    })
+    })?;
+    if file_id(pinned.as_handle())? != file_id(handle)? {
+        return Err(io::Error::other(
+            "the directory changed while it was pinned",
+        ));
+    }
+    Ok(pinned)
+}
+
+/// The volume serial number and 128-bit file ID that name one file.
+fn file_id(handle: BorrowedHandle<'_>) -> io::Result<(u64, [u8; 16])> {
+    let id: FILE_ID_INFO = query(handle, FileIdInfo)?;
+    Ok((id.VolumeSerialNumber, id.FileId.Identifier))
 }
 
 /// Whether the running system accepts `OBJ_DONT_REPARSE` relative opens.
