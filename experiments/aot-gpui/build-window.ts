@@ -53,6 +53,7 @@ const entries = {
   processes: 'tests/native/processes.ts',
   'file-dialogs': 'tests/native/file-dialogs.ts',
   overlays: 'tests/native/overlays.ts',
+  'message-dialogs': 'tests/native/message-dialogs.ts',
   popups: 'tests/native/popups.ts',
   'drag-drop': 'tests/native/drag-drop.ts',
   'solid-drag-drop': 'tests/native/solid-drag-drop.tsx',
@@ -147,6 +148,7 @@ if (
     entry === 'processes' ||
     entry === 'file-dialogs' ||
     entry === 'overlays' ||
+    entry === 'message-dialogs' ||
     entry === 'popups' ||
     entry === 'drag-drop' ||
     entry === 'text-input' ||
