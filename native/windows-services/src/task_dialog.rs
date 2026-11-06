@@ -18,13 +18,16 @@ use std::io;
 use std::mem::size_of;
 use std::sync::atomic::{AtomicBool, AtomicIsize, Ordering};
 use std::sync::{Mutex, OnceLock};
+use windows_sys::Win32::Foundation::RECT;
 use windows_sys::Win32::Foundation::{HWND, LPARAM, WPARAM};
 use windows_sys::Win32::System::LibraryLoader::{GetProcAddress, LoadLibraryW};
 use windows_sys::Win32::UI::Controls::{
-    TASKDIALOG_BUTTON, TASKDIALOGCONFIG, TDF_ALLOW_DIALOG_CANCELLATION,
+    TASKDIALOG_BUTTON, TASKDIALOGCONFIG, TDF_ALLOW_DIALOG_CANCELLATION, TDF_CALLBACK_TIMER,
     TDF_POSITION_RELATIVE_TO_WINDOW, TDM_CLICK_BUTTON, TDN_CREATED, TDN_DESTROYED,
 };
-use windows_sys::Win32::UI::WindowsAndMessaging::PostMessageW;
+use windows_sys::Win32::UI::WindowsAndMessaging::{
+    GetWindowRect, GetWindowThreadProcessId, IsWindowVisible, PostMessageW,
+};
 
 /// TEMPORARY hosted-run diagnostics (removed once #239 is verified).
 pub fn trace(line: &str) {
@@ -121,6 +124,27 @@ unsafe extern "system" fn callback(
     // for the whole `TaskDialogIndirect` call that invokes this function.
     let state = unsafe { &*(data as *const Callback<'_>) };
     trace(&format!("callback notification={notification}"));
+    if notification == TDN_CREATED as u32 || notification == 4 {
+        let mut rect = RECT {
+            left: 0,
+            top: 0,
+            right: 0,
+            bottom: 0,
+        };
+        let mut process = 0u32;
+        // SAFETY: plain queries of the dialog window handle with valid out pointers.
+        let (visible, thread) = unsafe {
+            GetWindowRect(window, &mut rect);
+            (
+                IsWindowVisible(window),
+                GetWindowThreadProcessId(window, &mut process),
+            )
+        };
+        trace(&format!(
+            "dialog window={window:?} visible={visible} thread={thread} process={process} rect=({},{},{},{})",
+            rect.left, rect.top, rect.right, rect.bottom
+        ));
+    }
     if notification == TDN_CREATED as u32 {
         state
             .control
@@ -186,7 +210,8 @@ pub fn show(
     let config = TASKDIALOGCONFIG {
         cbSize: size_of::<TASKDIALOGCONFIG>() as u32,
         hwndParent: owner as HWND,
-        dwFlags: TDF_POSITION_RELATIVE_TO_WINDOW
+        dwFlags: TDF_CALLBACK_TIMER
+            | TDF_POSITION_RELATIVE_TO_WINDOW
             | if spec.cancellable {
                 TDF_ALLOW_DIALOG_CANCELLATION
             } else {
