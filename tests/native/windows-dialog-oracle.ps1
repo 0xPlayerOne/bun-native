@@ -1,6 +1,6 @@
 # Independent UI Automation oracle for the Windows OS message dialog (#239).
 # It never loads GPUI or the Bun Native host. It finds a task dialog among the
-# desktop's top-level windows by title and reads or drives it through the
+# top-level windows by class and title and reads or drives it through the
 # accessibility tree, exactly as an assistive client would.
 #   find    print the dialog's text and button names as JSON (waits for it)
 #   invoke  press the button named -Name through its InvokePattern
@@ -16,14 +16,18 @@ $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version 3.0
 Add-Type -AssemblyName UIAutomationClient, UIAutomationTypes, System.Windows.Forms
 
+Add-Type -Namespace Win32 -Name Native -MemberDefinition @'
+[System.Runtime.InteropServices.DllImport("user32.dll", CharSet = System.Runtime.InteropServices.CharSet.Unicode)]
+public static extern System.IntPtr FindWindowW(string className, string windowName);
+'@
+
+# The OS lists a dialog that has an owner under that owner, not under the
+# desktop, so the top-level window is found by class and title and then
+# opened as an automation element from its handle.
 function Find-Dialog {
-  $condition = New-Object System.Windows.Automation.AndCondition(
-    (New-Object System.Windows.Automation.PropertyCondition(
-      [System.Windows.Automation.AutomationElement]::NameProperty, $Title)),
-    (New-Object System.Windows.Automation.PropertyCondition(
-      [System.Windows.Automation.AutomationElement]::ClassNameProperty, '#32770')))
-  [System.Windows.Automation.AutomationElement]::RootElement.FindFirst(
-    [System.Windows.Automation.TreeScope]::Children, $condition)
+  $handle = [Win32.Native]::FindWindowW('#32770', $Title)
+  if ($handle -eq [System.IntPtr]::Zero) { return $null }
+  try { [System.Windows.Automation.AutomationElement]::FromHandle($handle) } catch { $null }
 }
 
 function Wait-Dialog([bool]$Present) {
