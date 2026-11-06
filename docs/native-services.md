@@ -786,6 +786,89 @@ React fixtures in development and inspected AOT on an isolated display. An
 independent x11rb XDND source process grabs and warps the real pointer and
 speaks XDND to the host. No GPUI event is synthesized.
 
+## Application menu bar
+
+```ts
+const app = await createApplication({
+  executable,
+  permissions: { appMenu: "allow" },
+});
+if (app.serviceCapabilities.appMenu.availability === "available") {
+  const bar = await app.setMenuBar(
+    [
+      {
+        title: "Notes", // shown under the process name on macOS
+        items: [
+          { kind: "item", id: "app.quit", label: "Quit Notes", shortcut: { key: "q", platform: true } },
+        ],
+      },
+      {
+        title: "File",
+        items: [
+          { kind: "item", id: "file.open", label: "Open…", shortcut: { key: "o", platform: true } },
+          { kind: "separator" },
+          { kind: "submenu", label: "Recent", items: [{ kind: "item", id: "recent.1", label: "notes.txt" }] },
+          { kind: "item", id: "file.export", label: "Export", enabled: false },
+        ],
+      },
+    ],
+    async (event) => {
+      if (event.itemId === "app.quit") await app.shutdown();
+    },
+  );
+  await bar.clear(); // or app.clearMenuBar(), or set another bar
+}
+```
+
+`setMenuBar` installs the application's menu bar under the separate
+`appMenu` grant. It belongs to the application, not to a window: closing a
+window leaves it installed. The optional `app_menu_v1` capability is
+advertised on macOS only, where GPUI installs an `NSMenu` main menu; GPUI's
+Linux and Windows backends only store menus, so `serviceCapabilities.appMenu`
+reports `unsupported_platform` there and core rejects with
+`NativeServiceError` `service_unavailable` (or `permission_denied` without
+the grant) before any request.
+
+The model is closed and bounded, validated by both language implementations:
+at most 16 menus and 128 entries in all, submenus at most two levels below a
+top-level menu, titles and labels of 1-64 UTF-8 bytes without control
+characters, item `id`s of 1-64 bytes of `A-Z a-z 0-9 . _ : -` unique in the
+bar, and shortcuts from a closed key set (`a`-`z`, `0`-`9`, `f1`-`f12`,
+``, . / ; ' [ ] - = ` \`` and `enter`, `escape`, `tab`, `space`, `backspace`,
+`delete`, the arrows, `home`, `end`, `pageup`, `pagedown`) with explicit
+`control`, `alt`, `shift` and `platform` (Command) flags. Every key except
+`f1`-`f12` needs control, alt or platform, and shortcuts are unique in the
+bar. `enabled` defaults to true and `checked` to false; both are fixed per
+bar, so changing them means setting a new bar.
+
+Selecting an item calls the listener with a frozen `app_menu_item` event:
+the item's `itemId`, the `menuBar` handle and a `signal` aborted when the bar
+is replaced, cleared or the application stops. No application string becomes
+a native action name: the host gives each item an opaque registry slot of the
+current bar. Setting or clearing a bar revokes the previous handle at once;
+a selection of a replaced bar, even one AppKit queued before the replacement,
+is never delivered. Shutdown removes the bar.
+
+On macOS the first menu is shown under the process name. A menu titled
+exactly `Window` becomes AppKit's Windows menu, to which AppKit appends its
+window list. The host adds no standard items (About, Services, Hide, Quit):
+an application that wants Quit adds it, as above. Menu shortcuts are bound in
+the owned window's root key context, so a focused text input keeps its own
+editing keys. A disabled submenu still opens, with every item disabled.
+
+The macOS job of the [native platforms workflow](../.github/workflows/native-platforms.yml)
+runs [`tests/native/app-menu.ts`](../tests/native/app-menu.ts) in development
+and inspected AOT. An independent Accessibility oracle
+([`macos-menu-oracle.m`](../tests/native/macos-menu-oracle.m)) reads the
+host's `AXMenuBar` and performs `AXPress` by title: it checks titles,
+separators, check marks, enabled state and key equivalents, selections of the
+current bar, that a replaced bar is gone and delivers nothing, that a
+disabled item never reports, and that clearing removes the menus. When the
+runner does not trust the oracle for Accessibility the report is
+`unverified` and the step warns. This is hosted-CI evidence only; no local
+Mac run, keyboard-driven selection or VoiceOver check has been made. See
+[ADR 0015](decisions/0015-application-menu-bar.md).
+
 ## Service and platform matrix
 
 All services listed here share the core's policy boundary. The unavailable rows
@@ -798,7 +881,7 @@ already exists. The linked follow-ups belong to
 | Window/display    | Existing owned open/close; permission-gated `displaySnapshot` | Core/Solid/React dev+AOT verified with release host; X11 semantics fixture dev+AOT verified locally | Service execution unverified                      | Service execution unverified            | X11 semantics qualified; change events, work area, identity and mixed DPI unavailable on X11. Other platforms and placement remain. [#299](https://github.com/0xPlayerOne/bun-native/issues/299).         |
 | Clipboard text    | `readClipboardText` / `writeClipboardText`; separate grants   | X11 dev+AOT verified with release host                                                              | Unavailable                                       | Unavailable                             | Additional platforms/formats and extended lifecycle coverage. [#300](https://github.com/0xPlayerOne/bun-native/issues/300).                                                                               |
 | Global shortcuts  | `registerGlobalShortcut`; `globalShortcuts` grant             | X11 dev+AOT verified with release host                                                              | Unavailable                                       | Unavailable                             | macOS/Windows backends, Wayland portal design and keyboard-map change tracking. [#301](https://github.com/0xPlayerOne/bun-native/issues/301).                                                             |
-| System menus      | Capability `systemMenus`; unavailable                         | Unavailable                                                                                         | Unavailable                                       | Unavailable                             | Typed action identities, owned menu lifetime, keyboard/accessibility behavior and safe action revocation. [#239](https://github.com/0xPlayerOne/bun-native/issues/239).                                   |
+| Application menu  | `setMenuBar` / `clearMenuBar`; `appMenu` grant                | Unavailable (GPUI stores menus only)                                                                | AppKit `NSMenu` bar; hosted CI only (AX oracle)   | Unavailable                             | Context and Dock menus, dynamic validation, Linux/Windows menu bars drawn by the application. [#239](https://github.com/0xPlayerOne/bun-native/issues/239).                                               |
 | File dialogs      | `showOpenDialog` / `showSaveDialog`; `fileDialogs` grant      | xdg-desktop-portal (GTK) dev+AOT verified                                                           | Unavailable                                       | Unavailable                             | macOS/Windows panels, Wayland parenting, sandboxed document-portal paths and explicit file-grant conversion. [#239](https://github.com/0xPlayerOne/bun-native/issues/239).                                |
 | Message dialogs   | Capability `messageDialogs`; unavailable                      | Unavailable (no portal; use a modal overlay)                                                        | Unavailable                                       | Unavailable                             | Native `NSAlert`/task dialogs with owned modality, programmatic close and qualification. [#239](https://github.com/0xPlayerOne/bun-native/issues/239).                                                    |
 | Notifications     | `postNotification`; `notifications` grant                     | Freedesktop D-Bus (dunst) dev+AOT verified                                                          | Unavailable                                       | Unavailable                             | macOS/Windows backends, additional notification servers, named actions and replacement. [#302](https://github.com/0xPlayerOne/bun-native/issues/302).                                                     |

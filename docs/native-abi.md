@@ -18,7 +18,13 @@ File dialogs add the optional `file_dialogs_v1` capability,
 `show_file_dialog`/`close_file_dialog` commands, `file_dialog_opened`/
 `file_dialog_closed` responses and a sequenced `file_dialog_completed` event
 without changing the protocol version; the policy's `file_dialogs` field is
-optional and omitted when denied.
+optional and omitted when denied. The application menu bar
+([ADR 0015](decisions/0015-application-menu-bar.md)) likewise adds the
+optional `app_menu_v1` capability (macOS only), the `set_app_menu` command
+with its `app_menu_set` response, and `app_menu_item`, the first sequenced
+event that is application-scoped and carries no `window_id`; the policy's
+`app_menu` field is optional and omitted when denied. Menu items carry
+application ids, never native action names.
 The optional
 `overlays_v1` and `scroll_anchor_v1` capabilities add the `overlay` container
 element and the `scroll_anchor` style field defined by the

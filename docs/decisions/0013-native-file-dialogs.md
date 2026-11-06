@@ -2,8 +2,8 @@
 
 Status: accepted; Linux xdg-desktop-portal implementation qualified against
 the GTK file chooser backend in development and inspected AOT on an isolated
-Xvfb session. Other platforms, message/confirm dialogs and application menu
-bars remain unavailable.
+Xvfb session. Other platforms and message/confirm dialogs remain unavailable;
+application menu bars are [ADR 0015](0015-application-menu-bar.md).
 
 Date: 2026-11-05.
 
@@ -128,8 +128,9 @@ GPUI exposes `App::set_menus` with `Menu`/`MenuItem`/`OwnedMenu`. At the pin,
 installs a native `NSMenu` bar, while
 [Linux](https://github.com/zed-industries/zed/blob/ba63a022c9a22ca66d68ef2a8f0bb9b5b0a9984d/crates/gpui_linux/src/linux/platform.rs#L1046-L1054)
 and Windows only store the menus for the application to draw itself. Typed action identities, owned menu lifetime, keyboard
-and accessibility behavior and safe action revocation are a documented
-follow-up under #239, not part of this decision.
+behavior and safe action revocation were left out of this decision; the
+macOS menu bar is now implemented as described in
+[ADR 0015](0015-application-menu-bar.md).
 
 ## Verification
 
