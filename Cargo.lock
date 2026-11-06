@@ -631,6 +631,8 @@ dependencies = [
  "rustix",
  "serde_json",
  "unicode-segmentation",
+ "wayland-client",
+ "wayland-protocols-wlr",
  "x11rb",
  "zbus",
 ]

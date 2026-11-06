@@ -13,8 +13,9 @@ Linux development/AOT cases with a release-profile host at main
 [run 41831891686](https://github.com/0xPlayerOne/bun-native/actions/runs/41831891686/job/126580888949).
 The [hosted source-bound record](../tests/native/evidence/services-linux-hosted-release.json)
 binds the artifact, compiler manifests, raw results and source hashes. This
-qualifies one isolated scale-1 Xvfb screen; macOS, Windows, Wayland and
-multi-monitor service behavior remain unverified. The earlier
+qualifies one isolated scale-1 Xvfb screen; macOS, Windows and multi-monitor
+service behavior remain unverified. The display snapshot alone also runs on a
+headless Wayland compositor (see [Wayland](#wayland)). The earlier
 [protocol-5 development-host record](../tests/native/evidence/services-linux-development-aot.json)
 remains separate historical evidence. Parser and type checks do not substitute
 for either native run.
@@ -198,9 +199,10 @@ following remain **unavailable** and are not part of the public result:
   all zeros, so there is no persistent identity to expose.
 - Mixed DPI: one scale factor per host process; per-monitor scale is not
   exposed by the X11 backend.
-- Wayland: not qualified. Its GPUI backend does report output changes, but no
-  compositor session is available in the Linux CI lane. macOS and Windows have
-  their own fixture, below.
+- Wayland: `displaySnapshot` matches the compositor's output (bounds and
+  integer scale 1 or 2) on headless sway; see [Wayland](#wayland). Change
+  events stay unadvertised on all of Linux. macOS and Windows have their own
+  fixture, below.
 
 ### macOS and Windows display semantics (#299)
 
@@ -698,9 +700,11 @@ a real GTK dialog transient for the owner window with the requested title,
 folder, filter and accept label, forged `Response` signals ignored, real
 keyboard selection of one file, several files and a folder, a save selection
 that creates no file, Escape cancellation, and the OS dialog closed after an
-aborted signal, owner close and shutdown. Wayland (unparented), Flatpak/Snap
-document-portal paths, other portal backends, macOS and Windows are not
-qualified. Message and confirm dialogs are not OS alerts; they are drawn on
+aborted signal, owner close and shutdown. On Wayland the same portal dialog
+opens unparented (no xdg-foreign handle is exported) and closes on abort and
+on a compositor close; selection through it was not run there
+([Wayland](#wayland)). Flatpak/Snap document-portal paths, other portal
+backends, macOS and Windows are not qualified. Message and confirm dialogs are not OS alerts; they are drawn on
 the modal overlay, [below](#message-and-confirm-dialogs). See
 [ADR 0013](decisions/0013-native-file-dialogs.md).
 
@@ -908,6 +912,29 @@ React fixtures in development and inspected AOT on an isolated display. An
 independent x11rb XDND source process grabs and warps the real pointer and
 speaks XDND to the host. No GPUI event is synthesized.
 
+## Wayland
+
+GPUI selects its Wayland backend whenever `WAYLAND_DISPLAY` is set. Each
+service picks its backend from the live GPUI session when the host starts, and
+advertises a capability only for a backend it implements:
+
+| Service                                     | Backend under Wayland                         | Reported                                                                                             |
+| ------------------------------------------- | --------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
+| Clipboard text, global shortcuts, drag/drop | X11 selections, X11 key grabs, GPUI XDND only | `unavailable` / `unsupported_platform`; clipboard and shortcut requests reject `service_unavailable` |
+| Popup windows (`surface: 'window'`)         | X11 override-redirect only                    | `popup_windows_v1` absent; core throws `UnsupportedFeatureError`                                     |
+| Notifications                               | Freedesktop D-Bus, display-independent        | `available`                                                                                          |
+| File dialogs                                | xdg-desktop-portal, unparented                | `available`                                                                                          |
+| Display snapshot                            | GPUI's Wayland output                         | `available`; no details or change events                                                             |
+| Filesystem grants, processes                | Display-independent                           | `available` (not run under Wayland)                                                                  |
+
+[`tests/native/wayland.ts`](../tests/native/wayland.ts) checks this matrix on
+headless sway in development and inspected AOT, together with the window,
+input, paint and close behavior described in
+[native platforms](native-platforms.md#linux-wayland). Clipboard, shortcut,
+drag-and-drop and popup backends for Wayland, and dialog parenting through
+xdg-foreign, are planned in [ADR 0017](decisions/0017-wayland.md); GNOME and
+KDE compositors are not qualified.
+
 ## Service and platform matrix
 
 All services listed here share the core's policy boundary. The unavailable rows
@@ -915,18 +942,18 @@ are requirements for future work, not promises that an exported function
 already exists. The linked follow-ups belong to
 [#255](https://github.com/0xPlayerOne/bun-native/issues/255).
 
-| Service           | Current public surface                                        | Linux X11                                                                                           | macOS                                             | Windows                                 | Required scope before exposing more operations                                                                                                                                                            |
-| ----------------- | ------------------------------------------------------------- | --------------------------------------------------------------------------------------------------- | ------------------------------------------------- | --------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Window/display    | Existing owned open/close; permission-gated `displaySnapshot` | Core/Solid/React dev+AOT verified with release host; X11 semantics fixture dev+AOT verified locally | Service execution unverified                      | Service execution unverified            | X11 semantics qualified; change events, work area, identity and mixed DPI unavailable on X11. Other platforms and placement remain. [#299](https://github.com/0xPlayerOne/bun-native/issues/299).         |
-| Clipboard text    | `readClipboardText` / `writeClipboardText`; separate grants   | X11 dev+AOT verified with release host                                                              | Unavailable                                       | Unavailable                             | Additional platforms/formats and extended lifecycle coverage. [#300](https://github.com/0xPlayerOne/bun-native/issues/300).                                                                               |
-| Global shortcuts  | `registerGlobalShortcut`; `globalShortcuts` grant             | X11 dev+AOT verified with release host                                                              | Unavailable                                       | Unavailable                             | macOS/Windows backends, Wayland portal design and keyboard-map change tracking. [#301](https://github.com/0xPlayerOne/bun-native/issues/301).                                                             |
-| System menus      | Capability `systemMenus`; unavailable                         | Unavailable                                                                                         | Unavailable                                       | Unavailable                             | Typed action identities, owned menu lifetime, keyboard/accessibility behavior and safe action revocation. [#239](https://github.com/0xPlayerOne/bun-native/issues/239).                                   |
-| File dialogs      | `showOpenDialog` / `showSaveDialog`; `fileDialogs` grant      | xdg-desktop-portal (GTK) dev+AOT verified                                                           | Unavailable                                       | Unavailable                             | macOS/Windows panels, Wayland parenting, sandboxed document-portal paths and explicit file-grant conversion. [#239](https://github.com/0xPlayerOne/bun-native/issues/239).                                |
-| Message dialogs   | `showMessageDialog` / `showConfirmDialog`; no grant           | Modal overlay dev+AOT verified locally                                                              | Modal overlay; unqualified                        | Modal overlay; unqualified              | OS alerts (`NSAlert`, task dialogs) as another backend, accessibility roles and announcements, macOS/Windows qualification. [#239](https://github.com/0xPlayerOne/bun-native/issues/239).                 |
-| Notifications     | `postNotification`; `notifications` grant                     | Freedesktop D-Bus (dunst) dev+AOT verified                                                          | Unavailable                                       | Unavailable                             | macOS/Windows backends, additional notification servers, named actions and replacement. [#302](https://github.com/0xPlayerOne/bun-native/issues/302).                                                     |
-| Drag/drop         | `registerDropTarget`; `dragDrop` grant                        | XDND dev+AOT verified locally (core/Solid/React)                                                    | AppKit; hosted CI only (NSDraggingSession source) | OLE; hosted CI only (DoDragDrop source) | Other payload kinds and file promises, refusal (GPUI always accepts), Wayland, physical devices and real file managers, Windows resolution. [#303](https://github.com/0xPlayerOne/bun-native/issues/303). |
-| Filesystem grants | `openFileGrant`; `filesystemRoots` launch roots               | openat2 dev+AOT verified locally                                                                    | `openat` walk; CI-only                            | Unavailable                             | OS file selection and dropped files as explicit user grants, Windows confinement. [#304](https://github.com/0xPlayerOne/bun-native/issues/304).                                                           |
-| PTY/process       | `spawnProcess`; `processes` launch executables                | Pipes and PTY dev+AOT verified locally                                                              | Dev+AOT in CI only; no `cwd`                      | Unavailable                             | macOS `cwd`, Windows backend (ConPTY), descendants that leave the group, resource limits. [#305](https://github.com/0xPlayerOne/bun-native/issues/305).                                                   |
+| Service           | Current public surface                                        | Linux X11                                                                                           | Linux Wayland                                                      | macOS                                             | Windows                                 | Required scope before exposing more operations                                                                                                                                                            |
+| ----------------- | ------------------------------------------------------------- | --------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------ | ------------------------------------------------- | --------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Window/display    | Existing owned open/close; permission-gated `displaySnapshot` | Core/Solid/React dev+AOT verified with release host; X11 semantics fixture dev+AOT verified locally | Snapshot dev+AOT verified on headless sway (scale 1 and 2)         | Service execution unverified                      | Service execution unverified            | X11 semantics qualified; change events, work area, identity and mixed DPI unavailable on X11. Other platforms and placement remain. [#299](https://github.com/0xPlayerOne/bun-native/issues/299).         |
+| Clipboard text    | `readClipboardText` / `writeClipboardText`; separate grants   | X11 dev+AOT verified with release host                                                              | Unavailable (`unsupported_platform`)                               | Unavailable                                       | Unavailable                             | Additional platforms/formats and extended lifecycle coverage. [#300](https://github.com/0xPlayerOne/bun-native/issues/300).                                                                               |
+| Global shortcuts  | `registerGlobalShortcut`; `globalShortcuts` grant             | X11 dev+AOT verified with release host                                                              | Unavailable (`unsupported_platform`)                               | Unavailable                                       | Unavailable                             | macOS/Windows backends, Wayland portal design and keyboard-map change tracking. [#301](https://github.com/0xPlayerOne/bun-native/issues/301).                                                             |
+| System menus      | Capability `systemMenus`; unavailable                         | Unavailable                                                                                         | Unavailable                                                        | Unavailable                                       | Unavailable                             | Typed action identities, owned menu lifetime, keyboard/accessibility behavior and safe action revocation. [#239](https://github.com/0xPlayerOne/bun-native/issues/239).                                   |
+| File dialogs      | `showOpenDialog` / `showSaveDialog`; `fileDialogs` grant      | xdg-desktop-portal (GTK) dev+AOT verified                                                           | Portal (GTK) opens unparented; abort and compositor close verified | Unavailable                                       | Unavailable                             | macOS/Windows panels, Wayland parenting, sandboxed document-portal paths and explicit file-grant conversion. [#239](https://github.com/0xPlayerOne/bun-native/issues/239).                                |
+| Message dialogs   | `showMessageDialog` / `showConfirmDialog`; no grant           | Modal overlay dev+AOT verified locally                                                              | Modal overlay (same core code); unqualified on Wayland             | Modal overlay; unqualified                        | Modal overlay; unqualified              | Native `NSAlert`/task dialogs with owned modality, programmatic close and qualification. [#239](https://github.com/0xPlayerOne/bun-native/issues/239).                                                    |
+| Notifications     | `postNotification`; `notifications` grant                     | Freedesktop D-Bus (dunst) dev+AOT verified                                                          | Freedesktop (dunst) post and withdraw verified                     | Unavailable                                       | Unavailable                             | macOS/Windows backends, additional notification servers, named actions and replacement. [#302](https://github.com/0xPlayerOne/bun-native/issues/302).                                                     |
+| Drag/drop         | `registerDropTarget`; `dragDrop` grant                        | XDND dev+AOT verified locally (core/Solid/React)                                                    | Unavailable (`unsupported_platform`)                               | AppKit; hosted CI only (NSDraggingSession source) | OLE; hosted CI only (DoDragDrop source) | Other payload kinds and file promises, refusal (GPUI always accepts), Wayland, physical devices and real file managers, Windows resolution. [#303](https://github.com/0xPlayerOne/bun-native/issues/303). |
+| Filesystem grants | `openFileGrant`; `filesystemRoots` launch roots               | openat2 dev+AOT verified locally                                                                    | Advertised; display-independent, not run on Wayland                | `openat` walk; CI-only                            | Unavailable                             | OS file selection and dropped files as explicit user grants, Windows confinement. [#304](https://github.com/0xPlayerOne/bun-native/issues/304).                                                           |
+| PTY/process       | `spawnProcess`; `processes` launch executables                | Pipes and PTY dev+AOT verified locally                                                              | Advertised; display-independent, not run on Wayland                | Dev+AOT in CI only; no `cwd`                      | Unavailable                             | macOS `cwd`, Windows backend (ConPTY), descendants that leave the group, resource limits. [#305](https://github.com/0xPlayerOne/bun-native/issues/305).                                                   |
 
 For the deferred rows, the exported typed contract is the frozen availability
 record in `ServiceCapabilities`. There is no callable operation, configurable
