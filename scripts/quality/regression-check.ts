@@ -82,6 +82,30 @@ export function parseMetrics(text: string, what: string): MetricsFile {
     if (metric.direction !== 'lower' && metric.direction !== 'higher')
       throw new Error(`${what}: ${name} direction must be "lower" or "higher"`)
   }
+  // An acceptance exception is a reviewed baseline decision, not an arbitrary
+  // JSON value. A numeric string, blank ADR or unrelated metric must not turn
+  // an otherwise confirmed regression into a pass via JS coercion.
+  if (value.accepted !== undefined) {
+    if (typeof value.accepted !== 'object' || value.accepted === null || Array.isArray(value.accepted))
+      throw new Error(`${what}: accepted must be a map of recorded tradeoffs`)
+    for (const [name, tradeoff] of Object.entries(value.accepted)) {
+      if (!Object.hasOwn(value.metrics, name))
+        throw new Error(`${what}: accepted ${name} does not name a measured metric`)
+      if (typeof tradeoff !== 'object' || tradeoff === null || Array.isArray(tradeoff))
+        throw new Error(`${what}: accepted ${name} must provide maxRatio and adr`)
+      if (
+        typeof tradeoff.maxRatio !== 'number' ||
+        !Number.isFinite(tradeoff.maxRatio) ||
+        tradeoff.maxRatio <= 1
+      )
+        throw new Error(`${what}: accepted ${name}.maxRatio must be a finite number greater than 1`)
+      if (
+        typeof tradeoff.adr !== 'string' ||
+        !/^docs\\/decisions\\/\\d{4}-[a-z0-9-]+\\.md$/.test(tradeoff.adr)
+      )
+        throw new Error(`${what}: accepted ${name}.adr must reference docs/decisions/NNNN-name.md`)
+    }
+  }
   return value
 }
 

@@ -224,6 +224,34 @@ describe('metric regression gate', () => {
     ).toThrow(/a/)
   })
 
+  test('invalid accepted tradeoff metadata cannot exempt a regression', () => {
+    const original = JSON.parse(
+      JSON.stringify(
+        file(
+          { mount: { samples: around(10) } },
+          'linux-x64 4 cpu',
+          { mount: { maxRatio: 1.3, adr: 'docs/decisions/0011-owned-processes.md' } }
+        )
+      )
+    )
+    expect(parseMetrics(JSON.stringify(original), 'baseline').accepted?.mount?.maxRatio).toBe(1.3)
+    const invalid: Array<(value: any) => void> = [
+      (v) => (v.accepted = null),
+      (v) => (v.accepted.mount = null),
+      (v) => (v.accepted.mount.maxRatio = '100'),
+      (v) => (v.accepted.mount.maxRatio = 1),
+      (v) => (v.accepted.mount.maxRatio = null),
+      (v) => (v.accepted.mount.adr = ''),
+      (v) => (v.accepted.mount.adr = '../unreviewed.md'),
+      (v) => (v.accepted.missing = { maxRatio: 100, adr: 'docs/decisions/0011-owned-processes.md' }),
+    ]
+    for (const corrupt of invalid) {
+      const value = structuredClone(original)
+      corrupt(value)
+      expect(() => parseMetrics(JSON.stringify(value), 'baseline')).toThrow(/accepted/)
+    }
+  })
+
   test('the command line exits non-zero on a regression and rejects malformed files', () => {
     const directory = mkdtempSync(join(tmpdir(), 'regression-check-'))
     try {
@@ -245,6 +273,19 @@ describe('metric regression gate', () => {
       expect(failing.exitCode).toBe(1)
       expect(failing.stdout.toString()).toContain('regressed')
       expect(run(baseline, same).exitCode).toBe(0)
+      // Before validation, the string "100" was coerced by <= and suppressed
+      // a proven 30% slowdown, even though its ADR reference was blank.
+      const invalidAcceptance = write(
+        'unreviewed.json',
+        file(
+          { mount: { samples: around(10) } },
+          'linux-x64 4 cpu',
+          { mount: { maxRatio: '100' as unknown as number, adr: '' } }
+        )
+      )
+      const bypass = run(invalidAcceptance, slow)
+      expect(bypass.exitCode).not.toBe(0)
+      expect(bypass.stderr.toString()).toContain('accepted mount.maxRatio')
       const malformed = run(baseline, write('bad.json', { schemaVersion: 2 }))
       expect(malformed.exitCode).not.toBe(0)
       expect(malformed.stderr.toString()).toContain('schemaVersion must be 1')
