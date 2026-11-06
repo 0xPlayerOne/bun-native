@@ -294,16 +294,16 @@ class SolidWorkspacePaintControls(unittest.TestCase):
             send = composer["children"][2]["children"][0]["element"]
             return send["disabled"], limit
 
-        # The app allows a send while at most MAX_MESSAGES - 2 messages exist.
+        # The app allows a send while at most MAX_MESSAGES - 2 (30) messages exist.
         self.assertEqual(
-            send_disabled(22),
+            send_disabled(30),
             (
                 False,
-                "Enter sends · Up to 240 characters · 24 messages per conversation",
+                "Enter sends · Up to 240 characters · 32 messages per conversation",
             ),
         )
         self.assertEqual(
-            send_disabled(24),
+            send_disabled(32),
             (True, "History limit reached. Clear history to continue."),
         )
 
