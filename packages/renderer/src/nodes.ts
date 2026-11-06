@@ -421,6 +421,21 @@ function inChildOrder(parent: Node, children: ReadonlySet<Node>): Node[] {
   return positioned.map((entry) => entry[1])
 }
 
+/**
+ * The staged children as an immutable list, sharing the previous capture's
+ * list when they are unchanged (a moved node), so the diff skips it by identity.
+ */
+function childList(node: Node): readonly Node[] {
+  const children = node.children
+  const previous = node.captured?.children
+  if (
+    previous?.length === children.length &&
+    previous.every((child, index) => child === children[index])
+  )
+    return previous
+  return [...children]
+}
+
 function build(node: Node, parent: Node | undefined): Snapshot {
   const props = node.properties
   const style = props.style && node.kind !== 'box' ? { style: leafStyle(props.style) } : {}
@@ -455,7 +470,7 @@ function build(node: Node, parent: Node | undefined): Snapshot {
   }
   return {
     element,
-    children: node.kind === 'box' ? [...node.children] : [],
+    children: node.kind === 'box' ? childList(node) : [],
     parent,
     events: listeners(props),
     initialValue: typeof props.value === 'string' ? props.value : undefined,

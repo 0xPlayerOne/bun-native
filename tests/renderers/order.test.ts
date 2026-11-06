@@ -1,5 +1,12 @@
 import { expect, test } from 'bun:test'
-import { stableChildren } from '../../packages/renderer/src/order.ts'
+import { stableChildren as flags } from '../../packages/renderer/src/order.ts'
+
+/** The flagged desired children, as a set. */
+function stableChildren<T extends object>(current: readonly T[], desired: readonly T[]): Set<T> {
+  const flagged = flags(current, desired)
+  expect(flagged.length).toBe(desired.length)
+  return new Set(desired.filter((_, index) => flagged[index] === 1))
+}
 
 function permutations<T>(values: readonly T[]): T[][] {
   if (!values.length) return [[]]
@@ -49,4 +56,34 @@ test('new children are never retained and unchanged/empty sibling lists need no 
   const stable = stableChildren(nodes, [fresh, nodes[2]!, nodes[0]!])
   expect(stable.has(fresh)).toBe(false)
   expect(stable.size).toBe(1)
+})
+
+test('keyed ordering stays maximal with added, removed and shared end children', () => {
+  // Deterministic xorshift so a failure names a reproducible case.
+  let state = 2463534242
+  const next = (limit: number) => {
+    state ^= state << 13
+    state ^= state >>> 17
+    state ^= state << 5
+    return (state >>> 0) % limit
+  }
+  const pool = Array.from({ length: 8 }, (_, id) => ({ id }))
+  const sample = () => {
+    const shuffled = pool.toSorted(() => next(3) - 1)
+    return shuffled.slice(0, next(pool.length + 1))
+  }
+  for (let round = 0; round < 2000; round += 1) {
+    const current = sample()
+    let desired = sample()
+    // Often keep a shared prefix and suffix around an edited middle.
+    if (next(2) && current.length > 2) {
+      const middle = desired.filter((node) => node !== current[0] && node !== current.at(-1))
+      desired = [current[0]!, ...middle, current.at(-1)!]
+    }
+    const stable = stableChildren(current, desired)
+    expect(stable.size).toBe(longestSubsequence(current, desired))
+    expect(desired.filter((node) => stable.has(node))).toEqual(
+      current.filter((node) => stable.has(node))
+    )
+  }
 })
