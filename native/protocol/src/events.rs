@@ -249,6 +249,25 @@ pub enum Event {
         dialog_id: DialogId,
         result: FileDialogResult,
     },
+    /// The OS message dialog is shown for this owned window.
+    MessageDialogOpened {
+        id: RequestId,
+        window_id: WindowId,
+        dialog_id: DialogId,
+    },
+    /// The application closed its message dialog; no completion follows.
+    MessageDialogClosed {
+        id: RequestId,
+        window_id: WindowId,
+        dialog_id: DialogId,
+    },
+    /// The user finished a live message dialog. It is no longer owned.
+    MessageDialogCompleted {
+        sequence: EventSequence,
+        window_id: WindowId,
+        dialog_id: DialogId,
+        result: crate::MessageDialogResult,
+    },
     Click {
         sequence: EventSequence,
         window_id: WindowId,
@@ -528,6 +547,7 @@ impl Event {
             }
             Self::ProcessExited { exit, .. } => exit.validate()?,
             Self::FileDialogCompleted { result, .. } => result.validate()?,
+            Self::MessageDialogCompleted { result, .. } => result.validate()?,
             Self::AppMenuItem { item_id, .. } => crate::validate_app_menu_item_id(item_id)?,
             Self::KeyDown { key, key_char, .. } | Self::KeyUp { key, key_char, .. } => {
                 validate_text(key)?;
