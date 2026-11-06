@@ -235,7 +235,7 @@ jobs:
             "$NATIVE_EVIDENCE/events-development" event-throughput bun tests/native/event-throughput.ts
       - name: Compile and inspect the actual AOT entries
         run: |
-          for entry in native-window input-race bridge javascript core-lifecycle event-throughput fault scheduling layout interactions services display-semantics clipboard global-shortcuts notifications overlays popups filesystem-grants text-input processes file-dialogs drag-drop solid-drag-drop react-drag-drop solid-services react-services solid solid-input-intent solid-interactions react react-interactions react-behavior react-workload react-workspace react-workspace-flow; do
+          for entry in native-window input-race bridge javascript core-lifecycle event-throughput fault scheduling layout interactions services display-semantics clipboard global-shortcuts notifications overlays popups filesystem-grants text-input accessibility processes file-dialogs drag-drop solid-drag-drop react-drag-drop solid-services react-services solid solid-input-intent solid-interactions react react-interactions react-behavior react-workload react-workspace react-workspace-flow; do
             outdir="$NATIVE_EVIDENCE/$entry-package"
             if [[ "$entry" == native-window ]]; then
               outdir="$NATIVE_EVIDENCE/package"
@@ -304,6 +304,27 @@ jobs:
                 "${command[@]}" 2>&1 | tee "$evidence/run.log"
               test -s "$evidence/result.json"
             done
+          done
+      - name: Development and AOT X11 accessibility roles and keyboard split divider (AT-SPI)
+        timeout-minutes: 4
+        env:
+          BUN_NATIVE_HOST: ${{ github.workspace }}/target/release/bun-native-host
+          # The system Python carries PyGObject and the Atspi typelib.
+          BUN_NATIVE_ATSPI_PYTHON: /usr/bin/python3
+        run: |
+          for mode in development aot; do
+            command=(bun tests/native/accessibility.ts)
+            if [[ "$mode" == aot ]]; then
+              command=("$NATIVE_EVIDENCE/accessibility-package/accessibility")
+            fi
+            evidence="$NATIVE_EVIDENCE/accessibility-$mode"
+            mkdir "$evidence"
+            BUN_NATIVE_A11Y_EVIDENCE="$evidence" BUN_NATIVE_A11Y_MODE="$mode" \
+              xvfb-run --auto-servernum --server-args='-screen 0 1280x1024x24 -nolisten tcp' \
+              dbus-run-session -- bash scripts/quality/native-linux-session.sh \
+              "$evidence-session" -- env GPUI_X11_SCALE_FACTOR=1 \
+              "${command[@]}" 2>&1 | tee "$evidence/run.log"
+            test -s "$evidence/result.json"
           done
       - name: Development and AOT freedesktop notifications
         timeout-minutes: 3
@@ -980,6 +1001,7 @@ jobs:
             ${{ runner.temp }}/native-evidence/shortcut-peer-sha256.txt
             ${{ runner.temp }}/native-evidence/global-shortcuts-*/
             ${{ runner.temp }}/native-evidence/text-input-*/
+            ${{ runner.temp }}/native-evidence/accessibility-*/
             ${{ runner.temp }}/native-evidence/notifications-*/
             ${{ runner.temp }}/native-evidence/filesystem-grants-*/
             ${{ runner.temp }}/native-evidence/processes-*/

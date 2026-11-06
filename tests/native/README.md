@@ -34,6 +34,12 @@ Hebrew input, dead-key composition, selection/clipboard, read-only and disabled
 inputs, Tab order, scale factor 1 or 2 and an AT-SPI tree read. See
 [native text](../../docs/native-text.md) for its environment and support matrix.
 
+`tests/native/accessibility.ts` is self-driving: an independent AT-SPI client
+asserts the role, name, state and value of every element kind, a modal dialog
+and the split divider, while real Tab, arrow, Home/End and pointer input move
+the divider and its `split_resize` events. See
+[native text](../../docs/native-text.md#accessibility-roles-accessibility_v1).
+
 The input driver verifies that the target window belongs to the launched
 application, focuses it, injects XTest input and requires matching Bun events and
 complete native paint snapshots. It waits for the mounted tree before injecting
