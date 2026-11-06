@@ -73,7 +73,13 @@ if (reusedExisting) {
     if (process.platform !== 'win32') chmodSync(candidate, 0o755)
     verifyRevision(candidate)
     mkdirSync(destination, { recursive: true })
-    copyFileSync(candidate, executable, constants.COPYFILE_EXCL)
+    try {
+      // Exclusive like COPYFILE_EXCL, but avoids rewriting ~130 MB when both
+      // directories share a filesystem. Removing the temporary name keeps this one.
+      linkSync(candidate, executable)
+    } catch {
+      copyFileSync(candidate, executable, constants.COPYFILE_EXCL)
+    }
     if (process.platform !== 'win32') chmodSync(executable, 0o755)
   } finally {
     rmSync(temporary, { recursive: true, force: true })
