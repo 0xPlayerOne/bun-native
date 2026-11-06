@@ -150,8 +150,7 @@ describe('documented shell commands', () => {
     })
     const output = result.stdout.toString()
     expect(result.exitCode).toBe(0)
-    const os = process.platform === 'win32' ? 'windows' : process.platform
-    const cpu = process.arch === 'arm64' ? 'arm64' : 'x64'
-    expect(output).toContain(`${os}-${cpu}`)
+    // doctor names the platform as Node does, e.g. linux-x64, darwin-arm64, win32-x64.
+    expect(output).toContain(`${process.platform}-${process.arch}`)
   })
 })
