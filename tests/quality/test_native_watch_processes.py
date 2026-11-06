@@ -218,6 +218,24 @@ class ProcessImageTests(unittest.TestCase):
             self.assertIsNone(PROCESS.process_image(7))
         self.assertTrue(PROCESS.process_image(os.getpid()).startswith("/"))
 
+    def test_proc_exe_disappearing_after_process_table_sample_is_not_an_image(self):
+        # The owned host may exit between a /proc table sample and the audit's
+        # image resolution. ESRCH must not abort an otherwise valid watch; the
+        # PID/start-tick ownership checks still run independently.
+        with patch.object(
+            PROCESS.Path,
+            "resolve",
+            side_effect=ProcessLookupError(3, "No such process", "/proc/37298/exe"),
+        ):
+            self.assertIsNone(PROCESS.process_image(37298))
+
+    def test_unexpected_proc_exe_error_still_fails_the_process_audit(self):
+        with (
+            patch.object(PROCESS.Path, "resolve", side_effect=OSError(5, "I/O error")),
+            self.assertRaises(OSError),
+        ):
+            PROCESS.process_image(37298)
+
 
 class ProcessAuditTests(unittest.TestCase):
     def audit(self, discovering=True):
