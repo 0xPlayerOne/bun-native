@@ -8,7 +8,7 @@
 //! node in screen coordinates, flipped above it when only that fits, and
 //! shifted onto the X screen. Keyboard focus never moves to a popup.
 
-use super::{DropScope, NativeView, PointerFrame};
+use super::{DropScope, NativeView, PointerFrame, PressedButtons};
 use crate::style;
 use bun_native_protocol::{
     DismissReason, Element as NativeElement, Event, NodeId, OverlaySurface, Tree,
@@ -433,6 +433,7 @@ pub(crate) struct PopupView {
     parent: WeakEntity<NativeView>,
     node_id: NodeId,
     origin: Rc<Cell<Point<Pixels>>>,
+    pressed: PressedButtons,
     _subscriptions: [gpui::Subscription; 2],
 }
 
@@ -453,6 +454,7 @@ impl PopupView {
             parent: parent.downgrade(),
             node_id,
             origin,
+            pressed: PressedButtons::default(),
             _subscriptions: [changed, released],
         }
     }
@@ -469,6 +471,7 @@ impl Render for PopupView {
             .flatten();
         let parent = self.parent.clone();
         let origin = self.origin.clone();
+        let pressed = self.pressed.clone();
         div()
             .size_full()
             .relative()
@@ -480,7 +483,9 @@ impl Render for PopupView {
             .child(
                 canvas(
                     |_, _, _| (),
-                    move |_, (), window, _| pointer.observe(window, &parent, origin.get()),
+                    move |_, (), window, _| {
+                        pointer.observe(window, &parent, origin.get(), &pressed)
+                    },
                 )
                 .absolute()
                 .top_0()

@@ -274,8 +274,10 @@ async function sourceHashes() {
   }
   if (entry === 'clipboard') sources.add('native/gpui-host/examples/clipboard-peer.rs')
   if (entry === 'drag-drop' || entry === 'solid-drag-drop' || entry === 'react-drag-drop') {
-    sources.add('tests/native/xdnd-source.ts')
+    sources.add('tests/native/drag-source.ts')
     sources.add('native/gpui-host/examples/xdnd-source.rs')
+    sources.add('tests/native/macos-drag-source.m')
+    sources.add('tests/native/windows-drag-source.cs')
   }
   if (entry === 'solid-drag-drop' || entry === 'react-drag-drop')
     sources.add('tests/native/drop-adapter.ts')

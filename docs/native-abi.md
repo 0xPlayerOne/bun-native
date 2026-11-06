@@ -12,7 +12,7 @@ defines native event observations and public propagation. The
 owned-window display reads, bounded clipboard transfers, owned global
 shortcut registrations, owned desktop notifications, scoped filesystem
 grants on launch-policy roots ([ADR 0010](decisions/0010-filesystem-grants.md)),
-owned drop targets on Linux X11 ([ADR 0012](decisions/0012-native-drag-drop.md))
+owned drop targets on Linux X11, macOS and Windows ([ADR 0012](decisions/0012-native-drag-drop.md))
 and owned OS file dialogs ([ADR 0013](decisions/0013-native-file-dialogs.md)).
 File dialogs add the optional `file_dialogs_v1` capability,
 `show_file_dialog`/`close_file_dialog` commands, `file_dialog_opened`/

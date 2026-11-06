@@ -1,5 +1,6 @@
-//! Owned file drop targets. GPUI turns an external file drag (XDND on X11)
-//! into an `ExternalPaths` drag over the window; this UI-thread registry
+//! Owned file drop targets. GPUI turns an external file drag (XDND on X11,
+//! an AppKit `NSDraggingDestination` on macOS, an OLE `IDropTarget` on
+//! Windows) into an `ExternalPaths` drag over the window; this UI-thread registry
 //! decides which live owned target sees it, keeps the dropped paths in the
 //! host and publishes only bounded display names. No path crosses the wire.
 //!
@@ -22,8 +23,23 @@ pub(crate) type Failure = (ErrorCode, &'static str);
 
 /// The pinned GPUI X11 backend reads at most 1,024 32-bit units (4,096 bytes)
 /// of the `text/uri-list` and does not report whether more remained. A
-/// longer list can lose items or end in a truncated path.
-const BACKEND_LIST_BYTES: usize = 4_096;
+/// longer list can lose items or end in a truncated path. The AppKit and OLE
+/// backends read the whole platform list (`NSFilenamesPboardType`, or each
+/// `DragQueryFileW` name at its queried length), so no such bound applies.
+#[cfg(target_os = "linux")]
+const BACKEND_LIST_BYTES: Option<usize> = Some(4_096);
+#[cfg(not(target_os = "linux"))]
+const BACKEND_LIST_BYTES: Option<usize> = None;
+
+/// Whether the pinned GPUI backend's file drop delivery is qualified here:
+/// local X11 XDND, AppKit or OLE. GPUI's Wayland data-device path is not.
+fn qualified_backend(compositor: &str) -> bool {
+    match std::env::consts::OS {
+        "linux" => compositor == "X11",
+        "macos" | "windows" => true,
+        _ => false,
+    }
+}
 
 struct Retained {
     id: DropId,
@@ -60,9 +76,7 @@ impl Drops {
         Self {
             registry: Rc::default(),
             events,
-            // GPUI also accepts file drops elsewhere; only local X11 XDND
-            // delivery is qualified, so only it is advertised.
-            available: cfg!(target_os = "linux") && cx.compositor_name() == "X11",
+            available: qualified_backend(cx.compositor_name()),
         }
     }
 
@@ -326,7 +340,7 @@ fn classify(paths: &[PathBuf]) -> Result<Vec<DroppedItem>, DropRejection> {
         .iter()
         .map(|path| "file://".len() + 3 * path.as_os_str().len() + "\r\n".len())
         .sum();
-    if paths.len() > MAX_DROP_ITEMS || bound >= BACKEND_LIST_BYTES {
+    if paths.len() > MAX_DROP_ITEMS || BACKEND_LIST_BYTES.is_some_and(|limit| bound >= limit) {
         return Err(DropRejection::LimitExceeded);
     }
     Ok(paths
@@ -406,12 +420,18 @@ mod tests {
             .collect();
         assert_eq!(classify(&allowed).unwrap().len(), 64);
         // 1,363 path bytes may encode to 4,089 bytes, 4,098 with framing.
+        // Only the X11 backend truncates; AppKit and OLE read whole lists.
         let near = [PathBuf::from(format!("/{}", "a".repeat(1_362)))];
-        assert_eq!(classify(&near), Err(DropRejection::LimitExceeded));
+        if cfg!(target_os = "linux") {
+            assert_eq!(classify(&near), Err(DropRejection::LimitExceeded));
+        } else {
+            assert!(classify(&near).is_ok());
+        }
         let fits = [PathBuf::from(format!("/{}", "a".repeat(1_300)))];
         assert!(classify(&fits).is_ok());
     }
 
+    #[cfg(unix)]
     #[test]
     fn resolution_is_lexical_beneath_the_launch_root_only() {
         assert_eq!(
@@ -434,5 +454,19 @@ mod tests {
         }
         let deep = format!("/r/{}", vec!["d"; 33].join("/"));
         assert_eq!(relative(Path::new(&deep), "/r"), None);
+    }
+
+    /// Launch roots are POSIX paths, so no Windows drop resolves beneath one.
+    #[cfg(windows)]
+    #[test]
+    fn windows_drops_never_resolve_beneath_posix_launch_roots() {
+        for path in [
+            r"C:\srv\work\a.txt",
+            r"\srv\work\a.txt",
+            r"\\?\C:\srv\work\a",
+        ] {
+            assert_eq!(relative(Path::new(path), "/srv/work"), None, "{path}");
+            assert_eq!(relative(Path::new(path), "/"), None, "{path}");
+        }
     }
 }

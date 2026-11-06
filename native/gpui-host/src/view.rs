@@ -60,6 +60,7 @@ pub(crate) struct NativeView {
     _subscriptions: [Subscription; 4],
     events: EventSink,
     drops: Drops,
+    pressed: PressedButtons,
     evidence: Evidence,
 }
 
@@ -114,6 +115,7 @@ impl NativeView {
             _subscriptions: [keyboard, focus_lost, deactivated, moved],
             events,
             drops,
+            pressed: PressedButtons::default(),
             evidence,
         }
     }
@@ -451,6 +453,7 @@ impl Render for NativeView {
             }
         });
         let pointer = PointerFrame::default();
+        let pressed = self.pressed.clone();
         let body = self.render_node(
             &state.tree,
             state.tree.root_id(),
@@ -524,7 +527,7 @@ impl Render for NativeView {
                         move |_, (), window, cx| {
                             // Registered after native children: capture has already
                             // selected the deepest GPUI hit before default actions.
-                            pointer.observe(window, &view, point(px(0.), px(0.)));
+                            pointer.observe(window, &view, point(px(0.), px(0.)), &pressed);
                             let state = paint_state.borrow();
                             evidence.frame(window_id, &state.tree, render_started);
                             evidence.painted(
@@ -628,7 +631,7 @@ mod popups;
 mod split;
 
 use index::NodeIndex;
-use interactions::PointerFrame;
+use interactions::{PointerFrame, PressedButtons};
 use keyboard::{MenuMove, TypeAhead};
 use overlays::{OBSERVER_PRIORITY, Overlays};
 use popups::Popups;

@@ -426,6 +426,74 @@ jobs:
               throw "Display qualification wrote no $mode evidence"
             }
           }
+      - name: Build the independent OS drag source
+        id: drag-source
+        if: ${{ !cancelled() && steps.native-build.outcome == 'success' }}
+        run: |
+          if ($IsMacOS) {
+            $dragSource = Join-Path $env:NATIVE_EVIDENCE 'macos-drag-source'
+            xcrun clang -fobjc-arc -Wall -Wextra -Werror -framework AppKit -framework CoreGraphics `
+              tests/native/macos-drag-source.m -o $dragSource
+            if ($LASTEXITCODE -ne 0) { throw 'The AppKit NSDraggingSession source did not compile' }
+          } else {
+            $csc = Join-Path $env:WINDIR 'Microsoft.NET/Framework64/v4.0.30319/csc.exe'
+            if (!(Test-Path -LiteralPath $csc -PathType Leaf)) { throw 'The .NET Framework C# compiler is unavailable' }
+            $dragSource = Join-Path $env:NATIVE_EVIDENCE 'windows-drag-source.exe'
+            & $csc /nologo /target:exe /optimize `
+              /r:System.Windows.Forms.dll /r:System.Drawing.dll `
+              "/out:$dragSource" tests/native/windows-drag-source.cs
+            if ($LASTEXITCODE -ne 0) { throw 'The OLE DoDragDrop source did not compile' }
+          }
+          "BUN_NATIVE_DRAG_SOURCE=$dragSource" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+          Get-FileHash -Algorithm SHA256 $dragSource |
+            Format-List | Out-File (Join-Path $env:NATIVE_EVIDENCE 'drag-source-sha256.txt')
+      - name: Development and AOT OS drag and drop through core, Solid and React
+        if: ${{ !cancelled() && steps.drag-source.outcome == 'success' }}
+        timeout-minutes: 12
+        run: |
+          $failures = @()
+          foreach ($entry in @('drag-drop', 'solid-drag-drop', 'react-drag-drop')) {
+            $package = Join-Path $env:NATIVE_EVIDENCE "$entry-package"
+            bun experiments/aot-gpui/build-window.ts --entry $entry `
+              --source $env:GITHUB_WORKSPACE --host $env:BUN_NATIVE_HOST `
+              --host-profile release --outdir $package
+            if ($LASTEXITCODE -ne 0) {
+              $failures += "$entry AOT compiler/inspection failed"
+              continue
+            }
+            $manifest = Get-Content -Raw (Join-Path $package 'manifest.json') | ConvertFrom-Json
+            foreach ($mode in @('development', 'aot')) {
+              [string[]]$command = if ($mode -eq 'aot') {
+                @((Join-Path $package $manifest.application.file))
+              } elseif ($entry -eq 'drag-drop') {
+                @('bun', 'tests/native/drag-drop.ts')
+              } else {
+                @('bun', (Join-Path $package 'development/application.js'))
+              }
+              $evidence = Join-Path $env:NATIVE_EVIDENCE "$entry-$mode"
+              New-Item -ItemType Directory $evidence | Out-Null
+              $env:BUN_NATIVE_DRAG_DROP_EVIDENCE = $evidence
+              $env:BUN_NATIVE_DRAG_DROP_MODE = $mode
+              $launch = @{
+                FilePath = $command[0]
+                NoNewWindow = $true
+                PassThru = $true
+                RedirectStandardOutput = (Join-Path $evidence 'stdout.log')
+                RedirectStandardError = (Join-Path $evidence 'stderr.log')
+              }
+              if ($command.Count -gt 1) { $launch.ArgumentList = $command[1..($command.Count - 1)] }
+              $process = Start-Process @launch
+              $null = $process.Handle # Keeps the exit code readable after exit.
+              if (!$process.WaitForExit(180000)) {
+                $process.Kill($true)
+                $failures += "$entry $mode timed out"
+              } elseif ($process.ExitCode -ne 0) {
+                $failures += "$entry $mode exited $($process.ExitCode)"
+              }
+              Get-Content (Join-Path $evidence 'stdout.log'), (Join-Path $evidence 'stderr.log')
+            }
+          }
+          if ($failures.Count -gt 0) { throw ($failures -join '; ') }
       - name: Retain unsigned native host for reproducibility
         if: ${{ !cancelled() && steps.native-build.outcome == 'success' }}
         run: |
@@ -448,5 +516,11 @@ jobs:
             !${{ runner.temp }}/bun-native-platform-evidence/filesystem-grants-package/filesystem-grants
             !${{ runner.temp }}/bun-native-platform-evidence/display-platform-package/display-platform
             !${{ runner.temp }}/bun-native-platform-evidence/display-platform-package/display-platform.exe
+            !${{ runner.temp }}/bun-native-platform-evidence/drag-drop-package/drag-drop
+            !${{ runner.temp }}/bun-native-platform-evidence/drag-drop-package/drag-drop.exe
+            !${{ runner.temp }}/bun-native-platform-evidence/solid-drag-drop-package/solid-drag-drop
+            !${{ runner.temp }}/bun-native-platform-evidence/solid-drag-drop-package/solid-drag-drop.exe
+            !${{ runner.temp }}/bun-native-platform-evidence/react-drag-drop-package/react-drag-drop
+            !${{ runner.temp }}/bun-native-platform-evidence/react-drag-drop-package/react-drag-drop.exe
           if-no-files-found: error
           retention-days: 14
