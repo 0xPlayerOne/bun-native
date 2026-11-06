@@ -562,7 +562,6 @@ pub(crate) fn failure(error: Errno) -> Failure {
 
 /// A directory descriptor at `path` beneath a grant root, never following links.
 #[cfg(unix)]
-#[cfg_attr(not(target_os = "linux"), allow(dead_code))]
 pub(crate) fn directory_beneath(root: &OwnedFd, path: &str) -> Result<OwnedFd, Failure> {
     Native::directory(root, path).map_err(failure)
 }

@@ -620,9 +620,10 @@ digits and `_`, not starting with a digit, of at most 128 bytes; values are
 NUL-free strings of at most 4,096 bytes. Arguments, names and values together
 are at most 32,768 bytes. A `cwd` without `path` is the grant's root. A working directory comes only from a live file grant of
 the same window; the host resolves `path` beneath the grant descriptor with the
-same `openat2` rules as file requests, so links are never followed. macOS
-cannot start a child in a grant descriptor, so a working directory is refused
-there (`service_unavailable`).
+same descriptor-relative rules as file requests, so links are never followed.
+Linux starts the child through the open descriptor's `/proc/self/fd` path; macOS
+runs `fchdir` on the descriptor in the child before `exec`; Windows walks the
+grant with NT handles. A path string is never the authority.
 
 Without `terminal`, standard input, output and error are three pipes and output
 events name `stdout` or `stderr`. With `terminal: { columns, rows }` the child
@@ -1139,7 +1140,7 @@ already exists. The linked follow-ups belong to
 | Notifications     | `postNotification`; `notifications` grant                     | Freedesktop D-Bus (dunst) dev+AOT verified                                                          | Freedesktop (dunst) post and withdraw verified                     | Unavailable                                       | Unavailable                             | macOS/Windows backends, additional notification servers, named actions and replacement. [#302](https://github.com/0xPlayerOne/bun-native/issues/302).                                                     |
 | Drag/drop         | `registerDropTarget`; `dragDrop` grant                        | XDND dev+AOT verified locally (core/Solid/React)                                                    | Unavailable (`unsupported_platform`)                               | AppKit; hosted CI only (NSDraggingSession source) | OLE; hosted CI only (DoDragDrop source) | Other payload kinds and file promises, refusal (GPUI always accepts), Wayland, physical devices and real file managers, Windows resolution. [#303](https://github.com/0xPlayerOne/bun-native/issues/303). |
 | Filesystem grants | `openFileGrant`; `filesystemRoots` launch roots               | openat2 dev+AOT verified locally                                                                    | Advertised; display-independent, not run on Wayland                | `openat` walk; CI-only                            | `NtCreateFile` walk; CI-only            | OS file selection and dropped files as explicit user grants. [#304](https://github.com/0xPlayerOne/bun-native/issues/304).                                                                                |
-| PTY/process       | `spawnProcess`; `processes` launch executables                | Pipes and PTY dev+AOT verified locally                                                              | Advertised; display-independent, not run on Wayland                | Dev+AOT in CI only; no `cwd`                      | Job object and ConPTY; CI-only          | macOS `cwd`, descendants that leave the group (POSIX), pipe `interrupt` and `hangup` on Windows, resource limits. [#305](https://github.com/0xPlayerOne/bun-native/issues/305).                           |
+| PTY/process       | `spawnProcess`; `processes` launch executables                | Pipes and PTY dev+AOT verified locally                                                              | Advertised; display-independent, not run on Wayland                | Dev+AOT in CI only; `cwd` through `fchdir`        | Job object and ConPTY; CI-only          | Descendants that leave the group (POSIX), pipe `interrupt` and `hangup` on Windows, resource limits. [#305](https://github.com/0xPlayerOne/bun-native/issues/305).                                        |
 
 For the deferred rows, the exported typed contract is the frozen availability
 record in `ServiceCapabilities`. There is no callable operation, configurable

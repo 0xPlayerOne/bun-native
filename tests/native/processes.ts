@@ -5,10 +5,10 @@
  * process-group teardown are checked independently (through /proc and node:fs
  * on Linux, through ps on macOS, through CIM process listings on Windows).
  * Raw protocol checks drive the same host through the private runtime to
- * prove foreign, stale and reused process handles are rejected natively. This
- * macOS process fixture supplies no filesystem roots, and its process backend
- * refuses working directories. On Windows every child is cmd.exe in a job
- * object; the escape fixture is an NTFS junction made with mklink /J.
+ * prove foreign, stale and reused process handles are rejected natively. A
+ * working directory comes from a file grant on every target. On Windows every
+ * child is cmd.exe in a job object; the escape fixture is an NTFS junction
+ * made with mklink /J.
  */
 import {
   createApplication,
@@ -91,8 +91,7 @@ const permissions = {
       executable: join(base, windows ? 'missing.exe' : 'missing'),
     },
   ],
-  // The macOS process backend does not accept a grant descriptor as cwd.
-  filesystemRoots: macos ? [] : [{ id: 'work', path: work, access: 'read' as const }],
+  filesystemRoots: [{ id: 'work', path: work, access: 'read' as const }],
 }
 
 /** One process: its decoded output by stream and its exit, all acknowledged. */
@@ -240,32 +239,6 @@ async function deniedByDefault() {
     await app.shutdown()
     await app.closed
   }
-}
-
-/** macOS: pipes and the explicit environment; a working directory is refused. */
-async function pipesWithoutGrants(app: NativeApplication, window: NativeWindow) {
-  const seen = watch()
-  const child = await window.spawnProcess(
-    'shell',
-    {
-      args: ['-c', 'printf out; printf err >&2; printf "|%s|%s|" "$HOME" "$BUN_X"; exit 5'],
-      env: { BUN_X: 'a b' },
-    },
-    seen.listener
-  )
-  await seen.until(() => seen.exit !== undefined)
-  assert.equal(child.terminal, false)
-  assert.deepEqual(seen.exit, { code: 5 })
-  assert.equal(seen.streams['stdout'], 'out||a b|')
-  assert.equal(seen.streams['stderr'], 'err')
-  assert.equal(app.serviceCapabilities.filesystemGrants.availability, 'available')
-  record('pipesAndEnvironment', { exit: seen.exit, inheritedHome: false })
-  await assert.rejects(
-    window.spawnProcess('missing', {}, () => {}),
-    rejected('not_found')
-  )
-  record('executableFailureIsTyped', { missing: 'not_found' })
-  await child.release()
 }
 
 async function pipes(window: NativeWindow) {
@@ -592,7 +565,7 @@ async function rawHandles() {
       reusedId: await code(spawn(2, 5)),
       lowerId: await code(spawn(2, 4)),
       ungranted: await code(spawn(1, 7, 'python')),
-      // No grant 9 was opened (the macOS run opens none): a cwd never becomes a path.
+      // No grant 9 was opened: a cwd never becomes a path.
       unopenedCwd: await code(
         native.send({
           type: 'spawn_process',
@@ -650,8 +623,8 @@ async function rawHandles() {
 
 try {
   await deniedByDefault()
-  await withApp(async (app, window) => {
-    await (macos ? pipesWithoutGrants(app, window) : pipes(window))
+  await withApp(async (_app, window) => {
+    await pipes(window)
     await terminal(window)
     await signals(window)
     await credit(window)
@@ -681,7 +654,7 @@ writeFileSync(
           ? 'Windows runner interactive desktop'
           : 'isolated Xvfb with openbox',
       children: macos
-        ? 'real /bin/sh programs; groups checked through ps; no working directory (macOS process cwd unsupported)'
+        ? 'real /bin/sh programs; groups checked through ps; working directory through a grant descriptor'
         : windows
           ? 'real cmd.exe programs in a job object; descendants checked through Get-CimInstance Win32_Process; working directory through an NTFS grant'
           : 'real /bin/sh programs; groups checked through /proc',
