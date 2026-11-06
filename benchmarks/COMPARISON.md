@@ -51,6 +51,33 @@ CPU models, logical CPUs, memory, Bun revision, pinned toolchain, `rustc` and
 `cargo` versions, Mesa/Xvfb package versions, display variables, and
 `/proc/loadavg` before every launch.
 
+## Input-to-paint latency
+
+With `--input-trials N` (0 by default, otherwise 3..30) the controller runs N
+further fresh launches of every artifact after the timed trials, in the same
+rotated order. Each launch runs under the existing Linux XTest driver
+(`scripts/quality/native-input-linux.py`) with the child's `--input-latency`
+scenario: the same mounted tree, with the fixture button's click handler
+updating the label to `Clicked` through that adapter (core batch, Solid signal
+or React state). The driver waits for the complete expected initial native
+paint, clicks the button once with `xdotool`, and its concurrent inotify reader
+validates the complete expected `Clicked` native tree
+([NATIVE_PAINT.md](NATIVE_PAINT.md)). It then closes the window through the OS
+and requires unforced cleanup of every owned process.
+
+The recorded metric is `command_start_to_paint_observed_ms`: from immediately
+before the XTest click command to the validated native paint record. It
+includes `xdotool` process startup, X server delivery, GPUI event dispatch, the
+adapter update and acknowledgement path, native paint instrumentation and log
+I/O. It is not display presentation. Native paint evidence is enabled only for
+these launches, the controller does not poll RSS during them, and each launch
+contributes exactly one sample, summarized as in the statistics below under
+`inputLatency` in `comparison.json`. A launch passes only if the driver reports
+`passed` (window, OS input, the application click record, initial and final
+native paint, OS close, cleanup) and the child report passes the same identity
+and cleanup checks as timed launches. Raw driver reports, screenshots and native
+evidence are kept under `input/`.
+
 ## Statistics
 
 Trial 0 launches every freshly built artifact once and is reported separately as
@@ -83,17 +110,31 @@ xvfb-run --auto-servernum --server-args='-screen 0 1280x800x24 -nolisten tcp' \
 ```
 
 Options: `--adapters core,solid,react`, `--trials 3..30`, `--iterations`,
-`--rotations`, `--mounts`, `--rows` (same bounds as the shared workload) and
-`--rss-interval-ms`. `comparison.json` holds provenance, builds, calibrations,
+`--rotations`, `--mounts`, `--rows` (same bounds as the shared workload),
+`--rss-interval-ms` and `--input-trials`. `comparison.json` holds provenance, builds, calibrations,
 per-launch process observations with child-report digests, load averages and
-the summary; `launches/` holds every raw child report and log.
+the summary; `launches/` holds every raw child report and log, and `input/`
+every input-latency launch.
+
+## CI
+
+`.github/workflows/benchmark-comparison.yml` runs the comparison on hosted
+`ubuntu-24.04` (Xvfb, Mesa lavapipe) weekly, on manual dispatch (trial counts
+are inputs) and on ready pull requests that change the harness. It is not a
+required check and never gates a merge. Every run uploads the raw output
+directory (except the AOT executables) plus the exported record as the
+`benchmark-comparison-linux-X64` artifact, kept for 30 days, and writes the
+summary table to the job summary. Hosted runners are shared, so treat those
+numbers as descriptive of that run. macOS and Windows are not wired in: the
+controller samples RSS and load through `/proc`, and the XTest driver is
+Linux-only.
 
 ## Not measured here
 
 - A direct Rust GPUI baseline: no Rust application performing this workload
   exists, and adding one is separate work.
-- Electrobun/WebView baselines, display presentation, input-to-paint latency,
-  CPU/GPU utilization, hardware GPUs, macOS and Windows.
+- Electrobun/WebView baselines, display presentation, per-keystroke or text
+  input latency, CPU/GPU utilization, hardware GPUs, macOS and Windows.
 
 ## Recorded results
 

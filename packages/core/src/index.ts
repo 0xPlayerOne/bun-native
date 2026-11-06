@@ -1,7 +1,8 @@
 export { createApplication } from './application.ts'
 export { NativeStateError, UnsupportedFeatureError } from './types.ts'
 export { ProtocolError } from '@bun-native/protocol'
-export { NativeCommandError } from '@bun-native/runtime'
+export { NativeCommandError, NativeHostExitError } from '@bun-native/runtime'
+export type { NativeHostExitDiagnostic, NativeHostExitReason } from '@bun-native/runtime'
 export { NativeServiceError } from './services.ts'
 export type {
   NativeDisplaySnapshot,

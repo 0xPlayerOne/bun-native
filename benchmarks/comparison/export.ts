@@ -25,6 +25,18 @@ for (const launch of comparison.launches as { name: string }[]) {
   )
 }
 writeFileSync(join(destination, 'launches.jsonl.gz'), gzipSync(lines.join('\n') + '\n'))
+const inputs = (comparison.inputLaunches ?? []) as { name: string }[]
+if (inputs.length) {
+  const read = (path: string) => (existsSync(path) ? JSON.parse(readFileSync(path, 'utf8')) : null)
+  const records = inputs.map((launch) =>
+    JSON.stringify({
+      name: launch.name,
+      report: read(join(input, 'input', `${launch.name}.json`)),
+      driver: read(join(input, 'input', launch.name, 'result.json')),
+    })
+  )
+  writeFileSync(join(destination, 'input-launches.jsonl.gz'), gzipSync(records.join('\n') + '\n'))
+}
 
 type Stat = {
   median: number | null
@@ -58,6 +70,18 @@ for (const [metric, label, scale] of metrics) {
 console.log(
   `| measured / failed launches | ${keys.map((key) => `${groups[key].measured} / ${groups[key].failed.length}`).join(' | ')} |`
 )
+const inputGroups = comparison.inputLatency?.groups
+if (inputGroups) {
+  const cells = keys.map((key) => {
+    const stat: Stat | undefined = inputGroups[key]?.commandStartToPaintObservedMs
+    if (!stat) return 'n/a'
+    return `${format(stat.median, 1)} [${format(stat.medianInterval.low, 1)}, ${format(stat.medianInterval.high, 1)}]`
+  })
+  console.log(`| XTest click to native paint (ms) | ${cells.join(' | ')} |`)
+  console.log(
+    `| input launches passed / failed | ${keys.map((key) => `${inputGroups[key]?.passed ?? 0} / ${inputGroups[key]?.failed.length ?? 0}`).join(' | ')} |`
+  )
+}
 console.log()
 console.log('| Pooled operation samples (ms) | ' + keys.join(' | ') + ' |')
 console.log(`| --- | ${keys.map(() => '---').join(' | ')} |`)

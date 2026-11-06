@@ -1,6 +1,6 @@
 # Releasing Bun Native desktop applications
 
-**Status:** Distribution is a design target; there are no qualified Bun Native installers or signed production artifacts yet. [BN6 #223](https://github.com/0xPlayerOne/bun-native/issues/223) owns real packaging, signing, updates and rollback.
+**Status:** Distribution is a design target; there are no qualified Bun Native installers or signed production artifacts yet. [BN6 #223](https://github.com/0xPlayerOne/bun-native/issues/223) owns real packaging, signing, updates and rollback. An experimental [verified update and rollback tool](updates.md) exists for build outputs (#249); platform installers, OS code signing and notarization remain unimplemented.
 
 ## Target artifacts
 
@@ -30,6 +30,8 @@ Do not deploy or modify Adea production as a side effect of making Bun Native ex
 ## Updates and rollback
 
 Update manifests must be authenticated by a configured trust root, not just a checksum downloaded beside the payload. Stage to a private location, verify exact artifact identity and compatibility, replace atomically where supported, recover from interruption and preserve local user data. Native ABI mismatches must fail safely rather than continue with undefined behavior.
+
+The current experimental implementation and its tested cases are documented in [updates](updates.md).
 
 ## Release decision
 

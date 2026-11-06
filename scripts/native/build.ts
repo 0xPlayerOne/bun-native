@@ -1,13 +1,33 @@
 import { constants } from 'node:fs'
 import { chmod, copyFile, mkdir, readdir, writeFile } from 'node:fs/promises'
-import { join, relative, resolve } from 'node:path'
+import { isAbsolute, join, relative, resolve } from 'node:path'
 import { compileApplication } from '../../experiments/aot-gpui/compile.ts'
 import { buildSolid } from '../solid-build.ts'
 import type { Project } from './project.ts'
 import { fileDigest } from './artifact.ts'
 import toolchain from '../../toolchain.json'
 
+/**
+ * Bun.build names each module in its `// path` comments relative to the process
+ * working directory, so bundling from another cwd changed the module bytes. Anchor
+ * it to the project for the bundle's duration; every path used here is absolute.
+ */
+async function inProjectDirectory<T>(project: Project, bundle: () => Promise<T>): Promise<T> {
+  const previous = process.cwd()
+  process.chdir(project.directory)
+  try {
+    return await bundle()
+  } finally {
+    process.chdir(previous)
+  }
+}
+
 export async function bundleProject(project: Project, outdir: string): Promise<string> {
+  const destination = resolve(outdir)
+  return inProjectDirectory(project, () => bundleFromProject(project, destination))
+}
+
+async function bundleFromProject(project: Project, outdir: string): Promise<string> {
   if (project.framework === 'solid') return buildSolid(project.entry, outdir)
   await mkdir(outdir, { recursive: true })
   const result = await Bun.build({
@@ -58,6 +78,14 @@ export async function buildProject(
     throw new Error('Prebuilt host changed while packaging; retry with a stable input')
   if (developmentModule.sha256 !== (await fileDigest(module)).sha256)
     throw new Error('Application module changed during AOT compilation')
+  // Keep machine-local paths and wall-clock timing out of the manifest so equal
+  // inputs produce an identical manifest; timing goes to a separate diagnostic.
+  const { compileCommand, buildMs, ...inspected } = compiled
+  await writeFile(
+    join(outdir, 'build-metrics.json'),
+    JSON.stringify({ schemaVersion: 1, compileMs: buildMs }, null, 2) + '\n',
+    { flag: 'wx' }
+  )
   const manifest = {
     schemaVersion: 1,
     ...(project.packageSet ? { packageSet: project.packageSet } : {}),
@@ -68,9 +96,31 @@ export async function buildProject(
     application: {
       file: applicationFile,
       ...(await fileDigest(join(outdir, applicationFile))),
-      ...compiled,
+      // Absolute arguments are recorded relative to this artifact directory; the
+      // compiler is identified by its digest instead of its install path.
+      compileCommand: compileCommand.map((argument, index) =>
+        index === 0 ? 'bun' : isAbsolute(argument) ? relative(outdir, argument) : argument
+      ),
+      compiler: { revision: Bun.revision, executable: await fileDigest(process.execPath) },
+      ...inspected,
     },
     developmentModule: { file: 'development/application.js', ...developmentModule },
+    sourceMap: {
+      file: 'development/application.js.map',
+      ...(await fileDigest(join(outdir, 'development/application.js.map'))),
+    },
+    launcher: { file: 'launcher.ts', ...(await fileDigest(launcher)) },
+    reproducibility: {
+      deterministic: [
+        applicationFile,
+        hostFile,
+        'development/application.js',
+        'development/application.js.map',
+        'launcher.ts',
+        'manifest.json',
+      ],
+      diagnostics: ['build-metrics.json', 'compile-aot.stdout.log', 'compile-aot.stderr.log'],
+    },
     host: {
       file: hostFile,
       profile: hostProfile,

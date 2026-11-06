@@ -33,8 +33,10 @@ class BuildEvidenceTests(unittest.TestCase):
             json.dumps({"version": 3, "sources": ["../../main.tsx"]})
         )
         self.bun = self.root / "pinned-bun"
+        self.bun.write_bytes(b"inert pinned compiler")
+        (self.root / "other-bun").write_bytes(b"inert different compiler")
         self.source = {"commit": "fixture-commit", "tree": "fixture-tree"}
-        self.toolchain = {"revision": "fixture-revision"}
+        self.toolchain = {"bun": {"revision": "fixture-revision"}}
         self.manifest = {
             "packageSet": {
                 "source": self.source,
@@ -59,7 +61,11 @@ class BuildEvidenceTests(unittest.TestCase):
             {
                 "inspection": {"hasCompiledProgram": True},
                 "runtimeFeatures": {"jit": "omitted", "jitRemovedRanges": {"count": 1}},
-                "compileCommand": [str(self.bun), "--no-install", "compile"],
+                "compileCommand": ["bun", "--no-install", "compile"],
+                "compiler": {
+                    "revision": "fixture-revision",
+                    "executable": EVIDENCE.digest(self.bun),
+                },
             }
         )
         self.host = EVIDENCE.digest(self.dist / "host")
@@ -101,7 +107,12 @@ class BuildEvidenceTests(unittest.TestCase):
             ("inspection", {"hasCompiledProgram": False}),
             ("runtimeFeatures", {"jit": "present", "jitRemovedRanges": {"count": 1}}),
             ("runtimeFeatures", {"jit": "omitted", "jitRemovedRanges": {"count": 0}}),
-            ("compileCommand", [str(self.bun), "compile"]),
+            ("compileCommand", ["bun", "compile"]),
+            ("compileCommand", [str(self.bun), "--no-install", "compile"]),
+            (
+                "compiler",
+                {"revision": "other", "executable": {"bytes": 0, "sha256": ""}},
+            ),
         ]
         for key, value in changes:
             self.manifest = copy.deepcopy(baseline)
@@ -214,6 +225,7 @@ class BuildDiagnosticRetentionTests(unittest.TestCase):
         self.project = self.root / "consumer"
         (self.project / "dist").mkdir(parents=True)
         self.originals = {
+            "build-metrics.json": b'{"compileMs": 1}\n',
             "compile-aot.stdout.log": b'{"inert":true}\r\n',
             "compile-aot.stderr.log": b"inert diagnostics\n\x00",
             "launcher.ts": b"// inert launcher; never executed\n",

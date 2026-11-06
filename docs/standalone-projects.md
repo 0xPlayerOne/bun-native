@@ -104,9 +104,13 @@ and teardown path:
 
 ```sh
 bun run check
+bun run format:check
 bun run dev --host /absolute/path/to/bun-native-host
 bun run build --host /absolute/path/to/bun-native-host --host-profile release
 ```
+
+`format` and `format:check` run the installed CLI's built-in formatter command, which uses
+the template style unless the project supplies its own formatter config and skips `vendor/`.
 
 Supply the exact pinned Bun revision and a separately acquired, compatible native
 host. Ordinary source edits and AOT builds do not invoke Cargo. The compiler child

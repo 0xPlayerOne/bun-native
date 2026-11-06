@@ -1,4 +1,9 @@
-import { createApplication, ProtocolError, type NativeApplication } from '@bun-native/core'
+import {
+  createApplication,
+  NativeHostExitError,
+  ProtocolError,
+  type NativeApplication,
+} from '@bun-native/core'
 import assert from 'node:assert/strict'
 import { appendFileSync, existsSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
@@ -40,7 +45,7 @@ async function rejection(promise: Promise<unknown>): Promise<Error> {
 function requireTransportExit(error: Error): void {
   assert(
     (error instanceof ProtocolError && error.message === 'Native output closed before shutdown') ||
-      (error.name === 'Error' &&
+      (error instanceof NativeHostExitError &&
         /^Native host exited unexpectedly \(-?\d+\)\./.test(error.message)),
     `Expected transport EOF/process exit after the real native fault, got ${error.name}: ${error.message}`
   )
@@ -126,7 +131,14 @@ try {
     zeroOwnership(app)
     const stopped = await rejection(app.shutdown())
     assert.equal(stopped, failure)
+    if (failure instanceof NativeHostExitError)
+      assert.deepEqual(
+        [failure.diagnostic.reason, failure.diagnostic.signal, failure.diagnostic.exitCode],
+        ['signal', 'SIGKILL', null],
+        'The controller SIGKILLs the stopped host'
+      )
     record('crash-contained', {
+      diagnostic: failure instanceof NativeHostExitError ? failure.diagnostic : null,
       errorName: failure.name,
       errorMessage: failure.message,
       pendingRejected: pendingErrors.length,

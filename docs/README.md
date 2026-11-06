@@ -19,15 +19,16 @@ The initial [shared native layout contract](native-layout.md) extends this tree 
 ## Build and operate
 
 6. [Getting started](getting-started.md) — first contributor steps and what does not work yet
-7. [Development workflow](development.md) — current and intended edit loop; [checkout CLI](developer-tooling.md) — implemented create/dev/build commands and limitations
+7. [Development workflow](development.md) — current and intended edit loop; [checkout CLI](developer-tooling.md) — implemented create/dev/build commands and limitations; [reproducible builds](reproducible-builds.md) — which outputs are byte-identical and how that is checked
 8. [Testing and validation](testing.md) — hosted CI, connected Mac native checks and evidence
 9. [Benchmark design](../benchmarks/README.md) — performance fixtures, comparators and raw measurements
-10. [Releasing](releasing.md) — native AOT targets, installers, signing, updates and rollback
+10. [Releasing](releasing.md) — native AOT targets, installers, signing, updates and rollback; [experimental updates](updates.md) — verified manifest, atomic install and rollback
 
 ## Code quality and project operations
 
 - [Engineering quality and optimization](engineering-quality.md) — required audits every PR, every phase and before release
 - [Provenance](provenance.md) — licensing, copied code and attribution
+- [Security and crash qualification matrix](qualification-matrix.md) — native fault, malformed payload, version mismatch and offline cases with their deciding tests
 - [Agent contract](../AGENTS.md) and [Contributing](../.github/CONTRIBUTING.md)
 - [Roadmap issue #1](https://github.com/0xPlayerOne/bun-native/issues/1) and [BN0–BN7 epics](https://github.com/0xPlayerOne/bun-native/milestones)
 

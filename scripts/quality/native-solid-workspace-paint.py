@@ -242,8 +242,8 @@ def expected_tree(state):
             ),
             text(
                 "History limit reached. Clear history to continue."
-                if len(messages) >= 32
-                else "Enter sends · Up to 240 characters · 32 messages per conversation",
+                if len(messages) >= 24
+                else "Enter sends · Up to 240 characters · 24 messages per conversation",
                 color=muted,
                 font_size=12,
             ),

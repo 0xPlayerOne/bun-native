@@ -1,0 +1,13 @@
+{"bun":"da867c60bf0bcbf9d6d36994f8ca0efa42075115","platform":"linux","builds":401,"repeats":3}
+{"repeat":0,"framework":"solid","policy":"default","builds":401,"firstRssBytes":83755008,"finalRssBytes":156655616,"peakRssBytes":163926016,"medianBundleMs":18.57955799999945,"p95BundleMs":30.799122000000352}
+{"repeat":0,"framework":"solid","policy":"purge-0","builds":401,"firstRssBytes":74702848,"finalRssBytes":123285504,"peakRssBytes":130596864,"medianBundleMs":23.559943000000203,"p95BundleMs":38.49231499999951}
+{"repeat":0,"framework":"react","policy":"default","builds":401,"firstRssBytes":76746752,"finalRssBytes":153374720,"peakRssBytes":159617024,"medianBundleMs":27.147688999999446,"p95BundleMs":39.890925000001516}
+{"repeat":0,"framework":"react","policy":"purge-0","builds":401,"firstRssBytes":63733760,"finalRssBytes":77381632,"peakRssBytes":84844544,"medianBundleMs":32.926485999999386,"p95BundleMs":46.195018000000005}
+{"repeat":1,"framework":"solid","policy":"default","builds":401,"firstRssBytes":83316736,"finalRssBytes":158666752,"peakRssBytes":167682048,"medianBundleMs":19.730372999999418,"p95BundleMs":33.569886999999994}
+{"repeat":1,"framework":"solid","policy":"purge-0","builds":401,"firstRssBytes":77074432,"finalRssBytes":122347520,"peakRssBytes":130121728,"medianBundleMs":25.41237799999999,"p95BundleMs":40.668834999999945}
+{"repeat":1,"framework":"react","policy":"default","builds":401,"firstRssBytes":77385728,"finalRssBytes":157642752,"peakRssBytes":166764544,"medianBundleMs":25.298391000000265,"p95BundleMs":34.76780399999916}
+{"repeat":1,"framework":"react","policy":"purge-0","builds":401,"firstRssBytes":63885312,"finalRssBytes":74608640,"peakRssBytes":82849792,"medianBundleMs":33.88535200000024,"p95BundleMs":45.93041399999947}
+{"repeat":2,"framework":"solid","policy":"default","builds":401,"firstRssBytes":83132416,"finalRssBytes":161542144,"peakRssBytes":162455552,"medianBundleMs":17.721825000000536,"p95BundleMs":27.86977300000035}
+{"repeat":2,"framework":"solid","policy":"purge-0","builds":401,"firstRssBytes":75673600,"finalRssBytes":125714432,"peakRssBytes":132861952,"medianBundleMs":24.274325000000317,"p95BundleMs":43.348883000000114}
+{"repeat":2,"framework":"react","policy":"default","builds":401,"firstRssBytes":77586432,"finalRssBytes":147349504,"peakRssBytes":151633920,"medianBundleMs":26.278696999999966,"p95BundleMs":40.90211700000009}
+{"repeat":2,"framework":"react","policy":"purge-0","builds":401,"firstRssBytes":67149824,"finalRssBytes":75390976,"peakRssBytes":82214912,"medianBundleMs":34.183696000000054,"p95BundleMs":47.18631800000003}

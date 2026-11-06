@@ -117,6 +117,7 @@ checksum = "5a15f179cd60c4584b8a8c596927aadc462e27f2ca70c04e0071964a73ba7a75"
 dependencies = [
  "cfg-if",
  "const-random",
+ "getrandom 0.3.4",
  "once_cell",
  "version_check",
  "zerocopy",
@@ -614,6 +615,7 @@ checksum = "72f5acc6cb2ba439de613abc23857ec3d78374d8ed5ac84e9d11336e87da8649"
 name = "bun-native-host"
 version = "0.0.0"
 dependencies = [
+ "ahash",
  "async-channel",
  "base64",
  "bun-native-macos-surface",

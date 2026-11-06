@@ -437,6 +437,8 @@ impl Session {
         operations: Vec<Operation>,
         cx: &mut App,
     ) {
+        let started = crate::phases::now();
+        let operation_count = operations.len();
         let Some((handle, state)) = self.window(id, window_id, cx) else {
             return;
         };
@@ -444,6 +446,7 @@ impl Session {
             .borrow()
             .tree
             .prepare(base_revision, operations, self.last_node_id);
+        let prepared_at = started.map(|_| std::time::Instant::now());
         let prepared = match prepared {
             Ok(prepared) => prepared,
             Err(error) => {
@@ -454,6 +457,7 @@ impl Session {
         let revision = prepared.tree.revision();
         let result = handle.update(cx, |view, window, cx| view.apply(prepared.tree, window, cx));
         if result.is_ok() {
+            let applied_at = started.map(|_| std::time::Instant::now());
             self.last_node_id = prepared.last_node_id;
             self.evidence.batch(window_id, revision, &prepared.metrics);
             self.events.send(
@@ -464,6 +468,17 @@ impl Session {
                 },
                 cx,
             );
+            if let (Some(started), Some(prepared), Some(applied)) =
+                (started, prepared_at, applied_at)
+            {
+                let times = crate::phases::BatchTimes {
+                    started,
+                    prepared,
+                    applied,
+                    replied: std::time::Instant::now(),
+                };
+                crate::phases::batch(id, window_id, operation_count, times);
+            }
         } else {
             self.error(
                 id,

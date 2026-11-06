@@ -232,6 +232,8 @@ Native errors are `invalid_command`, `version_mismatch`, `invalid_state`,
 `payload_too_large`, `conflict`, and the filesystem outcomes `not_found`,
 `already_exists`, `path_denied`, `wrong_kind`, `not_empty` and `access_denied`.
 A correlated recoverable command error becomes public `NativeCommandError`.
+An unexpected host exit becomes `NativeHostExitError` with a bounded, redacted
+`diagnostic` record; see the [qualification matrix](qualification-matrix.md).
 Malformed protocol, invalid sequence/reply or fatal transport failure ends the
 session. Public preflight/ownership errors use `NativeStateError`, malformed
 values use `ProtocolError`, and unsupported element kinds use

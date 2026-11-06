@@ -5,7 +5,13 @@ import assert from 'node:assert/strict'
 import { appendFileSync, writeFileSync } from 'node:fs'
 import { isAbsolute, join } from 'node:path'
 import { Workspace } from '../../examples/react-workspace/app.tsx'
-import type { WorkspaceState } from '../../examples/react-workspace/model.ts'
+import {
+  PLAN_INTERVAL_MS,
+  PLAN_STEPS,
+  schedulePlanStep,
+  type PlanScheduler,
+  type WorkspaceState,
+} from '../../examples/react-workspace/model.ts'
 
 // This entry mounts the actual example. The owned X11 controller alone supplies
 // input; no synthetic event injection or test-only application actions exist.
@@ -30,6 +36,29 @@ let state: WorkspaceState | undefined
 let clicks = 0
 let inputs = 0
 let sequence = 0
+// Observe the component's real plan timers; the default scheduler still owns them.
+const timers = { scheduled: 0, fired: 0, cancelled: 0, pending: 0, afterDisposal: 0 }
+let disposed = false
+const schedule: PlanScheduler = (callback) => {
+  timers.scheduled++
+  timers.pending++
+  let live = true
+  const cancel = schedulePlanStep(() => {
+    if (!live) return
+    live = false
+    timers.pending--
+    timers.fired++
+    if (disposed) timers.afterDisposal++
+    callback()
+  })
+  return () => {
+    if (!live) return
+    live = false
+    timers.pending--
+    timers.cancelled++
+    cancel()
+  }
+}
 function changed(next: WorkspaceState) {
   state = next
   record('workspace-state', { state: next })
@@ -60,13 +89,25 @@ try {
       },
       { capture: true }
     )
-  root = render(<Workspace onChange={changed} />, window, {
+  root = render(<Workspace onChange={changed} schedule={schedule} />, window, {
     style: { width: 'fill', height: 'fill' },
   })
   await root.ready
   record('mounted', { treeRevision: window.revision, diagnostics: root.diagnostics })
   await Promise.race([window.closed, root.closed])
+  const closing = state
   await root.dispose()
+  disposed = true
+  // Wait past one plan interval: a leaked timer would fire after disposal.
+  await Bun.sleep(PLAN_INTERVAL_MS * 2)
+  assert.deepEqual(
+    { pending: timers.pending, afterDisposal: timers.afterDisposal },
+    { pending: 0, afterDisposal: 0 }
+  )
+  assert.equal(timers.scheduled, timers.fired + timers.cancelled)
+  assert(timers.fired >= PLAN_STEPS.length + 3, 'Plans must stream through actual timers')
+  assert(timers.cancelled >= 1, 'Closing with a pending plan must cancel its timer')
+  assert.equal(closing?.plan?.status, 'streaming', 'The window must close during a plan')
   assert.equal(root.diagnostics.nodes, 0)
   assert.equal(root.diagnostics.listeners, 0)
   assert(signals.size > 0 && [...signals].every((signal) => signal.aborted))
@@ -78,8 +119,13 @@ try {
   assert.equal(state.filter, 'all')
   assert.equal(state.query, '')
   assert(!state.tasks.some((task) => task.id === 13))
+  assert.equal(state.nextPlanId, 5)
+  assert.equal(state.plan?.id, 4)
+  assert.equal(state.plan?.taskId, 1)
+  assert.equal(state.plan?.status, 'streaming')
+  assert(state.plan.steps.length >= 1 && state.plan.steps.length < PLAN_STEPS.length)
   assert(clicks >= 8 && inputs > 0, 'The workflow must receive actual native input and clicks')
-  record('disposed', { diagnostics: root.diagnostics, ownership: app.diagnostics })
+  record('disposed', { diagnostics: root.diagnostics, ownership: app.diagnostics, timers })
 } finally {
   try {
     await root?.dispose()
@@ -98,6 +144,7 @@ writeFileSync(
       scenario: 'react-workspace',
       clicks,
       inputs,
+      timers,
       state,
       ownership: app.diagnostics,
     },

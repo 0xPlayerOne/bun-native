@@ -58,6 +58,8 @@ Use fresh output/session directories outside the repository, preferably under th
 
 `--trials` accepts 1–10 measured trials per pair. `--iterations` must be a multiple of ten in 10–10,000; `--rotations` accepts 1–10,000; `--mounts` accepts 1–1,000; `--rows` accepts 1–128. Defaults are the workload above. The child workload has a 120-second deadline and bounded transport requests; the controller imposes a separate 180-second child limit and a 1 MiB captured-output limit. The session supervisor remains responsible for descendant cleanup if a process is forcibly stopped.
 
+The child workload also accepts `--input-latency`: it mounts the same tree, updates the label once when the fixture button is clicked and exits on OS close. Only the [comparison controller](../COMPARISON.md#input-to-paint-latency) uses it, under the XTest driver; this controller never does.
+
 `comparison.json` records source/host/compiler provenance, executable inspection, actual calibration GPU metadata and report digests. Per-trial JSON retains raw timings, mutations, component reuse/disposal, weak-target and heap observations, and cleanup. CPU models, logical count, OS and memory are recorded; power state, other machine load and OS cache state remain uncontrolled. A development-profile host is explicitly diagnostic and does not establish release performance.
 
 Actual pointer/text qualification uses the separate `tests/native/solid-window.py` scenarios. Input-to-paint, display presentation, cumulative allocations, native RSS, hardware-GPU behavior, macOS/Windows GUI, physical input, IME/accessibility, cold-cache startup and long-term leak freedom remain separate acceptance work.

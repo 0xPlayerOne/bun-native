@@ -7,7 +7,10 @@ application-specific native widget implementation.
 
 The example supports adding tasks with Enter or a button, completing/reopening
 tasks, filtering and searching, selecting and renaming tasks, deleting tasks,
-and switching light/dark colors. The list and detail pane use native vertical
+switching light/dark colors, and drafting a local eight-step plan for the
+selected task. The plan streams one step every 300 ms, can be stopped, and stops
+when the selection changes. Plan text is fixed local data: no model, backend or
+network is contacted. The list and detail pane use native vertical
 scroll containers. Initial tasks make the list scroll at the default window size.
 Closing the window disposes the renderer before shutting down the application.
 
@@ -55,9 +58,18 @@ next adjacent task, or clears selection when the workspace becomes empty.
 `app.tsx` keeps native input observations in React state. Add and Save capture
 the input's current revision through the public `inputState` helper before
 replacing text. Keyed detail components reset their input ownership when the
-selected task changes. No timers, external subscriptions, or background jobs
-outlive the renderer. The optional state observer supports evidence recording
-without replacing native interaction.
+selected task changes.
+
+At most one plan exists and at most one plan timer is live. The `Workspace`
+effect schedules the next step only while a plan streams; each step, Stop,
+selection change, task deletion and unmount runs that effect's cleanup, which
+cancels the pending timer. Each step action carries its plan ID, so a callback
+that was already queued cannot write into a stopped or newer plan. Stopped plans
+keep their partial steps; deleting a task drops its plan. Steps are append-only
+keyed rows, so streaming updates preserve native row identity. No timers,
+external subscriptions or background jobs outlive the renderer. The optional
+state observer and `schedule` prop support evidence recording without replacing
+native interaction or the real timer.
 
 The entry passes `{ style: { width: 'fill', height: 'fill' } }` to `render` to
 bound the renderer's ownership container to the window. The content row starts
@@ -71,17 +83,24 @@ example does not yet switch columns at narrow-window breakpoints.
 bun test tests/react/workspace-model.test.ts tests/react/workspace.test.tsx
 ```
 
-The model tests cover full edit/filter/delete flows and capacity boundaries.
-The adapter test uses real public-core IPC with the existing headless event
-peer to exercise native event routing, input revisions, React commits, and
-window-close cleanup. It does not prove OS rendering, scrolling, or focus.
+The model tests cover full edit/filter/delete flows, capacity boundaries, plan
+ordering and stale or duplicate plan steps. The adapter tests use real
+public-core IPC with the existing headless event peer to exercise native event
+routing, input revisions, React commits, plan timer ownership through stop,
+selection, stale delivery and window close, and window-close cleanup. They do
+not prove OS rendering, scrolling or focus.
 
 The Native Linux workflow builds the `react-workspace` example and the
 `react-workspace-flow` fixture with the same AOT helper. The fixture mounts this
 exact `Workspace` component. Its controller uses actual host-reported geometry
 to click, type, complete and rename a task, search/filter, scroll, change theme,
-resize, delete, and close the OS window. Native paints independently verify the
-complete task list and retained keyed rows; final ownership must return to zero.
+resize, delete, stream a complete plan, stop a second plan, switch tasks during
+a third, and close the OS window while a fourth plan still streams. Native
+paints independently verify the complete task list, ordered plan rows, retained
+keyed task and plan rows and the visible plan status; the details pane is
+wheel-scrolled until the last plan row is wholly visible. The fixture observes the
+component's real timers: after disposal and a further two plan intervals, no
+timer is pending or fires, and final ownership must return to zero.
 It reuses the existing isolated X11 driver and records screenshots and raw events.
 
 To run that native flow with an already built host and the documented Linux X11
@@ -111,6 +130,32 @@ the example has no simulated menu or dialog. Accessibility qualification tracks
 [#241](https://github.com/0xPlayerOne/bun-native/issues/241). Large-history,
 virtualization, streaming, adaptive breakpoints, and performance qualification
 remain in [#257](https://github.com/0xPlayerOne/bun-native/issues/257).
+
+## Comparison with the Solid workspace
+
+The [Solid conversation workspace](../solid-workspace/README.md) is the Solid
+reference for [#248](https://github.com/0xPlayerOne/bun-native/issues/248).
+Both apps run on the same core, renderer primitives and GPUI host, and use the
+same development/AOT helper, owned X11 driver and native evidence records. They
+are different fixtures, so no equal-workload performance comparison is made.
+
+| Behavior                                         | React task workspace                                   | Solid conversation workspace                   |
+| ------------------------------------------------ | ------------------------------------------------------ | ---------------------------------------------- |
+| Text entry, native focus, latest input revisions | Native flow (add, rename, search)                      | Native flow (per-conversation drafts)          |
+| Keyed list add/edit/delete, filtering            | Native flow                                            | Native flow (history, new/close conversation)  |
+| Native scroll, theme, resize                     | Native flow, dark input pixels sampled                 | Native flow, dark composer pixels sampled      |
+| Bounded local streaming with keyed row retention | Native flow: 8-step plan, effect-owned timer           | Native flow: 8-update reply, model-owned timer |
+| Stop and cancellation on selection change        | Native flow                                            | Native flow                                    |
+| OS close with pending work, zero timers after    | Native flow, plus no timer fires after disposal        | Native flow                                    |
+| In-app confirmation panel                        | None                                                   | Clear-history confirmation                     |
+| Screenshots                                      | scrolled, dark, resized, edited, filtered, after, plan | Per-scenario captures in its native evidence   |
+
+Unsupported or unqualified for both: OS menus and dialogs (#239), accessibility
+and screen readers, IME (#241), virtualization and long-session memory (#257),
+macOS and Windows workspace interaction, and matched comparative performance
+(#244). React-specific limits from the [behavior matrix](../../docs/react-behavior.md)
+also apply: suspended/hidden subtrees, hydration, portals and view-transition
+animations are outside the adapter contract.
 
 The example does not claim completion of those issues or cross-platform native
 acceptance. Real window/input/scroll/focus/close evidence is required in both

@@ -134,9 +134,12 @@ export async function createProject(
             private: true,
             type: 'module',
             scripts: {
-              dev: `bun ${JSON.stringify(cli)} dev .`,
+              // See docs/developer-tooling.md "Controller memory".
+              dev: `MIMALLOC_PURGE_DELAY=0 bun ${JSON.stringify(cli)} dev .`,
               build: `bun ${JSON.stringify(cli)} build .`,
               check: 'bun check --no-script --no-pretty',
+              format: `bun ${JSON.stringify(cli)} format .`,
+              'format:check': `bun ${JSON.stringify(cli)} format . --check`,
             },
           },
           null,
@@ -152,7 +155,7 @@ export async function createProject(
 }
 `,
       '.gitignore': 'dist/\n.bun-native/\n',
-      'README.md': `# ${basename(directory)}\n\nThis project uses the surrounding Bun Native checkout and its pinned dependencies.\nRun \`bun install --frozen-lockfile\` in the checkout first; no Rust compiler is needed when you supply a prebuilt host.\n\n- \`bun run check\` checks TypeScript or checked JavaScript.\n- \`bun run dev --host /absolute/path/to/bun-native-host\` bundles and opens the app once.\n- Add \`--watch\` to remount after source edits with joined teardown. State resets on every successful edit; state-preserving hot reload is not implemented.\n- \`bun run build --host /absolute/path/to/bun-native-host --host-profile release\` creates an unsigned same-platform AOT app in \`dist\`. The output directory must be empty.\n\nKeep the template's optional development IPC hooks: they report readiness and clean up the renderer and owned host before a replacement starts. The host is supplied explicitly and never downloaded or rebuilt. See the checkout's \`docs/developer-tooling.md\` for requirements and limitations.\n`,
+      'README.md': `# ${basename(directory)}\n\nThis project uses the surrounding Bun Native checkout and its pinned dependencies.\nRun \`bun install --frozen-lockfile\` in the checkout first; no Rust compiler is needed when you supply a prebuilt host.\n\n- \`bun run check\` checks TypeScript or checked JavaScript.\n- \`bun run format\` applies Bun's built-in formatter; \`bun run format:check\` only reports differences.\n- \`bun run dev --host /absolute/path/to/bun-native-host\` bundles and opens the app once.\n- Add \`--watch\` to remount after source edits with joined teardown. State resets on every successful edit; state-preserving hot reload is not implemented.\n- \`bun run build --host /absolute/path/to/bun-native-host --host-profile release\` creates an unsigned same-platform AOT app in \`dist\`. The output directory must be empty.\n\nKeep the template's optional development IPC hooks: they report readiness and clean up the renderer and owned host before a replacement starts. The host is supplied explicitly and never downloaded or rebuilt. See the checkout's \`docs/developer-tooling.md\` for requirements and limitations.\n`,
       [entry]: template(framework, language),
     }
     if (set) {

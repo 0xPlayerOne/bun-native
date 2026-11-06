@@ -7,6 +7,7 @@ import {
   MAX_PROMPT_LENGTH,
   selectedConversation,
   WorkspaceController,
+  type ReplyScheduler,
   type WorkspaceOwnership,
   type WorkspaceState,
 } from './model.ts'
@@ -222,9 +223,14 @@ export function Workspace(
   props: {
     onChange?: (state: WorkspaceState) => void
     onDispose?: (state: WorkspaceState, ownership: WorkspaceOwnership) => void
+    /** Qualification only: a fixture-owned reply clock. The example uses real timers. */
+    schedule?: ReplyScheduler
+    /** Qualification only: drive the same component's actions without OS input. */
+    onController?: (controller: WorkspaceController) => void
   } = {}
 ): JSX.Element {
-  const controller = new WorkspaceController((next) => setState(next))
+  const controller = new WorkspaceController((next) => setState(next), props.schedule)
+  props.onController?.(controller)
   const [state, setState] = createSignal(controller.state)
   const palette = () => palettes[state().theme]
   createEffect(() => props.onChange?.(state()))

@@ -8,6 +8,8 @@ import {
   median,
   nearestRank,
   summarize,
+  summarizeInputLatency,
+  type InputLaunch,
   type Launch,
 } from '../../benchmarks/comparison/stats.ts'
 
@@ -210,4 +212,43 @@ test('summaries reject a measured launch that performed different work', () => {
     launch('solid', 'aot', 1, report(1, { lifecycles: { ...report().lifecycles, count: 3 } })),
   ]
   expect(() => summarize(launches)).toThrow(/Unequal workloads rejected/)
+})
+
+test('input latency summaries count one sample per passed launch and exclude failures', () => {
+  const input = (
+    adapter: string,
+    mode: string,
+    trial: number,
+    latency: number | null,
+    status: InputLaunch['status'] = 'passed'
+  ): InputLaunch => ({
+    name: `${adapter}-${mode}-input-${trial}`,
+    adapter,
+    mode,
+    trial,
+    status,
+    commandStartToPaintObservedMs: latency,
+    error: status === 'failed' ? 'driver failed' : null,
+  })
+  const summary = summarizeInputLatency([
+    ...[1, 2, 3].map((trial) => input('core', 'development', trial, 10 * trial)),
+    ...[1, 2, 3].map((trial) => input('core', 'aot', trial, 5 * trial)),
+    input('core', 'aot', 4, 999, 'failed'),
+    ...[1, 2, 3].map((trial) => input('solid', 'aot', trial, 15 * trial)),
+  ])
+  const aot = summary.groups['core/aot'] as Record<string, any>
+  expect(aot.launches).toBe(4)
+  expect(aot.passed).toBe(3)
+  expect(aot.failed).toEqual(['core-aot-input-4'])
+  expect(aot.commandStartToPaintObservedMs).toMatchObject({ count: 3, median: 10, max: 15 })
+  expect(aot.commandStartToPaintObservedMs.medianInterval.resamples).toBe(2000)
+  const ratio = (candidate: string, reference: string) =>
+    (
+      summary.comparisons.find(
+        (item) => item['candidate'] === candidate && item['reference'] === reference
+      ) as Record<string, any>
+    ).medianRatio.estimate
+  expect(ratio('core/aot', 'core/development')).toBeCloseTo(0.5, 5)
+  expect(ratio('solid/aot', 'core/aot')).toBeCloseTo(3, 5)
+  expect(summary.comparisons.some((item) => item['candidate'] === 'solid/development')).toBe(false)
 })

@@ -1,13 +1,14 @@
 import type { NativeNode } from '@bun-native/core'
 import { CONTENT_STYLE, LIST_STYLE, ROW_STYLE, runWorkload, type Mutations } from './workload.ts'
 
-await runWorkload('core', async (window, initial) => {
+await runWorkload('core', async (window, initial, onClick) => {
   const counts: Mutations = { create: 0, set: 0, insert: 0, remove: 0 }
   let rowsDisposed = 0
   let unexpectedClicks = 0
   let disposed = false
   const listener = () => {
-    unexpectedClicks++
+    if (onClick) onClick()
+    else unexpectedClicks++
   }
   const { root, label, button, list, rows } = await window.batch((batch) => {
     // Match the Solid adapter-owned container and the exact native element tree.
@@ -45,9 +46,12 @@ await runWorkload('core', async (window, initial) => {
       if (disposed) return
       disposed = true
       unsubscribe()
-      await window.batch((batch) => batch.remove(root))
+      // The input scenario disposes after its OS close, which revoked every node.
+      if (!onClick) {
+        await window.batch((batch) => batch.remove(root))
+        counts.remove++
+      }
       rowsDisposed = initial.length
-      counts.remove++
       rows.clear()
     },
     probes: [new WeakRef(root), new WeakRef(label), new WeakRef(listener)],

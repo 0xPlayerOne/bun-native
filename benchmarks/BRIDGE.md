@@ -188,3 +188,92 @@ explicitly omitted. The prototype kept summary latency statistics rather than
 every individual duration; the committed runner now retains raw timings. These
 observations motivate batching and the BN1 performance audit; they do not define
 a production latency budget.
+
+## Phase and render attribution (#297)
+
+`BUN_NATIVE_PHASE_TRACE=/new/file.json` enables a separate, bounded UI-thread
+phase trace in the host. It is off by default; disabled hooks perform one
+thread-local check and no clock read, allocation or I/O. When enabled, each
+acknowledged batch records its prepare (validation and candidate graph clone),
+apply (`NativeView.apply`) and reply-enqueue durations plus the number of root
+renders so far. Each root render records its element-construction time (which
+also includes the trace's own node count, microseconds at 1,001 nodes) and the
+time from render start to the final native canvas paint callback (GPUI layout,
+prepaint and paint; GPU submit and presentation excluded). Records stay in fixed
+memory (4,096 batches, 16,384 frames; overflow is counted and rejected by the
+analyzer) and are written once after the command loop ends, never between
+measured requests. A path that already exists disables the trace.
+
+Run the unchanged bridge workload with the variable set, then join the two
+outputs:
+
+```sh
+BUN_NATIVE_PHASE_TRACE=/tmp/bridge-01.phases.json bun benchmarks/bridge.ts ... --output /tmp/bridge-01
+python3 benchmarks/bridge-phases.py --result /tmp/bridge-01/result.json --trace /tmp/bridge-01.phases.json
+```
+
+The analyzer selects exactly the 20 warmups, 1,000 measured single-operation
+requests and ten 100-operation batches on window 1, requires contiguous request
+IDs, and fails on dropped records or incomplete samples. `requestAndReplyTransportMs`
+is the acknowledgement minus the native UI-thread time; it includes pipe
+transport, reader/scheduler queueing and any render that ran between requests.
+Phase-traced runs are instrumented diagnostics and must not be merged with the
+uninstrumented baseline.
+
+### Local measurement, November 5, 2026
+
+[Raw record](results/bridge-phases-local-2026-11-05.json): shared 4-CPU cloud
+container (Intel Xeon 2.80 GHz, Ubuntu 24.04.5, Linux 6.18), Xvfb with lavapipe
+requested, pinned Bun canary, release host, ordinary Bun development mode only.
+Other agents were compiling concurrently (load average 10–27), so absolute
+values are noisier and slower than hosted CI; trial `p1-A` is visibly contended
+(78 frames instead of about 20). No trial was rerun or removed. AOT was not
+collected in this diagnostic.
+
+| Current host trial | Ack total, 1,000 updates | Native UI-thread total | Renders between requests | Acks after a render: count / total | Other acks: total / p99 |
+| ------------------ | -----------------------: | ---------------------: | -----------------------: | ---------------------------------: | ----------------------: |
+| t-phase-1          |                 985.7 ms |               200.5 ms |                       21 |                      21 / 486.9 ms |         498.0 / 1.67 ms |
+| p2-A               |               1,096.5 ms |               247.8 ms |                       23 |                      23 / 748.8 ms |         347.5 / 2.27 ms |
+| p3-A               |                 998.5 ms |               238.2 ms |                       21 |                      21 / 622.6 ms |         375.4 / 2.93 ms |
+
+The tail is render interleaving, not bridge or apply cost. Native prepare, apply
+and reply together are p50 0.18–0.19 ms and p99 0.60–1.22 ms. The roughly 2% of
+requests that follow a full 1,001-node render on the shared UI thread carry
+49–68% of the summed acknowledgement time and the p99; acknowledgements without
+an intervening render have p99 1.7–2.9 ms and a maximum of 2.6–6.8 ms. A render's element construction is about 1.9–2.0 ms;
+render-to-paint is about 13.5–14.5 ms under lavapipe.
+
+**Callback-allocation hypothesis.** Heaptrack 1.5.0 around the host attributes,
+per rendered node, 6.0 allocation calls under `render_node` and 4.0 under GPUI
+`Interactivity::paint_mouse_listeners` (111,549 node renders; 3,677,675 calls in
+the whole run). A measurement-only counterfactual that removes
+`PointerFrame.target` (it breaks pointer events and is not committed) leaves 2.0
+per node under `render_node` and none in `paint_mouse_listeners`. The two capture
+callbacks therefore cost **8 allocation calls per node per rendered frame**,
+about 8,000 per 1,001-node frame: two boxed listeners and two listener-vector
+allocations at build time, plus two boxed window listeners and their storage at
+paint time. Taffy layout and text layout/shaping remain larger allocation
+sources per frame.
+
+| Paired phase trial | Variant                  | Render construction p50 |          Render-to-paint p50 |
+| ------------------ | ------------------------ | ----------------------: | ---------------------------: |
+| p1                 | current / counterfactual |          2.03 / 1.22 ms | 30.94 (contended) / 12.29 ms |
+| p2                 | counterfactual / current |          1.05 / 1.92 ms |             11.20 / 13.54 ms |
+| p3                 | current / counterfactual |          1.96 / 1.13 ms |             14.26 / 12.03 ms |
+
+Removing the callbacks entirely is an **upper bound** of about 0.8 ms of element
+construction and about 2.2–2.3 ms (15%) of render-to-paint per 1,001-node frame
+in the two uncontended pairs. It does not remove the tail: frames still take
+about 12 ms and still delay the following acknowledgement.
+
+**Tradeoff and decision.** No optimization is applied in this change. The
+callbacks are the per-node GPUI hitbox registration that gives the deepest
+visible native hit in paint order, including clipping and scroll offsets, and
+the measured saving is bounded at about 15% of frame time. A same-semantics
+replacement would need a custom wrapper element that inserts an identical
+`Normal` hitbox per node in the same order and resolves the target in the one
+existing window capture observer. It must be qualified with the native pointer,
+scroll-clipping, focus, route-ordering and macOS hit-testing scenarios on both
+ordinary Bun and AOT before it replaces the current path. The acknowledgement
+tail itself is governed by frame cost (layout, text and software paint) and
+scheduling, so a callback change alone cannot be presented as a tail fix.

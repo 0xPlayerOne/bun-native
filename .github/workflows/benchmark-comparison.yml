@@ -1,0 +1,120 @@
+name: Benchmark comparison
+
+# Non-gating measurement job: never a required check. It records raw results
+# for core/Solid/React in development and AOT modes, including real XTest
+# input-to-native-paint latency, and uploads them as an artifact. A passed job
+# means every launch and equivalence check passed, not that performance improved.
+on:
+  workflow_dispatch:
+    inputs:
+      trials:
+        description: Measured timed trials per artifact (3 to 30)
+        default: '5'
+      input-trials:
+        description: XTest click-to-paint launches per artifact (0, or 3 to 30)
+        default: '5'
+  schedule:
+    - cron: '47 6 * * 3'
+  pull_request:
+    branches: [main]
+    types: [ready_for_review, synchronize]
+    paths:
+      - .github/workflows/benchmark-comparison.yml
+      - benchmarks/comparison/**
+      - benchmarks/solid/**
+      - scripts/quality/native-input-linux.py
+      - scripts/quality/native-paint-observer.py
+
+permissions:
+  contents: read
+
+concurrency:
+  group: benchmark-comparison-${{ github.event_name }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  linux:
+    name: Linux core/Solid/React development and AOT comparison
+    if: vars.CI_BILLING_PAUSED == 'false' && (github.event_name != 'pull_request' || github.event.pull_request.draft == false)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    defaults:
+      run:
+        shell: bash
+    env:
+      CARGO_BUILD_JOBS: 2
+      CARGO_INCREMENTAL: 0
+      PYTHONDONTWRITEBYTECODE: 1
+      # Dispatch inputs reach the shell only through the environment.
+      TRIALS: ${{ github.event_name == 'workflow_dispatch' && inputs.trials || '5' }}
+      INPUT_TRIALS: ${{ github.event_name == 'workflow_dispatch' && inputs['input-trials'] || '5' }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Prepare result directory
+        run: |
+          mkdir "$RUNNER_TEMP/comparison"
+          echo "COMPARISON=$RUNNER_TEMP/comparison" >> "$GITHUB_ENV"
+      - name: Install checksum-pinned Bun compiler
+        run: node scripts/install-bun.mjs --destination "$RUNNER_TEMP/bun-native-bun"
+      - name: Install pinned Rust toolchain and isolated X11 prerequisites
+        run: |
+          rustup show active-toolchain
+          sudo apt-get update
+          sudo apt-get install --no-install-recommends -y \
+            pkg-config libfontconfig-dev libglib2.0-dev libssl-dev libwayland-dev \
+            libx11-xcb-dev libxkbcommon-x11-dev libvulkan1 libzstd-dev \
+            mesa-vulkan-drivers xvfb xauth x11-utils openbox xdotool imagemagick \
+            dbus-x11 fonts-dejavu-core
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ~/.bun/install/cache
+            ~/.cargo/registry/index
+            ~/.cargo/registry/cache
+            ~/.cargo/git/db
+          key: gpui-downloads-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('toolchain.json', 'bun.lock', 'rust-toolchain.toml', 'Cargo.lock') }}
+      - run: bun install --frozen-lockfile
+      - name: Build release native host
+        run: |
+          { time -p cargo build --locked --release --manifest-path Cargo.toml -p bun-native-host --bin bun-native-host; } 2>&1 | tee "$COMPARISON/host-build.log"
+          sha256sum target/release/bun-native-host > "$COMPARISON/host-sha256.txt"
+      - name: Run the equivalent-workload comparison in one isolated native session
+        timeout-minutes: 40
+        run: |
+          xvfb-run --auto-servernum --server-args='-screen 0 1280x800x24 -nolisten tcp' \
+            dbus-run-session -- bash scripts/quality/native-linux-session.sh \
+            "$COMPARISON/session" -- bun benchmarks/comparison/run.ts \
+            --host "$GITHUB_WORKSPACE/target/release/bun-native-host" --host-profile release \
+            --output "$COMPARISON/run" --trials "$TRIALS" --input-trials "$INPUT_TRIALS"
+      - name: Export the compact record and summary table
+        if: ${{ always() && env.COMPARISON != '' }}
+        run: |
+          if [[ ! -f "$COMPARISON/run/comparison.json" ]]; then
+            echo 'The comparison wrote no comparison.json; the artifact keeps its logs.' >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          bun benchmarks/comparison/export.ts "$COMPARISON/run" "$COMPARISON/export" | tee "$COMPARISON/summary.md"
+          {
+            echo '## Equivalent-workload comparison (Linux, software renderer request)'
+            echo
+            jq -r '"Status: \(.status); failed launches: \(.failedLaunches // [] | length)"' "$COMPARISON/run/comparison.json"
+            echo
+            cat "$COMPARISON/summary.md"
+            echo
+            echo 'Click to native paint is the driver interval from immediately before the XTest click command to the validated complete native paint record; it is not display presentation. See benchmarks/COMPARISON.md.'
+          } >> "$GITHUB_STEP_SUMMARY"
+      - name: Retain raw results, including failures
+        if: ${{ always() && env.COMPARISON != '' }}
+        timeout-minutes: 3
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: benchmark-comparison-linux-${{ runner.arch }}
+          path: |
+            ${{ runner.temp }}/comparison/
+            !${{ runner.temp }}/comparison/run/*/application
+            !${{ runner.temp }}/comparison/session/runtime/
+          include-hidden-files: true
+          if-no-files-found: error
+          retention-days: 30
