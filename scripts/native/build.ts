@@ -2,7 +2,6 @@ import { constants } from 'node:fs'
 import { chmod, copyFile, mkdir, readdir, writeFile } from 'node:fs/promises'
 import { isAbsolute, join, relative, resolve } from 'node:path'
 import { compileApplication } from '../../experiments/aot-gpui/compile.ts'
-import { buildSolid } from '../solid-build.ts'
 import type { Project } from './project.ts'
 import { fileDigest } from './artifact.ts'
 import toolchain from '../../toolchain.json'
@@ -28,7 +27,11 @@ export async function bundleProject(project: Project, outdir: string): Promise<s
 }
 
 async function bundleFromProject(project: Project, outdir: string): Promise<string> {
-  if (project.framework === 'solid') return buildSolid(project.entry, outdir)
+  if (project.framework === 'solid') {
+    // Only Solid needs the Babel universal transform; React builds skip loading it.
+    const { buildSolid } = await import('../solid-build.ts')
+    return buildSolid(project.entry, outdir)
+  }
   await mkdir(outdir, { recursive: true })
   const result = await Bun.build({
     entrypoints: [project.entry],

@@ -2,6 +2,6 @@
 exact = true
 
 [test]
-preload = ["./scripts/solid/test-runtime.ts"]
+preload = ["./scripts/solid/test-runtime.ts", "./tests/tooling/headless-peer-cleanup.ts"]
 root = "./tests"
 coverageThreshold = { lines = 0.8, functions = 0.9 }

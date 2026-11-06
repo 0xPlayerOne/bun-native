@@ -271,8 +271,10 @@ impl FileResult {
                 | (FileOperation::List { .. }, Self::List { .. })
                 | (FileOperation::Read { .. }, Self::Read { .. })
                 | (FileOperation::Write { .. }, Self::Written { .. })
-                | (FileOperation::CreateDirectory {}, Self::Done {})
-                | (FileOperation::Remove {}, Self::Done {})
+                | (
+                    FileOperation::CreateDirectory {} | FileOperation::Remove {},
+                    Self::Done {}
+                )
         )
     }
 }

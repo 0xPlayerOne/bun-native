@@ -114,7 +114,7 @@ fn exact_targets_and_level_filter_before_formatting() {
         output
             .record(
                 &Record::builder()
-                    .args(format_args!("{}", Unreachable))
+                    .args(format_args!("{Unreachable}"))
                     .target(target)
                     .level(level)
                     .build(),
@@ -203,7 +203,7 @@ fn formatting_error_is_reported_without_panicking_or_disabling_output() {
     output
         .record(
             &Record::builder()
-                .args(format_args!("{}", Broken))
+                .args(format_args!("{Broken}"))
                 .target(TARGETS[1])
                 .level(Level::Warn)
                 .build(),

@@ -1,6 +1,5 @@
 import { describe, expect, test } from 'bun:test'
 import {
-  createApplication,
   NativeServiceError,
   NativeStateError,
   ProtocolError,
@@ -8,48 +7,20 @@ import {
   type ServicePermissions,
 } from '@bun-native/core'
 import assert from 'node:assert/strict'
-import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
-import { tmpdir } from 'node:os'
-import { join, resolve } from 'node:path'
+import { existsSync, writeFileSync } from 'node:fs'
+import { join } from 'node:path'
 import { assertDisplayServicePolicy } from '../native/display-service-policy.ts'
+import { peerRequests, withServicePeer } from './service-peer.ts'
 
-async function withClipboard(
+const withClipboard = (
   run: (app: NativeApplication, directory: string) => Promise<void>,
   mode = 'normal',
   permissions: ServicePermissions = { clipboardRead: 'allow', clipboardWrite: 'allow' }
-) {
-  const directory = mkdtempSync(join(tmpdir(), 'bun-native-clipboard-peer-'))
-  let app: NativeApplication | undefined
-  try {
-    app = await createApplication({
-      executable: process.execPath,
-      args: [resolve(import.meta.dir, 'clipboard-peer.ts'), directory, mode],
-      permissions,
-      requestTimeoutMs: 2_000,
-    })
-    await run(app, directory)
-  } finally {
-    writeFileSync(join(directory, 'release'), '')
-    await app?.shutdown().catch(() => {})
-    await app?.closed.catch(() => {})
-    if (app) expect(Object.values(app.diagnostics)).toEqual([0, 0, 0, 0, 0, 0, 0])
-    rmSync(directory, { recursive: true, force: true })
-  }
-}
-
-function requests(directory: string, type: string) {
-  const path = join(directory, 'requests.jsonl')
-  if (!existsSync(path)) return []
-  return readFileSync(path, 'utf8')
-    .trim()
-    .split('\n')
-    .map((line) => JSON.parse(line) as { type: string })
-    .filter((value) => value.type === type)
-}
+) => withServicePeer('clipboard-peer', run, mode, permissions, { release: true })
 
 async function received(directory: string, count = 1) {
   const deadline = performance.now() + 1_000
-  while (requests(directory, 'clipboard_read').length < count) {
+  while (peerRequests(directory, 'clipboard_read').length < count) {
     if (performance.now() >= deadline)
       throw new Error('Clipboard request did not reach the headless peer')
     await Bun.sleep(2)
@@ -76,8 +47,8 @@ describe('clipboard lifecycle and independent scheduling (headless real subproce
             service: 'clipboard_write',
             code,
           })
-          expect(requests(directory, 'clipboard_read')).toHaveLength(1)
-          expect(requests(directory, 'clipboard_write')).toHaveLength(1)
+          expect(peerRequests(directory, 'clipboard_read')).toHaveLength(1)
+          expect(peerRequests(directory, 'clipboard_write')).toHaveLength(1)
         },
         mode,
         { windowDisplay: 'allow' }
@@ -107,8 +78,8 @@ describe('clipboard lifecycle and independent scheduling (headless real subproce
           service: 'clipboard_write',
           code: 'permission_denied',
         })
-        expect(requests(directory, 'clipboard_read')).toHaveLength(1)
-        expect(requests(directory, 'clipboard_write')).toHaveLength(1)
+        expect(peerRequests(directory, 'clipboard_read')).toHaveLength(1)
+        expect(peerRequests(directory, 'clipboard_write')).toHaveLength(1)
       },
       'normal',
       {}
@@ -180,7 +151,7 @@ describe('clipboard lifecycle and independent scheduling (headless real subproce
         window.readClipboardText({ signal: { aborted: false } } as never),
         TypeError
       )
-      expect(requests(directory, 'clipboard_read')).toHaveLength(0)
+      expect(peerRequests(directory, 'clipboard_read')).toHaveLength(0)
     }))
 
   test('submitted cancellation drains and validates without blocking subsequent commits', () =>
@@ -211,8 +182,8 @@ describe('clipboard lifecycle and independent scheduling (headless real subproce
       expect(existsSync(join(directory, 'release'))).toBe(false)
       await assert.rejects(window.readClipboardText(), { code: 'invalid_handle' })
       await assert.rejects(window.writeClipboardText('Stale'), { code: 'invalid_handle' })
-      expect(requests(directory, 'clipboard_read')).toHaveLength(1)
-      expect(requests(directory, 'clipboard_write')).toHaveLength(0)
+      expect(peerRequests(directory, 'clipboard_read')).toHaveLength(1)
+      expect(peerRequests(directory, 'clipboard_write')).toHaveLength(0)
     }, 'hold'))
 
   test('shutdown cancels and joins pending service outcomes before completion', () =>
@@ -238,7 +209,7 @@ describe('clipboard lifecycle and independent scheduling (headless real subproce
       expect(app.diagnostics.serviceRequests).toBe(8)
       await window.close()
       await Promise.all(rejections)
-      expect(requests(directory, 'clipboard_read')).toHaveLength(8)
+      expect(peerRequests(directory, 'clipboard_read')).toHaveLength(8)
     }, 'hold'))
 
   test.each(['operation_timed_out', 'payload_too_large', 'native_failure'])(
@@ -284,7 +255,7 @@ describe('clipboard lifecycle and independent scheduling (headless real subproce
       const window = await app.openWindow({ title: 'Small negotiated limit' })
       for (const text of ['ééx', 'a\0', '\ud800', 1])
         await assert.rejects(window.writeClipboardText(text as string), ProtocolError)
-      expect(requests(directory, 'clipboard_write')).toHaveLength(0)
+      expect(peerRequests(directory, 'clipboard_write')).toHaveLength(0)
       await window.writeClipboardText('éé')
       expect(await window.readClipboardText()).toEqual({ kind: 'text', text: 'éé' })
     }, 'lower-limit'))

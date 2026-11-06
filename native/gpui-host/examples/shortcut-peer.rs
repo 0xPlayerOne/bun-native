@@ -2,7 +2,7 @@
 //! global shortcut test can observe a real OS-level conflict and a real release.
 //! Never run against a personal display; the test owns its isolated Xvfb.
 //!
-//! Usage: shortcut-peer KEYSYM_HEX MODIFIER_MASK
+//! Usage: shortcut-peer `KEYSYM_HEX` `MODIFIER_MASK`
 //! Prints `grabbed` or `conflict`, then holds the grab until stdin closes.
 
 #[cfg(target_os = "linux")]

@@ -621,7 +621,6 @@ dependencies = [
  "bun-native-macos-surface",
  "bun-native-protocol",
  "futures",
- "futures-lite",
  "gpui",
  "gpui_platform",
  "log",

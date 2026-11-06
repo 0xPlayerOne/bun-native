@@ -1,9 +1,9 @@
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test'
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { join, resolve } from 'node:path'
-import { compileApplication } from '../../experiments/aot-gpui/compile.ts'
 import { createProject, type Framework, type Language } from '../../scripts/native/project.ts'
 import { observeDevelopmentTemplate } from '../native/cli-dev-owner.ts'
+import { lifetimePeer } from './headless-peer.ts'
 
 const repository = resolve(import.meta.dir, '../..')
 let directory: string
@@ -49,14 +49,7 @@ describe.skipIf(process.platform !== 'linux')(
       mkdirSync(join(repository, '.bun-native'), { recursive: true })
       directory = mkdtempSync(join(repository, '.bun-native/cli-dev-owner-test-'))
       peerLog = join(directory, 'peer.jsonl')
-      writeFileSync(peerLog, '')
-      const entry = join(directory, 'peer.ts')
-      writeFileSync(
-        entry,
-        `import { appendFileSync } from 'node:fs'\nconst log = (type: string) => appendFileSync(${JSON.stringify(peerLog)}, JSON.stringify({type,pid:process.pid})+'\\n')\nlog('started')\nprocess.on('exit',()=>log('exited'))\nawait import(${JSON.stringify(join(repository, 'tests/core/protocol-peer.ts'))})\n`
-      )
-      peer = join(directory, 'headless-peer')
-      compileApplication(entry, peer, repository)
+      peer = lifetimePeer(peerLog)
     }, 130_000)
 
     afterAll(() => rmSync(directory, { recursive: true, force: true }))

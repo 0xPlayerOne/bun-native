@@ -9,6 +9,7 @@ import {
 import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
+import { peerRequests, withServicePeer } from './service-peer.ts'
 
 const ROOTS: ServicePermissions = {
   filesystemRoots: [
@@ -17,38 +18,11 @@ const ROOTS: ServicePermissions = {
   ],
 }
 
-async function withFiles(
+const withFiles = (
   run: (app: NativeApplication, directory: string) => Promise<void>,
   mode = 'normal',
   permissions: ServicePermissions = ROOTS
-) {
-  const directory = mkdtempSync(join(tmpdir(), 'bun-native-file-peer-'))
-  let app: NativeApplication | undefined
-  try {
-    app = await createApplication({
-      executable: process.execPath,
-      args: [resolve(import.meta.dir, 'file-peer.ts'), directory, mode],
-      permissions,
-      requestTimeoutMs: 2_000,
-    })
-    await run(app, directory)
-  } finally {
-    await app?.shutdown().catch(() => {})
-    await app?.closed.catch(() => {})
-    if (app) expect(Object.values(app.diagnostics)).toEqual([0, 0, 0, 0, 0, 0, 0])
-    rmSync(directory, { recursive: true, force: true })
-  }
-}
-
-function requests(directory: string, type: string) {
-  const path = join(directory, 'requests.jsonl')
-  if (!existsSync(path)) return []
-  return readFileSync(path, 'utf8')
-    .trim()
-    .split('\n')
-    .map((line) => JSON.parse(line) as Record<string, unknown>)
-    .filter((value) => value['type'] === type)
-}
+) => withServicePeer('file-peer', run, mode, permissions)
 
 const cancelled = (error: unknown) =>
   error instanceof NativeServiceError &&
@@ -81,7 +55,7 @@ describe('filesystem grants through the public core (headless subprocess)', () =
         omitted: 1,
       })
       expect(await grant.createDirectory('d')).toBeUndefined()
-      expect(requests(directory, 'open_file_grant')).toEqual([
+      expect(peerRequests(directory, 'open_file_grant')).toEqual([
         {
           id: 3,
           type: 'open_file_grant',
@@ -91,7 +65,9 @@ describe('filesystem grants through the public core (headless subprocess)', () =
           access: 'read_write',
         },
       ])
-      expect(requests(directory, 'file_request').map((request) => request['operation'])).toEqual([
+      expect(
+        peerRequests(directory, 'file_request').map((request) => request['operation'])
+      ).toEqual([
         { kind: 'stat' },
         { kind: 'read', offset: 0, length: 16_384 },
         { kind: 'write', mode: 'append', data: 'aGk=' },
@@ -132,7 +108,7 @@ describe('filesystem grants through the public core (headless subprocess)', () =
       await expect(grant.write('a', 'text' as never)).rejects.toThrow(TypeError)
       await expect(grant.read('a', { length: 0 })).rejects.toThrow(TypeError)
       await expect(grant.list('', { after: 'a/b' })).rejects.toThrow(TypeError)
-      expect(requests(directory, 'file_request')).toEqual([])
+      expect(peerRequests(directory, 'file_request')).toEqual([])
     })
   })
 
@@ -148,14 +124,14 @@ describe('filesystem grants through the public core (headless subprocess)', () =
       expect(cancelled(await pending.catch((error: unknown) => error))).toBe(true)
       expect(cancelled(await grant.read('a').catch((error: unknown) => error))).toBe(true)
       await Bun.sleep(150)
-      expect(requests(directory, 'file_request')).toHaveLength(1)
-      expect(requests(directory, 'close_file_grant')).toHaveLength(1)
+      expect(peerRequests(directory, 'file_request')).toHaveLength(1)
+      expect(peerRequests(directory, 'close_file_grant')).toHaveLength(1)
       const owned = await window.openFileGrant('docs')
       await window.close()
       expect(owned.active).toBe(false)
       expect(cancelled(await owned.stat('a').catch((error: unknown) => error))).toBe(true)
       // Window close revokes natively; no separate close request is sent.
-      expect(requests(directory, 'close_file_grant')).toHaveLength(1)
+      expect(peerRequests(directory, 'close_file_grant')).toHaveLength(1)
     }, 'slow')
   })
 

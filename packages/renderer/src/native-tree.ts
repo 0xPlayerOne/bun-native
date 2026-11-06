@@ -113,7 +113,8 @@ export async function commitNativeTree(
     }
     // Rescue retained keyed descendants before deleting an obsolete ancestor.
     // Moving them temporarily to this root also frees capacity before creations.
-    // A retained descendant was reinserted, so its whole subtree was recaptured.
+    // A retained descendant was reinserted, so it was recaptured with its new
+    // parent; its own descendants keep their committed records and stay with it.
     // Root children already removed natively but not yet dropped from its list.
     let unlisted = 0
     const rescue = (node: Node): void => {
@@ -134,10 +135,30 @@ export async function commitNativeTree(
     // clearing a keyed region costs O(children) rather than O(children²).
     for (const [parent, state] of changes) {
       const old = previous.get(parent)
-      if (!old?.children.length) continue
-      const retained = new Set(state.children)
+      if (!old?.children.length || old.children === state.children) continue
+      // Children shared by both lists' ends are retained; only the middles
+      // can differ, and keyed edits usually leave them short.
+      const before = old.children
+      const after = state.children
+      let start = 0
+      let end = before.length
+      let afterEnd = after.length
+      while (start < end && start < afterEnd && before[start] === after[start]) start += 1
+      while (end > start && afterEnd > start && before[end - 1] === after[afterEnd - 1]) {
+        end -= 1
+        afterEnd -= 1
+      }
+      // A child left uncaptured kept its committed parent, so it is in both
+      // middles; equal counts of them mean no committed child was lost.
+      let kept = 0
+      for (let index = start; index < afterEnd; index += 1)
+        if (!changes.has(after[index]!)) kept += 1
+      for (let index = start; index < end; index += 1) if (!changes.has(before[index]!)) kept -= 1
+      if (kept === 0) continue
+      const retained = new Set(after.slice(start, afterEnd))
       const lost = new Set<Node>()
-      for (const node of old.children) {
+      for (let index = start; index < end; index += 1) {
+        const node = before[index]!
         if (changes.has(node) || retained.has(node)) continue
         rescue(node)
         batch.remove(previous.get(node)!.handle)
@@ -203,7 +224,7 @@ export async function commitNativeTree(
       let before = siblings.length
       for (let index = state.children.length - 1; index >= 0; index -= 1) {
         const child = state.children[index]!
-        if (stable.has(child)) {
+        if (stable[index]) {
           do if (--before < 0) throw new Error('Stable native child is not in its parent')
           while (siblings[before] !== child)
           continue
