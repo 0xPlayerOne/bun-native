@@ -700,9 +700,131 @@ keyboard selection of one file, several files and a folder, a save selection
 that creates no file, Escape cancellation, and the OS dialog closed after an
 aborted signal, owner close and shutdown. Wayland (unparented), Flatpak/Snap
 document-portal paths, other portal backends, macOS and Windows are not
-qualified. Message/confirm dialogs are not implemented: Linux has no portal
-for alerts, so use a modal overlay. See
+qualified. Message and confirm dialogs are not OS alerts; they are drawn on
+the modal overlay, [below](#message-and-confirm-dialogs). See
 [ADR 0013](decisions/0013-native-file-dialogs.md).
+
+## Message and confirm dialogs
+
+```ts
+const choice = await window.showMessageDialog(
+  {
+    title: "Unsaved changes",
+    message: "Save the document before closing?",
+    detail: "Unsaved edits are lost.",
+    buttons: [
+      { id: "save", label: "Save", kind: "primary" },
+      { id: "discard", label: "Discard", kind: "destructive" },
+      { id: "cancel", label: "Cancel" },
+    ],
+    cancelButton: "cancel", // Escape activates it
+  },
+  { signal },
+);
+if (choice.kind === "button" && choice.id === "save") await save();
+const remove = await window.showConfirmDialog({
+  title: "Delete file",
+  message: "Delete report.txt?",
+  confirmLabel: "Delete",
+  destructive: true, // red confirm button, Cancel focused by default
+});
+```
+
+`showMessageDialog` and `showConfirmDialog` draw a dialog in the window with
+public core's own [modal overlay](native-overlays.md), on every platform. They
+need no launch grant: the dialog is ordinary UI in the application's own
+window. `serviceCapabilities.messageDialogs` is `available` with backend
+`modal_overlay` when the host advertises `overlays_v1` and `focus_v1` (the
+current GPUI host always does); otherwise it reports
+`unsupported_host` and a call rejects with `service_unavailable` before
+anything is staged.
+
+One batch appends a window-anchored modal layer to the window root with a
+fixed panel (title, message, optional detail, right-aligned buttons) in the
+`defaultTheme` colors and sizes, at most 420 logical pixels wide, and focuses
+the default button (the first one unless `defaultButton` names another). The
+overlay traps Tab and Shift-Tab inside it and blocks pointer input beneath it.
+Options are validated before staging: a one-line `title` of at most 256 UTF-8
+bytes, a `message` of at most 2,048 and an optional `detail` of at most 4,096
+(both may contain line feeds), 1-4 buttons with unique `id`s of at most 64
+bytes and one-line labels of at most 64 bytes, optional `kind`
+(`normal`, `primary`, `destructive`), and `defaultButton`/`cancelButton` that
+name a button. Unknown options are rejected.
+
+The result is frozen: `{ kind: 'button', id }`, or `{ kind: 'dismissed' }`
+from a `dismissible: true` dialog. A click, or Enter/Space on the focused
+button, chooses that button. An unmodified Escape activates `cancelButton`;
+without one it dismisses a `dismissible` dialog and is otherwise ignored. A
+press on the backdrop dismisses only a `dismissible` dialog.
+`showConfirmDialog` shows Cancel then OK (labels configurable), Escape
+cancels, and it resolves `true` only for OK. The promise settles after the
+layer has been removed, so focus has already returned to the control focused
+before the dialog opened.
+
+Input routed through a dialog's layer is handled by core as it arrives and is
+not delivered to application listeners, including root capture listeners.
+Because of that, a listener may await a dialog (callbacks otherwise run one at
+a time) without blocking the dialog's own buttons.
+
+A window shows one message dialog at a time: later calls wait unseen and open
+in call order once the previous layer is removed, at most 8 per window
+(`limit_exceeded`). An aborted `signal` before the call stages nothing; a
+queued dialog is rejected with `cancelled` at once and never shown; an
+opening or shown dialog is removed and then rejected with `cancelled`.
+Closing the owner window or shutting down rejects every shown and queued
+dialog of that window with `NativeStateError` `invalid_handle`. A layer batch
+that fails, for example under a deeper application modal where the focus
+request is outside the active modal (`invalid_state`), rejects that call and
+the next queued dialog is tried.
+
+Solid and React components call the same methods on the window they render
+into; there is no adapter-specific helper. See
+[ADR 0014](decisions/0014-message-dialogs.md).
+
+The [Native Linux workflow](../.github/workflows/native-linux.yml) runs
+[`tests/native/message-dialogs.ts`](../tests/native/message-dialogs.ts) in
+development and inspected AOT. It uses only public core, real XTest input and
+nonce-tagged native paint evidence (focus and geometry):
+
+```sh
+export BUN_NATIVE_HOST="$PWD/target/release/bun-native-host"
+for mode in development aot; do
+  command=(bun tests/native/message-dialogs.ts)
+  if [[ "$mode" == aot ]]; then
+    bun experiments/aot-gpui/build-window.ts --entry message-dialogs --host "$BUN_NATIVE_HOST" \
+      --host-profile release --outdir "$PWD/.bun-native/message-dialogs-package"
+    command=("$PWD/.bun-native/message-dialogs-package/message-dialogs")
+  fi
+  evidence="$PWD/.bun-native/message-dialogs-$mode"; mkdir -p "$evidence"
+  BUN_NATIVE_MESSAGE_DIALOG_EVIDENCE="$evidence" BUN_NATIVE_MESSAGE_DIALOG_MODE="$mode" \
+    BUN_NATIVE_EVIDENCE_LOG="$evidence/native-evidence.jsonl" \
+    BUN_NATIVE_EVIDENCE_NONCE="$(python3 -c 'import secrets; print(secrets.token_hex(16))')" \
+    xvfb-run --auto-servernum --server-args='-screen 0 1280x800x24 -nolisten tcp' \
+    dbus-run-session -- bash scripts/quality/native-linux-session.sh "$evidence-session" -- "${command[@]}"
+done
+```
+
+Locally both modes passed on Linux X11 (Xvfb 1280×800 + openbox, XTest via
+xdotool, Mesa lavapipe, scale 1) with a release host; the AOT manifest
+recorded the JIT as unused. Observed in one run:
+
+| Outcome                  | Observed                                                                                                                                                                                 |
+| ------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Default focus and paint  | Opening moved native focus to `Save`; screenshot pixels showed the panel surface `ffffff` and the primary button accent `2255cc`.                                                        |
+| Tab trap                 | Tab, Tab, Tab, Shift-Tab focused `Discard, Cancel, Save, Cancel`; the editor beneath was never reached.                                                                                  |
+| Covered control          | A real click on the covered `Delete file` button produced no application click.                                                                                                          |
+| Click                    | A real click on `Discard` resolved `{ kind: 'button', id: 'discard' }`; no application listener saw it, and focus returned to the editor.                                                |
+| Enter, Escape, Space     | Enter resolved the default `save`; Escape resolved `cancel`; without a cancel button Escape left the dialog open and Space on the focused button chose it.                               |
+| Backdrop                 | A real press outside the panel resolved `{ kind: 'dismissed' }` for a `dismissible` dialog.                                                                                              |
+| Awaiting listener        | A real click on `Delete file` whose listener awaited a destructive `showConfirmDialog` opened it focused on `Keep`; a real click on `Delete` resolved `true`.                            |
+| Queue                    | The second dialog stayed unrendered until the first was answered, then opened focused on `OK`.                                                                                           |
+| Abort                    | Aborting removed the shown dialog, rejected with `cancelled`, returned focus to the editor, and typing continued (`note` → `note!`).                                                     |
+| Owner close and shutdown | Closing the window rejected a shown and a queued dialog with `invalid_handle`; shutdown rejected a dialog in another window the same way. All seven ownership counters returned to zero. |
+
+Only Linux X11 at scale 1 with software rendering is exercised. macOS and
+Windows run the same core code over the same overlay host code, unqualified.
+The dialog exposes no accessibility role or announcement, is modal only within
+its window, and is not an OS alert (no system sound or title-bar sheet).
 
 ## Drag and drop
 
@@ -800,7 +922,7 @@ already exists. The linked follow-ups belong to
 | Global shortcuts  | `registerGlobalShortcut`; `globalShortcuts` grant             | X11 dev+AOT verified with release host                                                              | Unavailable                                       | Unavailable                             | macOS/Windows backends, Wayland portal design and keyboard-map change tracking. [#301](https://github.com/0xPlayerOne/bun-native/issues/301).                                                             |
 | System menus      | Capability `systemMenus`; unavailable                         | Unavailable                                                                                         | Unavailable                                       | Unavailable                             | Typed action identities, owned menu lifetime, keyboard/accessibility behavior and safe action revocation. [#239](https://github.com/0xPlayerOne/bun-native/issues/239).                                   |
 | File dialogs      | `showOpenDialog` / `showSaveDialog`; `fileDialogs` grant      | xdg-desktop-portal (GTK) dev+AOT verified                                                           | Unavailable                                       | Unavailable                             | macOS/Windows panels, Wayland parenting, sandboxed document-portal paths and explicit file-grant conversion. [#239](https://github.com/0xPlayerOne/bun-native/issues/239).                                |
-| Message dialogs   | Capability `messageDialogs`; unavailable                      | Unavailable (no portal; use a modal overlay)                                                        | Unavailable                                       | Unavailable                             | Native `NSAlert`/task dialogs with owned modality, programmatic close and qualification. [#239](https://github.com/0xPlayerOne/bun-native/issues/239).                                                    |
+| Message dialogs   | `showMessageDialog` / `showConfirmDialog`; no grant           | Modal overlay dev+AOT verified locally                                                              | Modal overlay; unqualified                        | Modal overlay; unqualified              | OS alerts (`NSAlert`, task dialogs) as another backend, accessibility roles and announcements, macOS/Windows qualification. [#239](https://github.com/0xPlayerOne/bun-native/issues/239).                 |
 | Notifications     | `postNotification`; `notifications` grant                     | Freedesktop D-Bus (dunst) dev+AOT verified                                                          | Unavailable                                       | Unavailable                             | macOS/Windows backends, additional notification servers, named actions and replacement. [#302](https://github.com/0xPlayerOne/bun-native/issues/302).                                                     |
 | Drag/drop         | `registerDropTarget`; `dragDrop` grant                        | XDND dev+AOT verified locally (core/Solid/React)                                                    | AppKit; hosted CI only (NSDraggingSession source) | OLE; hosted CI only (DoDragDrop source) | Other payload kinds and file promises, refusal (GPUI always accepts), Wayland, physical devices and real file managers, Windows resolution. [#303](https://github.com/0xPlayerOne/bun-native/issues/303). |
 | Filesystem grants | `openFileGrant`; `filesystemRoots` launch roots               | openat2 dev+AOT verified locally                                                                    | `openat` walk; CI-only                            | Unavailable                             | OS file selection and dropped files as explicit user grants, Windows confinement. [#304](https://github.com/0xPlayerOne/bun-native/issues/304).                                                           |

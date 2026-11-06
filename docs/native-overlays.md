@@ -6,6 +6,8 @@ There is no protocol version change. The host advertises two **optional** capabi
 
 Keyboard-driven overlays add three more optional capabilities, still on protocol 8: `focus_v1` (the batch `focus` request), `scroll_control_v1` (the batch `scroll_to` and `scroll_into_view` requests) and `overlay_keyboard_v1` (the overlay `autofocus` and `navigation` fields). Core rejects them locally on a host that lacks them (`operation:focus`, `operation:scroll_to`, `operation:scroll_into_view`, `overlay:autofocus`, `overlay:navigation`). Explicit defaults (`autofocus: false`, `navigation: 'tab'`) normalize away and still reach an older overlay host. See [Keyboard menus, programmatic focus and scrolling](#keyboard-menus-programmatic-focus-and-scrolling).
 
+For a ready-made modal question, `window.showMessageDialog` and `window.showConfirmDialog` build one window-anchored modal layer through this contract and handle its input in core; see [message and confirm dialogs](native-services.md#message-and-confirm-dialogs).
+
 ## Element contract
 
 ```ts
@@ -224,7 +226,7 @@ The existing overlay fixture still passed against the same host.
 ## Limitations
 
 - **Platforms.** Only Linux X11 with software rendering at scale 1 is exercised. macOS and Windows build the same GPUI code but their overlay, focus and pointer behavior is unverified, as are Wayland, HiDPI, physical GPUs and touchpads.
-- **No native OS menus or dialogs.** These are in-window GPUI layers, except [popup windows](#popup-windows-beyond-the-parent-window) on Linux X11. Application menu bars, OS context menus and native file/message dialogs are not implemented.
+- **No native OS menus or alerts.** These are in-window GPUI layers, except [popup windows](#popup-windows-beyond-the-parent-window) on Linux X11. Application menu bars, OS context menus and OS alerts are not implemented. Public core builds [message and confirm dialogs](native-services.md#message-and-confirm-dialogs) on this modal overlay ([ADR 0014](decisions/0014-message-dialogs.md)); OS file dialogs are a separate [service](native-services.md#file-dialogs).
 - **Anchoring.** A parent-anchored overlay always opens below its parent's bottom-left corner and is shifted, not flipped, to fit the window. There is no anchoring to an arbitrary node, the pointer position or a side other than below; no arrow, sizing to the trigger or collision-aware flipping.
 - **Keyboard.** Menu navigation is vertical only: Left/Right, submenus opening on Right, grid or tree navigation and roving focus outside overlays are not implemented. Type-ahead matches button labels only and is not locale-aware beyond Unicode lower-casing. There is no `blur` request and no way to make a box or text node focusable. A non-modal popover without `autofocus` still never takes focus, and Escape reaches a non-modal popover only while focus is inside it. Arrow keys used by the menu are still reported to the application, which must not also act on them.
 - **Modal scope.** Overlays above the active modal in paint order (deeper non-modal popovers) remain interactive by pointer. Modality affects this window only; other windows of the application are not blocked.

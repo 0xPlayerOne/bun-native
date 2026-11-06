@@ -160,9 +160,11 @@ No per-request option or protocol message can grant access. Both framework
 adapters use this same public window method.
 
 `app.serviceCapabilities.windowDisplay` reports implementation availability,
-the negotiated permission and `owned_window` scope. Menus, message dialogs and drag/drop
-entries explicitly report `unavailable` / `not_implemented`; they have no
-placeholder callable methods. This policy constrains the selected native
+the negotiated permission and `owned_window` scope. System menus
+explicitly report `unavailable` / `not_implemented`; they have no
+placeholder callable methods. `window.showMessageDialog` and
+`window.showConfirmDialog` draw a modal overlay in the window and need no
+grant; see [message and confirm dialogs](../../docs/native-services.md#message-and-confirm-dialogs). This policy constrains the selected native
 host, not trusted Bun code's ordinary OS APIs.
 
 An aborted queued read sends no native command. After submission, cancellation
@@ -394,6 +396,6 @@ signal, closing the window or shutting down closes the OS dialog. See
 
 The elements are `box`, `text`, `button`, single-line `input` and, when the host advertises `split_v1`, a two-pane `split` with a host-owned draggable divider. `Style` explicitly supports `direction`, `gap`, `padding`, `width`, `height`, `min_width`, `max_width`, `min_height`, `max_height`, `flex_grow`, `flex_shrink`, `align_items`, `justify_content`, `overflow`, `background`, `color` and `font_size`, plus `border_width`, `border_color`, `corner_radius`, `opacity` and `font_weight` when the host advertises `style_decoration_v1`. `defineTheme` and `defaultTheme` resolve named color, spacing, radius and font-size tokens to these plain values in JavaScript. Dimensions are numeric logical native pixels, with `fill` available for width and height; colors are unsigned 24-bit RGB values. These fields are validated and bounded by the [shared layout contract](../../docs/native-layout.md). Scroll overflow is accepted only for `box` and `overlay` containers; leaf element types also enforce this restriction. Hosts advertising `overlays_v1` accept the `overlay` container and `scroll_anchor_v1` the `scroll_anchor` style field; `onDismiss(window, overlay, listener)` reports Escape and backdrop presses. See the [overlay contract](../../docs/native-overlays.md). Styles are shared by every framework adapter.
 
-There is no DOM, HTML, CSS parser, browser navigation, WebView, CEF, React DOM or automatic compatibility with web component libraries. Native service APIs for menus, dialogs, drag/drop and other desktop integrations remain separate roadmap work. The current renderer does not claim complete scrolling, IME, focus traversal or accessibility coverage. See [the native host limitations](../../native/gpui-host/README.md) and [testing evidence](../../docs/testing.md) before treating a platform as supported.
+There is no DOM, HTML, CSS parser, browser navigation, WebView, CEF, React DOM or automatic compatibility with web component libraries. Native service APIs for application menus, OS alerts and other desktop integrations not listed in the [service matrix](../../docs/native-services.md#service-and-platform-matrix) remain separate roadmap work. The current renderer does not claim complete scrolling, IME, focus traversal or accessibility coverage. See [the native host limitations](../../native/gpui-host/README.md) and [testing evidence](../../docs/testing.md) before treating a platform as supported.
 
 Protocol 11 requires shared layout, interactions and immutable service policy and replaces earlier protocols without a compatibility layer. During this private experimental phase, pin the application packages and native host together at the tested source revision. A package build or type check is not native GUI acceptance; a bundled executable is not proof of Bun machine-code AOT. [ADR 0004](../../docs/decisions/0004-public-api.md) records the API boundary and its tradeoffs.
