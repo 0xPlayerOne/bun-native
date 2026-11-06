@@ -8,6 +8,7 @@ use rustix::event::{EventfdFlags, eventfd};
 use rustix::io::Errno;
 use rustix::process::{Pid, PidfdFlags, WaitId, WaitIdOptions, pidfd_open, waitid};
 use std::os::fd::{AsFd, AsRawFd as _, BorrowedFd, OwnedFd};
+use std::process::Command;
 
 /// pidfd (Linux 5.3) observes exit without a signal handler; filesystem
 /// grants already require 5.6.
@@ -74,18 +75,35 @@ impl AsFd for ExitWatch {
     }
 }
 
-/// The opened directory the child starts in, and the path that names that
-/// open descriptor (not the directory's own path) for `Command::current_dir`.
+/// The opened directory the child starts in.
 pub(super) fn working_directory(
     directory: Option<&(Directory, String)>,
-) -> Result<Option<(OwnedFd, String)>, Failure> {
+) -> Result<Option<OwnedFd>, Failure> {
     let Some((root, path)) = directory else {
         return Ok(None);
     };
-    let fd = directory_beneath(root, path).map_err(|failure| match failure.0 {
-        ErrorCode::NotFound | ErrorCode::WrongKind | ErrorCode::PathDenied => failure,
-        _ => path_failure(Errno::ACCESS),
-    })?;
-    let cwd = format!("/proc/self/fd/{}", fd.as_raw_fd());
-    Ok(Some((fd, cwd)))
+    directory_beneath(root, path)
+        .map(Some)
+        .map_err(|failure| match failure.0 {
+            ErrorCode::NotFound | ErrorCode::WrongKind | ErrorCode::PathDenied => failure,
+            _ => path_failure(Errno::ACCESS),
+        })
+}
+
+/// The path that names the open descriptor (not the directory's own path),
+/// for `Command::current_dir`.
+fn descriptor_path(directory: &OwnedFd) -> String {
+    format!("/proc/self/fd/{}", directory.as_raw_fd())
+}
+
+pub(super) fn start_in(command: &mut Command, directory: &OwnedFd) -> Result<(), Failure> {
+    command.current_dir(descriptor_path(directory));
+    Ok(())
+}
+
+pub(super) fn start_in_terminal(
+    command: pty_process::blocking::Command,
+    directory: &OwnedFd,
+) -> Result<pty_process::blocking::Command, Failure> {
+    Ok(command.current_dir(descriptor_path(directory)))
 }

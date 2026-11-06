@@ -46,6 +46,7 @@ wayland-protocols-wlr = { version = "=0.3.12", features = ["client"] }
 [target.'cfg(target_os = "macos")'.dependencies]
 base64 = "=0.22.1"
 bun-native-macos-surface = { path = "../macos-surface" }
+bun-native-posix-services = { path = "../posix-services" }
 pty-process = "=0.5.4"
 raw-window-handle = "=0.6.2"
 rustix = { version = "=1.1.6", features = ["event", "fs", "process", "termios"] }

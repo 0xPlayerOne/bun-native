@@ -124,6 +124,24 @@ pub(crate) const FILE_DIALOGS_ARGUMENT: &str = "--bun-native-allow-file-dialogs"
 pub(crate) const APP_MENU_ARGUMENT: &str = "--bun-native-allow-app-menu";
 pub(crate) const TASK_DIALOGS_ARGUMENT: &str = "--bun-native-allow-task-dialogs";
 
+/// When the host binary is started as the Windows console interrupt helper,
+/// runs it and returns its exit code; `None` for a normal start.
+#[cfg(windows)]
+pub(crate) fn console_interrupt_helper(
+    arguments: impl IntoIterator<Item = OsString>,
+) -> Option<i32> {
+    use bun_native_windows_services::process::{INTERRUPT_HELPER_ARGUMENT, send_console_interrupt};
+    let mut arguments = arguments.into_iter();
+    if arguments.next()? != INTERRUPT_HELPER_ARGUMENT {
+        return None;
+    }
+    let sent = arguments
+        .next()
+        .and_then(|pid| pid.to_str()?.parse::<u32>().ok())
+        .is_some_and(|pid| send_console_interrupt(pid).is_ok());
+    Some(i32::from(!sent))
+}
+
 pub(crate) fn policy(
     arguments: impl IntoIterator<Item = OsString>,
 ) -> Result<ServicePolicy, &'static str> {
