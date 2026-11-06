@@ -82,6 +82,8 @@ async function waitFor(
 // ---- compositor oracle (sway IPC) ----
 
 type SwayNode = {
+  id?: number
+  focused?: boolean
   name: string | null
   type: string
   shell?: string
@@ -191,6 +193,12 @@ async function pixel(name: string, x: number, y: number): Promise<number> {
 // ---- native paint evidence ----
 
 type Rect = [number, number, number, number]
+type PointerTrace = {
+  event: string
+  position?: [number, number]
+  viewport: [number, number]
+  window_active: boolean
+}
 type Layout = {
   window_id: number
   tree_revision: number
@@ -405,13 +413,29 @@ async function qualify(app: NativeApplication) {
           target: center(origin, button),
           paintedRevision: initial.rendered.tree_revision,
           peerReplies: pointer.recentCommands(),
-          seats: await swaymsg('-t', 'get_seats').catch(() => 'unavailable'),
+          // Every mapped view and which one the compositor focuses: a second
+          // surface taking focus would show here.
+          views: (await views().catch(() => [])).map((node) => [
+            node.id,
+            node.name,
+            node.app_id,
+            node.focused,
+          ]),
+          // GPUI's own raw input (BUN_NATIVE_POINTER_TRACE=1): whether the
+          // pointer reached the window, where, in what viewport, and whether it was active.
+          pointerTrace: records<PointerTrace>('pointer_trace').map((entry) => [
+            entry.event,
+            entry.position,
+            entry.viewport,
+            entry.window_active,
+          ]),
           layouts: records<Layout>('layout').map((entry) => [
             entry.tree_revision,
             (entry.layout as { focused_node_id?: number | null }).focused_node_id,
           ]),
           clicks,
-        }).slice(0, 4_000)
+          seats: await swaymsg('-t', 'get_seats').catch(() => 'unavailable'),
+        }).slice(0, 6_000)
     )
     throw error
   }
