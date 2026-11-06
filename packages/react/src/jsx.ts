@@ -25,6 +25,10 @@ export namespace JSX {
     input: Base<'input'> & {
       value?: string | InputState
       placeholder?: string
+      /** Requires the host's `input_states_v1` capability. */
+      disabled?: boolean
+      /** Requires the host's `input_states_v1` capability. */
+      readOnly?: boolean
     }
     /** At most two pane children; the host owns the divider drag. */
     split: Base<'split'> & { children?: ReactNode; ratio?: number; min_size?: number }

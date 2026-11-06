@@ -325,6 +325,7 @@ const CAPABILITIES = [
   'overlay_keyboard_v1',
   'popup_windows_v1',
   'drag_drop_files_v1',
+  'input_states_v1',
 ] as const
 export type Capability = (typeof CAPABILITIES)[number]
 

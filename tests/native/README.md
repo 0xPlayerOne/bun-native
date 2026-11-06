@@ -29,6 +29,11 @@ Its output directory must be new, and the application command is explicit.
 | `aot-react-services`   | Compiled `react-services`                | The same React consumer and native service operation through Bun AOT.                                                                                                    |
 | `--`                   | An explicit benchmark command            | Create the isolated display environment for the bridge or repeated baseline runner; the supplied runner defines its own checks.                                          |
 
+`tests/native/text-input.ts` is self-driving: it qualifies grapheme editing,
+Hebrew input, dead-key composition, selection/clipboard, read-only and disabled
+inputs, Tab order, scale factor 1 or 2 and an AT-SPI tree read. See
+[native text](../../docs/native-text.md) for its environment and support matrix.
+
 The input driver verifies that the target window belongs to the launched
 application, focuses it, injects XTest input and requires matching Bun events and
 complete native paint snapshots. It waits for the mounted tree before injecting

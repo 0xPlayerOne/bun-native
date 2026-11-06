@@ -72,6 +72,12 @@ function supported(element: Element, capabilities: readonly Capability[]): Eleme
     !capabilities.includes('popup_windows_v1')
   )
     throw new UnsupportedFeatureError('overlay:surface_window')
+  if (
+    element.kind === 'input' &&
+    (element.disabled === true || element.read_only === true) &&
+    !capabilities.includes('input_states_v1')
+  )
+    throw new UnsupportedFeatureError('input:' + (element.disabled ? 'disabled' : 'read_only'))
   return element
 }
 

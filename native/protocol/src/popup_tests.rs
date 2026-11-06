@@ -121,6 +121,8 @@ fn popup_content_rejects_editors_and_nested_layers_atomically() {
             Element::Input {
                 value: String::new(),
                 placeholder: String::new(),
+                disabled: false,
+                read_only: false,
                 style: Style::default(),
             },
         ),

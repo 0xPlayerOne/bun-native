@@ -73,6 +73,11 @@ impl Element for TextElement {
         } else {
             (content, style.color)
         };
+        let text_color = if input.policy.interactive() {
+            text_color
+        } else {
+            text_color.opacity(0.5)
+        };
 
         let run = TextRun {
             len: display_text.len(),
@@ -125,7 +130,9 @@ impl Element for TextElement {
                 .as_ref()
                 .map_or(px(0.), |paint| paint.viewport.offset),
         );
-        let (selection, cursor) = if selected_range.is_empty() {
+        let (selection, cursor) = if !input.policy.interactive() {
+            (None, None)
+        } else if selected_range.is_empty() {
             (
                 None,
                 Some(fill(

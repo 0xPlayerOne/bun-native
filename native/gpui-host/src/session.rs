@@ -239,6 +239,7 @@ impl Session {
                 if self.drops.available() {
                     capabilities.push(Capability::DragDropFilesV1);
                 }
+                capabilities.push(Capability::InputStatesV1);
                 self.events.send(
                     Event::Ready {
                         protocol: PROTOCOL_VERSION,

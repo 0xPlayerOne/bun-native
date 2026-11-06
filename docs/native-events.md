@@ -145,8 +145,11 @@ pixels, resize, restyle and joined cleanup in development and AOT. Its own
 changed-head hosted qualification remains pending under
 [#241](https://github.com/0xPlayerOne/bun-native/issues/241). The earlier short-input
 native evidence below belongs to its recorded source and is not relabeled as
-qualification of this change. RTL, complete IME, accessibility, physical input
-and HiDPI remain separate unsupported or unverified scope.
+qualification of this change. Grapheme editing, Hebrew input, dead-key
+composition, read-only/disabled states, Tab order, scale factor 2 and the AT-SPI
+tree have their own [native text support matrix](native-text.md). Full IME
+engines, RTL display/caret placement, screen reader speech, physical input and
+non-Linux platforms remain not run there.
 
 ## Reproduce actual native verification
 

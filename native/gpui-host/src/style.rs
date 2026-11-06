@@ -36,7 +36,9 @@ pub(crate) fn element(target: &mut StyleRefinement, element: &Element, root: boo
             .px(px(12.))
             .bg(rgb(if *disabled { 0x7a8396 } else { 0x2255cc }))
             .text_color(rgb(0xffffff)),
-        Element::Input { .. } => base.bg(rgb(0xffffff)),
+        Element::Input { disabled, .. } => {
+            base.bg(rgb(if *disabled { 0xe5e7eb } else { 0xffffff }))
+        }
     };
     apply(base, element.style());
 }

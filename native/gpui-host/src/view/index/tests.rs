@@ -64,6 +64,8 @@ fn element(rng: &mut Rng, kind: usize) -> Element {
         _ => Element::Input {
             value: text,
             placeholder: String::new(),
+            disabled: false,
+            read_only: false,
             style: Style::default(),
         },
     }

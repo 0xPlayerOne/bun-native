@@ -97,7 +97,16 @@ export type Element =
   | { kind: 'box'; style?: Style }
   | { kind: 'text'; text: string; style?: LeafStyle }
   | { kind: 'button'; text: string; disabled?: boolean; style?: LeafStyle }
-  | { kind: 'input'; value: string; placeholder?: string; style?: LeafStyle }
+  | {
+      kind: 'input'
+      value: string
+      placeholder?: string
+      /** Requires `input_states_v1`. Not focusable, editable or selectable. */
+      disabled?: boolean
+      /** Requires `input_states_v1`. Focusable and copyable; native edits are rejected. */
+      read_only?: boolean
+      style?: LeafStyle
+    }
   /**
    * `split_v1`: at most two panes and a host-owned draggable divider. `ratio`
    * (default 0.5) is the leading pane's share after the divider; the host
@@ -225,15 +234,22 @@ export function parseElement(value: unknown): Element {
         style,
       }
     }
-    case 'input':
-      keys(element, ['kind', 'value', 'placeholder', 'style'])
+    case 'input': {
+      keys(element, ['kind', 'value', 'placeholder', 'disabled', 'read_only', 'style'])
       requireLeafStyle(style)
+      for (const name of ['disabled', 'read_only'])
+        if (name in element && typeof element[name] !== 'boolean')
+          throw new ProtocolError(name + ' must be a boolean')
+      // Only true states are carried, so ordinary inputs keep their exact wire form.
       return {
         kind: 'input',
         value: string(element['value'], 'value'),
         placeholder: 'placeholder' in element ? string(element['placeholder'], 'placeholder') : '',
+        ...(element['disabled'] === true ? { disabled: true } : {}),
+        ...(element['read_only'] === true ? { read_only: true } : {}),
         style,
       }
+    }
     case 'split': {
       keys(element, ['kind', 'ratio', 'min_size', 'style'])
       requireLeafStyle(style)

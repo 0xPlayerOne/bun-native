@@ -26,7 +26,12 @@ fn by_value(element: &Element, root: bool) -> Div {
                 .text_color(rgb(0xffffff)),
             style,
         ),
-        Element::Input { style, .. } => apply(base.bg(rgb(0xffffff)), style),
+        Element::Input {
+            disabled, style, ..
+        } => apply(
+            base.bg(rgb(if *disabled { 0xe5e7eb } else { 0xffffff })),
+            style,
+        ),
         Element::Split { style, .. } => apply(base.flex().flex_row(), style),
         Element::Overlay { style, .. } => apply(base.flex().flex_col(), style),
     }
@@ -118,6 +123,15 @@ fn elements(seed: usize) -> Vec<Element> {
         Element::Input {
             value: String::new(),
             placeholder: String::new(),
+            disabled: false,
+            read_only: false,
+            style: style.clone(),
+        },
+        Element::Input {
+            value: String::new(),
+            placeholder: String::new(),
+            disabled: true,
+            read_only: true,
             style: style.clone(),
         },
         Element::Split {

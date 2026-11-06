@@ -50,6 +50,7 @@ type Properties = EventListeners & {
   autofocus?: boolean
   navigation?: 'tab' | 'menu'
   surface?: 'layer' | 'window'
+  readOnly?: boolean
 }
 
 const isContainer = (kind: Node['kind']) => kind === 'box' || kind === 'split' || kind === 'overlay'
@@ -366,7 +367,8 @@ export function setProperty(node: Node, name: string, value: unknown): void {
       else throw new TypeError('Native input placeholder must be a string')
       break
     case 'disabled':
-      if (node.kind !== 'button') throw new TypeError('Only buttons accept disabled')
+      if (node.kind !== 'button' && node.kind !== 'input')
+        throw new TypeError('Only buttons and inputs accept disabled')
       if (value === undefined) delete props.disabled
       else if (typeof value === 'boolean') props.disabled = value
       else throw new TypeError('Native disabled must be boolean')
@@ -407,6 +409,12 @@ export function setProperty(node: Node, name: string, value: unknown): void {
       if (value === undefined) delete props.surface
       else if (value === 'layer' || value === 'window') props.surface = value
       else throw new TypeError('Native overlay surface must be layer or window')
+      break
+    case 'readOnly':
+      if (node.kind !== 'input') throw new TypeError('Only inputs accept readOnly')
+      if (value === undefined) delete props.readOnly
+      else if (typeof value === 'boolean') props.readOnly = value
+      else throw new TypeError('Native readOnly must be boolean')
       break
     default:
       throw new UnsupportedFeatureError('native-property:' + name)
@@ -511,6 +519,8 @@ function build(node: Node, parent: Node | undefined): Snapshot {
       kind: 'input',
       value: typeof props.value === 'string' ? props.value : (props.value?.value ?? ''),
       ...(props.placeholder === undefined ? {} : { placeholder: props.placeholder }),
+      ...(props.disabled ? { disabled: true } : {}),
+      ...(props.readOnly ? { read_only: true } : {}),
       ...style,
     }
   else {
