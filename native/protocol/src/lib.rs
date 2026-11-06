@@ -28,6 +28,8 @@ mod layout_v2_tests;
 #[cfg(test)]
 mod overlay_tests;
 #[cfg(test)]
+mod popup_tests;
+#[cfg(test)]
 mod request_tests;
 #[cfg(test)]
 mod security_tests;

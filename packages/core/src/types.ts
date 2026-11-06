@@ -1,5 +1,6 @@
 import type {
   Capability,
+  DismissReason,
   Element,
   KeyModifiers,
   Limits,
@@ -98,6 +99,17 @@ export interface FocusEvent<T extends 'focus' | 'blur' = 'focus' | 'blur'> exten
   readonly type: T
 }
 
+/**
+ * The host asks the application to close a popup window overlay, for example
+ * because its parent window stopped being active. Nothing is removed natively
+ * until a listener commits a batch.
+ */
+export interface DismissRequestEvent extends EventContext {
+  readonly type: 'dismiss'
+  readonly node: NativeNode<'overlay'>
+  readonly reason: DismissReason
+}
+
 export interface NativeEventMap {
   click: ClickEvent
   input: InputEvent
@@ -107,6 +119,7 @@ export interface NativeEventMap {
   pointer_up: PointerEvent<'pointer_up'>
   focus: FocusEvent<'focus'>
   blur: FocusEvent<'blur'>
+  dismiss: DismissRequestEvent
 }
 
 export type NativeEventType = keyof NativeEventMap

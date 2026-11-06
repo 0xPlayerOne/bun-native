@@ -6,13 +6,13 @@ use crate::{
     style,
 };
 use bun_native_protocol::{
-    Element as NativeElement, Event, NodeId, Overflow, ScrollAnchor, Style, Tree, ViewRequest,
-    WindowId,
+    Element as NativeElement, Event, NodeId, Overflow, OverlaySurface, ScrollAnchor, Style, Tree,
+    ViewRequest, WindowId,
 };
 use gpui::{
-    AnyElement, App, Context, Div, Entity, FocusHandle, Focusable, KeyBinding, MouseButton, Pixels,
-    ScrollHandle, SharedString, Size, Stateful, Subscription, Window, actions, canvas, deferred,
-    div, prelude::*, px, rgb,
+    AnyElement, AnyWindowHandle, App, Context, Div, Entity, FocusHandle, Focusable, KeyBinding,
+    MouseButton, Pixels, ScrollHandle, SharedString, Size, Stateful, Subscription, WeakEntity,
+    Window, actions, canvas, deferred, div, point, prelude::*, px, rgb,
 };
 use std::cell::RefCell;
 use std::collections::{BTreeMap, BTreeSet};
@@ -54,8 +54,11 @@ pub(crate) struct NativeView {
     /// Viewports with a pending programmatic scroll this frame; their end
     /// anchor does not re-pin them before GPUI resolves the request.
     held_scrolls: RefCell<BTreeSet<NodeId>>,
+    popups: Popups,
+    weak: WeakEntity<NativeView>,
+    window_handle: AnyWindowHandle,
     viewport: Size<Pixels>,
-    _subscriptions: [Subscription; 2],
+    _subscriptions: [Subscription; 4],
     events: EventSink,
     evidence: Evidence,
 }
@@ -80,6 +83,15 @@ impl NativeView {
             }
         });
         let focus_lost = cx.on_focus_lost(window, |view, window, cx| view.sync_focus(window, cx));
+        let deactivated = cx.observe_window_activation(window, |view, window, cx| {
+            if !window.is_window_active() {
+                view.dismiss_popups(cx);
+            }
+        });
+        let moved = cx.observe_window_bounds(window, |view, window, cx| {
+            view.popups.invalidate();
+            view.place_popups(window, cx);
+        });
         Self {
             window_id,
             state,
@@ -93,8 +105,11 @@ impl NativeView {
             overlays: Overlays::default(),
             type_ahead: TypeAhead::default(),
             held_scrolls: RefCell::default(),
+            popups: Popups::default(),
+            weak: cx.weak_entity(),
+            window_handle: window.window_handle(),
             viewport: window.viewport_size(),
-            _subscriptions: [keyboard, focus_lost],
+            _subscriptions: [keyboard, focus_lost, deactivated, moved],
             events,
             evidence,
         }
@@ -220,6 +235,7 @@ impl NativeView {
             }
         }
         self.reconcile_overlays(focused_before, window, cx);
+        self.reconcile_popups(cx);
         self.reconcile_focus(window, cx);
         self.apply_requests(requests, window, cx);
         cx.notify();
@@ -307,6 +323,12 @@ impl NativeView {
                 self.container(tree, node_id, base, properties, layout, pointer, cx)
                     .into_any_element()
             }
+            NativeElement::Overlay {
+                surface: OverlaySurface::Window,
+                ..
+            } if self.popups.active() => self
+                .popup_anchor(node_id)
+                .unwrap_or_else(|| div().into_any_element()),
             NativeElement::Overlay {
                 anchor,
                 style: properties,
@@ -515,7 +537,7 @@ impl Render for NativeView {
                         move |_, (), window, cx| {
                             // Registered after native children: capture has already
                             // selected the deepest GPUI hit before default actions.
-                            pointer.observe(window, &view);
+                            pointer.observe(window, &view, point(px(0.), px(0.)));
                             let state = paint_state.borrow();
                             evidence.frame(window_id, &state.tree, render_started);
                             evidence.painted(
@@ -556,9 +578,12 @@ impl NativeView {
 mod interactions;
 mod keyboard;
 mod overlays;
+mod popups;
 mod split;
 
 use interactions::PointerFrame;
 use keyboard::{MenuMove, TypeAhead};
 use overlays::{OBSERVER_PRIORITY, Overlays};
+use popups::Popups;
+pub(crate) use popups::available as popups_available;
 use split::Splits;

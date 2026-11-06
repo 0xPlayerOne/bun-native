@@ -125,7 +125,7 @@ describe('overlay contract (headless subprocess)', () => {
       }
       const stopOuter = onDismiss(window, outer, record('outer'))
       onDismiss(window, inner, record('inner'))
-      expect(app.diagnostics.callbacks).toBe(4)
+      expect(app.diagnostics.callbacks).toBe(6)
 
       await trigger(window, probe, [
         { type: 'key_down', target: 'Save', key: 'escape' },
@@ -144,9 +144,9 @@ describe('overlay contract (headless subprocess)', () => {
         ['outer', 'escape'],
       ])
 
-      // Unsubscribing revokes both registrations; removal revokes the rest.
+      // Unsubscribing revokes all three registrations; removal revokes the rest.
       stopOuter()
-      expect(app.diagnostics.callbacks).toBe(2)
+      expect(app.diagnostics.callbacks).toBe(3)
       await window.batch((batch) => batch.remove(outer))
       expect(app.diagnostics.callbacks).toBe(0)
       expect(app.diagnostics.nodes).toBe(2)

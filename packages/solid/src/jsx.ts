@@ -28,6 +28,9 @@ export namespace JSX {
       autofocus?: boolean
       /** Requires `overlay_keyboard_v1`: `menu` adds arrow-key roving focus and type-ahead. */
       navigation?: 'tab' | 'menu'
-    } & ({ anchor?: 'window'; modal?: boolean } | { anchor: 'parent'; modal?: false })
+    } & (
+        | { anchor?: 'window'; modal?: boolean; surface?: 'layer' }
+        | { anchor: 'parent'; modal?: false; surface?: 'layer' | 'window' }
+      )
   }
 }

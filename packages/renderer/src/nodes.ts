@@ -43,6 +43,7 @@ type Properties = EventListeners & {
   modal?: boolean
   autofocus?: boolean
   navigation?: 'tab' | 'menu'
+  surface?: 'layer' | 'window'
 }
 
 const isContainer = (kind: Node['kind']) => kind === 'box' || kind === 'split' || kind === 'overlay'
@@ -221,6 +222,12 @@ export function setProperty(node: Node, name: string, value: unknown): void {
       else if (value === 'tab' || value === 'menu') props.navigation = value
       else throw new TypeError('Native overlay navigation must be tab or menu')
       break
+    case 'surface':
+      if (node.kind !== 'overlay') throw new TypeError('Only overlays accept surface')
+      if (value === undefined) delete props.surface
+      else if (value === 'layer' || value === 'window') props.surface = value
+      else throw new TypeError('Native overlay surface must be layer or window')
+      break
     default:
       throw new UnsupportedFeatureError('native-property:' + name)
   }
@@ -264,13 +271,15 @@ export function snapshot(root: Node): Map<Node, Snapshot> {
         ...style,
       }
     else if (node.kind === 'overlay')
-      // Core validation rejects a modal parent-anchored overlay.
+      // Core validation rejects a modal parent-anchored overlay and an
+      // unsized or window-anchored popup surface.
       element = {
         kind: 'overlay',
         ...(props.anchor === undefined ? {} : { anchor: props.anchor }),
         ...(props.modal === undefined ? {} : { modal: props.modal }),
         ...(props.autofocus === undefined ? {} : { autofocus: props.autofocus }),
         ...(props.navigation === undefined ? {} : { navigation: props.navigation }),
+        ...(props.surface === undefined ? {} : { surface: props.surface }),
         ...(props.style ? { style: { ...props.style } } : {}),
       } as Element
     else if (node.kind === 'input')

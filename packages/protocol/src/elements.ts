@@ -63,11 +63,35 @@ export interface OverlayKeyboard {
 /**
  * `window` covers the viewport and blocks pointer input beneath it; `parent`
  * is content-sized below its parent's bottom-left corner. Only window
- * overlays may be modal.
+ * overlays may be modal. `surface: 'window'` (capability `popup_windows_v1`)
+ * paints a parent-anchored overlay into an owned popup window that may extend
+ * beyond its parent window; it needs a fixed pixel `width` and `height`.
  */
 export type OverlayElement =
-  | ({ kind: 'overlay'; anchor?: 'window'; modal?: boolean; style?: Style } & OverlayKeyboard)
-  | ({ kind: 'overlay'; anchor: 'parent'; modal?: false; style?: Style } & OverlayKeyboard)
+  | ({
+      kind: 'overlay'
+      anchor?: 'window'
+      modal?: boolean
+      surface?: 'layer'
+      style?: Style
+    } & OverlayKeyboard)
+  | ({
+      kind: 'overlay'
+      anchor: 'parent'
+      modal?: false
+      surface?: 'layer'
+      style?: Style
+    } & OverlayKeyboard)
+  | {
+      kind: 'overlay'
+      anchor: 'parent'
+      modal?: false
+      surface: 'window'
+      /** A popup window never takes keyboard focus from its parent window. */
+      autofocus?: false
+      navigation?: 'tab'
+      style: Style & { width: number; height: number }
+    }
 
 export type Element =
   | { kind: 'box'; style?: Style }
@@ -227,7 +251,7 @@ export function parseElement(value: unknown): Element {
       }
     }
     case 'overlay': {
-      keys(element, ['kind', 'anchor', 'modal', 'autofocus', 'navigation', 'style'])
+      keys(element, ['kind', 'anchor', 'modal', 'surface', 'autofocus', 'navigation', 'style'])
       const anchor =
         'anchor' in element ? choice(element['anchor'], 'anchor', ['window', 'parent']) : 'window'
       for (const flag of ['modal', 'autofocus'])
@@ -240,6 +264,25 @@ export function parseElement(value: unknown): Element {
         choice(element['navigation'], 'navigation', ['tab', 'menu']) === 'menu'
           ? { navigation: 'menu' as const }
           : {}),
+      }
+      const surface =
+        'surface' in element ? choice(element['surface'], 'surface', ['layer', 'window']) : 'layer'
+      if (surface === 'window') {
+        if (anchor !== 'parent')
+          throw new ProtocolError('A popup window overlay must be anchored to its parent')
+        if (modal) throw new ProtocolError('A modal overlay must be anchored to the window')
+        if (keyboard.autofocus || keyboard.navigation)
+          throw new ProtocolError('A popup window overlay does not take keyboard focus')
+        const { width, height } = style
+        if (typeof width !== 'number' || width < 1 || typeof height !== 'number' || height < 1)
+          throw new ProtocolError('A popup window overlay needs a fixed width and height')
+        return {
+          kind: 'overlay',
+          anchor,
+          modal: false,
+          surface,
+          style: { ...style, width, height },
+        }
       }
       if (anchor === 'parent') {
         if (modal) throw new ProtocolError('A modal overlay must be anchored to the window')

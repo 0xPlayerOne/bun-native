@@ -2,8 +2,9 @@
 //! successful preparation, so invalid input cannot partially alter a window.
 
 use crate::{
-    validate_text, Element, ErrorCode, NodeId, Operation, Overflow, Style, MAX_DEPTH, MAX_ID,
-    MAX_NODES_PER_WINDOW, MAX_OPERATIONS, MAX_OVERLAY_DEPTH, MAX_TEXT_BYTES_PER_WINDOW,
+    validate_text, Element, ErrorCode, NodeId, Operation, Overflow, OverlaySurface, Style,
+    MAX_DEPTH, MAX_ID, MAX_NODES_PER_WINDOW, MAX_OPERATIONS, MAX_OVERLAY_DEPTH,
+    MAX_TEXT_BYTES_PER_WINDOW,
 };
 use serde::Serialize;
 use std::collections::{BTreeMap, HashSet};
@@ -507,8 +508,10 @@ impl Tree {
         // One sized allocation; the ordered set rebalanced per node and
         // dominated small-update preflight on large trees.
         let mut seen = HashSet::with_capacity(self.nodes.len());
-        let mut pending = vec![(self.root_id, None, 0, 0)];
-        while let Some((id, parent, depth, overlays)) = pending.pop() {
+        // `popup` is set beneath a popup window surface, whose content holds
+        // no text editor (keyboard focus stays on the parent) or further layer.
+        let mut pending = vec![(self.root_id, None, 0, 0, false)];
+        while let Some((id, parent, depth, overlays, popup)) = pending.pop() {
             if depth > MAX_DEPTH {
                 return Err(error(
                     ErrorCode::LimitExceeded,
@@ -535,6 +538,25 @@ impl Tree {
                     "overlay nesting exceeds 8 layers",
                 ));
             }
+            if popup
+                && matches!(
+                    *node.element,
+                    Element::Input { .. } | Element::Overlay { .. }
+                )
+            {
+                return Err(error(
+                    ErrorCode::InvalidState,
+                    "popup window content cannot contain inputs or overlays",
+                ));
+            }
+            let popup = popup
+                || matches!(
+                    *node.element,
+                    Element::Overlay {
+                        surface: OverlaySurface::Window,
+                        ..
+                    }
+                );
             if node.parent != parent {
                 return Err(error(
                     ErrorCode::InvalidState,
@@ -544,7 +566,7 @@ impl Tree {
             pending.extend(
                 node.children
                     .iter()
-                    .map(|child| (*child, Some(id), depth + 1, overlays)),
+                    .map(|child| (*child, Some(id), depth + 1, overlays, popup)),
             );
         }
         if seen.len() != self.nodes.len() {

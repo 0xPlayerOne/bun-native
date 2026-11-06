@@ -1483,6 +1483,9 @@ class Window implements NativeWindow {
       if (node.element.kind !== 'button')
         throw new ProtocolError('Native click targeted a non-button node')
       if (node.element.disabled) return
+    } else if (event.type === 'dismiss') {
+      if (node.element.kind !== 'overlay' || node.element.surface !== 'window')
+        throw new ProtocolError('Native dismissal targeted a non-popup node')
     }
     const plan = this.listeners.prepare(
       event,

@@ -53,6 +53,7 @@ const entries = {
   processes: 'tests/native/processes.ts',
   'file-dialogs': 'tests/native/file-dialogs.ts',
   overlays: 'tests/native/overlays.ts',
+  popups: 'tests/native/popups.ts',
   'solid-services': 'tests/native/solid-services.tsx',
   'react-services': 'tests/native/react-services.tsx',
   'platform-smoke': 'tests/native/platform-smoke.ts',
@@ -138,6 +139,7 @@ if (
     entry === 'processes' ||
     entry === 'file-dialogs' ||
     entry === 'overlays' ||
+    entry === 'popups' ||
     entry === 'platform-smoke' ||
     solidEntry ||
     reactEntry) &&

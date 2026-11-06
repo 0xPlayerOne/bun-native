@@ -41,6 +41,7 @@ export type {
   ApplicationOptions,
   ClickEvent,
   ContainerKind,
+  DismissRequestEvent,
   Element,
   ElementKind,
   EventContext,

@@ -32,6 +32,7 @@ const eventTypes: readonly string[] = [
   'pointer_up',
   'focus',
   'blur',
+  'dismiss',
 ]
 type BindingKey = `${NativeEventType}:${'capture' | 'bubble'}`
 type Subscription = { remove: (() => void) | undefined }
@@ -103,6 +104,13 @@ function payload(event: RoutedEvent, node: NativeNode, path: readonly NativeNode
     case 'focus':
     case 'blur':
       return { ...common, type: event.type }
+    case 'dismiss':
+      return {
+        ...common,
+        type: event.type,
+        node: node as NativeNode<'overlay'>,
+        reason: event.reason,
+      }
   }
 }
 

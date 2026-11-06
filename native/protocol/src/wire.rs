@@ -203,6 +203,24 @@ fn is_false(value: &bool) -> bool {
     !*value
 }
 
+/// What an overlay paints into. A `window` surface is an owned OS popup
+/// window: it may extend beyond its parent window and is kept on the display.
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum OverlaySurface {
+    /// A deferred GPUI layer inside the parent window.
+    #[default]
+    Layer,
+    /// An owned popup window placed below its parent node in screen coordinates.
+    Window,
+}
+
+impl OverlaySurface {
+    pub fn is_layer(&self) -> bool {
+        *self == Self::Layer
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum Fill {
@@ -439,6 +457,9 @@ pub enum Element {
         /// Requires `overlay_keyboard_v1`; omitted when `tab`.
         #[serde(default, skip_serializing_if = "OverlayNavigation::is_tab")]
         navigation: OverlayNavigation,
+        /// Omitted from normalized output while it is the default layer.
+        #[serde(default, skip_serializing_if = "OverlaySurface::is_layer")]
+        surface: OverlaySurface,
         #[serde(default)]
         style: Style,
     },
@@ -693,6 +714,7 @@ pub enum Capability {
     FocusV1,
     ScrollControlV1,
     OverlayKeyboardV1,
+    PopupWindowsV1,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -987,6 +1009,27 @@ impl Element {
         } = self
         {
             return Err("a modal overlay must be anchored to the window");
+        }
+        if let Self::Overlay {
+            anchor,
+            surface: OverlaySurface::Window,
+            autofocus,
+            navigation,
+            style,
+            ..
+        } = self
+        {
+            if *anchor != OverlayAnchor::Parent {
+                return Err("a popup window overlay must be anchored to its parent");
+            }
+            // Keyboard focus stays on the parent window while a popup is open.
+            if *autofocus || *navigation != OverlayNavigation::Tab {
+                return Err("a popup window overlay does not take keyboard focus");
+            }
+            let sized = |value: Option<Dimension>| matches!(value, Some(Dimension::Pixels(pixels)) if pixels >= 1.);
+            if !sized(style.width) || !sized(style.height) {
+                return Err("a popup window overlay needs a fixed width and height");
+            }
         }
         match self {
             Self::Text { text, .. } | Self::Button { text, .. } => validate_text(text)?,

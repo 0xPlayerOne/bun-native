@@ -202,6 +202,9 @@ impl Session {
                 if services::DISPLAY_CHANGES {
                     capabilities.push(Capability::DisplayChangesV1);
                 }
+                if crate::view::popups_available(cx) {
+                    capabilities.push(Capability::PopupWindowsV1);
+                }
                 if self.clipboard.available() {
                     capabilities.push(Capability::ClipboardTextV1);
                 }

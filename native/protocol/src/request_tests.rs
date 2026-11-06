@@ -42,6 +42,7 @@ fn overlay(modal: bool) -> Element {
         modal,
         autofocus: false,
         navigation: OverlayNavigation::Tab,
+        surface: OverlaySurface::Layer,
         style: Style::default(),
     }
 }
