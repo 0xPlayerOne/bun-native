@@ -296,3 +296,90 @@ test('workspace plan stream owns one timer through stop, selection, and window c
       await root.dispose()
     }
   }, 'events-peer.ts'))
+
+test('workspace deletes every task through the empty state and adds the next one', () =>
+  withApp(async (app) => {
+    const actual = await app.openWindow({ title: 'Workspace empty state' })
+    const marker = await actual.batch((batch) => {
+      const node = batch.create({ kind: 'text', text: 'Marker' })
+      batch.append(actual.root, node)
+      return node
+    })
+    const { window, observations } = observeWindow(actual)
+    // Record committed text labels without changing the forwarded batch.
+    const texts = new Set<string>()
+    window.batch = (operation) =>
+      actual.batch((batch) =>
+        operation(
+          new Proxy(batch, {
+            get(target, key) {
+              const value = Reflect.get(target, key, target)
+              if (typeof value !== 'function') return value
+              return (...args: unknown[]) => {
+                const element = (key === 'create' ? args[0] : key === 'set' ? args[1] : null) as {
+                  kind: string
+                  text?: string
+                } | null
+                if (element?.kind === 'text' && element.text !== undefined) texts.add(element.text)
+                return value.apply(target, args)
+              }
+            },
+          })
+        )
+      )
+    let state: WorkspaceState | undefined
+    let changes = 0
+    const root = render(
+      <Workspace
+        onChange={(next) => {
+          state = next
+          changes++
+        }}
+      />,
+      window,
+      { style: { width: 'fill', height: 'fill' } }
+    )
+    async function emit(type: 'click' | 'input' | 'key_down', target: string) {
+      const before = changes
+      const input = type === 'input' ? observations.inputs[0]! : undefined
+      const revision = input ? actual.input(input).revision : 0
+      await actual.batch((batch) =>
+        batch.set(marker, { kind: 'text', text: `event:${JSON.stringify({ type, target })}` })
+      )
+      if (input)
+        await until(
+          () =>
+            actual.input(input).revision > revision &&
+            app.diagnostics.activeCallbacks === 0 &&
+            app.diagnostics.queuedCallbacks === 0
+        )
+      else await until(() => changes > before)
+      await root.flush()
+    }
+    try {
+      await root.ready
+      expect(texts.has('Add a task to get started.')).toBe(false)
+      const order = [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 1]
+      for (const id of order) {
+        expect(state?.selectedId).toBe(id)
+        await emit('click', 'Delete task')
+        expect(state?.tasks.some((task) => task.id === id)).toBe(false)
+      }
+      expect(state?.tasks).toHaveLength(0)
+      expect(state?.selectedId).toBeNull()
+      expect(texts.has('Add a task to get started.')).toBe(true)
+      expect(texts.has('No tasks match this view.')).toBe(true)
+
+      await emit('input', 'Add a task')
+      await emit('key_down', 'Add a task')
+      expect(state?.tasks).toEqual([{ id: 13, title: 'native edit', completed: false }])
+      expect(state?.selectedId).toBe(13)
+      await actual.close()
+      await root.closed
+      expect(root.diagnostics.nodes).toBe(0)
+      expect(root.diagnostics.listeners).toBe(0)
+      expect(app.diagnostics.callbacks).toBe(0)
+    } finally {
+      await root.dispose()
+    }
+  }, 'events-peer.ts'))

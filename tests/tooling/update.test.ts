@@ -1,7 +1,7 @@
 import { afterEach, expect, test } from 'bun:test'
 import { generateKeyPairSync } from 'node:crypto'
 import { existsSync } from 'node:fs'
-import { mkdir, readdir, readFile, rm, stat, writeFile } from 'node:fs/promises'
+import { mkdir, readdir, readFile, rm, stat, symlink, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import {
   currentRelease,
@@ -9,14 +9,20 @@ import {
   directorySource,
   httpSource,
   install,
+  integrationPaths,
   readState,
   recover,
   rollback,
   type PayloadSource,
 } from '../../scripts/native/installation.ts'
 import {
+  createUpdateManifest,
+  keyId,
+  maximumManifestBytes,
+  parseUpdateManifest,
   signUpdate,
   UpdateError,
+  verifyBuildManifest,
   verifyUpdate,
   type UpdateManifest,
 } from '../../scripts/native/update-manifest.ts'
@@ -440,6 +446,14 @@ test('HTTP payloads require HTTPS except loopback, and truncated responses fail'
   }
 })
 
+function cli(...args: string[]) {
+  const result = Bun.spawnSync(
+    [process.execPath, join(repository, 'scripts/release-update.ts'), ...args],
+    { stdout: 'pipe', stderr: 'pipe', timeout: 30_000 }
+  )
+  return { code: result.exitCode, out: result.stdout.toString(), err: result.stderr.toString() }
+}
+
 test('release-update CLI creates, signs, installs, reports and rolls back', async () => {
   const work = await temporary()
   const privateKey = join(work, 'private.pem')
@@ -447,13 +461,6 @@ test('release-update CLI creates, signs, installs, reports and rolls back', asyn
   await writeFile(privateKey, keys.privateKey.export({ type: 'pkcs8', format: 'pem' }).toString())
   await writeFile(publicKey, publicPem)
   const root = join(work, 'install')
-  const cli = (...args: string[]) => {
-    const result = Bun.spawnSync(
-      [process.execPath, join(repository, 'scripts/release-update.ts'), ...args],
-      { stdout: 'pipe', stderr: 'pipe', timeout: 30_000 }
-    )
-    return { code: result.exitCode, out: result.stdout.toString(), err: result.stderr.toString() }
-  }
   const payloads: string[] = []
   for (const [label, sequence] of [
     ['one', '1'],
@@ -496,3 +503,213 @@ test('release-update CLI creates, signs, installs, reports and rolls back', asyn
   expect(await readdir(root)).toEqual(['data'])
   expect(await readdir(menu)).toEqual([])
 }, 60_000)
+
+test('non-object manifests, oversized or non-JSON bytes and non-Ed25519 keys are rejected', async () => {
+  for (const value of [null, [], 'manifest', 1])
+    await rejects(() => parseUpdateManifest(value), 'malformed')
+  const unsignedPolicy = { kind: 'unsigned-experimental' } as const
+  await rejects(
+    () => verifyUpdate(new Uint8Array(), undefined, unsignedPolicy, requirements),
+    'malformed'
+  )
+  await rejects(
+    () =>
+      verifyUpdate(
+        new Uint8Array(maximumManifestBytes + 1),
+        undefined,
+        unsignedPolicy,
+        requirements
+      ),
+    'malformed'
+  )
+  await rejects(
+    () => verifyUpdate(Buffer.from('{not json'), undefined, unsignedPolicy, requirements),
+    'malformed'
+  )
+  await rejects(
+    () => verifyUpdate(Buffer.from([0x7b, 0xff, 0x7d]), undefined, unsignedPolicy, requirements),
+    'malformed'
+  )
+
+  const x25519 = generateKeyPairSync('x25519').publicKey
+  await rejects(() => keyId(x25519), 'untrusted')
+  expect(keyId(publicPem)).toMatch(/^[0-9a-f]{16}$/)
+  expect(keyId(keys.publicKey)).toBe(keyId(publicPem))
+  // A configured key of the wrong algorithm fails closed instead of being skipped.
+  const update = await release('one', 1)
+  await rejects(
+    () =>
+      verifyUpdate(
+        update.bytes,
+        update.signature,
+        { kind: 'ed25519', publicKeys: [x25519, publicPem] },
+        requirements
+      ),
+    'untrusted'
+  )
+  // Key objects are accepted alongside PEM text, and the recorded id is the matching key.
+  const verified = verifyUpdate(
+    update.bytes,
+    update.signature,
+    { kind: 'ed25519', publicKeys: [generateKeyPairSync('ed25519').publicKey, keys.publicKey] },
+    requirements
+  )
+  expect(verified.trust).toEqual({ kind: 'ed25519', key: keyId(publicPem) })
+})
+
+test('a staged build manifest that is not JSON or names another Bun revision fails integrity', async () => {
+  const update = await release('one', 1)
+  const staged = await temporary()
+  await writeFile(join(staged, 'manifest.json'), '{not json')
+  await rejects(verifyBuildManifest(staged, update.manifest), 'integrity')
+  const build = JSON.parse(await readFile(join(update.payload, 'manifest.json'), 'utf8'))
+  build.toolchain.bun.revision = '0'.repeat(40)
+  await writeFile(join(staged, 'manifest.json'), JSON.stringify(build))
+  const error = await rejects(verifyBuildManifest(staged, update.manifest), 'integrity')
+  expect(error.message).toContain('Bun revision')
+  expect(error.message).not.toContain('executable')
+  await verifyBuildManifest(update.payload, update.manifest)
+})
+
+test.skipIf(process.platform === 'win32')(
+  'manifest creation refuses a build output that contains a symbolic link',
+  async () => {
+    const payload = await build('one')
+    await symlink('manifest.json', join(payload, 'development/link.json'))
+    await expect(
+      createUpdateManifest(payload, {
+        product: 'dev.bun-native.example',
+        version: '1.0.1',
+        sequence: 1,
+        trust: 'ed25519',
+        protocol: requirements.protocol,
+      })
+    ).rejects.toThrow('Release payloads contain only regular files: development/link.json')
+  }
+)
+
+test('installation state with an unsupported schema or an unreadable file fails closed', async () => {
+  const root = join(await temporary(), 'install')
+  const update = await release('one', 1)
+  await install(
+    root,
+    verifyUpdate(update.bytes, update.signature, signed, requirements),
+    directorySource(update.payload)
+  )
+  const text = await readFile(join(root, 'state.json'), 'utf8')
+  await writeFile(
+    join(root, 'state.json'),
+    JSON.stringify({ ...JSON.parse(text), schemaVersion: 2 })
+  )
+  await rejects(readState(root), 'state')
+  await writeFile(join(root, 'state.json'), 'null')
+  await rejects(readState(root), 'state')
+  // Errors other than a missing file are not mistaken for "nothing is installed".
+  await rm(join(root, 'state.json'))
+  await mkdir(join(root, 'state.json'))
+  const error = await readState(root).catch((caught: unknown) => caught)
+  expect(error).not.toBeInstanceOf(UpdateError)
+  expect((error as NodeJS.ErrnoException).code).toBe('EISDIR')
+  await mkdir(join(root, 'integration.json'))
+  const integration = await integrationPaths(root).catch((caught: unknown) => caught)
+  expect(integration).not.toBeInstanceOf(UpdateError)
+  expect((integration as NodeJS.ErrnoException).code).toBe('EISDIR')
+})
+
+test('rollback refuses a retained release with a missing file, and a retained release is not reinstalled', async () => {
+  const root = join(await temporary(), 'install')
+  const first = await release('one', 1)
+  const second = await release('two', 2)
+  const verifiedSecond = verifyUpdate(second.bytes, second.signature, signed, requirements)
+  await install(
+    root,
+    verifyUpdate(first.bytes, first.signature, signed, requirements),
+    directorySource(first.payload)
+  )
+  await install(root, verifiedSecond, directorySource(second.payload))
+  await rollback(root)
+  await installed(root, 'one')
+  // After a rollback the newer release is retained as previous: installing it again is refused
+  // even though its sequence advances the current one, and rollback rolls it forward instead.
+  const error = await rejects(
+    install(root, verifiedSecond, directorySource(second.payload)),
+    'state'
+  )
+  expect(error.message).toContain('use rollback')
+  await installed(root, 'one')
+  const state = (await readState(root))!
+  await rm(join(root, state.previous!.directory, 'development/application.js'))
+  const missing = await rejects(rollback(root), 'integrity')
+  expect(missing.message).toContain('is missing')
+  await installed(root, 'one')
+  expect(await leftovers(root)).toEqual(clean)
+})
+
+test('release-update CLI rejects incomplete commands and never overwrites its outputs', async () => {
+  const work = await temporary()
+  const help = cli()
+  expect(help).toMatchObject({ code: 0, err: '' })
+  expect(help.out).toContain('Experimental Bun Native application updates')
+  expect(cli('status', 'extra', 'positional')).toMatchObject({ code: 1 })
+  expect(cli('status').err).toContain('Experimental Bun Native application updates')
+  expect(cli('frobnicate', '--root', work).err).toContain('Unknown command frobnicate')
+
+  const payload = await build('one')
+  const manifest = join(work, 'update.json')
+  const options = ['--product', 'dev.bun-native.cli', '--version', '1.0.0', '--sequence', '1']
+  for (const trust of [[], ['--signed', '--unsigned-experimental']]) {
+    const result = cli('manifest', payload, ...options, ...trust, '--out', manifest)
+    expect(result).toMatchObject({ code: 1 })
+    expect(result.err).toContain('Choose exactly one of --signed or --unsigned-experimental')
+  }
+  const created = cli('manifest', payload, ...options, '--unsigned-experimental', '--out', manifest)
+  expect(created).toMatchObject({ code: 0, err: '' })
+  expect(created.out).toContain('Wrote unsigned-experimental update manifest')
+  expect(
+    cli('manifest', payload, ...options, '--unsigned-experimental', '--out', manifest).err
+  ).toContain('EEXIST')
+  // Private keys must be named by an absolute path.
+  expect(cli('sign', manifest, '--private-key', 'relative.pem')).toMatchObject({ code: 1 })
+  expect(existsSync(`${manifest}.sig`)).toBe(false)
+
+  const root = join(work, 'install')
+  expect(cli('status', '--root', root).err).toContain('state: Nothing is installed')
+  const installedUnsigned = cli(
+    'install',
+    manifest,
+    '--root',
+    root,
+    '--payload',
+    payload,
+    '--unsigned-experimental'
+  )
+  expect(installedUnsigned).toMatchObject({ code: 0, err: '' })
+  expect(installedUnsigned.out).toContain('WARNING: installed an UNSIGNED EXPERIMENTAL update')
+  expect(JSON.parse(cli('status', '--root', root).out)).toMatchObject({
+    version: '1.0.0',
+    trust: { kind: 'unsigned-experimental' },
+  })
+  expect(cli('rollback', '--root', root).err).toContain('No previous release is retained')
+  await mkdir(join(root, 'staging/interrupted'))
+  expect(JSON.parse(cli('recover', '--root', root).out)).toEqual({
+    removed: ['staging/interrupted'],
+  })
+  expect(cli('integrate', '--root', root, '--name', 'CLI App').err).toContain(
+    'Experimental Bun Native application updates'
+  )
+
+  const bundles = join(work, 'bundles')
+  await mkdir(bundles)
+  const bundled = cli('bundle', manifest, '--payload', payload, '--out', bundles)
+  expect(bundled).toMatchObject({ code: 0, err: '' })
+  expect(bundled.out).toContain('UNSIGNED EXPERIMENTAL bundle')
+  expect(await readdir(bundles)).toEqual([
+    `dev.bun-native.cli-1.0.0-${process.platform}-${process.arch}`,
+  ])
+  // An existing bundle directory is never adopted.
+  expect(cli('bundle', manifest, '--payload', payload, '--out', bundles).err).toContain('EEXIST')
+  expect(JSON.parse(cli('uninstall', '--root', root, '--purge-data').out)).toMatchObject({
+    data: 'removed',
+  })
+  expect(existsSync(root)).toBe(false)
+})

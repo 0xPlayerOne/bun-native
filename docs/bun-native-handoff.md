@@ -81,9 +81,18 @@ fallback remains in the active packages.
 4. Preserve the default-denied [native services](native-services.md): display
    snapshots, clipboard text ([ADR 0007](decisions/0007-native-clipboard.md)),
    global shortcuts ([ADR 0008](decisions/0008-native-global-shortcuts.md)) and
-   notifications ([ADR 0009](decisions/0009-native-notifications.md)). Their
+   notifications ([ADR 0009](decisions/0009-native-notifications.md)) and
+   filesystem grants ([ADR 0010](decisions/0010-filesystem-grants.md)). Their
    qualification is Linux-only; continue platform qualification by issue
    dependencies.
+5. Preserve the experimental release tooling merged in
+   [#483](https://github.com/0xPlayerOne/bun-native/pull/483): verified
+   [updates, rollback, launchers and uninstall](updates.md) (#249),
+   [reproducible build checks](reproducible-builds.md), the
+   [security and crash qualification matrix](qualification-matrix.md) (#247),
+   the CLI `check`/`format`/`doctor` commands and the
+   [release-readiness ADR](decisions/0013-release-readiness.md). Outputs remain
+   unsigned; OS code signing, notarization and platform installers are open.
 
 The native ownership and current protocol schema are described in the [native ABI](native-abi.md),
 the [public API ADR](decisions/0004-public-api.md) and the
@@ -106,6 +115,8 @@ A native acknowledgement is not a display-presentation timestamp.
 The initial baseline records fresh-process window observation, idle RSS and
 executable bytes. Cache/power state is uncontrolled, observation intervals are
 polled, and precise physical input/frame latency remains unmeasured. Preserve
-these limitations when comparing results. BN6 #246 and BN5 #256 own the native
+these limitations when comparing results. Target-artifact issue #246 is closed;
+the hosted macOS/Windows lane and its limits are in
+[native platforms](native-platforms.md). BN5 #256 owns the remaining native
 platform matrix; BN4 #241 owns horizontal input scrolling, IME and complete
 text/accessibility qualification.

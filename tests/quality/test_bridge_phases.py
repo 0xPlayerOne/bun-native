@@ -1,6 +1,10 @@
 """Exact-selection and attribution guards for the opt-in bridge phase join."""
 
 import importlib.util
+import json
+import subprocess
+import sys
+import tempfile
 import unittest
 from copy import deepcopy
 from pathlib import Path
@@ -117,6 +121,89 @@ class BridgePhaseTests(unittest.TestCase):
         result["individual"]["samplesMs"].pop()
         with self.assertRaises(SystemExit):
             PHASES.analyze(result, trace)
+
+    def test_rejects_traces_without_the_measured_phase_shape(self):
+        def no_batches(trace):
+            for row in trace["batches"]:
+                if row[2] == 100:
+                    row[2] = 1
+
+        def too_few_requests(trace):
+            del trace["batches"][1:40]
+
+        def multi_operation_warmup(trace):
+            trace["batches"][5][2] = 2
+
+        for mutate, message in [
+            (no_batches, "measured individual phase"),
+            (too_few_requests, "measured individual phase"),
+            (multi_operation_warmup, "20 warmups"),
+        ]:
+            with self.subTest(mutation=mutate.__name__):
+                result, trace = fixture()
+                mutate(trace)
+                with self.assertRaisesRegex(SystemExit, message):
+                    PHASES.analyze(result, trace)
+
+    def test_frames_outside_window_or_phase_or_without_paint_are_excluded(self):
+        result, trace = fixture()
+        individual_start = trace["batches"][1 + PHASES.WARMUPS][3]
+        trace["frames"] += [
+            [2, individual_start + 5, 9_000_000, 9_000_000, 7],
+            [1, 0, 9_000_000, 9_000_000, 7],
+            [1, individual_start + 5, 3_000_000, None, 1001],
+        ]
+        frames = PHASES.analyze(result, trace)["framesDuringIndividualPhase"]
+        self.assertEqual(frames["count"], 10)
+        self.assertEqual(frames["nodes"], [1001])
+        self.assertEqual(frames["renderMs"]["max"], 3.0)
+        self.assertEqual(frames["renderToPaintMs"]["count"], 9)
+
+    def test_empty_summaries_have_no_quantiles(self):
+        self.assertEqual(
+            PHASES.summary([]),
+            {
+                "count": 0,
+                "p50": None,
+                "p95": None,
+                "p99": None,
+                "max": None,
+                "total": 0,
+            },
+        )
+        self.assertEqual(PHASES.percentile([3, 1, 2], 0.5), 2)
+
+    def test_cli_joins_files_and_requires_a_passed_result(self):
+        result, trace = fixture()
+        with tempfile.TemporaryDirectory() as directory:
+            result_path = Path(directory, "result.json")
+            trace_path = Path(directory, "trace.json")
+            trace_path.write_text(json.dumps(trace))
+
+            def run():
+                return subprocess.run(
+                    [
+                        sys.executable,
+                        str(ROOT / "benchmarks/bridge-phases.py"),
+                        "--result",
+                        str(result_path),
+                        "--trace",
+                        str(trace_path),
+                    ],
+                    capture_output=True,
+                    text=True,
+                    check=False,
+                )
+
+            result_path.write_text(json.dumps(result))
+            joined = run()
+            self.assertEqual(joined.returncode, 0, joined.stderr)
+            self.assertEqual(json.loads(joined.stdout), PHASES.analyze(result, trace))
+            result["status"] = "failed"
+            result_path.write_text(json.dumps(result))
+            failed = run()
+            self.assertEqual(failed.returncode, 1)
+            self.assertIn("bridge result did not pass", failed.stderr)
 
 
 if __name__ == "__main__":
