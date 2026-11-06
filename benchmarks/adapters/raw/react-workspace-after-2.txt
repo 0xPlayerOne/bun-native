@@ -1,0 +1,7 @@
+react rows=1000 samples=100 median µs (ops per commit)
+mount    total   21252.5
+select   sync   1669.7  total    1773.5  {"create":0,"set":2,"insert":0,"remove":0}
+star     sync   2651.2  total    2762.9  {"create":0,"set":1,"insert":0,"remove":0}
+log      sync   1576.4  total    1649.3  {"create":0,"set":1,"insert":0,"remove":0}
+theme    sync   2120.7  total    8212.9  {"create":0,"set":4026,"insert":0,"remove":0}
+filter   sync   3334.8  total    7452.3  {"create":1500,"set":0,"insert":1500,"remove":250}

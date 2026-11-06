@@ -1,5 +1,51 @@
 # Changelog
 
+## [0.20.0](https://github.com/0xPlayerOne/bun-native/compare/v0.19.0...v0.20.0) (2026-11-06)
+
+
+### Features
+
+* **bench:** equivalent-workload Solid/React/core dev vs AOT comparison harness ([#453](https://github.com/0xPlayerOne/bun-native/issues/453)) ([520aed7](https://github.com/0xPlayerOne/bun-native/commit/520aed710db1f12784ce2d759ef96f6e31fbfde8))
+* BN5-BN7 batch (updates/rollback, installers, crash diagnostics, reload memory, React plan streaming, Solid workspace soak, CLI check/format/doctor, release readiness, reproducible builds incl. host, bench CI, bridge phase trace) ([#483](https://github.com/0xPlayerOne/bun-native/issues/483)) ([7cecc86](https://github.com/0xPlayerOne/bun-native/commit/7cecc86972d1d21b0c94b7b9b484b95f3f5d05b6))
+* **quality:** record WM close requests and modified key downs ([#358](https://github.com/0xPlayerOne/bun-native/issues/358)) ([#425](https://github.com/0xPlayerOne/bun-native/issues/425)) ([a4b0628](https://github.com/0xPlayerOne/bun-native/commit/a4b062867bb3814d31d1bd17d1e7b12716d14827))
+* **services:** scoped filesystem grants on launch roots ([#304](https://github.com/0xPlayerOne/bun-native/issues/304)) ([#427](https://github.com/0xPlayerOne/bun-native/issues/427)) ([cbcced7](https://github.com/0xPlayerOne/bun-native/commit/cbcced75b4458c2bb336f4f7806a5ce2258e7336))
+
+
+### Bug Fixes
+
+* **ci:** run React development calibration without DFG ([#423](https://github.com/0xPlayerOne/bun-native/issues/423)) ([15344d5](https://github.com/0xPlayerOne/bun-native/commit/15344d56d8cc0cd9662061f6b9a95a13a68fb79e)), closes [#287](https://github.com/0xPlayerOne/bun-native/issues/287)
+* **core:** commit transactions above the native batch limit in staged batches ([#512](https://github.com/0xPlayerOne/bun-native/issues/512)) ([0b389b4](https://github.com/0xPlayerOne/bun-native/commit/0b389b4b1e6cd3af9c518c1473088209453514a4))
+* **quality:** settle Linux test sessions and capture screenshots in-process ([#487](https://github.com/0xPlayerOne/bun-native/issues/487)) ([66d7ff0](https://github.com/0xPlayerOne/bun-native/commit/66d7ff004b4408d22a38c9062b29ee694db64d6c))
+
+
+### Performance
+
+* audit batch 2 (batch-sized core transactions, renderer moves and removals, React adapter, native event path) ([#503](https://github.com/0xPlayerOne/bun-native/issues/503)) ([35a1fce](https://github.com/0xPlayerOne/bun-native/commit/35a1fce6f0dd374b26a61697df566c8b2776b2c4))
+* audit batch 3 (renderer moved subtrees, shared test peers, React CLI build, host dependency cleanup) ([#513](https://github.com/0xPlayerOne/bun-native/issues/513)) ([822086b](https://github.com/0xPlayerOne/bun-native/commit/822086be5c5740a65edd83b1a03190cba2a52794))
+* audit batch 4 (React inline-style skip, install/digest/package hashing, protocol/events/workspace benchmarks) ([#516](https://github.com/0xPlayerOne/bun-native/issues/516)) ([edcca8d](https://github.com/0xPlayerOne/bun-native/commit/edcca8d0678059afa15b5f5c9c03aeb1b51ccbd0))
+* **ci:** reuse hash-verified apt archives for the Native Linux prerequisites ([#474](https://github.com/0xPlayerOne/bun-native/issues/474)) ([8052aa4](https://github.com/0xPlayerOne/bun-native/commit/8052aa4aad79ad71a19857e81f8de2f46f44f875))
+* combined audit batch (core, renderer, Solid, native protocol and host, CI cache) ([#480](https://github.com/0xPlayerOne/bun-native/issues/480)) ([dd6807f](https://github.com/0xPlayerOne/bun-native/commit/dd6807fcfb60162a0617f71edf63598d1e4daa4b))
+* **native:** share tree child lists and render labels without copies ([#435](https://github.com/0xPlayerOne/bun-native/issues/435)) ([d1e5f0a](https://github.com/0xPlayerOne/bun-native/commit/d1e5f0a0f5df1933434c29e987865d593c7f3253))
+* **protocol:** avoid copies and encodes on the frame and text hot paths ([#429](https://github.com/0xPlayerOne/bun-native/issues/429)) ([53c414c](https://github.com/0xPlayerOne/bun-native/commit/53c414cbb0df62a2d0a6caec7ebfe9286843baf5))
+
+
+### Documentation
+
+* align native contract docs with current code ([#439](https://github.com/0xPlayerOne/bun-native/issues/439)) ([741d513](https://github.com/0xPlayerOne/bun-native/commit/741d513d54b3aff28a7cab746134b9e90e7e5a34))
+
+
+### Tests
+
+* **solid:** enforce the JSX plugin Babel peer and bot major exclusion ([#430](https://github.com/0xPlayerOne/bun-native/issues/430)) ([3863459](https://github.com/0xPlayerOne/bun-native/commit/3863459588378532a4af4fb27188f051fa0955df)), closes [#316](https://github.com/0xPlayerOne/bun-native/issues/316)
+
+
+### CI
+
+* cache Windows protocol dependency builds and skip the AOT jobs' Rust install ([#514](https://github.com/0xPlayerOne/bun-native/issues/514)) ([fe4e799](https://github.com/0xPlayerOne/bun-native/commit/fe4e7995ffe904e6c1b327a4a505833447164415))
+* fail the required gate on draft runs instead of skipping it ([#456](https://github.com/0xPlayerOne/bun-native/issues/456)) ([d37c9cf](https://github.com/0xPlayerOne/bun-native/commit/d37c9cfefd4e65f748fd1c1d5fb2d05d4214a31d))
+* **linux:** keep compiled service fixtures out of the evidence artifact ([#511](https://github.com/0xPlayerOne/bun-native/issues/511)) ([1741eaa](https://github.com/0xPlayerOne/bun-native/commit/1741eaa1ec9187d53ce426a24741cee5172d4b89))
+* **linux:** read the software GPU driver into the page cache before the first open ([#442](https://github.com/0xPlayerOne/bun-native/issues/442)) ([4dbc1d7](https://github.com/0xPlayerOne/bun-native/commit/4dbc1d7e64cbf34bc7085868b7d22393446a7fac)), closes [#296](https://github.com/0xPlayerOne/bun-native/issues/296)
+
 ## [0.19.0](https://github.com/0xPlayerOne/bun-native/compare/v0.18.0...v0.19.0) (2026-11-05)
 
 
