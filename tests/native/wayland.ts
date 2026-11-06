@@ -36,6 +36,8 @@ if (
 const executable = process.env['BUN_NATIVE_HOST']
 const inputPeer = process.env['BUN_NATIVE_WAYLAND_INPUT_PEER'] ?? ''
 if (!isAbsolute(inputPeer)) throw new Error('Set BUN_NATIVE_WAYLAND_INPUT_PEER to the built peer')
+if (process.env['BUN_NATIVE_POINTER_TRACE'] !== '1')
+  throw new Error('Set BUN_NATIVE_POINTER_TRACE=1: clicks wait for the window to see the pointer')
 const evidenceLog = process.env['BUN_NATIVE_EVIDENCE_LOG'] ?? ''
 const nonce = process.env['BUN_NATIVE_EVIDENCE_NONCE'] ?? ''
 if (!isAbsolute(evidenceLog) || !/^[0-9a-f]{32}$/.test(nonce))
@@ -170,8 +172,42 @@ class PointerPeer {
 }
 let pointer: PointerPeer
 let layout: { width: number; height: number }
-async function clickAt(x: number, y: number) {
-  await pointer.send(`move ${Math.round(x)} ${Math.round(y)} ${layout.width} ${layout.height}`)
+let pointerAt: readonly [number, number] | undefined
+/**
+ * Sway reports a view's new position (IPC get_tree) as soon as the command is
+ * accepted, but hit-tests and delivers surface coordinates from its committed
+ * state, which follows the client's next commit. A press sent in between lands
+ * on the view at the old position: run 42221604782 delivered the output
+ * coordinates (470, 298) to the window as if it sat at the output origin, and
+ * the compositor re-sent the correct motion (70, 58) only after the release.
+ * The press waits until GPUI itself has seen the pointer at the button's own
+ * window coordinates.
+ */
+async function clickAt(x: number, y: number, origin: SwayNode['rect']) {
+  const target = [Math.round(x), Math.round(y)] as const
+  const local = [target[0] - origin.x, target[1] - origin.y] as const
+  const seen = records<PointerTrace>('pointer_trace').length
+  await pointer.send(`move ${target[0]} ${target[1]} ${layout.width} ${layout.height}`)
+  // A move to where the pointer already is produces no motion to observe.
+  if (pointerAt?.[0] !== target[0] || pointerAt[1] !== target[1]) {
+    await waitFor(
+      () =>
+        records<PointerTrace>('pointer_trace')
+          .slice(seen)
+          .some(
+            (entry) =>
+              entry.event === 'move' &&
+              Math.abs(entry.position![0] - local[0]) < 0.01 &&
+              Math.abs(entry.position![1] - local[1]) < 0.01
+          ),
+      `the window to see the pointer at ${local} (it saw ${JSON.stringify(
+        records<PointerTrace>('pointer_trace')
+          .slice(seen)
+          .map((entry) => entry.position)
+      )})`
+    )
+  }
+  pointerAt = target
   await pointer.send('press')
   await pointer.send('release')
 }
@@ -395,7 +431,7 @@ async function qualify(app: NativeApplication) {
   await command(TITLE, 'focus')
   let origin = (await mapped(TITLE)).rect
   const button = bounds(initial, (node) => node.kind === 'button')
-  await clickAt(...center(origin, button))
+  await clickAt(...center(origin, button), origin)
   try {
     await waitFor(() => clicks === 1, 'the compositor click')
   } catch (error) {
@@ -447,7 +483,7 @@ async function qualify(app: NativeApplication) {
   // ASCII plus a non-Latin-1 character from wtype's uploaded keymap.
   const text = 'Wayland ok é'
   const field = bounds(initial, (node) => node.kind === 'input')
-  await clickAt(...center(origin, field))
+  await clickAt(...center(origin, field), origin)
   await type(text)
   await waitFor(() => window.input(ui.field).value === text, 'typed text in the input')
   const typed = await painted(
@@ -456,7 +492,7 @@ async function qualify(app: NativeApplication) {
     'the typed value'
   )
   // Return on the focused button is a second, keyboard activation.
-  await clickAt(...center(origin, button))
+  await clickAt(...center(origin, button), origin)
   await waitFor(() => clicks === 2, 'the focusing click')
   await key('Return')
   await waitFor(() => clicks === 3, 'the keyboard activation')
