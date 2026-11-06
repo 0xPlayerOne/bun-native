@@ -28,10 +28,10 @@
 //!   so its ID cannot be reused while signals are accepted.
 //! - **Signals.** `terminate` and `kill` end the whole job; the exit reports
 //!   that signal number. `interrupt` on a terminal types ^C, which the
-//!   console delivers as `CTRL_C_EVENT`. `interrupt` on pipes asks a detached
-//!   copy of the host (`interrupt_helper`) to attach to the child's hidden
-//!   console and send `CTRL_C_EVENT` there; the exit reports `STATUS_CONTROL_C_EXIT`
-//!   as signal 2. `hangup` has no Windows equivalent and is refused.
+//!   console delivers as `CTRL_C_EVENT`. `interrupt` on pipes types ^C into
+//!   the child's hidden console through a short-lived helper process (the
+//!   host binary, so the host never attaches to a child's console itself);
+//!   `hangup` has no Windows equivalent and is refused.
 //! - **Working directory.** The grant directory and every directory down to
 //!   it from the root are held open without delete sharing while
 //!   `CreateProcessW` starts the child in that directory's final path, so the
@@ -57,7 +57,6 @@ use std::os::windows::io::AsHandle as _;
 use std::path::Path;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Condvar, Mutex, MutexGuard, PoisonError};
-use std::time::{Duration, Instant};
 
 pub(super) fn available() -> bool {
     true
@@ -73,6 +72,10 @@ const INPUT_CHUNK: usize = 4_096;
 /// The console's interrupt character.
 const CONTROL_C: u8 = 0x03;
 
+const INTERRUPT_FAILED: Failure = (
+    ErrorCode::NativeFailure,
+    "cannot send the interrupt to the process",
+);
 const EXITED: Failure = (ErrorCode::InvalidState, "the process has exited");
 const NOT_CANONICAL: Failure = (
     ErrorCode::PathDenied,
@@ -110,8 +113,11 @@ impl Wake {
     }
 }
 
-/// Signals reach the whole job.
-pub(super) type Group = Arc<native::Job>;
+/// Signals reach the whole job; the leader's console receives interrupts.
+pub(super) struct Group {
+    job: Arc<native::Job>,
+    leader: u32,
+}
 
 /// The pseudo-console; the supervisor closes it once the child has exited.
 pub(super) struct Master(Mutex<Option<PseudoConsole>>);
@@ -168,11 +174,12 @@ pub(super) fn signal(
     signal: ProcessSignal,
     terminal: bool,
 ) -> Result<(), Failure> {
-    let job = state
+    let group = state
         .group
         .as_ref()
         .filter(|_| !state.reaped)
         .ok_or(EXITED)?;
+    let job = &group.job;
     let number = match signal {
         ProcessSignal::Terminate => 15,
         ProcessSignal::Kill => 9,
@@ -187,13 +194,14 @@ pub(super) fn signal(
             return Ok(());
         }
         ProcessSignal::Interrupt => {
-            let leader = state.leader.ok_or(EXITED)?;
-            return interrupt_console(leader);
+            // A pipe child has a hidden console of its own; ^C is typed into it.
+            let helper = std::env::current_exe().map_err(|_| INTERRUPT_FAILED)?;
+            return native::interrupt_console(&helper, group.leader).map_err(|_| INTERRUPT_FAILED);
         }
         ProcessSignal::Hangup => {
             return Err((
                 ErrorCode::ServiceUnavailable,
-                "this signal has no Windows equivalent for this process",
+                "a hangup has no Windows equivalent",
             ));
         }
     };
@@ -201,74 +209,7 @@ pub(super) fn signal(
         .map_err(|_| (ErrorCode::NativeFailure, "cannot signal the process"))
 }
 
-/// The exit status of a process ended by `CTRL_C_EVENT`.
-const STATUS_CONTROL_C_EXIT: u32 = 0xC000_013A;
-
-/// The argument that makes the host a one-shot helper: it sends `CTRL_C_EVENT`
-/// to the console of the pipe child with the given process ID, then exits.
-pub(crate) const INTERRUPT_HELPER_ARGUMENT: &str = "--bun-native-interrupt-console=";
-
-/// Runs the helper when `arguments` ask for it and returns its exit status.
-pub(crate) fn interrupt_helper(
-    arguments: impl IntoIterator<Item = std::ffi::OsString>,
-) -> Option<i32> {
-    let mut arguments = arguments.into_iter();
-    let process = arguments
-        .next()?
-        .to_str()?
-        .strip_prefix(INTERRUPT_HELPER_ARGUMENT)?
-        .parse::<u32>()
-        .ok()?;
-    if arguments.next().is_some() {
-        return Some(2);
-    }
-    Some(match native::interrupt_console(process) {
-        Ok(()) => 0,
-        Err(_) => 1,
-    })
-}
-
-/// How long the helper may take to attach, send and detach.
-const INTERRUPT_TIMEOUT: Duration = Duration::from_secs(3);
-
-/// A pipe child runs on its own hidden console, which only a process without a
-/// console can attach to, and the host may have one (started from a terminal).
-/// A detached copy of the host attaches, sends `CTRL_C_EVENT` and exits.
-fn interrupt_console(leader: u32) -> Result<(), Failure> {
-    use std::os::windows::process::CommandExt as _;
-    const DETACHED_PROCESS: u32 = 0x0000_0008;
-    let failure = (ErrorCode::NativeFailure, "cannot interrupt the process");
-    let executable = std::env::current_exe().map_err(|_| failure)?;
-    let mut helper = std::process::Command::new(executable)
-        .arg(format!("{INTERRUPT_HELPER_ARGUMENT}{leader}"))
-        .stdin(std::process::Stdio::null())
-        .stdout(std::process::Stdio::null())
-        .stderr(std::process::Stdio::null())
-        .creation_flags(DETACHED_PROCESS)
-        .spawn()
-        .map_err(|_| failure)?;
-    let begun = Instant::now();
-    loop {
-        match helper.try_wait() {
-            Ok(Some(status)) if status.success() => return Ok(()),
-            Ok(Some(_)) | Err(_) => return Err(failure),
-            Ok(None) if begun.elapsed() >= INTERRUPT_TIMEOUT => {
-                let _ = helper.kill();
-                let _ = helper.wait();
-                return Err(failure);
-            }
-            Ok(None) => std::thread::sleep(Duration::from_millis(5)),
-        }
-    }
-}
-
 fn exit_of(code: u32) -> ProcessExit {
-    if code == STATUS_CONTROL_C_EXIT {
-        return ProcessExit {
-            code: None,
-            signal: Some(2),
-        };
-    }
     match code ^ SIGNALLED {
         signal @ (9 | 15) => ProcessExit {
             code: None,
@@ -420,11 +361,10 @@ impl Job {
             }
         };
         drop((directory, executable));
-        {
-            let mut state = self.control.lock();
-            state.group = Some(job.clone());
-            state.leader = Some(child.id());
-        }
+        self.control.lock().group = Some(Group {
+            job: job.clone(),
+            leader: child.id(),
+        });
         Ok(Running {
             child,
             job,
@@ -732,11 +672,10 @@ mod tests {
                 signal: Some(15)
             }
         );
-        // Any other status, such as an access violation, is a plain exit code.
         assert_eq!(
-            exit_of(0xC000_0005),
+            exit_of(0xC000_013A),
             ProcessExit {
-                code: Some(5),
+                code: Some(0x3A),
                 signal: None
             }
         );
@@ -877,48 +816,9 @@ mod tests {
     }
 
     #[test]
-    fn the_interrupt_helper_takes_exactly_one_process_id_argument() {
-        let argument = |text: &str| std::ffi::OsString::from(text);
-        assert_eq!(interrupt_helper([argument("--unknown")]), None);
-        assert_eq!(interrupt_helper([]), None);
-        assert_eq!(
-            interrupt_helper([argument("--bun-native-interrupt-console=x")]),
-            None
-        );
-        assert_eq!(
-            interrupt_helper([
-                argument("--bun-native-interrupt-console=4"),
-                argument("--extra")
-            ]),
-            Some(2)
-        );
-        // `u32::MAX` is `ATTACH_PARENT_PROCESS` and 0 names no process: both are
-        // refused before any console is touched, so this test cannot signal the
-        // console it runs on.
-        for process in ["0", "4294967295"] {
-            assert_eq!(
-                interrupt_helper([argument(&format!("{INTERRUPT_HELPER_ARGUMENT}{process}"))]),
-                Some(1)
-            );
-        }
-    }
-
-    #[test]
-    fn a_console_control_exit_is_reported_as_the_interrupt_signal() {
-        assert_eq!(
-            exit_of(STATUS_CONTROL_C_EXIT),
-            ProcessExit {
-                code: None,
-                signal: Some(2)
-            }
-        );
-    }
-
-    #[test]
     fn terminate_ends_the_job_and_reports_the_signal() {
         let started = start("ping -n 30 127.0.0.1 >nul", base_environment(), None, None);
         spawned(&started);
-        // `interrupt` re-runs the host executable, which a test binary is not.
         assert_eq!(
             signal(&mut started.control.lock(), ProcessSignal::Hangup, false)
                 .unwrap_err()

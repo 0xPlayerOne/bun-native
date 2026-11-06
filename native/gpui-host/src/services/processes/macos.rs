@@ -2,9 +2,9 @@
 //! wakes the supervisor, and a watcher thread blocked in
 //! `waitid(P_PID, WEXITED | WNOWAIT)` closes a pipe when the leader exits.
 //! (`kqueue` `EVFILT_PROC` would need no thread, but rustix's `kevent` is
-//! `unsafe` and this crate forbids `unsafe`.) A working directory is entered
-//! with `fchdir` on the grant descriptor in the child, through the private
-//! `bun-native-macos-services` crate.
+//! `unsafe` and this crate forbids `unsafe`.) The child starts in a grant
+//! directory through `bun-native-posix-services`, the one place that may
+//! register a `pre_exec` step.
 
 use super::Failure;
 use crate::services::files::{Directory, directory_beneath, failure as path_failure};
@@ -13,6 +13,7 @@ use rustix::fs::{OFlags, fcntl_getfl, fcntl_setfl};
 use rustix::io::Errno;
 use rustix::process::{Pid, WaitId, WaitIdOptions, waitid};
 use std::os::fd::{AsFd, BorrowedFd, OwnedFd};
+use std::process::Command;
 use std::thread::JoinHandle;
 
 pub(super) fn available() -> bool {
@@ -108,33 +109,36 @@ impl AsFd for ExitWatch {
     }
 }
 
-/// The opened directory the child starts in. macOS has no path that names an
-/// open descriptor, so the string is unused: the child calls `fchdir` on the
-/// descriptor itself (see [`enter`]), never on a path recovered from it.
+/// The opened directory the child starts in. macOS has no `/proc/self/fd`
+/// and `Command::current_dir` takes only a path, which would reintroduce the
+/// check-then-use race that grant descriptors exist to remove, so the child
+/// runs `fchdir` on the descriptor itself before `exec`.
 pub(super) fn working_directory(
     directory: Option<&(Directory, String)>,
-) -> Result<Option<(OwnedFd, String)>, Failure> {
+) -> Result<Option<OwnedFd>, Failure> {
     let Some((root, path)) = directory else {
         return Ok(None);
     };
-    let fd = directory_beneath(root, path).map_err(|failure| match failure.0 {
-        ErrorCode::NotFound | ErrorCode::WrongKind | ErrorCode::PathDenied => failure,
-        _ => path_failure(Errno::ACCESS),
-    })?;
-    Ok(Some((fd, String::new())))
+    directory_beneath(root, path)
+        .map(Some)
+        .map_err(|failure| match failure.0 {
+            ErrorCode::NotFound | ErrorCode::WrongKind | ErrorCode::PathDenied => failure,
+            _ => path_failure(Errno::ACCESS),
+        })
 }
 
-/// The child changes into the descriptor between fork and exec. The caller
-/// keeps the descriptor open until the spawn returns.
-pub(super) fn enter(command: &mut std::process::Command, directory: &OwnedFd, _cwd: &str) {
-    bun_native_macos_services::start_in_directory(command, directory.as_fd());
+const DIRECTORY_STEP: Failure = (
+    ErrorCode::NativeFailure,
+    "cannot prepare the process working directory",
+);
+
+pub(super) fn start_in(command: &mut Command, directory: &OwnedFd) -> Result<(), Failure> {
+    bun_native_posix_services::start_in(command, directory).map_err(|_| DIRECTORY_STEP)
 }
 
-/// The same for a pseudo-terminal command.
-pub(super) fn enter_pty(
+pub(super) fn start_in_terminal(
     command: pty_process::blocking::Command,
     directory: &OwnedFd,
-    _cwd: &str,
-) -> pty_process::blocking::Command {
-    bun_native_macos_services::start_pty_in_directory(command, directory.as_fd())
+) -> Result<pty_process::blocking::Command, Failure> {
+    bun_native_posix_services::start_in_terminal(command, directory).map_err(|_| DIRECTORY_STEP)
 }

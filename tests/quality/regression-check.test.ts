@@ -163,6 +163,67 @@ describe('metric regression gate', () => {
     ).toThrow(/direction/)
   })
 
+  test('a metric whose unit or direction changed is never compared', () => {
+    const baseline = file({ a: { samples: [100, 100, 100] } })
+    for (const change of [
+      { unit: 's', samples: [1, 1, 1] },
+      { direction: 'higher' as const, samples: [1, 1, 1] },
+      { unit: 's', direction: 'higher' as const, samples: [1, 1, 1] },
+    ]) {
+      const result = compare(baseline, file({ a: change }))
+      expect(result.findings.map((f) => f.status)).toEqual(['unmeasured'])
+      expect(result.findings[0]!.ratio).toBeNull()
+      expect(result.findings[0]!.note).toMatch(/unit or direction/)
+      expect(failed(result)).toBe(true)
+    }
+    // The same unit and direction still compare as before.
+    expect(failed(compare(baseline, file({ a: { samples: [100, 100, 100] } })))).toBe(false)
+  })
+
+  test('a comparison with no baseline metric fails closed instead of passing', () => {
+    const empty = file({})
+    expect(failed(compare(empty, file({ a: { samples: around(1) } })))).toBe(true)
+    expect(failed(compare(empty, empty))).toBe(true)
+  })
+
+  test('metrics files need at least one well-formed metric', () => {
+    const text = (change: (value: any) => void) => {
+      const value = JSON.parse(JSON.stringify(file({ a: { samples: [1, 2, 3] } })))
+      change(value)
+      return JSON.stringify(value)
+    }
+    expect(() =>
+      parseMetrics(
+        text((v) => (v.metrics = {})),
+        'x'
+      )
+    ).toThrow(/at least one metric/)
+    expect(() =>
+      parseMetrics(
+        text((v) => delete v.metrics),
+        'x'
+      )
+    ).toThrow(/at least one metric/)
+    expect(() =>
+      parseMetrics(
+        text((v) => (v.metrics.a.unit = '')),
+        'x'
+      )
+    ).toThrow(/unit/)
+    expect(() =>
+      parseMetrics(
+        text((v) => delete v.metrics.a.unit),
+        'x'
+      )
+    ).toThrow(/unit/)
+    expect(() =>
+      parseMetrics(
+        text((v) => (v.metrics.a = null)),
+        'x'
+      )
+    ).toThrow(/a/)
+  })
+
   test('the command line exits non-zero on a regression and rejects malformed files', () => {
     const directory = mkdtempSync(join(tmpdir(), 'regression-check-'))
     try {

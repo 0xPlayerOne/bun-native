@@ -176,14 +176,6 @@ jobs:
             target/release/deps
             target/release/.fingerprint
           key: native-release-target-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('rust-toolchain.toml', 'Cargo.lock', 'Cargo.toml', 'native/vendor/**') }}
-      - name: Verify the macOS child working-directory boundary
-        if: runner.os == 'macOS'
-        timeout-minutes: 3
-        run: |
-          cargo clippy --locked --release -p bun-native-macos-services --all-targets -- -D warnings
-          if ($LASTEXITCODE -ne 0) { throw 'Native macOS services Clippy failed' }
-          cargo test --locked --release -p bun-native-macos-services
-          if ($LASTEXITCODE -ne 0) { throw 'Native macOS child working-directory tests failed' }
       - name: Verify native macOS layer invalidation and assigned Metal identity
         if: runner.os == 'macOS'
         timeout-minutes: 3
@@ -321,6 +313,23 @@ jobs:
           cargo test --locked --release -p bun-native-windows-services -p bun-native-host services::files -- --test-threads=1 2>&1 |
             Tee-Object -FilePath (Join-Path $env:NATIVE_EVIDENCE 'filesystem-grants-unit.log')
           if ($LASTEXITCODE -ne 0) { throw 'Windows filesystem grant unit tests failed' }
+      - name: Windows task dialog unit tests
+        if: ${{ runner.os == 'Windows' && !cancelled() && steps.native-build.outcome == 'success' }}
+        timeout-minutes: 5
+        run: |
+          cargo test --locked --release -p bun-native-windows-services -p bun-native-host task_dialog -- --test-threads=1 2>&1 |
+            Tee-Object -FilePath (Join-Path $env:NATIVE_EVIDENCE 'task-dialog-unit.log')
+          if ($LASTEXITCODE -ne 0) { throw 'Windows task dialog unit tests failed' }
+      - name: Windows OS message dialogs through TaskDialogIndirect (#239)
+        if: ${{ runner.os == 'Windows' && !cancelled() && steps.native-build.outcome == 'success' }}
+        timeout-minutes: 6
+        run: |
+          $evidence = Join-Path $env:NATIVE_EVIDENCE 'task-dialogs'
+          New-Item -ItemType Directory $evidence | Out-Null
+          $env:BUN_NATIVE_TASK_DIALOG_EVIDENCE = $evidence
+          $env:BUN_NATIVE_WINDOWS_DIALOG_ORACLE = (Resolve-Path 'tests/native/windows-dialog-oracle.ps1').Path
+          bun tests/native/task-dialogs.ts 2>&1 | Tee-Object -FilePath (Join-Path $evidence 'run.log')
+          if ($LASTEXITCODE -ne 0) { throw 'Windows OS message dialogs were not verified' }
       - name: Development and AOT macOS native fault containment
         if: ${{ runner.os == 'macOS' && !cancelled() && steps.native-build.outcome == 'success' }}
         timeout-minutes: 5

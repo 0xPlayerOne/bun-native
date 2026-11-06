@@ -67,6 +67,8 @@ pub(crate) struct NativeView {
     drops: Drops,
     pressed: PressedButtons,
     evidence: Evidence,
+    /// Whether the last render saw GPUI's active drag (for the drag trace).
+    drag_seen: bool,
 }
 
 impl NativeView {
@@ -123,6 +125,7 @@ impl NativeView {
             drops,
             pressed: PressedButtons::default(),
             evidence,
+            drag_seen: false,
         }
     }
 
@@ -466,7 +469,16 @@ impl Render for NativeView {
         self.viewport = window.viewport_size();
         // GPUI ends an external drag on drop, on the source's leave and when
         // the button is released outside every target; each refreshes.
-        if !cx.has_active_drag() {
+        let dragging = cx.has_active_drag();
+        if dragging != self.drag_seen {
+            self.drag_seen = dragging;
+            crate::phases::drag(if dragging {
+                crate::phases::DragStep::Active
+            } else {
+                crate::phases::DragStep::Cleared
+            });
+        }
+        if !dragging {
             self.drops.resume();
             self.drops.drag_ended(self.window_id, cx);
         }
@@ -672,6 +684,7 @@ fn drop_target(
     let dropped = drops.clone();
     element
         .on_drag_move::<ExternalPaths>(move |event, _, cx| {
+            crate::phases::drag(crate::phases::DragStep::TargetMove);
             moved.drag_moved(target, event.bounds.contains(&event.event.position), cx)
         })
         .on_drop::<ExternalPaths>(move |paths, _, cx| dropped.dropped(&chain, paths.paths(), cx))

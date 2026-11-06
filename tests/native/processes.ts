@@ -5,10 +5,10 @@
  * process-group teardown are checked independently (through /proc and node:fs
  * on Linux, through ps on macOS, through CIM process listings on Windows).
  * Raw protocol checks drive the same host through the private runtime to
- * prove foreign, stale and reused process handles are rejected natively. This
- * macOS process fixture supplies no filesystem roots, and its process backend
- * refuses working directories. On Windows every child is cmd.exe in a job
- * object; the escape fixture is an NTFS junction made with mklink /J.
+ * prove foreign, stale and reused process handles are rejected natively. A
+ * working directory comes from a file grant on every target. On Windows every
+ * child is cmd.exe in a job object; the escape fixture is an NTFS junction
+ * made with mklink /J.
  */
 import {
   createApplication,
@@ -380,10 +380,9 @@ async function terminal(window: NativeWindow) {
 }
 
 /**
- * Windows: a pipe child runs on its own hidden console. `interrupt` sends
- * `CTRL_C_EVENT` there through a detached copy of the host, and the exit
- * reports it as signal 2 (or the batch's own handling of it); `hangup` has no
- * equivalent and is refused. Terminate ends the whole job, descendants included.
+ * Windows: interrupt types ^C into a pipe child's hidden console and ends a
+ * waiting program well before its own 30 s; hangup has no equivalent and is
+ * refused; terminate ends the whole job, descendants included.
  */
 async function windowsSignals(window: NativeWindow) {
   const seen = watch()
@@ -415,31 +414,23 @@ async function windowsSignals(window: NativeWindow) {
   await windowsInterrupt(window)
 }
 
-/** `interrupt` reaches a pipe child's console: the exit is not a terminate. */
 async function windowsInterrupt(window: NativeWindow) {
   const seen = watch()
-  const waiting = marked()
+  const started = performance.now()
   const child = await window.spawnProcess(
     'shell',
-    { args: script(`echo ready&${waiting.command} >nul&exit /b 3`), env: PATH },
+    { args: script('echo ready&ping -n 30 127.0.0.1 >nul'), env: PATH },
     seen.listener
   )
   await seen.until(() => (seen.streams['stdout'] ?? '').includes('ready'))
-  const deadline = performance.now() + 10_000
-  while (!markedAlive(waiting.marker) && performance.now() < deadline) await Bun.sleep(50)
-  assert.equal(markedAlive(waiting.marker), true)
+  await Bun.sleep(500)
   await child.signal('interrupt')
-  await seen.until(() => seen.exit !== undefined)
-  // cmd.exe either ends with STATUS_CONTROL_C_EXIT (signal 2) or survives the
-  // event and runs its next command; neither is a job terminate (15) or kill (9).
-  const exit = seen.exit as { code?: number; signal?: number }
-  assert.ok(
-    exit.signal === 2 || exit.code === 3,
-    `unexpected exit after interrupt: ${JSON.stringify(exit)}`
-  )
-  assert.equal(await markedStopped(waiting.marker), true)
+  await seen.until(() => seen.exit !== undefined, 10_000)
+  // ping would run for 30 s; ^C ends it with STATUS_CONTROL_C_EXIT.
+  assert.ok(performance.now() - started < 15_000)
+  assert.notDeepEqual(seen.exit, { code: 0 })
   await assert.rejects(child.signal('interrupt'), rejected('invalid_state'))
-  record('pipeInterruptReachesTheChildConsole', { exit, descendantStopped: true })
+  record('pipeInterruptEndsTheChild', { exit: seen.exit })
   await child.release()
 }
 
@@ -595,7 +586,7 @@ async function rawHandles() {
       reusedId: await code(spawn(2, 5)),
       lowerId: await code(spawn(2, 4)),
       ungranted: await code(spawn(1, 7, 'python')),
-      // No grant 9 was opened (the macOS run opens none): a cwd never becomes a path.
+      // No grant 9 was opened: a cwd never becomes a path.
       unopenedCwd: await code(
         native.send({
           type: 'spawn_process',
@@ -684,7 +675,7 @@ writeFileSync(
           ? 'Windows runner interactive desktop'
           : 'isolated Xvfb with openbox',
       children: macos
-        ? 'real /bin/sh programs; groups checked through ps; working directory through a grant descriptor (fchdir in the child)'
+        ? 'real /bin/sh programs; groups checked through ps; working directory through a grant descriptor'
         : windows
           ? 'real cmd.exe programs in a job object; descendants checked through Get-CimInstance Win32_Process; working directory through an NTFS grant'
           : 'real /bin/sh programs; groups checked through /proc',

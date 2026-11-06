@@ -620,9 +620,10 @@ digits and `_`, not starting with a digit, of at most 128 bytes; values are
 NUL-free strings of at most 4,096 bytes. Arguments, names and values together
 are at most 32,768 bytes. A `cwd` without `path` is the grant's root. A working directory comes only from a live file grant of
 the same window; the host resolves `path` beneath the grant descriptor with the
-same `openat2` rules as file requests, so links are never followed. macOS
-cannot start a child in a grant descriptor, so a working directory is refused
-there (`service_unavailable`).
+same descriptor-relative rules as file requests, so links are never followed.
+Linux starts the child through the open descriptor's `/proc/self/fd` path; macOS
+runs `fchdir` on the descriptor in the child before `exec`; Windows walks the
+grant with NT handles. A path string is never the authority.
 
 Without `terminal`, standard input, output and error are three pipes and output
 events name `stdout` or `stderr`. With `terminal: { columns, rows }` the child
@@ -699,9 +700,10 @@ paths. The granted executable is held open while it starts and must be its
 own canonical final path. The command line is the exact inverse of
 `CommandLineToArgvW` with no shell, and the environment holds only the given
 variables. `terminate` and `kill` end the whole job and report that signal.
-`interrupt` types ^C on a terminal; on pipes a detached copy of the host sends
-`CTRL_C_EVENT` to the child's hidden console and an interrupted child reports
-signal 2. `hangup` is refused with `service_unavailable`. A grant working directory is walked with the Windows
+`interrupt` types ^C into a terminal, and into a pipe child's hidden console
+through a short-lived helper (the host binary started as the interrupt helper,
+so the host never attaches to a child's console); `hangup` has no Windows
+equivalent and is refused with `service_unavailable`. A grant working directory is walked with the Windows
 grant rules and held open while the child starts there. The host unit tests
 and the same native test, with real `cmd.exe` children, run in development and
 AOT in the Native Platforms `windows-2022` job. It is type-checked locally
@@ -861,6 +863,32 @@ the next queued dialog is tried.
 Solid and React components call the same methods on the window they render
 into; there is no adapter-specific helper. See
 [ADR 0014](decisions/0014-message-dialogs.md).
+
+### OS task dialogs (Windows)
+
+On Windows, `permissions: { taskDialogs: 'allow' }` asks for an OS task dialog
+instead of the overlay. Core uses it when the host advertises the optional
+`task_dialogs_v1` capability, and `serviceCapabilities.messageDialogs.backend`
+then reads `'task_dialog'`; without the grant or the capability the overlay is
+used and nothing else changes. The public options, validation, queueing,
+abort, owner-close and result shape are the same. See
+[ADR 0018](decisions/0018-windows-task-dialogs.md).
+
+- The host shows each dialog with `TaskDialogIndirect` on a dedicated thread,
+  parented to the window's `HWND`; the OS disables the owner while it is open
+  and GPUI's UI thread never enters the dialog's message loop.
+- `title` is the window title, `message` the main instruction and `detail` the
+  content. Button `kind` has no OS equivalent and is ignored. Escape and the
+  close box end the dialog only when it has a `cancelButton` (that button is
+  the result) or is `dismissible`; otherwise they do nothing.
+- Abort, owner close and shutdown end the dialog by posting `TDM_CLICK_BUTTON`
+  to it; a result that races the close is dropped.
+- `TaskDialogIndirect` is in Common Controls 6, which the manifest GPUI embeds
+  in the host already requests. The entry point is resolved at run time, so a
+  host without it reports the capability absent instead of failing to start.
+- Evidence is hosted only: [`task-dialogs.ts`](../tests/native/task-dialogs.ts)
+  reads and presses the real dialog through a UI Automation oracle. Nothing
+  has been run on a physical Windows desktop.
 
 The [Native Linux workflow](../.github/workflows/native-linux.yml) runs
 [`tests/native/message-dialogs.ts`](../tests/native/message-dialogs.ts) in
@@ -1116,11 +1144,11 @@ already exists. The linked follow-ups belong to
 | Global shortcuts  | `registerGlobalShortcut`; `globalShortcuts` grant             | X11 dev+AOT verified with release host                                                              | Unavailable (`unsupported_platform`)                               | Unavailable                                       | Unavailable                             | macOS/Windows backends, Wayland portal design and keyboard-map change tracking. [#301](https://github.com/0xPlayerOne/bun-native/issues/301).                                                             |
 | Application menu  | `setMenuBar` / `clearMenuBar`; `appMenu` grant                | Unavailable (GPUI stores menus only)                                                                | Unavailable (GPUI stores menus only)                               | AppKit `NSMenu` bar; hosted CI only (AX oracle)   | Unavailable                             | Context and Dock menus, dynamic validation, Linux/Windows menu bars drawn by the application. [#239](https://github.com/0xPlayerOne/bun-native/issues/239).                                               |
 | File dialogs      | `showOpenDialog` / `showSaveDialog`; `fileDialogs` grant      | xdg-desktop-portal (GTK) dev+AOT verified                                                           | Portal (GTK) opens unparented; abort and compositor close verified | Unavailable                                       | Unavailable                             | macOS/Windows panels, Wayland parenting, sandboxed document-portal paths and explicit file-grant conversion. [#239](https://github.com/0xPlayerOne/bun-native/issues/239).                                |
-| Message dialogs   | `showMessageDialog` / `showConfirmDialog`; no grant           | Modal overlay dev+AOT verified locally                                                              | Modal overlay (same core code); unqualified on Wayland             | Modal overlay; unqualified                        | Modal overlay; unqualified              | Native `NSAlert`/task dialogs with owned modality, programmatic close and qualification. [#239](https://github.com/0xPlayerOne/bun-native/issues/239).                                                    |
+| Message dialogs   | `showMessageDialog` / `showConfirmDialog`; no grant           | Modal overlay dev+AOT verified locally                                                              | Modal overlay (same core code); unqualified on Wayland             | Modal overlay; unqualified                        | Modal overlay; unqualified              | `NSAlert` (macOS). Windows has an opt-in `taskDialogs` backend, hosted evidence only. [#239](https://github.com/0xPlayerOne/bun-native/issues/239).                                                       |
 | Notifications     | `postNotification`; `notifications` grant                     | Freedesktop D-Bus (dunst) dev+AOT verified                                                          | Freedesktop (dunst) post and withdraw verified                     | Unavailable                                       | Unavailable                             | macOS/Windows backends, additional notification servers, named actions and replacement. [#302](https://github.com/0xPlayerOne/bun-native/issues/302).                                                     |
 | Drag/drop         | `registerDropTarget`; `dragDrop` grant                        | XDND dev+AOT verified locally (core/Solid/React)                                                    | Unavailable (`unsupported_platform`)                               | AppKit; hosted CI only (NSDraggingSession source) | OLE; hosted CI only (DoDragDrop source) | Other payload kinds and file promises, refusal (GPUI always accepts), Wayland, physical devices and real file managers, Windows resolution. [#303](https://github.com/0xPlayerOne/bun-native/issues/303). |
 | Filesystem grants | `openFileGrant`; `filesystemRoots` launch roots               | openat2 dev+AOT verified locally                                                                    | Advertised; display-independent, not run on Wayland                | `openat` walk; CI-only                            | `NtCreateFile` walk; CI-only            | OS file selection and dropped files as explicit user grants. [#304](https://github.com/0xPlayerOne/bun-native/issues/304).                                                                                |
-| PTY/process       | `spawnProcess`; `processes` launch executables                | Pipes and PTY dev+AOT verified locally                                                              | Advertised; display-independent, not run on Wayland                | Dev+AOT in CI only; `cwd` via `fchdir`            | Job object and ConPTY; CI-only          | descendants that leave the group (POSIX; a deliberate limit), `hangup` on Windows, resource limits. [#305](https://github.com/0xPlayerOne/bun-native/issues/305).                                         |
+| PTY/process       | `spawnProcess`; `processes` launch executables                | Pipes and PTY dev+AOT verified locally                                                              | Advertised; display-independent, not run on Wayland                | Dev+AOT in CI only; `cwd` through `fchdir`        | Job object and ConPTY; CI-only          | Descendants that leave the group (POSIX), `hangup` on Windows, resource limits. [#305](https://github.com/0xPlayerOne/bun-native/issues/305).                                                             |
 
 For the deferred rows, the exported typed contract is the frozen availability
 record in `ServiceCapabilities`. There is no callable operation, configurable

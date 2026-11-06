@@ -90,31 +90,6 @@ impl Job {
     }
 }
 
-/// Delivers `CTRL_C_EVENT` to every process on the console that `process` is
-/// attached to. A process holds one console, so this only works in a helper
-/// that has none of its own (started `DETACHED_PROCESS`): it attaches to the
-/// child's console, ignores the event itself, sends it and detaches again.
-pub fn interrupt_console(process: u32) -> io::Result<()> {
-    // `AttachConsole` reads `u32::MAX` as `ATTACH_PARENT_PROCESS`, which would
-    // send the event to this helper's parent console, and 0 names no process.
-    if process == 0 || process == u32::MAX {
-        return Err(io::Error::from(io::ErrorKind::InvalidInput));
-    }
-    // SAFETY: detaching a console this helper may not have is harmless.
-    unsafe { FreeConsole() };
-    // SAFETY: attaches to another process's console by ID.
-    check(unsafe { AttachConsole(process) })?;
-    // SAFETY: a null handler with `TRUE` makes this process ignore Ctrl+C.
-    let sent = check(unsafe { SetConsoleCtrlHandler(None, 1) })
-        // SAFETY: group 0 is every process on the attached console.
-        .and_then(|()| check(unsafe { GenerateConsoleCtrlEvent(CTRL_C_EVENT, 0) }));
-    // The event is queued to the console's processes asynchronously.
-    std::thread::sleep(Duration::from_millis(100));
-    // SAFETY: this helper owns the console it attached to.
-    unsafe { FreeConsole() };
-    sent
-}
-
 /// A ConPTY pseudo-console. Closing it (drop) ends the console host, which
 /// closes the output pipe once its buffered output has been read.
 pub struct PseudoConsole {
@@ -437,20 +412,91 @@ pub fn spawn(command: &Command<'_>) -> io::Result<Child> {
     })
 }
 
+/// The first argument that makes the host binary act as the interrupt helper
+/// instead of starting a session.
+pub const INTERRUPT_HELPER_ARGUMENT: &str = "--bun-native-console-interrupt";
+
+/// How long the helper may take before it is ended.
+const INTERRUPT_HELPER_TIMEOUT: Duration = Duration::from_secs(3);
+
+/// Types ^C into the console of the pipe child `pid` (`CREATE_NO_WINDOW`
+/// gives it a hidden console of its own). Windows delivers a console control
+/// event only to processes attached to that console, and a process has one
+/// console at a time, so the host never attaches itself: it starts `helper`
+/// (the host binary run with [`INTERRUPT_HELPER_ARGUMENT`]) with no console of
+/// its own, and that short-lived process attaches, sends the event and exits.
+pub fn interrupt_console(helper: &std::path::Path, pid: u32) -> io::Result<()> {
+    use std::os::windows::process::CommandExt as _;
+    use std::process::{Command, Stdio};
+    let mut child = Command::new(helper)
+        .arg(INTERRUPT_HELPER_ARGUMENT)
+        .arg(pid.to_string())
+        .stdin(Stdio::null())
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
+        .creation_flags(CREATE_NO_WINDOW)
+        .spawn()?;
+    let deadline = std::time::Instant::now() + INTERRUPT_HELPER_TIMEOUT;
+    loop {
+        if let Some(status) = child.try_wait()? {
+            return if status.success() {
+                Ok(())
+            } else {
+                Err(io::Error::other("the interrupt helper failed"))
+            };
+        }
+        if std::time::Instant::now() >= deadline {
+            let _ = child.kill();
+            let _ = child.wait();
+            return Err(io::Error::new(
+                io::ErrorKind::TimedOut,
+                "the interrupt helper timed out",
+            ));
+        }
+        std::thread::sleep(Duration::from_millis(5));
+    }
+}
+
+/// The helper process: send ^C to the console of `pid`, then leave. Runs in a
+/// process that has no state to protect: it ignores ^C for itself while the
+/// event is delivered, and the event reaches every process on that console,
+/// which is the child's own job.
+pub fn send_console_interrupt(pid: u32) -> io::Result<()> {
+    // `AttachConsole` reads `u32::MAX` as `ATTACH_PARENT_PROCESS`, which would
+    // send the event to this helper's parent console, and 0 names no process.
+    // Both are refused before any console is touched.
+    if pid == 0 || pid == u32::MAX {
+        return Err(io::Error::from(io::ErrorKind::InvalidInput));
+    }
+    // SAFETY: plain console calls with no pointers. The helper's own console
+    // (a fresh hidden one) is released first because a process may be attached
+    // to only one.
+    unsafe {
+        FreeConsole();
+        check(AttachConsole(pid))?;
+        // A null handler with TRUE makes this process ignore ^C.
+        check(SetConsoleCtrlHandler(None, 1))?;
+        let sent = check(GenerateConsoleCtrlEvent(CTRL_C_EVENT, 0));
+        // The event is queued to the console's processes asynchronously.
+        std::thread::sleep(Duration::from_millis(150));
+        FreeConsole();
+        sent
+    }
+}
+
 #[cfg(test)]
 mod tests {
+    use super::*;
+
     #[test]
     fn an_interrupt_never_targets_the_parent_console_or_process_zero() {
-        // Neither value reaches `AttachConsole`, so no event can be sent.
-        for process in [0, u32::MAX] {
+        for pid in [0, u32::MAX] {
             assert_eq!(
-                interrupt_console(process).unwrap_err().kind(),
+                send_console_interrupt(pid).unwrap_err().kind(),
                 io::ErrorKind::InvalidInput
             );
         }
     }
-
-    use super::*;
 
     #[test]
     fn environment_blocks_are_double_terminated() {

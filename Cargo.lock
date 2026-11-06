@@ -619,8 +619,8 @@ dependencies = [
  "ahash",
  "async-channel",
  "base64",
- "bun-native-macos-services",
  "bun-native-macos-surface",
+ "bun-native-posix-services",
  "bun-native-protocol",
  "bun-native-windows-services",
  "futures",
@@ -640,14 +640,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "bun-native-macos-services"
-version = "0.0.0"
-dependencies = [
- "libc",
- "pty-process",
-]
-
-[[package]]
 name = "bun-native-macos-surface"
 version = "0.0.0"
 dependencies = [
@@ -657,6 +649,14 @@ dependencies = [
  "objc2-metal 0.3.2",
  "objc2-quartz-core 0.3.2",
  "raw-window-handle",
+]
+
+[[package]]
+name = "bun-native-posix-services"
+version = "0.0.0"
+dependencies = [
+ "pty-process",
+ "rustix",
 ]
 
 [[package]]

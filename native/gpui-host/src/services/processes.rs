@@ -31,8 +31,6 @@ use gpui::{App, BackgroundExecutor, Task};
 use platform::ExitWatch;
 use platform::Wake;
 #[cfg(windows)]
-pub(crate) use platform::interrupt_helper;
-#[cfg(windows)]
 use platform::{Group, Master, Terminal, open_terminal, resize, signal};
 #[cfg(unix)]
 use rustix::event::{PollFd, PollFlags, poll};
@@ -85,9 +83,6 @@ struct State {
     /// The leader's group may no longer be signalled: it is reaped or reaping.
     reaped: bool,
     group: Option<Group>,
-    /// The leader's process ID, which names its console for an interrupt.
-    #[cfg(windows)]
-    leader: Option<u32>,
 }
 
 struct Control {
@@ -669,7 +664,7 @@ impl Job {
     #[cfg(unix)]
     fn start(self) -> Result<Running, Failure> {
         // The grant descriptor, not a path string, names the working directory.
-        let (directory, cwd) = platform::working_directory(self.directory.as_ref())?.unzip();
+        let directory = platform::working_directory(self.directory.as_ref())?;
         let env = self.launch.env.iter();
         let terminal = self.terminal.is_some();
         let (mut child, input, streams) = match self.terminal {
@@ -678,8 +673,8 @@ impl Job {
                     .args(&self.launch.args)
                     .env_clear()
                     .envs(env);
-                if let (Some(directory), Some(cwd)) = (&directory, &cwd) {
-                    command = platform::enter_pty(command, directory, cwd);
+                if let Some(directory) = &directory {
+                    command = platform::start_in_terminal(command, directory)?;
                 }
                 let child = command.spawn(pts).map_err(|error| match error {
                     pty_process::Error::Io(error) => spawn_failure(&error),
@@ -715,8 +710,8 @@ impl Job {
                     .stderr(Stdio::piped())
                     // Its own group, so one signal reaches every descendant.
                     .process_group(0);
-                if let (Some(directory), Some(cwd)) = (&directory, &cwd) {
-                    platform::enter(&mut command, directory, cwd);
+                if let Some(directory) = &directory {
+                    platform::start_in(&mut command, directory)?;
                 }
                 let mut child = command.spawn().map_err(|error| spawn_failure(&error))?;
                 let take = |fd: Option<OwnedFd>| {
@@ -974,9 +969,11 @@ impl Running {
 #[cfg(all(test, unix))]
 mod tests {
     use super::*;
+    #[cfg(unix)]
     use std::os::unix::fs::symlink;
     use std::time::Duration;
 
+    #[cfg(unix)]
     fn temp() -> std::path::PathBuf {
         let path = std::env::temp_dir().join(format!(
             "bun-native-processes-{}-{}",
@@ -1082,26 +1079,42 @@ mod tests {
         );
     }
 
-    #[cfg(any(target_os = "linux", target_os = "macos"))]
     #[test]
     fn the_working_directory_comes_from_a_grant_descriptor_without_links() {
-        // Linux can name the directory by descriptor alone (`O_PATH`); macOS has
-        // no such flag, and the child enters the descriptor with `fchdir`.
-        #[cfg(target_os = "linux")]
-        const ROOT_FLAGS: OFlags = OFlags::PATH.union(OFlags::DIRECTORY).union(OFlags::CLOEXEC);
-        #[cfg(target_os = "macos")]
-        const ROOT_FLAGS: OFlags = OFlags::DIRECTORY.union(OFlags::CLOEXEC);
         let base = temp();
         std::fs::create_dir_all(base.join("root/sub")).unwrap();
         symlink(&base, base.join("root/up")).unwrap();
         let root = || {
             Arc::new(
-                rustix::fs::open(base.join("root"), ROOT_FLAGS, rustix::fs::Mode::empty()).unwrap(),
+                rustix::fs::open(
+                    base.join("root"),
+                    OFlags::DIRECTORY | OFlags::CLOEXEC,
+                    rustix::fs::Mode::empty(),
+                )
+                .unwrap(),
             )
         };
         let (output, _) = finish(start("pwd -P", &[], Some((root(), "sub")), None));
         assert_eq!(
             joined(&output, ProcessStream::Stdout).trim_end(),
+            base.join("root/sub")
+                .canonicalize()
+                .unwrap()
+                .to_str()
+                .unwrap()
+        );
+        // A pseudo-terminal child starts in the same descriptor.
+        let (output, _) = finish(start(
+            "pwd -P",
+            &[("PATH", "/usr/bin:/bin")],
+            Some((root(), "sub")),
+            Some(TerminalSize {
+                columns: 80,
+                rows: 24,
+            }),
+        ));
+        assert_eq!(
+            joined(&output, ProcessStream::Terminal).trim_end(),
             base.join("root/sub")
                 .canonicalize()
                 .unwrap()

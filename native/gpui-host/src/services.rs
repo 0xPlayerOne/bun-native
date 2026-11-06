@@ -44,6 +44,13 @@ pub(crate) mod shortcuts;
 #[cfg(not(target_os = "linux"))]
 #[path = "services/shortcuts_unavailable.rs"]
 pub(crate) mod shortcuts;
+#[cfg(any(windows, test))]
+pub(crate) mod task_dialog_model;
+#[cfg(windows)]
+pub(crate) mod task_dialogs;
+#[cfg(not(windows))]
+#[path = "services/task_dialogs_unavailable.rs"]
+pub(crate) mod task_dialogs;
 #[cfg(target_os = "linux")]
 pub(crate) mod x11;
 
@@ -115,6 +122,25 @@ fn filesystem_root(argument: &str) -> Result<FilesystemRoot, &'static str> {
 
 pub(crate) const FILE_DIALOGS_ARGUMENT: &str = "--bun-native-allow-file-dialogs";
 pub(crate) const APP_MENU_ARGUMENT: &str = "--bun-native-allow-app-menu";
+pub(crate) const TASK_DIALOGS_ARGUMENT: &str = "--bun-native-allow-task-dialogs";
+
+/// When the host binary is started as the Windows console interrupt helper,
+/// runs it and returns its exit code; `None` for a normal start.
+#[cfg(windows)]
+pub(crate) fn console_interrupt_helper(
+    arguments: impl IntoIterator<Item = OsString>,
+) -> Option<i32> {
+    use bun_native_windows_services::process::{INTERRUPT_HELPER_ARGUMENT, send_console_interrupt};
+    let mut arguments = arguments.into_iter();
+    if arguments.next()? != INTERRUPT_HELPER_ARGUMENT {
+        return None;
+    }
+    let sent = arguments
+        .next()
+        .and_then(|pid| pid.to_str()?.parse::<u32>().ok())
+        .is_some_and(|pid| send_console_interrupt(pid).is_ok());
+    Some(i32::from(!sent))
+}
 
 pub(crate) fn policy(
     arguments: impl IntoIterator<Item = OsString>,
@@ -153,6 +179,8 @@ pub(crate) fn policy(
             &mut policy.drag_drop
         } else if argument == APP_MENU_ARGUMENT {
             &mut policy.app_menu
+        } else if argument == TASK_DIALOGS_ARGUMENT {
+            &mut policy.task_dialogs
         } else {
             return Err("unknown native host argument");
         };
@@ -325,6 +353,7 @@ mod tests {
                 processes: Vec::new(),
                 file_dialogs: false,
                 app_menu: false,
+                task_dialogs: false,
             }
         );
         assert_eq!(
@@ -356,6 +385,13 @@ mod tests {
             }
         );
         assert_eq!(
+            policy([OsString::from(TASK_DIALOGS_ARGUMENT)]).unwrap(),
+            ServicePolicy {
+                task_dialogs: true,
+                ..ServicePolicy::default()
+            }
+        );
+        assert_eq!(
             policy([OsString::from(DRAG_DROP_ARGUMENT)]).unwrap(),
             ServicePolicy {
                 drag_drop: true,
@@ -370,6 +406,7 @@ mod tests {
             FILE_DIALOGS_ARGUMENT,
             DRAG_DROP_ARGUMENT,
             APP_MENU_ARGUMENT,
+            TASK_DIALOGS_ARGUMENT,
         ] {
             assert!(policy([argument, argument].map(OsString::from)).is_err());
         }

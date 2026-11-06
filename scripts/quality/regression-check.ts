@@ -70,7 +70,13 @@ export function parseMetrics(text: string, what: string): MetricsFile {
   if (value.schemaVersion !== 1) throw new Error(`${what}: schemaVersion must be 1`)
   if (typeof value.environment?.label !== 'string' || value.environment.label === '')
     throw new Error(`${what}: environment.label must name the hardware and operating system`)
-  for (const [name, metric] of Object.entries(value.metrics ?? {})) {
+  const metrics = Object.entries(value.metrics ?? {})
+  if (metrics.length === 0) throw new Error(`${what}: metrics must hold at least one metric`)
+  for (const [name, metric] of metrics) {
+    if (typeof metric !== 'object' || metric === null)
+      throw new Error(`${what}: ${name} must be a metric object`)
+    if (typeof metric.unit !== 'string' || metric.unit === '')
+      throw new Error(`${what}: ${name} needs a unit`)
     if (!Array.isArray(metric.samples) || metric.samples.some((x) => !Number.isFinite(x)))
       throw new Error(`${what}: ${name} needs finite numeric samples`)
     if (metric.direction !== 'lower' && metric.direction !== 'higher')
@@ -104,6 +110,17 @@ export function compare(
         currentMedian: null,
         ratio: null,
         note: 'the current run did not report this metric',
+      })
+      continue
+    }
+    if (now.unit !== reference.unit || now.direction !== reference.direction) {
+      findings.push({
+        ...empty,
+        status: 'unmeasured',
+        baselineMedian: median(reference.samples),
+        currentMedian: median(now.samples),
+        ratio: null,
+        note: `the unit or direction changed (baseline ${reference.unit}, ${reference.direction}; current ${now.unit}, ${now.direction}), so the samples are not comparable`,
       })
       continue
     }
@@ -168,10 +185,14 @@ export function compare(
   }
 }
 
-/** True when the gate fails: an incomparable environment, or any hard finding. */
+/**
+ * True when the gate fails: an incomparable environment, no metric compared at
+ * all, or any hard finding.
+ */
 export function failed(comparison: Comparison): boolean {
   return (
     !comparison.comparable ||
+    comparison.findings.length === 0 ||
     comparison.findings.some((f) => ['regressed', 'missing', 'unmeasured'].includes(f.status))
   )
 }
