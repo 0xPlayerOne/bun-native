@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.23.0](https://github.com/0xPlayerOne/bun-native/compare/v0.22.0...v0.23.0) (2026-11-06)
+
+
+### Features
+
+* **processes:** macOS working directory and Windows pipe interrupt ([#305](https://github.com/0xPlayerOne/bun-native/issues/305)) ([#549](https://github.com/0xPlayerOne/bun-native/issues/549)) ([d780275](https://github.com/0xPlayerOne/bun-native/commit/d780275db3fd3514cefa286ce19785e17c700878))
+
 ## [0.22.0](https://github.com/0xPlayerOne/bun-native/compare/v0.21.0...v0.22.0) (2026-11-06)
 
 
