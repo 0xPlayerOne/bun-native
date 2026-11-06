@@ -48,10 +48,12 @@ from what is **unsupported**. Unsupported or not-run is never reported as passed
   the value. The run's characters are grapheme clusters, and it carries the
   caret and selection. Native focus is reported as accessibility focus.
   Character bounds, word boundaries and AT-initiated text edits are not exposed.
-- **Programmatic focus.** There is no `focus(node)` application API. Moving
-  keyboard focus from application code is not implemented. An assistive
-  technology can focus a control through AccessKit's Focus action, but this is
-  not qualified.
+- **Programmatic focus.** `batch.focus(node)` moves keyboard focus to an
+  enabled button or an input (including a read-only one) when the host
+  advertises `focus_v1`; Solid and React expose it as `focusNode(ref)`. See the
+  [request contract](native-overlays.md#batch-requests-focus_v1-scroll_control_v1).
+  There is no `blur` request. An assistive technology can focus a control
+  through AccessKit's Focus action, but this is not qualified.
 
 ## Support matrix
 
@@ -76,7 +78,7 @@ development and in the inspected AOT executable, each at X11 scale factors 1 and
 | Accessibility tree read by an independent AT-SPI client                            | **Observed**: roles, names, values, caret, focus, read-only/disabled states                              | Not run       | Not run (AccessKit macOS adapter is built) | Not run (AccessKit Windows adapter) |
 | Screen reader speech (Orca, VoiceOver, Narrator/NVDA)                              | **Not run**                                                                                              | Not run       | Not run                                    | Not run                             |
 | Physical keyboard, physical display DPI, GPU                                       | **Not run** (software Vulkan, XTEST)                                                                     | Not run       | Not run                                    | Not run                             |
-| Programmatic focus from application code                                           | Unsupported                                                                                              | Unsupported   | Unsupported                                | Unsupported                         |
+| Programmatic focus from application code (`focus_v1`)                              | **Observed** in `tests/native/overlays.ts` (focus request scrolled into view)                            | Not run       | Not run (same host code)                   | Not run (same host code)            |
 | Multi-line text input                                                              | Unsupported                                                                                              | Unsupported   | Unsupported                                | Unsupported                         |
 
 AT-SPI states follow AccessKit 0.24's mapping. A read-only or disabled entry is
