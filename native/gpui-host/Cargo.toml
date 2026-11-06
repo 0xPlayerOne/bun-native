@@ -42,5 +42,8 @@ pty-process = "=0.5.4"
 raw-window-handle = "=0.6.2"
 rustix = { version = "=1.1.6", features = ["event", "fs", "process", "termios"] }
 
+[target.'cfg(windows)'.dependencies]
+bun-native-windows-services = { path = "../windows-services" }
+
 [lints]
 workspace = true

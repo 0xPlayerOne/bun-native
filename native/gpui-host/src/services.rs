@@ -23,9 +23,9 @@ pub(crate) mod file_dialogs;
 #[cfg(not(target_os = "linux"))]
 #[path = "services/file_dialogs_unavailable.rs"]
 pub(crate) mod file_dialogs;
-#[cfg(any(target_os = "linux", target_os = "macos"))]
+#[cfg(any(target_os = "linux", target_os = "macos", windows))]
 pub(crate) mod files;
-#[cfg(not(any(target_os = "linux", target_os = "macos")))]
+#[cfg(not(any(target_os = "linux", target_os = "macos", windows)))]
 #[path = "services/files_unavailable.rs"]
 pub(crate) mod files;
 #[cfg(target_os = "linux")]
@@ -33,9 +33,9 @@ pub(crate) mod notifications;
 #[cfg(not(target_os = "linux"))]
 #[path = "services/notifications_unavailable.rs"]
 pub(crate) mod notifications;
-#[cfg(any(target_os = "linux", target_os = "macos"))]
+#[cfg(any(target_os = "linux", target_os = "macos", windows))]
 pub(crate) mod processes;
-#[cfg(not(any(target_os = "linux", target_os = "macos")))]
+#[cfg(not(any(target_os = "linux", target_os = "macos", windows)))]
 #[path = "services/processes_unavailable.rs"]
 pub(crate) mod processes;
 #[cfg(target_os = "linux")]
@@ -65,6 +65,16 @@ pub(crate) const FILESYSTEM_ROOT_ARGUMENT: &str = "--bun-native-filesystem-root=
 /// `--bun-native-process=<id>:<absolute executable path>`.
 pub(crate) const PROCESS_ARGUMENT: &str = "--bun-native-process=";
 
+/// Whether a validated absolute launch path is in this platform's form: a
+/// Windows host opens only drive paths, a POSIX host only `/` paths.
+fn native_path(path: &str) -> bool {
+    if cfg!(windows) {
+        bun_native_protocol::windows_root_path(path)
+    } else {
+        bun_native_protocol::posix_root_path(path)
+    }
+}
+
 fn process_executable(argument: &str) -> Result<ProcessExecutable, &'static str> {
     let (id, executable) = argument
         .split_once(':')
@@ -74,6 +84,9 @@ fn process_executable(argument: &str) -> Result<ProcessExecutable, &'static str>
         executable: executable.into(),
     };
     entry.validate()?;
+    if !native_path(&entry.executable) {
+        return Err("process executable is not an absolute path on this platform");
+    }
     Ok(entry)
 }
 
@@ -93,6 +106,9 @@ fn filesystem_root(argument: &str) -> Result<FilesystemRoot, &'static str> {
         access,
     };
     root.validate()?;
+    if !native_path(&root.path) {
+        return Err("filesystem root path is not an absolute path on this platform");
+    }
     Ok(root)
 }
 
@@ -346,12 +362,20 @@ mod tests {
         }
     }
 
+    /// Absolute paths in this platform's form, then the other platform's.
+    #[cfg(not(windows))]
+    const PATHS: [&str; 4] = ["/srv/docs", "/tmp/a:b", "/srv", "C:\\srv"];
+    #[cfg(windows)]
+    const PATHS: [&str; 4] = ["C:\\srv\\docs", "D:\\tmp\\a b", "C:\\srv", "/srv"];
+    const SEPARATOR: char = if cfg!(windows) { '\\' } else { '/' };
+
     #[test]
     fn filesystem_roots_are_explicit_validated_and_ordered() {
+        let [docs, work, srv, foreign] = PATHS;
         let roots = policy(
             [
-                "--bun-native-filesystem-root=read:docs:/srv/docs",
-                "--bun-native-filesystem-root=read_write:work:/tmp/a:b",
+                format!("--bun-native-filesystem-root=read:docs:{docs}"),
+                format!("--bun-native-filesystem-root=read_write:work:{work}"),
             ]
             .map(OsString::from),
         )
@@ -362,42 +386,61 @@ mod tests {
             [
                 FilesystemRoot {
                     id: "docs".into(),
-                    path: "/srv/docs".into(),
+                    path: docs.into(),
                     access: FileAccess::Read,
                 },
                 FilesystemRoot {
                     id: "work".into(),
-                    path: "/tmp/a:b".into(),
+                    path: work.into(),
                     access: FileAccess::ReadWrite,
                 },
             ]
         );
         for arguments in [
-            vec!["--bun-native-filesystem-root=write:docs:/srv"],
-            vec!["--bun-native-filesystem-root=read:Docs:/srv"],
-            vec!["--bun-native-filesystem-root=read:docs:relative"],
-            vec!["--bun-native-filesystem-root=read:docs:/srv/../etc"],
-            vec!["--bun-native-filesystem-root=read:docs:/srv/"],
-            vec!["--bun-native-filesystem-root=read:docs"],
+            vec![format!("--bun-native-filesystem-root=write:docs:{srv}")],
+            vec![format!("--bun-native-filesystem-root=read:Docs:{srv}")],
+            vec!["--bun-native-filesystem-root=read:docs:relative".into()],
+            vec![format!(
+                "--bun-native-filesystem-root=read:docs:{srv}{SEPARATOR}..{SEPARATOR}etc"
+            )],
+            vec![format!(
+                "--bun-native-filesystem-root=read:docs:{srv}{SEPARATOR}"
+            )],
+            vec!["--bun-native-filesystem-root=read:docs".into()],
+            vec![format!("--bun-native-filesystem-root=read:docs:{foreign}")],
             vec![
-                "--bun-native-filesystem-root=read:docs:/a",
-                "--bun-native-filesystem-root=read:docs:/b",
+                format!("--bun-native-filesystem-root=read:docs:{srv}"),
+                format!("--bun-native-filesystem-root=read:docs:{docs}"),
             ],
         ] {
-            assert!(policy(arguments.into_iter().map(OsString::from)).is_err());
+            assert!(
+                policy(arguments.iter().map(OsString::from)).is_err(),
+                "{arguments:?}"
+            );
         }
         let many: Vec<_> = (0..9)
-            .map(|index| OsString::from(format!("--bun-native-filesystem-root=read:r{index}:/r")))
+            .map(|index| {
+                OsString::from(format!("--bun-native-filesystem-root=read:r{index}:{srv}"))
+            })
             .collect();
         assert!(policy(many).is_err());
     }
 
     #[test]
     fn process_executables_are_explicit_validated_and_ordered() {
+        #[cfg(not(windows))]
+        let [shell, tool, root, foreign] = ["/bin/sh", "/opt/a:b/tool", "/", "C:\\bin\\sh.exe"];
+        #[cfg(windows)]
+        let [shell, tool, root, foreign] = [
+            "C:\\Windows\\System32\\cmd.exe",
+            "D:\\opt\\a b\\tool.exe",
+            "C:\\",
+            "/bin/sh",
+        ];
         let entries = policy(
             [
-                "--bun-native-process=shell:/bin/sh",
-                "--bun-native-process=tool:/opt/a:b/tool",
+                format!("--bun-native-process=shell:{shell}"),
+                format!("--bun-native-process=tool:{tool}"),
             ]
             .map(OsString::from),
         )
@@ -408,29 +451,35 @@ mod tests {
             [
                 ProcessExecutable {
                     id: "shell".into(),
-                    executable: "/bin/sh".into(),
+                    executable: shell.into(),
                 },
                 ProcessExecutable {
                     id: "tool".into(),
-                    executable: "/opt/a:b/tool".into(),
+                    executable: tool.into(),
                 },
             ]
         );
         for arguments in [
-            vec!["--bun-native-process=shell"],
-            vec!["--bun-native-process=Shell:/bin/sh"],
-            vec!["--bun-native-process=shell:sh"],
-            vec!["--bun-native-process=shell:/"],
-            vec!["--bun-native-process=shell:/bin/../sh"],
+            vec!["--bun-native-process=shell".into()],
+            vec![format!("--bun-native-process=Shell:{shell}")],
+            vec!["--bun-native-process=shell:sh".into()],
+            vec![format!("--bun-native-process=shell:{root}")],
+            vec![format!(
+                "--bun-native-process=shell:{shell}{SEPARATOR}..{SEPARATOR}sh"
+            )],
+            vec![format!("--bun-native-process=shell:{foreign}")],
             vec![
-                "--bun-native-process=shell:/bin/sh",
-                "--bun-native-process=shell:/bin/bash",
+                format!("--bun-native-process=shell:{shell}"),
+                format!("--bun-native-process=shell:{tool}"),
             ],
         ] {
-            assert!(policy(arguments.into_iter().map(OsString::from)).is_err());
+            assert!(
+                policy(arguments.iter().map(OsString::from)).is_err(),
+                "{arguments:?}"
+            );
         }
         let many: Vec<_> = (0..9)
-            .map(|index| OsString::from(format!("--bun-native-process=p{index}:/bin/sh")))
+            .map(|index| OsString::from(format!("--bun-native-process=p{index}:{shell}")))
             .collect();
         assert!(policy(many).is_err());
     }
