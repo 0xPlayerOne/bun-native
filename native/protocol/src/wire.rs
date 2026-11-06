@@ -448,6 +448,13 @@ pub enum Element {
         /// The smallest main-axis size of each pane, in logical pixels.
         #[serde(default)]
         min_size: f64,
+        /// Requires `accessibility_v1`: the divider's accessible name.
+        #[serde(
+            default,
+            skip_serializing_if = "Option::is_none",
+            deserialize_with = "non_null"
+        )]
+        accessible_label: Option<String>,
         #[serde(default)]
         style: Style,
     },
@@ -469,6 +476,13 @@ pub enum Element {
         /// Omitted from normalized output while it is the default layer.
         #[serde(default, skip_serializing_if = "OverlaySurface::is_layer")]
         surface: OverlaySurface,
+        /// Requires `accessibility_v1`: the dialog's accessible name.
+        #[serde(
+            default,
+            skip_serializing_if = "Option::is_none",
+            deserialize_with = "non_null"
+        )]
+        accessible_label: Option<String>,
         #[serde(default)]
         style: Style,
     },
@@ -748,6 +762,11 @@ pub enum Capability {
     PopupWindowsV1,
     DragDropFilesV1,
     InputStatesV1,
+    /// The split divider is a keyboard Tab stop and reports `split_resize`.
+    SplitResizeV1,
+    /// Every element kind has an accessibility role, and overlays and splits
+    /// accept an `accessible_label`.
+    AccessibilityV1,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -1010,7 +1029,26 @@ impl Element {
             Self::Input {
                 value, placeholder, ..
             } => value.len() + placeholder.len(),
-            Self::Box { .. } | Self::Split { .. } | Self::Overlay { .. } => 0,
+            Self::Split {
+                accessible_label, ..
+            }
+            | Self::Overlay {
+                accessible_label, ..
+            } => accessible_label.as_ref().map_or(0, String::len),
+            Self::Box { .. } => 0,
+        }
+    }
+
+    /// The `accessibility_v1` name an overlay or split declares.
+    pub fn accessible_label(&self) -> Option<&str> {
+        match self {
+            Self::Split {
+                accessible_label, ..
+            }
+            | Self::Overlay {
+                accessible_label, ..
+            } => accessible_label.as_deref(),
+            Self::Box { .. } | Self::Text { .. } | Self::Button { .. } | Self::Input { .. } => None,
         }
     }
 
@@ -1093,6 +1131,7 @@ impl Element {
                 ratio,
                 min_size,
                 style,
+                ..
             } => {
                 bounded(*ratio, 0., 1., "split ratio must be between 0 and 1")?;
                 bounded(
@@ -1109,6 +1148,9 @@ impl Element {
                 }
             }
             Self::Box { .. } | Self::Overlay { .. } => {}
+        }
+        if let Some(label) = self.accessible_label() {
+            validate_text(label)?;
         }
         self.style().validate()
     }

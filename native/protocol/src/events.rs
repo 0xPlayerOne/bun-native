@@ -39,6 +39,14 @@ pub enum DismissReason {
     WindowBlur,
 }
 
+/// What moved a split divider (`split_resize_v1`).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum ResizeSource {
+    Pointer,
+    Keyboard,
+}
+
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(tag = "type", rename_all = "snake_case", deny_unknown_fields)]
 pub enum Event {
@@ -343,6 +351,19 @@ pub enum Event {
         path: Vec<NodeId>,
         reason: DismissReason,
     },
+    /// `split_resize_v1`: the user moved a split divider. `ratio` is the
+    /// host-owned leading-pane share after the move, once per finished drag
+    /// or keyboard step that changed it.
+    SplitResize {
+        sequence: EventSequence,
+        window_id: WindowId,
+        node_id: NodeId,
+        #[serde(deserialize_with = "crate::wire::safe_integer")]
+        tree_revision: u64,
+        path: Vec<NodeId>,
+        ratio: f64,
+        source: ResizeSource,
+    },
     Closed {
         sequence: EventSequence,
         window_id: WindowId,
@@ -440,6 +461,12 @@ impl Event {
                 tree_revision,
                 path,
                 ..
+            }
+            | Self::SplitResize {
+                node_id,
+                tree_revision,
+                path,
+                ..
             } if *tree_revision > MAX_ID
                 || path.is_empty()
                 || path.len() > MAX_EVENT_PATH_NODES
@@ -507,6 +534,9 @@ impl Event {
                 }) {
                     return Err("native pointer coordinate exceeds its finite logical-pixel range");
                 }
+            }
+            Self::SplitResize { ratio, .. } if !(0. ..=1.).contains(ratio) => {
+                return Err("split ratio must be between 0 and 1");
             }
             Self::Input {
                 value,

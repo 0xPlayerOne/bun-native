@@ -6,6 +6,7 @@ export {
   SPLIT_DIVIDER,
   type Element,
   type OverlayElement,
+  type AccessibleLabel,
   type OverlayKeyboard,
   type SplitStyle,
   type Style,
@@ -109,4 +110,5 @@ export {
   type KeyModifiers,
   type PointerButton,
   type DismissReason,
+  type ResizeSource,
 } from './messages.ts'
