@@ -664,7 +664,7 @@ impl Job {
     #[cfg(unix)]
     fn start(self) -> Result<Running, Failure> {
         // The grant descriptor, not a path string, names the working directory.
-        let (directory, cwd) = platform::working_directory(self.directory.as_ref())?.unzip();
+        let directory = platform::working_directory(self.directory.as_ref())?;
         let env = self.launch.env.iter();
         let terminal = self.terminal.is_some();
         let (mut child, input, streams) = match self.terminal {
@@ -673,8 +673,8 @@ impl Job {
                     .args(&self.launch.args)
                     .env_clear()
                     .envs(env);
-                if let Some(cwd) = &cwd {
-                    command = command.current_dir(cwd);
+                if let Some(directory) = &directory {
+                    command = platform::start_in_terminal(command, directory)?;
                 }
                 let child = command.spawn(pts).map_err(|error| match error {
                     pty_process::Error::Io(error) => spawn_failure(&error),
@@ -710,8 +710,8 @@ impl Job {
                     .stderr(Stdio::piped())
                     // Its own group, so one signal reaches every descendant.
                     .process_group(0);
-                if let Some(cwd) = &cwd {
-                    command.current_dir(cwd);
+                if let Some(directory) = &directory {
+                    platform::start_in(&mut command, directory)?;
                 }
                 let mut child = command.spawn().map_err(|error| spawn_failure(&error))?;
                 let take = |fd: Option<OwnedFd>| {
@@ -969,11 +969,11 @@ impl Running {
 #[cfg(all(test, unix))]
 mod tests {
     use super::*;
-    #[cfg(target_os = "linux")]
+    #[cfg(unix)]
     use std::os::unix::fs::symlink;
     use std::time::Duration;
 
-    #[cfg(target_os = "linux")]
+    #[cfg(unix)]
     fn temp() -> std::path::PathBuf {
         let path = std::env::temp_dir().join(format!(
             "bun-native-processes-{}-{}",
@@ -1079,7 +1079,6 @@ mod tests {
         );
     }
 
-    #[cfg(target_os = "linux")]
     #[test]
     fn the_working_directory_comes_from_a_grant_descriptor_without_links() {
         let base = temp();
@@ -1089,7 +1088,7 @@ mod tests {
             Arc::new(
                 rustix::fs::open(
                     base.join("root"),
-                    OFlags::PATH | OFlags::DIRECTORY | OFlags::CLOEXEC,
+                    OFlags::DIRECTORY | OFlags::CLOEXEC,
                     rustix::fs::Mode::empty(),
                 )
                 .unwrap(),
@@ -1098,6 +1097,24 @@ mod tests {
         let (output, _) = finish(start("pwd -P", &[], Some((root(), "sub")), None));
         assert_eq!(
             joined(&output, ProcessStream::Stdout).trim_end(),
+            base.join("root/sub")
+                .canonicalize()
+                .unwrap()
+                .to_str()
+                .unwrap()
+        );
+        // A pseudo-terminal child starts in the same descriptor.
+        let (output, _) = finish(start(
+            "pwd -P",
+            &[("PATH", "/usr/bin:/bin")],
+            Some((root(), "sub")),
+            Some(TerminalSize {
+                columns: 80,
+                rows: 24,
+            }),
+        ));
+        assert_eq!(
+            joined(&output, ProcessStream::Terminal).trim_end(),
             base.join("root/sub")
                 .canonicalize()
                 .unwrap()
@@ -1116,27 +1133,6 @@ mod tests {
             started.thread.join().unwrap();
         }
         std::fs::remove_dir_all(base).unwrap();
-    }
-
-    /// macOS cannot start a child in a grant descriptor, so a cwd is refused
-    /// before anything is spawned rather than replaced with a path.
-    #[cfg(target_os = "macos")]
-    #[test]
-    fn a_working_directory_is_refused_rather_than_replaced_with_a_path() {
-        let root = std::sync::Arc::new(
-            rustix::fs::open(
-                "/tmp",
-                OFlags::DIRECTORY | OFlags::CLOEXEC,
-                rustix::fs::Mode::empty(),
-            )
-            .unwrap(),
-        );
-        let started = start("true", &[], Some((root, "")), None);
-        match started.messages.recv_blocking().unwrap() {
-            Message::Spawned(_, Err((code, _))) => assert_eq!(code, ErrorCode::ServiceUnavailable),
-            _ => panic!("a cwd must fail before the process starts"),
-        }
-        started.thread.join().unwrap();
     }
 
     #[test]

@@ -5,10 +5,10 @@
  * process-group teardown are checked independently (through /proc and node:fs
  * on Linux, through ps on macOS, through CIM process listings on Windows).
  * Raw protocol checks drive the same host through the private runtime to
- * prove foreign, stale and reused process handles are rejected natively. This
- * macOS process fixture supplies no filesystem roots, and its process backend
- * refuses working directories. On Windows every child is cmd.exe in a job
- * object; the escape fixture is an NTFS junction made with mklink /J.
+ * prove foreign, stale and reused process handles are rejected natively. A
+ * working directory comes from a file grant on every target. On Windows every
+ * child is cmd.exe in a job object; the escape fixture is an NTFS junction
+ * made with mklink /J.
  */
 import {
   createApplication,
@@ -91,8 +91,7 @@ const permissions = {
       executable: join(base, windows ? 'missing.exe' : 'missing'),
     },
   ],
-  // The macOS process backend does not accept a grant descriptor as cwd.
-  filesystemRoots: macos ? [] : [{ id: 'work', path: work, access: 'read' as const }],
+  filesystemRoots: [{ id: 'work', path: work, access: 'read' as const }],
 }
 
 /** One process: its decoded output by stream and its exit, all acknowledged. */
@@ -242,32 +241,6 @@ async function deniedByDefault() {
   }
 }
 
-/** macOS: pipes and the explicit environment; a working directory is refused. */
-async function pipesWithoutGrants(app: NativeApplication, window: NativeWindow) {
-  const seen = watch()
-  const child = await window.spawnProcess(
-    'shell',
-    {
-      args: ['-c', 'printf out; printf err >&2; printf "|%s|%s|" "$HOME" "$BUN_X"; exit 5'],
-      env: { BUN_X: 'a b' },
-    },
-    seen.listener
-  )
-  await seen.until(() => seen.exit !== undefined)
-  assert.equal(child.terminal, false)
-  assert.deepEqual(seen.exit, { code: 5 })
-  assert.equal(seen.streams['stdout'], 'out||a b|')
-  assert.equal(seen.streams['stderr'], 'err')
-  assert.equal(app.serviceCapabilities.filesystemGrants.availability, 'available')
-  record('pipesAndEnvironment', { exit: seen.exit, inheritedHome: false })
-  await assert.rejects(
-    window.spawnProcess('missing', {}, () => {}),
-    rejected('not_found')
-  )
-  record('executableFailureIsTyped', { missing: 'not_found' })
-  await child.release()
-}
-
 async function pipes(window: NativeWindow) {
   const grant = await window.openFileGrant('work')
   const seen = watch()
@@ -407,8 +380,9 @@ async function terminal(window: NativeWindow) {
 }
 
 /**
- * Windows: a pipe child has no console to interrupt and no hangup, so both
- * are refused; terminate ends the whole job, descendants included.
+ * Windows: interrupt types ^C into a pipe child's hidden console and ends a
+ * waiting program well before its own 30 s; hangup has no equivalent and is
+ * refused; terminate ends the whole job, descendants included.
  */
 async function windowsSignals(window: NativeWindow) {
   const seen = watch()
@@ -425,8 +399,7 @@ async function windowsSignals(window: NativeWindow) {
   const deadline = performance.now() + 10_000
   while (!markedAlive(descendant.marker) && performance.now() < deadline) await Bun.sleep(50)
   assert.equal(markedAlive(descendant.marker), true)
-  for (const refused of ['interrupt', 'hangup'] as const)
-    await assert.rejects(child.signal(refused), rejected('service_unavailable'))
+  await assert.rejects(child.signal('hangup'), rejected('service_unavailable'))
   await child.signal('terminate')
   await seen.until(() => seen.exit !== undefined)
   assert.deepEqual(seen.exit, { signal: 15 })
@@ -434,9 +407,30 @@ async function windowsSignals(window: NativeWindow) {
   await assert.rejects(child.signal('kill'), rejected('invalid_state'))
   record('jobSignalAndExitStopsDescendants', {
     exit: seen.exit,
-    refused: ['interrupt', 'hangup'],
+    refused: ['hangup'],
     descendantStopped: true,
   })
+  await child.release()
+  await windowsInterrupt(window)
+}
+
+async function windowsInterrupt(window: NativeWindow) {
+  const seen = watch()
+  const started = performance.now()
+  const child = await window.spawnProcess(
+    'shell',
+    { args: script('echo ready&ping -n 30 127.0.0.1 >nul'), env: PATH },
+    seen.listener
+  )
+  await seen.until(() => (seen.streams['stdout'] ?? '').includes('ready'))
+  await Bun.sleep(500)
+  await child.signal('interrupt')
+  await seen.until(() => seen.exit !== undefined, 10_000)
+  // ping would run for 30 s; ^C ends it with STATUS_CONTROL_C_EXIT.
+  assert.ok(performance.now() - started < 15_000)
+  assert.notDeepEqual(seen.exit, { code: 0 })
+  await assert.rejects(child.signal('interrupt'), rejected('invalid_state'))
+  record('pipeInterruptEndsTheChild', { exit: seen.exit })
   await child.release()
 }
 
@@ -592,7 +586,7 @@ async function rawHandles() {
       reusedId: await code(spawn(2, 5)),
       lowerId: await code(spawn(2, 4)),
       ungranted: await code(spawn(1, 7, 'python')),
-      // No grant 9 was opened (the macOS run opens none): a cwd never becomes a path.
+      // No grant 9 was opened: a cwd never becomes a path.
       unopenedCwd: await code(
         native.send({
           type: 'spawn_process',
@@ -650,8 +644,8 @@ async function rawHandles() {
 
 try {
   await deniedByDefault()
-  await withApp(async (app, window) => {
-    await (macos ? pipesWithoutGrants(app, window) : pipes(window))
+  await withApp(async (_app, window) => {
+    await pipes(window)
     await terminal(window)
     await signals(window)
     await credit(window)
@@ -681,7 +675,7 @@ writeFileSync(
           ? 'Windows runner interactive desktop'
           : 'isolated Xvfb with openbox',
       children: macos
-        ? 'real /bin/sh programs; groups checked through ps; no working directory (macOS process cwd unsupported)'
+        ? 'real /bin/sh programs; groups checked through ps; working directory through a grant descriptor'
         : windows
           ? 'real cmd.exe programs in a job object; descendants checked through Get-CimInstance Win32_Process; working directory through an NTFS grant'
           : 'real /bin/sh programs; groups checked through /proc',

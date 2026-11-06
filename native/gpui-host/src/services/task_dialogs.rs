@@ -143,9 +143,7 @@ impl TaskDialogs {
                         let sender = sender.clone();
                         move || drop(sender.try_send(Message::Created))
                     };
-                    task_dialog::trace("dialog thread started");
                     let result = task_dialog::show(owner, &spec, &control, created);
-                    task_dialog::trace(&format!("dialog thread result ok={}", result.is_ok()));
                     drop(sender.try_send(Message::Finished(result)));
                 }
             })

@@ -100,12 +100,7 @@ async function scenarios(app: NativeApplication, window: NativeWindow) {
           ),
           Bun.sleep(0).then(() => 'still pending'),
         ])
-        const trace = await Bun.file(
-          `${process.env.BUN_NATIVE_TASK_DIALOG_EVIDENCE}\\host-trace.log`
-        )
-          .text()
-          .catch(() => '(no host trace)')
-        throw new Error(`${String(error)} (the dialog promise is ${settled}; host trace: ${trace})`)
+        throw new Error(`${String(error)} (the dialog promise is ${settled})`)
       })
     ) as { texts: string[]; buttons: string[]; tree: string[] }
     assert.ok(shown.texts.some((text) => text.includes('Save the document before closing?')))

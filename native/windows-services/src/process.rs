@@ -19,7 +19,8 @@ use windows_sys::Win32::Foundation::{
     WAIT_OBJECT_0, WAIT_TIMEOUT,
 };
 use windows_sys::Win32::System::Console::{
-    COORD, ClosePseudoConsole, CreatePseudoConsole, HPCON, ResizePseudoConsole,
+    AttachConsole, COORD, CTRL_C_EVENT, ClosePseudoConsole, CreatePseudoConsole, FreeConsole,
+    GenerateConsoleCtrlEvent, HPCON, ResizePseudoConsole, SetConsoleCtrlHandler,
 };
 use windows_sys::Win32::System::JobObjects::{
     CreateJobObjectW, JOB_OBJECT_LIMIT_DIE_ON_UNHANDLED_EXCEPTION,
@@ -409,6 +410,72 @@ pub fn spawn(command: &Command<'_>) -> io::Result<Child> {
         process: handle(information.hProcess)?,
         id: information.dwProcessId,
     })
+}
+
+/// The first argument that makes the host binary act as the interrupt helper
+/// instead of starting a session.
+pub const INTERRUPT_HELPER_ARGUMENT: &str = "--bun-native-console-interrupt";
+
+/// How long the helper may take before it is ended.
+const INTERRUPT_HELPER_TIMEOUT: Duration = Duration::from_secs(3);
+
+/// Types ^C into the console of the pipe child `pid` (`CREATE_NO_WINDOW`
+/// gives it a hidden console of its own). Windows delivers a console control
+/// event only to processes attached to that console, and a process has one
+/// console at a time, so the host never attaches itself: it starts `helper`
+/// (the host binary run with [`INTERRUPT_HELPER_ARGUMENT`]) with no console of
+/// its own, and that short-lived process attaches, sends the event and exits.
+pub fn interrupt_console(helper: &std::path::Path, pid: u32) -> io::Result<()> {
+    use std::os::windows::process::CommandExt as _;
+    use std::process::{Command, Stdio};
+    let mut child = Command::new(helper)
+        .arg(INTERRUPT_HELPER_ARGUMENT)
+        .arg(pid.to_string())
+        .stdin(Stdio::null())
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
+        .creation_flags(CREATE_NO_WINDOW)
+        .spawn()?;
+    let deadline = std::time::Instant::now() + INTERRUPT_HELPER_TIMEOUT;
+    loop {
+        if let Some(status) = child.try_wait()? {
+            return if status.success() {
+                Ok(())
+            } else {
+                Err(io::Error::other("the interrupt helper failed"))
+            };
+        }
+        if std::time::Instant::now() >= deadline {
+            let _ = child.kill();
+            let _ = child.wait();
+            return Err(io::Error::new(
+                io::ErrorKind::TimedOut,
+                "the interrupt helper timed out",
+            ));
+        }
+        std::thread::sleep(Duration::from_millis(5));
+    }
+}
+
+/// The helper process: send ^C to the console of `pid`, then leave. Runs in a
+/// process that has no state to protect: it ignores ^C for itself while the
+/// event is delivered, and the event reaches every process on that console,
+/// which is the child's own job.
+pub fn send_console_interrupt(pid: u32) -> io::Result<()> {
+    // SAFETY: plain console calls with no pointers. The helper's own console
+    // (a fresh hidden one) is released first because a process may be attached
+    // to only one.
+    unsafe {
+        FreeConsole();
+        check(AttachConsole(pid))?;
+        // A null handler with TRUE makes this process ignore ^C.
+        check(SetConsoleCtrlHandler(None, 1))?;
+        let sent = check(GenerateConsoleCtrlEvent(CTRL_C_EVENT, 0));
+        // The event is queued to the console's processes asynchronously.
+        std::thread::sleep(Duration::from_millis(150));
+        FreeConsole();
+        sent
+    }
 }
 
 #[cfg(test)]
