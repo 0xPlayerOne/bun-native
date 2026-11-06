@@ -43,6 +43,7 @@ const bindingKeys: Readonly<Record<NativeEventType, BindingKeys>> = {
   focus: keys('focus'),
   blur: keys('blur'),
   dismiss: keys('dismiss'),
+  split_resize: keys('split_resize'),
 }
 const eventTypes: readonly string[] = Object.keys(bindingKeys)
 type Subscription = { remove: (() => void) | undefined }
@@ -120,6 +121,14 @@ function payload(event: RoutedEvent, node: NativeNode, path: readonly NativeNode
         type: event.type,
         node: node as NativeNode<'overlay'>,
         reason: event.reason,
+      }
+    case 'split_resize':
+      return {
+        ...common,
+        type: event.type,
+        node: node as NativeNode<'split'>,
+        ratio: event.ratio,
+        source: event.source,
       }
   }
 }

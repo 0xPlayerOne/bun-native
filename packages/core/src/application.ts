@@ -74,6 +74,7 @@ import {
 import { CommittedText, makeNode, own, Transaction, type NodeState } from './tree.ts'
 import {
   NativeStateError,
+  UnsupportedFeatureError,
   type ClickEvent,
   type InputEvent,
   type Listener,
@@ -670,6 +671,8 @@ class Window implements NativeWindow {
   ): () => void {
     this.assertActive()
     const node = own(this.nodes, handle)
+    if (type === 'split_resize' && !this.application.capabilities.includes('split_resize_v1'))
+      throw new UnsupportedFeatureError('event:split_resize')
     return this.listeners.register(node.id, node.handle, type, listener, options)
   }
 
@@ -1746,6 +1749,14 @@ class Window implements NativeWindow {
     } else if (event.type === 'dismiss') {
       if (node.element.kind !== 'overlay' || node.element.surface !== 'window')
         throw new ProtocolError('Native dismissal targeted a non-popup node')
+    } else if (event.type === 'split_resize') {
+      if (
+        node.element.kind !== 'split' ||
+        !this.application.capabilities.includes('split_resize_v1')
+      )
+        throw new ProtocolError(
+          'Native split resize targeted a non-split node or was not advertised'
+        )
     }
     const plan = this.listeners.prepare(
       event,
