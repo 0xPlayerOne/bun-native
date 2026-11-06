@@ -91,7 +91,18 @@ async function scenarios(app: NativeApplication, window: NativeWindow) {
       buttons,
       cancelButton: 'cancel',
     })
-    const shown = JSON.parse(await ui('find', title)) as { texts: string[]; buttons: string[] }
+    const shown = JSON.parse(
+      await ui('find', title).catch(async (error: unknown) => {
+        const settled = await Promise.race([
+          pending.then(
+            (result) => `settled ${JSON.stringify(result)}`,
+            (rejection: unknown) => `rejected ${String(rejection)}`
+          ),
+          Bun.sleep(0).then(() => 'still pending'),
+        ])
+        throw new Error(`${String(error)} (the dialog promise is ${settled})`)
+      })
+    ) as { texts: string[]; buttons: string[] }
     assert.ok(shown.texts.some((text) => text.includes('Save the document before closing?')))
     assert.ok(shown.texts.some((text) => text.includes('Unsaved edits are lost.')))
     for (const label of ['Save', 'Discard', 'Cancel']) assert.ok(shown.buttons.includes(label))

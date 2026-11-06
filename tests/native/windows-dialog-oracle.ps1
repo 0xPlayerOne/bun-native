@@ -49,8 +49,18 @@ if ($Command -eq 'absent') {
   exit 0
 }
 
+function Top-Level-Windows {
+  $all = [System.Windows.Automation.AutomationElement]::RootElement.FindAll(
+    [System.Windows.Automation.TreeScope]::Children,
+    [System.Windows.Automation.Condition]::TrueCondition)
+  (@($all | ForEach-Object { "$($_.Current.ClassName):$($_.Current.Name)" }) -join ' | ')
+}
+
 $dialog = Wait-Dialog $true
-if ($null -eq $dialog) { Write-Error "dialog '$Title' did not appear"; exit 1 }
+if ($null -eq $dialog) {
+  Write-Error "dialog '$Title' did not appear; top-level windows: $(Top-Level-Windows)"
+  exit 1
+}
 
 switch ($Command) {
   'find' {
