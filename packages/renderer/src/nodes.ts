@@ -228,6 +228,26 @@ export function visit(node: Node, fn: (node: Node) => void): void {
   for (const child of node.children) visit(child, fn)
 }
 
+function checkScope(node: Node, token: object): void {
+  if (node.scope && node.scope !== token)
+    throw new NativeStateError('invalid_handle', 'Renderer nodes cannot move between render roots')
+  for (const child of node.children) checkScope(child, token)
+}
+
+/**
+ * Invalidate a subtree whose parent was just invalidated and hand it to
+ * `owner`, giving each node the owner's scope. Each node's parent already lacks
+ * a capture, so `snapshot()` scans all of its children and no node registers
+ * with its parent's `dirtyChildren`, which only a current capture reads.
+ */
+function adopt(node: Node, owner: Owner | undefined): void {
+  node.captured = undefined
+  node.dirty = true
+  node.owner = owner
+  if (owner) node.scope = owner.token
+  for (const child of node.children) adopt(child, owner)
+}
+
 export function insertNode(parent: Node, node: Node, anchor?: Node): void {
   if (parent.kind === 'input' || parent.kind === 'text-node')
     throw new NativeStateError('invalid_state', 'This native element cannot have children')
@@ -239,14 +259,9 @@ export function insertNode(parent: Node, node: Node, anchor?: Node): void {
   for (let ancestor: Node | undefined = parent; ancestor; ancestor = ancestor.parent)
     if (ancestor === node) throw new NativeStateError('invalid_state', 'Native tree cycle')
   const owner = parent.owner
-  if (owner)
-    visit(node, (child) => {
-      if (child.scope && child.scope !== owner.token)
-        throw new NativeStateError(
-          'invalid_handle',
-          'Renderer nodes cannot move between render roots'
-        )
-    })
+  // Every node an owner holds was given its scope with it (see adopt), so a
+  // subtree already owned by this root needs no check.
+  if (owner && node.owner !== owner) checkScope(node, owner.token)
   const previousOwner = node.owner
   if (previousOwner && previousOwner !== owner) previousOwner.detached(node)
   if (node.parent) detachChild(node.parent, node)
@@ -256,11 +271,7 @@ export function insertNode(parent: Node, node: Node, anchor?: Node): void {
   attachChild(parent, node, anchor ? childIndex(parent, anchor) : parent.staged.length)
   // Adapters may clear detached nodes directly, so a reinserted subtree is
   // always captured again from its current state.
-  visit(node, (child) => {
-    invalidate(child)
-    child.owner = owner
-    if (owner) child.scope = owner.token
-  })
+  adopt(node, owner)
   previousOwner?.changed()
   owner?.changed()
 }
@@ -274,10 +285,7 @@ export function removeNode(parent: Node, node: Node): void {
   invalidate(parent)
   node.parent = undefined
   // A detached capture would otherwise retain listeners an adapter releases.
-  visit(node, (child) => {
-    invalidate(child)
-    child.owner = undefined
-  })
+  adopt(node, undefined)
   owner?.changed()
 }
 

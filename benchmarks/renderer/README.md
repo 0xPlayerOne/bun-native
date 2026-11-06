@@ -7,6 +7,10 @@ per sample in two scenarios:
 - `text`: a single `replaceText`; exactly one native `set`, nothing else.
 - `row`: one keyed row replaced in place (insert a new row before it, remove
   it); exactly one `remove`, three `create`s and three `insert`s.
+- `move`: one box holding every row moves to the other of two sibling boxes
+  under the root; exactly one `insert`.
+
+`stageP50Ms` is the median time of the staging calls alone, before the commit.
 
 Each run also checks that the committed node count does not drift.
 
@@ -134,3 +138,46 @@ shifts it natively. Reading `children` of a list with scattered holes compacts
 it with a JavaScript pass, so a caller that alternates removals with full
 `children` reads (React's `clearContainer` reads `children[0]` each time) pays
 what the splice used to cost, not less.
+
+## Single-walk moves
+
+Linux x64 container, Bun `1.4.4-canary.1+da867c60b`, three processes each.
+"before" is `b5c2576`; "after" is this change. Ranges are per-process results;
+Solid and React rows are medians in µs of 200 samples over 1,000 rows
+(`sync` is staging only), React with `NODE_ENV=production`.
+
+| Scenario | Tree         | before stage p50 ms | after stage p50 ms | before p50 ms | after p50 ms |
+| -------- | ------------ | ------------------- | ------------------ | ------------- | ------------ |
+| `move`   | 1,003 nodes  | 0.0796–0.0816       | 0.0231–0.0246      | 1.69–1.80     | 1.22–1.49    |
+| `move`   | 5,005 nodes  | 0.388–0.398         | 0.0984–0.120       | 6.46–7.21     | 5.12–6.26    |
+| `move`   | 15,004 nodes | 1.34–1.47           | 0.369–0.416        | 20.7–23.9     | 19.6–20.5    |
+| `row`    | 15,001 nodes | 0.0116–0.0121       | 0.0103–0.0105      | 1.20–1.23     | 1.16–1.22    |
+
+| Clear half of 20,000 | before stage ms | after stage ms | before commit ms | after commit ms |
+| -------------------- | --------------- | -------------- | ---------------- | --------------- |
+| `front`              | 1.55–1.67       | 0.58–0.74      | 4.71–5.61        | 5.00–5.65       |
+| `alternate`          | 1.66–1.88       | 0.82–1.05      | 4.71–5.21        | 4.63–5.32       |
+| `middle`             | 1.47–1.49       | 0.59–0.66      | 4.58–7.34        | 4.38–4.73       |
+| `random`             | 4.25–5.07       | 2.36–2.72      | 5.81–6.36        | 5.64–6.19       |
+| `tail`               | 1.51–1.69       | 0.53–0.67      | 4.72–4.82        | 4.24–4.92       |
+
+| Keyed, 1,000 rows | before sync µs | after sync µs | before total µs | after total µs |
+| ----------------- | -------------- | ------------- | --------------- | -------------- |
+| Solid `swap`      | 112–138        | 105–135       | 418–486         | 447–464        |
+| Solid `clear`     | 438–566        | 285–335       |                 |                |
+| React `swap`      | 3,110–3,527    | 2,739–2,841   | 6,719–7,014     | 5,249–5,440    |
+| React `replace`   | 5,282–5,773    | 4,404–5,046   |                 |                |
+
+`insertNode` walked a moved subtree twice: once to reject nodes scoped to
+another render root, once to invalidate it and hand it to the new owner, each
+through a callback that also registered every node with its parent's
+`dirtyChildren`. A node only gains an owner together with that owner's scope,
+for its whole subtree, so a subtree its destination root already owns skips
+the scope walk. The remaining walk (shared with `removeNode`) clears captures
+directly and no longer fills `dirtyChildren`: each parent in the subtree has
+just lost its capture, so `snapshot()` scans all of its children anyway.
+
+The scope walk still runs for a subtree entering a root from outside it. The
+`move` commit is still dominated by recapturing the whole moved subtree, which
+the renderer keeps doing because an adapter may have cleared a detached
+subtree's lists directly.

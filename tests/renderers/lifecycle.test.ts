@@ -80,6 +80,46 @@ test('shared staging rejects cross-root movement while retaining the original ow
     await first.dispose()
   }))
 
+test('shared staging checks every descendant scope of a subtree entering a root', () =>
+  withApp(async (app) => {
+    const window = await app.openWindow({ title: 'Renderer descendant ownership' })
+    const scoped = createTextNode('Scoped')
+    let firstContainer!: Node
+    const first = createRenderRoot(window, ({ container }) => {
+      firstContainer = container
+      insertNode(container, scoped)
+    })
+    await first.ready
+    removeNode(firstContainer, scoped)
+    const outer = createElement('box')
+    const inner = createElement('text')
+    insertNode(outer, inner)
+    insertNode(inner, scoped)
+    let secondContainer!: Node
+    let rejected: unknown
+    const second = createRenderRoot(window, ({ container }) => {
+      secondContainer = container
+      try {
+        insertNode(container, outer)
+      } catch (error) {
+        rejected = error
+      }
+    })
+    await second.ready
+    expect(String(rejected)).toMatch(/between render roots/)
+    expect(outer.parent).toBeUndefined()
+    expect(secondContainer.children).toHaveLength(0)
+    // The same subtree moves freely within the root that already owns it.
+    const nested = createElement('box')
+    insertNode(firstContainer, nested)
+    insertNode(firstContainer, scoped)
+    insertNode(nested, scoped)
+    await first.flush()
+    expect(scoped.parent).toBe(nested)
+    expect(first.diagnostics.nodes).toBe(3)
+    await Promise.all([first.dispose(), second.dispose()])
+  }))
+
 test('retained native descendants are rescued before their obsolete ancestor is deleted', () =>
   withApp(async (app) => {
     const window = await app.openWindow({ title: 'Renderer retained descendants' })
