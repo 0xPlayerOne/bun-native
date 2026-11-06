@@ -243,7 +243,11 @@ describe('metric regression gate', () => {
       (v) => (v.accepted.mount.maxRatio = null),
       (v) => (v.accepted.mount.adr = ''),
       (v) => (v.accepted.mount.adr = '../unreviewed.md'),
-      (v) => (v.accepted.missing = { maxRatio: 100, adr: 'docs/decisions/0011-owned-processes.md' }),
+      (v) =>
+        (v.accepted.missing = {
+          maxRatio: 100,
+          adr: 'docs/decisions/0011-owned-processes.md',
+        }),
     ]
     for (const corrupt of invalid) {
       const value = structuredClone(original)
