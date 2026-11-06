@@ -485,7 +485,16 @@ def main():
                 wait_for(
                     lambda: application_record("stream-start"), "bounded command stream"
                 )
-                time.sleep(0.5)
+                if args.scenario == "scheduling":
+                    # The fixture bounds its commands (and so the native evidence)
+                    # instead of running a fixed time, so release the edit when
+                    # its queue is saturated, never after a fast host drained it.
+                    report["saturation"] = wait_for(
+                        lambda: application_record("saturated"),
+                        "saturated command queue",
+                    )
+                else:
+                    time.sleep(0.5)
                 require_owned_host(app, observed, owner, host)
                 if DRIVER.run(["xdotool", "getwindowfocus"]) != window:
                     raise RuntimeError("Window focus changed before native input")
@@ -531,6 +540,8 @@ def main():
                 capture_window(window, "after.png")
                 report["inputObservedAfterInjectionMs"] = input_observed
                 report["paintDuringProducerObserved"] = paint_during_producer
+                # Headroom under DRIVER.MAX_LOG_BYTES, kept so a creeping budget shows.
+                report["nativeEvidenceBytes"] = (output / "native.jsonl").stat().st_size
                 report["nativePaintRevisions"] = [
                     row.get("tree_revision")
                     for row in native_records()
