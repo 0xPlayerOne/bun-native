@@ -37,6 +37,11 @@ PAINT_OBSERVER_SPEC = importlib.util.spec_from_file_location(
 PAINT_OBSERVER = importlib.util.module_from_spec(PAINT_OBSERVER_SPEC)
 PAINT_OBSERVER_SPEC.loader.exec_module(PAINT_OBSERVER)
 MAX_LOG_BYTES = PAINT_OBSERVER.MAX_LOG_BYTES
+WINDOW_CAPTURE_SPEC = importlib.util.spec_from_file_location(
+    "native_window_capture", Path(__file__).with_name("native-window-capture.py")
+)
+WINDOW_CAPTURE = importlib.util.module_from_spec(WINDOW_CAPTURE_SPEC)
+WINDOW_CAPTURE_SPEC.loader.exec_module(WINDOW_CAPTURE)
 
 
 class Unsupported(RuntimeError):
@@ -853,7 +858,7 @@ def main():
             )
         enable_subreaper()
         report["platform"]["child_subreaper"] = True
-        missing = [tool for tool in ["xdotool", "import"] if not shutil.which(tool)]
+        missing = [tool for tool in ["xdotool"] if not shutil.which(tool)]
         if missing:
             raise Unsupported(
                 f"Missing native input/capture tools: {', '.join(missing)}"
@@ -861,7 +866,7 @@ def main():
         report["tools"] = {
             "python": sys.version,
             "xdotool": run(["xdotool", "version"]),
-            "imagemagick": run(["import", "-version"]),
+            "window_capture": "in-process libX11 XGetImage (ZPixmap) to PNG",
         }
         try:
             report["source"] = {
@@ -1087,8 +1092,11 @@ def main():
 
         def screenshot(name):
             path = args.output / name
-            run(["import", "-window", window, "-strip", str(path)])
+            # In-process capture: the fixed 3-second bound covers the X request
+            # and encoding, never ImageMagick process start-up.
+            capture = WINDOW_CAPTURE.capture_png(window, path, timeout=3)
             report.setdefault("screenshots", {})[name] = {
+                "capture_ms": capture["capture_ms"],
                 "bytes": path.stat().st_size,
                 "sha256": hashlib.sha256(path.read_bytes()).hexdigest(),
             }

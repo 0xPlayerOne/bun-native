@@ -1,6 +1,6 @@
 # Fixed-checkpoint retention research
 
-**Update:** the development-mode positives are explained by JSC DFG-compiled code retaining cells. See [settled-collection.md](settled-collection.md) for the measurements and how the required checks use them. The AOT-only observations below remain unexplained.
+**Update:** the development-mode positives are explained by JSC DFG-compiled code retaining cells. See [settled-collection.md](settled-collection.md) for the measurements and how the required checks use them. The AOT-only observations below are a measured runtime limitation: an eden collection while a direct-core mount is suspended keeps that mount reachable until shutdown. See [aot-eden-collection.md](aot-eden-collection.md).
 
 **Status: unresolved.** A failed direct-core AOT benchmark and a later Solid unit-test failure remain recorded. The no-framework controls establish that two explicit full collections can leave short-lived objects observable without importing Bun Native, Solid, React, a native host or a DOM. Those positive controls occurred in development mode; they do **not** explain the original native AOT failure. No renderer assertion, benchmark oracle, mutation limit or ownership check was relaxed by this research increment.
 
