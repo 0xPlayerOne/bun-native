@@ -85,7 +85,9 @@ function records<T>(type: string): T[] {
     return []
   }
   const result: T[] = []
-  for (const line of text.split('\n')) {
+  // The host appends whole lines while this polls: a last line without its
+  // newline is still being written and is read on the next poll.
+  for (const line of text.slice(0, text.lastIndexOf('\n') + 1).split('\n')) {
     if (!line) continue
     const value = JSON.parse(line) as { nonce?: string; type?: string }
     if (value.nonce === nonce && value.type === type) result.push(value as T)

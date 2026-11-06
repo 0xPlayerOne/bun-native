@@ -133,6 +133,12 @@ class PointerPeer {
   })
   private readonly lines = this.process.stdout.pipeThrough(new TextDecoderStream()).getReader()
   private buffer = ''
+  private readonly commandReplies: string[] = []
+
+  /** Bounded diagnostic only: the last compositor-acknowledged peer commands. */
+  recentCommands(): string[] {
+    return [...this.commandReplies]
+  }
 
   async line(): Promise<string> {
     for (;;) {
@@ -151,6 +157,8 @@ class PointerPeer {
     this.process.stdin.write(command + '\n')
     await this.process.stdin.flush()
     const reply = await this.line()
+    this.commandReplies.push(command.slice(0, 96) + ' -> ' + reply.slice(0, 96))
+    if (this.commandReplies.length > 6) this.commandReplies.shift()
     if (reply !== 'ok') throw new Error(`Input peer failed on ${command}: ${reply}`)
   }
   async close() {
@@ -206,7 +214,9 @@ function records<T>(type: string, field: 'type' | 'stage' = 'type'): T[] {
     return []
   }
   const result: T[] = []
-  for (const line of text.split('\n')) {
+  // The host appends whole lines while this polls: a last line without its
+  // newline is still being written and is read on the next poll.
+  for (const line of text.slice(0, text.lastIndexOf('\n') + 1).split('\n')) {
     if (!line) continue
     const value = JSON.parse(line) as { nonce?: string; type?: string; stage?: string }
     if (value.nonce === nonce && value[field] === type) result.push(value as T)
@@ -378,7 +388,33 @@ async function qualify(app: NativeApplication) {
   let origin = (await mapped(TITLE)).rect
   const button = bounds(initial, (node) => node.kind === 'button')
   await clickAt(...center(origin, button))
-  await waitFor(() => clicks === 1, 'the compositor click')
+  try {
+    await waitFor(() => clicks === 1, 'the compositor click')
+  } catch (error) {
+    // Evidence for #526 only: the original error, deadline and assertion are
+    // unchanged. It separates an input peer that never acknowledged its commands
+    // from a press that reached the window somewhere other than the button
+    // (the painted focus moved off the input without reaching the button).
+    console.error(
+      'Wayland click failure evidence: ' +
+        JSON.stringify({
+          mode,
+          mappedRect: origin,
+          rectNow: (await view(TITLE))?.rect,
+          buttonBounds: button,
+          target: center(origin, button),
+          paintedRevision: initial.rendered.tree_revision,
+          peerReplies: pointer.recentCommands(),
+          seats: await swaymsg('-t', 'get_seats').catch(() => 'unavailable'),
+          layouts: records<Layout>('layout').map((entry) => [
+            entry.tree_revision,
+            (entry.layout as { focused_node_id?: number | null }).focused_node_id,
+          ]),
+          clicks,
+        }).slice(0, 4_000)
+    )
+    throw error
+  }
   await window.batch((batch) => batch.set(ui.label, { kind: 'text', text: 'Clicks: 1' }))
   await painted(window, (nodes) => nodes.some((node) => node.text === 'Clicks: 1'), 'the click')
   record('pointerClick', { at: center(origin, button), clicks })
