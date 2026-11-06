@@ -11,13 +11,18 @@ import { MAX_SCROLL_OFFSET, parseCommand, ProtocolError } from '@bun-native/prot
 import assert from 'node:assert/strict'
 import { resolve } from 'node:path'
 
-async function withApp(run: (app: NativeApplication) => Promise<void>, keyboard = true) {
+async function withApp(
+  run: (app: NativeApplication) => Promise<void>,
+  keyboard = true,
+  extra: string[] = []
+) {
   const app = await createApplication({
     executable: process.execPath,
     args: [
       resolve(import.meta.dir, 'overlay-peer.ts'),
       '--overlays',
       ...(keyboard ? ['--keyboard'] : []),
+      ...extra,
     ],
     requestTimeoutMs: 1_000,
   })
@@ -129,6 +134,42 @@ describe('focus, scroll and overlay keyboard requests (headless subprocess)', ()
       )
       expect(window.revision).toBe(3)
     }))
+
+  test('a disabled input is not a focus target, like a disabled button', () =>
+    withApp(
+      async (app) => {
+        const window = await app.openWindow({ title: 'Disabled focus' })
+        const field = await window.batch((batch) => {
+          const field = batch.create({ kind: 'input', value: 'name' })
+          batch.append(window.root, field)
+          batch.focus(field)
+          return field
+        })
+        await assert.rejects(
+          window.batch((batch) => {
+            batch.set(
+              field,
+              { kind: 'input', value: 'name', disabled: true },
+              window.input(field).revision
+            )
+            batch.focus(field)
+          }),
+          state('invalid_state')
+        )
+        // Read-only inputs stay focusable; the rejected batch changed nothing.
+        await window.batch((batch) => {
+          batch.set(
+            field,
+            { kind: 'input', value: 'name', read_only: true },
+            window.input(field).revision
+          )
+          batch.focus(field)
+        })
+        expect(window.revision).toBe(2)
+      },
+      true,
+      ['--input-states']
+    ))
 
   test('focus stays inside the topmost modal overlay', () =>
     withApp(async (app) => {

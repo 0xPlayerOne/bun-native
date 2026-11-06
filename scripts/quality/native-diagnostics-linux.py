@@ -259,11 +259,16 @@ def main():
         observed.update({row["pid"]: row["start_ticks"] for row in rows})
         return {row["pid"] for row in rows}
 
+    # Both logs are polled in loops; EventLog still bounds the whole file on
+    # each read but parses only the records appended since the last one.
+    application_log = DRIVER.EventLog(output / "application.jsonl", nonce)
+    native_log = DRIVER.EventLog(output / "native.jsonl", nonce)
+
     def application_records():
-        return DRIVER.read_events(output / "application.jsonl", nonce, 0)
+        return application_log.read()
 
     def native_records():
-        return DRIVER.read_events(output / "native.jsonl", nonce, 0)
+        return native_log.read()
 
     def wait_for(predicate, description, timeout=10):
         until = time.monotonic() + timeout

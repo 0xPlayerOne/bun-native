@@ -1,6 +1,6 @@
 import { afterEach, expect, test } from 'bun:test'
 import { existsSync } from 'node:fs'
-import { readdir, readFile, rm, writeFile } from 'node:fs/promises'
+import { copyFile, mkdir, readdir, readFile, rm, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import {
   dataDirectory,
@@ -107,6 +107,48 @@ test.skipIf(!posix)(
     expect(Bun.spawnSync([launcher!], { stderr: 'pipe' }).exitCode).toBe(1)
   }
 )
+
+test('each launcher refuses a pointer that is not exactly versions/<name>', async () => {
+  const root = join(await temporary(), 'install')
+  await mkdir(join(root, 'bin'), { recursive: true })
+  const launcher = join(root, 'bin', posix ? 'launch' : 'launch.cmd')
+  await writeFile(launcher, launcherScript(posix ? 'linux' : 'win32', root), { mode: 0o755 })
+  const run = async (pointer: string) => {
+    await writeFile(join(root, 'current'), pointer)
+    return Bun.spawnSync([launcher], { stdout: 'pipe', stderr: 'pipe' })
+  }
+  for (const pointer of [
+    '',
+    '../../bin/sh',
+    '/versions/a',
+    'versions',
+    'versions/',
+    'versions/.',
+    'versions/..',
+    'versions/...',
+    'versions/../x',
+    'versions/a/b',
+    'versions/a b',
+    'versions/a;b',
+    'versions/a&b',
+    'versions/a\\b',
+    'versions/a\n../x',
+  ])
+    expect([pointer, (await run(pointer + '\n')).exitCode]).toEqual([pointer, 1])
+  // A well-formed pointer passes validation and reaches the application.
+  const release = join(root, 'versions', '1.0.0-dev.1')
+  await mkdir(release, { recursive: true })
+  if (posix)
+    await writeFile(join(release, 'application'), '#!/bin/sh\necho reached\n', { mode: 0o755 })
+  else await copyFile(process.execPath, join(release, 'application.exe'))
+  await writeFile(join(root, 'current'), 'versions/1.0.0-dev.1\n')
+  const reached = Bun.spawnSync([launcher, ...(posix ? [] : ['--version'])], {
+    stdout: 'pipe',
+    stderr: 'pipe',
+  })
+  expect(reached.exitCode).toBe(0)
+  expect(reached.stdout.toString().trim()).not.toBe('')
+})
 
 test('platform integrations write a desktop entry, an app wrapper and a Start-menu command', async () => {
   for (const platform of ['linux', 'darwin', 'win32'] as const) {

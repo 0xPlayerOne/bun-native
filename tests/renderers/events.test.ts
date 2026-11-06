@@ -12,6 +12,7 @@ import {
   setProperty,
   type EventProperty,
   type Node,
+  type PropertyName,
 } from '@bun-native/renderer'
 import { withApp } from './support.ts'
 
@@ -122,7 +123,7 @@ describe('shared event props over the actual public-core subprocess contract', (
           [target, 'target'],
         ] as const)
           for (const suffix of ['Capture', ''] as const)
-            setProperty(node, property + suffix, (event: NativeUIEvent) => {
+            setProperty(node, (property + suffix) as PropertyName, (event: NativeUIEvent) => {
               expect(event.type).toBe(type)
               if (event.type === 'input') setProperty(input, 'value', event)
               calls.push({ name: `${name}:${property}${suffix}`, event })
@@ -324,7 +325,9 @@ describe('shared event props over the actual public-core subprocess contract', (
       'onWheel',
       'onKeyDownCaptureCapture',
     ])
-      expect(() => setProperty(createElement('box'), name, () => {})).toThrow('native-property:')
+      expect(() => setProperty(createElement('box'), name as PropertyName, () => {})).toThrow(
+        'native-property:'
+      )
   })
 
   test('shared leaf snapshots reject scroll layout without changing native ownership', () =>

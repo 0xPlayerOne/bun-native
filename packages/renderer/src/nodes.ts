@@ -54,6 +54,12 @@ type Properties = EventListeners & {
   accessibleLabel?: string
 }
 
+/** Every native element tag the renderer accepts. */
+export type ElementTag = Element['kind']
+
+/** Every property name `setProperty` accepts: element props and event handlers. */
+export type PropertyName = keyof Properties
+
 const isContainer = (kind: Node['kind']) => kind === 'box' || kind === 'split' || kind === 'overlay'
 
 const nodes = new WeakSet<object>()
@@ -70,7 +76,8 @@ export class Node implements RendererNode {
   holes = 0
   firstHole = 0
   lastHole = 0
-  readonly properties: Properties = {}
+  /** Read-only to adapters: setProperty validates, stores and invalidates captures. */
+  readonly properties: Readonly<Properties> = {}
   parent: Node | undefined
   owner: Owner | undefined
   scope: object | undefined
@@ -110,7 +117,7 @@ export function asNode(value: RendererNode): Node {
   return value as Node
 }
 
-export function createElement(tag: string): Node {
+export function createElement(tag: ElementTag): Node {
   if (
     tag !== 'box' &&
     tag !== 'text' &&
@@ -334,8 +341,8 @@ export function replaceText(node: Node, value: string): void {
   node.owner?.changed()
 }
 
-export function setProperty(node: Node, name: string, value: unknown): void {
-  const props = node.properties
+export function setProperty(node: Node, name: PropertyName, value: unknown): void {
+  const props = node.properties as Properties
   if (isEventProperty(name)) {
     if (node.kind === 'text-node')
       throw new TypeError('Text literals cannot own native event handlers')

@@ -15,9 +15,9 @@ from what is **unsupported**. Unsupported or not-run is never reported as passed
   Hangul jamo are each one step. The platform IME interface addresses UTF-16 code
   units; conversions clamp and never split a scalar value
   (`native/gpui-host/src/input/editing.rs`).
-- **Clipboard.** Ctrl/Cmd+C, X, V copy, cut and paste the selection. Pasted line
-  feeds (`\n`) become spaces, because the input is single-line. The host does
-  not translate carriage returns, so a CR LF paste keeps its CR.
+- **Clipboard.** Ctrl/Cmd+C, X, V copy, cut and paste the selection. Each pasted
+  line break (`\n`, `\r` or `\r\n`) becomes one space, because the input is
+  single-line.
 - **States (`input_states_v1`, optional capability, no protocol bump).** The input
   element accepts `disabled` and `read_only` booleans. Only `true` is sent, so
   ordinary inputs keep the same wire form. Core rejects either state locally with

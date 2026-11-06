@@ -219,6 +219,36 @@ describe('owned process lifecycle edges (headless subprocess)', () => {
     }, 'ack-error')
   })
 
+  test('a failed acknowledgement other than an unknown handle ends the application with it', async () => {
+    await withProcesses(async (app, directory) => {
+      const window = await app.openWindow({ title: 'Ack failure' })
+      await window.spawnProcess('shell', {}, () => {})
+      for (
+        let turn = 0;
+        turn < 400 && !peerRequests(directory, 'acknowledge_process_output').length;
+        turn += 1
+      )
+        await Bun.sleep(5)
+      expect(peerRequests(directory, 'acknowledge_process_output').length).toBeGreaterThan(0)
+      const error = await failure(app.shutdown())
+      expect(error).toBeInstanceOf(NativeCommandError)
+      expect((error as NativeCommandError).code).toBe('native_failure')
+    }, 'ack-failure')
+  })
+
+  test('closing the window settles an in-flight control as cancelled', async () => {
+    await withProcesses(async (app, directory) => {
+      const window = await app.openWindow({ title: 'Close' })
+      const child = await window.spawnProcess('shell', {}, () => {})
+      const pending = failure(child.write(new Uint8Array([1])))
+      for (let turn = 0; turn < 400 && !peerRequests(directory, 'write_process').length; turn += 1)
+        await Bun.sleep(5)
+      await window.close()
+      expect(service(await pending)).toEqual(['processes', 'cancelled'])
+      expect(child.active).toBe(false)
+    }, 'hold')
+  })
+
   test('shutdown revokes processes; later calls send nothing', async () => {
     await withProcesses(async (app, directory) => {
       const window = await app.openWindow({ title: 'Shutdown' })

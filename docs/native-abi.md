@@ -3,7 +3,7 @@
 This is the implemented private Bun-to-GPUI contract for BN1, shared native interactions and the initial BN4 layout primitives. Application code
 uses [`@bun-native/core`](../packages/core/README.md); Solid and React adapters
 must target that same public API. They do not import this transport or construct
-numeric handles. Protocols 1–8 are superseded without a compatibility fallback.
+numeric handles. Protocols 1–10 are superseded without a compatibility fallback.
 Protocol 11 requires `tree`, `input_revisions`, `layout_v1`, `interactions_v1` and `window_display_v1`; missing features or
 older versions fail launch before a window is opened. The [layout contract](native-layout.md)
 defines the supported style subset; the [interaction contract](native-events.md)
