@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.21.0](https://github.com/0xPlayerOne/bun-native/compare/v0.20.3...v0.21.0) (2026-11-06)
+
+
+### Features
+
+* **native:** React delete confirmation, IBus Hangul IME qualification, launcher-stream diagnostics ([#545](https://github.com/0xPlayerOne/bun-native/issues/545)) ([12eb250](https://github.com/0xPlayerOne/bun-native/commit/12eb2502e32741ef716799af94693316a8370fb6))
+
+
+### Tests
+
+* **macOS:** capture live target on missing AOT drag entry ([#538](https://github.com/0xPlayerOne/bun-native/issues/538)) ([0e46527](https://github.com/0xPlayerOne/bun-native/commit/0e465273fd89f0459db7d2e87f2ea2bb8f3b2589))
+
 ## [0.20.3](https://github.com/0xPlayerOne/bun-native/compare/v0.20.2...v0.20.3) (2026-11-06)
 
 
