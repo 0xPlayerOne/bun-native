@@ -2,53 +2,53 @@
   "schemaVersion": 2,
   "bun": {
     "version": "1.4.4-canary.1",
-    "revision": "da867c60bf0bcbf9d6d36994f8ca0efa42075115",
-    "cliRevision": "1.4.4-canary.1+da867c60b",
-    "source": "https://github.com/oven-sh/bun/tree/da867c60bf0bcbf9d6d36994f8ca0efa42075115",
+    "revision": "b1007f1177fd402fae67387b8548cae5ae9b5707",
+    "cliRevision": "1.4.4-canary.1+b1007f117",
+    "source": "https://github.com/oven-sh/bun/tree/b1007f1177fd402fae67387b8548cae5ae9b5707",
     "compileArguments": ["compile", "--no-script", "--production"],
     "distribution": "npm",
     "packages": {
       "linux-x64": {
         "name": "@oven/bun-linux-x64",
-        "version": "1.4.4-canary.20261029.1+da867c6",
-        "url": "https://registry.npmjs.org/@oven/bun-linux-x64/-/bun-linux-x64-1.4.4-canary.20261029.1.tgz",
-        "integrity": "sha512-fs1Yta+8YNs62dxxBGjCccg3tu1sn2xw8SqWx9KaNM/KkEeVp+NWcylDJQs6JFPndE1jA8PIOmmxXvzpnhvkdg==",
-        "unpackedSize": 138468972
+        "version": "1.4.4-canary.20261105.1+b1007f1",
+        "url": "https://registry.npmjs.org/@oven/bun-linux-x64/-/bun-linux-x64-1.4.4-canary.20261105.1.tgz",
+        "integrity": "sha512-eJqVFA3brmF4UPBynqjPbQEKvId1TvdThVuYUmtP4J/VVs42iKOd6M7mfp4DnRd4sOqY7FClDaPf04J4tun5Gw==",
+        "unpackedSize": 140680988
       },
       "linux-arm64": {
         "name": "@oven/bun-linux-aarch64",
-        "version": "1.4.4-canary.20261029.1+da867c6",
-        "url": "https://registry.npmjs.org/@oven/bun-linux-aarch64/-/bun-linux-aarch64-1.4.4-canary.20261029.1.tgz",
-        "integrity": "sha512-wdsFsIb7HCnGHu90SHCK5GFQDhm7GeKahWHJoYwIpRzDw3DBVr6jED7vVmTLWK6YMJjpZz1/7omVeJ/uU9gdOw==",
-        "unpackedSize": 139523940
+        "version": "1.4.4-canary.20261105.1+b1007f1",
+        "url": "https://registry.npmjs.org/@oven/bun-linux-aarch64/-/bun-linux-aarch64-1.4.4-canary.20261105.1.tgz",
+        "integrity": "sha512-6ASK2HEbe9/DK7KUXVjRifcQUNY6Cykz/JP8Z1uoNOMlUlh7NeC5pWJA3qWsaWvB/sy3Ozl0fUNNaT9xt31ebw==",
+        "unpackedSize": 142145540
       },
       "darwin-x64": {
         "name": "@oven/bun-darwin-x64",
-        "version": "1.4.4-canary.20261029.1+da867c6",
-        "url": "https://registry.npmjs.org/@oven/bun-darwin-x64/-/bun-darwin-x64-1.4.4-canary.20261029.1.tgz",
-        "integrity": "sha512-No+ciNCX3xdS9WZKpm1riQBHeLfWsY4PTuFJfsS+djYUb2d1gJJVrNWxuLN8J3EeTCqaz4EkKHr2WgD+//kTbQ==",
-        "unpackedSize": 131941441
+        "version": "1.4.4-canary.20261105.1+b1007f1",
+        "url": "https://registry.npmjs.org/@oven/bun-darwin-x64/-/bun-darwin-x64-1.4.4-canary.20261105.1.tgz",
+        "integrity": "sha512-QJLJxX78hR/rZTY/j/yQJ2Baf/x4m74HzDG5Z3ePGWM9f8gCIbVFd17KHEvH7F4VbrGZF+sLAyH/WXzVMkGuvA==",
+        "unpackedSize": 134455089
       },
       "darwin-arm64": {
         "name": "@oven/bun-darwin-aarch64",
-        "version": "1.4.4-canary.20261029.1+da867c6",
-        "url": "https://registry.npmjs.org/@oven/bun-darwin-aarch64/-/bun-darwin-aarch64-1.4.4-canary.20261029.1.tgz",
-        "integrity": "sha512-dfhnbTwtbjme43X1KTtZ/U/pXeKx7L5GunsPfJ/83imaHNmQFddsCg6DvAlvM9f64UX6Vx7e/q8bwMvX85C/+g==",
-        "unpackedSize": 121110360
+        "version": "1.4.4-canary.20261105.1+b1007f1",
+        "url": "https://registry.npmjs.org/@oven/bun-darwin-aarch64/-/bun-darwin-aarch64-1.4.4-canary.20261105.1.tgz",
+        "integrity": "sha512-qEQgT/3BrHUFchVvCzEMIw/SrQTR+9waTTQo/FLdyOt5OiFUdTlKrHDjIS9w9XMK+b6UdA6iVJs+B2VVnWv6iw==",
+        "unpackedSize": 123685464
       },
       "win32-x64": {
         "name": "@oven/bun-windows-x64",
-        "version": "1.4.4-canary.20261029.1+da867c6",
-        "url": "https://registry.npmjs.org/@oven/bun-windows-x64/-/bun-windows-x64-1.4.4-canary.20261029.1.tgz",
-        "integrity": "sha512-APMIvCsv+dckccAqvii/8V4HEMadAIZIcIEVZZTYcS8OKMdfaD2hgUAk8AGScB8zL/3IUCAy05nFyLAGIRzgKg==",
-        "unpackedSize": 149863939
+        "version": "1.4.4-canary.20261105.1+b1007f1",
+        "url": "https://registry.npmjs.org/@oven/bun-windows-x64/-/bun-windows-x64-1.4.4-canary.20261105.1.tgz",
+        "integrity": "sha512-cy0DX5IP29NyjhNvPyOYqlsThwJlaKOp/3YnT2W9CojTzgQm9leZHmNQEIu/Kbip4M3LTEWd6gtVL73HvCoR6Q==",
+        "unpackedSize": 149885955
       },
       "win32-arm64": {
         "name": "@oven/bun-windows-aarch64",
-        "version": "1.4.4-canary.20261029.1+da867c6",
-        "url": "https://registry.npmjs.org/@oven/bun-windows-aarch64/-/bun-windows-aarch64-1.4.4-canary.20261029.1.tgz",
-        "integrity": "sha512-fueVZ65A5h/sJfkABrFIquI2KnHv3Xsw3idoLUGZI3eW/FWs9Vi+5Ay0Pn6uQf5fKJmi3yICV/aoXoJs3Idi9g==",
-        "unpackedSize": 131153931
+        "version": "1.4.4-canary.20261105.1+b1007f1",
+        "url": "https://registry.npmjs.org/@oven/bun-windows-aarch64/-/bun-windows-aarch64-1.4.4-canary.20261105.1.tgz",
+        "integrity": "sha512-CP7pwT7C7LzhiTBnPPzMpA9DQgP2fZBLuCweSJStZTuu3ig3qzwI3gvqZcInPD7ZtTLZ6oSXGCkSqBMlMpgJBw==",
+        "unpackedSize": 133801483
       }
     }
   },

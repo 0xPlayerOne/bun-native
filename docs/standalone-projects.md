@@ -115,8 +115,11 @@ the output directory must be empty.
 
 `check` is Bun's type checker alone. `format` and `format:check` run the installed CLI's
 built-in formatter command, which uses the template style unless the project supplies its
-own formatter config and always skips `vendor/`. The installed CLI's `check .` runs both the
-type checker and the formatter check, and `doctor .` reports the Bun pin, platform and
+own formatter config and always skips `vendor/`. `lint` runs the CLI's pinned oxlint (an exact
+`oxlint` devDependency of every standalone project, locked in the seeded `bun.lock`) and never
+lints `vendor/`; the generated `tsconfig.json` is emitted in the formatter's style so a fresh
+project passes `format --check`. The installed CLI's `check .` runs the type checker, the
+formatter check and the lint step, and `doctor .` reports the Bun pin, platform and
 verified installed package set without launching anything:
 
 ```sh

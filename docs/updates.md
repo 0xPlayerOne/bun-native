@@ -33,7 +33,7 @@ INSTALL_DIR/
 
 A crash at any point leaves a stale lock and possibly staged or unreferenced files. The next `install`, `rollback` or `recover` takes over a lock whose process is no longer alive, removes those leftovers and leaves exactly the last committed release. A lock held by a live process fails as `busy`. Process ID reuse after a crash can make a stale lock look live. Remove it once you know no updater is running.
 
-`rollback` re-hashes the retained previous release, refuses it if any file is missing or modified, and swaps current and previous with the same atomic commit. Running it again rolls forward. Neither operation touches `data/`. `status` resolves the active directory from `state.json` and fails if that directory is missing. Generated launchers read the derived `current` pointer instead (see below). Payloads come from a local directory or an HTTPS base URL. Plain HTTP is accepted only for loopback test servers, and redirects are refused.
+`rollback` re-hashes the retained previous release, refuses it if any file is missing or modified, and swaps current and previous with the same atomic commit. Running it again rolls forward. Neither operation touches `data/`. [update-lifecycle.md](update-lifecycle.md) adds a launcher contract that re-verifies the current release before returning its executable. `status` resolves the active directory from `state.json` and fails if that directory is missing. Generated launchers read the derived `current` pointer instead (see below). Payloads come from a local directory or an HTTPS base URL. Plain HTTP is accepted only for loopback test servers, and redirects are refused.
 
 ## Launchers, desktop integration and uninstall
 
@@ -98,6 +98,6 @@ The crash, launcher-execution and symbolic-link tests are skipped on Windows, be
 ## Remaining for #249
 
 - **Signing and notarization:** Apple Developer ID signing and notarization, Windows Authenticode, and Linux package signatures are not configured or verified. Ed25519 manifest signing is the updater's own trust root. It does not replace OS code signing.
-- **Platform installers:** not implemented: native installer formats (`.dmg`, MSI/MSIX, `.deb`/AppImage), a self-contained installer executable (the tools currently need Bun on the target), Windows `.lnk` shortcuts, real `.app` bundles holding the release, and automatic rollback after a failed health check.
+- **Platform installers:** not implemented: native installer formats (`.dmg`, MSI/MSIX, `.deb`/AppImage), a self-contained installer executable (the tools currently need Bun on the target), Windows `.lnk` shortcuts, real `.app` bundles holding the release. Automatic rollback after a failed health check is implemented experimentally; see [update lifecycle](update-lifecycle.md).
 - **Native evidence:** these checks have not yet been run with real `native build` output on clean macOS and Windows machines, or with a running application. Windows replacement of running executables is not handled.
-- **Key management:** key rotation, revocation and a release workflow that signs with a configured CI secret are not implemented.
+- **Key management:** key sets with key ids, rotation signed by a trusted key, permanent revocation and a minimum manifest sequence are implemented experimentally (see [update lifecycle](update-lifecycle.md)); a release workflow that signs with a configured CI secret and a CLI for keyed signing are not.

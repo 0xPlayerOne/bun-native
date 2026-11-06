@@ -16,10 +16,10 @@ import subprocess
 import time
 from pathlib import Path
 
-BUN_REVISION = "da867c60bf0bcbf9d6d36994f8ca0efa42075115"
+BUN_REVISION = "b1007f1177fd402fae67387b8548cae5ae9b5707"
 BUN_DIGEST = {
-    "bytes": 138468432,
-    "sha256": "fe406996b9915f388e3fad9e6e29ece9c7cb81e06257bbcb4c50f91691b46810",
+    "bytes": 140680448,
+    "sha256": "8f55345e8a878f2b4f9b233184ffa424fdd67667fa70c16b1f11a1ae8387e9ab",
 }
 HOST_DIGEST = {
     "bytes": 29478384,
