@@ -108,10 +108,16 @@ export interface ServiceCapabilities {
     | Readonly<{ availability: 'unavailable'; reason: 'unsupported_platform' }>
   /**
    * `showMessageDialog`/`showConfirmDialog`: an in-window modal overlay drawn
-   * by core on every platform, not an OS alert. Needs no launch grant.
+   * by core on every platform and needing no launch grant, or, when the host
+   * advertises `task_dialogs_v1` (Windows) and `permissions.taskDialogs` is
+   * `allow`, an OS task dialog owned by the window.
    */
   readonly messageDialogs:
-    | Readonly<{ availability: 'available'; scope: 'owned_window'; backend: 'modal_overlay' }>
+    | Readonly<{
+        availability: 'available'
+        scope: 'owned_window'
+        backend: 'modal_overlay' | 'task_dialog'
+      }>
     | Readonly<{ availability: 'unavailable'; reason: 'unsupported_host' }>
   readonly notifications:
     | Readonly<{
@@ -252,7 +258,11 @@ export function serviceCapabilities(
         ? Object.freeze({
             availability: 'available',
             scope: 'owned_window',
-            backend: 'modal_overlay',
+            // The OS backend needs both the host capability and the grant.
+            backend:
+              capabilities.includes('task_dialogs_v1') && policy.task_dialogs
+                ? 'task_dialog'
+                : 'modal_overlay',
           })
         : Object.freeze({ availability: 'unavailable', reason: 'unsupported_host' }),
     notifications: capabilities.includes('notifications_v1')

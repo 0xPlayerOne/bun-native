@@ -855,6 +855,32 @@ Solid and React components call the same methods on the window they render
 into; there is no adapter-specific helper. See
 [ADR 0014](decisions/0014-message-dialogs.md).
 
+### OS task dialogs (Windows)
+
+On Windows, `permissions: { taskDialogs: 'allow' }` asks for an OS task dialog
+instead of the overlay. Core uses it when the host advertises the optional
+`task_dialogs_v1` capability, and `serviceCapabilities.messageDialogs.backend`
+then reads `'task_dialog'`; without the grant or the capability the overlay is
+used and nothing else changes. The public options, validation, queueing,
+abort, owner-close and result shape are the same. See
+[ADR 0018](decisions/0018-windows-task-dialogs.md).
+
+- The host shows each dialog with `TaskDialogIndirect` on a dedicated thread,
+  parented to the window's `HWND`; the OS disables the owner while it is open
+  and GPUI's UI thread never enters the dialog's message loop.
+- `title` is the window title, `message` the main instruction and `detail` the
+  content. Button `kind` has no OS equivalent and is ignored. Escape and the
+  close box end the dialog only when it has a `cancelButton` (that button is
+  the result) or is `dismissible`; otherwise they do nothing.
+- Abort, owner close and shutdown end the dialog by posting `TDM_CLICK_BUTTON`
+  to it; a result that races the close is dropped.
+- `TaskDialogIndirect` is in Common Controls 6, which the manifest GPUI embeds
+  in the host already requests. The entry point is resolved at run time, so a
+  host without it reports the capability absent instead of failing to start.
+- Evidence is hosted only: [`task-dialogs.ts`](../tests/native/task-dialogs.ts)
+  reads and presses the real dialog through a UI Automation oracle. Nothing
+  has been run on a physical Windows desktop.
+
 The [Native Linux workflow](../.github/workflows/native-linux.yml) runs
 [`tests/native/message-dialogs.ts`](../tests/native/message-dialogs.ts) in
 development and inspected AOT. It uses only public core, real XTest input and
@@ -1109,7 +1135,7 @@ already exists. The linked follow-ups belong to
 | Global shortcuts  | `registerGlobalShortcut`; `globalShortcuts` grant             | X11 dev+AOT verified with release host                                                              | Unavailable (`unsupported_platform`)                               | Unavailable                                       | Unavailable                             | macOS/Windows backends, Wayland portal design and keyboard-map change tracking. [#301](https://github.com/0xPlayerOne/bun-native/issues/301).                                                             |
 | Application menu  | `setMenuBar` / `clearMenuBar`; `appMenu` grant                | Unavailable (GPUI stores menus only)                                                                | Unavailable (GPUI stores menus only)                               | AppKit `NSMenu` bar; hosted CI only (AX oracle)   | Unavailable                             | Context and Dock menus, dynamic validation, Linux/Windows menu bars drawn by the application. [#239](https://github.com/0xPlayerOne/bun-native/issues/239).                                               |
 | File dialogs      | `showOpenDialog` / `showSaveDialog`; `fileDialogs` grant      | xdg-desktop-portal (GTK) dev+AOT verified                                                           | Portal (GTK) opens unparented; abort and compositor close verified | Unavailable                                       | Unavailable                             | macOS/Windows panels, Wayland parenting, sandboxed document-portal paths and explicit file-grant conversion. [#239](https://github.com/0xPlayerOne/bun-native/issues/239).                                |
-| Message dialogs   | `showMessageDialog` / `showConfirmDialog`; no grant           | Modal overlay dev+AOT verified locally                                                              | Modal overlay (same core code); unqualified on Wayland             | Modal overlay; unqualified                        | Modal overlay; unqualified              | Native `NSAlert`/task dialogs with owned modality, programmatic close and qualification. [#239](https://github.com/0xPlayerOne/bun-native/issues/239).                                                    |
+| Message dialogs   | `showMessageDialog` / `showConfirmDialog`; no grant           | Modal overlay dev+AOT verified locally                                                              | Modal overlay (same core code); unqualified on Wayland             | Modal overlay; unqualified                        | Modal overlay; unqualified              | `NSAlert` (macOS). Windows has an opt-in `taskDialogs` backend, hosted evidence only. [#239](https://github.com/0xPlayerOne/bun-native/issues/239).                                                       |
 | Notifications     | `postNotification`; `notifications` grant                     | Freedesktop D-Bus (dunst) dev+AOT verified                                                          | Freedesktop (dunst) post and withdraw verified                     | Unavailable                                       | Unavailable                             | macOS/Windows backends, additional notification servers, named actions and replacement. [#302](https://github.com/0xPlayerOne/bun-native/issues/302).                                                     |
 | Drag/drop         | `registerDropTarget`; `dragDrop` grant                        | XDND dev+AOT verified locally (core/Solid/React)                                                    | Unavailable (`unsupported_platform`)                               | AppKit; hosted CI only (NSDraggingSession source) | OLE; hosted CI only (DoDragDrop source) | Other payload kinds and file promises, refusal (GPUI always accepts), Wayland, physical devices and real file managers, Windows resolution. [#303](https://github.com/0xPlayerOne/bun-native/issues/303). |
 | Filesystem grants | `openFileGrant`; `filesystemRoots` launch roots               | openat2 dev+AOT verified locally                                                                    | Advertised; display-independent, not run on Wayland                | `openat` walk; CI-only                            | `NtCreateFile` walk; CI-only            | OS file selection and dropped files as explicit user grants. [#304](https://github.com/0xPlayerOne/bun-native/issues/304).                                                                                |

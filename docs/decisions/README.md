@@ -39,7 +39,7 @@ Two records share number 0013. [Release readiness](0013-release-readiness.md)
 landed first, in #483, and [owned OS file dialogs](0013-native-file-dialogs.md)
 followed in #481. The files keep their names, so existing links stay valid.
 Cite either record by its file name, not by "ADR 0013" alone. The highest
-number is 0017 and there is no 0016, so the next new record is 0018.
+number is 0018 and there is no 0016, so the next new record is 0019.
 
 ## Current decisions
 
@@ -59,6 +59,7 @@ number is 0017 and there is no 0016, so the next new record is 0018.
 - [0014 — Message and confirm dialogs on the modal overlay](0014-message-dialogs.md)
 - [0015 — Application menu bar](0015-application-menu-bar.md)
 - [0017 — Wayland qualification and service backends](0017-wayland.md)
+- [0018 — Windows task dialogs for message and confirm dialogs](0018-windows-task-dialogs.md)
 - [Native host protocol 11](../native-abi.md)
 - [Active roadmap](https://github.com/0xPlayerOne/bun-native/issues/1)
 - [Architecture overview](../architecture.md)

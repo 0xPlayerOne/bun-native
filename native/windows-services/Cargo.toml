@@ -16,8 +16,11 @@ windows-sys = { version = "=0.61.2", features = [
   "Win32_System_Console",
   "Win32_System_IO",
   "Win32_System_JobObjects",
+  "Win32_System_LibraryLoader",
   "Win32_System_SystemInformation",
   "Win32_System_Threading",
+  "Win32_UI_Controls",
+  "Win32_UI_WindowsAndMessaging",
 ] }
 
 # Only this private platform boundary permits its reviewed Win32 and NT calls

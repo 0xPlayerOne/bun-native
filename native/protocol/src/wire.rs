@@ -653,6 +653,17 @@ pub enum Command {
         window_id: WindowId,
         dialog_id: DialogId,
     },
+    ShowMessageDialog {
+        id: RequestId,
+        window_id: WindowId,
+        dialog_id: DialogId,
+        options: crate::MessageDialogOptions,
+    },
+    CloseMessageDialog {
+        id: RequestId,
+        window_id: WindowId,
+        dialog_id: DialogId,
+    },
     RegisterDropTarget {
         id: RequestId,
         window_id: WindowId,
@@ -741,6 +752,8 @@ pub enum Capability {
     InputStatesV1,
     /// A native application menu bar (macOS).
     AppMenuV1,
+    /// Owned OS message dialogs (Windows task dialogs).
+    TaskDialogsV1,
     /// The split divider is a keyboard Tab stop and reports `split_resize`.
     SplitResizeV1,
     /// Every element kind has an accessibility role, and overlays and splits
@@ -872,6 +885,8 @@ impl Command {
             | Self::ReleaseProcess { id, .. }
             | Self::ShowFileDialog { id, .. }
             | Self::CloseFileDialog { id, .. }
+            | Self::ShowMessageDialog { id, .. }
+            | Self::CloseMessageDialog { id, .. }
             | Self::RegisterDropTarget { id, .. }
             | Self::UnregisterDropTarget { id, .. }
             | Self::ResolveDroppedItem { id, .. }
@@ -979,6 +994,7 @@ impl Command {
                 }
             }
             Self::ShowFileDialog { options, .. } => options.validate()?,
+            Self::ShowMessageDialog { options, .. } => options.validate()?,
             Self::SetAppMenu { menus, .. } => crate::validate_app_menus(menus)?,
             Self::ResolveDroppedItem { item, root, .. } => {
                 crate::validate_drop_item_index(*item)?;
@@ -995,6 +1011,7 @@ impl Command {
             | Self::SignalProcess { .. }
             | Self::ReleaseProcess { .. }
             | Self::CloseFileDialog { .. }
+            | Self::CloseMessageDialog { .. }
             | Self::RegisterDropTarget { .. }
             | Self::UnregisterDropTarget { .. }
             | Self::Shutdown { .. } => {}

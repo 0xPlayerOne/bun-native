@@ -20,6 +20,8 @@ base64 = "=0.22.1"
 log = { version = "=0.4.35", features = ["std"] }
 serde_json.workspace = true
 unicode-segmentation = "=1.13.3"
+# Pure Windows task dialog rules (compiled everywhere) and the Windows-only calls.
+bun-native-windows-services = { path = "../windows-services" }
 
 [target.'cfg(target_os = "linux")'.dependencies]
 # Not used directly. GPUI's XIM client enables ahash `compile-time-rng`, whose
@@ -49,7 +51,7 @@ raw-window-handle = "=0.6.2"
 rustix = { version = "=1.1.6", features = ["event", "fs", "process", "termios"] }
 
 [target.'cfg(windows)'.dependencies]
-bun-native-windows-services = { path = "../windows-services" }
+raw-window-handle = "=0.6.2"
 
 [lints]
 workspace = true
