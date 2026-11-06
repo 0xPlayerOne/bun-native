@@ -305,6 +305,52 @@ async function qualification() {
         : []
     )
     assert.deepEqual(pointerEvents, [])
+    if (backend === 'appkit') {
+      // EXPERIMENT for #538, never merged: does a file drag started right after
+      // a rejected text drag reach GPUI, by gap and by list length?
+      const trials: unknown[] = []
+      const one = [join(work, 'a.txt')]
+      for (const [gap, list] of [
+        [0, many],
+        [0, one],
+        [300, many],
+        [300, one],
+        [1000, many],
+        [1000, one],
+        [0, many],
+        [0, one],
+        [300, many],
+        [300, one],
+        [1000, many],
+        [1000, one],
+      ] as const) {
+        await xdnd.offerText('plain text, not a file')
+        await xdnd.enter(130, 150)
+        await xdnd.drop()
+        await Bun.sleep(gap)
+        const before = log.length
+        const started = performance.now()
+        await xdnd.offerFiles([...list])
+        await xdnd.enter(130, 150)
+        let enteredMs: number | null = null
+        while (performance.now() - started < 2_000) {
+          if (log.length > before) {
+            enteredMs = Math.round(performance.now() - started)
+            break
+          }
+          await Bun.sleep(10)
+        }
+        await xdnd.drop()
+        await Bun.sleep(300)
+        trials.push({
+          gap,
+          files: list.length,
+          enteredMs,
+          events: log.slice(before).map((e) => e.type),
+        })
+      }
+      console.error('EXPERIMENT text-then-files:', JSON.stringify(trials))
+    }
     mark = log.length
     await xdnd.offerFiles(many)
     const largeListEntry = await xdnd.enter(130, 150)
