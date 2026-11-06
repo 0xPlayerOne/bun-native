@@ -35,25 +35,13 @@ if (( ${#software_icds[@]} != 1 )); then
 fi
 export VK_DRIVER_FILES="${software_icds[0]}"
 
-openbox >"$evidence_dir/window-manager.log" 2>&1 &
-window_manager=$!
-cleanup_session() {
-  kill "$window_manager" 2>/dev/null || true
-  wait "$window_manager" 2>/dev/null || true
-}
-trap cleanup_session EXIT
-
-for attempt in {1..50}; do
-  if xprop -root _NET_SUPPORTING_WM_CHECK 2>/dev/null | grep -q 'window id'; then
-    break
-  fi
-  if ! kill -0 "$window_manager" 2>/dev/null; then
-    echo 'The test window manager exited before becoming ready' >&2
-    exit 1
-  fi
-  sleep 0.1
-done
-xprop -root _NET_SUPPORTING_WM_CHECK | grep -q 'window id'
+source "$(dirname "${BASH_SOURCE[0]}")/native-linux-window-manager.sh"
+trap stop_test_window_manager EXIT
+start_test_window_manager "$evidence_dir"
+# The first XTest key on a fresh server switches the keyboard device, and
+# openbox regrabs every binding in response. Settle that before any test key,
+# so a click-only test's Alt+F4 never races the regrab (#358).
+python3 "$(dirname "${BASH_SOURCE[0]}")/native-x11-input-prime.py" --report "$evidence_dir/input-prime.json"
 
 if [[ "$mode" == -- ]]; then
   "$@"
