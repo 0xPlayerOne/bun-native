@@ -238,34 +238,40 @@ test('the allocator control rejects out-of-range counts and unknown workers', ()
   }
 })
 
-test('the allocator control interleaves fresh workers that differ only in purge delay', () => {
-  // An inherited value must not leak into the default case.
-  const result = bun([ALLOCATOR, '--builds', '2', '--repeats', '1'], { MIMALLOC_PURGE_DELAY: '7' })
-  expect(result.stderr).toBe('')
-  expect(result.exitCode).toBe(0)
-  const [header, ...records] = result.stdout
-    .trim()
-    .split('\n')
-    .map((line) => JSON.parse(line))
-  expect(header).toEqual({ bun: Bun.revision, platform: 'linux', builds: 2, repeats: 1 })
-  expect(records.map(({ framework, policy }) => `${framework}/${policy}`)).toEqual([
-    'solid/default',
-    'solid/purge-0',
-    'react/default',
-    'react/purge-0',
-  ])
-  for (const record of records) {
-    expect(record.repeat).toBe(0)
-    expect(record.builds).toBe(2)
-    expect(record.firstRssBytes).toBeGreaterThan(0)
-    expect(record.peakRssBytes).toBeGreaterThanOrEqual(record.firstRssBytes)
-    expect(record.medianBundleMs).toBeGreaterThan(0)
-    expect(record.p95BundleMs).toBeGreaterThanOrEqual(record.medianBundleMs)
+// The control reads VmRSS from /proc, so it only runs on Linux.
+test.if(process.platform === 'linux')(
+  'the allocator control interleaves fresh workers that differ only in purge delay',
+  () => {
+    // An inherited value must not leak into the default case.
+    const result = bun([ALLOCATOR, '--builds', '2', '--repeats', '1'], {
+      MIMALLOC_PURGE_DELAY: '7',
+    })
+    expect(result.stderr).toBe('')
+    expect(result.exitCode).toBe(0)
+    const [header, ...records] = result.stdout
+      .trim()
+      .split('\n')
+      .map((line) => JSON.parse(line))
+    expect(header).toEqual({ bun: Bun.revision, platform: 'linux', builds: 2, repeats: 1 })
+    expect(records.map(({ framework, policy }) => `${framework}/${policy}`)).toEqual([
+      'solid/default',
+      'solid/purge-0',
+      'react/default',
+      'react/purge-0',
+    ])
+    for (const record of records) {
+      expect(record.repeat).toBe(0)
+      expect(record.builds).toBe(2)
+      expect(record.firstRssBytes).toBeGreaterThan(0)
+      expect(record.peakRssBytes).toBeGreaterThanOrEqual(record.firstRssBytes)
+      expect(record.medianBundleMs).toBeGreaterThan(0)
+      expect(record.p95BundleMs).toBeGreaterThanOrEqual(record.medianBundleMs)
+    }
+    // Each worker removes its checkout template.
+    const cache = join(root, '.bun-native')
+    const leftovers = existsSync(cache)
+      ? [...new Bun.Glob('allocator-control-*').scanSync({ cwd: cache, onlyFiles: false })]
+      : []
+    expect(leftovers).toEqual([])
   }
-  // Each worker removes its checkout template.
-  const cache = join(root, '.bun-native')
-  const leftovers = existsSync(cache)
-    ? [...new Bun.Glob('allocator-control-*').scanSync({ cwd: cache, onlyFiles: false })]
-    : []
-  expect(leftovers).toEqual([])
-})
+)
