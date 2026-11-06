@@ -349,8 +349,9 @@ arrives in order in chunks of at most 16 KiB, each acknowledged when its
 callback settles, and the exit event is always last. The frozen
 `NativeProcess` offers `write`, `closeInput`, `resize`, `signal` (to the whole
 process group) and an idempotent `release()`. Releasing it, closing its window
-or stopping the application kills and reaps its group. Other targets report
-`unavailable` / `unsupported_platform`. See the
+or stopping the application kills and reaps its group. macOS refuses a `cwd`
+(`service_unavailable`); other targets report `unavailable` /
+`unsupported_platform`. See the
 [service contract](../../docs/native-services.md#owned-processes).
 
 ### File dialogs

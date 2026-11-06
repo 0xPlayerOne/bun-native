@@ -470,8 +470,9 @@ const chunk = await grant.read("src/main.ts", { offset: 0, length: 16_384 });
 await grant.close();
 ```
 
-Each root has an ID of lowercase letters, digits, `-` and `_`, an absolute
-normalized path and `read` or `read_write` access; at most eight are accepted.
+Each root has an ID of 1–32 lowercase ASCII letters, digits, `-` and `_` that
+starts with a letter, an absolute normalized path and `read` or `read_write`
+access; at most eight are accepted, with unique IDs.
 A grant requests at most its root's access and defaults to `read`. Readiness
 reports the same ordered roots, and the frozen capability record lists them by
 ID with `backend: 'openat2'` on Linux or `backend: 'openat_walk'` on macOS.
@@ -483,7 +484,7 @@ create a root or a grant.
 
 Paths are relative to the grant: `''` is the root itself and other paths are
 `/`-joined names without empty, `.`, `..` or control-character components (at
-most 1,024 bytes and 32 components). The host opens the root once as a
+most 1,024 bytes and 32 components, each name at most 255 bytes). The host opens the root once as a
 directory descriptor and resolves every request beneath it, so symbolic links
 are never followed, inside or out of the grant. Linux uses
 `openat2(RESOLVE_BENEATH | RESOLVE_NO_SYMLINKS | RESOLVE_NO_MAGICLINKS)`. macOS
@@ -516,10 +517,12 @@ enforces that before any I/O. Failures are `NativeServiceError` with service
 `already_exists`, `path_denied` (a link or escape), `wrong_kind`, `not_empty`,
 `access_denied` (the OS refused), `limit_exceeded`, `service_unavailable`,
 `native_failure` or `cancelled`. Requests run on one host worker thread and
-share the eight-request service bound; at most 32 grants are live per session.
-Closing the grant, its window or the application revokes it: later calls reject
-with `cancelled` without a native request, and a result that arrives after
-revocation is withheld. An operation the worker has already started may still
+share the eight-request service bound (a ninth concurrent call rejects locally
+with `NativeStateError` `limit_exceeded`); at most 32 grants are live per
+session. Closing the grant, its window or the application revokes it: later
+calls reject with `cancelled` without a native request, and a result that
+arrives after revocation is withheld. A call still in flight when its window
+closes rejects with the window's `NativeStateError` `invalid_handle` instead. An operation the worker has already started may still
 take effect.
 
 The [Native Linux workflow](../.github/workflows/native-linux.yml) runs
@@ -565,13 +568,16 @@ await child.resize({ columns: 120, rows: 40 })
 await child.release()
 ```
 
-Each launch entry has an ID of lowercase letters, digits, `-` and `_` and an
-absolute normalized executable path; at most eight are accepted and readiness
-reports the same ordered list. No wire command names a program path, and there
-is no command string or shell: `args` is an explicit array (at most 64 strings
+Each launch entry has an ID with the same rules as a filesystem root ID (1–32
+lowercase ASCII letters, digits, `-` and `_`, starting with a letter) and an
+absolute normalized executable path; at most eight unique IDs are accepted and
+readiness reports the same ordered list. No wire command names a program path, and there
+is no command string or shell: `args` is an explicit array (at most 64 NUL-free strings
 of 4,096 bytes) and `env` is the **complete** environment (at most 64 entries;
-nothing is inherited from the host), with arguments and environment together
-at most 32,768 bytes. A working directory comes only from a live file grant of
+nothing is inherited from the host). Environment names are ASCII letters,
+digits and `_`, not starting with a digit, of at most 128 bytes; values are
+NUL-free strings of at most 4,096 bytes. Arguments, names and values together
+are at most 32,768 bytes. A `cwd` without `path` is the grant's root. A working directory comes only from a live file grant of
 the same window; the host resolves `path` beneath the grant descriptor with the
 same `openat2` rules as file requests, so links are never followed. macOS
 cannot start a child in a grant descriptor, so a working directory is refused
@@ -590,7 +596,7 @@ process group.
 | `process_exited` event      | `{ exit: { code } \| { signal } }`, always last, after the group is stopped and output delivered |
 | `write(bytes)`              | Queues 1–16,384 bytes of input; at most 64 KiB may wait unread                                   |
 | `closeInput()`              | Closes standard input, or sends end-of-file on a terminal                                        |
-| `resize({ columns, rows })` | Terminal processes only (1–1,000 each)                                                           |
+| `resize({ columns, rows })` | Terminal processes only (1–1,000 each); a pipes process answers `wrong_kind`                     |
 | `signal(name)`              | `interrupt`, `terminate`, `kill` or `hangup` to the whole process group                          |
 | `release()`                 | Idempotent; stops delivery, kills the group and reaps it                                         |
 
@@ -601,14 +607,17 @@ queue. When the direct child exits, the host stops the rest of its process
 group while the exited leader still holds the group ID, delivers the remaining
 output, reaps the leader and then reports the exit. A descendant that leaves
 the group (`setsid`) is outside this cleanup. An exited process stays
-`active` until released; later `write`, `signal` or `resize` calls reject with
-`invalid_state`.
+`active` until released; later `write`, `closeInput`, `signal` or `resize`
+calls reject with `invalid_state`, as does `closeInput` or `write` after the
+pipes input was closed. Controls share the eight-request service bound with
+other service calls; a ninth concurrent call rejects locally with
+`NativeStateError` `limit_exceeded`.
 
 Failures are `NativeServiceError` with service `processes` and a code:
 `permission_denied` (not in the launch policy), `not_found` (missing executable
 or directory), `path_denied` (the directory crosses a link), `wrong_kind`,
-`access_denied`, `limit_exceeded` (at most eight live processes per session),
-`invalid_state`, `service_unavailable`, `native_failure` or `cancelled`.
+`access_denied`, `limit_exceeded` (at most eight live processes per session,
+more than 64 KiB of unread input, or no OS capacity), `invalid_state`, `service_unavailable`, `native_failure` or `cancelled`.
 Releasing the process, closing its window or stopping the application kills
 and reaps its group; no later output or exit is delivered. The optional
 `processes_v1` feature is advertised on Linux with pidfd support and on macOS; the
