@@ -1,5 +1,27 @@
 # Changelog
 
+## [0.20.3](https://github.com/0xPlayerOne/bun-native/compare/v0.20.2...v0.20.3) (2026-11-06)
+
+
+### Bug Fixes
+
+* close API, Rust and doc oddities found in the docs review ([#527](https://github.com/0xPlayerOne/bun-native/issues/527)) ([49ca23c](https://github.com/0xPlayerOne/bun-native/commit/49ca23cc9d4378b0d4a19e99318001aec8ac2000))
+
+
+### Documentation
+
+* **release:** preserve open investigations in v0.20.0 notes ([#524](https://github.com/0xPlayerOne/bun-native/issues/524)) ([3d54198](https://github.com/0xPlayerOne/bun-native/commit/3d54198d23803c4643d0fabba35913e2416c6ab2))
+
+
+### Tests
+
+* compare a second display read however long the first takes ([#539](https://github.com/0xPlayerOne/bun-native/issues/539)) ([609da07](https://github.com/0xPlayerOne/bun-native/commit/609da07eb8e80a06c6a1b1b990024281d8bab516))
+* fix the offline AOT report capture and the macOS display and drag oracles ([#533](https://github.com/0xPlayerOne/bun-native/issues/533)) ([462c547](https://github.com/0xPlayerOne/bun-native/commit/462c54701fda010e5f3960554ef13eba29eb831c))
+* press the Wayland button only after the window sees the pointer on it ([#542](https://github.com/0xPlayerOne/bun-native/issues/542)) ([8a2252c](https://github.com/0xPlayerOne/bun-native/commit/8a2252cc064a87ae8eda091fd8a9b97e2242680a))
+* read only complete native evidence lines and report Wayland click failures ([#536](https://github.com/0xPlayerOne/bun-native/issues/536)) ([8390d0d](https://github.com/0xPlayerOne/bun-native/commit/8390d0d9b1bacf243edafc5c74d5f4ac35bc913a))
+* record the Wayland pointer path when the compositor click is missed ([#537](https://github.com/0xPlayerOne/bun-native/issues/537)) ([207385b](https://github.com/0xPlayerOne/bun-native/commit/207385bb2a82a1a3d3ab1594d132e8e2d6973b95))
+* treat a process that exits during the watch image read as gone ([#540](https://github.com/0xPlayerOne/bun-native/issues/540)) ([3be4a32](https://github.com/0xPlayerOne/bun-native/commit/3be4a3235243b3a33b1568689ebc233cea6ec324))
+
 ## [0.20.2](https://github.com/0xPlayerOne/bun-native/compare/v0.20.1...v0.20.2) (2026-11-06)
 
 
