@@ -59,6 +59,8 @@ export type WindowCommand = WithoutId<
         | 'release_process'
         | 'show_file_dialog'
         | 'close_file_dialog'
+        | 'show_message_dialog'
+        | 'close_message_dialog'
         | 'register_drop_target'
         | 'unregister_drop_target'
         | 'resolve_dropped_item'
@@ -92,6 +94,8 @@ export type HostResponse = Extract<
       | 'process_released'
       | 'file_dialog_opened'
       | 'file_dialog_closed'
+      | 'message_dialog_opened'
+      | 'message_dialog_closed'
       | 'drop_target_registered'
       | 'drop_target_unregistered'
       | 'dropped_item_resolved'
@@ -124,6 +128,8 @@ export interface ServicePermissions {
   readonly fileDialogs?: 'allow' | 'deny'
   /** The application menu bar (macOS). Selections are reported as item IDs. */
   readonly appMenu?: 'allow' | 'deny'
+  /** OS message dialogs (Windows task dialogs) instead of the in-window overlay. */
+  readonly taskDialogs?: 'allow' | 'deny'
 }
 
 export class NativeCommandError extends Error {
@@ -163,6 +169,7 @@ function launchPolicy(value: unknown = {}): Readonly<ServicePolicy> {
           'processes',
           'fileDialogs',
           'appMenu',
+          'taskDialogs',
         ].includes(key)
     )
   )
@@ -184,6 +191,7 @@ function launchPolicy(value: unknown = {}): Readonly<ServicePolicy> {
     processes: processes(value),
     file_dialogs: grant('fileDialogs'),
     app_menu: grant('appMenu'),
+    task_dialogs: grant('taskDialogs'),
   })
 }
 
@@ -227,6 +235,7 @@ function samePolicy(left: Readonly<ServicePolicy>, right: Readonly<ServicePolicy
     left.notifications === right.notifications &&
     (left.file_dialogs ?? false) === (right.file_dialogs ?? false) &&
     (left.app_menu ?? false) === (right.app_menu ?? false) &&
+    (left.task_dialogs ?? false) === (right.task_dialogs ?? false) &&
     left.drag_drop === right.drag_drop &&
     left.filesystem_roots.length === right.filesystem_roots.length &&
     left.filesystem_roots.every(
@@ -320,6 +329,7 @@ export class NativeHost implements AsyncIterable<HostEvent> {
         ...requestedPolicy.processes.map(processArgument),
         ...(requestedPolicy.file_dialogs ? ['--bun-native-allow-file-dialogs'] : []),
         ...(requestedPolicy.app_menu ? ['--bun-native-allow-app-menu'] : []),
+        ...(requestedPolicy.task_dialogs ? ['--bun-native-allow-task-dialogs'] : []),
       ],
       stdin: 'pipe',
       stdout: 'pipe',
@@ -440,6 +450,12 @@ export class NativeHost implements AsyncIterable<HostEvent> {
   send(
     command: Extract<WindowCommand, { type: 'close_file_dialog' }>
   ): Promise<Extract<HostResponse, { type: 'file_dialog_closed' }>>
+  send(
+    command: Extract<WindowCommand, { type: 'show_message_dialog' }>
+  ): Promise<Extract<HostResponse, { type: 'message_dialog_opened' }>>
+  send(
+    command: Extract<WindowCommand, { type: 'close_message_dialog' }>
+  ): Promise<Extract<HostResponse, { type: 'message_dialog_closed' }>>
   send(
     command: Extract<WindowCommand, { type: 'register_drop_target' }>
   ): Promise<Extract<HostResponse, { type: 'drop_target_registered' }>>
@@ -739,6 +755,8 @@ export class NativeHost implements AsyncIterable<HostEvent> {
       event.type === 'process_released' ||
       event.type === 'file_dialog_opened' ||
       event.type === 'file_dialog_closed' ||
+      event.type === 'message_dialog_opened' ||
+      event.type === 'message_dialog_closed' ||
       event.type === 'drop_target_registered' ||
       event.type === 'drop_target_unregistered' ||
       event.type === 'dropped_item_resolved' ||
@@ -850,6 +868,18 @@ export class NativeHost implements AsyncIterable<HostEvent> {
       case 'close_file_dialog':
         return (
           response.type === 'file_dialog_closed' &&
+          response.window_id === command.window_id &&
+          response.dialog_id === command.dialog_id
+        )
+      case 'show_message_dialog':
+        return (
+          response.type === 'message_dialog_opened' &&
+          response.window_id === command.window_id &&
+          response.dialog_id === command.dialog_id
+        )
+      case 'close_message_dialog':
+        return (
+          response.type === 'message_dialog_closed' &&
           response.window_id === command.window_id &&
           response.dialog_id === command.dialog_id
         )

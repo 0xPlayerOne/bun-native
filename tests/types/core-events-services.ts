@@ -247,7 +247,7 @@ export function checkCapabilities(app: NativeApplication): void {
   }
   const menus: 'available' | 'unavailable' = services.appMenu.availability
   if (services.messageDialogs.availability === 'available') {
-    const backend: 'modal_overlay' = services.messageDialogs.backend
+    const backend: 'modal_overlay' | 'task_dialog' = services.messageDialogs.backend
     void backend
   } else {
     const reason: 'unsupported_host' = services.messageDialogs.reason

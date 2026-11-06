@@ -7,6 +7,7 @@ mod drops;
 mod events;
 mod files;
 mod framing;
+mod message_dialogs;
 mod processes;
 mod services;
 mod tree;
@@ -18,6 +19,7 @@ pub use drops::*;
 pub use events::*;
 pub use files::*;
 pub use framing::{write_event, CommandReader, EventWriter, ProtocolError};
+pub use message_dialogs::*;
 pub use processes::*;
 pub use services::*;
 pub use tree::{BatchMetrics, ModelError, Node, PreparedBatch, Tree, ViewRequest};
@@ -33,6 +35,8 @@ mod dialog_tests;
 mod event_tests;
 #[cfg(test)]
 mod layout_v2_tests;
+#[cfg(test)]
+mod message_dialog_tests;
 #[cfg(test)]
 mod overlay_tests;
 #[cfg(test)]

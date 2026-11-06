@@ -12,4 +12,7 @@ pub mod names;
 #[cfg(windows)]
 pub mod process;
 #[cfg(windows)]
+pub mod task_dialog;
+pub mod task_dialog_spec;
+#[cfg(windows)]
 mod wide;

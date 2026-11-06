@@ -6,6 +6,12 @@ import {
   type FileDialogResult,
 } from './dialogs.ts'
 import { parseElement, type Element } from './elements.ts'
+import {
+  parseMessageDialogOptions,
+  parseMessageDialogResult,
+  type MessageDialogOptions,
+  type MessageDialogResult,
+} from './message-dialogs.ts'
 import { MAX_FRAME_BYTES, ProtocolError } from './framing.ts'
 import {
   parseDisplaySnapshot,
@@ -261,6 +267,19 @@ export type Command =
     }
   | {
       id: number
+      type: 'show_message_dialog'
+      window_id: number
+      dialog_id: number
+      options: MessageDialogOptions
+    }
+  | {
+      id: number
+      type: 'close_message_dialog'
+      window_id: number
+      dialog_id: number
+    }
+  | {
+      id: number
       type: 'register_drop_target'
       window_id: number
       target_id: number
@@ -330,6 +349,7 @@ const CAPABILITIES = [
   'drag_drop_files_v1',
   'input_states_v1',
   'app_menu_v1',
+  'task_dialogs_v1',
   'split_resize_v1',
   'accessibility_v1',
 ] as const
@@ -505,6 +525,25 @@ export type NativeEvent =
       window_id: number
       dialog_id: number
       result: FileDialogResult
+    }
+  | {
+      type: 'message_dialog_opened'
+      id: number
+      window_id: number
+      dialog_id: number
+    }
+  | {
+      type: 'message_dialog_closed'
+      id: number
+      window_id: number
+      dialog_id: number
+    }
+  | {
+      type: 'message_dialog_completed'
+      sequence: number
+      window_id: number
+      dialog_id: number
+      result: MessageDialogResult
     }
   | { type: 'drop_target_registered'; id: number; window_id: number; target_id: number }
   | { type: 'drop_target_unregistered'; id: number; window_id: number; target_id: number }
@@ -796,6 +835,23 @@ export function parseCommand(value: unknown): Command {
       return {
         id: request,
         type: 'close_file_dialog',
+        window_id: id(message['window_id']),
+        dialog_id: id(message['dialog_id']),
+      }
+    case 'show_message_dialog':
+      keys(message, ['id', 'type', 'window_id', 'dialog_id', 'options'])
+      return {
+        id: request,
+        type: 'show_message_dialog',
+        window_id: id(message['window_id']),
+        dialog_id: id(message['dialog_id']),
+        options: parseMessageDialogOptions(message['options']),
+      }
+    case 'close_message_dialog':
+      keys(message, ['id', 'type', 'window_id', 'dialog_id'])
+      return {
+        id: request,
+        type: 'close_message_dialog',
         window_id: id(message['window_id']),
         dialog_id: id(message['dialog_id']),
       }
@@ -1095,6 +1151,24 @@ export function parseEvent(value: unknown): NativeEvent {
         window_id: id(message['window_id']),
         dialog_id: id(message['dialog_id']),
         result: parseFileDialogResult(message['result']),
+      }
+    case 'message_dialog_opened':
+    case 'message_dialog_closed':
+      keys(message, ['type', 'id', 'window_id', 'dialog_id'])
+      return {
+        type: message['type'],
+        id: id(message['id']),
+        window_id: id(message['window_id']),
+        dialog_id: id(message['dialog_id']),
+      }
+    case 'message_dialog_completed':
+      keys(message, ['type', 'sequence', 'window_id', 'dialog_id', 'result'])
+      return {
+        type: 'message_dialog_completed',
+        sequence: id(message['sequence']),
+        window_id: id(message['window_id']),
+        dialog_id: id(message['dialog_id']),
+        result: parseMessageDialogResult(message['result']),
       }
     case 'drop_target_registered':
     case 'drop_target_unregistered':

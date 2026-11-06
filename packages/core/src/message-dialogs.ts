@@ -1,4 +1,7 @@
-import type { KeyModifiers } from '@bun-native/protocol'
+import type {
+  KeyModifiers,
+  MessageDialogOptions as WireMessageDialogOptions,
+} from '@bun-native/protocol'
 import { NativeServiceError } from './services.ts'
 import { defaultTheme } from './theme.ts'
 import { NativeStateError, type NativeBatch, type NativeNode, type NativeWindow } from './types.ts'
@@ -186,9 +189,32 @@ const BUTTON_COLORS = {
 
 type Outcome = { result: MessageDialogResult } | { error: Error }
 
+/** The OS backend (Windows task dialogs): the window supplies the host calls. */
+export interface NativeMessageDialogBackend {
+  allocate(): number
+  show(id: number, options: WireMessageDialogOptions): Promise<void>
+  /** Resolves once the host no longer owns the dialog (it may already be gone). */
+  close(id: number): Promise<void>
+}
+
+/** The wire form of a validated spec; button `kind` has no OS equivalent. */
+function wireOptions(spec: MessageDialogSpec): WireMessageDialogOptions {
+  return {
+    title: spec.title,
+    message: spec.message,
+    ...(spec.detail === undefined ? {} : { detail: spec.detail }),
+    buttons: spec.buttons.map(({ id, label }) => ({ id, label })),
+    default_button: spec.defaultButton,
+    ...(spec.cancelButton === undefined ? {} : { cancel_button: spec.cancelButton }),
+    ...(spec.dismissible ? { dismissible: true as const } : {}),
+  }
+}
+
 class Dialog {
   state: 'queued' | 'opening' | 'open' | 'closing' | 'settled' = 'queued'
   layer: NativeNode<'overlay'> | undefined
+  /** The host's identity for an OS dialog the host still owns. */
+  nativeId: number | undefined
   readonly buttons = new Map<NativeNode, string>()
   outcome: Outcome | undefined
   detach: () => void = () => {}
@@ -221,8 +247,40 @@ export type DialogInput =
  */
 export class MessageDialogs {
   private readonly dialogs: Dialog[] = []
+  private readonly native = new Map<number, Dialog>()
 
-  constructor(private readonly window: NativeWindow) {}
+  /** `backend` is read when a dialog opens: it is the OS backend or the overlay. */
+  constructor(
+    private readonly window: NativeWindow,
+    private readonly backend: () => NativeMessageDialogBackend | undefined = () => undefined
+  ) {}
+
+  /** The host finished a dialog it owned. A result for a closed one is dropped. */
+  completeNative(
+    id: number,
+    result: { kind: 'button'; id: string } | { kind: 'dismissed' } | { kind: 'failed' }
+  ): void {
+    const dialog = this.native.get(id)
+    if (!dialog) return
+    this.native.delete(id)
+    dialog.nativeId = undefined
+    if (dialog.state === 'closing' || dialog.state === 'settled') return
+    const outcome: Outcome =
+      result.kind === 'failed'
+        ? {
+            error: new NativeServiceError(
+              'message_dialogs',
+              'native_failure',
+              'The native message dialog failed'
+            ),
+          }
+        : { result }
+    if (dialog.state === 'opening') {
+      // The open call finishes it when the host's reply arrives.
+      dialog.outcome = outcome
+      dialog.state = 'closing'
+    } else this.finish(dialog, outcome)
+  }
 
   show(spec: MessageDialogSpec, signal: AbortSignal | undefined): Promise<MessageDialogResult> {
     if (signal?.aborted)
@@ -281,10 +339,36 @@ export class MessageDialogs {
   /** Owner close and shutdown: every dialog rejects at once; nothing is sent. */
   revoke(): void {
     const error = new NativeStateError('invalid_handle', 'Message dialog owner window was closed')
+    // The host closes its own dialogs with the owner window or at shutdown.
+    this.native.clear()
     for (const dialog of this.dialogs.splice(0)) this.settle(dialog, { error })
   }
 
+  private async openNative(dialog: Dialog, backend: NativeMessageDialogBackend): Promise<void> {
+    dialog.state = 'opening'
+    let id: number
+    try {
+      id = backend.allocate()
+      dialog.nativeId = id
+      this.native.set(id, dialog)
+      await backend.show(id, wireOptions(dialog.spec))
+    } catch (error) {
+      if (dialog.nativeId !== undefined) this.native.delete(dialog.nativeId)
+      dialog.nativeId = undefined
+      this.finish(dialog, { error: error instanceof Error ? error : new Error(String(error)) })
+      return
+    }
+    if (dialog.state === 'opening') dialog.state = 'open'
+    else if (dialog.state === 'closing') {
+      // Aborted while the host was showing it, or finished before this reply.
+      if (dialog.nativeId !== undefined) await this.close(dialog)
+      else if (dialog.outcome) this.finish(dialog, dialog.outcome)
+    }
+  }
+
   private async open(dialog: Dialog): Promise<void> {
+    const backend = this.backend()
+    if (backend) return this.openNative(dialog, backend)
     dialog.state = 'opening'
     try {
       await this.window.batch((batch) => build(batch, this.window.root, dialog))
@@ -312,6 +396,20 @@ export class MessageDialogs {
   }
 
   private async close(dialog: Dialog): Promise<void> {
+    const id = dialog.nativeId
+    if (id !== undefined) {
+      // Delivery stops first; a result already queued for it is then dropped.
+      this.native.delete(id)
+      dialog.nativeId = undefined
+      try {
+        await this.backend()!.close(id)
+      } catch (error) {
+        this.finish(dialog, { error: error instanceof Error ? error : new Error(String(error)) })
+        return
+      }
+      this.finish(dialog, dialog.outcome!)
+      return
+    }
     const layer = dialog.layer!
     try {
       await this.window.batch((batch) => batch.remove(layer))

@@ -27,6 +27,8 @@ export interface ServicePolicy {
   file_dialogs?: boolean
   /** Optional like `file_dialogs`: the application menu bar. */
   app_menu?: boolean
+  /** Optional like `file_dialogs`: OS message dialogs. */
+  task_dialogs?: boolean
 }
 
 type Characters<S extends string> = S extends `${infer Head}${infer Tail}`
@@ -154,6 +156,7 @@ export function parseServicePolicy(value: unknown): ServicePolicy {
     'processes',
     'file_dialogs',
     'app_menu',
+    'task_dialogs',
   ])
   const grant = (key: keyof ServicePolicy) => {
     if (typeof data[key] !== 'boolean')
@@ -171,6 +174,7 @@ export function parseServicePolicy(value: unknown): ServicePolicy {
     processes: parseProcessExecutables(data['processes']),
     ...('file_dialogs' in data ? { file_dialogs: grant('file_dialogs') } : {}),
     ...('app_menu' in data ? { app_menu: grant('app_menu') } : {}),
+    ...('task_dialogs' in data ? { task_dialogs: grant('task_dialogs') } : {}),
   }
 }
 

@@ -84,6 +84,19 @@ export {
   type FileFilter,
 } from './dialogs.ts'
 export {
+  MAX_MESSAGE_DIALOG_BUTTONS,
+  MAX_MESSAGE_DIALOG_DETAIL_BYTES,
+  MAX_MESSAGE_DIALOG_ID_BYTES,
+  MAX_MESSAGE_DIALOG_LABEL_BYTES,
+  MAX_MESSAGE_DIALOG_MESSAGE_BYTES,
+  MAX_MESSAGE_DIALOG_TITLE_BYTES,
+  MAX_MESSAGE_DIALOGS,
+  parseMessageDialogOptions,
+  type MessageDialogButton,
+  type MessageDialogOptions,
+  type MessageDialogResult,
+} from './message-dialogs.ts'
+export {
   DRAG_STATES,
   DROP_REJECTIONS,
   MAX_DROP_ITEMS,

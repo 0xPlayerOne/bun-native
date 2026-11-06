@@ -84,6 +84,7 @@ import {
   messageDialogSpec,
   MessageDialogs,
   type ConfirmDialogOptions,
+  type NativeMessageDialogBackend,
   type MessageDialogOptions,
   type MessageDialogResult,
 } from './message-dialogs.ts'
@@ -133,6 +134,7 @@ class Application implements NativeApplication {
   private nextProcess = 1
   readonly dialogs = new Map<number, FileDialogRequest>()
   private nextDialog = 1
+  private nextMessageDialog = 1
   readonly dropTargets = new Map<number, DropTargetRegistration>()
   private nextDropTarget = 1
   private lastDrop = 0
@@ -229,6 +231,16 @@ class Application implements NativeApplication {
 
   isAllocatedDialog(id: number): boolean {
     return id < this.nextDialog
+  }
+
+  allocateMessageDialog(): number {
+    if (!Number.isSafeInteger(this.nextMessageDialog))
+      throw new NativeStateError('limit_exceeded', 'Message dialog identity space exhausted')
+    return this.nextMessageDialog++
+  }
+
+  isAllocatedMessageDialog(id: number): boolean {
+    return id < this.nextMessageDialog
   }
 
   allocateDropTarget(): number {
@@ -540,6 +552,11 @@ class Application implements NativeApplication {
         if (event.type === 'file_dialog_completed' && !this.isAllocatedDialog(event.dialog_id))
           throw new ProtocolError('Native event names an unallocated file dialog')
         if (
+          event.type === 'message_dialog_completed' &&
+          !this.isAllocatedMessageDialog(event.dialog_id)
+        )
+          throw new ProtocolError('Native event names an unallocated message dialog')
+        if (
           (event.type === 'drop_target_drag' ||
             event.type === 'drop_received' ||
             event.type === 'drop_rejected') &&
@@ -711,7 +728,7 @@ class Window implements NativeWindow {
   private resolveClosed!: () => void
   private closing: Promise<void> | undefined
   readonly displayChanges = new Set<DisplaySubscription>()
-  private readonly messages = new MessageDialogs(this)
+  private readonly messages = new MessageDialogs(this, () => this.nativeMessageDialogs())
 
   constructor(
     private readonly application: Application,
@@ -1716,6 +1733,55 @@ class Window implements NativeWindow {
     return result.kind === 'button' && result.id === 'confirm'
   }
 
+  /** The OS backend, only when the host offers it and the application granted it. */
+  private nativeMessageDialogs(): NativeMessageDialogBackend | undefined {
+    const capability = this.application.serviceCapabilities.messageDialogs
+    if (capability.availability !== 'available' || capability.backend !== 'task_dialog')
+      return undefined
+    return {
+      allocate: () => this.application.allocateMessageDialog(),
+      show: async (id, options) => {
+        try {
+          await this.application.service(() =>
+            this.application.host.send({
+              type: 'show_message_dialog',
+              window_id: this.id,
+              dialog_id: id,
+              options,
+            })
+          )
+        } catch (error) {
+          if (
+            error instanceof NativeCommandError &&
+            (DIALOG_ERRORS as readonly string[]).includes(error.code)
+          )
+            throw new NativeServiceError(
+              'message_dialogs',
+              error.code as NativeServiceError['code'],
+              error.message
+            )
+          throw error
+        }
+      },
+      close: async (id) => {
+        // Window close and application shutdown close it natively.
+        if (!this.active || !this.application.running) return
+        try {
+          await this.application.track(
+            this.application.host
+              .send({ type: 'close_message_dialog', window_id: this.id, dialog_id: id })
+              .then(() => {})
+          )
+        } catch (error) {
+          // The user can finish it, or the owner close, while this is in flight.
+          if (error instanceof NativeCommandError && error.code === 'invalid_handle') return
+          if (!this.application.running) return
+          throw error
+        }
+      },
+    }
+  }
+
   private messageDialog(
     spec: Parameters<MessageDialogs['show']>[0],
     request: ServiceRequestOptions
@@ -1889,6 +1955,10 @@ class Window implements NativeWindow {
     }
     if (event.type === 'file_dialog_completed') {
       this.receiveFileDialog(event)
+      return
+    }
+    if (event.type === 'message_dialog_completed') {
+      if (this.active) this.messages.completeNative(event.dialog_id, event.result)
       return
     }
     if (

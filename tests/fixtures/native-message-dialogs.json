@@ -1,0 +1,158 @@
+{
+  "protocol": 11,
+  "capability": "task_dialogs_v1",
+  "commands": [
+    {
+      "name": "minimal dialog",
+      "wire": "{\"type\":\"show_message_dialog\",\"id\":3,\"window_id\":1,\"dialog_id\":1,\"options\":{\"title\":\"Unsaved changes\",\"message\":\"Save the document before closing?\",\"buttons\":[{\"id\":\"save\",\"label\":\"Save\"},{\"id\":\"cancel\",\"label\":\"Cancel\"}],\"default_button\":\"save\"}}",
+      "valid": true
+    },
+    {
+      "name": "full dialog",
+      "wire": "{\"type\":\"show_message_dialog\",\"id\":3,\"window_id\":1,\"dialog_id\":1,\"options\":{\"title\":\"Unsaved changes\",\"message\":\"Save the document before closing?\",\"buttons\":[{\"id\":\"save\",\"label\":\"Save\"},{\"id\":\"cancel\",\"label\":\"Cancel\"}],\"default_button\":\"save\",\"detail\":\"Unsaved edits are lost.\\nThis cannot be undone.\",\"cancel_button\":\"cancel\",\"dismissible\":true}}",
+      "valid": true
+    },
+    {
+      "name": "four buttons",
+      "wire": "{\"type\":\"show_message_dialog\",\"id\":3,\"window_id\":1,\"dialog_id\":1,\"options\":{\"title\":\"Unsaved changes\",\"message\":\"Save the document before closing?\",\"buttons\":[{\"id\":\"0\",\"label\":\"B0\"},{\"id\":\"1\",\"label\":\"B1\"},{\"id\":\"2\",\"label\":\"B2\"},{\"id\":\"3\",\"label\":\"B3\"}],\"default_button\":\"3\"}}",
+      "valid": true
+    },
+    {
+      "name": "close a dialog",
+      "wire": "{\"type\":\"close_message_dialog\",\"id\":4,\"window_id\":1,\"dialog_id\":1}",
+      "valid": true
+    },
+    {
+      "name": "no buttons",
+      "wire": "{\"type\":\"show_message_dialog\",\"id\":3,\"window_id\":1,\"dialog_id\":1,\"options\":{\"title\":\"Unsaved changes\",\"message\":\"Save the document before closing?\",\"buttons\":[],\"default_button\":\"save\"}}",
+      "valid": false
+    },
+    {
+      "name": "five buttons",
+      "wire": "{\"type\":\"show_message_dialog\",\"id\":3,\"window_id\":1,\"dialog_id\":1,\"options\":{\"title\":\"Unsaved changes\",\"message\":\"Save the document before closing?\",\"buttons\":[{\"id\":\"0\",\"label\":\"B\"},{\"id\":\"1\",\"label\":\"B\"},{\"id\":\"2\",\"label\":\"B\"},{\"id\":\"3\",\"label\":\"B\"},{\"id\":\"4\",\"label\":\"B\"}],\"default_button\":\"0\"}}",
+      "valid": false
+    },
+    {
+      "name": "duplicate button ids",
+      "wire": "{\"type\":\"show_message_dialog\",\"id\":3,\"window_id\":1,\"dialog_id\":1,\"options\":{\"title\":\"Unsaved changes\",\"message\":\"Save the document before closing?\",\"buttons\":[{\"id\":\"a\",\"label\":\"A\"},{\"id\":\"a\",\"label\":\"B\"}],\"default_button\":\"a\"}}",
+      "valid": false
+    },
+    {
+      "name": "unknown default button",
+      "wire": "{\"type\":\"show_message_dialog\",\"id\":3,\"window_id\":1,\"dialog_id\":1,\"options\":{\"title\":\"Unsaved changes\",\"message\":\"Save the document before closing?\",\"buttons\":[{\"id\":\"save\",\"label\":\"Save\"},{\"id\":\"cancel\",\"label\":\"Cancel\"}],\"default_button\":\"other\"}}",
+      "valid": false
+    },
+    {
+      "name": "unknown cancel button",
+      "wire": "{\"type\":\"show_message_dialog\",\"id\":3,\"window_id\":1,\"dialog_id\":1,\"options\":{\"title\":\"Unsaved changes\",\"message\":\"Save the document before closing?\",\"buttons\":[{\"id\":\"save\",\"label\":\"Save\"},{\"id\":\"cancel\",\"label\":\"Cancel\"}],\"default_button\":\"save\",\"cancel_button\":\"other\"}}",
+      "valid": false
+    },
+    {
+      "name": "missing default button",
+      "wire": "{\"type\":\"show_message_dialog\",\"id\":3,\"window_id\":1,\"dialog_id\":1,\"options\":{\"title\":\"Unsaved changes\",\"message\":\"Save the document before closing?\",\"buttons\":[{\"id\":\"save\",\"label\":\"Save\"},{\"id\":\"cancel\",\"label\":\"Cancel\"}]}}",
+      "valid": false
+    },
+    {
+      "name": "overlay-only button kind",
+      "wire": "{\"type\":\"show_message_dialog\",\"id\":3,\"window_id\":1,\"dialog_id\":1,\"options\":{\"title\":\"Unsaved changes\",\"message\":\"Save the document before closing?\",\"buttons\":[{\"id\":\"save\",\"label\":\"Save\",\"kind\":\"primary\"}],\"default_button\":\"save\"}}",
+      "valid": false
+    },
+    {
+      "name": "blank title",
+      "wire": "{\"type\":\"show_message_dialog\",\"id\":3,\"window_id\":1,\"dialog_id\":1,\"options\":{\"title\":\"  \",\"message\":\"Save the document before closing?\",\"buttons\":[{\"id\":\"save\",\"label\":\"Save\"},{\"id\":\"cancel\",\"label\":\"Cancel\"}],\"default_button\":\"save\"}}",
+      "valid": false
+    },
+    {
+      "name": "line feed in title",
+      "wire": "{\"type\":\"show_message_dialog\",\"id\":3,\"window_id\":1,\"dialog_id\":1,\"options\":{\"title\":\"a\\nb\",\"message\":\"Save the document before closing?\",\"buttons\":[{\"id\":\"save\",\"label\":\"Save\"},{\"id\":\"cancel\",\"label\":\"Cancel\"}],\"default_button\":\"save\"}}",
+      "valid": false
+    },
+    {
+      "name": "tab in message",
+      "wire": "{\"type\":\"show_message_dialog\",\"id\":3,\"window_id\":1,\"dialog_id\":1,\"options\":{\"title\":\"Unsaved changes\",\"message\":\"a\\tb\",\"buttons\":[{\"id\":\"save\",\"label\":\"Save\"},{\"id\":\"cancel\",\"label\":\"Cancel\"}],\"default_button\":\"save\"}}",
+      "valid": false
+    },
+    {
+      "name": "blank message",
+      "wire": "{\"type\":\"show_message_dialog\",\"id\":3,\"window_id\":1,\"dialog_id\":1,\"options\":{\"title\":\"Unsaved changes\",\"message\":\"\\n\",\"buttons\":[{\"id\":\"save\",\"label\":\"Save\"},{\"id\":\"cancel\",\"label\":\"Cancel\"}],\"default_button\":\"save\"}}",
+      "valid": false
+    },
+    {
+      "name": "blank button label",
+      "wire": "{\"type\":\"show_message_dialog\",\"id\":3,\"window_id\":1,\"dialog_id\":1,\"options\":{\"title\":\"Unsaved changes\",\"message\":\"Save the document before closing?\",\"buttons\":[{\"id\":\"save\",\"label\":\" \"}],\"default_button\":\"save\"}}",
+      "valid": false
+    },
+    {
+      "name": "oversized message",
+      "wire": "{\"type\":\"show_message_dialog\",\"id\":3,\"window_id\":1,\"dialog_id\":1,\"options\":{\"title\":\"Unsaved changes\",\"message\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"buttons\":[{\"id\":\"save\",\"label\":\"Save\"},{\"id\":\"cancel\",\"label\":\"Cancel\"}],\"default_button\":\"save\"}}",
+      "valid": false
+    },
+    {
+      "name": "oversized detail",
+      "wire": "{\"type\":\"show_message_dialog\",\"id\":3,\"window_id\":1,\"dialog_id\":1,\"options\":{\"title\":\"Unsaved changes\",\"message\":\"Save the document before closing?\",\"buttons\":[{\"id\":\"save\",\"label\":\"Save\"},{\"id\":\"cancel\",\"label\":\"Cancel\"}],\"default_button\":\"save\",\"detail\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"}}",
+      "valid": false
+    },
+    {
+      "name": "null detail",
+      "wire": "{\"type\":\"show_message_dialog\",\"id\":3,\"window_id\":1,\"dialog_id\":1,\"options\":{\"title\":\"Unsaved changes\",\"message\":\"Save the document before closing?\",\"buttons\":[{\"id\":\"save\",\"label\":\"Save\"},{\"id\":\"cancel\",\"label\":\"Cancel\"}],\"default_button\":\"save\",\"detail\":null}}",
+      "valid": false
+    },
+    {
+      "name": "unknown option",
+      "wire": "{\"type\":\"show_message_dialog\",\"id\":3,\"window_id\":1,\"dialog_id\":1,\"options\":{\"title\":\"Unsaved changes\",\"message\":\"Save the document before closing?\",\"buttons\":[{\"id\":\"save\",\"label\":\"Save\"},{\"id\":\"cancel\",\"label\":\"Cancel\"}],\"default_button\":\"save\",\"sound\":\"beep\"}}",
+      "valid": false
+    }
+  ],
+  "events": [
+    {
+      "name": "opened",
+      "wire": "{\"type\":\"message_dialog_opened\",\"id\":3,\"window_id\":1,\"dialog_id\":1}",
+      "valid": true
+    },
+    {
+      "name": "closed",
+      "wire": "{\"type\":\"message_dialog_closed\",\"id\":4,\"window_id\":1,\"dialog_id\":1}",
+      "valid": true
+    },
+    {
+      "name": "button result",
+      "wire": "{\"type\":\"message_dialog_completed\",\"sequence\":1,\"window_id\":1,\"dialog_id\":1,\"result\":{\"kind\":\"button\",\"id\":\"save\"}}",
+      "valid": true
+    },
+    {
+      "name": "dismissed result",
+      "wire": "{\"type\":\"message_dialog_completed\",\"sequence\":1,\"window_id\":1,\"dialog_id\":1,\"result\":{\"kind\":\"dismissed\"}}",
+      "valid": true
+    },
+    {
+      "name": "failed result",
+      "wire": "{\"type\":\"message_dialog_completed\",\"sequence\":1,\"window_id\":1,\"dialog_id\":1,\"result\":{\"kind\":\"failed\"}}",
+      "valid": true
+    },
+    {
+      "name": "button without id",
+      "wire": "{\"type\":\"message_dialog_completed\",\"sequence\":1,\"window_id\":1,\"dialog_id\":1,\"result\":{\"kind\":\"button\"}}",
+      "valid": false
+    },
+    {
+      "name": "button with blank id",
+      "wire": "{\"type\":\"message_dialog_completed\",\"sequence\":1,\"window_id\":1,\"dialog_id\":1,\"result\":{\"kind\":\"button\",\"id\":\"\\n\"}}",
+      "valid": false
+    },
+    {
+      "name": "dismissed with extra field",
+      "wire": "{\"type\":\"message_dialog_completed\",\"sequence\":1,\"window_id\":1,\"dialog_id\":1,\"result\":{\"kind\":\"dismissed\",\"id\":\"x\"}}",
+      "valid": false
+    },
+    {
+      "name": "unknown result kind",
+      "wire": "{\"type\":\"message_dialog_completed\",\"sequence\":1,\"window_id\":1,\"dialog_id\":1,\"result\":{\"kind\":\"timeout\"}}",
+      "valid": false
+    },
+    {
+      "name": "completion without sequence",
+      "wire": "{\"type\":\"message_dialog_completed\",\"window_id\":1,\"dialog_id\":1,\"result\":{\"kind\":\"dismissed\"}}",
+      "valid": false
+    }
+  ]
+}

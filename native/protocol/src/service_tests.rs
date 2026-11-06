@@ -61,6 +61,10 @@ fn service_commands_and_responses_share_the_checked_typescript_contract() {
             include_str!("../../../tests/fixtures/native-app-menu.json"),
             "app_menu_v1",
         ),
+        (
+            include_str!("../../../tests/fixtures/native-message-dialogs.json"),
+            "task_dialogs_v1",
+        ),
     ] {
         service_cases(source, capability);
     }
