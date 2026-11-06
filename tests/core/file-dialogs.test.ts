@@ -127,6 +127,7 @@ describe('owned OS file dialogs (headless real subprocess)', () => {
         { title: '' },
         { title: 'a\nb' },
         { title: 'Open', select: 'everything' },
+        { title: 'Open', select: null },
         { title: 'Open', folder: 'relative/path' },
         { title: 'Open', name: 'a.txt' },
         { title: 'Open', select: 'directory', filters: [{ name: 'Text', patterns: ['*.txt'] }] },

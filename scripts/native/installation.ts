@@ -175,7 +175,7 @@ function parseRelease(value: unknown): Release {
   const release = value as Release
   if (
     typeof release?.directory !== 'string' ||
-    !/^versions\/[0-9A-Za-z.-]+$/.test(release.directory) ||
+    !/^versions\/(?!\.+$)[0-9A-Za-z.-]+$/.test(release.directory) ||
     typeof release.version !== 'string' ||
     !Number.isSafeInteger(release.sequence) ||
     !sha256Pattern.test(release.manifestSha256) ||

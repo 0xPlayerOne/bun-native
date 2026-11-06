@@ -36,6 +36,7 @@ const keyboard = process.argv.includes('--keyboard')
 const popups = process.argv.includes('--popups')
 const splits = process.argv.includes('--splits')
 const splitResize = process.argv.includes('--split-resize')
+const inputStates = process.argv.includes('--input-states')
 let sequence = 0
 async function emit(value: unknown) {
   output.write(encodeFrame(value))
@@ -99,6 +100,7 @@ for await (const chunk of Bun.stdin.stream()) {
           ...(popups ? ['popup_windows_v1'] : []),
           ...(splits ? ['split_v1'] : []),
           ...(splitResize ? ['split_resize_v1', 'accessibility_v1'] : []),
+          ...(inputStates ? ['input_states_v1'] : []),
         ],
         limits: { ...DEFAULT_LIMITS },
       })

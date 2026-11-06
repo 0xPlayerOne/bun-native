@@ -84,7 +84,7 @@ With `navigation: 'menu'`, while focus is on a control whose innermost overlay i
 
 ```ts
 await window.batch((batch) => {
-  batch.focus(saveButton) // an enabled button or an input
+  batch.focus(saveButton) // an enabled button or an enabled input
   batch.scrollTo(list, { y: 0 }) // logical pixels from the content start; omitted axis unchanged
   batch.scrollIntoView(selectedRow)
 })

@@ -39,10 +39,25 @@ export function launcherScript(platform: Platform, root: string): string {
   if (platform === 'win32')
     return [
       '@echo off',
-      'setlocal',
+      'setlocal DisableDelayedExpansion',
       `set "BUN_NATIVE_ROOT=${base}"`,
+      'set "release="',
       'set /p release=<"%BUN_NATIVE_ROOT%\\current"',
       'if not defined release exit /b 1',
+      // Validate with delayed expansion, which never re-parses the pointer text: first strip
+      // every allowed character (case-insensitively), and only if nothing is left is the
+      // value safe to compare. It must be exactly versions/<name>, not only dots.
+      'setlocal EnableDelayedExpansion',
+      'set "left=!release!"',
+      'for %%c in (a b c d e f g h i j k l m n o p q r s t u v w x y z 0 1 2 3 4 5 6 7 8 9 . - /) do if defined left set "left=!left:%%c=!"',
+      'if defined left exit /b 1',
+      'if not "!release:~0,9!"=="versions/" exit /b 1',
+      'set "name=!release:~9!"',
+      'if not defined name exit /b 1',
+      'if not "!name:/=!"=="!name!" exit /b 1',
+      'set "left=!name:.=!"',
+      'if not defined left exit /b 1',
+      'endlocal',
       'set "release=%release:/=\\%"',
       'set "BUN_NATIVE_DATA_DIR=%BUN_NATIVE_ROOT%\\data"',
       '"%BUN_NATIVE_ROOT%\\%release%\\application.exe" %*',
@@ -52,7 +67,9 @@ export function launcherScript(platform: Platform, root: string): string {
     '#!/bin/sh',
     `BUN_NATIVE_ROOT='${base}'`,
     'release=$(cat "$BUN_NATIVE_ROOT/current") || exit 1',
-    'case "$release" in versions/*) ;; *) echo "Invalid Bun Native release pointer" >&2; exit 1 ;; esac',
+    // Exactly versions/<name> of letters, digits, dot and hyphen, never only dots.
+    'case "$release" in versions/*[!0-9A-Za-z.-]*) release= ;; versions/*[!.]*) ;; *) release= ;; esac',
+    '[ -n "$release" ] || { echo "Invalid Bun Native release pointer" >&2; exit 1; }',
     'BUN_NATIVE_DATA_DIR="$BUN_NATIVE_ROOT/data"',
     'export BUN_NATIVE_DATA_DIR',
     'exec "$BUN_NATIVE_ROOT/$release/application" "$@"',

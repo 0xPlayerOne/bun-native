@@ -157,7 +157,7 @@ describe('filesystem grant lifecycle edges (headless subprocess)', () => {
     }, 'hold')
   })
 
-  test('a result racing a window close is withheld', async () => {
+  test('a result racing a window close is withheld as cancelled', async () => {
     await withFiles(async (app, directory) => {
       const window = await app.openWindow({ title: 'Window' })
       const grant = await window.openFileGrant('docs')
@@ -165,10 +165,9 @@ describe('filesystem grant lifecycle edges (headless subprocess)', () => {
       for (let turn = 0; turn < 400 && !peerRequests(directory, 'file_request').length; turn += 1)
         await Bun.sleep(5)
       await window.close()
-      // The window stopped accepting results before the grant was revoked.
-      const error = await pending
-      expect(error).toBeInstanceOf(NativeStateError)
-      expect((error as NativeStateError).code).toBe('invalid_handle')
+      // Closing the window revokes its grants as the close starts, so the
+      // in-flight call settles as cancelled, not as a closed-window error.
+      expect(service(await pending)).toEqual(['filesystem_grants', 'cancelled'])
       expect(grant.active).toBe(false)
       expect(service(await failure(grant.stat('a')))).toEqual(['filesystem_grants', 'cancelled'])
       expect(peerRequests(directory, 'close_file_grant')).toEqual([])

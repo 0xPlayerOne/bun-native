@@ -92,7 +92,7 @@ function wireOptions(
 
 export function openDialogRequest(options: OpenDialogOptions): FileDialogOptions {
   return wireOptions(options, OPEN_KEYS, (data) => {
-    const select = data['select'] ?? 'file'
+    const select = data['select'] === undefined ? 'file' : data['select']
     if (select !== 'file' && select !== 'files' && select !== 'directory')
       throw new TypeError('File dialog select must be file, files or directory')
     return SELECT_MODES[select]

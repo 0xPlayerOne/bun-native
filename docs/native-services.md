@@ -558,8 +558,9 @@ share the eight-request service bound (a ninth concurrent call rejects locally
 with `NativeStateError` `limit_exceeded`); at most 32 grants are live per
 session. Closing the grant, its window or the application revokes it: later
 calls reject with `cancelled` without a native request, and a result that
-arrives after revocation is withheld. A call still in flight when its window
-closes rejects with the window's `NativeStateError` `invalid_handle` instead. An operation the worker has already started may still
+arrives after revocation is withheld. `window.close()` starts that revocation
+immediately, so a call still in flight rejects with `cancelled` too, not with
+the window's `invalid_handle`. An operation the worker has already started may still
 take effect.
 
 The [Native Linux workflow](../.github/workflows/native-linux.yml) runs
@@ -659,7 +660,11 @@ or directory), `path_denied` (the directory crosses a link), `wrong_kind`,
 `access_denied`, `limit_exceeded` (at most eight live processes per session,
 more than 64 KiB of unread input, or no OS capacity), `invalid_state`, `service_unavailable`, `native_failure` or `cancelled`.
 Releasing the process, closing its window or stopping the application kills
-and reaps its group; no later output or exit is delivered. The optional
+and reaps its group; no later output or exit is delivered. Like every
+application callback, a process listener that throws or rejects ends the
+application with that error. So does a delivery acknowledgement the host
+refuses for any reason other than `invalid_handle` (a released process or
+closed window): the stream could not continue without its credit. The optional
 `processes_v1` feature is advertised on Linux with pidfd support, on macOS
 and on Windows; the frozen `ptyProcess` capability record lists the
 executables by ID with `backend: 'posix'`, or `backend: 'windows_job'` on

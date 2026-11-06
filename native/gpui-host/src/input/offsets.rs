@@ -64,12 +64,44 @@ pub(super) fn next_boundary(content: &str, offset: usize) -> usize {
         .unwrap_or(content.len())
 }
 
+/// Pasted text for a single-line input: each line break (`\n`, `\r` or `\r\n`)
+/// becomes one space, so a CRLF paste does not keep a carriage return or turn
+/// into two spaces.
+pub(super) fn single_line_paste(text: &str) -> String {
+    let mut out = String::with_capacity(text.len());
+    let mut chars = text.chars().peekable();
+    while let Some(c) = chars.next() {
+        match c {
+            '\r' => {
+                if chars.peek() == Some(&'\n') {
+                    chars.next();
+                }
+                out.push(' ');
+            }
+            '\n' => out.push(' '),
+            other => out.push(other),
+        }
+    }
+    out
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
 
     // "a" (1 byte, 1 unit), "é" (2, 1), "界" (3, 1), "🌍" (4, 2).
     const MIXED: &str = "aé界🌍";
+
+    #[test]
+    fn single_line_paste_turns_each_line_break_into_one_space() {
+        assert_eq!(single_line_paste("a\nb"), "a b");
+        assert_eq!(single_line_paste("a\r\nb"), "a b");
+        assert_eq!(single_line_paste("a\rb"), "a b");
+        assert_eq!(single_line_paste("a\r\n\r\nb\n"), "a  b ");
+        assert_eq!(single_line_paste("\r\r\n"), "  ");
+        assert_eq!(single_line_paste("界\r\n🌍"), "界 🌍");
+        assert_eq!(single_line_paste(""), "");
+    }
 
     #[test]
     fn utf16_and_utf8_offsets_round_trip_on_character_boundaries() {

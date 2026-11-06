@@ -485,10 +485,10 @@ export class Transaction implements NativeBatch {
         throw new NativeStateError('invalid_handle', 'Request target is removed by this batch')
       const element = node.element
       if (request.type === 'focus') {
-        if (element.kind !== 'input' && (element.kind !== 'button' || element.disabled))
+        if ((element.kind !== 'input' && element.kind !== 'button') || element.disabled === true)
           throw new NativeStateError(
             'invalid_state',
-            'Only an enabled button or an input can take focus'
+            'Only an enabled button or an enabled input can take focus'
           )
         const modal = this.activeModal()
         let ancestor: NodeState | undefined = node

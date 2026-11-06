@@ -9,6 +9,8 @@ import {
   removeNode,
   replaceText,
   setProperty,
+  type ElementTag,
+  type PropertyName,
 } from '@bun-native/renderer'
 
 test('staged child operations reject invalid ownership and cycles without changing the tree', () => {
@@ -35,7 +37,7 @@ test('staged child operations reject invalid ownership and cycles without changi
   expect(() => asNode({} as never)).toThrow('owned staged native node')
   expect(() => asNode(null as never)).toThrow('owned staged native node')
   expect(asNode(child)).toBe(child)
-  expect(() => createElement('div')).toThrow('native-element:div')
+  expect(() => createElement('div' as ElementTag)).toThrow('native-element:div')
 })
 
 test('native properties validate JavaScript values and element kind before replacing staged state', () => {
@@ -59,7 +61,8 @@ test('native properties validate JavaScript values and element kind before repla
     [createTextNode('literal'), 'onInput', () => {}],
     [text, 'className', undefined],
   ] as const
-  for (const [node, name, value] of invalid) expect(() => setProperty(node, name, value)).toThrow()
+  for (const [node, name, value] of invalid)
+    expect(() => setProperty(node, name as PropertyName, value)).toThrow()
   expect(button.properties).toEqual({})
   expect(input.properties).toEqual({})
   expect(text.properties).toEqual({})
@@ -72,8 +75,9 @@ test('native properties validate JavaScript values and element kind before repla
   setProperty(button, 'onClick', () => {})
   setProperty(input, 'placeholder', 'Type')
   setProperty(input, 'onInput', () => {})
-  for (const name of ['style', 'text', 'disabled', 'onClick']) setProperty(button, name, undefined)
-  for (const name of ['placeholder', 'onInput']) setProperty(input, name, undefined)
+  for (const name of ['style', 'text', 'disabled', 'onClick'] as const)
+    setProperty(button, name, undefined)
+  for (const name of ['placeholder', 'onInput'] as const) setProperty(input, name, undefined)
   expect(button.properties).toEqual({})
   expect(input.properties).toEqual({})
   expect(() => replaceText(button, 'invalid')).toThrow('requires a text node')

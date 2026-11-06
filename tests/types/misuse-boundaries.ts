@@ -1,8 +1,8 @@
 /**
  * Compile-only misuse checks for global shortcut options, the shared renderer
  * node functions and the protocol's shortcut key table. Each expectation below
- * is a misuse TypeScript already rejects; misuses the types still accept are
- * rejected at runtime and covered by unit tests instead.
+ * is a misuse TypeScript rejects; misuses the types cannot express (an invalid
+ * value of an accepted type) are rejected at runtime and covered by unit tests.
  */
 import type { GlobalShortcutOptions, NativeNode, NativeWindow } from '@bun-native/core'
 import { GLOBAL_SHORTCUT_KEYS } from '@bun-native/protocol'
@@ -22,6 +22,12 @@ export async function checkShortcutOptions(window: NativeWindow): Promise<void> 
 
   // @ts-expect-error A shortcut must name its key.
   const keyless: GlobalShortcutOptions = { control: true }
+  // @ts-expect-error A shortcut needs control, alt or platform; shift alone is rejected at runtime.
+  const shiftOnly: GlobalShortcutOptions = { key: 'k', shift: true }
+  // @ts-expect-error A shortcut with no modifier at all is rejected at runtime.
+  const bare: GlobalShortcutOptions = { key: 'k' }
+  // @ts-expect-error A modifier left false does not satisfy the requirement.
+  const off: GlobalShortcutOptions = { key: 'k', control: false }
   // @ts-expect-error A key is a layout-level name, not a key code.
   const keyCode: GlobalShortcutOptions = { key: 75, control: true }
   // @ts-expect-error Modifier names are control, alt, shift and platform only.
@@ -36,7 +42,7 @@ export async function checkShortcutOptions(window: NativeWindow): Promise<void> 
   await window.registerGlobalShortcut(() => {})
   // @ts-expect-error A registration requires an activation listener.
   await window.registerGlobalShortcut(options)
-  void [keyless, keyCode, meta, nested]
+  void [keyless, shiftOnly, bare, off, keyCode, meta, nested]
 }
 
 export function checkRendererCalls(reference: RendererNode, handle: NativeNode<'box'>): void {
@@ -45,6 +51,10 @@ export function checkRendererCalls(reference: RendererNode, handle: NativeNode<'
 
   // @ts-expect-error A native element tag is a string.
   createElement(1)
+  // @ts-expect-error Only the six native element kinds are tags; 'div' is rejected at the type.
+  createElement('div')
+  // @ts-expect-error Only named native properties are accepted, not arbitrary DOM attributes.
+  setProperty(box, 'className', 'x')
   // @ts-expect-error An element needs a tag.
   createElement()
   // @ts-expect-error Text node content is a string.
@@ -72,6 +82,8 @@ export function checkNodeMutability(reference: RendererNode, handle: NativeNode<
   node.properties = {}
   // @ts-expect-error Staged text is a string.
   node.properties.text = 1
+  // @ts-expect-error A property is stored by setProperty, which validates and invalidates captures.
+  node.properties.text = 'Label'
   // @ts-expect-error A disabled flag is a boolean.
   node.properties.disabled = 'true'
   // @ts-expect-error The children view is derived from the staged list.
@@ -88,6 +100,9 @@ export function checkShortcutKeyTable(): void {
   const first: string | undefined = GLOBAL_SHORTCUT_KEYS[0]
   const known: boolean = GLOBAL_SHORTCUT_KEYS.includes('k')
   void [first, known]
+
+  // @ts-expect-error The table holds shortcut keys only, so it cannot be searched for 'escape'.
+  GLOBAL_SHORTCUT_KEYS.includes('escape')
 
   // @ts-expect-error The key table is read-only.
   GLOBAL_SHORTCUT_KEYS[0] = 'escape'

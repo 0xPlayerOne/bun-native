@@ -1,4 +1,4 @@
-//! Version 6's private native wire contract. No DOM or renderer-specific types.
+//! The private native wire contract (`PROTOCOL_VERSION`). No DOM or renderer-specific types.
 
 use serde::{de, Deserialize, Deserializer, Serialize};
 use std::fmt;

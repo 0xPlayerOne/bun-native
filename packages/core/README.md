@@ -61,17 +61,17 @@ Plain JavaScript uses the same imports and runtime checks. Add `// @ts-check` an
 
 Every window starts with a root box. Create and attach new elements in the same batch. A committed tree cannot contain unattached nodes or cycles. Only boxes, splits (at most two panes) and overlays own children; closing the window disposes its root.
 
-| Operation                             | Contract                                                                                                               |
-| ------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
-| `batch.create(element)`               | Creates a typed handle in the candidate tree. Return it from the callback and use it after the batch promise succeeds. |
-| `batch.set(node, element)`            | Replaces all properties of the same element kind. Omitted optional properties return to their defaults.                |
-| `batch.set(input, element, revision)` | Replaces input properties using its current observed edit revision.                                                    |
-| `batch.append(parent, child)`         | Attaches or moves a child to the end of a box, split or overlay.                                                       |
-| `batch.insert(parent, child, index)`  | Attaches or reorders a child; the index is evaluated after detaching it from its old position.                         |
-| `batch.remove(node)`                  | Deletes the entire subtree. Its handles and listeners are revoked after successful commit.                             |
-| `batch.focus(node)`                   | `focus_v1`: focuses an enabled button or an input after the batch's tree changes, inside the active modal overlay.     |
-| `batch.scrollTo(node, { x, y })`      | `scroll_control_v1`: sets a scrolling box or overlay's offset, 0–1,000,000 logical pixels on each given axis.          |
-| `batch.scrollIntoView(node)`          | `scroll_control_v1`: scrolls the node's scrolling ancestors, up to its own overlay layer, to reveal it.                |
+| Operation                             | Contract                                                                                                                   |
+| ------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| `batch.create(element)`               | Creates a typed handle in the candidate tree. Return it from the callback and use it after the batch promise succeeds.     |
+| `batch.set(node, element)`            | Replaces all properties of the same element kind. Omitted optional properties return to their defaults.                    |
+| `batch.set(input, element, revision)` | Replaces input properties using its current observed edit revision.                                                        |
+| `batch.append(parent, child)`         | Attaches or moves a child to the end of a box, split or overlay.                                                           |
+| `batch.insert(parent, child, index)`  | Attaches or reorders a child; the index is evaluated after detaching it from its old position.                             |
+| `batch.remove(node)`                  | Deletes the entire subtree. Its handles and listeners are revoked after successful commit.                                 |
+| `batch.focus(node)`                   | `focus_v1`: focuses an enabled button or an enabled input after the batch's tree changes, inside the active modal overlay. |
+| `batch.scrollTo(node, { x, y })`      | `scroll_control_v1`: sets a scrolling box or overlay's offset, 0–1,000,000 logical pixels on each given axis.              |
+| `batch.scrollIntoView(node)`          | `scroll_control_v1`: scrolls the node's scrolling ancestors, up to its own overlay layer, to reveal it.                    |
 
 `window.batch` callbacks must be synchronous. Their native work is committed atomically, and the returned promise resolves after the native acknowledgement. Fetch or compute asynchronous data before entering the callback. Retaining a `NativeBatch` and using it after the callback returns is an error. If validation or native preflight rejects a batch, its mutations do not commit; escaped handles created by that failed batch are unusable.
 
