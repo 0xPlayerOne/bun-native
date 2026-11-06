@@ -14,7 +14,7 @@ use gpui::{
     KeyBinding, MouseButton, MouseDownEvent, MouseMoveEvent, MouseUpEvent, Pixels, Point,
     SharedString, UTF16Selection, Window, actions, div, prelude::*, px,
 };
-use unicode_segmentation::*;
+use unicode_segmentation::UnicodeSegmentation;
 
 actions!(
     text_input,
@@ -62,7 +62,7 @@ impl TextInput {
         if self.selected_range.is_empty() {
             self.move_to(self.previous_boundary(self.cursor_offset()), window, cx);
         } else {
-            self.move_to(self.selected_range.start, window, cx)
+            self.move_to(self.selected_range.start, window, cx);
         }
     }
 
@@ -70,7 +70,7 @@ impl TextInput {
         if self.selected_range.is_empty() {
             self.move_to(self.next_boundary(self.selected_range.end), window, cx);
         } else {
-            self.move_to(self.selected_range.end, window, cx)
+            self.move_to(self.selected_range.end, window, cx);
         }
     }
 
@@ -84,7 +84,7 @@ impl TextInput {
 
     fn select_all(&mut self, _: &SelectAll, window: &mut Window, cx: &mut Context<Self>) {
         self.move_to(0, window, cx);
-        self.select_to(self.content.len(), window, cx)
+        self.select_to(self.content.len(), window, cx);
     }
 
     fn home(&mut self, _: &Home, window: &mut Window, cx: &mut Context<Self>) {
@@ -102,9 +102,9 @@ impl TextInput {
                 window.play_system_bell();
                 return;
             }
-            self.select_to(prev, window, cx)
+            self.select_to(prev, window, cx);
         }
-        self.replace_text_in_range(None, "", window, cx)
+        self.replace_text_in_range(None, "", window, cx);
     }
 
     fn delete(&mut self, _: &Delete, window: &mut Window, cx: &mut Context<Self>) {
@@ -114,9 +114,9 @@ impl TextInput {
                 window.play_system_bell();
                 return;
             }
-            self.select_to(next, window, cx)
+            self.select_to(next, window, cx);
         }
-        self.replace_text_in_range(None, "", window, cx)
+        self.replace_text_in_range(None, "", window, cx);
     }
 
     fn on_mouse_down(
@@ -132,7 +132,7 @@ impl TextInput {
         if event.modifiers.shift {
             self.select_to(self.index_for_mouse_position(event.position), window, cx);
         } else {
-            self.move_to(self.index_for_mouse_position(event.position), window, cx)
+            self.move_to(self.index_for_mouse_position(event.position), window, cx);
         }
     }
 
@@ -178,7 +178,7 @@ impl TextInput {
             cx.write_to_clipboard(ClipboardItem::new_string(
                 self.content[self.selected_range.clone()].to_string(),
             ));
-            self.replace_text_in_range(None, "", window, cx)
+            self.replace_text_in_range(None, "", window, cx);
         }
     }
 
@@ -186,7 +186,7 @@ impl TextInput {
         self.selected_range = offset..offset;
         self.selection_reversed = false;
         window.notify_text_selection_changed(&self.focus_handle);
-        cx.notify()
+        cx.notify();
     }
 
     fn cursor_offset(&self) -> usize {
@@ -212,16 +212,16 @@ impl TextInput {
 
     fn select_to(&mut self, offset: usize, window: &Window, cx: &mut Context<Self>) {
         if self.selection_reversed {
-            self.selected_range.start = offset
+            self.selected_range.start = offset;
         } else {
-            self.selected_range.end = offset
-        };
+            self.selected_range.end = offset;
+        }
         if self.selected_range.end < self.selected_range.start {
             self.selection_reversed = !self.selection_reversed;
             self.selected_range = self.selected_range.end..self.selected_range.start;
         }
         window.notify_text_selection_changed(&self.focus_handle);
-        cx.notify()
+        cx.notify();
     }
 
     fn offset_from_utf16(&self, offset: usize) -> usize {
@@ -451,10 +451,10 @@ impl EntityInputHandler for TextInput {
             return;
         };
         self.content = value;
-        if !new_text.is_empty() {
-            self.marked_range = Some(range.start..range.start + new_text.len());
-        } else {
+        if new_text.is_empty() {
             self.marked_range = None;
+        } else {
+            self.marked_range = Some(range.start..range.start + new_text.len());
         }
         let insertion_start_utf16 = self.offset_to_utf16(range.start);
         let inserted_length_utf16 = new_text.encode_utf16().count();

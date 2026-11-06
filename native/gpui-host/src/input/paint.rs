@@ -179,7 +179,7 @@ impl Element for TextElement {
         let mut caret = None;
         let clip = window.with_content_mask(Some(ContentMask { bounds }), |window| {
             if let Some(selection) = prepaint.selection.take() {
-                window.paint_quad(selection)
+                window.paint_quad(selection);
             }
             line.paint(
                 prepaint.viewport.origin(),
