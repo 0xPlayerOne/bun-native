@@ -1,17 +1,18 @@
-# Native host protocol 10
+# Native host protocol 11
 
 This is the implemented private Bun-to-GPUI contract for BN1, shared native interactions and the initial BN4 layout primitives. Application code
 uses [`@bun-native/core`](../packages/core/README.md); Solid and React adapters
 must target that same public API. They do not import this transport or construct
 numeric handles. Protocols 1–8 are superseded without a compatibility fallback.
-Protocol 10 requires `tree`, `input_revisions`, `layout_v1`, `interactions_v1` and `window_display_v1`; missing features or
+Protocol 11 requires `tree`, `input_revisions`, `layout_v1`, `interactions_v1` and `window_display_v1`; missing features or
 older versions fail launch before a window is opened. The [layout contract](native-layout.md)
 defines the supported style subset; the [interaction contract](native-events.md)
 defines native event observations and public propagation. The
 [service contract](native-services.md) defines immutable launch policy and
 owned-window display reads, bounded clipboard transfers, owned global
 shortcut registrations, owned desktop notifications, scoped filesystem
-grants on launch-policy roots ([ADR 0010](decisions/0010-filesystem-grants.md))
+grants on launch-policy roots ([ADR 0010](decisions/0010-filesystem-grants.md)),
+owned drop targets on Linux X11 ([ADR 0012](decisions/0012-native-drag-drop.md))
 and owned OS file dialogs ([ADR 0013](decisions/0013-native-file-dialogs.md)).
 File dialogs add the optional `file_dialogs_v1` capability,
 `show_file_dialog`/`close_file_dialog` commands, `file_dialog_opened`/
@@ -271,15 +272,19 @@ values use `ProtocolError`, and unsupported element kinds use
 for consumer handling and experimental compatibility policy.
 
 The negotiated flags describe implemented features, not OS permission grants.
-Protocol 10's services additionally require their immutable explicit
+Protocol 11's services additionally require their immutable explicit
 launch policy; there is no wire grant or general service selector. File
 commands (`open_file_grant`, `close_file_grant`, `file_request`) name a
 launch-policy root ID and relative paths only; no command accepts an absolute
 path. Process commands (`spawn_process` and its controls) name a
 launch-policy executable ID with an explicit argument array and environment
 map; no command accepts a program path or a command string, and a working
-directory comes only from a live file grant. `show_file_dialog` returns chosen paths as data and grants
-no access to them. No shell, network, update or browser service command
+directory comes only from a live file grant. Drop commands
+(`register_drop_target`, `unregister_drop_target`, `resolve_dropped_item`) name
+an owned node, target and drop; drop events carry display names only, and
+resolution returns a path relative to a launch root
+([ADR 0012](decisions/0012-native-drag-drop.md)). `show_file_dialog` returns
+chosen paths as data and grants no access to them. No shell, network, update or browser service command
 exists. The
 [security ADR](decisions/0003-bridge-security.md) defines the trusted
 application/untrusted data boundary and default-deny requirements for future

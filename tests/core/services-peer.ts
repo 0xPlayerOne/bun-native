@@ -48,6 +48,7 @@ for await (const chunk of Bun.stdin.stream()) {
             clipboard_write: false,
             global_shortcuts: false,
             notifications: false,
+            drag_drop: false,
             filesystem_roots: [],
             processes: [],
           },

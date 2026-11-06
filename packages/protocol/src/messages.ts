@@ -51,6 +51,17 @@ import {
   type TerminalSize,
 } from './processes.ts'
 import {
+  MAX_DROP_ITEMS,
+  MAX_DROP_TARGETS,
+  parseDragState,
+  parseDropItemIndex,
+  parseDroppedItems,
+  parseDropRejection,
+  type DragState,
+  type DroppedItem,
+  type DropRejection,
+} from './drops.ts'
+import {
   id,
   integer,
   keys,
@@ -61,7 +72,7 @@ import {
   string,
 } from './values.ts'
 
-export const PROTOCOL_VERSION = 10
+export const PROTOCOL_VERSION = 11
 export const MAX_OPERATIONS = 256
 const MAX_NODES_PER_WINDOW = 4_096
 const MAX_WINDOWS = 16
@@ -83,6 +94,8 @@ export interface Limits {
   max_file_grants: number
   max_file_chunk_bytes: number
   max_processes: number
+  max_drop_targets: number
+  max_drop_items: number
 }
 
 export const DEFAULT_LIMITS: Readonly<Limits> = Object.freeze({
@@ -100,6 +113,8 @@ export const DEFAULT_LIMITS: Readonly<Limits> = Object.freeze({
   max_file_grants: MAX_FILE_GRANTS,
   max_file_chunk_bytes: MAX_FILE_CHUNK_BYTES,
   max_processes: MAX_PROCESSES,
+  max_drop_targets: MAX_DROP_TARGETS,
+  max_drop_items: MAX_DROP_ITEMS,
 })
 
 export type Operation =
@@ -243,6 +258,23 @@ export type Command =
       window_id: number
       dialog_id: number
     }
+  | {
+      id: number
+      type: 'register_drop_target'
+      window_id: number
+      target_id: number
+      node_id: number
+    }
+  | { id: number; type: 'unregister_drop_target'; window_id: number; target_id: number }
+  | {
+      id: number
+      type: 'resolve_dropped_item'
+      window_id: number
+      target_id: number
+      drop_id: number
+      item: number
+      root: string
+    }
   | { id: number; type: 'shutdown' }
 
 export const ERROR_CODES = [
@@ -292,6 +324,7 @@ const CAPABILITIES = [
   'scroll_control_v1',
   'overlay_keyboard_v1',
   'popup_windows_v1',
+  'drag_drop_files_v1',
 ] as const
 export type Capability = (typeof CAPABILITIES)[number]
 
@@ -462,6 +495,40 @@ export type NativeEvent =
       window_id: number
       dialog_id: number
       result: FileDialogResult
+    }
+  | { type: 'drop_target_registered'; id: number; window_id: number; target_id: number }
+  | { type: 'drop_target_unregistered'; id: number; window_id: number; target_id: number }
+  | {
+      type: 'dropped_item_resolved'
+      id: number
+      window_id: number
+      target_id: number
+      drop_id: number
+      item: number
+      root: string
+      path: string
+    }
+  | {
+      type: 'drop_target_drag'
+      sequence: number
+      window_id: number
+      target_id: number
+      state: DragState
+    }
+  | {
+      type: 'drop_received'
+      sequence: number
+      window_id: number
+      target_id: number
+      drop_id: number
+      items: DroppedItem[]
+    }
+  | {
+      type: 'drop_rejected'
+      sequence: number
+      window_id: number
+      target_id: number
+      reason: DropRejection
     }
   | { type: 'closed'; sequence: number; window_id: number }
   | { type: 'error'; id?: number; code: ErrorCode; message: string }
@@ -719,6 +786,34 @@ export function parseCommand(value: unknown): Command {
         window_id: id(message['window_id']),
         dialog_id: id(message['dialog_id']),
       }
+    case 'register_drop_target':
+      keys(message, ['id', 'type', 'window_id', 'target_id', 'node_id'])
+      return {
+        id: request,
+        type: 'register_drop_target',
+        window_id: id(message['window_id']),
+        target_id: id(message['target_id']),
+        node_id: id(message['node_id']),
+      }
+    case 'unregister_drop_target':
+      keys(message, ['id', 'type', 'window_id', 'target_id'])
+      return {
+        id: request,
+        type: 'unregister_drop_target',
+        window_id: id(message['window_id']),
+        target_id: id(message['target_id']),
+      }
+    case 'resolve_dropped_item':
+      keys(message, ['id', 'type', 'window_id', 'target_id', 'drop_id', 'item', 'root'])
+      return {
+        id: request,
+        type: 'resolve_dropped_item',
+        window_id: id(message['window_id']),
+        target_id: id(message['target_id']),
+        drop_id: id(message['drop_id']),
+        item: parseDropItemIndex(message['item']),
+        root: parseRootId(message['root']),
+      }
     case 'shutdown':
       keys(message, ['id', 'type'])
       return { id: request, type: 'shutdown' }
@@ -746,6 +841,8 @@ function limits(value: unknown): Limits {
     max_file_grants: parse('max_file_grants'),
     max_file_chunk_bytes: parse('max_file_chunk_bytes'),
     max_processes: parse('max_processes'),
+    max_drop_targets: parse('max_drop_targets'),
+    max_drop_items: parse('max_drop_items'),
   }
 }
 
@@ -977,6 +1074,55 @@ export function parseEvent(value: unknown): NativeEvent {
         window_id: id(message['window_id']),
         dialog_id: id(message['dialog_id']),
         result: parseFileDialogResult(message['result']),
+      }
+    case 'drop_target_registered':
+    case 'drop_target_unregistered':
+      keys(message, ['type', 'id', 'window_id', 'target_id'])
+      return {
+        type: message['type'],
+        id: id(message['id']),
+        window_id: id(message['window_id']),
+        target_id: id(message['target_id']),
+      }
+    case 'dropped_item_resolved':
+      keys(message, ['type', 'id', 'window_id', 'target_id', 'drop_id', 'item', 'root', 'path'])
+      return {
+        type: 'dropped_item_resolved',
+        id: id(message['id']),
+        window_id: id(message['window_id']),
+        target_id: id(message['target_id']),
+        drop_id: id(message['drop_id']),
+        item: parseDropItemIndex(message['item']),
+        root: parseRootId(message['root']),
+        path: parseFilePath(message['path']),
+      }
+    case 'drop_target_drag':
+      keys(message, ['type', 'sequence', 'window_id', 'target_id', 'state'])
+      return {
+        type: 'drop_target_drag',
+        sequence: id(message['sequence']),
+        window_id: id(message['window_id']),
+        target_id: id(message['target_id']),
+        state: parseDragState(message['state']),
+      }
+    case 'drop_received':
+      keys(message, ['type', 'sequence', 'window_id', 'target_id', 'drop_id', 'items'])
+      return {
+        type: 'drop_received',
+        sequence: id(message['sequence']),
+        window_id: id(message['window_id']),
+        target_id: id(message['target_id']),
+        drop_id: id(message['drop_id']),
+        items: parseDroppedItems(message['items']),
+      }
+    case 'drop_rejected':
+      keys(message, ['type', 'sequence', 'window_id', 'target_id', 'reason'])
+      return {
+        type: 'drop_rejected',
+        sequence: id(message['sequence']),
+        window_id: id(message['window_id']),
+        target_id: id(message['target_id']),
+        reason: parseDropRejection(message['reason']),
       }
     case 'click':
     case 'focus':

@@ -2,17 +2,18 @@ use crate::{
     channel::EventSink,
     evidence::{Evidence, LayoutFrame},
     input::{InputBinding, TextInput},
+    services::drops::Drops,
     state::SharedWindowState,
     style,
 };
 use bun_native_protocol::{
-    Element as NativeElement, Event, NodeId, Overflow, OverlaySurface, ScrollAnchor, Style, Tree,
-    ViewRequest, WindowId,
+    DropTargetId, Element as NativeElement, Event, NodeId, Overflow, OverlaySurface, ScrollAnchor,
+    Style, Tree, ViewRequest, WindowId,
 };
 use gpui::{
-    AnyElement, AnyWindowHandle, App, Context, Div, Entity, FocusHandle, Focusable, KeyBinding,
-    MouseButton, Pixels, ScrollHandle, SharedString, Size, Stateful, Subscription, WeakEntity,
-    Window, actions, canvas, deferred, div, point, prelude::*, px, rgb,
+    AnyElement, AnyWindowHandle, App, Context, Div, Entity, ExternalPaths, FocusHandle, Focusable,
+    KeyBinding, MouseButton, Pixels, ScrollHandle, SharedString, Size, Stateful, Subscription,
+    WeakEntity, Window, actions, canvas, deferred, div, point, prelude::*, px, rgb,
 };
 use std::cell::RefCell;
 use std::collections::{BTreeMap, BTreeSet};
@@ -60,6 +61,7 @@ pub(crate) struct NativeView {
     viewport: Size<Pixels>,
     _subscriptions: [Subscription; 4],
     events: EventSink,
+    drops: Drops,
     evidence: Evidence,
 }
 
@@ -68,6 +70,7 @@ impl NativeView {
         window_id: WindowId,
         state: SharedWindowState,
         events: EventSink,
+        drops: Drops,
         evidence: Evidence,
         window: &mut Window,
         cx: &mut Context<Self>,
@@ -111,6 +114,7 @@ impl NativeView {
             viewport: window.viewport_size(),
             _subscriptions: [keyboard, focus_lost, deactivated, moved],
             events,
+            drops,
             evidence,
         }
     }
@@ -125,6 +129,7 @@ impl NativeView {
         cx: &mut Context<Self>,
     ) {
         let focused_before = self.focused_control(window, cx);
+        self.drops.retain_nodes(self.window_id, &tree);
         self.state.borrow_mut().tree = tree;
         self.splits.reconcile(&self.state.borrow().tree);
         // Snapshot cheap Arc-backed properties before focus/IME notifications:
@@ -300,6 +305,7 @@ impl NativeView {
         node_id: NodeId,
         layout: Option<&LayoutFrame>,
         pointer: &PointerFrame,
+        drop_scope: &DropScope,
         cx: &mut Context<Self>,
     ) -> AnyElement {
         let node = tree
@@ -312,7 +318,11 @@ impl NativeView {
         {
             base = layout.children(base, node.children(), 0, self.scrolls.get(&node_id));
         }
-        let base = pointer.target(base, node_id).id(node_id.get());
+        let mut base = pointer.target(base, node_id).id(node_id.get());
+        let drop_scope = drop_scope.enter(node_id);
+        if let Some(chain) = drop_scope.target() {
+            base = drop_target(base, chain, &self.drops);
+        }
         match node.element() {
             NativeElement::Box { style: properties } => {
                 let base = if node_id == tree.root_id() {
@@ -320,8 +330,17 @@ impl NativeView {
                 } else {
                     base
                 };
-                self.container(tree, node_id, base, properties, layout, pointer, cx)
-                    .into_any_element()
+                self.container(
+                    tree,
+                    node_id,
+                    base,
+                    properties,
+                    layout,
+                    pointer,
+                    &drop_scope,
+                    cx,
+                )
+                .into_any_element()
             }
             NativeElement::Overlay {
                 surface: OverlaySurface::Window,
@@ -337,7 +356,16 @@ impl NativeView {
                 // Occlusion keeps pointer input from reaching anything beneath
                 // the layer; a window layer is itself the modal backdrop.
                 let content = self
-                    .container(tree, node_id, base, properties, layout, pointer, cx)
+                    .container(
+                        tree,
+                        node_id,
+                        base,
+                        properties,
+                        layout,
+                        pointer,
+                        &drop_scope,
+                        cx,
+                    )
                     .occlude();
                 self.overlay_layer(node_id, *anchor, content, self.viewport)
             }
@@ -346,7 +374,15 @@ impl NativeView {
                 style: properties,
                 ..
             } => self.split(
-                tree, node_id, base, *min_size, properties, layout, pointer, cx,
+                tree,
+                node_id,
+                base,
+                *min_size,
+                properties,
+                layout,
+                pointer,
+                &drop_scope,
+                cx,
             ),
             NativeElement::Text {
                 style: properties, ..
@@ -414,6 +450,7 @@ impl NativeView {
         properties: &Style,
         layout: Option<&LayoutFrame>,
         pointer: &PointerFrame,
+        drop_scope: &DropScope,
         cx: &mut Context<Self>,
     ) -> Stateful<Div> {
         let mut container = style::apply(base.flex().flex_col(), properties);
@@ -433,7 +470,7 @@ impl NativeView {
                 .expect("validated tree contains every child")
                 .children()
                 .iter()
-                .map(|child| self.render_node(tree, *child, layout, pointer, cx)),
+                .map(|child| self.render_node(tree, *child, layout, pointer, drop_scope, cx)),
         )
     }
 }
@@ -442,6 +479,13 @@ impl Render for NativeView {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let render_started = Instant::now();
         self.viewport = window.viewport_size();
+        // GPUI ends an external drag on drop, on the source's leave and when
+        // the button is released outside every target; each refreshes.
+        if !cx.has_active_drag() {
+            self.drops.resume();
+            self.drops.drag_ended(self.window_id, cx);
+        }
+        let drop_scope = DropScope::new(self.drops.targets(self.window_id));
         let state = self.state.borrow();
         let layout = self.evidence.layout_tracing().then(|| {
             let focus = self
@@ -470,6 +514,7 @@ impl Render for NativeView {
             state.tree.root_id(),
             layout.as_ref(),
             &pointer,
+            &drop_scope,
             cx,
         );
         // Requests issued before this frame resolve in its prepaint.
@@ -575,6 +620,64 @@ impl NativeView {
         }
     }
 }
+
+/// The registered drop targets and, while rendering, the chain of target
+/// ancestors above the current node, innermost first.
+struct DropScope {
+    targets: Rc<BTreeMap<NodeId, DropTargetId>>,
+    chain: Rc<[DropTargetId]>,
+    own: bool,
+}
+
+impl DropScope {
+    fn new(targets: BTreeMap<NodeId, DropTargetId>) -> Self {
+        Self {
+            targets: Rc::new(targets),
+            chain: Rc::new([]),
+            own: false,
+        }
+    }
+
+    fn enter(&self, node: NodeId) -> Self {
+        let Some(target) = self.targets.get(&node) else {
+            return Self {
+                targets: self.targets.clone(),
+                chain: self.chain.clone(),
+                own: false,
+            };
+        };
+        Self {
+            targets: self.targets.clone(),
+            chain: std::iter::once(*target)
+                .chain(self.chain.iter().copied())
+                .collect(),
+            own: true,
+        }
+    }
+
+    /// This node's own target and its ancestors, when it is a target.
+    fn target(&self) -> Option<Rc<[DropTargetId]>> {
+        self.own.then(|| self.chain.clone())
+    }
+}
+
+/// GPUI hit tests the drop: the innermost hovered target takes it. Drag
+/// enter/leave compare the pointer with the target's painted bounds.
+fn drop_target(
+    element: Stateful<gpui::Div>,
+    chain: Rc<[DropTargetId]>,
+    drops: &Drops,
+) -> Stateful<gpui::Div> {
+    let target = chain[0];
+    let moved = drops.clone();
+    let dropped = drops.clone();
+    element
+        .on_drag_move::<ExternalPaths>(move |event, _, cx| {
+            moved.drag_moved(target, event.bounds.contains(&event.event.position), cx)
+        })
+        .on_drop::<ExternalPaths>(move |paths, _, cx| dropped.dropped(&chain, paths.paths(), cx))
+}
+
 mod interactions;
 mod keyboard;
 mod overlays;

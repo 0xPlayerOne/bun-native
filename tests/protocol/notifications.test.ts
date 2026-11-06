@@ -29,6 +29,7 @@ describe('shared notification wire contract (headless)', () => {
           clipboard_write: false,
           global_shortcuts: false,
           notifications,
+          drag_drop: false,
           filesystem_roots: [],
           processes: [],
         },

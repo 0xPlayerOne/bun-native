@@ -51,6 +51,9 @@ export type WindowCommand = WithoutId<
         | 'release_process'
         | 'show_file_dialog'
         | 'close_file_dialog'
+        | 'register_drop_target'
+        | 'unregister_drop_target'
+        | 'resolve_dropped_item'
     }
   >
 >
@@ -77,6 +80,9 @@ export type HostResponse = Extract<
       | 'process_released'
       | 'file_dialog_opened'
       | 'file_dialog_closed'
+      | 'drop_target_registered'
+      | 'drop_target_unregistered'
+      | 'dropped_item_resolved'
   }
 >
 
@@ -89,6 +95,8 @@ export interface ServicePermissions {
   readonly globalShortcuts?: 'allow' | 'deny'
   /** Desktop notifications posted by an owned window. */
   readonly notifications?: 'allow' | 'deny'
+  /** Owned drop targets that receive external file drops as untrusted names. */
+  readonly dragDrop?: 'allow' | 'deny'
   /**
    * Directories an owned window may open as scoped file grants. Each `path`
    * is absolute and normalized; `access` caps every grant on that root.
@@ -135,6 +143,7 @@ function launchPolicy(value: unknown = {}): Readonly<ServicePolicy> {
           'clipboardWrite',
           'globalShortcuts',
           'notifications',
+          'dragDrop',
           'filesystemRoots',
           'processes',
           'fileDialogs',
@@ -154,6 +163,7 @@ function launchPolicy(value: unknown = {}): Readonly<ServicePolicy> {
     clipboard_write: grant('clipboardWrite'),
     global_shortcuts: grant('globalShortcuts'),
     notifications: grant('notifications'),
+    drag_drop: grant('dragDrop'),
     filesystem_roots: filesystemRoots(value),
     processes: processes(value),
     file_dialogs: grant('fileDialogs'),
@@ -199,6 +209,7 @@ function samePolicy(left: Readonly<ServicePolicy>, right: Readonly<ServicePolicy
     left.global_shortcuts === right.global_shortcuts &&
     left.notifications === right.notifications &&
     (left.file_dialogs ?? false) === (right.file_dialogs ?? false) &&
+    left.drag_drop === right.drag_drop &&
     left.filesystem_roots.length === right.filesystem_roots.length &&
     left.filesystem_roots.every(
       (root, index) =>
@@ -285,6 +296,7 @@ export class NativeHost implements AsyncIterable<WindowEvent> {
         ...(requestedPolicy.clipboard_write ? ['--bun-native-allow-clipboard-write'] : []),
         ...(requestedPolicy.global_shortcuts ? ['--bun-native-allow-global-shortcuts'] : []),
         ...(requestedPolicy.notifications ? ['--bun-native-allow-notifications'] : []),
+        ...(requestedPolicy.drag_drop ? ['--bun-native-allow-drag-drop'] : []),
         ...requestedPolicy.filesystem_roots.map(filesystemRootArgument),
         ...requestedPolicy.processes.map(processArgument),
         ...(requestedPolicy.file_dialogs ? ['--bun-native-allow-file-dialogs'] : []),
@@ -408,6 +420,15 @@ export class NativeHost implements AsyncIterable<WindowEvent> {
   send(
     command: Extract<WindowCommand, { type: 'close_file_dialog' }>
   ): Promise<Extract<HostResponse, { type: 'file_dialog_closed' }>>
+  send(
+    command: Extract<WindowCommand, { type: 'register_drop_target' }>
+  ): Promise<Extract<HostResponse, { type: 'drop_target_registered' }>>
+  send(
+    command: Extract<WindowCommand, { type: 'unregister_drop_target' }>
+  ): Promise<Extract<HostResponse, { type: 'drop_target_unregistered' }>>
+  send(
+    command: Extract<WindowCommand, { type: 'resolve_dropped_item' }>
+  ): Promise<Extract<HostResponse, { type: 'dropped_item_resolved' }>>
   send(command: WindowCommand): Promise<HostResponse>
   send(command: WindowCommand): Promise<HostResponse> {
     if (this.phase !== 'running') return Promise.reject(this.closedError())
@@ -652,6 +673,9 @@ export class NativeHost implements AsyncIterable<WindowEvent> {
       event.type === 'process_released' ||
       event.type === 'file_dialog_opened' ||
       event.type === 'file_dialog_closed' ||
+      event.type === 'drop_target_registered' ||
+      event.type === 'drop_target_unregistered' ||
+      event.type === 'dropped_item_resolved' ||
       event.type === 'error'
     ) {
       if (event.type === 'error' && event.id === undefined)
@@ -761,6 +785,25 @@ export class NativeHost implements AsyncIterable<WindowEvent> {
           response.type === 'file_dialog_closed' &&
           response.window_id === command.window_id &&
           response.dialog_id === command.dialog_id
+        )
+      case 'register_drop_target':
+      case 'unregister_drop_target':
+        return (
+          response.type ===
+            (command.type === 'register_drop_target'
+              ? 'drop_target_registered'
+              : 'drop_target_unregistered') &&
+          response.window_id === command.window_id &&
+          response.target_id === command.target_id
+        )
+      case 'resolve_dropped_item':
+        return (
+          response.type === 'dropped_item_resolved' &&
+          response.window_id === command.window_id &&
+          response.target_id === command.target_id &&
+          response.drop_id === command.drop_id &&
+          response.item === command.item &&
+          response.root === command.root
         )
       case 'open':
         return (

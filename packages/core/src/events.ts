@@ -21,6 +21,9 @@ export type RoutedEvent = Exclude<
       | 'process_exited'
       | 'display_changed'
       | 'file_dialog_completed'
+      | 'drop_target_drag'
+      | 'drop_received'
+      | 'drop_rejected'
   }
 >
 const eventTypes: readonly string[] = [

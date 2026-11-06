@@ -1,0 +1,198 @@
+{
+  "protocol": 11,
+  "capability": "drag_drop_files_v1",
+  "commands": [
+    {
+      "name": "register a target",
+      "wire": "{\"type\":\"register_drop_target\",\"id\":3,\"window_id\":1,\"target_id\":1,\"node_id\":4}",
+      "valid": true
+    },
+    {
+      "name": "zero target ID",
+      "wire": "{\"type\":\"register_drop_target\",\"id\":3,\"window_id\":1,\"target_id\":0,\"node_id\":4}",
+      "valid": false
+    },
+    {
+      "name": "zero node ID",
+      "wire": "{\"type\":\"register_drop_target\",\"id\":3,\"window_id\":1,\"target_id\":1,\"node_id\":0}",
+      "valid": false
+    },
+    {
+      "name": "no payload kinds or paths on registration",
+      "wire": "{\"type\":\"register_drop_target\",\"id\":3,\"window_id\":1,\"target_id\":1,\"node_id\":4,\"kinds\":[\"files\"]}",
+      "valid": false
+    },
+    {
+      "name": "unregister a target",
+      "wire": "{\"type\":\"unregister_drop_target\",\"id\":4,\"window_id\":1,\"target_id\":1}",
+      "valid": true
+    },
+    {
+      "name": "unregister needs a target",
+      "wire": "{\"type\":\"unregister_drop_target\",\"id\":4,\"window_id\":1}",
+      "valid": false
+    },
+    {
+      "name": "resolve an item beneath a root",
+      "wire": "{\"type\":\"resolve_dropped_item\",\"id\":5,\"window_id\":1,\"target_id\":1,\"drop_id\":1,\"item\":0,\"root\":\"work\"}",
+      "valid": true
+    },
+    {
+      "name": "last item index",
+      "wire": "{\"type\":\"resolve_dropped_item\",\"id\":5,\"window_id\":1,\"target_id\":1,\"drop_id\":1,\"item\":63,\"root\":\"work\"}",
+      "valid": true
+    },
+    {
+      "name": "item index beyond the item limit",
+      "wire": "{\"type\":\"resolve_dropped_item\",\"id\":5,\"window_id\":1,\"target_id\":1,\"drop_id\":1,\"item\":64,\"root\":\"work\"}",
+      "valid": false
+    },
+    {
+      "name": "negative item index",
+      "wire": "{\"type\":\"resolve_dropped_item\",\"id\":5,\"window_id\":1,\"target_id\":1,\"drop_id\":1,\"item\":-1,\"root\":\"work\"}",
+      "valid": false
+    },
+    {
+      "name": "fractional item index",
+      "wire": "{\"type\":\"resolve_dropped_item\",\"id\":5,\"window_id\":1,\"target_id\":1,\"drop_id\":1,\"item\":0.5,\"root\":\"work\"}",
+      "valid": false
+    },
+    {
+      "name": "root IDs are not paths",
+      "wire": "{\"type\":\"resolve_dropped_item\",\"id\":5,\"window_id\":1,\"target_id\":1,\"drop_id\":1,\"item\":0,\"root\":\"/home/user\"}",
+      "valid": false
+    },
+    {
+      "name": "zero drop ID",
+      "wire": "{\"type\":\"resolve_dropped_item\",\"id\":5,\"window_id\":1,\"target_id\":1,\"drop_id\":0,\"item\":0,\"root\":\"work\"}",
+      "valid": false
+    },
+    {
+      "name": "a path is never sent for resolution",
+      "wire": "{\"type\":\"resolve_dropped_item\",\"id\":5,\"window_id\":1,\"target_id\":1,\"drop_id\":1,\"item\":0,\"root\":\"work\",\"path\":\"/etc/passwd\"}",
+      "valid": false
+    }
+  ],
+  "events": [
+    {
+      "name": "target registered",
+      "wire": "{\"type\":\"drop_target_registered\",\"id\":3,\"window_id\":1,\"target_id\":1}",
+      "valid": true
+    },
+    {
+      "name": "target unregistered",
+      "wire": "{\"type\":\"drop_target_unregistered\",\"id\":4,\"window_id\":1,\"target_id\":1}",
+      "valid": true
+    },
+    {
+      "name": "drag entered",
+      "wire": "{\"type\":\"drop_target_drag\",\"sequence\":7,\"window_id\":1,\"target_id\":1,\"state\":\"entered\"}",
+      "valid": true
+    },
+    {
+      "name": "drag left",
+      "wire": "{\"type\":\"drop_target_drag\",\"sequence\":8,\"window_id\":1,\"target_id\":1,\"state\":\"left\"}",
+      "valid": true
+    },
+    {
+      "name": "unknown drag state",
+      "wire": "{\"type\":\"drop_target_drag\",\"sequence\":8,\"window_id\":1,\"target_id\":1,\"state\":\"over\"}",
+      "valid": false
+    },
+    {
+      "name": "drop of named items",
+      "wire": "{\"type\":\"drop_received\",\"sequence\":9,\"window_id\":1,\"target_id\":1,\"drop_id\":1,\"items\":[{\"name\":\"a.txt\"}]}",
+      "valid": true
+    },
+    {
+      "name": "multibyte and spaced names",
+      "wire": "{\"type\":\"drop_received\",\"sequence\":9,\"window_id\":1,\"target_id\":1,\"drop_id\":1,\"items\":[{\"name\":\"b c.txt\"},{\"name\":\"文件\"}]}",
+      "valid": true
+    },
+    {
+      "name": "items at the limit",
+      "wire": "{\"type\":\"drop_received\",\"sequence\":9,\"window_id\":1,\"target_id\":1,\"drop_id\":1,\"items\":[{\"name\":\"a.txt\"},{\"name\":\"a.txt\"},{\"name\":\"a.txt\"},{\"name\":\"a.txt\"},{\"name\":\"a.txt\"},{\"name\":\"a.txt\"},{\"name\":\"a.txt\"},{\"name\":\"a.txt\"},{\"name\":\"a.txt\"},{\"name\":\"a.txt\"},{\"name\":\"a.txt\"},{\"name\":\"a.txt\"},{\"name\":\"a.txt\"},{\"name\":\"a.txt\"},{\"name\":\"a.txt\"},{\"name\":\"a.txt\"},{\"name\":\"a.txt\"},{\"name\":\"a.txt\"},{\"name\":\"a.txt\"},{\"name\":\"a.txt\"},{\"name\":\"a.txt\"},{\"name\":\"a.txt\"},{\"name\":\"a.txt\"},{\"name\":\"a.txt\"},{\"name\":\"a.txt\"},{\"name\":\"a.txt\"},{\"name\":\"a.txt\"},{\"name\":\"a.txt\"},{\"name\":\"a.txt\"},{\"name\":\"a.txt\"},{\"name\":\"a.txt\"},{\"name\":\"a.txt\"},{\"name\":\"a.txt\"},{\"name\":\"a.txt\"},{\"name\":\"a.txt\"},{\"name\":\"a.txt\"},{\"name\":\"a.txt\"},{\"name\":\"a.txt\"},{\"name\":\"a.txt\"},{\"name\":\"a.txt\"},{\"name\":\"a.txt\"},{\"name\":\"a.txt\"},{\"name\":\"a.txt\"},{\"name\":\"a.txt\"},{\"name\":\"a.txt\"},{\"name\":\"a.txt\"},{\"name\":\"a.txt\"},{\"name\":\"a.txt\"},{\"name\":\"a.txt\"},{\"name\":\"a.txt\"},{\"name\":\"a.txt\"},{\"name\":\"a.txt\"},{\"name\":\"a.txt\"},{\"name\":\"a.txt\"},{\"name\":\"a.txt\"},{\"name\":\"a.txt\"},{\"name\":\"a.txt\"},{\"name\":\"a.txt\"},{\"name\":\"a.txt\"},{\"name\":\"a.txt\"},{\"name\":\"a.txt\"},{\"name\":\"a.txt\"},{\"name\":\"a.txt\"},{\"name\":\"a.txt\"}]}",
+      "valid": true
+    },
+    {
+      "name": "items beyond the limit",
+      "wire": "{\"type\":\"drop_received\",\"sequence\":9,\"window_id\":1,\"target_id\":1,\"drop_id\":1,\"items\":[{\"name\":\"a.txt\"},{\"name\":\"a.txt\"},{\"name\":\"a.txt\"},{\"name\":\"a.txt\"},{\"name\":\"a.txt\"},{\"name\":\"a.txt\"},{\"name\":\"a.txt\"},{\"name\":\"a.txt\"},{\"name\":\"a.txt\"},{\"name\":\"a.txt\"},{\"name\":\"a.txt\"},{\"name\":\"a.txt\"},{\"name\":\"a.txt\"},{\"name\":\"a.txt\"},{\"name\":\"a.txt\"},{\"name\":\"a.txt\"},{\"name\":\"a.txt\"},{\"name\":\"a.txt\"},{\"name\":\"a.txt\"},{\"name\":\"a.txt\"},{\"name\":\"a.txt\"},{\"name\":\"a.txt\"},{\"name\":\"a.txt\"},{\"name\":\"a.txt\"},{\"name\":\"a.txt\"},{\"name\":\"a.txt\"},{\"name\":\"a.txt\"},{\"name\":\"a.txt\"},{\"name\":\"a.txt\"},{\"name\":\"a.txt\"},{\"name\":\"a.txt\"},{\"name\":\"a.txt\"},{\"name\":\"a.txt\"},{\"name\":\"a.txt\"},{\"name\":\"a.txt\"},{\"name\":\"a.txt\"},{\"name\":\"a.txt\"},{\"name\":\"a.txt\"},{\"name\":\"a.txt\"},{\"name\":\"a.txt\"},{\"name\":\"a.txt\"},{\"name\":\"a.txt\"},{\"name\":\"a.txt\"},{\"name\":\"a.txt\"},{\"name\":\"a.txt\"},{\"name\":\"a.txt\"},{\"name\":\"a.txt\"},{\"name\":\"a.txt\"},{\"name\":\"a.txt\"},{\"name\":\"a.txt\"},{\"name\":\"a.txt\"},{\"name\":\"a.txt\"},{\"name\":\"a.txt\"},{\"name\":\"a.txt\"},{\"name\":\"a.txt\"},{\"name\":\"a.txt\"},{\"name\":\"a.txt\"},{\"name\":\"a.txt\"},{\"name\":\"a.txt\"},{\"name\":\"a.txt\"},{\"name\":\"a.txt\"},{\"name\":\"a.txt\"},{\"name\":\"a.txt\"},{\"name\":\"a.txt\"},{\"name\":\"a.txt\"}]}",
+      "valid": false
+    },
+    {
+      "name": "empty drops are rejections, not drops",
+      "wire": "{\"type\":\"drop_received\",\"sequence\":9,\"window_id\":1,\"target_id\":1,\"drop_id\":1,\"items\":[]}",
+      "valid": false
+    },
+    {
+      "name": "names at the byte limit",
+      "wire": "{\"type\":\"drop_received\",\"sequence\":9,\"window_id\":1,\"target_id\":1,\"drop_id\":1,\"items\":[{\"name\":\"éééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééa\"}]}",
+      "valid": true
+    },
+    {
+      "name": "names beyond the byte limit",
+      "wire": "{\"type\":\"drop_received\",\"sequence\":9,\"window_id\":1,\"target_id\":1,\"drop_id\":1,\"items\":[{\"name\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"}]}",
+      "valid": false
+    },
+    {
+      "name": "empty names",
+      "wire": "{\"type\":\"drop_received\",\"sequence\":9,\"window_id\":1,\"target_id\":1,\"drop_id\":1,\"items\":[{\"name\":\"\"}]}",
+      "valid": false
+    },
+    {
+      "name": "control characters in names",
+      "wire": "{\"type\":\"drop_received\",\"sequence\":9,\"window_id\":1,\"target_id\":1,\"drop_id\":1,\"items\":[{\"name\":\"a\\nb\"}]}",
+      "valid": false
+    },
+    {
+      "name": "drop events never carry paths",
+      "wire": "{\"type\":\"drop_received\",\"sequence\":9,\"window_id\":1,\"target_id\":1,\"drop_id\":1,\"items\":[{\"name\":\"a.txt\",\"path\":\"/tmp/a.txt\"}]}",
+      "valid": false
+    },
+    {
+      "name": "zero drop ID",
+      "wire": "{\"type\":\"drop_received\",\"sequence\":9,\"window_id\":1,\"target_id\":1,\"drop_id\":0,\"items\":[{\"name\":\"a.txt\"}]}",
+      "valid": false
+    },
+    {
+      "name": "empty rejection",
+      "wire": "{\"type\":\"drop_rejected\",\"sequence\":10,\"window_id\":1,\"target_id\":1,\"reason\":\"empty\"}",
+      "valid": true
+    },
+    {
+      "name": "limit rejection",
+      "wire": "{\"type\":\"drop_rejected\",\"sequence\":10,\"window_id\":1,\"target_id\":1,\"reason\":\"limit_exceeded\"}",
+      "valid": true
+    },
+    {
+      "name": "unknown rejection",
+      "wire": "{\"type\":\"drop_rejected\",\"sequence\":10,\"window_id\":1,\"target_id\":1,\"reason\":\"denied\"}",
+      "valid": false
+    },
+    {
+      "name": "resolved relative path",
+      "wire": "{\"type\":\"dropped_item_resolved\",\"id\":5,\"window_id\":1,\"target_id\":1,\"drop_id\":1,\"item\":0,\"root\":\"work\",\"path\":\"a.txt\"}",
+      "valid": true
+    },
+    {
+      "name": "resolved nested path",
+      "wire": "{\"type\":\"dropped_item_resolved\",\"id\":5,\"window_id\":1,\"target_id\":1,\"drop_id\":1,\"item\":0,\"root\":\"work\",\"path\":\"src/b c.txt\"}",
+      "valid": true
+    },
+    {
+      "name": "resolved paths are relative",
+      "wire": "{\"type\":\"dropped_item_resolved\",\"id\":5,\"window_id\":1,\"target_id\":1,\"drop_id\":1,\"item\":0,\"root\":\"work\",\"path\":\"/tmp/a.txt\"}",
+      "valid": false
+    },
+    {
+      "name": "resolved paths never traverse",
+      "wire": "{\"type\":\"dropped_item_resolved\",\"id\":5,\"window_id\":1,\"target_id\":1,\"drop_id\":1,\"item\":0,\"root\":\"work\",\"path\":\"../a.txt\"}",
+      "valid": false
+    },
+    {
+      "name": "resolved item index beyond the limit",
+      "wire": "{\"type\":\"dropped_item_resolved\",\"id\":5,\"window_id\":1,\"target_id\":1,\"drop_id\":1,\"item\":64,\"root\":\"work\",\"path\":\"a.txt\"}",
+      "valid": false
+    }
+  ]
+}

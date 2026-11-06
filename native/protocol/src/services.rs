@@ -18,6 +18,8 @@ pub struct ServicePolicy {
     pub clipboard_write: bool,
     pub global_shortcuts: bool,
     pub notifications: bool,
+    /// Owned targets that receive external file drops as untrusted names.
+    pub drag_drop: bool,
     /// Directories a window may open as scoped grants, in launch order.
     pub filesystem_roots: Vec<crate::FilesystemRoot>,
     /// Executables a window may start as owned processes, in launch order.

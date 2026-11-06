@@ -3,7 +3,7 @@
 //! The application declares a ratio; the host adopts each newly declared
 //! value and otherwise keeps the user's latest drag, like a scroll offset.
 
-use super::{NativeView, interactions::PointerFrame};
+use super::{DropScope, NativeView, interactions::PointerFrame};
 use crate::{evidence::LayoutFrame, style};
 use bun_native_protocol::{
     Direction, Element as NativeElement, NodeId, SPLIT_DIVIDER, Style, Tree,
@@ -98,6 +98,7 @@ impl NativeView {
         properties: &Style,
         layout: Option<&LayoutFrame>,
         pointer: &PointerFrame,
+        drop_scope: &DropScope,
         cx: &mut Context<Self>,
     ) -> AnyElement {
         let row = properties.direction != Some(Direction::Column);
@@ -128,7 +129,7 @@ impl NativeView {
                 if let Some(layout) = layout {
                     pane = layout.children(pane, std::slice::from_ref(child), 0, None);
                 }
-                pane = pane.child(self.render_node(tree, *child, layout, pointer, cx));
+                pane = pane.child(self.render_node(tree, *child, layout, pointer, drop_scope, cx));
             }
             pane
         };

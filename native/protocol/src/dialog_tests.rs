@@ -13,6 +13,7 @@ fn file_dialog_grant_is_optional_on_the_wire_and_absent_when_denied() {
         "clipboard_write": false,
         "global_shortcuts": false,
         "notifications": false,
+        "drag_drop": false,
         "filesystem_roots": [],
         "processes": [],
     });
@@ -31,7 +32,7 @@ fn file_dialog_grant_is_optional_on_the_wire_and_absent_when_denied() {
     );
     for value in ["null", "1", "\"allow\""] {
         let wire = format!(
-            "{{\"window_display\":false,\"clipboard_read\":false,\"clipboard_write\":false,\"global_shortcuts\":false,\"notifications\":false,\"filesystem_roots\":[],\"processes\":[],\"file_dialogs\":{value}}}"
+            "{{\"window_display\":false,\"clipboard_read\":false,\"clipboard_write\":false,\"global_shortcuts\":false,\"notifications\":false,\"drag_drop\":false,\"filesystem_roots\":[],\"processes\":[],\"file_dialogs\":{value}}}"
         );
         assert!(
             serde_json::from_str::<ServicePolicy>(&wire).is_err(),

@@ -56,6 +56,7 @@ impl PointerFrame {
         window.on_mouse_event(move |event: &MouseDownEvent, phase, window, cx| {
             if phase == DispatchPhase::Capture
                 && let Some(node_id) = down.take()
+                && !cx.has_active_drag()
                 && in_viewport(event.position, window)
             {
                 let _ = down_view.update(cx, |view, cx| {
@@ -75,6 +76,9 @@ impl PointerFrame {
         window.on_mouse_event(move |event: &MouseUpEvent, phase, window, cx| {
             if phase == DispatchPhase::Capture
                 && let Some(node_id) = up.take()
+                // An external file drop arrives as a synthesized button
+                // release; it is a drop, never a pointer release.
+                && !cx.has_active_drag()
                 && in_viewport(event.position, window)
             {
                 let _ = up_view.update(cx, |view, cx| {

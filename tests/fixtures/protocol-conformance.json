@@ -1,26 +1,26 @@
 {
-  "protocol": 10,
+  "protocol": 11,
   "scope": "Shared command and event wire conformance between the TypeScript validators and the Rust protocol crate. Decoding only; no session state, GUI or OS service evidence.",
   "cases": [
     {
       "name": "hello-current",
       "category": "hello",
       "direction": "command",
-      "frame": "{\"id\":1,\"type\":\"hello\",\"protocol\":10}",
+      "frame": "{\"id\":1,\"type\":\"hello\",\"protocol\":11}",
       "expect": "accept"
     },
     {
       "name": "hello-float-spelled-version",
       "category": "hello",
       "direction": "command",
-      "frame": "{\"id\":1,\"type\":\"hello\",\"protocol\":10.0}",
+      "frame": "{\"id\":1,\"type\":\"hello\",\"protocol\":11.0}",
       "expect": "accept"
     },
     {
       "name": "hello-old-version",
       "category": "hello",
       "direction": "command",
-      "frame": "{\"id\":1,\"type\":\"hello\",\"protocol\":9}",
+      "frame": "{\"id\":1,\"type\":\"hello\",\"protocol\":10}",
       "expect": "reject",
       "divergentSide": "rust",
       "knownDivergence": "Intentional layering, not a parser bug: TypeScript parseCommand validates what this runtime may send, so it accepts only PROTOCOL_VERSION; the Rust CommandReader decodes any safe u32 so the gpui-host session can answer error version_mismatch instead of failing the frame as invalid_command (docs/native-abi.md, Framing, negotiation and identity)."
@@ -36,14 +36,14 @@
       "name": "hello-string-version",
       "category": "hello",
       "direction": "command",
-      "frame": "{\"id\":1,\"type\":\"hello\",\"protocol\":\"10\"}",
+      "frame": "{\"id\":1,\"type\":\"hello\",\"protocol\":\"11\"}",
       "expect": "reject"
     },
     {
       "name": "hello-unknown-field",
       "category": "unknown-fields",
       "direction": "command",
-      "frame": "{\"id\":1,\"type\":\"hello\",\"protocol\":10,\"extra\":true}",
+      "frame": "{\"id\":1,\"type\":\"hello\",\"protocol\":11,\"extra\":true}",
       "expect": "reject"
     },
     {
@@ -610,105 +610,105 @@
       "name": "ready-current",
       "category": "ready",
       "direction": "event",
-      "frame": "{\"type\":\"ready\",\"protocol\":10,\"capabilities\":[\"tree\",\"input_revisions\",\"layout_v1\",\"interactions_v1\",\"window_display_v1\"],\"limits\":{\"max_frame_bytes\":65536,\"max_operations\":256,\"max_nodes_per_window\":4096,\"max_windows\":16,\"max_depth\":64,\"max_text_bytes\":16384,\"max_text_bytes_per_window\":4194304,\"max_clipboard_bytes\":8192,\"max_service_requests\":8,\"max_global_shortcuts\":16,\"max_notifications\":32,\"max_file_grants\":32,\"max_file_chunk_bytes\":16384,\"max_processes\":8},\"service_policy\":{\"window_display\":true,\"clipboard_read\":false,\"clipboard_write\":false,\"global_shortcuts\":false,\"notifications\":false,\"filesystem_roots\":[],\"processes\":[]}}",
+      "frame": "{\"type\":\"ready\",\"protocol\":11,\"capabilities\":[\"tree\",\"input_revisions\",\"layout_v1\",\"interactions_v1\",\"window_display_v1\"],\"limits\":{\"max_frame_bytes\":65536,\"max_operations\":256,\"max_nodes_per_window\":4096,\"max_windows\":16,\"max_depth\":64,\"max_text_bytes\":16384,\"max_text_bytes_per_window\":4194304,\"max_clipboard_bytes\":8192,\"max_service_requests\":8,\"max_global_shortcuts\":16,\"max_notifications\":32,\"max_file_grants\":32,\"max_file_chunk_bytes\":16384,\"max_processes\":8,\"max_drop_targets\":32,\"max_drop_items\":64},\"service_policy\":{\"window_display\":true,\"clipboard_read\":false,\"clipboard_write\":false,\"global_shortcuts\":false,\"notifications\":false,\"drag_drop\":false,\"filesystem_roots\":[],\"processes\":[]}}",
       "expect": "accept"
     },
     {
       "name": "ready-all-capabilities",
       "category": "capabilities",
       "direction": "event",
-      "frame": "{\"type\":\"ready\",\"protocol\":10,\"capabilities\":[\"tree\",\"input_revisions\",\"layout_v1\",\"interactions_v1\",\"window_display_v1\",\"clipboard_text_v1\",\"global_shortcuts_v1\",\"notifications_v1\",\"filesystem_grants_v1\",\"processes_v1\",\"split_v1\",\"style_decoration_v1\",\"display_details_v1\",\"display_changes_v1\"],\"limits\":{\"max_frame_bytes\":65536,\"max_operations\":256,\"max_nodes_per_window\":4096,\"max_windows\":16,\"max_depth\":64,\"max_text_bytes\":16384,\"max_text_bytes_per_window\":4194304,\"max_clipboard_bytes\":8192,\"max_service_requests\":8,\"max_global_shortcuts\":16,\"max_notifications\":32,\"max_file_grants\":32,\"max_file_chunk_bytes\":16384,\"max_processes\":8},\"service_policy\":{\"window_display\":true,\"clipboard_read\":false,\"clipboard_write\":false,\"global_shortcuts\":false,\"notifications\":false,\"filesystem_roots\":[],\"processes\":[]}}",
+      "frame": "{\"type\":\"ready\",\"protocol\":11,\"capabilities\":[\"tree\",\"input_revisions\",\"layout_v1\",\"interactions_v1\",\"window_display_v1\",\"clipboard_text_v1\",\"global_shortcuts_v1\",\"notifications_v1\",\"filesystem_grants_v1\",\"processes_v1\",\"split_v1\",\"style_decoration_v1\",\"display_details_v1\",\"display_changes_v1\",\"file_dialogs_v1\",\"overlays_v1\",\"scroll_anchor_v1\",\"focus_v1\",\"scroll_control_v1\",\"overlay_keyboard_v1\",\"popup_windows_v1\",\"drag_drop_files_v1\"],\"limits\":{\"max_frame_bytes\":65536,\"max_operations\":256,\"max_nodes_per_window\":4096,\"max_windows\":16,\"max_depth\":64,\"max_text_bytes\":16384,\"max_text_bytes_per_window\":4194304,\"max_clipboard_bytes\":8192,\"max_service_requests\":8,\"max_global_shortcuts\":16,\"max_notifications\":32,\"max_file_grants\":32,\"max_file_chunk_bytes\":16384,\"max_processes\":8,\"max_drop_targets\":32,\"max_drop_items\":64},\"service_policy\":{\"window_display\":true,\"clipboard_read\":false,\"clipboard_write\":false,\"global_shortcuts\":false,\"notifications\":false,\"drag_drop\":false,\"filesystem_roots\":[],\"processes\":[]}}",
       "expect": "accept"
     },
     {
       "name": "ready-no-capabilities",
       "category": "capabilities",
       "direction": "event",
-      "frame": "{\"type\":\"ready\",\"protocol\":10,\"capabilities\":[],\"limits\":{\"max_frame_bytes\":65536,\"max_operations\":256,\"max_nodes_per_window\":4096,\"max_windows\":16,\"max_depth\":64,\"max_text_bytes\":16384,\"max_text_bytes_per_window\":4194304,\"max_clipboard_bytes\":8192,\"max_service_requests\":8,\"max_global_shortcuts\":16,\"max_notifications\":32,\"max_file_grants\":32,\"max_file_chunk_bytes\":16384,\"max_processes\":8},\"service_policy\":{\"window_display\":true,\"clipboard_read\":false,\"clipboard_write\":false,\"global_shortcuts\":false,\"notifications\":false,\"filesystem_roots\":[],\"processes\":[]}}",
+      "frame": "{\"type\":\"ready\",\"protocol\":11,\"capabilities\":[],\"limits\":{\"max_frame_bytes\":65536,\"max_operations\":256,\"max_nodes_per_window\":4096,\"max_windows\":16,\"max_depth\":64,\"max_text_bytes\":16384,\"max_text_bytes_per_window\":4194304,\"max_clipboard_bytes\":8192,\"max_service_requests\":8,\"max_global_shortcuts\":16,\"max_notifications\":32,\"max_file_grants\":32,\"max_file_chunk_bytes\":16384,\"max_processes\":8,\"max_drop_targets\":32,\"max_drop_items\":64},\"service_policy\":{\"window_display\":true,\"clipboard_read\":false,\"clipboard_write\":false,\"global_shortcuts\":false,\"notifications\":false,\"drag_drop\":false,\"filesystem_roots\":[],\"processes\":[]}}",
       "expect": "accept"
     },
     {
       "name": "ready-unknown-capability",
       "category": "capabilities",
       "direction": "event",
-      "frame": "{\"type\":\"ready\",\"protocol\":10,\"capabilities\":[\"tree\",\"input_revisions\",\"layout_v1\",\"interactions_v1\",\"window_display_v1\",\"filesystem_v1\"],\"limits\":{\"max_frame_bytes\":65536,\"max_operations\":256,\"max_nodes_per_window\":4096,\"max_windows\":16,\"max_depth\":64,\"max_text_bytes\":16384,\"max_text_bytes_per_window\":4194304,\"max_clipboard_bytes\":8192,\"max_service_requests\":8,\"max_global_shortcuts\":16,\"max_notifications\":32,\"max_file_grants\":32,\"max_file_chunk_bytes\":16384,\"max_processes\":8},\"service_policy\":{\"window_display\":true,\"clipboard_read\":false,\"clipboard_write\":false,\"global_shortcuts\":false,\"notifications\":false,\"filesystem_roots\":[],\"processes\":[]}}",
+      "frame": "{\"type\":\"ready\",\"protocol\":11,\"capabilities\":[\"tree\",\"input_revisions\",\"layout_v1\",\"interactions_v1\",\"window_display_v1\",\"filesystem_v1\"],\"limits\":{\"max_frame_bytes\":65536,\"max_operations\":256,\"max_nodes_per_window\":4096,\"max_windows\":16,\"max_depth\":64,\"max_text_bytes\":16384,\"max_text_bytes_per_window\":4194304,\"max_clipboard_bytes\":8192,\"max_service_requests\":8,\"max_global_shortcuts\":16,\"max_notifications\":32,\"max_file_grants\":32,\"max_file_chunk_bytes\":16384,\"max_processes\":8,\"max_drop_targets\":32,\"max_drop_items\":64},\"service_policy\":{\"window_display\":true,\"clipboard_read\":false,\"clipboard_write\":false,\"global_shortcuts\":false,\"notifications\":false,\"drag_drop\":false,\"filesystem_roots\":[],\"processes\":[]}}",
       "expect": "reject"
     },
     {
       "name": "ready-duplicate-capability",
       "category": "capabilities",
       "direction": "event",
-      "frame": "{\"type\":\"ready\",\"protocol\":10,\"capabilities\":[\"tree\",\"tree\"],\"limits\":{\"max_frame_bytes\":65536,\"max_operations\":256,\"max_nodes_per_window\":4096,\"max_windows\":16,\"max_depth\":64,\"max_text_bytes\":16384,\"max_text_bytes_per_window\":4194304,\"max_clipboard_bytes\":8192,\"max_service_requests\":8,\"max_global_shortcuts\":16,\"max_notifications\":32,\"max_file_grants\":32,\"max_file_chunk_bytes\":16384,\"max_processes\":8},\"service_policy\":{\"window_display\":true,\"clipboard_read\":false,\"clipboard_write\":false,\"global_shortcuts\":false,\"notifications\":false,\"filesystem_roots\":[],\"processes\":[]}}",
+      "frame": "{\"type\":\"ready\",\"protocol\":11,\"capabilities\":[\"tree\",\"tree\"],\"limits\":{\"max_frame_bytes\":65536,\"max_operations\":256,\"max_nodes_per_window\":4096,\"max_windows\":16,\"max_depth\":64,\"max_text_bytes\":16384,\"max_text_bytes_per_window\":4194304,\"max_clipboard_bytes\":8192,\"max_service_requests\":8,\"max_global_shortcuts\":16,\"max_notifications\":32,\"max_file_grants\":32,\"max_file_chunk_bytes\":16384,\"max_processes\":8,\"max_drop_targets\":32,\"max_drop_items\":64},\"service_policy\":{\"window_display\":true,\"clipboard_read\":false,\"clipboard_write\":false,\"global_shortcuts\":false,\"notifications\":false,\"drag_drop\":false,\"filesystem_roots\":[],\"processes\":[]}}",
       "expect": "reject"
     },
     {
       "name": "ready-old-version",
       "category": "ready",
       "direction": "event",
-      "frame": "{\"type\":\"ready\",\"protocol\":9,\"capabilities\":[\"tree\",\"input_revisions\",\"layout_v1\",\"interactions_v1\",\"window_display_v1\"],\"limits\":{\"max_frame_bytes\":65536,\"max_operations\":256,\"max_nodes_per_window\":4096,\"max_windows\":16,\"max_depth\":64,\"max_text_bytes\":16384,\"max_text_bytes_per_window\":4194304,\"max_clipboard_bytes\":8192,\"max_service_requests\":8,\"max_global_shortcuts\":16,\"max_notifications\":32,\"max_file_grants\":32,\"max_file_chunk_bytes\":16384,\"max_processes\":8},\"service_policy\":{\"window_display\":true,\"clipboard_read\":false,\"clipboard_write\":false,\"global_shortcuts\":false,\"notifications\":false,\"filesystem_roots\":[],\"processes\":[]}}",
+      "frame": "{\"type\":\"ready\",\"protocol\":10,\"capabilities\":[\"tree\",\"input_revisions\",\"layout_v1\",\"interactions_v1\",\"window_display_v1\"],\"limits\":{\"max_frame_bytes\":65536,\"max_operations\":256,\"max_nodes_per_window\":4096,\"max_windows\":16,\"max_depth\":64,\"max_text_bytes\":16384,\"max_text_bytes_per_window\":4194304,\"max_clipboard_bytes\":8192,\"max_service_requests\":8,\"max_global_shortcuts\":16,\"max_notifications\":32,\"max_file_grants\":32,\"max_file_chunk_bytes\":16384,\"max_processes\":8,\"max_drop_targets\":32,\"max_drop_items\":64},\"service_policy\":{\"window_display\":true,\"clipboard_read\":false,\"clipboard_write\":false,\"global_shortcuts\":false,\"notifications\":false,\"drag_drop\":false,\"filesystem_roots\":[],\"processes\":[]}}",
       "expect": "reject"
     },
     {
       "name": "ready-float-spelled-version",
       "category": "ready",
       "direction": "event",
-      "frame": "{\"type\":\"ready\",\"protocol\":10.0,\"capabilities\":[],\"limits\":{\"max_frame_bytes\":65536,\"max_operations\":256,\"max_nodes_per_window\":4096,\"max_windows\":16,\"max_depth\":64,\"max_text_bytes\":16384,\"max_text_bytes_per_window\":4194304,\"max_clipboard_bytes\":8192,\"max_service_requests\":8,\"max_global_shortcuts\":16,\"max_notifications\":32,\"max_file_grants\":32,\"max_file_chunk_bytes\":16384,\"max_processes\":8},\"service_policy\":{\"window_display\":true,\"clipboard_read\":false,\"clipboard_write\":false,\"global_shortcuts\":false,\"notifications\":false,\"filesystem_roots\":[],\"processes\":[]}}",
+      "frame": "{\"type\":\"ready\",\"protocol\":11.0,\"capabilities\":[],\"limits\":{\"max_frame_bytes\":65536,\"max_operations\":256,\"max_nodes_per_window\":4096,\"max_windows\":16,\"max_depth\":64,\"max_text_bytes\":16384,\"max_text_bytes_per_window\":4194304,\"max_clipboard_bytes\":8192,\"max_service_requests\":8,\"max_global_shortcuts\":16,\"max_notifications\":32,\"max_file_grants\":32,\"max_file_chunk_bytes\":16384,\"max_processes\":8,\"max_drop_targets\":32,\"max_drop_items\":64},\"service_policy\":{\"window_display\":true,\"clipboard_read\":false,\"clipboard_write\":false,\"global_shortcuts\":false,\"notifications\":false,\"drag_drop\":false,\"filesystem_roots\":[],\"processes\":[]}}",
       "expect": "accept"
     },
     {
       "name": "ready-limit-above-default",
       "category": "limits",
       "direction": "event",
-      "frame": "{\"type\":\"ready\",\"protocol\":10,\"capabilities\":[\"tree\",\"input_revisions\",\"layout_v1\",\"interactions_v1\",\"window_display_v1\"],\"limits\":{\"max_frame_bytes\":65536,\"max_operations\":257,\"max_nodes_per_window\":4096,\"max_windows\":16,\"max_depth\":64,\"max_text_bytes\":16384,\"max_text_bytes_per_window\":4194304,\"max_clipboard_bytes\":8192,\"max_service_requests\":8,\"max_global_shortcuts\":16,\"max_notifications\":32,\"max_file_grants\":32,\"max_file_chunk_bytes\":16384,\"max_processes\":8},\"service_policy\":{\"window_display\":true,\"clipboard_read\":false,\"clipboard_write\":false,\"global_shortcuts\":false,\"notifications\":false,\"filesystem_roots\":[],\"processes\":[]}}",
+      "frame": "{\"type\":\"ready\",\"protocol\":11,\"capabilities\":[\"tree\",\"input_revisions\",\"layout_v1\",\"interactions_v1\",\"window_display_v1\"],\"limits\":{\"max_frame_bytes\":65536,\"max_operations\":257,\"max_nodes_per_window\":4096,\"max_windows\":16,\"max_depth\":64,\"max_text_bytes\":16384,\"max_text_bytes_per_window\":4194304,\"max_clipboard_bytes\":8192,\"max_service_requests\":8,\"max_global_shortcuts\":16,\"max_notifications\":32,\"max_file_grants\":32,\"max_file_chunk_bytes\":16384,\"max_processes\":8,\"max_drop_targets\":32,\"max_drop_items\":64},\"service_policy\":{\"window_display\":true,\"clipboard_read\":false,\"clipboard_write\":false,\"global_shortcuts\":false,\"notifications\":false,\"drag_drop\":false,\"filesystem_roots\":[],\"processes\":[]}}",
       "expect": "reject"
     },
     {
       "name": "ready-limit-zero",
       "category": "limits",
       "direction": "event",
-      "frame": "{\"type\":\"ready\",\"protocol\":10,\"capabilities\":[\"tree\",\"input_revisions\",\"layout_v1\",\"interactions_v1\",\"window_display_v1\"],\"limits\":{\"max_frame_bytes\":65536,\"max_operations\":256,\"max_nodes_per_window\":4096,\"max_windows\":0,\"max_depth\":64,\"max_text_bytes\":16384,\"max_text_bytes_per_window\":4194304,\"max_clipboard_bytes\":8192,\"max_service_requests\":8,\"max_global_shortcuts\":16,\"max_notifications\":32,\"max_file_grants\":32,\"max_file_chunk_bytes\":16384,\"max_processes\":8},\"service_policy\":{\"window_display\":true,\"clipboard_read\":false,\"clipboard_write\":false,\"global_shortcuts\":false,\"notifications\":false,\"filesystem_roots\":[],\"processes\":[]}}",
+      "frame": "{\"type\":\"ready\",\"protocol\":11,\"capabilities\":[\"tree\",\"input_revisions\",\"layout_v1\",\"interactions_v1\",\"window_display_v1\"],\"limits\":{\"max_frame_bytes\":65536,\"max_operations\":256,\"max_nodes_per_window\":4096,\"max_windows\":0,\"max_depth\":64,\"max_text_bytes\":16384,\"max_text_bytes_per_window\":4194304,\"max_clipboard_bytes\":8192,\"max_service_requests\":8,\"max_global_shortcuts\":16,\"max_notifications\":32,\"max_file_grants\":32,\"max_file_chunk_bytes\":16384,\"max_processes\":8,\"max_drop_targets\":32,\"max_drop_items\":64},\"service_policy\":{\"window_display\":true,\"clipboard_read\":false,\"clipboard_write\":false,\"global_shortcuts\":false,\"notifications\":false,\"drag_drop\":false,\"filesystem_roots\":[],\"processes\":[]}}",
       "expect": "reject"
     },
     {
       "name": "ready-lower-limit",
       "category": "limits",
       "direction": "event",
-      "frame": "{\"type\":\"ready\",\"protocol\":10,\"capabilities\":[\"tree\",\"input_revisions\",\"layout_v1\",\"interactions_v1\",\"window_display_v1\"],\"limits\":{\"max_frame_bytes\":65536,\"max_operations\":256,\"max_nodes_per_window\":4096,\"max_windows\":1,\"max_depth\":64,\"max_text_bytes\":16384,\"max_text_bytes_per_window\":4194304,\"max_clipboard_bytes\":8192,\"max_service_requests\":8,\"max_global_shortcuts\":16,\"max_notifications\":32,\"max_file_grants\":32,\"max_file_chunk_bytes\":16384,\"max_processes\":8},\"service_policy\":{\"window_display\":true,\"clipboard_read\":false,\"clipboard_write\":false,\"global_shortcuts\":false,\"notifications\":false,\"filesystem_roots\":[],\"processes\":[]}}",
+      "frame": "{\"type\":\"ready\",\"protocol\":11,\"capabilities\":[\"tree\",\"input_revisions\",\"layout_v1\",\"interactions_v1\",\"window_display_v1\"],\"limits\":{\"max_frame_bytes\":65536,\"max_operations\":256,\"max_nodes_per_window\":4096,\"max_windows\":1,\"max_depth\":64,\"max_text_bytes\":16384,\"max_text_bytes_per_window\":4194304,\"max_clipboard_bytes\":8192,\"max_service_requests\":8,\"max_global_shortcuts\":16,\"max_notifications\":32,\"max_file_grants\":32,\"max_file_chunk_bytes\":16384,\"max_processes\":8,\"max_drop_targets\":32,\"max_drop_items\":64},\"service_policy\":{\"window_display\":true,\"clipboard_read\":false,\"clipboard_write\":false,\"global_shortcuts\":false,\"notifications\":false,\"drag_drop\":false,\"filesystem_roots\":[],\"processes\":[]}}",
       "expect": "accept"
     },
     {
       "name": "ready-file-chunk-limit-above-default",
       "category": "limits",
       "direction": "event",
-      "frame": "{\"type\":\"ready\",\"protocol\":10,\"capabilities\":[\"tree\",\"input_revisions\",\"layout_v1\",\"interactions_v1\",\"window_display_v1\"],\"limits\":{\"max_frame_bytes\":65536,\"max_operations\":256,\"max_nodes_per_window\":4096,\"max_windows\":16,\"max_depth\":64,\"max_text_bytes\":16384,\"max_text_bytes_per_window\":4194304,\"max_clipboard_bytes\":8192,\"max_service_requests\":8,\"max_global_shortcuts\":16,\"max_notifications\":32,\"max_file_grants\":32,\"max_file_chunk_bytes\":16385,\"max_processes\":8},\"service_policy\":{\"window_display\":true,\"clipboard_read\":false,\"clipboard_write\":false,\"global_shortcuts\":false,\"notifications\":false,\"filesystem_roots\":[],\"processes\":[]}}",
+      "frame": "{\"type\":\"ready\",\"protocol\":11,\"capabilities\":[\"tree\",\"input_revisions\",\"layout_v1\",\"interactions_v1\",\"window_display_v1\"],\"limits\":{\"max_frame_bytes\":65536,\"max_operations\":256,\"max_nodes_per_window\":4096,\"max_windows\":16,\"max_depth\":64,\"max_text_bytes\":16384,\"max_text_bytes_per_window\":4194304,\"max_clipboard_bytes\":8192,\"max_service_requests\":8,\"max_global_shortcuts\":16,\"max_notifications\":32,\"max_file_grants\":32,\"max_file_chunk_bytes\":16385,\"max_processes\":8,\"max_drop_targets\":32,\"max_drop_items\":64},\"service_policy\":{\"window_display\":true,\"clipboard_read\":false,\"clipboard_write\":false,\"global_shortcuts\":false,\"notifications\":false,\"drag_drop\":false,\"filesystem_roots\":[],\"processes\":[]}}",
       "expect": "reject"
     },
     {
       "name": "ready-file-grants-limit-zero",
       "category": "limits",
       "direction": "event",
-      "frame": "{\"type\":\"ready\",\"protocol\":10,\"capabilities\":[\"tree\",\"input_revisions\",\"layout_v1\",\"interactions_v1\",\"window_display_v1\"],\"limits\":{\"max_frame_bytes\":65536,\"max_operations\":256,\"max_nodes_per_window\":4096,\"max_windows\":16,\"max_depth\":64,\"max_text_bytes\":16384,\"max_text_bytes_per_window\":4194304,\"max_clipboard_bytes\":8192,\"max_service_requests\":8,\"max_global_shortcuts\":16,\"max_notifications\":32,\"max_file_grants\":0,\"max_file_chunk_bytes\":16384,\"max_processes\":8},\"service_policy\":{\"window_display\":true,\"clipboard_read\":false,\"clipboard_write\":false,\"global_shortcuts\":false,\"notifications\":false,\"filesystem_roots\":[],\"processes\":[]}}",
+      "frame": "{\"type\":\"ready\",\"protocol\":11,\"capabilities\":[\"tree\",\"input_revisions\",\"layout_v1\",\"interactions_v1\",\"window_display_v1\"],\"limits\":{\"max_frame_bytes\":65536,\"max_operations\":256,\"max_nodes_per_window\":4096,\"max_windows\":16,\"max_depth\":64,\"max_text_bytes\":16384,\"max_text_bytes_per_window\":4194304,\"max_clipboard_bytes\":8192,\"max_service_requests\":8,\"max_global_shortcuts\":16,\"max_notifications\":32,\"max_file_grants\":0,\"max_file_chunk_bytes\":16384,\"max_processes\":8,\"max_drop_targets\":32,\"max_drop_items\":64},\"service_policy\":{\"window_display\":true,\"clipboard_read\":false,\"clipboard_write\":false,\"global_shortcuts\":false,\"notifications\":false,\"drag_drop\":false,\"filesystem_roots\":[],\"processes\":[]}}",
       "expect": "reject"
     },
     {
       "name": "ready-limits-unknown-field",
       "category": "unknown-fields",
       "direction": "event",
-      "frame": "{\"type\":\"ready\",\"protocol\":10,\"capabilities\":[\"tree\",\"input_revisions\",\"layout_v1\",\"interactions_v1\",\"window_display_v1\"],\"limits\":{\"max_frame_bytes\":65536,\"max_operations\":256,\"max_nodes_per_window\":4096,\"max_windows\":16,\"max_depth\":64,\"max_text_bytes\":16384,\"max_text_bytes_per_window\":4194304,\"max_clipboard_bytes\":8192,\"max_service_requests\":8,\"max_global_shortcuts\":16,\"max_notifications\":32,\"max_file_grants\":32,\"max_file_chunk_bytes\":16384,\"max_processes\":8,\"max_threads\":4},\"service_policy\":{\"window_display\":true,\"clipboard_read\":false,\"clipboard_write\":false,\"global_shortcuts\":false,\"notifications\":false,\"filesystem_roots\":[],\"processes\":[]}}",
+      "frame": "{\"type\":\"ready\",\"protocol\":11,\"capabilities\":[\"tree\",\"input_revisions\",\"layout_v1\",\"interactions_v1\",\"window_display_v1\"],\"limits\":{\"max_frame_bytes\":65536,\"max_operations\":256,\"max_nodes_per_window\":4096,\"max_windows\":16,\"max_depth\":64,\"max_text_bytes\":16384,\"max_text_bytes_per_window\":4194304,\"max_clipboard_bytes\":8192,\"max_service_requests\":8,\"max_global_shortcuts\":16,\"max_notifications\":32,\"max_file_grants\":32,\"max_file_chunk_bytes\":16384,\"max_processes\":8,\"max_drop_targets\":32,\"max_drop_items\":64,\"max_threads\":4},\"service_policy\":{\"window_display\":true,\"clipboard_read\":false,\"clipboard_write\":false,\"global_shortcuts\":false,\"notifications\":false,\"drag_drop\":false,\"filesystem_roots\":[],\"processes\":[]}}",
       "expect": "reject"
     },
     {
       "name": "ready-policy-missing-grant",
       "category": "ready",
       "direction": "event",
-      "frame": "{\"type\":\"ready\",\"protocol\":10,\"capabilities\":[\"tree\",\"input_revisions\",\"layout_v1\",\"interactions_v1\",\"window_display_v1\"],\"limits\":{\"max_frame_bytes\":65536,\"max_operations\":256,\"max_nodes_per_window\":4096,\"max_windows\":16,\"max_depth\":64,\"max_text_bytes\":16384,\"max_text_bytes_per_window\":4194304,\"max_clipboard_bytes\":8192,\"max_service_requests\":8,\"max_global_shortcuts\":16,\"max_notifications\":32,\"max_file_grants\":32,\"max_file_chunk_bytes\":16384,\"max_processes\":8},\"service_policy\":{\"window_display\":true}}",
+      "frame": "{\"type\":\"ready\",\"protocol\":11,\"capabilities\":[\"tree\",\"input_revisions\",\"layout_v1\",\"interactions_v1\",\"window_display_v1\"],\"limits\":{\"max_frame_bytes\":65536,\"max_operations\":256,\"max_nodes_per_window\":4096,\"max_windows\":16,\"max_depth\":64,\"max_text_bytes\":16384,\"max_text_bytes_per_window\":4194304,\"max_clipboard_bytes\":8192,\"max_service_requests\":8,\"max_global_shortcuts\":16,\"max_notifications\":32,\"max_file_grants\":32,\"max_file_chunk_bytes\":16384,\"max_processes\":8,\"max_drop_targets\":32,\"max_drop_items\":64},\"service_policy\":{\"window_display\":true}}",
       "expect": "reject"
     },
     {
       "name": "ready-unknown-field",
       "category": "unknown-fields",
       "direction": "event",
-      "frame": "{\"type\":\"ready\",\"protocol\":10,\"capabilities\":[\"tree\",\"input_revisions\",\"layout_v1\",\"interactions_v1\",\"window_display_v1\"],\"limits\":{\"max_frame_bytes\":65536,\"max_operations\":256,\"max_nodes_per_window\":4096,\"max_windows\":16,\"max_depth\":64,\"max_text_bytes\":16384,\"max_text_bytes_per_window\":4194304,\"max_clipboard_bytes\":8192,\"max_service_requests\":8,\"max_global_shortcuts\":16,\"max_notifications\":32,\"max_file_grants\":32,\"max_file_chunk_bytes\":16384,\"max_processes\":8},\"service_policy\":{\"window_display\":true,\"clipboard_read\":false,\"clipboard_write\":false,\"global_shortcuts\":false,\"notifications\":false,\"filesystem_roots\":[],\"processes\":[]},\"debug\":true}",
+      "frame": "{\"type\":\"ready\",\"protocol\":11,\"capabilities\":[\"tree\",\"input_revisions\",\"layout_v1\",\"interactions_v1\",\"window_display_v1\"],\"limits\":{\"max_frame_bytes\":65536,\"max_operations\":256,\"max_nodes_per_window\":4096,\"max_windows\":16,\"max_depth\":64,\"max_text_bytes\":16384,\"max_text_bytes_per_window\":4194304,\"max_clipboard_bytes\":8192,\"max_service_requests\":8,\"max_global_shortcuts\":16,\"max_notifications\":32,\"max_file_grants\":32,\"max_file_chunk_bytes\":16384,\"max_processes\":8,\"max_drop_targets\":32,\"max_drop_items\":64},\"service_policy\":{\"window_display\":true,\"clipboard_read\":false,\"clipboard_write\":false,\"global_shortcuts\":false,\"notifications\":false,\"drag_drop\":false,\"filesystem_roots\":[],\"processes\":[]},\"debug\":true}",
       "expect": "reject"
     },
     {

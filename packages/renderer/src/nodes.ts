@@ -1,9 +1,11 @@
 import {
   NativeStateError,
   UnsupportedFeatureError,
+  type DropTargetEvent,
   type Element,
   type InputState,
   type NativeBatch,
+  type NativeDropTarget,
   type NativeNode,
   type Style,
 } from '@bun-native/core'
@@ -29,6 +31,10 @@ export interface Owner {
   input(node: Node): InputState
   /** Commit staged changes, then send one request batch for the committed handle. */
   request(node: Node, send: (batch: NativeBatch, handle: NativeNode) => void): Promise<void>
+  registerDropTarget(
+    node: Node,
+    listener: (event: DropTargetEvent) => void | Promise<void>
+  ): Promise<NativeDropTarget>
 }
 
 type Properties = EventListeners & {

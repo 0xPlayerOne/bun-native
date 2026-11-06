@@ -68,6 +68,16 @@ export {
   type FileFilter,
 } from './dialogs.ts'
 export {
+  DRAG_STATES,
+  DROP_REJECTIONS,
+  MAX_DROP_ITEMS,
+  MAX_DROP_NAME_BYTES,
+  MAX_DROP_TARGETS,
+  type DragState,
+  type DroppedItem,
+  type DropRejection,
+} from './drops.ts'
+export {
   GLOBAL_SHORTCUT_KEYS,
   MAX_CLIPBOARD_BYTES,
   MAX_GLOBAL_SHORTCUTS,

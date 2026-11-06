@@ -29,6 +29,7 @@ import type {
   SaveDialogOptions,
   SaveDialogResult,
 } from './dialogs.ts'
+import type { DropTargetEvent, NativeDropTarget } from './drops.ts'
 
 export type { Element, KeyModifiers, PointerButton, Style }
 export type ApplicationOptions = HostOptions
@@ -257,6 +258,17 @@ export interface NativeWindow {
     options: SaveDialogOptions,
     request?: ServiceRequestOptions
   ): Promise<SaveDialogResult>
+  /**
+   * Make a committed node an owned drop target for external file drags.
+   * Requires the immutable dragDrop launch grant. Dropped items arrive as
+   * untrusted display names; only `item.resolve(root)` maps one, through the
+   * host, beneath a launch root. Removing the node, closing the target or
+   * its window revokes it, and no later event is delivered.
+   */
+  registerDropTarget(
+    node: NativeNode,
+    listener: (event: DropTargetEvent) => void | Promise<void>
+  ): Promise<NativeDropTarget>
   /** Idempotent. Revokes listeners before requesting native window removal. */
   close(): Promise<void>
 }

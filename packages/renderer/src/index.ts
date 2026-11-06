@@ -1,7 +1,9 @@
 import {
   NativeStateError,
   type ContainerKind,
+  type DropTargetEvent,
   type InputState,
+  type NativeDropTarget,
   type NativeNode,
   type ScrollOffset,
 } from '@bun-native/core'
@@ -21,6 +23,20 @@ export {
 export type { Node, RendererNode } from './nodes.ts'
 export { eventProperties, isEventProperty } from './event-properties.ts'
 export type { EventHandlers, EventProperty } from './event-properties.ts'
+
+/**
+ * Make a mounted, committed element an owned native drop target. The same
+ * core window method serves every adapter; removing the element revokes it.
+ */
+export function registerDropTarget(
+  reference: RendererNode,
+  listener: (event: DropTargetEvent) => void | Promise<void>
+): Promise<NativeDropTarget> {
+  const node = asNode(reference)
+  if (node.kind === 'text-node' || !node.owner)
+    return Promise.reject(new NativeStateError('invalid_handle', 'Expected a mounted element'))
+  return node.owner.registerDropTarget(node, listener)
+}
 
 /** Observe current editing state without upgrading a submitted replacement intent. */
 export function inputState(reference: RendererNode): InputState {

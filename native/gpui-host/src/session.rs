@@ -3,6 +3,7 @@ use crate::{
     evidence::Evidence,
     services,
     services::clipboard::{Clipboard, Operation as ClipboardOperation},
+    services::drops::Drops,
     services::file_dialogs::FileDialogs,
     services::files::Files,
     services::notifications::Notifications,
@@ -12,10 +13,10 @@ use crate::{
     view::NativeView,
 };
 use bun_native_protocol::{
-    Capability, Command, DialogId, ErrorCode, Event, FileAccess, FileDialogOptions, FileGrantId,
-    FileOperation, Limits, MAX_WINDOWS, NodeId, NotificationId, Operation, PROTOCOL_VERSION,
-    ProcessId, ProcessLaunch, RequestId, ServicePolicy, ShortcutId, ShortcutModifiers, Tree,
-    WindowId,
+    Capability, Command, DialogId, DropId, DropTargetId, ErrorCode, Event, FileAccess,
+    FileDialogOptions, FileGrantId, FileOperation, Limits, MAX_WINDOWS, NodeId, NotificationId,
+    Operation, PROTOCOL_VERSION, ProcessId, ProcessLaunch, RequestId, ServicePolicy, ShortcutId,
+    ShortcutModifiers, Tree, WindowId,
 };
 use gpui::{
     App, Bounds, TitlebarOptions, WindowBounds, WindowHandle, WindowOptions, prelude::*, px, size,
@@ -56,6 +57,7 @@ pub(crate) struct Session {
     files: Files,
     processes: Processes,
     file_dialogs: FileDialogs,
+    drops: Drops,
 }
 
 impl Session {
@@ -74,6 +76,7 @@ impl Session {
         let files = Files::new(events.clone(), policy.filesystem_roots.clone(), cx);
         let processes = Processes::new(events.clone(), policy.processes.clone(), cx);
         let file_dialogs = FileDialogs::new(events.clone(), cx);
+        let drops = Drops::new(events.clone(), cx);
         cx.on_window_closed({
             let windows = windows.clone();
             let finishing = finishing.clone();
@@ -85,6 +88,7 @@ impl Session {
             let files = files.clone();
             let processes = processes.clone();
             let file_dialogs = file_dialogs.clone();
+            let drops = drops.clone();
             move |cx, closed| {
                 let id = windows
                     .borrow()
@@ -106,6 +110,14 @@ impl Session {
                     files.close_window(window_id, cx);
                     processes.close_window(window_id, cx);
                     file_dialogs.close_window(window_id, cx);
+                    // GPUI's drag outlives a window closed under it. End it
+                    // in a live window so its stale data is never dropped.
+                    let dragging = cx.has_active_drag();
+                    drops.close_window(window_id, dragging);
+                    let survivor = windows.borrow().values().next().map(|entry| entry.handle);
+                    if let Some(survivor) = survivor.filter(|_| dragging) {
+                        let _ = survivor.update(cx, |_, window, cx| cx.stop_active_drag(window));
+                    }
                     if !finishing.get() {
                         events.ui(
                             |sequence| Event::Closed {
@@ -135,6 +147,7 @@ impl Session {
             files,
             processes,
             file_dialogs,
+            drops,
         }
     }
 
@@ -222,6 +235,9 @@ impl Session {
                 }
                 if self.file_dialogs.available() {
                     capabilities.push(Capability::FileDialogsV1);
+                }
+                if self.drops.available() {
+                    capabilities.push(Capability::DragDropFilesV1);
                 }
                 self.events.send(
                     Event::Ready {
@@ -409,6 +425,25 @@ impl Session {
                     self.error(id, code, message, cx);
                 }
             }
+            Command::RegisterDropTarget {
+                window_id,
+                target_id,
+                node_id,
+                ..
+            } => self.register_drop_target(id, window_id, target_id, node_id, cx),
+            Command::UnregisterDropTarget {
+                window_id,
+                target_id,
+                ..
+            } => self.unregister_drop_target(id, window_id, target_id, cx),
+            Command::ResolveDroppedItem {
+                window_id,
+                target_id,
+                drop_id,
+                item,
+                root,
+                ..
+            } => self.resolve_dropped_item((id, window_id, target_id), drop_id, item, root, cx),
             Command::Shutdown { .. } => self.finish(Event::Ack { id }, cx),
             Command::Hello { .. } => unreachable!("hello handled before command dispatch"),
         }
@@ -448,6 +483,7 @@ impl Session {
         }));
         let view_state = state.clone();
         let events = self.events.clone();
+        let drops = self.drops.clone();
         let evidence = self.evidence.clone();
         let bounds = Bounds::centered(None, size(px(width as f32), px(height as f32)), cx);
         self.evidence.startup("open_window_enter", id, window_id);
@@ -465,7 +501,15 @@ impl Session {
                 evidence.startup("root_constructor_enter", id, window_id);
                 evidence.renderer(window_id, window);
                 let view = cx.new(|cx| {
-                    NativeView::new(window_id, view_state, events, evidence.clone(), window, cx)
+                    NativeView::new(
+                        window_id,
+                        view_state,
+                        events,
+                        drops,
+                        evidence.clone(),
+                        window,
+                        cx,
+                    )
                 });
                 evidence.startup("root_constructor_returned", id, window_id);
                 view
@@ -652,6 +696,8 @@ impl Session {
             self.files.close_window(window_id, cx);
             self.processes.close_window(window_id, cx);
             self.file_dialogs.close_window(window_id, cx);
+            // The closed-window hook also ends a drag GPUI still holds.
+            self.drops.close_window(window_id, false);
             self.events.send(Event::Ack { id }, cx);
         } else {
             state.borrow_mut().active = true;
@@ -904,6 +950,125 @@ impl Session {
         };
         if let Err((code, message)) = self.file_dialogs.show(request, options, parent, cx) {
             self.error(id, code, message, cx);
+        }
+    }
+
+    fn register_drop_target(
+        &self,
+        id: RequestId,
+        window_id: WindowId,
+        target_id: DropTargetId,
+        node_id: NodeId,
+        cx: &mut App,
+    ) {
+        if !self.policy.drag_drop {
+            self.error(
+                id,
+                ErrorCode::PermissionDenied,
+                "drag and drop was not granted at native process launch",
+                cx,
+            );
+            return;
+        }
+        let Some((handle, state)) = self.window(id, window_id, cx) else {
+            return;
+        };
+        if !self.drops.available() {
+            self.error(
+                id,
+                ErrorCode::ServiceUnavailable,
+                "file drops are unavailable for this native window backend",
+                cx,
+            );
+            return;
+        }
+        let registered = self
+            .drops
+            .register(window_id, target_id, node_id, &state.borrow().tree);
+        if let Err((code, message)) = registered {
+            self.error(id, code, message, cx);
+            return;
+        }
+        // Render the target's drag and drop listeners before acknowledging.
+        let _ = handle.update(cx, |_, window, _| window.refresh());
+        self.events.send(
+            Event::DropTargetRegistered {
+                id,
+                window_id,
+                target_id,
+            },
+            cx,
+        );
+    }
+
+    fn unregister_drop_target(
+        &self,
+        id: RequestId,
+        window_id: WindowId,
+        target_id: DropTargetId,
+        cx: &mut App,
+    ) {
+        let Some((handle, _)) = self.window(id, window_id, cx) else {
+            return;
+        };
+        if let Err((code, message)) = self.drops.unregister(window_id, target_id) {
+            self.error(id, code, message, cx);
+            return;
+        }
+        let _ = handle.update(cx, |_, window, _| window.refresh());
+        self.events.send(
+            Event::DropTargetUnregistered {
+                id,
+                window_id,
+                target_id,
+            },
+            cx,
+        );
+    }
+
+    fn resolve_dropped_item(
+        &self,
+        request: (RequestId, WindowId, DropTargetId),
+        drop_id: DropId,
+        item: u32,
+        root: String,
+        cx: &mut App,
+    ) {
+        let (id, window_id, target_id) = request;
+        let Some(launch_root) = self
+            .policy
+            .filesystem_roots
+            .iter()
+            .find(|candidate| candidate.id == root)
+        else {
+            self.error(
+                id,
+                ErrorCode::PermissionDenied,
+                "this filesystem root was not granted at native process launch",
+                cx,
+            );
+            return;
+        };
+        if self.window(id, window_id, cx).is_none() {
+            return;
+        }
+        match self
+            .drops
+            .resolve(window_id, target_id, drop_id, item, launch_root)
+        {
+            Ok(path) => self.events.send(
+                Event::DroppedItemResolved {
+                    id,
+                    window_id,
+                    target_id,
+                    drop_id,
+                    item,
+                    root,
+                    path,
+                },
+                cx,
+            ),
+            Err((code, message)) => self.error(id, code, message, cx),
         }
     }
 

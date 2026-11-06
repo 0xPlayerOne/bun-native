@@ -172,6 +172,50 @@ pub enum Event {
         process_id: crate::ProcessId,
         exit: crate::ProcessExit,
     },
+    DropTargetRegistered {
+        id: RequestId,
+        window_id: WindowId,
+        target_id: crate::DropTargetId,
+    },
+    DropTargetUnregistered {
+        id: RequestId,
+        window_id: WindowId,
+        target_id: crate::DropTargetId,
+    },
+    /// A path relative to `root` for one retained dropped item.
+    DroppedItemResolved {
+        id: RequestId,
+        window_id: WindowId,
+        target_id: crate::DropTargetId,
+        drop_id: crate::DropId,
+        #[serde(deserialize_with = "crate::wire::safe_u32")]
+        item: u32,
+        root: String,
+        path: String,
+    },
+    /// An external file drag moved onto or off a live owned target.
+    DropTargetDrag {
+        sequence: EventSequence,
+        window_id: WindowId,
+        target_id: crate::DropTargetId,
+        state: crate::DragState,
+    },
+    /// The user dropped local files onto a live owned target. Names are
+    /// untrusted display data; the host retains the paths under `drop_id`.
+    DropReceived {
+        sequence: EventSequence,
+        window_id: WindowId,
+        target_id: crate::DropTargetId,
+        drop_id: crate::DropId,
+        items: Vec<crate::DroppedItem>,
+    },
+    /// A drop onto a live owned target delivered nothing.
+    DropRejected {
+        sequence: EventSequence,
+        window_id: WindowId,
+        target_id: crate::DropTargetId,
+        reason: crate::DropRejection,
+    },
     NotificationDismissed {
         sequence: EventSequence,
         window_id: WindowId,
@@ -397,6 +441,14 @@ impl Event {
             }
             Self::ClipboardText { result, .. } => result.validate()?,
             Self::FileResult { result, .. } => result.validate()?,
+            Self::DropReceived { items, .. } => crate::validate_drop_items(items)?,
+            Self::DroppedItemResolved {
+                item, root, path, ..
+            } => {
+                crate::validate_drop_item_index(*item)?;
+                crate::validate_root_id(root)?;
+                crate::validate_file_path(path)?;
+            }
             Self::Ready {
                 protocol,
                 capabilities,

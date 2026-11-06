@@ -1,5 +1,5 @@
 {
-  "protocol": 10,
+  "protocol": 11,
   "capability": "file_dialogs_v1",
   "commands": [
     {

@@ -8,7 +8,7 @@
 //! node in screen coordinates, flipped above it when only that fits, and
 //! shifted onto the X screen. Keyboard focus never moves to a popup.
 
-use super::{NativeView, PointerFrame};
+use super::{DropScope, NativeView, PointerFrame};
 use bun_native_protocol::{
     DismissReason, Element as NativeElement, Event, NodeId, OverlaySurface, Tree,
 };
@@ -362,8 +362,11 @@ impl NativeView {
         let base = pointer
             .target(div().flex_shrink_0(), node_id)
             .id(node_id.get());
+        // External drags target the parent window; a popup surface holds no
+        // drop target of its own.
+        let drop_scope = DropScope::new(Default::default());
         Some(
-            self.container(tree, node_id, base, style, None, pointer, cx)
+            self.container(tree, node_id, base, style, None, pointer, &drop_scope, cx)
                 .size_full()
                 .into_any_element(),
         )

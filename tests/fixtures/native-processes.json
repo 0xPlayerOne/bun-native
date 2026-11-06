@@ -1,5 +1,5 @@
 {
-  "protocol": 10,
+  "protocol": 11,
   "capability": "processes_v1",
   "commands": [
     {

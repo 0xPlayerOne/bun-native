@@ -63,12 +63,12 @@ try {
 ```
 
 The default permission is `deny`. The accepted keys are `windowDisplay`,
-`clipboardRead`, `clipboardWrite`, `globalShortcuts`, `notifications` and
-`fileDialogs`, each independently `allow` or `deny`; `filesystemRoots`, a list
-of launch directories described under [filesystem grants](#filesystem-grants);
-and `processes`, a list of launch executables described under
-[owned processes](#owned-processes). The `file_dialogs` policy field is
-optional on the wire and omitted when denied.
+`clipboardRead`, `clipboardWrite`, `globalShortcuts`, `notifications`,
+`dragDrop` and `fileDialogs`, each independently `allow` or `deny`;
+`filesystemRoots`, a list of launch directories described under
+[filesystem grants](#filesystem-grants); and `processes`, a list of launch
+executables described under [owned processes](#owned-processes). The
+`file_dialogs` policy field is optional on the wire and omitted when denied.
 The runtime translates each explicit grant into its reserved native launch argument. The Rust process
 parses that immutable policy before starting GPUI or its private channel.
 Unknown or duplicate native arguments fail startup. A wire message cannot
@@ -704,6 +704,77 @@ qualified. Message/confirm dialogs are not implemented: Linux has no portal
 for alerts, so use a modal overlay. See
 [ADR 0013](decisions/0013-native-file-dialogs.md).
 
+## Drag and drop
+
+`window.registerDropTarget(node, listener)` makes a committed node an owned
+drop target for local files. It needs the separate `dragDrop: 'allow'`
+permission. Solid and React export `registerDropTarget(ref, listener)` for a
+mounted element; it calls the same window method.
+
+```ts
+const app = await createApplication({
+  executable,
+  permissions: {
+    dragDrop: 'allow',
+    filesystemRoots: [{ id: 'workspace', path: '/home/me/project', access: 'read' }],
+  },
+})
+const window = await app.openWindow({ title: 'Drop files' })
+const target = await window.registerDropTarget(zone, async (event) => {
+  if (event.type !== 'drop') return
+  for (const item of event.items) {
+    const { root, path } = await item.resolve('workspace') // path_denied if outside
+    const grant = await window.openFileGrant(root)
+    console.log(item.name, (await grant.stat(path)).size)
+    await grant.close()
+  }
+})
+```
+
+Listeners receive frozen `drag_entered`, `drag_left`, `drop` and
+`drop_rejected` events. Each has a `sequence`, the `target` handle and an
+`AbortSignal`. A `drop` carries 1 to 64 items. Each item has only an untrusted
+display `name` (the final path component, lossily decoded, with control
+characters replaced, at most 255 bytes) and `resolve(root)`. Dropped paths
+never reach the application. `resolve` asks the host to match the path it
+retained for that drop beneath a launch root. It returns `{ root, path }` with
+a relative path, and file access still goes through `openFileGrant` and its
+`openat2` confinement. A drop grants no authority.
+
+`drop_rejected` reports `empty` (plain text or no files) or `limit_exceeded`
+(more than 64 items, or a URI list long enough that GPUI's 4,096-byte read
+may have truncated it). A drop outside every target produces no event.
+Failures are `NativeServiceError` with service `drag_drop`:
+`permission_denied`, `service_unavailable`, `conflict` (the node already has
+a target), `limit_exceeded` (32 live targets), `path_denied`, `not_found` and
+`cancelled`.
+
+`close()` is idempotent and revokes locally first. Removing the node, closing
+the window or stopping the application does the same. The handle becomes
+inactive, its signal aborts, later host events are discarded and older items
+reject with `cancelled` without a native request. A newer drop or rejection on
+the same target also retires the previous drop's items.
+
+Hover follows the target's painted bounds, so nested targets can both report
+`drag_entered`. A drop goes to the innermost live target under the pointer,
+or to the nearest live ancestor when the frame still shows a removed element.
+Pointer down and up events are not delivered while a drag is active, so a
+drop is never a click.
+
+The pinned GPUI X11 backend always answers the drag source with accept and
+copy, so a source may report a copy for a drop the application rejected or
+ignored. If the window under a drag closes before the drop, the next drag on
+that X connection is not converted until its source leaves. The
+`drag_drop_files_v1` capability is advertised only on Linux X11. Wayland,
+macOS and Windows report `unavailable` / `unsupported_platform`. See
+[ADR 0012](decisions/0012-native-drag-drop.md).
+
+The [Native Linux workflow](../.github/workflows/native-linux.yml) runs
+[`tests/native/drag-drop.ts`](../tests/native/drag-drop.ts) and the Solid and
+React fixtures in development and inspected AOT on an isolated display. An
+independent x11rb XDND source process grabs and warps the real pointer and
+speaks XDND to the host. No GPUI event is synthesized.
+
 ## Service and platform matrix
 
 All services listed here share the core's policy boundary. The unavailable rows
@@ -720,7 +791,7 @@ already exists. The linked follow-ups belong to
 | File dialogs      | `showOpenDialog` / `showSaveDialog`; `fileDialogs` grant      | xdg-desktop-portal (GTK) dev+AOT verified                                                           | Unavailable                  | Unavailable                  | macOS/Windows panels, Wayland parenting, sandboxed document-portal paths and explicit file-grant conversion. [#239](https://github.com/0xPlayerOne/bun-native/issues/239).                        |
 | Message dialogs   | Capability `messageDialogs`; unavailable                      | Unavailable (no portal; use a modal overlay)                                                        | Unavailable                  | Unavailable                  | Native `NSAlert`/task dialogs with owned modality, programmatic close and qualification. [#239](https://github.com/0xPlayerOne/bun-native/issues/239).                                            |
 | Notifications     | `postNotification`; `notifications` grant                     | Freedesktop D-Bus (dunst) dev+AOT verified                                                          | Unavailable                  | Unavailable                  | macOS/Windows backends, additional notification servers, named actions and replacement. [#302](https://github.com/0xPlayerOne/bun-native/issues/302).                                             |
-| Drag/drop         | Capability `dragDrop`; unavailable                            | Unavailable                                                                                         | Unavailable                  | Unavailable                  | Bounded untrusted payload, owned target, native cancellation and explicit file-grant conversion. [#303](https://github.com/0xPlayerOne/bun-native/issues/303).                                    |
+| Drag/drop         | `registerDropTarget`; `dragDrop` grant                        | XDND dev+AOT verified locally (core/Solid/React)                                                    | Unavailable                  | Unavailable                  | Other payload kinds, XDND refusal (GPUI always accepts), Wayland/macOS/Windows backends. [#303](https://github.com/0xPlayerOne/bun-native/issues/303).                                            |
 | Filesystem grants | `openFileGrant`; `filesystemRoots` launch roots               | openat2 dev+AOT verified locally                                                                    | `openat` walk; CI-only       | Unavailable                  | OS file selection and dropped files as explicit user grants, Windows confinement. [#304](https://github.com/0xPlayerOne/bun-native/issues/304).                                                   |
 | PTY/process       | `spawnProcess`; `processes` launch executables                | Pipes and PTY dev+AOT verified locally                                                              | Dev+AOT in CI only; no `cwd` | Unavailable                  | macOS `cwd`, Windows backend (ConPTY), descendants that leave the group, resource limits. [#305](https://github.com/0xPlayerOne/bun-native/issues/305).                                           |
 

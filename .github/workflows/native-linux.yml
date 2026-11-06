@@ -87,12 +87,13 @@ jobs:
       - name: Build native executable
         id: native-build
         run: |
-          { time -p cargo build --locked --release --manifest-path Cargo.toml -p bun-native-host --bin bun-native-host --example clipboard-peer --example shortcut-peer; } 2>&1 | tee "$NATIVE_EVIDENCE/build.log"
+          { time -p cargo build --locked --release --manifest-path Cargo.toml -p bun-native-host --bin bun-native-host --example clipboard-peer --example shortcut-peer --example xdnd-source; } 2>&1 | tee "$NATIVE_EVIDENCE/build.log"
           sha256sum target/release/bun-native-host > "$NATIVE_EVIDENCE/binary-sha256.txt"
           stat --format='%s bytes' target/release/bun-native-host > "$NATIVE_EVIDENCE/binary-size.txt"
           sha256sum target/release/examples/clipboard-peer > "$NATIVE_EVIDENCE/clipboard-peer-sha256.txt"
           stat --format='%s bytes' target/release/examples/clipboard-peer > "$NATIVE_EVIDENCE/clipboard-peer-size.txt"
           sha256sum target/release/examples/shortcut-peer > "$NATIVE_EVIDENCE/shortcut-peer-sha256.txt"
+          sha256sum target/release/examples/xdnd-source > "$NATIVE_EVIDENCE/xdnd-source-sha256.txt"
       - name: Lint and test actual native host
         run: |
           cargo clippy --locked --release --manifest-path Cargo.toml -p bun-native-host --all-targets -- -D warnings
@@ -133,7 +134,7 @@ jobs:
             "$NATIVE_EVIDENCE/events-development" event-throughput bun tests/native/event-throughput.ts
       - name: Compile and inspect the actual AOT entries
         run: |
-          for entry in native-window input-race bridge javascript core-lifecycle event-throughput fault scheduling layout interactions services display-semantics clipboard global-shortcuts notifications overlays popups filesystem-grants processes file-dialogs solid-services react-services solid solid-input-intent solid-interactions react react-interactions react-behavior react-workload react-workspace react-workspace-flow; do
+          for entry in native-window input-race bridge javascript core-lifecycle event-throughput fault scheduling layout interactions services display-semantics clipboard global-shortcuts notifications overlays popups filesystem-grants processes file-dialogs drag-drop solid-drag-drop react-drag-drop solid-services react-services solid solid-input-intent solid-interactions react react-interactions react-behavior react-workload react-workspace react-workspace-flow; do
             outdir="$NATIVE_EVIDENCE/$entry-package"
             if [[ "$entry" == native-window ]]; then
               outdir="$NATIVE_EVIDENCE/package"
@@ -304,6 +305,29 @@ jobs:
               xvfb-run --auto-servernum --server-args='-screen 0 1280x800x24 -nolisten tcp' \
               dbus-run-session -- bash scripts/quality/native-linux-session.sh \
               "$evidence-session" -- "${command[@]}" 2>&1 | tee "$evidence/run.log"
+          done
+      - name: Development and AOT X11 drag and drop through core, Solid and React
+        timeout-minutes: 6
+        env:
+          BUN_NATIVE_HOST: ${{ github.workspace }}/target/release/bun-native-host
+          BUN_NATIVE_XDND_SOURCE: ${{ github.workspace }}/target/release/examples/xdnd-source
+        run: |
+          for entry in drag-drop solid-drag-drop react-drag-drop; do
+            for mode in development aot; do
+              command=(bun "$NATIVE_EVIDENCE/$entry-package/development/application.js")
+              if [[ "$entry" == drag-drop ]]; then
+                command=(bun tests/native/drag-drop.ts)
+              fi
+              if [[ "$mode" == aot ]]; then
+                command=("$NATIVE_EVIDENCE/$entry-package/$entry")
+              fi
+              evidence="$NATIVE_EVIDENCE/$entry-$mode"
+              mkdir "$evidence"
+              BUN_NATIVE_DRAG_DROP_EVIDENCE="$evidence" BUN_NATIVE_DRAG_DROP_MODE="$mode" \
+                xvfb-run --auto-servernum --server-args='-screen 0 1280x800x24 -nolisten tcp' \
+                dbus-run-session -- bash scripts/quality/native-linux-session.sh \
+                "$evidence-session" -- "${command[@]}" 2>&1 | tee "$evidence/run.log"
+            done
           done
       - name: Development and AOT native display service through core, Solid and React
         timeout-minutes: 5
@@ -777,6 +801,10 @@ jobs:
             ${{ runner.temp }}/native-evidence/processes-*/
             ${{ runner.temp }}/native-evidence/display-semantics-*/
             ${{ runner.temp }}/native-evidence/file-dialogs-*/
+            ${{ runner.temp }}/native-evidence/xdnd-source-sha256.txt
+            ${{ runner.temp }}/native-evidence/drag-drop-*/
+            ${{ runner.temp }}/native-evidence/solid-drag-drop-*/
+            ${{ runner.temp }}/native-evidence/react-drag-drop-*/
             ${{ runner.temp }}/native-evidence/development/
             ${{ runner.temp }}/native-evidence/aot/
             ${{ runner.temp }}/native-evidence/input-race-aot/

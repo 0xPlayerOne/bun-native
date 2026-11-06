@@ -3,7 +3,7 @@
 use serde::{de, Deserialize, Deserializer, Serialize};
 use std::fmt;
 
-pub const PROTOCOL_VERSION: u32 = 10;
+pub const PROTOCOL_VERSION: u32 = 11;
 pub const MAX_ID: u64 = 9_007_199_254_740_991;
 pub const MAX_FRAME_BYTES: usize = 65_536;
 pub const MAX_TEXT_BYTES: usize = 16_384;
@@ -65,6 +65,8 @@ identifier!(NotificationId);
 identifier!(FileGrantId);
 identifier!(ProcessId);
 identifier!(DialogId);
+identifier!(DropTargetId);
+identifier!(DropId);
 
 /// JSON has one number type. Match JavaScript's safe-integer validation even
 /// when a sender spells an integer as `1.0` or `1e0` instead of canonical `1`.
@@ -660,6 +662,28 @@ pub enum Command {
         window_id: WindowId,
         dialog_id: DialogId,
     },
+    RegisterDropTarget {
+        id: RequestId,
+        window_id: WindowId,
+        target_id: DropTargetId,
+        node_id: NodeId,
+    },
+    UnregisterDropTarget {
+        id: RequestId,
+        window_id: WindowId,
+        target_id: DropTargetId,
+    },
+    /// Map one item of the target's latest drop to a path relative to a
+    /// launch root. The host matches its own retained path; no path is sent.
+    ResolveDroppedItem {
+        id: RequestId,
+        window_id: WindowId,
+        target_id: DropTargetId,
+        drop_id: DropId,
+        #[serde(deserialize_with = "safe_u32")]
+        item: u32,
+        root: String,
+    },
     Shutdown {
         id: RequestId,
     },
@@ -715,6 +739,7 @@ pub enum Capability {
     ScrollControlV1,
     OverlayKeyboardV1,
     PopupWindowsV1,
+    DragDropFilesV1,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -734,6 +759,8 @@ pub struct Limits {
     pub max_file_grants: usize,
     pub max_file_chunk_bytes: usize,
     pub max_processes: usize,
+    pub max_drop_targets: usize,
+    pub max_drop_items: usize,
 }
 
 impl Default for Limits {
@@ -753,6 +780,8 @@ impl Default for Limits {
             max_file_grants: crate::MAX_FILE_GRANTS,
             max_file_chunk_bytes: crate::MAX_FILE_CHUNK_BYTES,
             max_processes: crate::MAX_PROCESSES,
+            max_drop_targets: crate::MAX_DROP_TARGETS,
+            max_drop_items: crate::MAX_DROP_ITEMS,
         }
     }
 }
@@ -776,6 +805,8 @@ impl Limits {
             max_file_grants,
             max_file_chunk_bytes,
             max_processes,
+            max_drop_targets,
+            max_drop_items,
         } = *self;
         let defaults = Self::default();
         let pairs = [
@@ -796,6 +827,8 @@ impl Limits {
             (max_file_grants, defaults.max_file_grants),
             (max_file_chunk_bytes, defaults.max_file_chunk_bytes),
             (max_processes, defaults.max_processes),
+            (max_drop_targets, defaults.max_drop_targets),
+            (max_drop_items, defaults.max_drop_items),
         ];
         if pairs
             .into_iter()
@@ -833,6 +866,9 @@ impl Command {
             | Self::ReleaseProcess { id, .. }
             | Self::ShowFileDialog { id, .. }
             | Self::CloseFileDialog { id, .. }
+            | Self::RegisterDropTarget { id, .. }
+            | Self::UnregisterDropTarget { id, .. }
+            | Self::ResolveDroppedItem { id, .. }
             | Self::Shutdown { id } => *id,
         }
     }
@@ -936,6 +972,10 @@ impl Command {
                 }
             }
             Self::ShowFileDialog { options, .. } => options.validate()?,
+            Self::ResolveDroppedItem { item, root, .. } => {
+                crate::validate_drop_item_index(*item)?;
+                crate::validate_root_id(root)?;
+            }
             Self::Hello { .. }
             | Self::Close { .. }
             | Self::DisplaySnapshot { .. }
@@ -947,6 +987,8 @@ impl Command {
             | Self::SignalProcess { .. }
             | Self::ReleaseProcess { .. }
             | Self::CloseFileDialog { .. }
+            | Self::RegisterDropTarget { .. }
+            | Self::UnregisterDropTarget { .. }
             | Self::Shutdown { .. } => {}
         }
         Ok(())
