@@ -33,7 +33,8 @@ impl ProcessExecutable {
             .map_err(|_| "process executable ID must be 1-32 lowercase ASCII letters, digits, '-' or '_', starting with a letter")?;
         crate::validate_root_path(&self.executable)
             .map_err(|_| "process executable must be an absolute normalized path")?;
-        if self.executable == "/" {
+        // `/` and `X:\` are the only normalized paths ending in a separator.
+        if self.executable.ends_with(['/', '\\']) {
             return Err("process executable must name a file");
         }
         Ok(())

@@ -138,8 +138,12 @@ export interface ServiceCapabilities {
         /** Launch roots by ID; each caps the access a grant may request. */
         roots: Readonly<Record<string, Readonly<{ access: 'read' | 'read_write' }>>>
         scope: 'owned_window'
-        /** Linux resolves with `openat2`; macOS walks one name at a time with `openat(O_NOFOLLOW)`. */
-        backend: 'openat2' | 'openat_walk'
+        /**
+         * Linux resolves with `openat2`; macOS walks one name at a time with
+         * `openat(O_NOFOLLOW)`; Windows walks one name at a time with
+         * handle-relative `NtCreateFile` that never follows a reparse point.
+         */
+        backend: FilesystemBackend
       }>
     | Readonly<{ availability: 'unavailable'; reason: 'unsupported_platform' }>
   readonly ptyProcess:
@@ -148,12 +152,21 @@ export interface ServiceCapabilities {
         /** Launch-policy executables by ID; nothing else can be started. */
         executables: Readonly<Record<string, Readonly<{ executable: string }>>>
         scope: 'owned_window'
-        backend: 'posix'
+        /** POSIX process groups and PTYs, or Windows job objects and ConPTY. */
+        backend: ProcessBackend
       }>
     | Readonly<{ availability: 'unavailable'; reason: 'unsupported_platform' }>
 }
 
 type DropBackend = 'x11' | 'appkit' | 'ole'
+type FilesystemBackend = 'openat2' | 'openat_walk' | 'ntcreatefile_walk'
+type ProcessBackend = 'posix' | 'windows_job'
+
+/** The confinement the host on this platform enforces for filesystem grants. */
+function filesystemBackend(): FilesystemBackend {
+  if (process.platform === 'darwin') return 'openat_walk'
+  return process.platform === 'win32' ? 'ntcreatefile_walk' : 'openat2'
+}
 
 /** The host runs beside the core, so its platform names the drop backend. */
 function dropBackend(): DropBackend {
@@ -271,7 +284,7 @@ export function serviceCapabilities(
             )
           ),
           scope: 'owned_window',
-          backend: process.platform === 'darwin' ? 'openat_walk' : 'openat2',
+          backend: filesystemBackend(),
         })
       : Object.freeze({ availability: 'unavailable', reason: 'unsupported_platform' }),
     ptyProcess: capabilities.includes('processes_v1')
@@ -286,7 +299,7 @@ export function serviceCapabilities(
             )
           ),
           scope: 'owned_window',
-          backend: 'posix',
+          backend: process.platform === 'win32' ? 'windows_job' : 'posix',
         })
       : Object.freeze({ availability: 'unavailable', reason: 'unsupported_platform' }),
   })

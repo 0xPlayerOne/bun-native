@@ -1,6 +1,9 @@
 //! Shared service boundary cases are headless; native execution is separate.
 
-use crate::{CommandReader, Event, ServicePolicy, PROTOCOL_VERSION};
+use crate::{
+    posix_root_path, validate_root_path, windows_root_path, CommandReader, Event, ServicePolicy,
+    PROTOCOL_VERSION,
+};
 use serde::Deserialize;
 use std::io::Cursor;
 
@@ -178,5 +181,37 @@ fn global_shortcuts_accept_only_the_closed_key_set_with_a_non_shift_modifier() {
         },
     ] {
         assert!(validate_global_shortcut("k", modifiers).is_ok());
+    }
+}
+
+#[derive(Deserialize)]
+struct LaunchPaths {
+    posix: Vec<String>,
+    windows: Vec<String>,
+    invalid: Vec<String>,
+}
+
+#[test]
+fn launch_paths_are_posix_or_windows_drive_paths_shared_with_typescript() {
+    let paths: LaunchPaths = serde_json::from_str(include_str!(
+        "../../../tests/fixtures/native-launch-paths.json"
+    ))
+    .unwrap();
+    for path in &paths.posix {
+        assert!(validate_root_path(path).is_ok(), "{path:?}");
+        assert!(
+            posix_root_path(path) && !windows_root_path(path),
+            "{path:?}"
+        );
+    }
+    for path in &paths.windows {
+        assert!(validate_root_path(path).is_ok(), "{path:?}");
+        assert!(
+            windows_root_path(path) && !posix_root_path(path),
+            "{path:?}"
+        );
+    }
+    for path in &paths.invalid {
+        assert!(validate_root_path(path).is_err(), "{path:?}");
     }
 }

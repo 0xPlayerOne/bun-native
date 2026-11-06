@@ -3,40 +3,65 @@
 //! without following any symbolic link, on a worker thread so neither the UI
 //! thread nor the tree queue waits for filesystem I/O. Linux resolves with
 //! `openat2(RESOLVE_BENEATH | RESOLVE_NO_SYMLINKS)`; macOS walks one validated
-//! name at a time with `openat(O_NOFOLLOW | O_NOFOLLOW_ANY)` (see `walk`).
+//! name at a time with `openat(O_NOFOLLOW | O_NOFOLLOW_ANY)` (see `walk`);
+//! Windows walks one name at a time with handle-relative `NtCreateFile`
+//! that never follows a reparse point (see `windows`).
 
 #[cfg(target_os = "linux")]
 mod openat2;
-#[cfg(any(target_os = "macos", test))]
+#[cfg(any(target_os = "macos", all(test, unix)))]
 mod walk;
+#[cfg(windows)]
+mod windows;
 
 use crate::channel::EventSink;
 use async_channel::{Receiver, Sender};
+#[cfg(unix)]
 use base64::Engine as _;
+#[cfg(unix)]
 use base64::engine::general_purpose::STANDARD;
+#[cfg(unix)]
 use bun_native_protocol::{
-    DirectoryEntry, ErrorCode, Event, FileAccess, FileGrantId, FileKind, FileOperation, FileResult,
-    FilesystemRoot, MAX_DIRECTORY_ENTRIES, MAX_FILE_GRANTS, MAX_FILE_OFFSET, MAX_SERVICE_REQUESTS,
-    RequestId, WindowId, WriteMode, validate_file_name,
+    DirectoryEntry, FileKind, MAX_DIRECTORY_ENTRIES, MAX_FILE_OFFSET, WriteMode, validate_file_name,
+};
+use bun_native_protocol::{
+    ErrorCode, Event, FileAccess, FileGrantId, FileOperation, FileResult, FilesystemRoot,
+    MAX_FILE_GRANTS, MAX_SERVICE_REQUESTS, RequestId, WindowId,
 };
 use gpui::{App, BackgroundExecutor, Task};
+#[cfg(unix)]
 use rustix::fs::{
     AtFlags, FileType, Mode, OFlags, Stat, fstat, ftruncate, mkdirat, statat, unlinkat,
 };
+#[cfg(unix)]
 use rustix::io::Errno;
 use std::cell::{Cell, RefCell};
 use std::collections::BTreeMap;
+#[cfg(unix)]
 use std::fs::File;
+#[cfg(unix)]
 use std::io::Write as _;
+#[cfg(unix)]
 use std::os::fd::OwnedFd;
+#[cfg(unix)]
 use std::os::unix::fs::FileExt as _;
 use std::rc::Rc;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::thread::JoinHandle;
+#[cfg(windows)]
+pub(crate) use windows::open_root;
+#[cfg(windows)]
+pub(crate) use windows::working_directory;
+#[cfg(windows)]
+use windows::{Handle, UNAVAILABLE, probe, serve};
 
-/// A live grant's directory descriptor, shared with an owned process for its cwd.
-pub(crate) type Directory = Arc<OwnedFd>;
+/// The handle a grant holds: a directory descriptor, or a Windows handle.
+#[cfg(unix)]
+type Handle = OwnedFd;
+
+/// A live grant's directory handle, shared with an owned process for its cwd.
+pub(crate) type Directory = Arc<Handle>;
 
 type Failure = (ErrorCode, &'static str);
 
@@ -46,6 +71,7 @@ const MAX_SCANNED_ENTRIES: usize = 100_000;
 /// Kernel-enforced resolution beneath a grant descriptor. Paths are already
 /// validated: empty (the grant root) or `/`-joined names with no `.`, `..`,
 /// empty or control-character components.
+#[cfg(unix)]
 trait Confine {
     /// Whether this kernel enforces the confinement; otherwise nothing is advertised.
     fn probe() -> bool;
@@ -71,11 +97,11 @@ const UNAVAILABLE: &str = "filesystem grants require macOS openat O_NOFOLLOW con
 
 enum Work {
     OpenRoot(String),
-    Request(Arc<OwnedFd>, String, FileOperation),
+    Request(Arc<Handle>, String, FileOperation),
 }
 
 enum Output {
-    Opened(OwnedFd),
+    Opened(Handle),
     Result(FileResult),
 }
 
@@ -92,7 +118,7 @@ struct Completion {
 
 struct Grant {
     window: WindowId,
-    root: Arc<OwnedFd>,
+    root: Arc<Handle>,
     access: FileAccess,
 }
 
@@ -141,7 +167,7 @@ pub(crate) struct Files(Rc<Inner>);
 
 impl Files {
     pub(crate) fn new(events: EventSink, roots: Vec<FilesystemRoot>, _cx: &App) -> Self {
-        let available = Native::probe();
+        let available = probe();
         Self(Rc::new(Inner {
             available,
             roots,
@@ -476,11 +502,9 @@ fn worker(jobs: Receiver<Job>, results: Sender<Completion>, stopping: Arc<Atomic
             continue;
         }
         let result = match job.work {
-            Work::OpenRoot(path) => Native::open_root(&path)
-                .map(Output::Opened)
-                .map_err(failure),
+            Work::OpenRoot(path) => open_root(&path).map(Output::Opened),
             Work::Request(root, path, operation) => {
-                perform::<Native>(&root, &path, &operation).map(Output::Result)
+                serve(&root, &path, &operation).map(Output::Result)
             }
         };
         if results
@@ -492,6 +516,22 @@ fn worker(jobs: Receiver<Job>, results: Sender<Completion>, stopping: Arc<Atomic
     }
 }
 
+#[cfg(unix)]
+fn probe() -> bool {
+    Native::probe()
+}
+
+#[cfg(unix)]
+fn open_root(path: &str) -> Result<OwnedFd, Failure> {
+    Native::open_root(path).map_err(failure)
+}
+
+#[cfg(unix)]
+fn serve(root: &OwnedFd, path: &str, operation: &FileOperation) -> Result<FileResult, Failure> {
+    perform::<Native>(root, path, operation)
+}
+
+#[cfg(unix)]
 pub(crate) fn failure(error: Errno) -> Failure {
     match error {
         Errno::NOENT => (ErrorCode::NotFound, "no file exists at this grant path"),
@@ -521,16 +561,19 @@ pub(crate) fn failure(error: Errno) -> Failure {
 }
 
 /// A directory descriptor at `path` beneath a grant root, never following links.
+#[cfg(unix)]
 #[cfg_attr(not(target_os = "linux"), allow(dead_code))]
 pub(crate) fn directory_beneath(root: &OwnedFd, path: &str) -> Result<OwnedFd, Failure> {
     Native::directory(root, path).map_err(failure)
 }
 
+#[cfg(unix)]
 fn parent<'a, C: Confine>(root: &OwnedFd, path: &'a str) -> Result<(OwnedFd, &'a str), Failure> {
     let (directory, name) = path.rsplit_once('/').unwrap_or(("", path));
     Ok((C::directory(root, directory).map_err(failure)?, name))
 }
 
+#[cfg(unix)]
 fn kind(file_type: FileType) -> FileKind {
     match file_type {
         FileType::RegularFile => FileKind::File,
@@ -540,6 +583,7 @@ fn kind(file_type: FileType) -> FileKind {
     }
 }
 
+#[cfg(unix)]
 fn regular(fd: &OwnedFd) -> Result<Stat, Failure> {
     let stat = fstat(fd).map_err(failure)?;
     if FileType::from_raw_mode(stat.st_mode) == FileType::RegularFile {
@@ -552,6 +596,7 @@ fn regular(fd: &OwnedFd) -> Result<Stat, Failure> {
     }
 }
 
+#[cfg(unix)]
 fn modified_ms(stat: &Stat) -> i64 {
     let seconds = i128::from(stat.st_mtime);
     let nanoseconds = i128::from(stat.st_mtime_nsec);
@@ -559,6 +604,7 @@ fn modified_ms(stat: &Stat) -> i64 {
     (seconds * 1_000 + nanoseconds.div_euclid(1_000_000)).clamp(-limit, limit) as i64
 }
 
+#[cfg(unix)]
 fn perform<C: Confine>(
     root: &OwnedFd,
     path: &str,
@@ -658,6 +704,7 @@ fn perform<C: Confine>(
     }
 }
 
+#[cfg(unix)]
 fn list(fd: OwnedFd, after: Option<&str>) -> Result<FileResult, Failure> {
     let mut directory = rustix::fs::Dir::read_from(&fd).map_err(failure)?;
     let mut names = Vec::new();
@@ -707,7 +754,7 @@ fn list(fd: OwnedFd, after: Option<&str>) -> Result<FileResult, Failure> {
     })
 }
 
-#[cfg(test)]
+#[cfg(all(test, unix))]
 mod tests {
     use super::*;
     use std::os::unix::fs::symlink;

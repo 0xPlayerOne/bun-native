@@ -473,13 +473,16 @@ await grant.close();
 ```
 
 Each root has an ID of lowercase letters, digits, `-` and `_`, an absolute
-normalized path and `read` or `read_write` access; at most eight are accepted.
-A grant requests at most its root's access and defaults to `read`. Readiness
-reports the same ordered roots, and the frozen capability record lists them by
-ID with `backend: 'openat2'` on Linux or `backend: 'openat_walk'` on macOS.
-The optional `filesystem_grants_v1` feature is advertised only by a host built
-with one of those backends whose kernel probe succeeds: Linux with `openat2`
-(5.6 and later) and macOS. Windows and other targets report `unavailable` /
+normalized path (POSIX, or a Windows drive path such as `C:\data` without UNC
+or `\\?\` forms; each host accepts only its own form) and `read` or
+`read_write` access; at most eight are accepted. A grant requests at most its
+root's access and defaults to `read`. Readiness reports the same ordered
+roots, and the frozen capability record lists them by ID with
+`backend: 'openat2'` on Linux, `backend: 'openat_walk'` on macOS or
+`backend: 'ntcreatefile_walk'` on Windows. The optional `filesystem_grants_v1`
+feature is advertised only by a host built with one of those backends whose
+probe succeeds: Linux with `openat2` (5.6 and later), macOS, and Windows 10
+1709 or later (`OBJ_DONT_REPARSE`). Other targets report `unavailable` /
 `unsupported_platform`. No run-time path, dropped file name or model text can
 create a root or a grant.
 
@@ -496,7 +499,16 @@ so no step can name anything but a direct child of a directory reached from the
 grant. On macOS every intermediate directory must be readable, not only
 searchable, and names resolve as the volume does (APFS is usually
 case-insensitive), always within the grant. macOS evidence comes only from
-the hosted `macos-15` Native Platforms job; it has not been run on a local Mac. `stat` and
+the hosted `macos-15` Native Platforms job; it has not been run on a local Mac.
+Windows walks the same way with `NtCreateFile` relative to the previous
+handle, `OBJ_DONT_REPARSE` and `FILE_OPEN_REPARSE_POINT`, so symbolic links,
+junctions and mount points are opened as themselves and refused. It also
+refuses names Windows would read as a second spelling or another object
+(`\`, `:` streams and drives, reserved characters, trailing dots and spaces,
+`CON`, `NUL`, `COM1.txt` and the other device names) and checks that each
+opened handle's final path is the root's plus exactly the requested names,
+which refuses 8.3 short names. Windows evidence comes only from the hosted
+`windows-2022` Native Platforms job. `stat` and
 `list` report link entries as `symlink`; `remove` deletes the link, not its
 target. Renaming the root after a grant opens keeps that grant on the same
 directory. Reads and writes refuse anything but a regular file before any byte
@@ -530,8 +542,11 @@ development and inspected AOT on an isolated display. It checks every effect
 independently through `node:fs` on a private temporary tree, including a
 sibling directory that must stay unchanged, and drives the private runtime to
 confirm that the host rejects foreign, stale and reused grant IDs. See
-[ADR 0010](decisions/0010-filesystem-grants.md). macOS and Windows remain
-unavailable.
+[ADR 0010](decisions/0010-filesystem-grants.md). The
+[Native Platforms workflow](../.github/workflows/native-platforms.yml) runs the
+same test, with `mklink` links and junctions and a Windows alias check, on its
+`macos-15` and `windows-2022` jobs; that hosted CI is the only macOS and
+Windows evidence.
 
 ## Owned processes
 
@@ -613,10 +628,10 @@ or directory), `path_denied` (the directory crosses a link), `wrong_kind`,
 `invalid_state`, `service_unavailable`, `native_failure` or `cancelled`.
 Releasing the process, closing its window or stopping the application kills
 and reaps its group; no later output or exit is delivered. The optional
-`processes_v1` feature is advertised on Linux with pidfd support and on macOS; the
-frozen `ptyProcess` capability record lists the executables by ID with
-`backend: 'posix'`, and other targets report `unavailable` /
-`unsupported_platform`.
+`processes_v1` feature is advertised on Linux with pidfd support, on macOS
+and on Windows; the frozen `ptyProcess` capability record lists the
+executables by ID with `backend: 'posix'`, or `backend: 'windows_job'` on
+Windows, and other targets report `unavailable` / `unsupported_platform`.
 
 The [Native Linux workflow](../.github/workflows/native-linux.yml) runs
 [`tests/native/processes.ts`](../tests/native/processes.ts) in development and
@@ -632,7 +647,22 @@ eventfd and pidfd; the same process groups and `pty-process` terminals) runs the
 host unit tests and the same native test in development and AOT in the
 [Native Platforms](../.github/workflows/native-platforms.yml) macOS 15 job,
 checking groups through `ps`. It is compile-checked locally only; macOS
-behavior is claimed from that CI job. Windows remains unavailable.
+behavior is claimed from that CI job.
+
+The Windows backend runs each child inside its own job object with
+`KILL_ON_JOB_CLOSE`, with exactly its pipe ends inherited or on a ConPTY
+pseudo-console (Windows 10 1809 or later). Launch paths may be Windows drive
+paths. The granted executable is held open while it starts and must be its
+own canonical final path. The command line is the exact inverse of
+`CommandLineToArgvW` with no shell, and the environment holds only the given
+variables. `terminate` and `kill` end the whole job and report that signal.
+`interrupt` types ^C on a terminal; on pipes it is refused, like `hangup`, with
+`service_unavailable`. A grant working directory is walked with the Windows
+grant rules and held open while the child starts there. The host unit tests
+and the same native test, with real `cmd.exe` children, run in development and
+AOT in the Native Platforms `windows-2022` job. It is type-checked locally
+only; Windows behavior is claimed from that CI job. See
+[ADR 0011](decisions/0011-owned-processes.md).
 
 ## File dialogs
 
@@ -1035,8 +1065,8 @@ already exists. The linked follow-ups belong to
 | Message dialogs   | `showMessageDialog` / `showConfirmDialog`; no grant           | Modal overlay dev+AOT verified locally                                                              | Modal overlay (same core code); unqualified on Wayland             | Modal overlay; unqualified                        | Modal overlay; unqualified              | Native `NSAlert`/task dialogs with owned modality, programmatic close and qualification. [#239](https://github.com/0xPlayerOne/bun-native/issues/239).                                                    |
 | Notifications     | `postNotification`; `notifications` grant                     | Freedesktop D-Bus (dunst) dev+AOT verified                                                          | Freedesktop (dunst) post and withdraw verified                     | Unavailable                                       | Unavailable                             | macOS/Windows backends, additional notification servers, named actions and replacement. [#302](https://github.com/0xPlayerOne/bun-native/issues/302).                                                     |
 | Drag/drop         | `registerDropTarget`; `dragDrop` grant                        | XDND dev+AOT verified locally (core/Solid/React)                                                    | Unavailable (`unsupported_platform`)                               | AppKit; hosted CI only (NSDraggingSession source) | OLE; hosted CI only (DoDragDrop source) | Other payload kinds and file promises, refusal (GPUI always accepts), Wayland, physical devices and real file managers, Windows resolution. [#303](https://github.com/0xPlayerOne/bun-native/issues/303). |
-| Filesystem grants | `openFileGrant`; `filesystemRoots` launch roots               | openat2 dev+AOT verified locally                                                                    | Advertised; display-independent, not run on Wayland                | `openat` walk; CI-only                            | Unavailable                             | OS file selection and dropped files as explicit user grants, Windows confinement. [#304](https://github.com/0xPlayerOne/bun-native/issues/304).                                                           |
-| PTY/process       | `spawnProcess`; `processes` launch executables                | Pipes and PTY dev+AOT verified locally                                                              | Advertised; display-independent, not run on Wayland                | Dev+AOT in CI only; no `cwd`                      | Unavailable                             | macOS `cwd`, Windows backend (ConPTY), descendants that leave the group, resource limits. [#305](https://github.com/0xPlayerOne/bun-native/issues/305).                                                   |
+| Filesystem grants | `openFileGrant`; `filesystemRoots` launch roots               | openat2 dev+AOT verified locally                                                                    | Advertised; display-independent, not run on Wayland                | `openat` walk; CI-only                            | `NtCreateFile` walk; CI-only            | OS file selection and dropped files as explicit user grants. [#304](https://github.com/0xPlayerOne/bun-native/issues/304).                                                                                |
+| PTY/process       | `spawnProcess`; `processes` launch executables                | Pipes and PTY dev+AOT verified locally                                                              | Advertised; display-independent, not run on Wayland                | Dev+AOT in CI only; no `cwd`                      | Job object and ConPTY; CI-only          | macOS `cwd`, descendants that leave the group (POSIX), pipe `interrupt` and `hangup` on Windows, resource limits. [#305](https://github.com/0xPlayerOne/bun-native/issues/305).                           |
 
 For the deferred rows, the exported typed contract is the frozen availability
 record in `ServiceCapabilities`. There is no callable operation, configurable

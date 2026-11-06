@@ -621,6 +621,7 @@ dependencies = [
  "base64",
  "bun-native-macos-surface",
  "bun-native-protocol",
+ "bun-native-windows-services",
  "futures",
  "futures-lite",
  "gpui",
@@ -655,6 +656,13 @@ version = "0.0.0"
 dependencies = [
  "serde",
  "serde_json",
+]
+
+[[package]]
+name = "bun-native-windows-services"
+version = "0.0.0"
+dependencies = [
+ "windows-sys",
 ]
 
 [[package]]
