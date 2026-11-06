@@ -17,7 +17,7 @@ import { join, resolve } from 'node:path'
 import { buildProject, bundleProject } from '../../scripts/native/build.ts'
 import { prebuiltHost } from '../../scripts/native/host.ts'
 import { createProject, readProject } from '../../scripts/native/project.ts'
-import { compileApplication } from '../../experiments/aot-gpui/compile.ts'
+import { protocolPeer } from './headless-peer.ts'
 import { hostHeader } from './host-fixture.ts'
 
 const repository = resolve(import.meta.dir, '../..')
@@ -112,10 +112,9 @@ describe('checkout application CLI (real bundler and compiler; no native renderi
 
   test('generated templates dispose roots, application handles and signal listeners over real headless IPC', async () => {
     await fixture(async (directory) => {
-      const peer = join(directory, process.platform === 'win32' ? 'peer.exe' : 'peer')
-      // Compile the existing protocol peer so the unmodified host option points
-      // to one executable, exactly as it does for a supplied GPUI host.
-      compileApplication(join(repository, 'tests/core/protocol-peer.ts'), peer, repository)
+      // The existing protocol peer, compiled once per test process, so the
+      // unmodified host option points to one executable, as for a GPUI host.
+      const peer = protocolPeer()
       for (const framework of ['solid', 'react']) {
         for (const language of ['typescript', 'javascript']) {
           const path = join(directory, framework + '-' + language)
@@ -165,8 +164,7 @@ describe('checkout application CLI (real bundler and compiler; no native renderi
 
   test('generated templates terminate and clean up after a post-readiness renderer failure', async () => {
     await fixture(async (directory) => {
-      const peer = join(directory, process.platform === 'win32' ? 'peer.exe' : 'peer')
-      compileApplication(join(repository, 'tests/core/protocol-peer.ts'), peer, repository)
+      const peer = protocolPeer()
       for (const framework of ['solid', 'react']) {
         for (const language of ['typescript', 'javascript']) {
           const path = join(directory, framework + '-' + language)

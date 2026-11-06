@@ -128,7 +128,7 @@ impl Model {
                     }
                     match (node.input_revision, expected_input_revision) {
                         (Some(current), Some(expected)) if current == expected => {
-                            node.input_revision = Some(bump(current)?)
+                            node.input_revision = Some(bump(current)?);
                         }
                         (Some(_), Some(_)) => {
                             return Err((ErrorCode::StaleRevision, "input revision does not match"))

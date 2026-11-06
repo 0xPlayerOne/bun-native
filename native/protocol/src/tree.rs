@@ -270,7 +270,7 @@ impl Tree {
                     }
                     match (node.input_revision, expected_input_revision) {
                         (Some(current), Some(expected)) if current == expected => {
-                            node.input_revision = Some(next_revision(current)?)
+                            node.input_revision = Some(next_revision(current)?);
                         }
                         (Some(_), Some(_)) => {
                             return Err(error(

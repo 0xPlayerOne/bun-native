@@ -17,6 +17,8 @@ const windows = new Map<number, PeerTree>()
 const output = Bun.stdout.writer()
 const decoder = new FrameDecoder()
 let sequence = 0
+let maxOperations = DEFAULT_LIMITS.max_operations
+let lastNodeId = 0
 async function emit(value: unknown) {
   output.write(encodeFrame(value))
   await output.flush()
@@ -37,7 +39,10 @@ for await (const chunk of Bun.stdin.stream()) {
               max_text_bytes: 32,
               max_text_bytes_per_window: 40,
             }
-          : { ...DEFAULT_LIMITS }
+          : mode === 'chunked'
+            ? { ...DEFAULT_LIMITS, max_operations: 8 }
+            : { ...DEFAULT_LIMITS }
+      maxOperations = limits.max_operations
       await emit({
         type: 'ready',
         service_policy: {
@@ -61,6 +66,7 @@ for await (const chunk of Bun.stdin.stream()) {
       })
       await emit({ type: 'ack', id: command.id })
     } else if (command.type === 'open') {
+      lastNodeId = Math.max(lastNodeId, command.root_id)
       windows.set(command.window_id, new PeerTree(command.root_id))
       await emit({
         type: 'opened',
@@ -77,7 +83,41 @@ for await (const chunk of Bun.stdin.stream()) {
       )
       const text =
         marker?.type === 'set' && marker.element.kind === 'text' ? marker.element.text : ''
-      if (text === 'reject transaction') {
+      const rejected =
+        text === 'reject transaction' ||
+        command.operations.some(
+          (operation) =>
+            operation.type === 'create' &&
+            operation.element.kind === 'text' &&
+            operation.element.text === 'reject transaction'
+        )
+      const invalid = tree.reject(
+        command.base_revision,
+        command.operations,
+        maxOperations,
+        lastNodeId
+      )
+      if (invalid) {
+        await emit({ type: 'error', id: command.id, code: 'invalid_state', message: invalid })
+        continue
+      }
+      if (text === 'report texts') {
+        // The committed native order, for comparing a split commit's result.
+        const texts: string[] = []
+        for (const pending = [tree.rootId]; pending.length;) {
+          const node = nodes.get(pending.shift()!)!
+          if (node.element.kind === 'text') texts.push(node.element.text)
+          pending.unshift(...node.children)
+        }
+        await emit({
+          type: 'error',
+          id: command.id,
+          code: 'invalid_state',
+          message: texts.join('|'),
+        })
+        continue
+      }
+      if (rejected) {
         await emit({
           type: 'error',
           id: command.id,
@@ -89,6 +129,8 @@ for await (const chunk of Bun.stdin.stream()) {
       const deleted = command.operations.find((operation) => operation.type === 'delete')
       const deletedRoute = deleted?.type === 'delete' ? tree.route(deleted.node_id) : undefined
       tree.apply(command.operations)
+      for (const operation of command.operations)
+        if (operation.type === 'create') lastNodeId = operation.node_id
       if (text === 'input before acknowledgement') {
         const input = [...nodes].find(([, node]) => node.element.kind === 'input')!
         input[1].inputRevision += 1
