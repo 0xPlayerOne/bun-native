@@ -969,11 +969,11 @@ impl Running {
 #[cfg(all(test, unix))]
 mod tests {
     use super::*;
-    #[cfg(target_os = "linux")]
+    #[cfg(unix)]
     use std::os::unix::fs::symlink;
     use std::time::Duration;
 
-    #[cfg(target_os = "linux")]
+    #[cfg(unix)]
     fn temp() -> std::path::PathBuf {
         let path = std::env::temp_dir().join(format!(
             "bun-native-processes-{}-{}",
