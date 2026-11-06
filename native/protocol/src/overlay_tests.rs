@@ -32,6 +32,7 @@ fn overlay(modal: bool) -> Element {
         autofocus: false,
         navigation: OverlayNavigation::Tab,
         surface: OverlaySurface::Layer,
+        accessible_label: None,
         style: Style::default(),
     }
 }
@@ -143,6 +144,7 @@ fn modal_overlays_reject_parent_anchoring_and_set_keeps_the_kind() {
         autofocus: false,
         navigation: OverlayNavigation::Tab,
         surface: OverlaySurface::Layer,
+        accessible_label: None,
         style: Style::default(),
     }
     .validate()

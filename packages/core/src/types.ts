@@ -1,6 +1,7 @@
 import type {
   Capability,
   DismissReason,
+  ResizeSource,
   Element,
   KeyModifiers,
   Limits,
@@ -21,6 +22,7 @@ import type {
   NativeGlobalShortcut,
 } from './shortcuts.ts'
 import type { NativeNotification, NotificationEvent, NotificationOptions } from './notifications.ts'
+import type { AppMenuItemEvent, MenuOptions, NativeMenuBar } from './app-menu.ts'
 import type { FileGrantOptions, NativeFileGrant } from './files.ts'
 import type { NativeProcess, ProcessEvent, ProcessOptions } from './processes.ts'
 import type {
@@ -29,6 +31,11 @@ import type {
   SaveDialogOptions,
   SaveDialogResult,
 } from './dialogs.ts'
+import type {
+  ConfirmDialogOptions,
+  MessageDialogOptions,
+  MessageDialogResult,
+} from './message-dialogs.ts'
 import type { DropTargetEvent, NativeDropTarget } from './drops.ts'
 
 export type { Element, KeyModifiers, PointerButton, Style }
@@ -111,6 +118,18 @@ export interface DismissRequestEvent extends EventContext {
   readonly reason: DismissReason
 }
 
+/**
+ * Requires `split_resize_v1`. The user moved a split's divider: once after a
+ * pointer drag that changed the ratio ends, and once per keyboard step that
+ * changed it. `ratio` is the host-owned leading-pane share the window now
+ * shows; declaring a different `ratio` later replaces it.
+ */
+export interface SplitResizeEvent extends EventContext<'split'> {
+  readonly type: 'split_resize'
+  readonly ratio: number
+  readonly source: ResizeSource
+}
+
 export interface NativeEventMap {
   click: ClickEvent
   input: InputEvent
@@ -121,6 +140,7 @@ export interface NativeEventMap {
   focus: FocusEvent<'focus'>
   blur: FocusEvent<'blur'>
   dismiss: DismissRequestEvent
+  split_resize: SplitResizeEvent
 }
 
 export type NativeEventType = keyof NativeEventMap
@@ -259,6 +279,24 @@ export interface NativeWindow {
     request?: ServiceRequestOptions
   ): Promise<SaveDialogResult>
   /**
+   * Show a message dialog drawn by core as a window-anchored modal overlay
+   * (not an OS alert), with focus on its default button and Tab trapped
+   * inside it. No launch grant is needed; requires
+   * `serviceCapabilities.messageDialogs`. Dialogs of one window are shown one
+   * at a time in call order. The result is delivered after the layer is
+   * removed. Aborting the signal rejects with `cancelled`; closing the window
+   * or shutting down rejects with `invalid_handle`.
+   */
+  showMessageDialog(
+    options: MessageDialogOptions,
+    request?: ServiceRequestOptions
+  ): Promise<MessageDialogResult>
+  /** An OK/Cancel message dialog: true for OK; Cancel and Escape give false. */
+  showConfirmDialog(
+    options: ConfirmDialogOptions,
+    request?: ServiceRequestOptions
+  ): Promise<boolean>
+  /**
    * Make a committed node an owned drop target for external file drags.
    * Requires the immutable dragDrop launch grant. Dropped items arrive as
    * untrusted display names; only `item.resolve(root)` maps one, through the
@@ -289,6 +327,16 @@ export interface NativeApplication {
     serviceRequests: number
   }>
   openWindow(options: WindowOptions): Promise<NativeWindow>
+  /**
+   * Installs the application menu bar, replacing (and revoking) the previous
+   * one. Requires `serviceCapabilities.appMenu` and the `appMenu` grant.
+   */
+  setMenuBar(
+    menus: readonly MenuOptions[],
+    listener: (event: AppMenuItemEvent) => void | Promise<void>
+  ): Promise<NativeMenuBar>
+  /** Removes the application menu bar and revokes its items. */
+  clearMenuBar(): Promise<void>
   /** May be called from a listener. Await closed outside that listener to join dispatch. */
   shutdown(): Promise<void>
 }

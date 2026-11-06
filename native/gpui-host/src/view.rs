@@ -36,6 +36,7 @@ pub(crate) fn bind_keys(cx: &mut App) {
         KeyBinding::new("home", MenuFirst, Some("NativeWindow")),
         KeyBinding::new("end", MenuLast, Some("NativeWindow")),
     ]);
+    split::bind_keys(cx);
 }
 
 pub(crate) struct NativeView {
@@ -137,7 +138,9 @@ impl NativeView {
         let focused_before = self.focused_control(window, cx);
         self.drops.retain_nodes(self.window_id, &tree);
         let previous = std::mem::replace(&mut self.state.borrow_mut().tree, tree);
-        self.splits.reconcile(&self.state.borrow().tree);
+        if self.splits.reconcile(&self.state.borrow().tree, window, cx) {
+            window.focus(&self.root_focus, cx);
+        }
         // Snapshot cheap Arc-backed control properties before focus/IME
         // notifications: native callbacks must never run while the shared
         // model is borrowed. Sorted by ID, like the index it is read from.
@@ -338,6 +341,7 @@ impl NativeView {
         if let Some(chain) = drop_scope.target() {
             base = drop_target(base, chain, &self.drops);
         }
+        let base = accessibility::container(base, node.element());
         match node.element() {
             NativeElement::Box { .. } => self
                 .container(tree, node_id, base, layout, pointer, &drop_scope, cx)
@@ -466,6 +470,7 @@ impl Render for NativeView {
             self.drops.resume();
             self.drops.drag_ended(self.window_id, cx);
         }
+        self.finish_divider_drags(cx);
         let drop_scope = DropScope::new(self.drops.targets(self.window_id));
         let state = self.state.borrow();
         let layout = self.evidence.layout_tracing().then(|| {
@@ -473,6 +478,11 @@ impl Render for NativeView {
                 .buttons
                 .iter()
                 .map(|(id, focus)| (*id, focus.clone()))
+                .chain(
+                    self.splits
+                        .focus_handles()
+                        .map(|(id, focus)| (id, focus.clone())),
+                )
                 .chain(
                     self.inputs
                         .iter()
@@ -667,6 +677,7 @@ fn drop_target(
         .on_drop::<ExternalPaths>(move |paths, _, cx| dropped.dropped(&chain, paths.paths(), cx))
 }
 
+mod accessibility;
 mod index;
 mod interactions;
 mod keyboard;

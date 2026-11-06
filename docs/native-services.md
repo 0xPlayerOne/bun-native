@@ -13,8 +13,9 @@ Linux development/AOT cases with a release-profile host at main
 [run 41831891686](https://github.com/0xPlayerOne/bun-native/actions/runs/41831891686/job/126580888949).
 The [hosted source-bound record](../tests/native/evidence/services-linux-hosted-release.json)
 binds the artifact, compiler manifests, raw results and source hashes. This
-qualifies one isolated scale-1 Xvfb screen; macOS, Windows, Wayland and
-multi-monitor service behavior remain unverified. The earlier
+qualifies one isolated scale-1 Xvfb screen; macOS, Windows and multi-monitor
+service behavior remain unverified. The display snapshot alone also runs on a
+headless Wayland compositor (see [Wayland](#wayland)). The earlier
 [protocol-5 development-host record](../tests/native/evidence/services-linux-development-aot.json)
 remains separate historical evidence. Parser and type checks do not substitute
 for either native run.
@@ -198,9 +199,10 @@ following remain **unavailable** and are not part of the public result:
   all zeros, so there is no persistent identity to expose.
 - Mixed DPI: one scale factor per host process; per-monitor scale is not
   exposed by the X11 backend.
-- Wayland: not qualified. Its GPUI backend does report output changes, but no
-  compositor session is available in the Linux CI lane. macOS and Windows have
-  their own fixture, below.
+- Wayland: `displaySnapshot` matches the compositor's output (bounds and
+  integer scale 1 or 2) on headless sway; see [Wayland](#wayland). Change
+  events stay unadvertised on all of Linux. macOS and Windows have their own
+  fixture, below.
 
 ### macOS and Windows display semantics (#299)
 
@@ -471,13 +473,16 @@ await grant.close();
 ```
 
 Each root has an ID of lowercase letters, digits, `-` and `_`, an absolute
-normalized path and `read` or `read_write` access; at most eight are accepted.
-A grant requests at most its root's access and defaults to `read`. Readiness
-reports the same ordered roots, and the frozen capability record lists them by
-ID with `backend: 'openat2'` on Linux or `backend: 'openat_walk'` on macOS.
-The optional `filesystem_grants_v1` feature is advertised only by a host built
-with one of those backends whose kernel probe succeeds: Linux with `openat2`
-(5.6 and later) and macOS. Windows and other targets report `unavailable` /
+normalized path (POSIX, or a Windows drive path such as `C:\data` without UNC
+or `\\?\` forms; each host accepts only its own form) and `read` or
+`read_write` access; at most eight are accepted. A grant requests at most its
+root's access and defaults to `read`. Readiness reports the same ordered
+roots, and the frozen capability record lists them by ID with
+`backend: 'openat2'` on Linux, `backend: 'openat_walk'` on macOS or
+`backend: 'ntcreatefile_walk'` on Windows. The optional `filesystem_grants_v1`
+feature is advertised only by a host built with one of those backends whose
+probe succeeds: Linux with `openat2` (5.6 and later), macOS, and Windows 10
+1709 or later (`OBJ_DONT_REPARSE`). Other targets report `unavailable` /
 `unsupported_platform`. No run-time path, dropped file name or model text can
 create a root or a grant.
 
@@ -494,7 +499,16 @@ so no step can name anything but a direct child of a directory reached from the
 grant. On macOS every intermediate directory must be readable, not only
 searchable, and names resolve as the volume does (APFS is usually
 case-insensitive), always within the grant. macOS evidence comes only from
-the hosted `macos-15` Native Platforms job; it has not been run on a local Mac. `stat` and
+the hosted `macos-15` Native Platforms job; it has not been run on a local Mac.
+Windows walks the same way with `NtCreateFile` relative to the previous
+handle, `OBJ_DONT_REPARSE` and `FILE_OPEN_REPARSE_POINT`, so symbolic links,
+junctions and mount points are opened as themselves and refused. It also
+refuses names Windows would read as a second spelling or another object
+(`\`, `:` streams and drives, reserved characters, trailing dots and spaces,
+`CON`, `NUL`, `COM1.txt` and the other device names) and checks that each
+opened handle's final path is the root's plus exactly the requested names,
+which refuses 8.3 short names. Windows evidence comes only from the hosted
+`windows-2022` Native Platforms job. `stat` and
 `list` report link entries as `symlink`; `remove` deletes the link, not its
 target. Renaming the root after a grant opens keeps that grant on the same
 directory. Reads and writes refuse anything but a regular file before any byte
@@ -528,8 +542,11 @@ development and inspected AOT on an isolated display. It checks every effect
 independently through `node:fs` on a private temporary tree, including a
 sibling directory that must stay unchanged, and drives the private runtime to
 confirm that the host rejects foreign, stale and reused grant IDs. See
-[ADR 0010](decisions/0010-filesystem-grants.md). macOS and Windows remain
-unavailable.
+[ADR 0010](decisions/0010-filesystem-grants.md). The
+[Native Platforms workflow](../.github/workflows/native-platforms.yml) runs the
+same test, with `mklink` links and junctions and a Windows alias check, on its
+`macos-15` and `windows-2022` jobs; that hosted CI is the only macOS and
+Windows evidence.
 
 ## Owned processes
 
@@ -611,10 +628,10 @@ or directory), `path_denied` (the directory crosses a link), `wrong_kind`,
 `invalid_state`, `service_unavailable`, `native_failure` or `cancelled`.
 Releasing the process, closing its window or stopping the application kills
 and reaps its group; no later output or exit is delivered. The optional
-`processes_v1` feature is advertised on Linux with pidfd support and on macOS; the
-frozen `ptyProcess` capability record lists the executables by ID with
-`backend: 'posix'`, and other targets report `unavailable` /
-`unsupported_platform`.
+`processes_v1` feature is advertised on Linux with pidfd support, on macOS
+and on Windows; the frozen `ptyProcess` capability record lists the
+executables by ID with `backend: 'posix'`, or `backend: 'windows_job'` on
+Windows, and other targets report `unavailable` / `unsupported_platform`.
 
 The [Native Linux workflow](../.github/workflows/native-linux.yml) runs
 [`tests/native/processes.ts`](../tests/native/processes.ts) in development and
@@ -630,7 +647,22 @@ eventfd and pidfd; the same process groups and `pty-process` terminals) runs the
 host unit tests and the same native test in development and AOT in the
 [Native Platforms](../.github/workflows/native-platforms.yml) macOS 15 job,
 checking groups through `ps`. It is compile-checked locally only; macOS
-behavior is claimed from that CI job. Windows remains unavailable.
+behavior is claimed from that CI job.
+
+The Windows backend runs each child inside its own job object with
+`KILL_ON_JOB_CLOSE`, with exactly its pipe ends inherited or on a ConPTY
+pseudo-console (Windows 10 1809 or later). Launch paths may be Windows drive
+paths. The granted executable is held open while it starts and must be its
+own canonical final path. The command line is the exact inverse of
+`CommandLineToArgvW` with no shell, and the environment holds only the given
+variables. `terminate` and `kill` end the whole job and report that signal.
+`interrupt` types ^C on a terminal; on pipes it is refused, like `hangup`, with
+`service_unavailable`. A grant working directory is walked with the Windows
+grant rules and held open while the child starts there. The host unit tests
+and the same native test, with real `cmd.exe` children, run in development and
+AOT in the Native Platforms `windows-2022` job. It is type-checked locally
+only; Windows behavior is claimed from that CI job. See
+[ADR 0011](decisions/0011-owned-processes.md).
 
 ## File dialogs
 
@@ -698,11 +730,135 @@ a real GTK dialog transient for the owner window with the requested title,
 folder, filter and accept label, forged `Response` signals ignored, real
 keyboard selection of one file, several files and a folder, a save selection
 that creates no file, Escape cancellation, and the OS dialog closed after an
-aborted signal, owner close and shutdown. Wayland (unparented), Flatpak/Snap
-document-portal paths, other portal backends, macOS and Windows are not
-qualified. Message/confirm dialogs are not implemented: Linux has no portal
-for alerts, so use a modal overlay. See
+aborted signal, owner close and shutdown. On Wayland the same portal dialog
+opens unparented (no xdg-foreign handle is exported) and closes on abort and
+on a compositor close; selection through it was not run there
+([Wayland](#wayland)). Flatpak/Snap document-portal paths, other portal
+backends, macOS and Windows are not qualified. Message and confirm dialogs are not OS alerts; they are drawn on
+the modal overlay, [below](#message-and-confirm-dialogs). See
 [ADR 0013](decisions/0013-native-file-dialogs.md).
+
+## Message and confirm dialogs
+
+```ts
+const choice = await window.showMessageDialog(
+  {
+    title: "Unsaved changes",
+    message: "Save the document before closing?",
+    detail: "Unsaved edits are lost.",
+    buttons: [
+      { id: "save", label: "Save", kind: "primary" },
+      { id: "discard", label: "Discard", kind: "destructive" },
+      { id: "cancel", label: "Cancel" },
+    ],
+    cancelButton: "cancel", // Escape activates it
+  },
+  { signal },
+);
+if (choice.kind === "button" && choice.id === "save") await save();
+const remove = await window.showConfirmDialog({
+  title: "Delete file",
+  message: "Delete report.txt?",
+  confirmLabel: "Delete",
+  destructive: true, // red confirm button, Cancel focused by default
+});
+```
+
+`showMessageDialog` and `showConfirmDialog` draw a dialog in the window with
+public core's own [modal overlay](native-overlays.md), on every platform. They
+need no launch grant: the dialog is ordinary UI in the application's own
+window. `serviceCapabilities.messageDialogs` is `available` with backend
+`modal_overlay` when the host advertises `overlays_v1` and `focus_v1` (the
+current GPUI host always does); otherwise it reports
+`unsupported_host` and a call rejects with `service_unavailable` before
+anything is staged.
+
+One batch appends a window-anchored modal layer to the window root with a
+fixed panel (title, message, optional detail, right-aligned buttons) in the
+`defaultTheme` colors and sizes, at most 420 logical pixels wide, and focuses
+the default button (the first one unless `defaultButton` names another). The
+overlay traps Tab and Shift-Tab inside it and blocks pointer input beneath it.
+Options are validated before staging: a one-line `title` of at most 256 UTF-8
+bytes, a `message` of at most 2,048 and an optional `detail` of at most 4,096
+(both may contain line feeds), 1-4 buttons with unique `id`s of at most 64
+bytes and one-line labels of at most 64 bytes, optional `kind`
+(`normal`, `primary`, `destructive`), and `defaultButton`/`cancelButton` that
+name a button. Unknown options are rejected.
+
+The result is frozen: `{ kind: 'button', id }`, or `{ kind: 'dismissed' }`
+from a `dismissible: true` dialog. A click, or Enter/Space on the focused
+button, chooses that button. An unmodified Escape activates `cancelButton`;
+without one it dismisses a `dismissible` dialog and is otherwise ignored. A
+press on the backdrop dismisses only a `dismissible` dialog.
+`showConfirmDialog` shows Cancel then OK (labels configurable), Escape
+cancels, and it resolves `true` only for OK. The promise settles after the
+layer has been removed, so focus has already returned to the control focused
+before the dialog opened.
+
+Input routed through a dialog's layer is handled by core as it arrives and is
+not delivered to application listeners, including root capture listeners.
+Because of that, a listener may await a dialog (callbacks otherwise run one at
+a time) without blocking the dialog's own buttons.
+
+A window shows one message dialog at a time: later calls wait unseen and open
+in call order once the previous layer is removed, at most 8 per window
+(`limit_exceeded`). An aborted `signal` before the call stages nothing; a
+queued dialog is rejected with `cancelled` at once and never shown; an
+opening or shown dialog is removed and then rejected with `cancelled`.
+Closing the owner window or shutting down rejects every shown and queued
+dialog of that window with `NativeStateError` `invalid_handle`. A layer batch
+that fails, for example under a deeper application modal where the focus
+request is outside the active modal (`invalid_state`), rejects that call and
+the next queued dialog is tried.
+
+Solid and React components call the same methods on the window they render
+into; there is no adapter-specific helper. See
+[ADR 0014](decisions/0014-message-dialogs.md).
+
+The [Native Linux workflow](../.github/workflows/native-linux.yml) runs
+[`tests/native/message-dialogs.ts`](../tests/native/message-dialogs.ts) in
+development and inspected AOT. It uses only public core, real XTest input and
+nonce-tagged native paint evidence (focus and geometry):
+
+```sh
+export BUN_NATIVE_HOST="$PWD/target/release/bun-native-host"
+for mode in development aot; do
+  command=(bun tests/native/message-dialogs.ts)
+  if [[ "$mode" == aot ]]; then
+    bun experiments/aot-gpui/build-window.ts --entry message-dialogs --host "$BUN_NATIVE_HOST" \
+      --host-profile release --outdir "$PWD/.bun-native/message-dialogs-package"
+    command=("$PWD/.bun-native/message-dialogs-package/message-dialogs")
+  fi
+  evidence="$PWD/.bun-native/message-dialogs-$mode"; mkdir -p "$evidence"
+  BUN_NATIVE_MESSAGE_DIALOG_EVIDENCE="$evidence" BUN_NATIVE_MESSAGE_DIALOG_MODE="$mode" \
+    BUN_NATIVE_EVIDENCE_LOG="$evidence/native-evidence.jsonl" \
+    BUN_NATIVE_EVIDENCE_NONCE="$(python3 -c 'import secrets; print(secrets.token_hex(16))')" \
+    xvfb-run --auto-servernum --server-args='-screen 0 1280x800x24 -nolisten tcp' \
+    dbus-run-session -- bash scripts/quality/native-linux-session.sh "$evidence-session" -- "${command[@]}"
+done
+```
+
+Locally both modes passed on Linux X11 (Xvfb 1280×800 + openbox, XTest via
+xdotool, Mesa lavapipe, scale 1) with a release host; the AOT manifest
+recorded the JIT as unused. Observed in one run:
+
+| Outcome                  | Observed                                                                                                                                                                                 |
+| ------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Default focus and paint  | Opening moved native focus to `Save`; screenshot pixels showed the panel surface `ffffff` and the primary button accent `2255cc`.                                                        |
+| Tab trap                 | Tab, Tab, Tab, Shift-Tab focused `Discard, Cancel, Save, Cancel`; the editor beneath was never reached.                                                                                  |
+| Covered control          | A real click on the covered `Delete file` button produced no application click.                                                                                                          |
+| Click                    | A real click on `Discard` resolved `{ kind: 'button', id: 'discard' }`; no application listener saw it, and focus returned to the editor.                                                |
+| Enter, Escape, Space     | Enter resolved the default `save`; Escape resolved `cancel`; without a cancel button Escape left the dialog open and Space on the focused button chose it.                               |
+| Backdrop                 | A real press outside the panel resolved `{ kind: 'dismissed' }` for a `dismissible` dialog.                                                                                              |
+| Awaiting listener        | A real click on `Delete file` whose listener awaited a destructive `showConfirmDialog` opened it focused on `Keep`; a real click on `Delete` resolved `true`.                            |
+| Queue                    | The second dialog stayed unrendered until the first was answered, then opened focused on `OK`.                                                                                           |
+| Abort                    | Aborting removed the shown dialog, rejected with `cancelled`, returned focus to the editor, and typing continued (`note` → `note!`).                                                     |
+| Owner close and shutdown | Closing the window rejected a shown and a queued dialog with `invalid_handle`; shutdown rejected a dialog in another window the same way. All seven ownership counters returned to zero. |
+
+Only Linux X11 at scale 1 with software rendering is exercised. macOS and
+Windows run the same core code over the same overlay host code, unqualified.
+The dialog exposes no accessibility role or announcement, is modal only within
+its window, and is not an OS alert (no system sound or title-bar sheet).
 
 ## Drag and drop
 
@@ -786,6 +942,112 @@ React fixtures in development and inspected AOT on an isolated display. An
 independent x11rb XDND source process grabs and warps the real pointer and
 speaks XDND to the host. No GPUI event is synthesized.
 
+## Wayland
+
+GPUI selects its Wayland backend whenever `WAYLAND_DISPLAY` is set. Each
+service picks its backend from the live GPUI session when the host starts, and
+advertises a capability only for a backend it implements:
+
+| Service                                     | Backend under Wayland                         | Reported                                                                                             |
+| ------------------------------------------- | --------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
+| Clipboard text, global shortcuts, drag/drop | X11 selections, X11 key grabs, GPUI XDND only | `unavailable` / `unsupported_platform`; clipboard and shortcut requests reject `service_unavailable` |
+| Popup windows (`surface: 'window'`)         | X11 override-redirect only                    | `popup_windows_v1` absent; core throws `UnsupportedFeatureError`                                     |
+| Notifications                               | Freedesktop D-Bus, display-independent        | `available`                                                                                          |
+| File dialogs                                | xdg-desktop-portal, unparented                | `available`                                                                                          |
+| Display snapshot                            | GPUI's Wayland output                         | `available`; no details or change events                                                             |
+| Filesystem grants, processes                | Display-independent                           | `available` (not run under Wayland)                                                                  |
+
+[`tests/native/wayland.ts`](../tests/native/wayland.ts) checks this matrix on
+headless sway in development and inspected AOT, together with the window,
+input, paint and close behavior described in
+[native platforms](native-platforms.md#linux-wayland). Clipboard, shortcut,
+drag-and-drop and popup backends for Wayland, and dialog parenting through
+xdg-foreign, are planned in [ADR 0017](decisions/0017-wayland.md); GNOME and
+KDE compositors are not qualified.
+
+## Application menu bar
+
+```ts
+const app = await createApplication({
+  executable,
+  permissions: { appMenu: "allow" },
+});
+if (app.serviceCapabilities.appMenu.availability === "available") {
+  const bar = await app.setMenuBar(
+    [
+      {
+        title: "Notes", // shown under the process name on macOS
+        items: [
+          { kind: "item", id: "app.quit", label: "Quit Notes", shortcut: { key: "q", platform: true } },
+        ],
+      },
+      {
+        title: "File",
+        items: [
+          { kind: "item", id: "file.open", label: "Open…", shortcut: { key: "o", platform: true } },
+          { kind: "separator" },
+          { kind: "submenu", label: "Recent", items: [{ kind: "item", id: "recent.1", label: "notes.txt" }] },
+          { kind: "item", id: "file.export", label: "Export", enabled: false },
+        ],
+      },
+    ],
+    async (event) => {
+      if (event.itemId === "app.quit") await app.shutdown();
+    },
+  );
+  await bar.clear(); // or app.clearMenuBar(), or set another bar
+}
+```
+
+`setMenuBar` installs the application's menu bar under the separate
+`appMenu` grant. It belongs to the application, not to a window: closing a
+window leaves it installed. The optional `app_menu_v1` capability is
+advertised on macOS only, where GPUI installs an `NSMenu` main menu; GPUI's
+Linux and Windows backends only store menus, so `serviceCapabilities.appMenu`
+reports `unsupported_platform` there and core rejects with
+`NativeServiceError` `service_unavailable` (or `permission_denied` without
+the grant) before any request.
+
+The model is closed and bounded, validated by both language implementations:
+at most 16 menus and 128 entries in all, submenus at most two levels below a
+top-level menu, titles and labels of 1-64 UTF-8 bytes without control
+characters, item `id`s of 1-64 bytes of `A-Z a-z 0-9 . _ : -` unique in the
+bar, and shortcuts from a closed key set (`a`-`z`, `0`-`9`, `f1`-`f12`,
+``, . / ; ' [ ] - = ` \`` and `enter`, `escape`, `tab`, `space`, `backspace`,
+`delete`, the arrows, `home`, `end`, `pageup`, `pagedown`) with explicit
+`control`, `alt`, `shift` and `platform` (Command) flags. Every key except
+`f1`-`f12` needs control, alt or platform, and shortcuts are unique in the
+bar. `enabled` defaults to true and `checked` to false; both are fixed per
+bar, so changing them means setting a new bar.
+
+Selecting an item calls the listener with a frozen `app_menu_item` event:
+the item's `itemId`, the `menuBar` handle and a `signal` aborted when the bar
+is replaced, cleared or the application stops. No application string becomes
+a native action name: the host gives each item an opaque registry slot of the
+current bar. Setting or clearing a bar revokes the previous handle at once;
+a selection of a replaced bar, even one AppKit queued before the replacement,
+is never delivered. Shutdown removes the bar.
+
+On macOS the first menu is shown under the process name. A menu titled
+exactly `Window` becomes AppKit's Windows menu, to which AppKit appends its
+window list. The host adds no standard items (About, Services, Hide, Quit):
+an application that wants Quit adds it, as above. Menu shortcuts are bound in
+the owned window's root key context, so a focused text input keeps its own
+editing keys. A disabled submenu still opens, with every item disabled.
+
+The macOS job of the [native platforms workflow](../.github/workflows/native-platforms.yml)
+runs [`tests/native/app-menu.ts`](../tests/native/app-menu.ts) in development
+and inspected AOT. An independent Accessibility oracle
+([`macos-menu-oracle.m`](../tests/native/macos-menu-oracle.m)) reads the
+host's `AXMenuBar` and performs `AXPress` by title: it checks titles,
+separators, check marks, enabled state and key equivalents, selections of the
+current bar, that a replaced bar is gone and delivers nothing, that a
+disabled item never reports, and that clearing removes the menus. When the
+runner does not trust the oracle for Accessibility the report is
+`unverified` and the step warns. This is hosted-CI evidence only; no local
+Mac run, keyboard-driven selection or VoiceOver check has been made. See
+[ADR 0015](decisions/0015-application-menu-bar.md).
+
 ## Service and platform matrix
 
 All services listed here share the core's policy boundary. The unavailable rows
@@ -793,18 +1055,18 @@ are requirements for future work, not promises that an exported function
 already exists. The linked follow-ups belong to
 [#255](https://github.com/0xPlayerOne/bun-native/issues/255).
 
-| Service           | Current public surface                                        | Linux X11                                                                                           | macOS                                             | Windows                                 | Required scope before exposing more operations                                                                                                                                                            |
-| ----------------- | ------------------------------------------------------------- | --------------------------------------------------------------------------------------------------- | ------------------------------------------------- | --------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Window/display    | Existing owned open/close; permission-gated `displaySnapshot` | Core/Solid/React dev+AOT verified with release host; X11 semantics fixture dev+AOT verified locally | Service execution unverified                      | Service execution unverified            | X11 semantics qualified; change events, work area, identity and mixed DPI unavailable on X11. Other platforms and placement remain. [#299](https://github.com/0xPlayerOne/bun-native/issues/299).         |
-| Clipboard text    | `readClipboardText` / `writeClipboardText`; separate grants   | X11 dev+AOT verified with release host                                                              | Unavailable                                       | Unavailable                             | Additional platforms/formats and extended lifecycle coverage. [#300](https://github.com/0xPlayerOne/bun-native/issues/300).                                                                               |
-| Global shortcuts  | `registerGlobalShortcut`; `globalShortcuts` grant             | X11 dev+AOT verified with release host                                                              | Unavailable                                       | Unavailable                             | macOS/Windows backends, Wayland portal design and keyboard-map change tracking. [#301](https://github.com/0xPlayerOne/bun-native/issues/301).                                                             |
-| System menus      | Capability `systemMenus`; unavailable                         | Unavailable                                                                                         | Unavailable                                       | Unavailable                             | Typed action identities, owned menu lifetime, keyboard/accessibility behavior and safe action revocation. [#239](https://github.com/0xPlayerOne/bun-native/issues/239).                                   |
-| File dialogs      | `showOpenDialog` / `showSaveDialog`; `fileDialogs` grant      | xdg-desktop-portal (GTK) dev+AOT verified                                                           | Unavailable                                       | Unavailable                             | macOS/Windows panels, Wayland parenting, sandboxed document-portal paths and explicit file-grant conversion. [#239](https://github.com/0xPlayerOne/bun-native/issues/239).                                |
-| Message dialogs   | Capability `messageDialogs`; unavailable                      | Unavailable (no portal; use a modal overlay)                                                        | Unavailable                                       | Unavailable                             | Native `NSAlert`/task dialogs with owned modality, programmatic close and qualification. [#239](https://github.com/0xPlayerOne/bun-native/issues/239).                                                    |
-| Notifications     | `postNotification`; `notifications` grant                     | Freedesktop D-Bus (dunst) dev+AOT verified                                                          | Unavailable                                       | Unavailable                             | macOS/Windows backends, additional notification servers, named actions and replacement. [#302](https://github.com/0xPlayerOne/bun-native/issues/302).                                                     |
-| Drag/drop         | `registerDropTarget`; `dragDrop` grant                        | XDND dev+AOT verified locally (core/Solid/React)                                                    | AppKit; hosted CI only (NSDraggingSession source) | OLE; hosted CI only (DoDragDrop source) | Other payload kinds and file promises, refusal (GPUI always accepts), Wayland, physical devices and real file managers, Windows resolution. [#303](https://github.com/0xPlayerOne/bun-native/issues/303). |
-| Filesystem grants | `openFileGrant`; `filesystemRoots` launch roots               | openat2 dev+AOT verified locally                                                                    | `openat` walk; CI-only                            | Unavailable                             | OS file selection and dropped files as explicit user grants, Windows confinement. [#304](https://github.com/0xPlayerOne/bun-native/issues/304).                                                           |
-| PTY/process       | `spawnProcess`; `processes` launch executables                | Pipes and PTY dev+AOT verified locally                                                              | Dev+AOT in CI only; no `cwd`                      | Unavailable                             | macOS `cwd`, Windows backend (ConPTY), descendants that leave the group, resource limits. [#305](https://github.com/0xPlayerOne/bun-native/issues/305).                                                   |
+| Service           | Current public surface                                        | Linux X11                                                                                           | Linux Wayland                                                      | macOS                                             | Windows                                 | Required scope before exposing more operations                                                                                                                                                            |
+| ----------------- | ------------------------------------------------------------- | --------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------ | ------------------------------------------------- | --------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Window/display    | Existing owned open/close; permission-gated `displaySnapshot` | Core/Solid/React dev+AOT verified with release host; X11 semantics fixture dev+AOT verified locally | Snapshot dev+AOT verified on headless sway (scale 1 and 2)         | Service execution unverified                      | Service execution unverified            | X11 semantics qualified; change events, work area, identity and mixed DPI unavailable on X11. Other platforms and placement remain. [#299](https://github.com/0xPlayerOne/bun-native/issues/299).         |
+| Clipboard text    | `readClipboardText` / `writeClipboardText`; separate grants   | X11 dev+AOT verified with release host                                                              | Unavailable (`unsupported_platform`)                               | Unavailable                                       | Unavailable                             | Additional platforms/formats and extended lifecycle coverage. [#300](https://github.com/0xPlayerOne/bun-native/issues/300).                                                                               |
+| Global shortcuts  | `registerGlobalShortcut`; `globalShortcuts` grant             | X11 dev+AOT verified with release host                                                              | Unavailable (`unsupported_platform`)                               | Unavailable                                       | Unavailable                             | macOS/Windows backends, Wayland portal design and keyboard-map change tracking. [#301](https://github.com/0xPlayerOne/bun-native/issues/301).                                                             |
+| Application menu  | `setMenuBar` / `clearMenuBar`; `appMenu` grant                | Unavailable (GPUI stores menus only)                                                                | Unavailable (GPUI stores menus only)                               | AppKit `NSMenu` bar; hosted CI only (AX oracle)   | Unavailable                             | Context and Dock menus, dynamic validation, Linux/Windows menu bars drawn by the application. [#239](https://github.com/0xPlayerOne/bun-native/issues/239).                                               |
+| File dialogs      | `showOpenDialog` / `showSaveDialog`; `fileDialogs` grant      | xdg-desktop-portal (GTK) dev+AOT verified                                                           | Portal (GTK) opens unparented; abort and compositor close verified | Unavailable                                       | Unavailable                             | macOS/Windows panels, Wayland parenting, sandboxed document-portal paths and explicit file-grant conversion. [#239](https://github.com/0xPlayerOne/bun-native/issues/239).                                |
+| Message dialogs   | `showMessageDialog` / `showConfirmDialog`; no grant           | Modal overlay dev+AOT verified locally                                                              | Modal overlay (same core code); unqualified on Wayland             | Modal overlay; unqualified                        | Modal overlay; unqualified              | Native `NSAlert`/task dialogs with owned modality, programmatic close and qualification. [#239](https://github.com/0xPlayerOne/bun-native/issues/239).                                                    |
+| Notifications     | `postNotification`; `notifications` grant                     | Freedesktop D-Bus (dunst) dev+AOT verified                                                          | Freedesktop (dunst) post and withdraw verified                     | Unavailable                                       | Unavailable                             | macOS/Windows backends, additional notification servers, named actions and replacement. [#302](https://github.com/0xPlayerOne/bun-native/issues/302).                                                     |
+| Drag/drop         | `registerDropTarget`; `dragDrop` grant                        | XDND dev+AOT verified locally (core/Solid/React)                                                    | Unavailable (`unsupported_platform`)                               | AppKit; hosted CI only (NSDraggingSession source) | OLE; hosted CI only (DoDragDrop source) | Other payload kinds and file promises, refusal (GPUI always accepts), Wayland, physical devices and real file managers, Windows resolution. [#303](https://github.com/0xPlayerOne/bun-native/issues/303). |
+| Filesystem grants | `openFileGrant`; `filesystemRoots` launch roots               | openat2 dev+AOT verified locally                                                                    | Advertised; display-independent, not run on Wayland                | `openat` walk; CI-only                            | `NtCreateFile` walk; CI-only            | OS file selection and dropped files as explicit user grants. [#304](https://github.com/0xPlayerOne/bun-native/issues/304).                                                                                |
+| PTY/process       | `spawnProcess`; `processes` launch executables                | Pipes and PTY dev+AOT verified locally                                                              | Advertised; display-independent, not run on Wayland                | Dev+AOT in CI only; no `cwd`                      | Job object and ConPTY; CI-only          | macOS `cwd`, descendants that leave the group (POSIX), pipe `interrupt` and `hangup` on Windows, resource limits. [#305](https://github.com/0xPlayerOne/bun-native/issues/305).                           |
 
 For the deferred rows, the exported typed contract is the frozen availability
 record in `ServiceCapabilities`. There is no callable operation, configurable

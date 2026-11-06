@@ -71,6 +71,7 @@ identifier!(ProcessId);
 identifier!(DialogId);
 identifier!(DropTargetId);
 identifier!(DropId);
+identifier!(AppMenuId);
 
 /// JSON has one number type. Match JavaScript's safe-integer validation even
 /// when a sender spells an integer as `1.0` or `1e0` instead of canonical `1`.
@@ -441,6 +442,9 @@ pub enum Element {
         ratio: f64,
         /// The smallest main-axis size of each pane, in logical pixels.
         min_size: f64,
+        /// Requires `accessibility_v1`: the divider's accessible name.
+        #[serde(skip_serializing_if = "Option::is_none")]
+        accessible_label: Option<String>,
         style: Style,
     },
     /// A container painted above the ordinary tree. Nested overlays paint
@@ -459,6 +463,9 @@ pub enum Element {
         /// Omitted from normalized output while it is the default layer.
         #[serde(skip_serializing_if = "OverlaySurface::is_layer")]
         surface: OverlaySurface,
+        /// Requires `accessibility_v1`: the dialog's accessible name.
+        #[serde(skip_serializing_if = "Option::is_none")]
+        accessible_label: Option<String>,
         style: Style,
     },
 }
@@ -668,6 +675,13 @@ pub enum Command {
         item: u32,
         root: String,
     },
+    /// Replace the application menu bar; an empty `menus` removes it. Every
+    /// item of the previous bar is revoked. `menu_id` increases per session.
+    SetAppMenu {
+        id: RequestId,
+        menu_id: AppMenuId,
+        menus: Vec<crate::AppMenu>,
+    },
     Shutdown {
         id: RequestId,
     },
@@ -725,6 +739,13 @@ pub enum Capability {
     PopupWindowsV1,
     DragDropFilesV1,
     InputStatesV1,
+    /// A native application menu bar (macOS).
+    AppMenuV1,
+    /// The split divider is a keyboard Tab stop and reports `split_resize`.
+    SplitResizeV1,
+    /// Every element kind has an accessibility role, and overlays and splits
+    /// accept an `accessible_label`.
+    AccessibilityV1,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -854,6 +875,7 @@ impl Command {
             | Self::RegisterDropTarget { id, .. }
             | Self::UnregisterDropTarget { id, .. }
             | Self::ResolveDroppedItem { id, .. }
+            | Self::SetAppMenu { id, .. }
             | Self::Shutdown { id } => *id,
         }
     }
@@ -957,6 +979,7 @@ impl Command {
                 }
             }
             Self::ShowFileDialog { options, .. } => options.validate()?,
+            Self::SetAppMenu { menus, .. } => crate::validate_app_menus(menus)?,
             Self::ResolveDroppedItem { item, root, .. } => {
                 crate::validate_drop_item_index(*item)?;
                 crate::validate_root_id(root)?;
@@ -987,7 +1010,26 @@ impl Element {
             Self::Input {
                 value, placeholder, ..
             } => value.len() + placeholder.len(),
-            Self::Box { .. } | Self::Split { .. } | Self::Overlay { .. } => 0,
+            Self::Split {
+                accessible_label, ..
+            }
+            | Self::Overlay {
+                accessible_label, ..
+            } => accessible_label.as_ref().map_or(0, String::len),
+            Self::Box { .. } => 0,
+        }
+    }
+
+    /// The `accessibility_v1` name an overlay or split declares.
+    pub fn accessible_label(&self) -> Option<&str> {
+        match self {
+            Self::Split {
+                accessible_label, ..
+            }
+            | Self::Overlay {
+                accessible_label, ..
+            } => accessible_label.as_deref(),
+            Self::Box { .. } | Self::Text { .. } | Self::Button { .. } | Self::Input { .. } => None,
         }
     }
 
@@ -1070,6 +1112,7 @@ impl Element {
                 ratio,
                 min_size,
                 style,
+                ..
             } => {
                 bounded(*ratio, 0., 1., "split ratio must be between 0 and 1")?;
                 bounded(
@@ -1086,6 +1129,9 @@ impl Element {
                 }
             }
             Self::Box { .. } | Self::Overlay { .. } => {}
+        }
+        if let Some(label) = self.accessible_label() {
+            validate_text(label)?;
         }
         self.style().validate()
     }

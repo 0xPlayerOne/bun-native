@@ -21,17 +21,20 @@ describe('shared owned process wire contract (headless)', () => {
     const entries = [
       { id: 'shell', executable: '/bin/sh' },
       { id: 'tool', executable: '/opt/a:b/tool' },
+      { id: 'cmd', executable: 'C:\\Windows\\System32\\cmd.exe' },
     ]
     const argv = ['host', '--other', ...entries.map(processArgument)]
     expect(argv.slice(2)).toEqual([
       '--bun-native-process=shell:/bin/sh',
       '--bun-native-process=tool:/opt/a:b/tool',
+      '--bun-native-process=cmd:C:\\Windows\\System32\\cmd.exe',
     ])
     expect(processesFromArguments(argv)).toEqual(entries)
     for (const entry of [
       { id: 'shell', executable: 'sh' },
       { id: 'Shell', executable: '/bin/sh' },
       { id: 'shell', executable: '/' },
+      { id: 'shell', executable: 'C:\\' },
       { id: 'shell', executable: '/bin/../sh' },
       { id: 'shell', executable: '/bin/sh', extra: true },
     ])

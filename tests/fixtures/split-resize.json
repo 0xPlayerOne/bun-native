@@ -1,0 +1,77 @@
+{
+  "protocol": 11,
+  "capability": "split_resize_v1",
+  "scope": "Shared split_resize wire validation; not native GUI evidence.",
+  "cases": [
+    {
+      "name": "pointer-drag-finished",
+      "valid": true,
+      "wire": "{\"type\":\"split_resize\",\"sequence\":1,\"window_id\":1,\"node_id\":3,\"tree_revision\":7,\"path\":[1,2,3],\"ratio\":0.25,\"source\":\"pointer\"}"
+    },
+    {
+      "name": "keyboard-step",
+      "valid": true,
+      "wire": "{\"type\":\"split_resize\",\"sequence\":1,\"window_id\":1,\"node_id\":3,\"tree_revision\":7,\"path\":[1,2,3],\"ratio\":0.51,\"source\":\"keyboard\"}"
+    },
+    {
+      "name": "ratio-bounds-zero",
+      "valid": true,
+      "wire": "{\"type\":\"split_resize\",\"sequence\":1,\"window_id\":1,\"node_id\":3,\"tree_revision\":7,\"path\":[1,2,3],\"ratio\":0,\"source\":\"keyboard\"}"
+    },
+    {
+      "name": "ratio-bounds-one",
+      "valid": true,
+      "wire": "{\"type\":\"split_resize\",\"sequence\":1,\"window_id\":1,\"node_id\":3,\"tree_revision\":7,\"path\":[1,2,3],\"ratio\":1,\"source\":\"pointer\"}"
+    },
+    {
+      "name": "ratio-above-one",
+      "valid": false,
+      "wire": "{\"type\":\"split_resize\",\"sequence\":1,\"window_id\":1,\"node_id\":3,\"tree_revision\":7,\"path\":[1,2,3],\"ratio\":1.01,\"source\":\"pointer\"}"
+    },
+    {
+      "name": "ratio-negative",
+      "valid": false,
+      "wire": "{\"type\":\"split_resize\",\"sequence\":1,\"window_id\":1,\"node_id\":3,\"tree_revision\":7,\"path\":[1,2,3],\"ratio\":-0.01,\"source\":\"keyboard\"}"
+    },
+    {
+      "name": "ratio-string",
+      "valid": false,
+      "wire": "{\"type\":\"split_resize\",\"sequence\":1,\"window_id\":1,\"node_id\":3,\"tree_revision\":7,\"path\":[1,2,3],\"ratio\":\"0.5\",\"source\":\"keyboard\"}"
+    },
+    {
+      "name": "ratio-missing",
+      "valid": false,
+      "wire": "{\"type\":\"split_resize\",\"sequence\":1,\"window_id\":1,\"node_id\":3,\"tree_revision\":7,\"path\":[1,2,3],\"source\":\"keyboard\"}"
+    },
+    {
+      "name": "source-unknown",
+      "valid": false,
+      "wire": "{\"type\":\"split_resize\",\"sequence\":1,\"window_id\":1,\"node_id\":3,\"tree_revision\":7,\"path\":[1,2,3],\"ratio\":0.5,\"source\":\"touch\"}"
+    },
+    {
+      "name": "source-missing",
+      "valid": false,
+      "wire": "{\"type\":\"split_resize\",\"sequence\":1,\"window_id\":1,\"node_id\":3,\"tree_revision\":7,\"path\":[1,2,3],\"ratio\":0.5}"
+    },
+    {
+      "name": "unknown-field",
+      "valid": false,
+      "wire": "{\"type\":\"split_resize\",\"sequence\":1,\"window_id\":1,\"node_id\":3,\"tree_revision\":7,\"path\":[1,2,3],\"ratio\":0.5,\"source\":\"pointer\",\"delta\":0.1}"
+    },
+    {
+      "name": "route-target-mismatch",
+      "valid": false,
+      "wire": "{\"type\":\"split_resize\",\"sequence\":1,\"window_id\":1,\"node_id\":4,\"tree_revision\":7,\"path\":[1,2,3],\"ratio\":0.5,\"source\":\"pointer\"}"
+    },
+    {
+      "name": "route-empty",
+      "valid": false,
+      "wire": "{\"type\":\"split_resize\",\"sequence\":1,\"window_id\":1,\"node_id\":3,\"tree_revision\":7,\"path\":[],\"ratio\":0.5,\"source\":\"pointer\"}"
+    },
+    {
+      "name": "route-duplicate",
+      "valid": false,
+      "wire": "{\"type\":\"split_resize\",\"sequence\":1,\"window_id\":1,\"node_id\":3,\"tree_revision\":7,\"path\":[3,2,3],\"ratio\":0.5,\"source\":\"pointer\"}"
+    }
+  ]
+}

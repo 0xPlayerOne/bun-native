@@ -8,6 +8,7 @@ export { DECORATION_FIELDS, SPLIT_DIVIDER } from '@bun-native/protocol'
 export { defaultTheme, defineTheme } from './theme.ts'
 export type { ResolvedStyle, Theme, ThemedStyle, ThemeTokens } from './theme.ts'
 export { onDismiss, type DismissEvent } from './overlays.ts'
+export { onSplitResize } from './splits.ts'
 export type {
   DisplayChangeEvent,
   NativeDisplaySnapshot,
@@ -23,6 +24,14 @@ export type {
   NativeGlobalShortcut,
 } from './shortcuts.ts'
 export type { NativeNotification, NotificationEvent, NotificationOptions } from './notifications.ts'
+export type {
+  AppMenuItemEvent,
+  MenuEntryOptions,
+  MenuOptions,
+  MenuShortcutKey,
+  MenuShortcutOptions,
+  NativeMenuBar,
+} from './app-menu.ts'
 export type { DropTargetEvent, NativeDropTarget, NativeDroppedItem } from './drops.ts'
 export type {
   FileGrantOptions,
@@ -39,6 +48,12 @@ export type {
   SaveDialogOptions,
   SaveDialogResult,
 } from './dialogs.ts'
+export type {
+  ConfirmDialogOptions,
+  MessageDialogButton,
+  MessageDialogOptions,
+  MessageDialogResult,
+} from './message-dialogs.ts'
 export type {
   ApplicationOptions,
   ClickEvent,
@@ -65,6 +80,7 @@ export type {
   NativeNode,
   NativeWindow,
   ScrollOffset,
+  SplitResizeEvent,
   Style,
   WindowOptions,
 } from './types.ts'

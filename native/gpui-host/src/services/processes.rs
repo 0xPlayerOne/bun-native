@@ -1,8 +1,9 @@
 //! Owned child processes. Each process has one thread that starts it, moves
 //! its output under a delivery credit and observes its exit (a pidfd on
-//! Linux, a `waitid(WNOWAIT)` watcher on macOS). The UI thread holds only
-//! shared state, so a stalled child never blocks input, paint or the tree
-//! queue.
+//! Linux, a `waitid(WNOWAIT)` watcher on macOS, the process handle in a job
+//! object on Windows, with one reader thread per output pipe). The UI thread
+//! holds only shared state, so a stalled child never blocks input, paint or
+//! the tree queue.
 
 #[cfg(target_os = "linux")]
 #[path = "processes/linux.rs"]
@@ -10,28 +11,44 @@ mod platform;
 #[cfg(target_os = "macos")]
 #[path = "processes/macos.rs"]
 mod platform;
+#[cfg(windows)]
+#[path = "processes/windows.rs"]
+mod platform;
 
 use crate::channel::EventSink;
 use crate::services::files::Directory;
 use async_channel::{Receiver, Sender};
 use base64::Engine as _;
 use base64::engine::general_purpose::STANDARD;
+#[cfg(unix)]
+use bun_native_protocol::MAX_FILE_CHUNK_BYTES;
 use bun_native_protocol::{
-    ErrorCode, Event, MAX_FILE_CHUNK_BYTES, MAX_PROCESS_OUTPUT_CREDIT, MAX_PROCESSES,
-    ProcessExecutable, ProcessExit, ProcessId, ProcessLaunch, ProcessSignal, ProcessStream,
-    RequestId, TerminalSize, WindowId,
+    ErrorCode, Event, MAX_PROCESS_OUTPUT_CREDIT, MAX_PROCESSES, ProcessExecutable, ProcessExit,
+    ProcessId, ProcessLaunch, ProcessSignal, ProcessStream, RequestId, TerminalSize, WindowId,
 };
 use gpui::{App, BackgroundExecutor, Task};
-use platform::{ExitWatch, Wake};
+#[cfg(unix)]
+use platform::ExitWatch;
+use platform::Wake;
+#[cfg(windows)]
+use platform::{Group, Master, Terminal, open_terminal, resize, signal};
+#[cfg(unix)]
 use rustix::event::{PollFd, PollFlags, poll};
+#[cfg(unix)]
 use rustix::fs::{OFlags, fcntl_getfl, fcntl_setfl};
+#[cfg(unix)]
 use rustix::io::Errno;
+#[cfg(unix)]
 use rustix::process::{Pid, Signal, kill_process_group};
 use std::cell::{Cell, RefCell};
 use std::collections::{BTreeMap, VecDeque};
+#[cfg(unix)]
 use std::io::{ErrorKind, Read as _, Write as _};
+#[cfg(unix)]
 use std::os::fd::{AsFd, OwnedFd};
+#[cfg(unix)]
 use std::os::unix::process::{CommandExt as _, ExitStatusExt as _};
+#[cfg(unix)]
 use std::process::{Child, Command, ExitStatus, Stdio};
 use std::rc::Rc;
 use std::sync::{Arc, Mutex, MutexGuard};
@@ -41,8 +58,19 @@ type Failure = (ErrorCode, &'static str);
 
 /// Input accepted but not yet written to the child.
 const MAX_PENDING_INPUT: usize = 65_536;
-/// The terminal end-of-file character in canonical mode (VEOF, ^D).
-const TERMINAL_EOF: u8 = 0x04;
+/// The terminal end-of-file input in canonical mode (VEOF, ^D).
+#[cfg(unix)]
+const TERMINAL_EOF: &[u8] = &[0x04];
+/// The console end-of-file input: ^Z at the start of a line, then Enter.
+#[cfg(windows)]
+const TERMINAL_EOF: &[u8] = b"\x1a\r";
+
+/// What signals reach: a process group on Unix, a job object on Windows.
+#[cfg(unix)]
+type Group = Pid;
+/// The terminal end the UI thread resizes.
+#[cfg(unix)]
+type Master = OwnedFd;
 
 #[derive(Default)]
 struct State {
@@ -54,7 +82,7 @@ struct State {
     released: bool,
     /// The leader's group may no longer be signalled: it is reaped or reaping.
     reaped: bool,
-    group: Option<Pid>,
+    group: Option<Group>,
 }
 
 struct Control {
@@ -90,7 +118,7 @@ enum Message {
 struct Entry {
     window: WindowId,
     control: Arc<Control>,
-    terminal: Option<Arc<OwnedFd>>,
+    terminal: Option<Arc<Master>>,
     /// The spawn request still waiting for its reply.
     spawning: Option<RequestId>,
     delivered: u64,
@@ -278,7 +306,7 @@ impl Processes {
                     }
                     if entry.terminal.is_some() {
                         // A terminal has no separate input to close; end the line discipline's input.
-                        state.input.push_back(TERMINAL_EOF);
+                        state.input.extend(TERMINAL_EOF);
                     } else {
                         state.close_input = true;
                     }
@@ -288,25 +316,10 @@ impl Processes {
                         ErrorCode::WrongKind,
                         "only a terminal process can be resized",
                     ))?;
-                    rustix::termios::tcsetwinsize(master.as_fd(), winsize(size))
-                        .map_err(|_| (ErrorCode::NativeFailure, "cannot resize the terminal"))?;
+                    resize(master, size)?;
                 }
-                Change::Signal(signal) => {
-                    let state = entry.control.lock();
-                    let group = state
-                        .group
-                        .filter(|_| !state.reaped)
-                        .ok_or((ErrorCode::InvalidState, "the process has exited"))?;
-                    // The unreaped leader keeps its group ID from being reused.
-                    // macOS may count a group holding only that zombie as
-                    // empty: the process has exited either way.
-                    kill_process_group(group, native_signal(signal)).map_err(|error| {
-                        if error == Errno::SRCH {
-                            (ErrorCode::InvalidState, "the process has exited")
-                        } else {
-                            (ErrorCode::NativeFailure, "cannot signal the process")
-                        }
-                    })?;
+                Change::Signal(change) => {
+                    signal(&mut entry.control.lock(), change, entry.terminal.is_some())?;
                 }
                 Change::Acknowledge(_) => unreachable!(),
             }
@@ -513,6 +526,31 @@ pub(crate) enum Change {
     Acknowledge(u64),
 }
 
+#[cfg(unix)]
+fn resize(master: &OwnedFd, size: TerminalSize) -> Result<(), Failure> {
+    rustix::termios::tcsetwinsize(master.as_fd(), winsize(size))
+        .map_err(|_| (ErrorCode::NativeFailure, "cannot resize the terminal"))
+}
+
+#[cfg(unix)]
+fn signal(state: &mut State, signal: ProcessSignal, _terminal: bool) -> Result<(), Failure> {
+    let group = state
+        .group
+        .filter(|_| !state.reaped)
+        .ok_or((ErrorCode::InvalidState, "the process has exited"))?;
+    // The unreaped leader keeps its group ID from being reused. macOS may
+    // count a group holding only that zombie as empty: the process has
+    // exited either way.
+    kill_process_group(group, native_signal(signal)).map_err(|error| {
+        if error == Errno::SRCH {
+            (ErrorCode::InvalidState, "the process has exited")
+        } else {
+            (ErrorCode::NativeFailure, "cannot signal the process")
+        }
+    })
+}
+
+#[cfg(unix)]
 fn native_signal(signal: ProcessSignal) -> Signal {
     match signal {
         ProcessSignal::Interrupt => Signal::INT,
@@ -522,6 +560,7 @@ fn native_signal(signal: ProcessSignal) -> Signal {
     }
 }
 
+#[cfg(unix)]
 fn winsize(size: TerminalSize) -> rustix::termios::Winsize {
     rustix::termios::Winsize {
         ws_row: size.rows,
@@ -531,8 +570,10 @@ fn winsize(size: TerminalSize) -> rustix::termios::Winsize {
     }
 }
 
+#[cfg(unix)]
 type Terminal = (Arc<OwnedFd>, pty_process::blocking::Pts);
 
+#[cfg(unix)]
 fn open_terminal(size: TerminalSize) -> Result<Terminal, Failure> {
     let (master, pts) = pty_process::blocking::open().map_err(|_| {
         (
@@ -548,6 +589,7 @@ fn open_terminal(size: TerminalSize) -> Result<Terminal, Failure> {
     Ok((Arc::new(master), pts))
 }
 
+#[cfg(unix)]
 fn nonblocking(fd: &impl AsFd) -> Result<(), Failure> {
     fcntl_getfl(fd)
         .and_then(|flags| fcntl_setfl(fd, flags | OFlags::NONBLOCK))
@@ -563,6 +605,7 @@ fn join(threads: Vec<JoinHandle<()>>, executor: &BackgroundExecutor) -> Task<()>
     })
 }
 
+#[cfg(unix)]
 fn spawn_failure(error: &std::io::Error) -> Failure {
     match error.raw_os_error().map(Errno::from_raw_os_error) {
         Some(Errno::NOENT | Errno::NOTDIR) => (
@@ -595,6 +638,7 @@ struct Job {
     messages: Sender<Message>,
 }
 
+#[cfg(unix)]
 struct Stream {
     fd: OwnedFd,
     kind: ProcessStream,
@@ -617,6 +661,7 @@ impl Job {
         }
     }
 
+    #[cfg(unix)]
     fn start(self) -> Result<Running, Failure> {
         // The grant descriptor, not a path string, names the working directory.
         let (directory, cwd) = platform::working_directory(self.directory.as_ref())?.unzip();
@@ -723,6 +768,7 @@ impl Job {
     }
 }
 
+#[cfg(unix)]
 struct Running {
     child: Child,
     group: Pid,
@@ -735,6 +781,7 @@ struct Running {
 }
 
 /// The exit as the reaping `waitpid` reported it.
+#[cfg(unix)]
 fn exit_of(status: ExitStatus) -> Option<ProcessExit> {
     match (status.code(), status.signal()) {
         (Some(code), _) => Some(ProcessExit {
@@ -749,6 +796,7 @@ fn exit_of(status: ExitStatus) -> Option<ProcessExit> {
     }
 }
 
+#[cfg(unix)]
 enum Slot {
     Wake,
     Exit,
@@ -756,6 +804,7 @@ enum Slot {
     Input,
 }
 
+#[cfg(unix)]
 impl Running {
     fn supervise(mut self, process: ProcessId, control: &Control, messages: &Sender<Message>) {
         let mut buffer = vec![0; MAX_FILE_CHUNK_BYTES];
@@ -917,7 +966,7 @@ impl Running {
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, unix))]
 mod tests {
     use super::*;
     #[cfg(target_os = "linux")]

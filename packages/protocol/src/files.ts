@@ -53,17 +53,28 @@ export function parseRootId(value: unknown): string {
   return value
 }
 
+const normalized = (names: string[]) =>
+  names.every((name) => name !== '' && name !== '.' && name !== '..')
+
+/** `/` or `/`-joined names. */
+function isPosixRootPath(path: string): boolean {
+  return path === '/' || (path.startsWith('/') && normalized(path.slice(1).split('/')))
+}
+
+/** `X:\` alone or followed by `\`-joined names without `/` or `:` (no UNC or `\\?\`). */
+function isWindowsRootPath(path: string): boolean {
+  if (!/^[A-Za-z]:\\/.test(path)) return false
+  const rest = path.slice(3)
+  return rest === '' || (!/[/:]/.test(rest) && normalized(rest.split('\\')))
+}
+
+/**
+ * An absolute normalized POSIX path or Windows drive path. The native host
+ * accepts only its own platform's form.
+ */
 export function parseRootPath(value: unknown): string {
   const path = string(value, 'filesystem root path', MAX_ROOT_PATH_BYTES)
-  if (
-    !path.startsWith('/') ||
-    /\p{Cc}/u.test(path) ||
-    (path !== '/' &&
-      path
-        .slice(1)
-        .split('/')
-        .some((name) => !name || name === '.' || name === '..'))
-  )
+  if (/\p{Cc}/u.test(path) || !(isPosixRootPath(path) || isWindowsRootPath(path)))
     throw new ProtocolError(
       'Filesystem root path must be absolute and normalized, without control characters'
     )

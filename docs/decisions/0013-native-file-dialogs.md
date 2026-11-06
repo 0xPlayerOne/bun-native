@@ -2,8 +2,9 @@
 
 Status: accepted; Linux xdg-desktop-portal implementation qualified against
 the GTK file chooser backend in development and inspected AOT on an isolated
-Xvfb session. Other platforms, message/confirm dialogs and application menu
-bars remain unavailable.
+Xvfb session. Other platforms remain unavailable. Message/confirm dialogs are
+decided separately in [ADR 0014](0014-message-dialogs.md) and application menu
+bars in [ADR 0015](0015-application-menu-bar.md).
 
 Date: 2026-11-05.
 
@@ -104,8 +105,9 @@ rejects with `NativeStateError` `invalid_handle`.
   `{ kind: 'selected', paths }`/`{ kind: 'selected', path }` or
   `{ kind: 'cancelled' }`.
 - `serviceCapabilities.fileDialogs` replaces the former unavailable `dialogs`
-  record and reports backend `xdg_desktop_portal`; `messageDialogs` is a new
-  unavailable record.
+  record and reports backend `xdg_desktop_portal`; `messageDialogs` was added
+  as an unavailable record (now implemented by
+  [ADR 0014](0014-message-dialogs.md)).
 - Wayland windows are shown unparented, because exporting an `xdg_foreign`
   handle is not implemented; that path is not qualified.
 - Flatpak/Snap sandboxes, where the document portal returns `/run/user/.../doc`
@@ -115,11 +117,13 @@ rejects with `NativeStateError` `invalid_handle`.
 
 ## Message and confirm dialogs
 
-Not implemented. Linux has no portal for alerts, and GPUI's `Window::prompt`
+Not OS dialogs. Linux has no portal for alerts, and GPUI's `Window::prompt`
 falls back to an in-window renderer there that duplicates the overlay layer
-while offering no programmatic close. Applications should use a modal overlay
-for in-window confirmation. Native `NSAlert` and Windows task dialogs need
-their own platform qualification and are a follow-up.
+while offering no programmatic close. Public core therefore draws
+`showMessageDialog`/`showConfirmDialog` on the modal overlay on every
+platform; see [ADR 0014](0014-message-dialogs.md). Native `NSAlert` and
+Windows task dialogs need their own platform qualification and remain a
+possible later backend.
 
 ## Application menu bars
 
@@ -128,8 +132,9 @@ GPUI exposes `App::set_menus` with `Menu`/`MenuItem`/`OwnedMenu`. At the pin,
 installs a native `NSMenu` bar, while
 [Linux](https://github.com/zed-industries/zed/blob/ba63a022c9a22ca66d68ef2a8f0bb9b5b0a9984d/crates/gpui_linux/src/linux/platform.rs#L1046-L1054)
 and Windows only store the menus for the application to draw itself. Typed action identities, owned menu lifetime, keyboard
-and accessibility behavior and safe action revocation are a documented
-follow-up under #239, not part of this decision.
+behavior and safe action revocation were left out of this decision; the
+macOS menu bar is now implemented as described in
+[ADR 0015](0015-application-menu-bar.md).
 
 ## Verification
 

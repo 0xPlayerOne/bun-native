@@ -1,0 +1,30 @@
+{
+  "description": "Absolute launch paths for filesystem roots and process executables. Both forms parse everywhere; each native host then accepts only its own platform's form.",
+  "posix": ["/", "/srv/docs", "/tmp/a:b", "/opt/a b/tool"],
+  "windows": ["C:\\", "C:\\Users\\a b", "d:\\x\\y.z", "Z:\\Program Files\\tool.exe"],
+  "invalid": [
+    "",
+    "relative",
+    "/a/",
+    "/a//b",
+    "/a/./b",
+    "/a/../b",
+    "/a\nb",
+    "C:",
+    "C:x",
+    "C:/x",
+    "C:\\x\\",
+    "C:\\x\\\\y",
+    "C:\\x\\..\\y",
+    "C:\\x\\.",
+    "C:\\x:y",
+    "C:\\x:stream\\y",
+    "C:\\x/y",
+    "\\\\server\\share",
+    "\\\\?\\C:\\x",
+    "\\\\.\\COM1",
+    "1:\\x",
+    "\\x",
+    "C:\\a\u0000b"
+  ]
+}

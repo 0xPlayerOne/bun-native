@@ -2,7 +2,7 @@
 //! type-ahead inside `navigation: 'menu'` overlays, and scroll-into-view of
 //! every control the host moves focus to. Pointer focus never scrolls.
 
-use super::NativeView;
+use super::{NativeView, split::tab_order};
 use bun_native_protocol::{Element as NativeElement, NodeId, OverlayNavigation, Tree, ViewRequest};
 use gpui::{Context, Keystroke, Window, px};
 use std::time::{Duration, Instant};
@@ -62,19 +62,7 @@ fn typed(key: &Keystroke) -> Option<char> {
 impl NativeView {
     /// Enabled controls of one layer in tree order, excluding nested layers.
     pub(super) fn layer_controls(&self, tree: &Tree, layer: NodeId) -> Vec<NodeId> {
-        let mut result = Vec::new();
-        let mut pending = vec![layer];
-        while let Some(id) = pending.pop() {
-            let Some(node) = tree.node(id) else { continue };
-            if id != layer && is_overlay(tree, id) {
-                continue;
-            }
-            if self.can_focus(tree, id) {
-                result.push(id);
-            }
-            pending.extend(node.children().iter().rev().copied());
-        }
-        result
+        tab_order(tree, layer, false, |id| self.can_focus(tree, id))
     }
 
     /// Focus a control for keyboard or programmatic reasons and reveal it.

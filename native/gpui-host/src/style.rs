@@ -161,15 +161,30 @@ fn apply<T: Styled>(mut element: T, style: &Style) -> T {
 /// The pair stays visible on light and dark control backgrounds alike.
 pub(crate) const FOCUS_RING_WIDTH: f32 = 3.;
 
+const FOCUS_RING_COLOR: u32 = 0x101828;
+
 pub(crate) fn focus_ring() -> Vec<BoxShadow> {
     vec![
-        BoxShadow::new(px(0.), px(0.), rgb(0x101828).into())
+        BoxShadow::new(px(0.), px(0.), rgb(FOCUS_RING_COLOR).into())
             .spread_radius(px(FOCUS_RING_WIDTH))
             .inset(),
-        BoxShadow::new(px(0.), px(0.), rgb(0xffffff).into())
-            .spread_radius(px(1.))
-            .inset(),
+        focus_ring_edge(),
     ]
+}
+
+fn focus_ring_edge() -> BoxShadow {
+    BoxShadow::new(px(0.), px(0.), rgb(0xffffff).into())
+        .spread_radius(px(1.))
+        .inset()
+}
+
+/// The same ring for an element at most twice the ring width thick, such as
+/// a split divider. GPUI paints no inset shadow that would cover the whole
+/// element, so the dark band becomes the fill under the white edge.
+pub(crate) fn filled_focus_ring(style: StyleRefinement) -> StyleRefinement {
+    style
+        .bg(rgb(FOCUS_RING_COLOR))
+        .shadow(vec![focus_ring_edge()])
 }
 
 #[cfg(test)]

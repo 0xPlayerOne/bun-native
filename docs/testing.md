@@ -127,6 +127,42 @@ reader cleanup are part of the evidence. `test_native_paint_observer.py` exercis
 the real file-watch and cancellation paths; those headless safety tests remain
 separate from actual native qualification.
 
+## Real Linux Wayland session
+
+`scripts/quality/native-wayland-session.sh` is the Wayland counterpart of the
+X11 session helper. Run it under `dbus-run-session`: it starts headless sway
+with XWayland disabled in a private runtime directory, removes `DISPLAY`, pins
+the lavapipe ICD, exports `WAYLAND_DISPLAY` and `SWAYSOCK` and runs the given
+command. `BUN_NATIVE_TEST_SCALE_FACTOR=2` selects output scale 2.
+`tests/native/wayland.ts` drives the window through sway IPC, one persistent
+virtual pointer (`wayland-input-peer`), wtype and grim, and writes
+`wayland.json` beside its screenshots. See
+[native platforms](native-platforms.md#linux-wayland) for what it qualifies.
+
+Reproduce after installing `sway`, `grim`, `wtype`, `dunst`,
+`xdg-desktop-portal`, `xdg-desktop-portal-gtk` and `mesa-vulkan-drivers`:
+
+```sh
+cargo build --locked --release -p bun-native-host --bin bun-native-host --example wayland-input-peer
+mkdir -p .bun-native
+run_dir=$(mktemp -d "$PWD/.bun-native/wayland.XXXXXX")
+mkdir "$run_dir/evidence"
+BUN_NATIVE_HOST="$PWD/target/release/bun-native-host" \
+  BUN_NATIVE_WAYLAND_INPUT_PEER="$PWD/target/release/examples/wayland-input-peer" \
+  BUN_NATIVE_WAYLAND_EVIDENCE="$run_dir/evidence" BUN_NATIVE_WAYLAND_MODE=development \
+  BUN_NATIVE_STARTUP_LOG=1 BUN_NATIVE_STARTUP_TRACE=1 \
+  BUN_NATIVE_EVIDENCE_LOG="$run_dir/evidence/native-evidence.jsonl" \
+  BUN_NATIVE_EVIDENCE_NONCE="$(python3 -c 'import secrets; print(secrets.token_hex(16))')" \
+  dbus-run-session -- bash scripts/quality/native-wayland-session.sh \
+  "$run_dir/session" bun tests/native/wayland.ts
+```
+
+For AOT, compile `--entry wayland` with `experiments/aot-gpui/build-window.ts`,
+pass `BUN_NATIVE_WAYLAND_MODE=aot` and run the emitted `wayland` executable in
+place of `bun tests/native/wayland.ts`. The session owns its compositor and
+never connects to a personal desktop; the scenario refuses to run if an X11
+`DISPLAY` is visible to it.
+
 ## Solid native acceptance
 
 The required Linux release-host workflow compiles the counter, revision-aware

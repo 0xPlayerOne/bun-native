@@ -67,7 +67,7 @@ export interface OverlayKeyboard {
  * paints a parent-anchored overlay into an owned popup window that may extend
  * beyond its parent window; it needs a fixed pixel `width` and `height`.
  */
-export type OverlayElement =
+export type OverlayElement = (
   | ({
       kind: 'overlay'
       anchor?: 'window'
@@ -92,6 +92,16 @@ export type OverlayElement =
       navigation?: 'tab'
       style: Style & { width: number; height: number }
     }
+) &
+  AccessibleLabel
+
+/**
+ * Requires `accessibility_v1`: the accessible name of an overlay's dialog or
+ * a split's divider. It is never painted and counts toward the text budgets.
+ */
+export interface AccessibleLabel {
+  accessible_label?: string
+}
 
 export type Element =
   | { kind: 'box'; style?: Style }
@@ -112,7 +122,7 @@ export type Element =
    * (default 0.5) is the leading pane's share after the divider; the host
    * keeps a user's drag until a different ratio is declared.
    */
-  | { kind: 'split'; ratio?: number; min_size?: number; style?: SplitStyle }
+  | ({ kind: 'split'; ratio?: number; min_size?: number; style?: SplitStyle } & AccessibleLabel)
   | OverlayElement
 
 function choice<T extends string>(value: unknown, name: string, values: readonly T[]): T {
@@ -210,6 +220,12 @@ function parseStyle(value: unknown): Style {
   return style
 }
 
+function accessibleLabel(element: Record<string, unknown>): AccessibleLabel {
+  return 'accessible_label' in element
+    ? { accessible_label: string(element['accessible_label'], 'accessible_label') }
+    : {}
+}
+
 /** Normalize and validate the entire property set, including JavaScript consumers. */
 export function parseElement(value: unknown): Element {
   const element = object(value)
@@ -251,7 +267,7 @@ export function parseElement(value: unknown): Element {
       }
     }
     case 'split': {
-      keys(element, ['kind', 'ratio', 'min_size', 'style'])
+      keys(element, ['kind', 'ratio', 'min_size', 'accessible_label', 'style'])
       requireLeafStyle(style)
       if (
         style.gap !== undefined ||
@@ -263,11 +279,22 @@ export function parseElement(value: unknown): Element {
         kind: 'split',
         ratio: 'ratio' in element ? number(element['ratio'], 'ratio', 0, 1) : 0.5,
         min_size: 'min_size' in element ? number(element['min_size'], 'min_size', 0, 16_384) : 0,
+        ...accessibleLabel(element),
         style,
       }
     }
     case 'overlay': {
-      keys(element, ['kind', 'anchor', 'modal', 'surface', 'autofocus', 'navigation', 'style'])
+      keys(element, [
+        'kind',
+        'anchor',
+        'modal',
+        'surface',
+        'autofocus',
+        'navigation',
+        'accessible_label',
+        'style',
+      ])
+      const label = accessibleLabel(element)
       const anchor =
         'anchor' in element ? choice(element['anchor'], 'anchor', ['window', 'parent']) : 'window'
       for (const flag of ['modal', 'autofocus'])
@@ -297,14 +324,15 @@ export function parseElement(value: unknown): Element {
           anchor,
           modal: false,
           surface,
+          ...label,
           style: { ...style, width, height },
         }
       }
       if (anchor === 'parent') {
         if (modal) throw new ProtocolError('A modal overlay must be anchored to the window')
-        return { kind: 'overlay', anchor, modal: false, ...keyboard, style }
+        return { kind: 'overlay', anchor, modal: false, ...keyboard, ...label, style }
       }
-      return { kind: 'overlay', anchor, modal, ...keyboard, style }
+      return { kind: 'overlay', anchor, modal, ...keyboard, ...label, style }
     }
     default:
       throw new ProtocolError('Unknown native element kind')

@@ -43,7 +43,9 @@ function executable(value: unknown): ProcessExecutable {
   const data = object(value)
   keys(data, ['id', 'executable'])
   const path = parseRootPath(data['executable'])
-  if (path === '/') throw new ProtocolError('Process executable must name a file')
+  // `/` and `X:\` are the only normalized paths ending in a separator.
+  if (path.endsWith('/') || path.endsWith('\\'))
+    throw new ProtocolError('Process executable must name a file')
   return { id: parseRootId(data['id']), executable: path }
 }
 

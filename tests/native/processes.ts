@@ -3,10 +3,12 @@
  * isolated X11 display, on macOS in the runner's window session. Every child
  * is a real program; outputs, exit statuses, the working directory and
  * process-group teardown are checked independently (through /proc and node:fs
- * on Linux, through ps on macOS). Raw protocol checks drive the same host
- * through the private runtime to prove foreign, stale and reused process
- * handles are rejected natively. This macOS process fixture supplies no
- * filesystem roots, and its process backend refuses working directories.
+ * on Linux, through ps on macOS, through CIM process listings on Windows).
+ * Raw protocol checks drive the same host through the private runtime to
+ * prove foreign, stale and reused process handles are rejected natively. This
+ * macOS process fixture supplies no filesystem roots, and its process backend
+ * refuses working directories. On Windows every child is cmd.exe in a job
+ * object; the escape fixture is an NTFS junction made with mklink /J.
  */
 import {
   createApplication,
@@ -35,8 +37,9 @@ const output = process.env['BUN_NATIVE_PROCESS_EVIDENCE']
 const executable = process.env['BUN_NATIVE_HOST']
 const mode = process.env['BUN_NATIVE_PROCESS_MODE']
 const macos = process.platform === 'darwin'
-if (process.platform !== 'linux' && !macos)
-  throw new Error('Owned processes are qualified on Linux and macOS only')
+const windows = process.platform === 'win32'
+if (process.platform !== 'linux' && !macos && !windows)
+  throw new Error('Owned processes are qualified on Linux, macOS and Windows only')
 if (
   !output ||
   !isAbsolute(output) ||
@@ -44,7 +47,7 @@ if (
   !executable ||
   !isAbsolute(executable) ||
   (mode !== 'development' && mode !== 'aot') ||
-  (!macos && (!process.env['DISPLAY'] || process.env['WAYLAND_DISPLAY']))
+  (process.platform === 'linux' && (!process.env['DISPLAY'] || process.env['WAYLAND_DISPLAY']))
 )
   throw new Error('An isolated X11 display, evidence directory, host and mode are required')
 const host = executable
@@ -53,20 +56,40 @@ const started = performance.now()
 const outcomes: Record<string, unknown> = {}
 const record = (name: string, value: unknown) => {
   outcomes[name] = value
-  console.log(JSON.stringify({ outcome: name, atMs: Math.round(performance.now() - started) }))
+  console.log(
+    JSON.stringify({
+      outcome: name,
+      atMs: Math.round(performance.now() - started),
+    })
+  )
 }
 const rejected = (code: string) => (error: unknown) =>
   error instanceof NativeServiceError && error.service === 'processes' && error.code === code
 
-const PATH = { PATH: '/usr/bin:/bin' }
-const base = mkdtempSync(join(tmpdir(), 'bun-native-processes-'))
+const systemRoot = windows ? process.env['SystemRoot'] : undefined
+if (windows && (!systemRoot || !isAbsolute(systemRoot)))
+  throw new Error('SystemRoot must name the Windows directory')
+const cmd = join(systemRoot ?? '', 'System32', 'cmd.exe')
+/** What a child needs to find programs; nothing else is inherited. */
+const PATH = windows
+  ? { SystemRoot: systemRoot!, PATH: join(systemRoot!, 'System32') }
+  : { PATH: '/usr/bin:/bin' }
+/** The arguments that run one script: cmd.exe on Windows, sh elsewhere. */
+const script = (text: string) => (windows ? ['/d', '/v:on', '/s', '/c', text] : ['-c', text])
+const base = realpathSync.native(mkdtempSync(join(tmpdir(), 'bun-native-processes-')))
 const work = join(base, 'work')
 mkdirSync(join(work, 'sub'), { recursive: true })
-symlinkSync(base, join(work, 'up'))
+if (windows) {
+  const junction = Bun.spawnSync([cmd, '/d', '/c', 'mklink', '/J', join(work, 'up'), base])
+  if (!junction.success) throw new Error('mklink /J could not make the escape junction')
+} else symlinkSync(base, join(work, 'up'))
 const permissions = {
   processes: [
-    { id: 'shell', executable: '/bin/sh' },
-    { id: 'missing', executable: join(base, 'missing') },
+    { id: 'shell', executable: windows ? cmd : '/bin/sh' },
+    {
+      id: 'missing',
+      executable: join(base, windows ? 'missing.exe' : 'missing'),
+    },
   ],
   // The macOS process backend does not accept a grant descriptor as cwd.
   filesystemRoots: macos ? [] : [{ id: 'work', path: work, access: 'read' as const }],
@@ -118,7 +141,41 @@ function psRows() {
     .split('\n')
     .map((line) => line.trim().split(/\s+/))
     .filter((fields) => fields.length === 3)
-    .map(([pid, group, state]) => ({ pid: Number(pid), group: Number(group), state: state! }))
+    .map(([pid, group, state]) => ({
+      pid: Number(pid),
+      group: Number(group),
+      state: state!,
+    }))
+}
+
+/** Command lines of the live ping.exe processes (Windows children carry a marker). */
+function pings() {
+  const listed = Bun.spawnSync([
+    'powershell.exe',
+    '-NoProfile',
+    '-NonInteractive',
+    '-Command',
+    'Get-CimInstance Win32_Process -Filter "Name=\'PING.EXE\'" | ForEach-Object { $_.CommandLine }',
+  ])
+  if (!listed.success) throw new Error('Get-CimInstance could not list processes')
+  return new TextDecoder().decode(listed.stdout)
+}
+
+/** A ping that runs for 30 s, found again by its unique -w timeout. */
+function marked() {
+  const marker = 1_000 + Math.floor(Math.random() * 8_000_000)
+  return { marker, command: `ping -n 30 -w ${marker} 127.0.0.1` }
+}
+
+const markedAlive = (marker: number) => pings().includes(` -w ${marker} `)
+
+async function markedStopped(marker: number) {
+  const deadline = performance.now() + 10_000
+  while (performance.now() < deadline) {
+    if (!markedAlive(marker)) return true
+    await Bun.sleep(50)
+  }
+  return false
 }
 
 /** The process group of a running process. */
@@ -130,7 +187,10 @@ function groupOf(pid: number) {
 /** True once no member of the group still runs: gone, or a zombie for init to reap. */
 function groupStopped(group: number) {
   if (macos) return psRows().every((row) => row.group !== group || row.state.startsWith('Z'))
-  for (const entry of new Bun.Glob('[0-9]*').scanSync({ cwd: '/proc', onlyFiles: false })) {
+  for (const entry of new Bun.Glob('[0-9]*').scanSync({
+    cwd: '/proc',
+    onlyFiles: false,
+  })) {
     let stat: string
     try {
       stat = readFileSync(join('/proc', entry, 'stat'), 'utf8')
@@ -143,7 +203,7 @@ function groupStopped(group: number) {
   return true
 }
 
-async function stopped(group: number) {
+async function groupStopping(group: number) {
   for (let turn = 0; turn < 400; turn += 1) {
     if (groupStopped(group)) return true
     await Bun.sleep(5)
@@ -168,7 +228,7 @@ async function deniedByDefault() {
       availability: 'available',
       executables: {},
       scope: 'owned_window',
-      backend: 'posix',
+      backend: windows ? 'windows_job' : 'posix',
     })
     const window = await app.openWindow({ title: 'Process denial' })
     await assert.rejects(
@@ -214,7 +274,9 @@ async function pipes(window: NativeWindow) {
   const child = await window.spawnProcess(
     'shell',
     {
-      args: ['-c', 'printf out; printf err >&2; printf "|%s|%s|" "$HOME" "$BUN_X"; pwd -P; exit 5'],
+      args: windows
+        ? script('echo out&(echo err)1>&2&echo [%HOME%][%BUN_X%]&cd&exit /b 5')
+        : ['-c', 'printf out; printf err >&2; printf "|%s|%s|" "$HOME" "$BUN_X"; pwd -P; exit 5'],
       env: { BUN_X: 'a b' },
       cwd: { grant, path: 'sub' },
     },
@@ -223,8 +285,16 @@ async function pipes(window: NativeWindow) {
   await seen.until(() => seen.exit !== undefined)
   assert.equal(child.terminal, false)
   assert.deepEqual(seen.exit, { code: 5 })
-  assert.equal(seen.streams['stdout'], 'out||a b|' + realpathSync(join(work, 'sub')) + '\n')
-  assert.equal(seen.streams['stderr'], 'err')
+  if (windows) {
+    // An unset variable stays unexpanded: HOME was not inherited.
+    const [out, env, cwd] = (seen.streams['stdout'] ?? '').split('\r\n')
+    assert.deepEqual([out, env], ['out', '[%HOME%][a b]'])
+    assert.equal(cwd?.toLowerCase(), realpathSync.native(join(work, 'sub')).toLowerCase())
+    assert.equal(seen.streams['stderr'], 'err\r\n')
+  } else {
+    assert.equal(seen.streams['stdout'], 'out||a b|' + realpathSync(join(work, 'sub')) + '\n')
+    assert.equal(seen.streams['stderr'], 'err')
+  }
   record('pipesEnvironmentAndGrantDirectory', {
     exit: seen.exit,
     cwd: realpathSync(join(work, 'sub')),
@@ -235,19 +305,83 @@ async function pipes(window: NativeWindow) {
     ['nothing', 'not_found'],
   ] as const)
     await assert.rejects(
-      window.spawnProcess('shell', { cwd: { grant, path } }, () => {}),
+      window.spawnProcess('shell', { args: script('exit'), cwd: { grant, path } }, () => {}),
       rejected(code)
     )
   await assert.rejects(
     window.spawnProcess('missing', {}, () => {}),
     rejected('not_found')
   )
-  record('directoryAndExecutableFailuresAreTyped', { link: 'path_denied', missing: 'not_found' })
+  record('directoryAndExecutableFailuresAreTyped', {
+    link: 'path_denied',
+    missing: 'not_found',
+  })
   await child.release()
   await grant.close()
 }
 
+/** Text a pseudo console rendered, without its VT control sequences. */
+function rendered(text: string) {
+  const ESC = 0x1b
+  const BEL = 0x07
+  let plain = ''
+  let index = 0
+  while (index < text.length) {
+    if (text.charCodeAt(index) !== ESC) {
+      plain += text[index++]
+      continue
+    }
+    const kind = text[index + 1]
+    index += 2
+    if (kind === '[') {
+      // CSI: parameters and intermediates, then one final byte in @..~.
+      while (index < text.length && !/[@-~]/.test(text[index]!)) index++
+      index++
+    } else if (kind === ']') {
+      // OSC: up to BEL or ESC \.
+      while (
+        index < text.length &&
+        text.charCodeAt(index) !== BEL &&
+        text.charCodeAt(index) !== ESC
+      )
+        index++
+      index += text.charCodeAt(index) === ESC ? 2 : 1
+    } else if (kind !== undefined && '()*+'.includes(kind)) index++ // a character set
+  }
+  return plain
+}
+
+/** Windows: a ConPTY sized, resized and typed into; mode con reports the size. */
+async function windowsTerminal(window: NativeWindow) {
+  const seen = watch()
+  const child = await window.spawnProcess(
+    'shell',
+    {
+      args: script('mode con&echo tty&set /p line=&mode con&echo got:!line!'),
+      env: PATH,
+      terminal: { columns: 90, rows: 12 },
+    },
+    seen.listener
+  )
+  const text = () => rendered(seen.streams['terminal'] ?? '')
+  await seen.until(() => /Columns:\D*90/.test(text()) && text().includes('tty'))
+  await child.resize({ columns: 100, rows: 30 })
+  await child.write(new TextEncoder().encode('hello\r'))
+  await seen.until(() => seen.exit !== undefined, 10_000)
+  const sizes = [...text().matchAll(/Lines:\D*(\d+)\D*Columns:\D*(\d+)/g)].map(
+    ([, rows, columns]) => `${rows} ${columns}`
+  )
+  assert.equal(sizes[0], '12 90', text())
+  assert.equal(sizes.includes('30 100'), true, text())
+  assert.equal(text().includes('got:hello'), true, text())
+  assert.deepEqual(seen.exit, { code: 0 })
+  assert.deepEqual(Object.keys(seen.streams), ['terminal'])
+  record('terminalSizeResizeAndInput', { sizes })
+  await child.release()
+}
+
 async function terminal(window: NativeWindow) {
+  if (windows) return windowsTerminal(window)
   const seen = watch()
   const child = await window.spawnProcess(
     'shell',
@@ -272,7 +406,42 @@ async function terminal(window: NativeWindow) {
   await child.release()
 }
 
+/**
+ * Windows: a pipe child has no console to interrupt and no hangup, so both
+ * are refused; terminate ends the whole job, descendants included.
+ */
+async function windowsSignals(window: NativeWindow) {
+  const seen = watch()
+  const descendant = marked()
+  const child = await window.spawnProcess(
+    'shell',
+    {
+      args: script(`start /b ${descendant.command} >nul&echo ready&${marked().command} >nul`),
+      env: PATH,
+    },
+    seen.listener
+  )
+  await seen.until(() => (seen.streams['stdout'] ?? '').includes('ready'))
+  const deadline = performance.now() + 10_000
+  while (!markedAlive(descendant.marker) && performance.now() < deadline) await Bun.sleep(50)
+  assert.equal(markedAlive(descendant.marker), true)
+  for (const refused of ['interrupt', 'hangup'] as const)
+    await assert.rejects(child.signal(refused), rejected('service_unavailable'))
+  await child.signal('terminate')
+  await seen.until(() => seen.exit !== undefined)
+  assert.deepEqual(seen.exit, { signal: 15 })
+  assert.equal(await markedStopped(descendant.marker), true)
+  await assert.rejects(child.signal('kill'), rejected('invalid_state'))
+  record('jobSignalAndExitStopsDescendants', {
+    exit: seen.exit,
+    refused: ['interrupt', 'hangup'],
+    descendantStopped: true,
+  })
+  await child.release()
+}
+
 async function signals(window: NativeWindow) {
+  if (windows) return windowsSignals(window)
   const seen = watch()
   const child = await window.spawnProcess(
     'shell',
@@ -288,9 +457,12 @@ async function signals(window: NativeWindow) {
   await child.signal('interrupt')
   await seen.until(() => seen.exit !== undefined)
   assert.deepEqual(seen.exit, { code: 9 })
-  assert.equal(await stopped(group!), true)
+  assert.equal(await groupStopping(group!), true)
   await assert.rejects(child.signal('kill'), rejected('invalid_state'))
-  record('groupSignalAndExitStopsDescendants', { exit: seen.exit, descendantStopped: true })
+  record('groupSignalAndExitStopsDescendants', {
+    exit: seen.exit,
+    descendantStopped: true,
+  })
   await child.release()
 }
 
@@ -299,9 +471,14 @@ async function credit(window: NativeWindow) {
   let chunks = 0
   let largest = 0
   const seen = watch()
+  const zeros = join(base, 'zeros.bin')
+  if (windows) writeFileSync(zeros, new Uint8Array(300_000).fill(0x7a))
   await window.spawnProcess(
     'shell',
-    { args: ['-c', 'head -c 300000 /dev/zero'], env: PATH },
+    {
+      args: windows ? script(`type ${zeros}`) : ['-c', 'head -c 300000 /dev/zero'],
+      env: PATH,
+    },
     async (event) => {
       if (event.type === 'process_output') {
         bytes += event.bytes.byteLength
@@ -320,16 +497,31 @@ async function credit(window: NativeWindow) {
 }
 
 async function revocation() {
-  const group = async (window: NativeWindow, script = 'echo $$; exec sleep 30') => {
+  const group = async (window: NativeWindow) => {
     const seen = watch()
+    if (windows) {
+      // The id is the marker of a ping that the job must stop.
+      const { marker, command } = marked()
+      const child = await window.spawnProcess(
+        'shell',
+        { args: script(`echo ready&${command} >nul`), env: PATH },
+        seen.listener
+      )
+      await seen.until(() => (seen.streams['stdout'] ?? '').includes('ready'))
+      const deadline = performance.now() + 10_000
+      while (!markedAlive(marker) && performance.now() < deadline) await Bun.sleep(50)
+      assert.equal(markedAlive(marker), true)
+      return { child, id: marker }
+    }
     const child = await window.spawnProcess(
       'shell',
-      { args: ['-c', script], env: PATH },
+      { args: ['-c', 'echo $$; exec sleep 30'], env: PATH },
       seen.listener
     )
     await seen.until(() => (seen.streams['stdout'] ?? '').endsWith('\n'))
     return { child, id: Number(seen.streams['stdout']!.trim()) }
   }
+  const stopped = (id: number) => (windows ? markedStopped(id) : groupStopping(id))
   const results = await withApp(async (app, window) => {
     const released = await group(window)
     await released.child.release()
@@ -380,11 +572,20 @@ async function rawHandles() {
         type: 'spawn_process',
         window_id,
         process_id,
-        launch: { executable, args: ['-c', 'exec sleep 30'], env: PATH },
+        launch: {
+          executable,
+          args: windows ? script('ping -n 30 127.0.0.1 >nul') : ['-c', 'exec sleep 30'],
+          env: PATH,
+        },
       })
     await spawn(1, 5)
     const write = (window_id: number, process_id: number) =>
-      native.send({ type: 'write_process', window_id, process_id, data: 'eA==' })
+      native.send({
+        type: 'write_process',
+        window_id,
+        process_id,
+        data: 'eA==',
+      })
     const results = {
       foreignWindow: await code(write(2, 5)),
       unknownProcess: await code(write(1, 6)),
@@ -399,7 +600,7 @@ async function rawHandles() {
           process_id: 8,
           launch: {
             executable: 'shell',
-            args: ['-c', 'true'],
+            args: script('exit'),
             env: PATH,
             cwd: { grant_id: 9, path: '' },
           },
@@ -414,7 +615,12 @@ async function rawHandles() {
         })
       ),
       undeliveredAck: await code(
-        native.send({ type: 'acknowledge_process_output', window_id: 1, process_id: 5, chunk: 1 })
+        native.send({
+          type: 'acknowledge_process_output',
+          window_id: 1,
+          process_id: 5,
+          chunk: 1,
+        })
       ),
     }
     await native.send({ type: 'release_process', window_id: 1, process_id: 5 })
@@ -466,11 +672,19 @@ writeFileSync(
       bun: process.versions.bun,
       revision: Bun.revision,
       platform: process.platform,
-      kernel: macos ? release() : readFileSync('/proc/sys/kernel/osrelease', 'utf8').trim(),
-      display: macos ? 'macOS runner window session' : 'isolated Xvfb with openbox',
+      backend: windows ? 'windows_job' : 'posix',
+      kernel:
+        macos || windows ? release() : readFileSync('/proc/sys/kernel/osrelease', 'utf8').trim(),
+      display: macos
+        ? 'macOS runner window session'
+        : windows
+          ? 'Windows runner interactive desktop'
+          : 'isolated Xvfb with openbox',
       children: macos
         ? 'real /bin/sh programs; groups checked through ps; no working directory (macOS process cwd unsupported)'
-        : 'real /bin/sh programs; groups checked through /proc',
+        : windows
+          ? 'real cmd.exe programs in a job object; descendants checked through Get-CimInstance Win32_Process; working directory through an NTFS grant'
+          : 'real /bin/sh programs; groups checked through /proc',
       outcomes,
     },
     null,

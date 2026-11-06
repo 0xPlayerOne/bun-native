@@ -160,11 +160,15 @@ No per-request option or protocol message can grant access. Both framework
 adapters use this same public window method.
 
 `app.serviceCapabilities.windowDisplay` reports implementation availability,
-the negotiated permission and `owned_window` scope. The system menu and message
-dialog entries explicitly report `unavailable` / `not_implemented`; they have no
-placeholder callable methods. Clipboard, global shortcut, file dialog,
-notification, drag/drop, filesystem-grant and PTY/process entries report
-`available` only when the host negotiates their capability, and `unavailable` /
+the negotiated permission and `owned_window` scope. The application menu bar
+is a separate grant-gated service (`app.setMenuBar`, macOS only; see the
+[application menu bar](../../docs/native-services.md#application-menu-bar)).
+`window.showMessageDialog` and `window.showConfirmDialog` draw a modal overlay
+in the window and need no grant; see
+[message and confirm dialogs](../../docs/native-services.md#message-and-confirm-dialogs).
+Clipboard, global shortcut, application menu, file dialog, notification,
+drag/drop, filesystem-grant and PTY/process entries report `available` only
+when the host negotiates their capability, and `unavailable` /
 `unsupported_platform` otherwise. This policy constrains the selected native
 host, not trusted Bun code's ordinary OS APIs.
 
@@ -394,10 +398,44 @@ is a separate operation. A window has at most one file dialog. Aborting the
 signal, closing the window or shutting down closes the OS dialog. See
 [ADR 0013](../../docs/decisions/0013-native-file-dialogs.md).
 
+### Application menu bar
+
+```ts
+const app = await createApplication({
+  executable,
+  permissions: { appMenu: "allow" },
+});
+const bar = await app.setMenuBar(
+  [
+    {
+      title: "Notes",
+      items: [{ kind: "item", id: "app.quit", label: "Quit", shortcut: { key: "q", platform: true } }],
+    },
+  ],
+  async (event) => {
+    if (event.itemId === "app.quit") await app.shutdown();
+  },
+);
+```
+
+`app.setMenuBar(menus, listener)` installs the application menu bar (not
+owned by any window) and returns a frozen handle with `active` and `clear()`;
+`app.clearMenuBar()` removes it. Entries are `item` (`id`, `label`, optional
+`shortcut`, `enabled`, `checked`), `separator` and `submenu`, bounded and
+validated before any request. The listener receives `{ type: 'app_menu_item',
+itemId, menuBar, signal }`. A new bar, a clear or shutdown revokes the previous
+handle at once; its stale selections are never delivered. The `appMenu`
+launch permission defaults to `deny`. `app.serviceCapabilities.appMenu` is
+`available` (scope `application`, backend `appkit`) on macOS only; Linux and
+Windows report `unavailable` / `unsupported_platform` and the call rejects
+with `NativeServiceError` code `service_unavailable`. See the
+[service contract](../../docs/native-services.md#application-menu-bar) and
+[ADR 0015](../../docs/decisions/0015-application-menu-bar.md).
+
 ## Supported scope
 
 The elements are `box`, `text`, `button`, single-line `input` and, when the host advertises `split_v1`, a two-pane `split` with a host-owned draggable divider. `Style` explicitly supports `direction`, `gap`, `padding`, `width`, `height`, `min_width`, `max_width`, `min_height`, `max_height`, `flex_grow`, `flex_shrink`, `align_items`, `justify_content`, `overflow`, `background`, `color` and `font_size`, plus `border_width`, `border_color`, `corner_radius`, `opacity` and `font_weight` when the host advertises `style_decoration_v1`. `defineTheme` and `defaultTheme` resolve named color, spacing, radius and font-size tokens to these plain values in JavaScript. Dimensions are numeric logical native pixels, with `fill` available for width and height; colors are unsigned 24-bit RGB values. These fields are validated and bounded by the [shared layout contract](../../docs/native-layout.md). Scroll overflow is accepted only for `box` and `overlay` containers; leaf element types also enforce this restriction. Hosts advertising `overlays_v1` accept the `overlay` container and `scroll_anchor_v1` the `scroll_anchor` style field; `onDismiss(window, overlay, listener)` reports Escape and backdrop presses. See the [overlay contract](../../docs/native-overlays.md). Styles are shared by every framework adapter.
 
-There is no DOM, HTML, CSS parser, browser navigation, WebView, CEF, React DOM or automatic compatibility with web component libraries. Native service APIs for menus, dialogs, drag/drop and other desktop integrations remain separate roadmap work. The current renderer does not claim complete scrolling, IME, focus traversal or accessibility coverage. See [the native host limitations](../../native/gpui-host/README.md) and [testing evidence](../../docs/testing.md) before treating a platform as supported.
+There is no DOM, HTML, CSS parser, browser navigation, WebView, CEF, React DOM or automatic compatibility with web component libraries. Native service APIs for OS context menus, OS alerts and other desktop integrations not listed in the [service matrix](../../docs/native-services.md#service-and-platform-matrix) remain separate roadmap work. The current renderer does not claim complete scrolling, IME, focus traversal or accessibility coverage. See [the native host limitations](../../native/gpui-host/README.md) and [testing evidence](../../docs/testing.md) before treating a platform as supported.
 
 Protocol 11 requires shared layout, interactions and immutable service policy and replaces earlier protocols without a compatibility layer. During this private experimental phase, pin the application packages and native host together at the tested source revision. A package build or type check is not native GUI acceptance; a bundled executable is not proof of Bun machine-code AOT. [ADR 0004](../../docs/decisions/0004-public-api.md) records the API boundary and its tradeoffs.

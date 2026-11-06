@@ -1,7 +1,8 @@
-"""Independent AT-SPI client for the isolated native text qualification session.
+"""Independent AT-SPI client for the isolated native qualification sessions.
 
 `enable` turns on the session accessibility bus as a screen reader would.
-`dump TITLE` waits for the owned window and prints its accessible subtree as JSON.
+`dump TITLE` waits for the owned window and prints its accessible subtree as
+JSON in pre-order; each entry's `depth` is its distance below the window.
 Run with a system Python that provides PyGObject and the Atspi typelib.
 """
 
@@ -40,12 +41,20 @@ def states(node: Atspi.Accessible) -> list[str]:
     )
 
 
-def describe(node: Atspi.Accessible) -> dict:
+def describe(node: Atspi.Accessible, depth: int) -> dict:
     entry = {
         "role": node.get_role().value_nick,
         "name": node.get_name() or "",
         "states": states(node),
+        "depth": depth,
     }
+    value = node.get_value_iface()
+    if value is not None:
+        entry["value"] = {
+            "current": Atspi.Value.get_current_value(value),
+            "minimum": Atspi.Value.get_minimum_value(value),
+            "maximum": Atspi.Value.get_maximum_value(value),
+        }
     text = node.get_text_iface()
     if text is not None:
         entry["text"] = Atspi.Text.get_text(
@@ -58,7 +67,7 @@ def describe(node: Atspi.Accessible) -> dict:
 def walk(node: Atspi.Accessible, found: list[dict], depth: int = 0) -> None:
     if depth > 64 or len(found) > 512:
         raise RuntimeError("accessible tree exceeds the bounded fixture size")
-    found.append(describe(node))
+    found.append(describe(node, depth))
     for index in range(node.get_child_count()):
         child = node.get_child_at_index(index)
         if child is not None:

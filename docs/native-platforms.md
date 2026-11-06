@@ -302,6 +302,43 @@ identity metadata. This diagnostic changes no posting route, target rule,
 foreground wait, retry behavior or native acceptance criterion. Its SDK build
 and subsequent real input attempt remain hosted checks, not local successes.
 
+## Linux Wayland
+
+GPUI uses its Wayland backend whenever `WAYLAND_DISPLAY` is set, so most Linux
+desktops run the host on Wayland. [`tests/native/wayland.ts`](../tests/native/wayland.ts)
+qualifies that backend on a real compositor in the Native Linux job, in
+development and inspected AOT at scale 1 and in development at output scale 2
+([ADR 0017](decisions/0017-wayland.md)).
+
+[`native-wayland-session.sh`](../scripts/quality/native-wayland-session.sh)
+starts headless sway 1.9 (wlroots 0.17 `headless` backend, pixman renderer,
+no libinput devices) with one 1280×800 logical output, XWayland disabled and
+`DISPLAY` removed. The application renders on Mesa lavapipe through Vulkan.
+Each check has an oracle independent of the host:
+
+| Check                      | Input or oracle                                                                                                                        |
+| -------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
+| Window opens and paints    | sway IPC `get_tree` maps an `xdg_shell` view of the requested size within 10 s; nonce-tagged paint evidence holds the tree             |
+| Renderer                   | Paint evidence reports llvmpipe, software-emulated; the startup log selects it as a Vulkan adapter                                     |
+| Pointer click              | One persistent `zwlr_virtual_pointer_v1` ([`wayland-input-peer`](../native/gpui-host/examples/wayland-input-peer.rs)) moves and clicks |
+| Keyboard text and Enter    | `zwp_virtual_keyboard_v1` through wtype, with a second idle wtype keeping the seat's keyboard; ASCII and `é`                           |
+| Pixels                     | grim (wlr-screencopy) reads the painted swatch and the native button background                                                        |
+| Display snapshot           | Equals the compositor's output bounds and scale from `get_outputs`                                                                     |
+| Service capability matrix  | See [native services](native-services.md#wayland)                                                                                      |
+| Notification, file dialog  | dunst displays and withdraws; the portal's GTK dialog maps as its own view, closes on abort and on a compositor close                  |
+| Compositor close, shutdown | `[title=…] kill` (xdg_toplevel.close) resolves `window.closed`; all public ownership counts return to zero                             |
+
+The input devices must outlive each action: with no device, the seat has no
+capabilities, and a per-command tool's first event races the client's
+`wl_pointer`/`wl_keyboard` binding (observed as a lost click and a lost first
+character). No host defect was found; no host code changed.
+
+Not qualified: GNOME (Mutter) and KDE (KWin), fractional scaling, multiple or
+mixed-DPI outputs, IME (`zwp_text_input_v3`), physical input and GPUs,
+decorations on other compositors, Wayland clipboard, global shortcuts, drag
+and drop and popup windows (unavailable), file dialog parenting and
+accessibility under Wayland.
+
 ## Pinned native requirements
 
 Requirements come from GPUI revision

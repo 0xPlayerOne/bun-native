@@ -25,6 +25,8 @@ export interface ServicePolicy {
   processes: ProcessExecutable[]
   /** Optional on the wire, so existing peers stay exact: absence is a denial. */
   file_dialogs?: boolean
+  /** Optional like `file_dialogs`: the application menu bar. */
+  app_menu?: boolean
 }
 
 /** The closed set of layout-level keys a global shortcut may name. */
@@ -142,6 +144,7 @@ export function parseServicePolicy(value: unknown): ServicePolicy {
     'filesystem_roots',
     'processes',
     'file_dialogs',
+    'app_menu',
   ])
   const grant = (key: keyof ServicePolicy) => {
     if (typeof data[key] !== 'boolean')
@@ -158,6 +161,7 @@ export function parseServicePolicy(value: unknown): ServicePolicy {
     filesystem_roots: parseFilesystemRoots(data['filesystem_roots']),
     processes: parseProcessExecutables(data['processes']),
     ...('file_dialogs' in data ? { file_dialogs: grant('file_dialogs') } : {}),
+    ...('app_menu' in data ? { app_menu: grant('app_menu') } : {}),
   }
 }
 

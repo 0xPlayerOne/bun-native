@@ -28,6 +28,9 @@ pub struct ServicePolicy {
     /// without file dialogs keeps the protocol's exact policy object.
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub file_dialogs: bool,
+    /// Optional on the wire like `file_dialogs`: the application menu bar.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub app_menu: bool,
 }
 
 /// OS-wide modifier state. Shift alone cannot form a global shortcut: at least

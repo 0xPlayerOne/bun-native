@@ -1,3 +1,4 @@
+import { parseAppMenuItemId, parseAppMenus, type AppMenu } from './app-menu.ts'
 import {
   parseFileDialogOptions,
   parseFileDialogResult,
@@ -275,6 +276,8 @@ export type Command =
       item: number
       root: string
     }
+  /** Replaces the application menu bar; an empty `menus` removes it. */
+  | { id: number; type: 'set_app_menu'; menu_id: number; menus: AppMenu[] }
   | { id: number; type: 'shutdown' }
 
 export const ERROR_CODES = [
@@ -326,6 +329,9 @@ const CAPABILITIES = [
   'popup_windows_v1',
   'drag_drop_files_v1',
   'input_states_v1',
+  'app_menu_v1',
+  'split_resize_v1',
+  'accessibility_v1',
 ] as const
 export type Capability = (typeof CAPABILITIES)[number]
 
@@ -340,6 +346,8 @@ export interface KeyModifiers {
 export type PointerButton = 'left' | 'right' | 'middle' | 'back' | 'forward'
 /** Why the host asks the application to close a popup window overlay. */
 export type DismissReason = 'window_blur'
+/** What moved a split divider (`split_resize_v1`). */
+export type ResizeSource = 'pointer' | 'keyboard'
 
 interface NodeEventRoute {
   sequence: number
@@ -383,6 +391,7 @@ type RoutedEvent = NodeEventRoute &
         modifiers: KeyModifiers
       }
     | { type: 'dismiss'; reason: DismissReason }
+    | { type: 'split_resize'; ratio: number; source: ResizeSource }
   )
 
 export type NativeEvent =
@@ -532,6 +541,9 @@ export type NativeEvent =
       reason: DropRejection
     }
   | { type: 'closed'; sequence: number; window_id: number }
+  | { type: 'app_menu_set'; id: number; menu_id: number }
+  /** Application-scoped: a menu bar belongs to the application, not a window. */
+  | { type: 'app_menu_item'; sequence: number; menu_id: number; item_id: string }
   | { type: 'error'; id?: number; code: ErrorCode; message: string }
 
 function version(value: unknown): typeof PROTOCOL_VERSION {
@@ -814,6 +826,14 @@ export function parseCommand(value: unknown): Command {
         drop_id: id(message['drop_id']),
         item: parseDropItemIndex(message['item']),
         root: parseRootId(message['root']),
+      }
+    case 'set_app_menu':
+      keys(message, ['id', 'type', 'menu_id', 'menus'])
+      return {
+        id: request,
+        type: 'set_app_menu',
+        menu_id: id(message['menu_id']),
+        menus: parseAppMenus(message['menus']),
       }
     case 'shutdown':
       keys(message, ['id', 'type'])
@@ -1169,6 +1189,19 @@ export function parseEvent(value: unknown): NativeEvent {
       if (message['reason'] !== 'window_blur')
         throw new ProtocolError('Unknown native dismissal reason')
       return { type: 'dismiss', ...route(message), reason: 'window_blur' }
+    case 'split_resize': {
+      keys(message, [...ROUTE_KEYS, 'ratio', 'source'])
+      const source = (['pointer', 'keyboard'] as const).find(
+        (source) => source === message['source']
+      )
+      if (!source) throw new ProtocolError('Unknown split resize source')
+      return {
+        type: 'split_resize',
+        ...route(message),
+        ratio: number(message['ratio'], 'split ratio', 0, 1),
+        source,
+      }
+    }
     case 'closed':
       keys(message, ['type', 'sequence', 'window_id'])
       return {
@@ -1183,6 +1216,17 @@ export function parseEvent(value: unknown): NativeEvent {
         ...route(message),
         value: string(message['value'], 'value'),
         input_revision: integer(message['input_revision'], 'input revision'),
+      }
+    case 'app_menu_set':
+      keys(message, ['type', 'id', 'menu_id'])
+      return { type: 'app_menu_set', id: id(message['id']), menu_id: id(message['menu_id']) }
+    case 'app_menu_item':
+      keys(message, ['type', 'sequence', 'menu_id', 'item_id'])
+      return {
+        type: 'app_menu_item',
+        sequence: id(message['sequence']),
+        menu_id: id(message['menu_id']),
+        item_id: parseAppMenuItemId(message['item_id']),
       }
     case 'error': {
       keys(message, ['type', 'id', 'code', 'message'])

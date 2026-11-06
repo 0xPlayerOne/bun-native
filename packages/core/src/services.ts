@@ -16,7 +16,9 @@ type ServiceName =
   | 'filesystem_grants'
   | 'processes'
   | 'file_dialogs'
+  | 'message_dialogs'
   | 'drag_drop'
+  | 'app_menu'
 
 export type ServicePermissions = NonNullable<
   import('@bun-native/runtime').HostOptions['permissions']
@@ -55,8 +57,6 @@ export interface DisplayChangeEvent {
   readonly signal: AbortSignal
 }
 
-type UnavailableService = Readonly<{ availability: 'unavailable'; reason: 'not_implemented' }>
-
 export interface ServiceCapabilities {
   readonly windowDisplay: Readonly<{
     availability: 'available'
@@ -84,7 +84,19 @@ export interface ServiceCapabilities {
         backend: 'x11'
       }>
     | Readonly<{ availability: 'unavailable'; reason: 'unsupported_platform' }>
-  readonly systemMenus: UnavailableService
+  /**
+   * The application menu bar: a native NSMenu bar on macOS. GPUI's Linux and
+   * Windows backends only store menus, so they report it unavailable. OS
+   * context menus are not implemented.
+   */
+  readonly appMenu:
+    | Readonly<{
+        availability: 'available'
+        permission: 'allow' | 'deny'
+        scope: 'application'
+        backend: 'appkit'
+      }>
+    | Readonly<{ availability: 'unavailable'; reason: 'unsupported_platform' }>
   /** OS file open/save/folder dialogs. Selected paths are data, not filesystem grants. */
   readonly fileDialogs:
     | Readonly<{
@@ -94,8 +106,13 @@ export interface ServiceCapabilities {
         backend: 'xdg_desktop_portal'
       }>
     | Readonly<{ availability: 'unavailable'; reason: 'unsupported_platform' }>
-  /** OS message/confirm alerts. Use an in-window modal overlay meanwhile. */
-  readonly messageDialogs: UnavailableService
+  /**
+   * `showMessageDialog`/`showConfirmDialog`: an in-window modal overlay drawn
+   * by core on every platform, not an OS alert. Needs no launch grant.
+   */
+  readonly messageDialogs:
+    | Readonly<{ availability: 'available'; scope: 'owned_window'; backend: 'modal_overlay' }>
+    | Readonly<{ availability: 'unavailable'; reason: 'unsupported_host' }>
   readonly notifications:
     | Readonly<{
         availability: 'available'
@@ -121,8 +138,12 @@ export interface ServiceCapabilities {
         /** Launch roots by ID; each caps the access a grant may request. */
         roots: Readonly<Record<string, Readonly<{ access: 'read' | 'read_write' }>>>
         scope: 'owned_window'
-        /** Linux resolves with `openat2`; macOS walks one name at a time with `openat(O_NOFOLLOW)`. */
-        backend: 'openat2' | 'openat_walk'
+        /**
+         * Linux resolves with `openat2`; macOS walks one name at a time with
+         * `openat(O_NOFOLLOW)`; Windows walks one name at a time with
+         * handle-relative `NtCreateFile` that never follows a reparse point.
+         */
+        backend: FilesystemBackend
       }>
     | Readonly<{ availability: 'unavailable'; reason: 'unsupported_platform' }>
   readonly ptyProcess:
@@ -131,12 +152,21 @@ export interface ServiceCapabilities {
         /** Launch-policy executables by ID; nothing else can be started. */
         executables: Readonly<Record<string, Readonly<{ executable: string }>>>
         scope: 'owned_window'
-        backend: 'posix'
+        /** POSIX process groups and PTYs, or Windows job objects and ConPTY. */
+        backend: ProcessBackend
       }>
     | Readonly<{ availability: 'unavailable'; reason: 'unsupported_platform' }>
 }
 
 type DropBackend = 'x11' | 'appkit' | 'ole'
+type FilesystemBackend = 'openat2' | 'openat_walk' | 'ntcreatefile_walk'
+type ProcessBackend = 'posix' | 'windows_job'
+
+/** The confinement the host on this platform enforces for filesystem grants. */
+function filesystemBackend(): FilesystemBackend {
+  if (process.platform === 'darwin') return 'openat_walk'
+  return process.platform === 'win32' ? 'ntcreatefile_walk' : 'openat2'
+}
 
 /** The host runs beside the core, so its platform names the drop backend. */
 function dropBackend(): DropBackend {
@@ -171,11 +201,6 @@ export class NativeServiceError extends Error {
   }
 }
 
-const unavailable: UnavailableService = Object.freeze({
-  availability: 'unavailable',
-  reason: 'not_implemented',
-})
-
 export function serviceCapabilities(
   policy: Readonly<ServicePolicy>,
   capabilities: readonly Capability[]
@@ -205,7 +230,14 @@ export function serviceCapabilities(
           backend: 'x11',
         })
       : Object.freeze({ availability: 'unavailable', reason: 'unsupported_platform' }),
-    systemMenus: unavailable,
+    appMenu: capabilities.includes('app_menu_v1')
+      ? Object.freeze({
+          availability: 'available',
+          permission: policy.app_menu ? 'allow' : 'deny',
+          scope: 'application',
+          backend: 'appkit',
+        })
+      : Object.freeze({ availability: 'unavailable', reason: 'unsupported_platform' }),
     fileDialogs: capabilities.includes('file_dialogs_v1')
       ? Object.freeze({
           availability: 'available',
@@ -214,7 +246,15 @@ export function serviceCapabilities(
           backend: 'xdg_desktop_portal',
         })
       : Object.freeze({ availability: 'unavailable', reason: 'unsupported_platform' }),
-    messageDialogs: unavailable,
+    // The modal overlay and a focus request are the only native features used.
+    messageDialogs:
+      capabilities.includes('overlays_v1') && capabilities.includes('focus_v1')
+        ? Object.freeze({
+            availability: 'available',
+            scope: 'owned_window',
+            backend: 'modal_overlay',
+          })
+        : Object.freeze({ availability: 'unavailable', reason: 'unsupported_host' }),
     notifications: capabilities.includes('notifications_v1')
       ? Object.freeze({
           availability: 'available',
@@ -244,7 +284,7 @@ export function serviceCapabilities(
             )
           ),
           scope: 'owned_window',
-          backend: process.platform === 'darwin' ? 'openat_walk' : 'openat2',
+          backend: filesystemBackend(),
         })
       : Object.freeze({ availability: 'unavailable', reason: 'unsupported_platform' }),
     ptyProcess: capabilities.includes('processes_v1')
@@ -259,7 +299,7 @@ export function serviceCapabilities(
             )
           ),
           scope: 'owned_window',
-          backend: 'posix',
+          backend: process.platform === 'win32' ? 'windows_job' : 'posix',
         })
       : Object.freeze({ availability: 'unavailable', reason: 'unsupported_platform' }),
   })

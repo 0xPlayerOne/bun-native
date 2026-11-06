@@ -34,6 +34,12 @@ Hebrew input, dead-key composition, selection/clipboard, read-only and disabled
 inputs, Tab order, scale factor 1 or 2 and an AT-SPI tree read. See
 [native text](../../docs/native-text.md) for its environment and support matrix.
 
+`tests/native/accessibility.ts` is self-driving: an independent AT-SPI client
+asserts the role, name, state and value of every element kind, a modal dialog
+and the split divider, while real Tab, arrow, Home/End and pointer input move
+the divider and its `split_resize` events. See
+[native text](../../docs/native-text.md#accessibility-roles-accessibility_v1).
+
 The input driver verifies that the target window belongs to the launched
 application, focuses it, injects XTest input and requires matching Bun events and
 complete native paint snapshots. It waits for the mounted tree before injecting
@@ -359,7 +365,11 @@ input, display-presentation latency or macOS/Windows GUI behavior.
 
 `tests/native/overlays.ts` consumes only public core and drives itself with XTest (xdotool) inside the isolated session, reading click positions from the host's nonce-tagged paint evidence (`BUN_NATIVE_EVIDENCE_LOG`/`BUN_NATIVE_EVIDENCE_NONCE` must be set by the caller because the host inherits the launching environment). It covers modal focus trapping, backdrop pointer blocking, nested Escape, focus/selection return, popover z-order with screenshot pixels, end-anchored streaming scroll, an autofocus menu popover with arrow keys, type-ahead and a screenshot-verified focus ring, and programmatic focus, `scrollTo`, `scrollIntoView` and Tab reveal in development and through `--entry overlays` AOT. See the [overlay contract](../../docs/native-overlays.md).
 
+`tests/native/message-dialogs.ts` (`BUN_NATIVE_MESSAGE_DIALOG_EVIDENCE`, `BUN_NATIVE_MESSAGE_DIALOG_MODE`, plus the evidence log and nonce) qualifies public core's message and confirm dialogs the same way and through `--entry message-dialogs` AOT: default focus with screenshot colors, the Tab trap, a covered control staying inert, real clicks, Enter, Escape and Space, backdrop dismissal, a listener awaiting a confirmation, queued dialogs, abort with focus return, owner close and shutdown. See [message and confirm dialogs](../../docs/native-services.md#message-and-confirm-dialogs).
+
 `tests/native/popups.ts` (`BUN_NATIVE_POPUP_EVIDENCE`, `BUN_NATIVE_POPUP_MODE`, plus the evidence log and nonce) qualifies popup window overlays the same way and also through `--entry popups` AOT. Popup geometry, override-redirect state, `WM_TRANSIENT_FOR`, `_NET_WM_WINDOW_TYPE` and stacking come from the X server (`xwininfo`, `xprop`); it covers placement beyond the parent window, pointer routing and coordinates, Escape with focus kept in the parent, following a parent move, blur dismissal, display clamping with an upward flip and closing with the parent. See [popup windows](../../docs/native-overlays.md#popup-windows-beyond-the-parent-window).
+
+`tests/native/wayland.ts` (`BUN_NATIVE_WAYLAND_EVIDENCE`, `BUN_NATIVE_WAYLAND_MODE`, `BUN_NATIVE_WAYLAND_INPUT_PEER`, plus the evidence log and nonce) runs inside `scripts/quality/native-wayland-session.sh` on headless sway with no X server, in development and through `--entry wayland` AOT. It requires an `xdg_shell` view (sway IPC) and a complete native paint within 10 s, a click from a persistent `zwlr_virtual_pointer_v1` ([`wayland-input-peer`](../../native/gpui-host/examples/wayland-input-peer.rs)), wtype text and Enter, grim pixels matching the painted tree, a display snapshot equal to the compositor's output, the Wayland service capability matrix, a dunst notification, an unparented portal file dialog closed by abort and by the compositor, a compositor close and clean shutdown. See [native platforms](../../docs/native-platforms.md#linux-wayland).
 
 `tests/native/layout.ts` consumes only public core and is driven by the `layout` scenario in `scripts/quality/native-diagnostics-linux.py`. It uses the same isolated session and owned-window cleanup, with actual pointer/wheel/key/resize actions. Both development and the shared AOT helper's `--entry layout` must pass against the matching current host. The [layout contract](../../docs/native-layout.md) records exact commands, geometry bounds, source status and unsupported coverage. This diagnostic is separate from the repeated window baseline.
 
