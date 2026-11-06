@@ -352,7 +352,16 @@ static void commands(void) {
         }
     }
     free(line);
-    exit(dragging ? 1 : 0);
+    // A failed fixture closes stdin while the OS drag is still active. Since
+    // the source posted the global mouse-down, it must release that button
+    // before exiting or the next independent drag sees an external hold.
+    // Preserve the nonzero exit for the incomplete drag.
+    BOOL abandonedDrag = dragging;
+    if (abandonedDrag) {
+        post_mouse(kCGEventLeftMouseUp, current);
+        fputs("Drag source ended during an active drag; released the posted button\n", stderr);
+    }
+    exit(abandonedDrag ? 1 : 0);
 }
 
 int main(void) {
