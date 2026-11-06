@@ -1,47 +1,30 @@
-import { GLOBAL_SHORTCUT_KEYS, type ShortcutModifiers } from '@bun-native/protocol'
+import {
+  GLOBAL_SHORTCUT_KEYS,
+  type GlobalShortcutKey,
+  type ShortcutModifiers,
+} from '@bun-native/protocol'
 import type { Listener } from './types.ts'
 
-type Letter =
-  | 'a'
-  | 'b'
-  | 'c'
-  | 'd'
-  | 'e'
-  | 'f'
-  | 'g'
-  | 'h'
-  | 'i'
-  | 'j'
-  | 'k'
-  | 'l'
-  | 'm'
-  | 'n'
-  | 'o'
-  | 'p'
-  | 'q'
-  | 'r'
-  | 's'
-  | 't'
-  | 'u'
-  | 'v'
-  | 'w'
-  | 'x'
-  | 'y'
-  | 'z'
-type Digit = '0' | '1' | '2' | '3' | '4' | '5' | '6' | '7' | '8' | '9'
-type FunctionKey = `f${1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12}`
-
 /** Layout-level key names; the native backend grabs the unshifted key that produces them. */
-export type GlobalShortcutKey = Letter | Digit | FunctionKey
+export type { GlobalShortcutKey }
 
-export interface GlobalShortcutOptions {
-  readonly key: GlobalShortcutKey
+type ShortcutFlags = {
   readonly control?: boolean
   readonly alt?: boolean
   readonly shift?: boolean
-  /** Super on Linux. At least one of control, alt or platform is required. */
+  /** Super on Linux. */
   readonly platform?: boolean
 }
+
+/**
+ * A key plus modifiers. At least one of `control`, `alt` or `platform` must be
+ * `true`, which the type enforces; `shift` alone is not a global shortcut.
+ */
+export type GlobalShortcutOptions = { readonly key: GlobalShortcutKey } & (
+  | (ShortcutFlags & { readonly control: true })
+  | (ShortcutFlags & { readonly alt: true })
+  | (ShortcutFlags & { readonly platform: true })
+)
 
 export interface GlobalShortcutEvent {
   readonly type: 'global_shortcut'

@@ -349,6 +349,12 @@ test('rollback refuses a modified retained release; corrupt state and live locks
     JSON.stringify({ ...state, current: { directory: '../x' } })
   )
   await rejects(rollback(root), 'state')
+  // A release directory is one name under versions/, never only dots.
+  for (const directory of ['versions/.', 'versions/..', 'versions/...', 'versions/a/b'])
+    await writeFile(
+      join(root, 'state.json'),
+      JSON.stringify({ ...state, current: { ...state.current, directory } })
+    ).then(() => rejects(rollback(root), 'state'))
 
   await writeFile(join(root, 'lock'), `${process.pid}\n`)
   await rejects(rollback(root), 'busy')

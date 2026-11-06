@@ -390,11 +390,14 @@ impl Tree {
                     Element::Button {
                         disabled: false,
                         ..
-                    } | Element::Input { .. }
+                    } | Element::Input {
+                        disabled: false,
+                        ..
+                    }
                 ) {
                     return Err(error(
                         ErrorCode::InvalidState,
-                        "only an enabled button or an input can take focus",
+                        "only an enabled button or an enabled input can take focus",
                     ));
                 }
                 let path = self.path(node_id).unwrap_or_default();

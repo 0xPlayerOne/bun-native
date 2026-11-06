@@ -6,19 +6,20 @@
 
 ## Summary
 
-| Output                                                                      | Status                          | How it is checked                                                                                      |
-| --------------------------------------------------------------------------- | ------------------------------- | ------------------------------------------------------------------------------------------------------ |
-| `bun-native build`: AOT `application` executable                            | Reproducible (same target)      | `tests/tooling/build-reproducibility.test.ts` (two clean builds, compared)                             |
-| `bun-native build`: `development/application.js` and `.js.map`              | Reproducible (fixed)            | Same test; the module previously embedded the caller's working directory                               |
-| `bun-native build`: `launcher.ts`, bundled host copy                        | Reproducible                    | Same test                                                                                              |
-| `bun-native build`: `manifest.json`                                         | Reproducible (fixed)            | Same test; it previously held absolute paths and wall-clock timing                                     |
-| `bun-native build`: `build-metrics.json`, `compile-aot.*.log`               | Not reproducible, by design     | Declared under `manifest.reproducibility.diagnostics`                                                  |
-| `scripts/package-native.ts` source package set (`archives/*.tgz`, manifest) | Reproducible                    | Two runs into different output directories produced identical archives and manifest (manual, recorded) |
-| `scripts/package-native.ts` `logs/`                                         | Not reproducible, by design     | They record absolute commands and output                                                               |
-| CI `unsigned-native-host.tar.gz`                                            | Reproducible (fixed)            | `tests/tooling/host-archive.test.ts`, and the Linux native job repacks and `cmp`s                      |
-| Release `bun-native-host` (Cargo) on one machine, different dirs and times  | Reproducible (fixed)            | Manual two-build comparison                                                                            |
-| Release `bun-native-host` across machines with different `CARGO_HOME`       | Fixed in CI with path remapping | Mechanism demonstrated; cross-runner hash comparison not yet recorded                                  |
-| Across OS/CPU targets                                                       | Not applicable                  | Each target has its own binaries; compare only within a target                                         |
+| Output                                                                      | Status                                                   | How it is checked                                                                                      |
+| --------------------------------------------------------------------------- | -------------------------------------------------------- | ------------------------------------------------------------------------------------------------------ |
+| `bun-native build`: AOT `application` executable                            | Reproducible (same target)                               | `tests/tooling/build-reproducibility.test.ts` (two clean builds, compared)                             |
+| `bun-native build`: `development/application.js` and `.js.map`              | Reproducible (fixed)                                     | Same test; the module previously embedded the caller's working directory                               |
+| `bun-native build`: `launcher.ts`, bundled host copy                        | Reproducible                                             | Same test                                                                                              |
+| `bun-native build`: `manifest.json`                                         | Reproducible (fixed)                                     | Same test; it previously held absolute paths and wall-clock timing                                     |
+| `bun-native build`: `build-metrics.json`, `compile-aot.*.log`               | Not reproducible, by design                              | Declared under `manifest.reproducibility.diagnostics`                                                  |
+| `scripts/package-native.ts` source package set (`archives/*.tgz`, manifest) | Reproducible                                             | Two runs into different output directories produced identical archives and manifest (manual, recorded) |
+| `scripts/package-native.ts` `logs/`                                         | Not reproducible, by design                              | They record absolute commands and output                                                               |
+| CI `unsigned-native-host.tar.gz`                                            | Reproducible (fixed)                                     | `tests/tooling/host-archive.test.ts`, and the Linux native job repacks and `cmp`s                      |
+| Release `bun-native-host` (Cargo) on one machine, different dirs and times  | Reproducible (fixed)                                     | Manual two-build comparison                                                                            |
+| Release `bun-native-host` across machines with different `CARGO_HOME`       | Fixed in CI with path remapping                          | Mechanism demonstrated; cross-runner hash comparison not yet recorded                                  |
+| Release `bun-native-host` on macOS                                          | Reproducible only for the same absolute target directory | Two clean builds on a Mac; see [macOS qualification](macos-qualification.md)                           |
+| Across OS/CPU targets                                                       | Not applicable                                           | Each target has its own binaries; compare only within a target                                         |
 
 ## Causes found and fixes
 
@@ -58,8 +59,9 @@ CARGO_ENCODED_RUSTFLAGS="--remap-path-prefix=${CARGO_HOME:-$HOME/.cargo}=/cargo"
 ## Not yet reproducible or not yet proven
 
 - **Cross-runner host hashes:** CI does not yet build the host twice on independent runners and compare them. The remapping removes the known home-path cause. Linker or system-library version differences between runner images may still change bytes; the toolchain record in each job's evidence identifies the image.
-- **macOS and Windows hosts:** these were not measured locally. macOS adds `LC_UUID`, and Windows PE files contain a link timestamp and PDB GUID. Rust's MSVC linker defaults (`/Brepro` is not set) may make the Windows host vary between builds.
-- **AOT executables on macOS/Windows:** only Linux x64 was compared. Unsigned Mach-O executables carry an ad-hoc signature over their contents. That is deterministic if the contents are, but this has not been checked.
+- **macOS host:** measured on a physical Mac (2026-11-06, [macOS qualification](macos-qualification.md)). Two clean builds of one commit are byte-identical only when `CARGO_TARGET_DIR` is the same absolute path: the `gpui_apple` build script compiles the Metal shaders from `$OUT_DIR`, and that path (`…/shaders.metal`, `shaders.air`) is embedded in the host, which `--remap-path-prefix` cannot remap. Hosted runners share one workspace path. A local Mac build and a hosted build differ (different Xcode, SDK and path), and no two hosted builds of one commit have been compared.
+- **Windows host:** not measured. Windows PE files contain a link timestamp and PDB GUID, and Rust's MSVC linker defaults (`/Brepro` is not set) may make the host vary between builds.
+- **AOT executables:** Linux x64 and, since 2026-11-06, macOS arm64 (`build-reproducibility.test.ts` passes there; the ad-hoc Mach-O signature is deterministic). Windows has not been compared.
 - **Diagnostics** (`build-metrics.json`, compiler logs, package-set `logs/`) are never reproducible, and no hash or claim depends on them.
 - **Signing** would add non-reproducible signatures. Compare the unsigned payload.
 

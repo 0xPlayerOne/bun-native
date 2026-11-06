@@ -162,6 +162,37 @@ fn requests_validate_against_the_final_tree_in_order() {
         code(&tree, vec![Operation::Focus { node_id: node(2) }], 3),
         ErrorCode::InvalidState
     );
+    // A disabled input is not focusable either; an enabled one is.
+    let input = |disabled| Element::Input {
+        value: String::new(),
+        placeholder: String::new(),
+        disabled,
+        read_only: false,
+        style: Style::default(),
+    };
+    assert_eq!(
+        code(
+            &tree,
+            vec![
+                create(4, input(true)),
+                insert(1, 4),
+                Operation::Focus { node_id: node(4) }
+            ],
+            3
+        ),
+        ErrorCode::InvalidState
+    );
+    assert!(tree
+        .prepare(
+            tree.revision(),
+            vec![
+                create(4, input(false)),
+                insert(1, 4),
+                Operation::Focus { node_id: node(4) }
+            ],
+            3
+        )
+        .is_ok());
     let scroll = |node_id, x, y| Operation::ScrollTo {
         node_id: node(node_id),
         x,

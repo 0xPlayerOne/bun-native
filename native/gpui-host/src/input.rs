@@ -206,7 +206,7 @@ impl TextInput {
             return;
         }
         if let Some(text) = cx.read_from_clipboard().and_then(|item| item.text()) {
-            self.replace_text_in_range(None, &text.replace('\n', " "), window, cx);
+            self.replace_text_in_range(None, &offsets::single_line_paste(&text), window, cx);
         }
     }
 

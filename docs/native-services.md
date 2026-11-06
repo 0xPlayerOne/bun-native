@@ -75,23 +75,36 @@ parses that immutable policy before starting GPUI or its private channel.
 Unknown or duplicate native arguments fail startup. A wire message cannot
 grant, extend or change the policy.
 
-Protocol 7 replaces protocol 6 without a compatibility decoder. Readiness must
-include `window_display_v1` alongside the existing rendering capabilities and
-explicit `window_display`, `clipboard_read`, `clipboard_write` and
-`global_shortcuts` booleans in `service_policy`. The runtime requires the
+Each protocol replaced its predecessor without a compatibility decoder:
+protocol 7 added global shortcuts, 8 notifications, 9 `filesystem_roots`, 10
+`processes` and the current protocol 11 `drag_drop`. Readiness must include
+`window_display_v1` alongside the other required rendering capabilities and a
+`service_policy` with explicit `window_display`, `clipboard_read`,
+`clipboard_write`, `global_shortcuts`, `notifications` and `drag_drop`
+booleans plus the `filesystem_roots` and `processes` lists. Display details,
+display changes and file dialogs are optional capabilities that kept protocol
+11; `file_dialogs` is the only optional policy field. The runtime requires the
 reported policy to match its launch request exactly. Missing capabilities,
 missing policy, conflicting policy or an older protocol fail launch and clean
 up the child. Feature negotiation says what the host implements; permission
 says which implemented service the application elected to expose.
 
 `app.serviceCapabilities` is a frozen record. `windowDisplay` contains
-`{ availability: 'available', permission: 'allow' | 'deny', scope: 'owned_window' }`.
+`{ availability: 'available', permission: 'allow' | 'deny', scope: 'owned_window', details, changes }`,
+where `details` and `changes` are `'available'` only when the host advertises
+`display_details_v1` / `display_changes_v1`.
 The optional `clipboard_text_v1` feature is advertised only for the implemented
 local Linux X11 backend. Its capability record reports independent `read` and
 `write` permissions, `owned_window` scope and backend `x11`. Other targets and
 backends report `unavailable` / `unsupported_platform` for clipboard text.
-The other listed services contain
-`{ availability: 'unavailable', reason: 'not_implemented' }`. An advertised
+Every other optional service has the same shape: available with its
+grant, scope and backend when its capability is advertised, otherwise
+`unavailable` / `unsupported_platform`. `messageDialogs` is available with
+backend `modal_overlay` whenever the host advertises `overlays_v1` and
+`focus_v1` (`unavailable` / `unsupported_host` otherwise) and needs no grant;
+`appMenu` is available on macOS only.
+[Advertised capabilities by platform](native-platforms.md#advertised-capabilities-by-platform)
+lists which host advertises each one. An advertised
 implementation does not certify the current display environment: an allowed
 read can still return `service_unavailable`. There are no callable placeholder
 methods for the unavailable services.
@@ -236,6 +249,16 @@ same `windowDisplay` launch grant; Linux advertises neither, and
   drops it in the host, and `close()`, OS close and shutdown revoke every
   listener in the core, aborting its event `signal`. Removing a listener is
   immediate and idempotent; queued deliveries for it are dropped.
+- **Subscribing.** `onDisplayChange` checks synchronously, in this order: a
+  closed window or stopped application throws `NativeStateError`, a
+  non-function listener `TypeError`, a host without `display_changes_v1`
+  `NativeServiceError` `service_unavailable`, and a denied launch grant
+  `permission_denied`. A listener receives a frozen
+  `{ type: 'display_change', sequence, snapshot, signal }`. Its `snapshot`
+  has the same shape and capability check as `displaySnapshot()`. A
+  `display_changed` from a host that did not advertise the capability, or a
+  snapshot whose details do not match `display_details_v1`, fails the session
+  with `ProtocolError` even when no listener is registered.
 
 [`tests/native/display-platform.ts`](../tests/native/display-platform.ts) runs
 in the **Native Platforms** workflow on the hosted `macos-15` and
@@ -472,10 +495,11 @@ const chunk = await grant.read("src/main.ts", { offset: 0, length: 16_384 });
 await grant.close();
 ```
 
-Each root has an ID of lowercase letters, digits, `-` and `_`, an absolute
+Each root has an ID of 1–32 lowercase ASCII letters, digits, `-` and `_` that
+starts with a letter, an absolute
 normalized path (POSIX, or a Windows drive path such as `C:\data` without UNC
 or `\\?\` forms; each host accepts only its own form) and `read` or
-`read_write` access; at most eight are accepted. A grant requests at most its
+`read_write` access; at most eight are accepted, with unique IDs. A grant requests at most its
 root's access and defaults to `read`. Readiness reports the same ordered
 roots, and the frozen capability record lists them by ID with
 `backend: 'openat2'` on Linux, `backend: 'openat_walk'` on macOS or
@@ -488,7 +512,7 @@ create a root or a grant.
 
 Paths are relative to the grant: `''` is the root itself and other paths are
 `/`-joined names without empty, `.`, `..` or control-character components (at
-most 1,024 bytes and 32 components). The host opens the root once as a
+most 1,024 bytes and 32 components, each name at most 255 bytes). The host opens the root once as a
 directory descriptor and resolves every request beneath it, so symbolic links
 are never followed, inside or out of the grant. Linux uses
 `openat2(RESOLVE_BENEATH | RESOLVE_NO_SYMLINKS | RESOLVE_NO_MAGICLINKS)`. macOS
@@ -530,10 +554,13 @@ enforces that before any I/O. Failures are `NativeServiceError` with service
 `already_exists`, `path_denied` (a link or escape), `wrong_kind`, `not_empty`,
 `access_denied` (the OS refused), `limit_exceeded`, `service_unavailable`,
 `native_failure` or `cancelled`. Requests run on one host worker thread and
-share the eight-request service bound; at most 32 grants are live per session.
-Closing the grant, its window or the application revokes it: later calls reject
-with `cancelled` without a native request, and a result that arrives after
-revocation is withheld. An operation the worker has already started may still
+share the eight-request service bound (a ninth concurrent call rejects locally
+with `NativeStateError` `limit_exceeded`); at most 32 grants are live per
+session. Closing the grant, its window or the application revokes it: later
+calls reject with `cancelled` without a native request, and a result that
+arrives after revocation is withheld. `window.close()` starts that revocation
+immediately, so a call still in flight rejects with `cancelled` too, not with
+the window's `invalid_handle`. An operation the worker has already started may still
 take effect.
 
 The [Native Linux workflow](../.github/workflows/native-linux.yml) runs
@@ -582,13 +609,16 @@ await child.resize({ columns: 120, rows: 40 })
 await child.release()
 ```
 
-Each launch entry has an ID of lowercase letters, digits, `-` and `_` and an
-absolute normalized executable path; at most eight are accepted and readiness
-reports the same ordered list. No wire command names a program path, and there
-is no command string or shell: `args` is an explicit array (at most 64 strings
+Each launch entry has an ID with the same rules as a filesystem root ID (1–32
+lowercase ASCII letters, digits, `-` and `_`, starting with a letter) and an
+absolute normalized executable path; at most eight unique IDs are accepted and
+readiness reports the same ordered list. No wire command names a program path, and there
+is no command string or shell: `args` is an explicit array (at most 64 NUL-free strings
 of 4,096 bytes) and `env` is the **complete** environment (at most 64 entries;
-nothing is inherited from the host), with arguments and environment together
-at most 32,768 bytes. A working directory comes only from a live file grant of
+nothing is inherited from the host). Environment names are ASCII letters,
+digits and `_`, not starting with a digit, of at most 128 bytes; values are
+NUL-free strings of at most 4,096 bytes. Arguments, names and values together
+are at most 32,768 bytes. A `cwd` without `path` is the grant's root. A working directory comes only from a live file grant of
 the same window; the host resolves `path` beneath the grant descriptor with the
 same `openat2` rules as file requests, so links are never followed. macOS
 cannot start a child in a grant descriptor, so a working directory is refused
@@ -607,7 +637,7 @@ process group.
 | `process_exited` event      | `{ exit: { code } \| { signal } }`, always last, after the group is stopped and output delivered |
 | `write(bytes)`              | Queues 1–16,384 bytes of input; at most 64 KiB may wait unread                                   |
 | `closeInput()`              | Closes standard input, or sends end-of-file on a terminal                                        |
-| `resize({ columns, rows })` | Terminal processes only (1–1,000 each)                                                           |
+| `resize({ columns, rows })` | Terminal processes only (1–1,000 each); a pipes process answers `wrong_kind`                     |
 | `signal(name)`              | `interrupt`, `terminate`, `kill` or `hangup` to the whole process group                          |
 | `release()`                 | Idempotent; stops delivery, kills the group and reaps it                                         |
 
@@ -618,16 +648,23 @@ queue. When the direct child exits, the host stops the rest of its process
 group while the exited leader still holds the group ID, delivers the remaining
 output, reaps the leader and then reports the exit. A descendant that leaves
 the group (`setsid`) is outside this cleanup. An exited process stays
-`active` until released; later `write`, `signal` or `resize` calls reject with
-`invalid_state`.
+`active` until released; later `write`, `closeInput`, `signal` or `resize`
+calls reject with `invalid_state`, as does `closeInput` or `write` after the
+pipes input was closed. Controls share the eight-request service bound with
+other service calls; a ninth concurrent call rejects locally with
+`NativeStateError` `limit_exceeded`.
 
 Failures are `NativeServiceError` with service `processes` and a code:
 `permission_denied` (not in the launch policy), `not_found` (missing executable
 or directory), `path_denied` (the directory crosses a link), `wrong_kind`,
-`access_denied`, `limit_exceeded` (at most eight live processes per session),
-`invalid_state`, `service_unavailable`, `native_failure` or `cancelled`.
+`access_denied`, `limit_exceeded` (at most eight live processes per session,
+more than 64 KiB of unread input, or no OS capacity), `invalid_state`, `service_unavailable`, `native_failure` or `cancelled`.
 Releasing the process, closing its window or stopping the application kills
-and reaps its group; no later output or exit is delivered. The optional
+and reaps its group; no later output or exit is delivered. Like every
+application callback, a process listener that throws or rejects ends the
+application with that error. So does a delivery acknowledgement the host
+refuses for any reason other than `invalid_handle` (a released process or
+closed window): the stream could not continue without its credit. The optional
 `processes_v1` feature is advertised on Linux with pidfd support, on macOS
 and on Windows; the frozen `ptyProcess` capability record lists the
 executables by ID with `backend: 'posix'`, or `backend: 'windows_job'` on
@@ -694,9 +731,11 @@ shown. Every bus call is bounded to two seconds; waiting for the user is not.
 
 Options are bounded and validated by both language implementations: a
 one-line `title` of at most 256 UTF-8 bytes, an optional `acceptLabel` of at
-most 64, an optional absolute starting `folder` (a hint), an optional save
-`name` that is one path component of at most 255 bytes, and at most 16
-`filters` of 1-16 glob patterns. A folder dialog takes no filters.
+most 64, an optional absolute POSIX starting `folder` of at most 4,096 bytes
+(a hint), an optional save `name` that is one path component of at most 255
+bytes, and at most 16 `filters`, each a one-line name of at most 128 bytes
+with 1-16 glob patterns of at most 64 bytes. A folder dialog takes no
+filters. Invalid options reject with a `TypeError` and show nothing.
 
 The result is frozen: `{ kind: 'selected', paths }` from an open dialog,
 `{ kind: 'selected', path }` from a save dialog, or `{ kind: 'cancelled' }`
@@ -712,7 +751,8 @@ whole selection with `native_failure`; more than 256 paths, or a result that
 would not fit one frame, fails with `payload_too_large`. No partial selection
 is returned.
 
-A window owns at most one file dialog (`limit_exceeded` otherwise). The OS
+A window owns at most one file dialog and a session at most 16
+(`limit_exceeded` otherwise). The OS
 dialog is parented to the owner's X11 window. Aborting the request's
 `signal` before dispatch sends nothing; after the dialog is shown it rejects
 with `cancelled` immediately and closes the OS dialog through the portal.
@@ -895,7 +935,8 @@ characters replaced, at most 255 bytes) and `resolve(root)`. Dropped paths
 never reach the application. `resolve` asks the host to match the path it
 retained for that drop beneath a launch root. It returns `{ root, path }` with
 a relative path, and file access still goes through `openFileGrant` and its
-`openat2` confinement. A drop grants no authority.
+confinement (`openat2` on Linux, the `openat` walk on macOS). A drop grants no
+authority.
 
 `drop_rejected` reports `empty` (plain text or no files, on X11) or
 `limit_exceeded` (more than 64 items or, on X11 only, a URI list long enough
@@ -905,16 +946,19 @@ target produces no event.
 The capability's `backend` is `x11`, `appkit` or `ole`. On macOS and Windows a
 drag that carries no files never reaches a target: GPUI's AppKit and OLE
 destinations start no drag for it, and the button release they still
-synthesize for its drop is not reported as a `pointer_up`. Launch roots are
-POSIX paths, so on Windows no item resolves (`permission_denied` without a
-root, `path_denied` beneath one), and filesystem grants are Linux-only, so on
-macOS `resolve` returns the relative path while `openFileGrant` reports
-`service_unavailable`. See [ADR 0012](decisions/0012-native-drag-drop.md) for
+synthesize for its drop is not reported as a `pointer_up`. A launch root
+matches a dropped path by lexical prefix in the host's own path syntax, so a
+POSIX root never matches a Windows drop (`path_denied`); only a Windows drive
+root can, and no native test resolves a Windows drop yet. macOS has filesystem grants, so there the
+fixture reads a resolved item through a real `openFileGrant`, as on Linux. See [ADR 0012](decisions/0012-native-drag-drop.md) for
 each backend's delivery quirks.
 Failures are `NativeServiceError` with service `drag_drop`:
-`permission_denied`, `service_unavailable`, `conflict` (the node already has
-a target), `limit_exceeded` (32 live targets), `path_denied`, `not_found` and
-`cancelled`.
+`permission_denied` (no `dragDrop` grant, or a root not in the launch policy),
+`service_unavailable`, `conflict` (the node already has a target),
+`limit_exceeded` (32 live targets), `path_denied`, `not_found` (no item at
+that index) and `cancelled`. `resolve` rejects a malformed root ID (1-32
+lowercase ASCII letters, digits, `-` or `_`, starting with a letter; never a
+path) with a `TypeError` and sends nothing.
 
 `close()` is idempotent and revokes locally first. Removing the node, closing
 the window or stopping the application does the same. The handle becomes
@@ -932,8 +976,11 @@ The pinned GPUI X11 backend always answers the drag source with accept and
 copy, so a source may report a copy for a drop the application rejected or
 ignored. If the window under a drag closes before the drop, the next drag on
 that X connection is not converted until its source leaves. The
-`drag_drop_files_v1` capability is advertised only on Linux X11. Wayland,
-macOS and Windows report `unavailable` / `unsupported_platform`. See
+`drag_drop_files_v1` capability is advertised on Linux when GPUI's compositor
+is X11, and always on macOS and Windows. Wayland reports `unavailable` /
+`unsupported_platform`. The macOS and Windows paths run only in the hosted
+Native Platforms job, with an `NSDraggingSession` or `DoDragDrop` source
+process, and have no retained evidence record. See
 [ADR 0012](decisions/0012-native-drag-drop.md).
 
 The [Native Linux workflow](../.github/workflows/native-linux.yml) runs
