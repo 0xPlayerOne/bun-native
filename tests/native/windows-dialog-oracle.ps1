@@ -1,7 +1,7 @@
 # Independent UI Automation oracle for the Windows OS message dialog (#239).
 # It never loads GPUI or the Bun Native host. It finds a task dialog among the
-# top-level windows by class and title and reads or drives it through the
-# accessibility tree, exactly as an assistive client would.
+# top-level windows by class and title and reads it through the
+# accessibility tree and presses its buttons by their windows.
 #   find    print the dialog's text and button names as JSON (waits for it)
 #   invoke  press the button named -Name through its InvokePattern
 #   escape  focus the dialog and send Escape
@@ -19,6 +19,8 @@ Add-Type -AssemblyName UIAutomationClient, UIAutomationTypes, System.Windows.For
 Add-Type -Namespace Win32 -Name Native -MemberDefinition @'
 [System.Runtime.InteropServices.DllImport("user32.dll", CharSet = System.Runtime.InteropServices.CharSet.Unicode)]
 public static extern System.IntPtr FindWindowW(string className, string windowName);
+[System.Runtime.InteropServices.DllImport("user32.dll")]
+public static extern bool PostMessageW(System.IntPtr window, uint message, System.IntPtr wparam, System.IntPtr lparam);
 '@
 
 # The OS lists a dialog that has an owner under that owner, not under the
@@ -47,12 +49,16 @@ function Descendants($dialog, $type) {
     ForEach-Object { $_.Current.Name })
 }
 
-# The buttons a user can press: every named element that supports Invoke.
-function Invokables($dialog) {
+# The task dialog's push buttons are windows of class CCPushButton that UI
+# Automation exposes as named panes without an Invoke pattern.
+function Push-Buttons($dialog) {
   $condition = New-Object System.Windows.Automation.PropertyCondition(
-    [System.Windows.Automation.AutomationElement]::IsInvokePatternAvailableProperty, $true)
-  @($dialog.FindAll([System.Windows.Automation.TreeScope]::Descendants, $condition) |
-    ForEach-Object { $_.Current.Name } | Where-Object { $_ })
+    [System.Windows.Automation.AutomationElement]::ClassNameProperty, 'CCPushButton')
+  @($dialog.FindAll([System.Windows.Automation.TreeScope]::Descendants, $condition))
+}
+
+function Invokables($dialog) {
+  @(Push-Buttons $dialog | ForEach-Object { $_.Current.Name } | Where-Object { $_ })
 }
 
 # Diagnostics: every element under the dialog as type:class:name.
@@ -98,15 +104,14 @@ switch ($Command) {
     } | ConvertTo-Json -Compress
   }
   'invoke' {
-    $condition = New-Object System.Windows.Automation.AndCondition(
-      (New-Object System.Windows.Automation.PropertyCondition(
-        [System.Windows.Automation.AutomationElement]::IsInvokePatternAvailableProperty, $true)),
-      (New-Object System.Windows.Automation.PropertyCondition(
-        [System.Windows.Automation.AutomationElement]::NameProperty, $Name)))
-    $button = $dialog.FindFirst([System.Windows.Automation.TreeScope]::Descendants, $condition)
+    $button = Push-Buttons $dialog | Where-Object { $_.Current.Name -eq $Name } | Select-Object -First 1
     if ($null -eq $button) { Write-Error "button '$Name' not found"; exit 1 }
-    $pattern = $button.GetCurrentPattern([System.Windows.Automation.InvokePattern]::Pattern)
-    $pattern.Invoke()
+    $handle = [System.IntPtr]$button.Current.NativeWindowHandle
+    if ($handle -eq [System.IntPtr]::Zero) { Write-Error "button '$Name' has no window"; exit 1 }
+    # BM_CLICK presses the button exactly as a click on it does.
+    if (-not [Win32.Native]::PostMessageW($handle, 0x00F5, [System.IntPtr]::Zero, [System.IntPtr]::Zero)) {
+      Write-Error "button '$Name' could not be pressed"; exit 1
+    }
   }
   'escape' {
     $dialog.SetFocus()
