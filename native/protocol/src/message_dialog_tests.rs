@@ -5,6 +5,8 @@ use crate::{
     MessageDialogResult, RequestId, ServicePolicy, WindowId,
 };
 
+type Change = Box<dyn Fn(&mut MessageDialogOptions)>;
+
 fn options() -> MessageDialogOptions {
     MessageDialogOptions {
         title: "Unsaved changes".into(),
@@ -69,7 +71,7 @@ fn valid_options_round_trip_and_invalid_ones_are_refused() {
         serde_json::from_value::<MessageDialogOptions>(wire).unwrap(),
         options()
     );
-    let refused: [(&str, Box<dyn Fn(&mut MessageDialogOptions)>); 11] = [
+    let refused: [(&str, Change); 11] = [
         ("blank title", Box::new(|o| o.title = " ".into())),
         ("multiline title", Box::new(|o| o.title = "a\nb".into())),
         ("tab in message", Box::new(|o| o.message = "a\tb".into())),
