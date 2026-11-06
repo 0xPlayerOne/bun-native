@@ -133,6 +133,12 @@ class PointerPeer {
   })
   private readonly lines = this.process.stdout.pipeThrough(new TextDecoderStream()).getReader()
   private buffer = ''
+  private readonly commandReplies: string[] = []
+
+  /** Bounded diagnostic only: the last compositor-acknowledged peer commands. */
+  recentCommands(): string[] {
+    return [...this.commandReplies]
+  }
 
   async line(): Promise<string> {
     for (;;) {
@@ -151,6 +157,8 @@ class PointerPeer {
     this.process.stdin.write(command + '\n')
     await this.process.stdin.flush()
     const reply = await this.line()
+    this.commandReplies.push(command.slice(0, 96) + ' -> ' + reply.slice(0, 96))
+    if (this.commandReplies.length > 6) this.commandReplies.shift()
     if (reply !== 'ok') throw new Error(`Input peer failed on ${command}: ${reply}`)
   }
   async close() {
@@ -378,7 +386,29 @@ async function qualify(app: NativeApplication) {
   let origin = (await mapped(TITLE)).rect
   const button = bounds(initial, (node) => node.kind === 'button')
   await clickAt(...center(origin, button))
-  await waitFor(() => clicks === 1, 'the compositor click')
+  try {
+    await waitFor(() => clicks === 1, 'the compositor click')
+  } catch (error) {
+    // The original AOT failure reported only the five-second click timeout.
+    // Emit the previously acknowledged input sequence, mapped geometry and
+    // exact native-painted button bounds without changing the injection path,
+    // assertion, deadline or original error. This distinguishes an input peer
+    // that never acknowledged its commands from a later delivery failure;
+    // acknowledgement alone does not prove that GPUI dispatched the click.
+    console.error(
+      'Wayland click failure evidence: ' +
+        JSON.stringify({
+          mode,
+          mappedRect: origin,
+          buttonBounds: button,
+          target: center(origin, button),
+          paintedRevision: initial.rendered.tree_revision,
+          peerReplies: pointer.recentCommands(),
+          clicks,
+        })
+    )
+    throw error
+  }
   await window.batch((batch) => batch.set(ui.label, { kind: 'text', text: 'Clicks: 1' }))
   await painted(window, (nodes) => nodes.some((node) => node.text === 'Clicks: 1'), 'the click')
   record('pointerClick', { at: center(origin, button), clicks })
