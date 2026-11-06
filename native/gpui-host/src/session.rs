@@ -240,6 +240,8 @@ impl Session {
                     capabilities.push(Capability::DragDropFilesV1);
                 }
                 capabilities.push(Capability::InputStatesV1);
+                capabilities.push(Capability::SplitResizeV1);
+                capabilities.push(Capability::AccessibilityV1);
                 self.events.send(
                     Event::Ready {
                         protocol: PROTOCOL_VERSION,
