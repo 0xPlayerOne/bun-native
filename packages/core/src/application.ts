@@ -1,10 +1,11 @@
-import { ProtocolError, type Capability, type Limits } from '@bun-native/protocol'
+import { ProtocolError, type Capability, type Limits, type Operation } from '@bun-native/protocol'
 import {
   NativeCommandError,
   NativeHost,
   type HostOptions,
   type WindowEvent,
 } from '@bun-native/runtime'
+import { planStagedCommit, sendStagedCommit } from './commit-plan.ts'
 import { dispatchPlan, EventBindings, prunePlan, type DispatchPlan } from './events.ts'
 import {
   checkServiceCancellation,
@@ -475,16 +476,39 @@ class Window implements NativeWindow {
         transaction.finish()
       }
       if (!transaction.operations.length) return value
-      const reply = await this.application.host.send({
-        type: 'batch',
-        window_id: this.id,
-        base_revision: this.revision,
-        operations: transaction.operations,
+      const send = (operations: readonly Operation[]) =>
+        this.application.host.send({
+          type: 'batch',
+          window_id: this.id,
+          base_revision: this.revision,
+          operations,
+        })
+      // Publish in the reply's own continuation, before any later native event.
+      const publish = (revision: number) => {
+        this.assertActive()
+        transaction.commit(this.nodes, this.text)
+        this.revision = revision
+        this.listeners.retain(this.nodes)
+      }
+      if (transaction.operations.length <= this.application.limits.max_operations) {
+        publish((await send(transaction.operations)).tree_revision)
+        return value
+      }
+      const plan = planStagedCommit(
+        this.nodes,
+        transaction,
+        this.rootId,
+        () => this.application.allocateNode(),
+        this.application.limits
+      )
+      await sendStagedCommit(plan, send, (reply, final) => {
+        if (final) publish(reply.tree_revision)
+        else {
+          this.assertActive()
+          // Staging changed only nodes this window has not committed.
+          this.revision = reply.tree_revision
+        }
       })
-      this.assertActive()
-      transaction.commit(this.nodes, this.text)
-      this.revision = reply.tree_revision
-      this.listeners.retain(this.nodes)
       return value
     })
   }

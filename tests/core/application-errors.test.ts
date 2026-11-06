@@ -106,15 +106,6 @@ describe('application error paths (scripted headless subprocess)', () => {
       const window = await app.openWindow({ title: 'Tree limits' })
       await assert.rejects(
         window.batch((batch) => {
-          for (let index = 0; index < 9; index += 1) batch.create({ kind: 'box' })
-        }),
-        (error: unknown) =>
-          error instanceof NativeStateError &&
-          error.code === 'limit_exceeded' &&
-          error.message === 'Batch operation limit exceeded'
-      )
-      await assert.rejects(
-        window.batch((batch) => {
           let parent = window.root
           for (let depth = 0; depth < 3; depth += 1) {
             const child = batch.create({ kind: 'box' })
@@ -151,6 +142,35 @@ describe('application error paths (scripted headless subprocess)', () => {
       )
       expect(window.revision).toBe(1)
       expect(app.diagnostics.nodes).toBe(2)
+    }, 'small'))
+
+  test('stages new subtrees above the operation limit but rejects committed changes above it', () =>
+    withScripted(async (app) => {
+      const window = await app.openWindow({ title: 'Staged limits' })
+      // New subtrees above the limit commit in staged batches (#488) ...
+      const staged = await window.batch((batch) => {
+        const box = batch.create({ kind: 'box' })
+        for (let index = 0; index < 9; index += 1) batch.append(box, batch.create({ kind: 'box' }))
+        batch.append(window.root, box)
+        return box
+      })
+      await window.batch((batch) => batch.remove(staged))
+      // ... but visible changes to committed nodes above it cannot be staged.
+      const committed = await text(window)
+      const revision = window.revision
+      await assert.rejects(
+        window.batch((batch) => {
+          for (let index = 0; index < 9; index += 1)
+            batch.set(committed, { kind: 'text', text: `Changed ${index}` })
+        }),
+        (error: unknown) =>
+          error instanceof NativeStateError &&
+          error.code === 'limit_exceeded' &&
+          error.message === 'Batch operation limit exceeded by changes to committed nodes'
+      )
+      expect(window.revision).toBe(revision)
+      await window.batch((batch) => batch.remove(committed))
+      expect(app.diagnostics.nodes).toBe(1)
     }, 'small'))
 
   test('reports an exhausted input revision instead of wrapping it', () =>

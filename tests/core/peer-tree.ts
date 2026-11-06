@@ -30,6 +30,40 @@ export class PeerTree {
     return { node_id, tree_revision, path }
   }
 
+  /**
+   * The native batch rules a split commit must respect: one batch is bounded,
+   * starts at the acknowledged revision, allocates increasing identities and
+   * leaves every node attached. Returns a rejection message, or undefined.
+   */
+  reject(
+    baseRevision: number,
+    operations: readonly Operation[],
+    maxOperations: number,
+    lastNodeId: number
+  ): string | undefined {
+    if (baseRevision !== this.revision) return 'tree revision does not match'
+    if (operations.length < 1 || operations.length > maxOperations)
+      return 'batch operation count exceeds the native limit'
+    let last = lastNodeId
+    for (const operation of operations)
+      if (operation.type === 'create') {
+        if (operation.node_id <= last) return 'node IDs must increase'
+        last = operation.node_id
+      }
+    const trial = new PeerTree(this.rootId)
+    trial.nodes.clear()
+    for (const [id, node] of this.nodes)
+      trial.nodes.set(id, { ...node, children: [...node.children] })
+    trial.apply(operations)
+    const seen = new Set<number>()
+    for (const pending = [this.rootId]; pending.length;) {
+      const id = pending.pop()!
+      seen.add(id)
+      pending.push(...trial.nodes.get(id)!.children)
+    }
+    return seen.size === trial.nodes.size ? undefined : 'batch leaves detached nodes'
+  }
+
   apply(operations: readonly Operation[]): void {
     for (const operation of operations) {
       if (operation.type === 'create')

@@ -1,5 +1,5 @@
 export const MAX_CONVERSATIONS = 12
-export const MAX_MESSAGES = 24
+export const MAX_MESSAGES = 32
 export const MAX_PROMPT_LENGTH = 240
 export const REPLY_INTERVAL_MS = 250
 

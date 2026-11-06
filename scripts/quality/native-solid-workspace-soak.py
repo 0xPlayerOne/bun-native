@@ -13,7 +13,7 @@ from pathlib import Path
 
 ROUNDS = 60
 SAMPLE_EVERY = 10
-SENDS_PER_ROUND = 12
+SENDS_PER_ROUND = 16
 # Per four prompts: two complete (8 + 8 timers), one cancelled after three
 # updates (4 timers) and one switched away after two updates (3 timers).
 TIMERS_PER_FOUR_SENDS = 23
