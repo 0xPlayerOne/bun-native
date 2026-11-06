@@ -65,7 +65,7 @@ export type Comparison = {
   findings: Finding[]
 }
 
-function parse(text: string, what: string): MetricsFile {
+export function parseMetrics(text: string, what: string): MetricsFile {
   const value = JSON.parse(text) as MetricsFile
   if (value.schemaVersion !== 1) throw new Error(`${what}: schemaVersion must be 1`)
   if (typeof value.environment?.label !== 'string' || value.environment.label === '')
@@ -208,8 +208,8 @@ if (import.meta.main) {
   if (!baselinePath || !currentPath || !(threshold > 0))
     throw new Error('usage: regression-check.ts baseline.json current.json [--threshold 0.10]')
   const comparison = compare(
-    parse(readFileSync(resolve(baselinePath), 'utf8'), baselinePath),
-    parse(readFileSync(resolve(currentPath), 'utf8'), currentPath),
+    parseMetrics(readFileSync(resolve(baselinePath), 'utf8'), baselinePath),
+    parseMetrics(readFileSync(resolve(currentPath), 'utf8'), currentPath),
     { threshold }
   )
   console.log(summary(comparison))

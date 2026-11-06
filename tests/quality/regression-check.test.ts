@@ -5,6 +5,7 @@ import { join, resolve } from 'node:path'
 import {
   compare,
   failed,
+  parseMetrics,
   summary,
   type Metric,
   type MetricsFile,
@@ -117,6 +118,49 @@ describe('metric regression gate', () => {
       file({ mount: { samples: around(14) } })
     )
     expect(beyond.findings[0]!.status).toBe('regressed')
+  })
+
+  test('a baseline with a zero median cannot define a ratio', () => {
+    const result = compare(
+      file({ rss: { samples: [0, 0, 0] } }),
+      file({ rss: { samples: [5, 5, 5] } })
+    )
+    expect(result.findings[0]).toMatchObject({ status: 'unmeasured', ratio: null })
+    expect(failed(result)).toBe(true)
+  })
+
+  test('metrics files are validated before comparison', () => {
+    const valid = JSON.stringify(file({ a: { samples: [1, 2, 3] } }))
+    expect(parseMetrics(valid, 'x').metrics['a']!.samples).toEqual([1, 2, 3])
+    const broken = (change: (value: any) => void) => {
+      const value = JSON.parse(valid)
+      change(value)
+      return JSON.stringify(value)
+    }
+    expect(() =>
+      parseMetrics(
+        broken((v) => (v.schemaVersion = 2)),
+        'x'
+      )
+    ).toThrow(/schemaVersion/)
+    expect(() =>
+      parseMetrics(
+        broken((v) => (v.environment.label = '')),
+        'x'
+      )
+    ).toThrow(/environment\.label/)
+    expect(() =>
+      parseMetrics(
+        broken((v) => (v.metrics.a.samples = [1, 'x'])),
+        'x'
+      )
+    ).toThrow(/finite numeric samples/)
+    expect(() =>
+      parseMetrics(
+        broken((v) => (v.metrics.a.direction = 'up')),
+        'x'
+      )
+    ).toThrow(/direction/)
   })
 
   test('the command line exits non-zero on a regression and rejects malformed files', () => {
