@@ -732,10 +732,11 @@ mod tests {
                 signal: Some(15)
             }
         );
+        // Any other status, such as an access violation, is a plain exit code.
         assert_eq!(
-            exit_of(0xC000_013A),
+            exit_of(0xC000_0005),
             ProcessExit {
-                code: Some(0x3A),
+                code: Some(5),
                 signal: None
             }
         );
