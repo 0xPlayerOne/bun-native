@@ -648,7 +648,13 @@ its callback settles, so a slow consumer pauses the child instead of growing a
 queue. When the direct child exits, the host stops the rest of its process
 group while the exited leader still holds the group ID, delivers the remaining
 output, reaps the leader and then reports the exit. A descendant that leaves
-the group (`setsid`) is outside this cleanup. An exited process stays
+the group (`setsid`) is outside this cleanup, and that is a deliberate limit
+rather than a gap to close (#305, 2026-11-06): once its leader exits, such a
+process is reparented away from the owned tree, and attributing it to one
+owned process again would need either a marker in the child's environment,
+which changes the explicit environment policy, or a subreaper that cannot tell
+one owner's orphans from another's. Applications that must stop a daemon should
+signal it by its own means before releasing the process. An exited process stays
 `active` until released; later `write`, `closeInput`, `signal` or `resize`
 calls reject with `invalid_state`, as does `closeInput` or `write` after the
 pipes input was closed. Controls share the eight-request service bound with

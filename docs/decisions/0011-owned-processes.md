@@ -188,7 +188,8 @@ direct wire client sees that code.
   Process groups cover ordinary descendants; a process that calls `setsid` to
   escape is documented as out of scope.
 - **`unsafe` `pre_exec` for session setup.** Equivalent at runtime but would
-  lift the crate's `forbid(unsafe_code)`; `pty-process` is pinned instead.
+  lift the host's `forbid(unsafe_code)`; `pty-process` is pinned instead. The
+  one exception is the macOS `fchdir` above, isolated in its own crate.
 - **macOS `kqueue` for exit.** No watcher thread, but `kevent` is `unsafe` in
   rustix. A watcher thread per process (at most eight) is the safe cost.
 - **macOS working directory through `F_GETPATH`.** A path again, with the race
@@ -226,7 +227,7 @@ On Windows the Native Platforms `windows-2022` job runs the Windows unit tests
 on real `cmd.exe` children: pipes with an explicit environment and exit code,
 missing, extensionless, non-canonical and directory executables, a sized
 ConPTY, output credit, a leader exit ending a descendant that holds its
-output, `terminate`, refused `interrupt` and `hangup`, release, and a grant
+output, `terminate`, a pipe `interrupt`, refused `hangup`, release, and a grant
 working directory with junction and missing cases. The same native test runs
 there in development and inspected AOT, with an NTFS junction as the escape,
 descendants found through `Get-CimInstance Win32_Process`, and the terminal
