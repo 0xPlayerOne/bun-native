@@ -145,9 +145,12 @@ No per-request option or protocol message can grant access. Both framework
 adapters use this same public window method.
 
 `app.serviceCapabilities.windowDisplay` reports implementation availability,
-the negotiated permission and `owned_window` scope. Menus, dialogs, notifications, drag/drop, filesystem grants and PTY/process
-entries explicitly report `unavailable` / `not_implemented`; they have no
-placeholder callable methods. This policy constrains the selected native
+the negotiated permission and `owned_window` scope. The system menu, dialog,
+drag/drop and PTY/process entries explicitly report `unavailable` /
+`not_implemented`; they have no placeholder callable methods. Clipboard, global
+shortcut, notification and filesystem-grant entries report `available` only when
+the host negotiates their capability, and `unavailable` /
+`unsupported_platform` otherwise. This policy constrains the selected native
 host, not trusted Bun code's ordinary OS APIs.
 
 An aborted queued read sends no native command. After submission, cancellation
@@ -188,8 +191,9 @@ queue saturation and stale handles retain their ordinary `NativeStateError`;
 malformed native replies retain `ProtocolError`. The native worker is joined
 before shutdown completes. `app.diagnostics.serviceRequests` exposes the
 bounded count. See [the full service contract](../../docs/native-services.md).
-This draft's source/contract tests do not yet qualify actual clipboard GUI/AOT
-execution; the existing display evidence describes its previous exact source.
+The [Native Linux workflow](../../.github/workflows/native-linux.yml) exercises
+the clipboard against an independent owned X11 peer in development and
+inspected AOT; this does not qualify Wayland, macOS or Windows.
 
 ### Global shortcuts
 
