@@ -81,7 +81,11 @@ class PrimeTests(unittest.TestCase):
     def test_session_primes_after_wm_readiness_and_before_any_command(self):
         text = (ROOT / "scripts/quality/native-linux-session.sh").read_text()
         ready = text.index('start_test_window_manager "$evidence_dir"')
-        prime = text.index("scripts/quality/native-x11-input-prime.py")
+        # Resolved next to the session script, so sessions started from another
+        # working directory (cli-standalone) still find it.
+        prime = text.index(
+            'python3 "$(dirname "${BASH_SOURCE[0]}")/native-x11-input-prime.py"'
+        )
         first_command = text.index('if [[ "$mode" == -- ]]; then')
         self.assertLess(ready, prime)
         self.assertLess(prime, first_command)
