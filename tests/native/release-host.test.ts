@@ -1,5 +1,5 @@
 import { afterAll, expect, test } from 'bun:test'
-import { existsSync, mkdtempSync, readdirSync, rmSync, statSync } from 'node:fs'
+import { existsSync, mkdtempSync, readFileSync, readdirSync, rmSync, statSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { isAbsolute, join, resolve } from 'node:path'
 import { compileApplication } from '../../experiments/aot-gpui/compile.ts'
@@ -129,6 +129,15 @@ const offline =
   process.platform === 'linux' &&
   Bun.which('unshare') !== null &&
   Bun.spawnSync(['unshare', '-rn', 'true'], { stdout: 'ignore', stderr: 'ignore' }).exitCode === 0
+// xvfb-run runs its command with stderr merged into stdout, and the
+// dbus-run-session daemon and the portal services it activates keep writing to
+// that stream while the session tears down ("Authorization required, but no
+// authorization protocol specified", "X connection to :99 broken"), after the
+// application printed its report. Hosted run 42189398221 parsed one of those
+// lines as the report (#530), and about 15% of local runs showed the same
+// trailing lines. The application therefore writes its report to a file of its
+// own; everything else stays on the launcher's streams for failure messages.
+const SESSION_REPORT_TO_FILE = 'exec dbus-run-session -- sh -c \'exec "$0" >"$1"\' "$0" "$1"'
 const aotSkip =
   hostSkip ??
   (!offline
@@ -154,6 +163,7 @@ test.if(!aotSkip)(
     expect(inspection.hasCompiledProgram).toBe(true)
     expect(runtimeFeatures.jit).not.toBe('present')
 
+    const reportFile = join(outdir, 'boundary-report.json')
     const icds = existsSync('/usr/share/vulkan/icd.d')
       ? readdirSync('/usr/share/vulkan/icd.d').filter((name) => /^lvp_icd.*\.json$/.test(name))
       : []
@@ -165,9 +175,11 @@ test.if(!aotSkip)(
         'xvfb-run',
         '--auto-servernum',
         '--server-args=-screen 0 1280x800x24 -nolisten tcp',
-        'dbus-run-session',
-        '--',
+        'sh',
+        '-c',
+        SESSION_REPORT_TO_FILE,
         application,
+        reportFile,
       ],
       {
         cwd: outdir,
@@ -186,10 +198,12 @@ test.if(!aotSkip)(
         timeout: 120_000,
       }
     )
-    const stdout = run.stdout.toString()
     if (run.exitCode !== 0)
-      throw new Error(`Offline AOT boundary failed (${run.exitCode}): ${run.stderr.toString()}`)
-    expectBoundary(JSON.parse(stdout.trim().split('\n').at(-1)!) as BoundaryReport, true, true)
+      throw new Error(
+        `Offline AOT boundary failed (${run.exitCode}): ${run.stdout.toString()}${run.stderr.toString()}`
+      )
+    const report = readFileSync(reportFile, 'utf8')
+    expectBoundary(JSON.parse(report.trim().split('\n').at(-1)!) as BoundaryReport, true, true)
   },
   300_000
 )

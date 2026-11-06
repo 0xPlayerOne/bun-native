@@ -73,11 +73,17 @@ export class DragSource {
   private readonly process: Bun.Subprocess<'pipe', 'pipe', 'inherit'>
   private readonly lines: ReadableStreamDefaultReader<string>
   private buffer = ''
+  private readonly trace: string[] = []
   readonly backend = dragBackend
 
   constructor(executable: string) {
     this.process = Bun.spawn([executable], { stdin: 'pipe', stdout: 'pipe', stderr: 'inherit' })
     this.lines = this.process.stdout.pipeThrough(new TextDecoderStream()).getReader()
+  }
+
+  /** The source's last few commands and replies, for failure messages. */
+  recent(): string[] {
+    return [...this.trace]
   }
 
   /** One raw command; a reply carrying `error` fails the test. */
@@ -90,6 +96,8 @@ export class DragSource {
         const line = this.buffer.slice(0, newline)
         this.buffer = this.buffer.slice(newline + 1)
         const reply = JSON.parse(line) as SourceReply
+        this.trace.push(`${command.slice(0, 60)} -> ${line.slice(0, 240)}`)
+        if (this.trace.length > 6) this.trace.shift()
         if (typeof reply['error'] === 'string')
           throw new Error(`Drag source failed during ${command}: ${reply['error']}`)
         return reply
