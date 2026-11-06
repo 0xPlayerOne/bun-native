@@ -36,14 +36,78 @@ jobs:
         run: node scripts/install-bun.mjs --destination "$RUNNER_TEMP/bun-native-bun"
       - name: Install pinned Rust toolchain
         run: rustup show active-toolchain
+      # The package set is unchanged. The one apt-get update below resolves exact
+      # versions; their index SHA256 hashes key a cache of the archive bytes, so a
+      # throttled mirror (47 MB at 37.9 kB/s took 20m42s in job 127546794220) is
+      # only paid when the resolved set changes. Cached bytes are rechecked against
+      # the index hashes before apt may use them.
+      - name: Resolve exact native build and isolated X11 prerequisite archives
+        id: apt-archives
+        run: |
+          packages=(
+            pkg-config libfontconfig-dev libglib2.0-dev libssl-dev libwayland-dev
+            libx11-xcb-dev libxkbcommon-x11-dev libvulkan1 libzstd-dev
+            mesa-vulkan-drivers xvfb xauth x11-utils openbox xdotool imagemagick
+            dbus-x11 dunst fonts-dejavu-core heaptrack binutils
+          )
+          printf '%s\n' "${packages[@]}" > "$RUNNER_TEMP/native-apt-packages"
+          # Outside the runner home so apt's sandboxed _apt user can download into it.
+          sudo install -d -o "$(id -u)" -g "$(id -g)" -m 0755 /var/cache/native-apt-archives
+          sudo apt-get update
+          apt-get install --print-uris -qq --no-install-recommends -y \
+            -o Acquire::ForceHash=SHA256 "${packages[@]}" > "$RUNNER_TEMP/native-apt-uris"
+          lock="$RUNNER_TEMP/native-apt-archives.lock"
+          : > "$lock"
+          while IFS= read -r line; do
+            pattern="^'[^']+' ([^ /]+\.deb) [0-9]+ SHA256:([0-9a-f]{64})$"
+            if [[ ! $line =~ $pattern ]]; then
+              echo "::error::Unexpected apt archive resolution: $line" >&2
+              exit 1
+            fi
+            printf '%s  %s\n' "${BASH_REMATCH[2]}" "${BASH_REMATCH[1]}" >> "$lock"
+          done < "$RUNNER_TEMP/native-apt-uris"
+          LC_ALL=C sort -o "$lock" "$lock"
+          echo "Resolved $(wc -l < "$lock") prerequisite archives:"
+          cat "$lock"
+          printf 'key=native-apt-%s-%s-%s\n' "$RUNNER_OS" "$RUNNER_ARCH" \
+            "$(sha256sum "$lock" | cut -d' ' -f1)" >> "$GITHUB_OUTPUT"
+      - name: Restore exact prerequisite archives
+        id: apt-cache
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: /var/cache/native-apt-archives
+          key: ${{ steps.apt-archives.outputs.key }}
       - name: Install native build and isolated X11 prerequisites
         run: |
-          sudo apt-get update
+          mapfile -t packages < "$RUNNER_TEMP/native-apt-packages"
+          lock="$RUNNER_TEMP/native-apt-archives.lock"
+          cached=/var/cache/native-apt-archives
+          mkdir -p "$cached"
+          reused=0
+          while read -r hash name; do
+            [[ -f $cached/$name ]] || continue
+            if [[ $(sha256sum "$cached/$name" | cut -d' ' -f1) == "$hash" ]]; then
+              reused=$((reused + 1))
+            else
+              rm -f "$cached/$name"
+            fi
+          done < "$lock"
+          echo "Reusing $reused of $(wc -l < "$lock") archives verified against the index"
+          sudo install -d -o _apt -m 0700 "$cached/partial"
+          # Manual-page index rebuilds are not used by any later step.
+          sudo rm -f /var/lib/man-db/auto-update
+          # apt downloads (and verifies) only the archives still missing.
           sudo apt-get install --no-install-recommends -y \
-            pkg-config libfontconfig-dev libglib2.0-dev libssl-dev libwayland-dev \
-            libx11-xcb-dev libxkbcommon-x11-dev libvulkan1 libzstd-dev \
-            mesa-vulkan-drivers xvfb xauth x11-utils openbox xdotool imagemagick \
-            dbus-x11 dunst fonts-dejavu-core heaptrack binutils
+            -o Dir::Cache::Archives="$cached/" -o APT::Keep-Downloaded-Packages=true \
+            "${packages[@]}"
+          sudo rm -rf "$cached/partial" "$cached/lock"
+          (cd "$cached" && sha256sum --check --strict --quiet "$lock")
+      - name: Save exact prerequisite archives
+        if: steps.apt-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: /var/cache/native-apt-archives
+          key: ${{ steps.apt-archives.outputs.key }}
       - name: Pin the installed Mesa CPU Vulkan ICD for isolated Xvfb
         run: |
           echo 'Installed Mesa Vulkan ICD files:'
