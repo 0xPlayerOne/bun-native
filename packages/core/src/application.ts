@@ -1394,7 +1394,9 @@ class Window implements NativeWindow {
           (error: unknown) => {
             // Release or window close can race the acknowledgement.
             if (error instanceof NativeCommandError && error.code === 'invalid_handle') return
-            if (!this.application.running) return
+            // A lost transport is reported by the application's own closed promise;
+            // recording it here first would hide the original cause.
+            if (!(error instanceof NativeCommandError) || !this.application.running) return
             // Not awaited: shutdown waits for this tracked operation.
             void this.application.fail(error)
           }
