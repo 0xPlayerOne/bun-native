@@ -325,3 +325,108 @@ impl NativeView {
         );
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn each_native_modifier_maps_to_its_own_protocol_flag() {
+        let none = KeyModifiers {
+            control: false,
+            alt: false,
+            shift: false,
+            platform: false,
+            function: false,
+        };
+        assert_eq!(modifiers(Modifiers::default()), none);
+        let cases: [(Modifiers, KeyModifiers); 5] = [
+            (
+                Modifiers {
+                    control: true,
+                    ..Default::default()
+                },
+                KeyModifiers {
+                    control: true,
+                    ..none
+                },
+            ),
+            (
+                Modifiers {
+                    alt: true,
+                    ..Default::default()
+                },
+                KeyModifiers { alt: true, ..none },
+            ),
+            (
+                Modifiers {
+                    shift: true,
+                    ..Default::default()
+                },
+                KeyModifiers {
+                    shift: true,
+                    ..none
+                },
+            ),
+            (
+                Modifiers {
+                    platform: true,
+                    ..Default::default()
+                },
+                KeyModifiers {
+                    platform: true,
+                    ..none
+                },
+            ),
+            (
+                Modifiers {
+                    function: true,
+                    ..Default::default()
+                },
+                KeyModifiers {
+                    function: true,
+                    ..none
+                },
+            ),
+        ];
+        for (native, expected) in cases {
+            assert_eq!(modifiers(native), expected);
+        }
+        let all = Modifiers {
+            control: true,
+            alt: true,
+            shift: true,
+            platform: true,
+            function: true,
+        };
+        assert_eq!(
+            modifiers(all),
+            KeyModifiers {
+                control: true,
+                alt: true,
+                shift: true,
+                platform: true,
+                function: true,
+            }
+        );
+    }
+
+    #[test]
+    fn every_native_mouse_button_has_a_protocol_button() {
+        for (native, expected) in [
+            (MouseButton::Left, PointerButton::Left),
+            (MouseButton::Right, PointerButton::Right),
+            (MouseButton::Middle, PointerButton::Middle),
+            (
+                MouseButton::Navigate(NavigationDirection::Back),
+                PointerButton::Back,
+            ),
+            (
+                MouseButton::Navigate(NavigationDirection::Forward),
+                PointerButton::Forward,
+            ),
+        ] {
+            assert_eq!(button(native), expected);
+        }
+    }
+}

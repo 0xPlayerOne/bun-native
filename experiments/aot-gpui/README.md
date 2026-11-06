@@ -71,23 +71,48 @@ The same compiler and inspection pipeline supports these explicit entries:
 | `fault`                   | `tests/native/fault.ts`                 | `fault`                | Existing prebuilt host referenced by absolute path |
 | `scheduling`              | `tests/native/scheduling.ts`            | `scheduling`           | Existing prebuilt host referenced by absolute path |
 | `layout`                  | `tests/native/layout.ts`                | `layout`               | Existing prebuilt host referenced by absolute path |
+| `layout-style`            | `tests/native/layout-style.ts`          | `layout-style`         | Existing prebuilt host referenced by absolute path |
 | `interactions`            | `tests/native/interactions.ts`          | `interactions`         | Existing prebuilt host referenced by absolute path |
 | `services`                | `tests/native/services.ts`              | `services`             | Existing prebuilt host referenced by absolute path |
+| `display-semantics`       | `tests/native/display-semantics.ts`     | `display-semantics`    | Existing prebuilt host referenced by absolute path |
+| `display-platform`        | `tests/native/display-platform.ts`      | `display-platform`     | Existing prebuilt host referenced by absolute path |
+| `clipboard`               | `tests/native/clipboard.ts`             | `clipboard`            | Existing prebuilt host referenced by absolute path |
+| `global-shortcuts`        | `tests/native/global-shortcuts.ts`      | `global-shortcuts`     | Existing prebuilt host referenced by absolute path |
+| `notifications`           | `tests/native/notifications.ts`         | `notifications`        | Existing prebuilt host referenced by absolute path |
+| `filesystem-grants`       | `tests/native/filesystem-grants.ts`     | `filesystem-grants`    | Existing prebuilt host referenced by absolute path |
+| `processes`               | `tests/native/processes.ts`             | `processes`            | Existing prebuilt host referenced by absolute path |
+| `file-dialogs`            | `tests/native/file-dialogs.ts`          | `file-dialogs`         | Existing prebuilt host referenced by absolute path |
+| `overlays`                | `tests/native/overlays.ts`              | `overlays`             | Existing prebuilt host referenced by absolute path |
+| `popups`                  | `tests/native/popups.ts`                | `popups`               | Existing prebuilt host referenced by absolute path |
+| `drag-drop`               | `tests/native/drag-drop.ts`             | `drag-drop`            | Existing prebuilt host referenced by absolute path |
+| `solid-drag-drop`         | `tests/native/solid-drag-drop.tsx`      | `solid-drag-drop`      | Existing prebuilt host referenced by absolute path |
+| `react-drag-drop`         | `tests/native/react-drag-drop.tsx`      | `react-drag-drop`      | Existing prebuilt host referenced by absolute path |
+| `text-input`              | `tests/native/text-input.ts`            | `text-input`           | Existing prebuilt host referenced by absolute path |
 | `solid-services`          | `tests/native/solid-services.tsx`       | `solid-services`       | Existing prebuilt host referenced by absolute path |
 | `react-services`          | `tests/native/react-services.tsx`       | `react-services`       | Existing prebuilt host referenced by absolute path |
 | `platform-smoke`          | `tests/native/platform-smoke.ts`        | `platform-smoke`       | Existing prebuilt host referenced by absolute path |
-| `clipboard`               | `tests/native/clipboard.ts`             | `clipboard`            | Existing prebuilt host referenced by absolute path |
+| `solid-platform`          | `tests/native/solid-platform.tsx`       | `solid-platform`       | Existing prebuilt host referenced by absolute path |
+| `react-platform`          | `tests/native/react-platform.tsx`       | `react-platform`       | Existing prebuilt host referenced by absolute path |
 | `solid`                   | `examples/solid-counter/main.tsx`       | `solid`                | Existing prebuilt host referenced by absolute path |
+| `solid-workspace`         | `examples/solid-workspace/main.tsx`     | `solid-workspace`      | Existing prebuilt host referenced by absolute path |
+| `solid-workspace-flow`    | `tests/native/solid-workspace.tsx`      | `solid-workspace-flow` | Existing prebuilt host referenced by absolute path |
+| `solid-workspace-soak`    | `tests/native/solid-workspace-soak.tsx` | `solid-workspace-soak` | Existing prebuilt host referenced by absolute path |
 | `solid-input-intent`      | `tests/native/solid-input-intent.tsx`   | `solid-input-intent`   | Existing prebuilt host referenced by absolute path |
 | `solid-interactions`      | `tests/native/solid-interactions.tsx`   | `solid-interactions`   | Existing prebuilt host referenced by absolute path |
 | `solid-input-viewport`    | `tests/native/solid-input-viewport.tsx` | `solid-input-viewport` | Existing prebuilt host referenced by absolute path |
+| `solid-streaming-list`    | `tests/native/solid-streaming-list.tsx` | `solid-streaming-list` | Existing prebuilt host referenced by absolute path |
+| `solid-layout-style`      | `tests/native/solid-layout-style.tsx`   | `solid-layout-style`   | Existing prebuilt host referenced by absolute path |
 | `react`                   | `examples/react-counter/main.tsx`       | `react`                | Existing prebuilt host referenced by absolute path |
+| `react-workspace`         | `examples/react-workspace/main.tsx`     | `react-workspace`      | Existing prebuilt host referenced by absolute path |
+| `react-workspace-flow`    | `tests/native/react-workspace.tsx`      | `react-workspace-flow` | Existing prebuilt host referenced by absolute path |
 | `react-interactions`      | `tests/native/react-interactions.tsx`   | `react-interactions`   | Existing prebuilt host referenced by absolute path |
 | `react-input-viewport`    | `tests/native/react-input-viewport.tsx` | `react-input-viewport` | Existing prebuilt host referenced by absolute path |
+| `react-streaming-list`    | `tests/native/react-streaming-list.tsx` | `react-streaming-list` | Existing prebuilt host referenced by absolute path |
+| `react-layout-style`      | `tests/native/react-layout-style.tsx`   | `react-layout-style`   | Existing prebuilt host referenced by absolute path |
 | `react-behavior`          | `tests/native/react-behavior.tsx`       | `react-behavior`       | Existing prebuilt host referenced by absolute path |
 | `react-workload`          | `benchmarks/solid/react.tsx`            | `react-workload`       | Existing prebuilt host referenced by absolute path |
 
-All executable names gain `.exe` on Windows. The test entries avoid making another large host copy; their manifests record `host.placement: "external"` and the exact existing host path and hash. They are test artifacts, not standalone installation packages. Pass `--host-profile dev` or `release` for qualification; supported invocations that omit it record an unverified profile. The [bridge benchmark runner](../../benchmarks/BRIDGE.md) verifies the actual running executable, host and source hashes against the supplied AOT manifest before collecting samples. The [native fixture guide](../../tests/native/README.md) describes each interaction/lifecycle scenario and its separate execution evidence.
+All executable names gain `.exe` on Windows. The test entries avoid making another large host copy; their manifests record `host.placement: "external"` and the exact existing host path and hash. They are test artifacts, not standalone installation packages. Pass `--host-profile dev` or `release` for qualification. Only `native-window`, `input-race` and `javascript` accept an omitted profile, which is recorded as unverified; every other entry rejects the build without one. The [bridge benchmark runner](../../benchmarks/BRIDGE.md) verifies the actual running executable, host and source hashes against the supplied AOT manifest before collecting samples. The [native fixture guide](../../tests/native/README.md) describes each interaction/lifecycle scenario and its separate execution evidence.
 
 ```sh
 bun experiments/aot-gpui/build-window.ts \
@@ -152,7 +177,9 @@ those behaviors; follow the [native fixture recipe](../../tests/native/README.md
 
 ## Solid development and AOT inputs
 
-The three Solid entries first run the repository's pinned universal JSX transform,
+The Solid entries (`solid`, `solid-workspace`, `solid-workspace-flow`,
+`solid-workspace-soak`, `solid-input-intent`, `solid-interactions`, `solid-input-viewport`,
+`solid-platform` and `solid-services`) first run the repository's pinned universal JSX transform,
 then compile that exact generated `development/application.js` with the same Bun
 machine-code AOT path and strict executable inspection. The generated module is
 also the development entry; the helper records its size, hash, transform command
@@ -191,7 +218,9 @@ launching or compiling them does not satisfy their input, paint or cleanup gates
 
 ## React development and AOT inputs
 
-The four React entries use the pinned Bun bundler to transform their explicit
+The React entries (`react`, `react-workspace`, `react-workspace-flow`,
+`react-interactions`, `react-input-viewport`, `react-behavior`,
+`react-services`, `react-platform` and `react-workload`) use the pinned Bun bundler to transform their explicit
 React JSX source into `development/application.js`. The helper invokes the built-in
 `build --no-script --production --target=bun --format=esm --sourcemap=external`,
 explicitly defines `process.env.NODE_ENV` as `"production"`, and uses an output

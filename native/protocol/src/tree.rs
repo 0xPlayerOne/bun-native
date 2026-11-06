@@ -688,4 +688,6 @@ fn check_node(node: &Node, overlays: usize, popup: bool) -> Result<(usize, bool)
 mod nodes;
 
 #[cfg(test)]
+mod edge_tests;
+#[cfg(test)]
 mod tests;

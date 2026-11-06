@@ -1,4 +1,9 @@
+use super::super::offsets::{
+    from_utf16 as offset_from_utf16, next_boundary, previous_boundary, range_from_utf16,
+    range_to_utf16, to_utf16 as offset_to_utf16,
+};
 use super::*;
+use std::ops::Range;
 
 /// Every boundary reached by repeated Right from 0, then by repeated Left from the end.
 fn walk(content: &str) -> (Vec<usize>, Vec<usize>) {

@@ -1,70 +1,7 @@
-//! Pure text-offset rules shared by native editing, selection and platform IME.
-//!
-//! Byte offsets always fall on extended grapheme cluster boundaries for caret
-//! movement and deletion, so combining marks, emoji ZWJ sequences, regional
-//! indicator flags and Hangul jamo are edited as one user-perceived character.
-//! Platform input handlers address text in UTF-16 code units; conversions clamp
-//! to the content and never split a scalar value.
+//! Edit policy and accessibility text rules for native inputs. Grapheme and
+//! UTF-16 offset conversions live in `offsets`.
 
-use std::ops::Range;
 use unicode_segmentation::UnicodeSegmentation;
-
-/// The grapheme boundary strictly before `offset`, or 0.
-pub(super) fn previous_boundary(content: &str, offset: usize) -> usize {
-    content
-        .grapheme_indices(true)
-        .rev()
-        .find_map(|(index, _)| (index < offset).then_some(index))
-        .unwrap_or(0)
-}
-
-/// The grapheme boundary strictly after `offset`, or the content length.
-pub(super) fn next_boundary(content: &str, offset: usize) -> usize {
-    content
-        .grapheme_indices(true)
-        .find_map(|(index, _)| (index > offset).then_some(index))
-        .unwrap_or(content.len())
-}
-
-/// A UTF-16 offset as a UTF-8 byte offset. An offset inside a surrogate pair
-/// rounds up to the end of its scalar value; offsets past the end clamp.
-pub(super) fn offset_from_utf16(content: &str, offset: usize) -> usize {
-    let mut utf8_offset = 0;
-    let mut utf16_count = 0;
-    for ch in content.chars() {
-        if utf16_count >= offset {
-            break;
-        }
-        utf16_count += ch.len_utf16();
-        utf8_offset += ch.len_utf8();
-    }
-    utf8_offset
-}
-
-/// A UTF-8 byte offset as a UTF-16 offset.
-pub(super) fn offset_to_utf16(content: &str, offset: usize) -> usize {
-    let mut utf16_offset = 0;
-    let mut utf8_count = 0;
-    for ch in content.chars() {
-        if utf8_count >= offset {
-            break;
-        }
-        utf8_count += ch.len_utf8();
-        utf16_offset += ch.len_utf16();
-    }
-    utf16_offset
-}
-
-pub(super) fn range_to_utf16(content: &str, range: &Range<usize>) -> Range<usize> {
-    offset_to_utf16(content, range.start)..offset_to_utf16(content, range.end)
-}
-
-/// Platform ranges may arrive reversed; the result is always ordered.
-pub(super) fn range_from_utf16(content: &str, range: &Range<usize>) -> Range<usize> {
-    let start = offset_from_utf16(content, range.start);
-    let end = offset_from_utf16(content, range.end);
-    start.min(end)..start.max(end)
-}
 
 /// AccessKit's selectable characters for a text run, in UTF-8 bytes: one per
 /// grapheme cluster. A pathological cluster longer than a `u8` is split at

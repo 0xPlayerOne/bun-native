@@ -338,4 +338,29 @@ describe('shared event props over the actual public-core subprocess contract', (
       expect(root.diagnostics.nodes).toBe(0)
       expect(app.diagnostics.nodes).toBe(1)
     }))
+
+  test('an observed native edit cannot seed a different, newly created input', () =>
+    withApp(async (app) => {
+      const window = await app.openWindow({ title: 'Foreign input observation' })
+      const { outer, input, marker } = await controls(window)
+      let observed: NativeUIEvent | undefined
+      setProperty(input, 'onInput', (event: NativeUIEvent) => {
+        observed = event
+      })
+      const root = createRenderRoot(window, ({ container }) => insertNode(container, outer))
+      await root.ready
+      await trigger(window, marker, 'input')
+      await until(() => observed !== undefined)
+      const replacement = createElement('input')
+      setProperty(replacement, 'value', observed)
+      insertNode(outer, replacement)
+      await assert.rejects(
+        root.closed,
+        (error: unknown) =>
+          error instanceof Error &&
+          error.message === 'Native input observation belongs to another node'
+      )
+      expect(root.diagnostics.nodes).toBe(0)
+      expect(app.diagnostics.nodes).toBe(2)
+    }, 'events-peer.ts'))
 })
