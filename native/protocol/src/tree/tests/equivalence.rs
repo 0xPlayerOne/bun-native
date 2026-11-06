@@ -60,6 +60,7 @@ fn element(rng: &mut Rng, kind: Option<&Element>) -> Element {
         3 => Element::Split {
             ratio: 0.5,
             min_size: 0.,
+            accessible_label: None,
             style: Style::default(),
         },
         // A layer, or a popup window surface that keeps all of its content
@@ -88,6 +89,7 @@ fn overlay_element(window: bool) -> Element {
         } else {
             OverlaySurface::Layer
         },
+        accessible_label: None,
         style,
     }
 }

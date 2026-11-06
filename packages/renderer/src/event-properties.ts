@@ -22,6 +22,9 @@ export const eventProperties = Object.freeze({
   onFocusCapture: binding('focus', true),
   onBlur: binding('blur'),
   onBlurCapture: binding('blur', true),
+  /** Requires `split_resize_v1`; only a split is ever the target. */
+  onSplitResize: binding('split_resize'),
+  onSplitResizeCapture: binding('split_resize', true),
 })
 
 export type EventProperty = keyof typeof eventProperties

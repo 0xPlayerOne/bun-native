@@ -137,6 +137,7 @@ fn elements(seed: usize) -> Vec<Element> {
         Element::Split {
             ratio: 0.5,
             min_size: 0.,
+            accessible_label: None,
             style: style.clone(),
         },
         Element::Overlay {
@@ -145,6 +146,7 @@ fn elements(seed: usize) -> Vec<Element> {
             autofocus: false,
             navigation: Default::default(),
             surface: Default::default(),
+            accessible_label: None,
             style,
         },
     ]

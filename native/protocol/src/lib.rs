@@ -1,6 +1,7 @@
 //! Bun Native's bounded, versioned private host protocol and atomic tree model.
 //! Protocol 11 requires explicit per-operation service policy; no older-version decoder.
 
+mod app_menu;
 mod dialogs;
 mod drops;
 mod events;
@@ -11,6 +12,7 @@ mod services;
 mod tree;
 mod wire;
 
+pub use app_menu::*;
 pub use dialogs::*;
 pub use drops::*;
 pub use events::*;
@@ -21,6 +23,10 @@ pub use services::*;
 pub use tree::{BatchMetrics, ModelError, Node, PreparedBatch, Tree, ViewRequest};
 pub use wire::*;
 
+#[cfg(test)]
+mod accessibility_tests;
+#[cfg(test)]
+mod app_menu_tests;
 #[cfg(test)]
 mod dialog_tests;
 #[cfg(test)]

@@ -183,6 +183,7 @@ const ELEMENT_FIELDS: &[&str] = &[
     "autofocus",
     "navigation",
     "surface",
+    "accessible_label",
 ];
 
 #[derive(Clone, Copy)]
@@ -201,6 +202,7 @@ enum ElementField {
     Autofocus,
     Navigation,
     Surface,
+    AccessibleLabel,
 }
 
 fn element_field(name: &str) -> Option<ElementField> {
@@ -219,6 +221,7 @@ fn element_field(name: &str) -> Option<ElementField> {
         "autofocus" => ElementField::Autofocus,
         "navigation" => ElementField::Navigation,
         "surface" => ElementField::Surface,
+        "accessible_label" => ElementField::AccessibleLabel,
         _ => return None,
     })
 }
@@ -249,6 +252,7 @@ impl<'de> Deserialize<'de> for Element {
                 let mut autofocus: Option<bool> = None;
                 let mut navigation: Option<OverlayNavigation> = None;
                 let mut surface: Option<OverlaySurface> = None;
+                let mut accessible_label: Option<String> = None;
                 while let Some(field) = key(&mut map, element_field)? {
                     let Some(field) = field else {
                         // Any unread member of an unknown name is an error, so
@@ -279,6 +283,9 @@ impl<'de> Deserialize<'de> for Element {
                             once(&mut navigation, "navigation", &mut map)?;
                         }
                         ElementField::Surface => once(&mut surface, "surface", &mut map)?,
+                        ElementField::AccessibleLabel => {
+                            once(&mut accessible_label, "accessible_label", &mut map)?;
+                        }
                     }
                 }
                 let kind: ElementKind = required(kind, "kind")?;
@@ -298,6 +305,7 @@ impl<'de> Deserialize<'de> for Element {
                         reject(&autofocus, "autofocus", own)?;
                         reject(&navigation, "navigation", own)?;
                         reject(&surface, "surface", own)?;
+                        reject(&accessible_label, "accessible_label", own)?;
                         Ok(Element::Box { style: style_out })
                     }
                     ElementKind::Text => {
@@ -313,6 +321,7 @@ impl<'de> Deserialize<'de> for Element {
                         reject(&autofocus, "autofocus", own)?;
                         reject(&navigation, "navigation", own)?;
                         reject(&surface, "surface", own)?;
+                        reject(&accessible_label, "accessible_label", own)?;
                         Ok(Element::Text {
                             text: required(text, "text")?,
                             style: style_out,
@@ -330,6 +339,7 @@ impl<'de> Deserialize<'de> for Element {
                         reject(&autofocus, "autofocus", own)?;
                         reject(&navigation, "navigation", own)?;
                         reject(&surface, "surface", own)?;
+                        reject(&accessible_label, "accessible_label", own)?;
                         Ok(Element::Button {
                             text: required(text, "text")?,
                             disabled: disabled.unwrap_or_default(),
@@ -353,6 +363,7 @@ impl<'de> Deserialize<'de> for Element {
                         reject(&autofocus, "autofocus", own)?;
                         reject(&navigation, "navigation", own)?;
                         reject(&surface, "surface", own)?;
+                        reject(&accessible_label, "accessible_label", own)?;
                         Ok(Element::Input {
                             value: required(value, "value")?,
                             placeholder: placeholder.unwrap_or_default(),
@@ -362,7 +373,7 @@ impl<'de> Deserialize<'de> for Element {
                         })
                     }
                     ElementKind::Split => {
-                        let own = &["kind", "ratio", "min_size", "style"];
+                        let own = &["kind", "ratio", "min_size", "accessible_label", "style"];
                         reject(&text, "text", own)?;
                         reject(&value, "value", own)?;
                         reject(&placeholder, "placeholder", own)?;
@@ -376,6 +387,7 @@ impl<'de> Deserialize<'de> for Element {
                         Ok(Element::Split {
                             ratio: ratio.unwrap_or_else(half),
                             min_size: min_size.unwrap_or_default(),
+                            accessible_label,
                             style: style_out,
                         })
                     }
@@ -387,6 +399,7 @@ impl<'de> Deserialize<'de> for Element {
                             "autofocus",
                             "navigation",
                             "surface",
+                            "accessible_label",
                             "style",
                         ];
                         reject(&text, "text", own)?;
@@ -402,6 +415,7 @@ impl<'de> Deserialize<'de> for Element {
                             autofocus: autofocus.unwrap_or_default(),
                             navigation: navigation.unwrap_or_default(),
                             surface: surface.unwrap_or_default(),
+                            accessible_label,
                             style: style_out,
                         })
                     }

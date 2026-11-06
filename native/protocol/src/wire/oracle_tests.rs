@@ -46,6 +46,12 @@ enum OracleElement {
         ratio: f64,
         #[serde(default)]
         min_size: f64,
+        #[serde(
+            default,
+            skip_serializing_if = "Option::is_none",
+            deserialize_with = "non_null"
+        )]
+        accessible_label: Option<String>,
         #[serde(default)]
         style: Style,
     },
@@ -60,6 +66,12 @@ enum OracleElement {
         navigation: OverlayNavigation,
         #[serde(default, skip_serializing_if = "OverlaySurface::is_layer")]
         surface: OverlaySurface,
+        #[serde(
+            default,
+            skip_serializing_if = "Option::is_none",
+            deserialize_with = "non_null"
+        )]
+        accessible_label: Option<String>,
         #[serde(default)]
         style: Style,
     },
@@ -187,9 +199,11 @@ fn elements() -> Vec<Value> {
                "read_only": true, "style": {}}),
         json!({"kind": "input", "value": ""}),
         json!({"kind": "split", "ratio": 0.25, "min_size": 40, "style": {"direction": "row"}}),
+        json!({"kind": "split", "accessible_label": "Sidebar"}),
         json!({"kind": "split"}),
         json!({"kind": "overlay", "anchor": "parent", "modal": false, "autofocus": true,
                "navigation": "menu", "surface": "window", "style": {"width": 100, "height": 50}}),
+        json!({"kind": "overlay", "modal": true, "accessible_label": "Delete file"}),
         json!({"kind": "overlay"}),
     ]
 }
@@ -313,6 +327,7 @@ fn mutate(value: &mut Value, rng: &mut Rng, replacements: &[Value]) {
                 "autofocus",
                 "navigation",
                 "surface",
+                "accessible_label",
                 "node_id",
                 "element",
                 "expected_input_revision",
