@@ -1,5 +1,6 @@
 /** @jsxImportSource @bun-native/react */
 import { expect, test } from 'bun:test'
+import type { ConfirmDialogOptions } from '@bun-native/core'
 import { render } from '@bun-native/react'
 import { Workspace } from '../../examples/react-workspace/app.tsx'
 import {
@@ -379,6 +380,91 @@ test('workspace deletes every task through the empty state and adds the next one
       expect(root.diagnostics.nodes).toBe(0)
       expect(root.diagnostics.listeners).toBe(0)
       expect(app.diagnostics.callbacks).toBe(0)
+    } finally {
+      await root.dispose()
+    }
+  }, 'events-peer.ts'))
+
+test('workspace asks before deleting and ignores answers that arrive after teardown', () =>
+  withApp(async (app) => {
+    const actual = await app.openWindow({ title: 'Workspace delete confirmation' })
+    const marker = await actual.batch((batch) => {
+      const node = batch.create({ kind: 'text', text: 'Marker' })
+      batch.append(actual.root, node)
+      return node
+    })
+    const { window } = observeWindow(actual)
+    let state: WorkspaceState | undefined
+    let changes = 0
+    const asked: ConfirmDialogOptions[] = []
+    let answer: ((accepted: boolean) => void) | undefined
+    const root = render(
+      <Workspace
+        onChange={(next) => {
+          state = next
+          changes++
+        }}
+        confirm={(options) => {
+          asked.push(options)
+          return new Promise<boolean>((resolve) => {
+            answer = resolve
+          })
+        }}
+      />,
+      window,
+      { style: { width: 'fill', height: 'fill' } }
+    )
+    async function press() {
+      await actual.batch((batch) =>
+        batch.set(marker, {
+          kind: 'text',
+          text: `event:${JSON.stringify({ type: 'click', target: 'Delete task' })}`,
+        })
+      )
+      await until(() => asked.length > 0 && answer !== undefined)
+      await root.flush()
+    }
+    try {
+      await root.ready
+      await until(() => changes > 0)
+      const first = state!.tasks.length
+      const target = state!.tasks.find((task) => task.id === state!.selectedId)!
+      await press()
+      expect(asked).toHaveLength(1)
+      expect(asked[0]).toMatchObject({
+        title: 'Delete task?',
+        confirmLabel: 'Delete',
+        cancelLabel: 'Keep task',
+        destructive: true,
+      })
+      expect(asked[0]!.message).toContain(target.title)
+      // Declining changes nothing and the question can be asked again.
+      answer!(false)
+      await Promise.resolve()
+      expect(state!.tasks).toHaveLength(first)
+      answer = undefined
+      await press()
+      expect(asked).toHaveLength(2)
+      const before = changes
+      answer!(true)
+      await until(() => changes > before)
+      expect(state!.tasks).toHaveLength(first - 1)
+      expect(state!.tasks.some((task) => task.id === target.id)).toBe(false)
+
+      // Asked for the next selection, then torn down before the answer arrives.
+      answer = undefined
+      await press()
+      expect(asked).toHaveLength(3)
+      const resolve = answer!
+      const remaining = state!.tasks.length
+      await root.dispose()
+      resolve(true)
+      await Promise.resolve()
+      await Promise.resolve()
+      expect(state!.tasks).toHaveLength(remaining)
+      await actual.close()
+      expect(root.diagnostics.nodes).toBe(0)
+      expect(root.diagnostics.listeners).toBe(0)
     } finally {
       await root.dispose()
     }

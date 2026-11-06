@@ -1,8 +1,9 @@
 import { afterAll, expect, test } from 'bun:test'
-import { existsSync, mkdtempSync, readFileSync, readdirSync, rmSync, statSync } from 'node:fs'
+import { existsSync, mkdtempSync, readdirSync, rmSync, statSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { isAbsolute, join, resolve } from 'node:path'
 import { compileApplication } from '../../experiments/aot-gpui/compile.ts'
+import { readLauncherReport } from './launcher-report.ts'
 import { PROTOCOL_VERSION } from '@bun-native/protocol'
 import toolchain from '../../toolchain.json'
 
@@ -202,8 +203,15 @@ test.if(!aotSkip)(
       throw new Error(
         `Offline AOT boundary failed (${run.exitCode}): ${run.stdout.toString()}${run.stderr.toString()}`
       )
-    const report = readFileSync(reportFile, 'utf8')
-    expectBoundary(JSON.parse(report.trim().split('\n').at(-1)!) as BoundaryReport, true, true)
+    expectBoundary(
+      readLauncherReport<BoundaryReport>(
+        { exitCode: run.exitCode, stdout: run.stdout.toString(), stderr: run.stderr.toString() },
+        reportFile,
+        'Offline AOT boundary'
+      ),
+      true,
+      true
+    )
   },
   300_000
 )

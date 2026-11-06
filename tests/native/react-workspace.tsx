@@ -1,5 +1,5 @@
 /** @jsxImportSource @bun-native/react */
-import { createApplication } from '@bun-native/core'
+import { createApplication, type ConfirmDialogOptions } from '@bun-native/core'
 import { render, type ReactRenderRoot } from '@bun-native/react'
 import assert from 'node:assert/strict'
 import { appendFileSync, writeFileSync } from 'node:fs'
@@ -59,6 +59,8 @@ const schedule: PlanScheduler = (callback) => {
     cancel()
   }
 }
+// The real window dialog backs the confirmation; this only counts its answers.
+const confirmations: { options: ConfirmDialogOptions; accepted: boolean }[] = []
 function changed(next: WorkspaceState) {
   state = next
   record('workspace-state', { state: next })
@@ -89,7 +91,14 @@ try {
       },
       { capture: true }
     )
-  root = render(<Workspace onChange={changed} schedule={schedule} />, window, {
+  async function confirm(options: ConfirmDialogOptions): Promise<boolean> {
+    record('confirm-requested', { title: options.title, message: options.message })
+    const accepted = await window.showConfirmDialog(options)
+    confirmations.push({ options, accepted })
+    record('confirm-answered', { accepted })
+    return accepted
+  }
+  root = render(<Workspace onChange={changed} schedule={schedule} confirm={confirm} />, window, {
     style: { width: 'fill', height: 'fill' },
   })
   await root.ready
@@ -124,6 +133,17 @@ try {
   assert.equal(state.plan?.taskId, 1)
   assert.equal(state.plan?.status, 'streaming')
   assert(state.plan.steps.length >= 1 && state.plan.steps.length < PLAN_STEPS.length)
+  // The scenario cancels the first deletion with Escape and accepts the second.
+  assert.deepEqual(
+    confirmations.map((entry) => entry.accepted),
+    [false, true],
+    'Deleting a task must ask once and be cancelled, then asked again and accepted'
+  )
+  assert(
+    confirmations.every(
+      (entry) => entry.options.destructive === true && entry.options.confirmLabel === 'Delete'
+    )
+  )
   assert(clicks >= 8 && inputs > 0, 'The workflow must receive actual native input and clicks')
   record('disposed', { diagnostics: root.diagnostics, ownership: app.diagnostics, timers })
 } finally {
@@ -145,6 +165,7 @@ writeFileSync(
       clicks,
       inputs,
       timers,
+      confirmations: confirmations.map((entry) => entry.accepted),
       state,
       ownership: app.diagnostics,
     },
