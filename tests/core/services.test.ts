@@ -97,6 +97,7 @@ describe('owned desktop service lifecycle (headless subprocess)', () => {
             'ptyProcess',
             'fileDialogs',
             'dragDrop',
+            'appMenu',
           ].includes(name)
         )
           expect(value).toEqual({

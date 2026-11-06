@@ -166,7 +166,8 @@ export function checkErrors(error: unknown): string | undefined {
       | 'filesystem_grants'
       | 'processes'
       | 'file_dialogs'
-      | 'drag_drop' = error.service
+      | 'drag_drop'
+      | 'app_menu' = error.service
     return service + error.code
   }
   if (error instanceof NativeCommandError) {
@@ -243,7 +244,7 @@ export function checkCapabilities(app: NativeApplication): void {
     const backend: 'freedesktop' = services.notifications.backend
     void backend
   }
-  const menus: 'unavailable' = services.systemMenus.availability
+  const menus: 'available' | 'unavailable' = services.appMenu.availability
   const pty: 'available' | 'unavailable' = services.ptyProcess.availability
   const diagnostics: number = app.diagnostics.serviceRequests + app.diagnostics.activeCallbacks
   const maxWindows: number = app.limits.max_windows

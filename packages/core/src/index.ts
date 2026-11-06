@@ -23,6 +23,14 @@ export type {
   NativeGlobalShortcut,
 } from './shortcuts.ts'
 export type { NativeNotification, NotificationEvent, NotificationOptions } from './notifications.ts'
+export type {
+  AppMenuItemEvent,
+  MenuEntryOptions,
+  MenuOptions,
+  MenuShortcutKey,
+  MenuShortcutOptions,
+  NativeMenuBar,
+} from './app-menu.ts'
 export type { DropTargetEvent, NativeDropTarget, NativeDroppedItem } from './drops.ts'
 export type {
   FileGrantOptions,
