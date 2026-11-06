@@ -182,6 +182,15 @@ export function planStagedCommit(
     if (!nodes.has(id) && node.parent !== undefined && nodes.has(node.parent))
       visible.push({ type: 'delete', node_id: id })
   visible.push({ type: 'delete', node_id: staging })
+  // Focus and scroll requests are applied natively after the tree changes, so
+  // they ride the final batch, addressed by the renumbered identities.
+  for (const operation of operations)
+    if (
+      operation.type === 'focus' ||
+      operation.type === 'scroll_to' ||
+      operation.type === 'scroll_into_view'
+    )
+      visible.push({ ...operation, node_id: identity.get(operation.node_id) ?? operation.node_id })
   if (visible.length > limits.max_operations)
     throw new NativeStateError(
       'limit_exceeded',

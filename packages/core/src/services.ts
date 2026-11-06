@@ -1,4 +1,10 @@
-import type { Capability, ClipboardText, ServicePolicy } from '@bun-native/protocol'
+import {
+  ProtocolError,
+  type Capability,
+  type ClipboardText,
+  type DisplaySnapshot,
+  type ServicePolicy,
+} from '@bun-native/protocol'
 
 export type NativeClipboardText = Readonly<ClipboardText>
 type ServiceName =
@@ -8,6 +14,9 @@ type ServiceName =
   | 'global_shortcuts'
   | 'notifications'
   | 'filesystem_grants'
+  | 'processes'
+  | 'file_dialogs'
+  | 'drag_drop'
 
 export type ServicePermissions = NonNullable<
   import('@bun-native/runtime').HostOptions['permissions']
@@ -22,6 +31,28 @@ export interface NativeDisplaySnapshot {
   /** GPUI-reported logical display bounds; coordinate origins depend on the backend. */
   readonly bounds: Readonly<{ x: number; y: number; width: number; height: number }>
   readonly scaleFactor: number
+  /**
+   * The display's work area (excluding the menu bar, Dock or taskbar), in the
+   * same logical coordinates as `bounds`. Only when `windowDisplay.details`
+   * is available (macOS and Windows).
+   */
+  readonly visibleBounds?: Readonly<{ x: number; y: number; width: number; height: number }>
+  /**
+   * The platform's display identifier when `windowDisplay.details` is
+   * available and the OS reports one. macOS: the CoreGraphics display UUID.
+   * Windows: derived from the GDI device name (for example `\\.\DISPLAY1`),
+   * so it names an adapter output rather than a physical monitor.
+   */
+  readonly displayId?: string
+}
+
+export interface DisplayChangeEvent {
+  readonly type: 'display_change'
+  readonly sequence: number
+  /** The window's display after the change. */
+  readonly snapshot: NativeDisplaySnapshot
+  /** Aborted when the listener is removed, its window closes or the app stops. */
+  readonly signal: AbortSignal
 }
 
 type UnavailableService = Readonly<{ availability: 'unavailable'; reason: 'not_implemented' }>
@@ -31,6 +62,10 @@ export interface ServiceCapabilities {
     availability: 'available'
     permission: 'allow' | 'deny'
     scope: 'owned_window'
+    /** Snapshots include `visibleBounds` and, when the OS reports it, `displayId`. */
+    details: 'available' | 'unavailable'
+    /** `onDisplayChange` reports display moves and OS display reconfiguration. */
+    changes: 'available' | 'unavailable'
   }>
   readonly clipboardText:
     | Readonly<{
@@ -50,7 +85,17 @@ export interface ServiceCapabilities {
       }>
     | Readonly<{ availability: 'unavailable'; reason: 'unsupported_platform' }>
   readonly systemMenus: UnavailableService
-  readonly dialogs: UnavailableService
+  /** OS file open/save/folder dialogs. Selected paths are data, not filesystem grants. */
+  readonly fileDialogs:
+    | Readonly<{
+        availability: 'available'
+        permission: 'allow' | 'deny'
+        scope: 'owned_window'
+        backend: 'xdg_desktop_portal'
+      }>
+    | Readonly<{ availability: 'unavailable'; reason: 'unsupported_platform' }>
+  /** OS message/confirm alerts. Use an in-window modal overlay meanwhile. */
+  readonly messageDialogs: UnavailableService
   readonly notifications:
     | Readonly<{
         availability: 'available'
@@ -59,17 +104,45 @@ export interface ServiceCapabilities {
         backend: 'freedesktop'
       }>
     | Readonly<{ availability: 'unavailable'; reason: 'unsupported_platform' }>
-  readonly dragDrop: UnavailableService
+  readonly dragDrop:
+    | Readonly<{
+        availability: 'available'
+        permission: 'allow' | 'deny'
+        scope: 'owned_target'
+        /** Local files only, delivered as untrusted display names. */
+        payload: 'files'
+        /** GPUI's X11 XDND target, AppKit dragging destination or OLE drop target. */
+        backend: DropBackend
+      }>
+    | Readonly<{ availability: 'unavailable'; reason: 'unsupported_platform' }>
   readonly filesystemGrants:
     | Readonly<{
         availability: 'available'
         /** Launch roots by ID; each caps the access a grant may request. */
         roots: Readonly<Record<string, Readonly<{ access: 'read' | 'read_write' }>>>
         scope: 'owned_window'
-        backend: 'openat2'
+        /** Linux resolves with `openat2`; macOS walks one name at a time with `openat(O_NOFOLLOW)`. */
+        backend: 'openat2' | 'openat_walk'
       }>
     | Readonly<{ availability: 'unavailable'; reason: 'unsupported_platform' }>
-  readonly ptyProcess: UnavailableService
+  readonly ptyProcess:
+    | Readonly<{
+        availability: 'available'
+        /** Launch-policy executables by ID; nothing else can be started. */
+        executables: Readonly<Record<string, Readonly<{ executable: string }>>>
+        scope: 'owned_window'
+        backend: 'posix'
+      }>
+    | Readonly<{ availability: 'unavailable'; reason: 'unsupported_platform' }>
+}
+
+type DropBackend = 'x11' | 'appkit' | 'ole'
+
+/** The host runs beside the core, so its platform names the drop backend. */
+function dropBackend(): DropBackend {
+  if (process.platform === 'darwin') return 'appkit'
+  if (process.platform === 'win32') return 'ole'
+  return 'x11'
 }
 
 export class NativeServiceError extends Error {
@@ -90,7 +163,8 @@ export class NativeServiceError extends Error {
       | 'path_denied'
       | 'wrong_kind'
       | 'not_empty'
-      | 'access_denied',
+      | 'access_denied'
+      | 'invalid_state',
     message: string
   ) {
     super(message)
@@ -111,6 +185,8 @@ export function serviceCapabilities(
       availability: 'available',
       permission: policy.window_display ? 'allow' : 'deny',
       scope: 'owned_window',
+      details: capabilities.includes('display_details_v1') ? 'available' : 'unavailable',
+      changes: capabilities.includes('display_changes_v1') ? 'available' : 'unavailable',
     }),
     clipboardText: capabilities.includes('clipboard_text_v1')
       ? Object.freeze({
@@ -130,7 +206,15 @@ export function serviceCapabilities(
         })
       : Object.freeze({ availability: 'unavailable', reason: 'unsupported_platform' }),
     systemMenus: unavailable,
-    dialogs: unavailable,
+    fileDialogs: capabilities.includes('file_dialogs_v1')
+      ? Object.freeze({
+          availability: 'available',
+          permission: policy.file_dialogs ? 'allow' : 'deny',
+          scope: 'owned_window',
+          backend: 'xdg_desktop_portal',
+        })
+      : Object.freeze({ availability: 'unavailable', reason: 'unsupported_platform' }),
+    messageDialogs: unavailable,
     notifications: capabilities.includes('notifications_v1')
       ? Object.freeze({
           availability: 'available',
@@ -139,7 +223,15 @@ export function serviceCapabilities(
           backend: 'freedesktop',
         })
       : Object.freeze({ availability: 'unavailable', reason: 'unsupported_platform' }),
-    dragDrop: unavailable,
+    dragDrop: capabilities.includes('drag_drop_files_v1')
+      ? Object.freeze({
+          availability: 'available',
+          permission: policy.drag_drop ? 'allow' : 'deny',
+          scope: 'owned_target',
+          payload: 'files',
+          backend: dropBackend(),
+        })
+      : Object.freeze({ availability: 'unavailable', reason: 'unsupported_platform' }),
     filesystemGrants: capabilities.includes('filesystem_grants_v1')
       ? Object.freeze({
           availability: 'available',
@@ -152,10 +244,42 @@ export function serviceCapabilities(
             )
           ),
           scope: 'owned_window',
-          backend: 'openat2',
+          backend: process.platform === 'darwin' ? 'openat_walk' : 'openat2',
         })
       : Object.freeze({ availability: 'unavailable', reason: 'unsupported_platform' }),
-    ptyProcess: unavailable,
+    ptyProcess: capabilities.includes('processes_v1')
+      ? Object.freeze({
+          availability: 'available',
+          executables: Object.freeze(
+            Object.fromEntries(
+              policy.processes.map((entry) => [
+                entry.id,
+                Object.freeze({ executable: entry.executable }),
+              ])
+            )
+          ),
+          scope: 'owned_window',
+          backend: 'posix',
+        })
+      : Object.freeze({ availability: 'unavailable', reason: 'unsupported_platform' }),
+  })
+}
+
+/** A frozen public snapshot; details are accepted only from a host that advertised them. */
+export function publicDisplaySnapshot(
+  snapshot: DisplaySnapshot,
+  capabilities: readonly Capability[]
+): NativeDisplaySnapshot {
+  const details = capabilities.includes('display_details_v1')
+  if (details ? !snapshot.visible_bounds : snapshot.visible_bounds || snapshot.display_uuid)
+    throw new ProtocolError('Native display details do not match the negotiated capabilities')
+  return Object.freeze({
+    bounds: Object.freeze({ ...snapshot.bounds }),
+    scaleFactor: snapshot.scale_factor,
+    ...(snapshot.visible_bounds
+      ? { visibleBounds: Object.freeze({ ...snapshot.visible_bounds }) }
+      : {}),
+    ...(snapshot.display_uuid ? { displayId: snapshot.display_uuid } : {}),
   })
 }
 

@@ -5,6 +5,7 @@ import {
   DEFAULT_LIMITS,
   encodeFrame,
   filesystemRootsFromArguments,
+  processesFromArguments,
   FrameDecoder,
   parseCommand,
   PROTOCOL_VERSION,
@@ -39,7 +40,9 @@ const policy = {
   clipboard_write: process.argv.includes('--bun-native-allow-clipboard-write'),
   global_shortcuts: process.argv.includes('--bun-native-allow-global-shortcuts'),
   notifications: process.argv.includes('--bun-native-allow-notifications'),
+  drag_drop: process.argv.includes('--bun-native-allow-drag-drop'),
   filesystem_roots: filesystemRootsFromArguments(process.argv),
+  processes: processesFromArguments(process.argv),
 }
 const windows = new Map<number, PeerTree>()
 const decoder = new FrameDecoder()

@@ -84,7 +84,7 @@ export class PeerTree {
         }
         node.parent = operation.parent_id
         this.nodes.get(operation.parent_id)!.children.splice(operation.index, 0, operation.child_id)
-      } else {
+      } else if (operation.type === 'delete') {
         const remove = (id: number) => {
           const node = this.nodes.get(id)!
           for (const child of node.children) remove(child)

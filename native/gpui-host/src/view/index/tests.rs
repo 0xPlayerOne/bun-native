@@ -64,6 +64,8 @@ fn element(rng: &mut Rng, kind: usize) -> Element {
         _ => Element::Input {
             value: text,
             placeholder: String::new(),
+            disabled: false,
+            read_only: false,
             style: Style::default(),
         },
     }
@@ -75,6 +77,8 @@ fn kind(element: &Element) -> usize {
         Element::Text { .. } => 1,
         Element::Button { .. } => 2,
         Element::Input { .. } => 3,
+        Element::Split { .. } => 4,
+        Element::Overlay { .. } => 5,
     }
 }
 

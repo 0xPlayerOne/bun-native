@@ -39,32 +39,36 @@ Other native services retain the explicit deferrals in the matrix below.
 ## Policy and capability contract
 
 ```ts
-import { createApplication, NativeServiceError } from '@bun-native/core'
+import { createApplication, NativeServiceError } from "@bun-native/core";
 
-const executable = process.env['BUN_NATIVE_HOST']
-if (!executable) throw new Error('Set an absolute BUN_NATIVE_HOST path')
+const executable = process.env["BUN_NATIVE_HOST"];
+if (!executable) throw new Error("Set an absolute BUN_NATIVE_HOST path");
 const app = await createApplication({
   executable,
-  permissions: { windowDisplay: 'allow' },
-})
+  permissions: { windowDisplay: "allow" },
+});
 try {
-  const window = await app.openWindow({ title: 'Display information' })
-  const display = await window.displaySnapshot()
-  console.log(display.bounds, display.scaleFactor)
-  await window.close()
+  const window = await app.openWindow({ title: "Display information" });
+  const display = await window.displaySnapshot();
+  console.log(display.bounds, display.scaleFactor);
+  await window.close();
 } catch (error) {
-  if (error instanceof NativeServiceError) console.error(error.code, error.service)
-  else throw error
+  if (error instanceof NativeServiceError)
+    console.error(error.code, error.service);
+  else throw error;
 } finally {
-  await app.shutdown()
-  await app.closed
+  await app.shutdown();
+  await app.closed;
 }
 ```
 
 The default permission is `deny`. The accepted keys are `windowDisplay`,
-`clipboardRead`, `clipboardWrite`, `globalShortcuts` and `notifications`, each
-independently `allow` or `deny`, and `filesystemRoots`, a list of launch
-directories described under [filesystem grants](#filesystem-grants).
+`clipboardRead`, `clipboardWrite`, `globalShortcuts`, `notifications`,
+`dragDrop` and `fileDialogs`, each independently `allow` or `deny`;
+`filesystemRoots`, a list of launch directories described under
+[filesystem grants](#filesystem-grants); and `processes`, a list of launch
+executables described under [owned processes](#owned-processes). The
+`file_dialogs` policy field is optional on the wire and omitted when denied.
 The runtime translates each explicit grant into its reserved native launch argument. The Rust process
 parses that immutable policy before starting GPUI or its private channel.
 Unknown or duplicate native arguments fail startup. A wire message cannot
@@ -106,8 +110,18 @@ The result is a deeply frozen object:
 interface NativeDisplaySnapshot {
   readonly bounds: Readonly<{ x: number; y: number; width: number; height: number }>
   readonly scaleFactor: number
+  // Only when serviceCapabilities.windowDisplay.details is 'available' (macOS, Windows):
+  readonly visibleBounds?: Readonly<{ x: number; y: number; width: number; height: number }>
+  readonly displayId?: string
 }
 ```
+
+`visibleBounds` and `displayId` exist only where the host advertises the
+optional `display_details_v1` capability, and `window.onDisplayChange()` only
+where it advertises `display_changes_v1`; see
+[macOS and Windows display semantics](#macos-and-windows-display-semantics-299).
+Neither changes `PROTOCOL_VERSION`; a host that sends a detail or a change
+without advertising it fails the session as a protocol error.
 
 Bounds are the GPUI platform display's reported logical pixels; coordinate
 origins depend on its backend. `scaleFactor` is the owning window's current
@@ -122,11 +136,12 @@ clamped into an invented result.
 
 The pinned X11 backend represents an **X screen spanning its monitors**, not a
 physical monitor selected by the window's overlap. Its bounds originate at
-zero and divide X screen pixels by the configured scale. The current API does
-not promise physical monitor identity, refresh rate, work area, DPI, display
-enumeration, display-change events or automatic window placement. Moving a
-window after a read can make the snapshot stale. The isolated Xvfb check uses
-one scale-1 screen; it cannot establish mixed-DPI or multi-monitor behavior.
+zero and divide X screen pixels by the configured scale. The API does not
+promise refresh rate, raw DPI, display enumeration or automatic window
+placement anywhere, and offers a work area, display identifier and
+display-change events only through the macOS/Windows capabilities below. A
+snapshot is a read at one instant: moving a window afterwards can make it
+stale.
 These semantics follow the pinned
 [X11 display implementation](https://github.com/zed-industries/zed/blob/ba63a022c9a22ca66d68ef2a8f0bb9b5b0a9984d/crates/gpui_linux/src/linux/x11/display.rs#L14-L55)
 and [GPUI window accessors](https://github.com/zed-industries/zed/blob/ba63a022c9a22ca66d68ef2a8f0bb9b5b0a9984d/crates/gpui/src/window.rs#L3144-L3162).
@@ -134,8 +149,118 @@ The pinned [macOS implementation](https://github.com/zed-industries/zed/blob/ba6
 also returns a zero origin, retaining the size from `CGDisplayBounds` but not
 its global origin. This API therefore does not promise a global monitor
 arrangement or suitable coordinates for cross-display window placement.
-The follow-up must qualify those semantics instead of inferring them from
-the field names.
+
+### Qualified X11 display semantics (#299)
+
+[`tests/native/display-semantics.ts`](../tests/native/display-semantics.ts)
+qualifies the snapshot against independent X clients in an isolated
+**two-screen** Xvfb (1280×800 and 1024×768) with openbox. `xdpyinfo` and
+`xwininfo -root` supply every expected geometry; window movement, resizing,
+OS close and resource changes are real X requests (`xdotool`, `xrdb`). Each
+scenario launches the same prebuilt host through an `exec` wrapper that fixes
+only `DISPLAY` / `GPUI_X11_SCALE_FACTOR`. The fixture requires, in development
+and inspected AOT:
+
+| Semantic                  | Observed native result                                                                                                                                                              |
+| ------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Whole X screen            | Two windows of different sizes report the same `{0, 0, 1280, 800} @1`. An X server move to the opposite corner and resize leaves the snapshot unchanged.                            |
+| Logical pixels            | `GPUI_X11_SCALE_FACTOR=2` reports `640×400 @2`: X screen pixels divided by the scale.                                                                                               |
+| Scale source and lifetime | With the override unset, `Xft.dpi: 144` reports `853.33×533.33 @1.5`. Changing it to 192 at runtime changes neither an existing nor a newly opened window; a new host reports `@2`. |
+| Window's X screen         | A host connected to `:N.1` reports the 1024×768 second screen, not screen 0.                                                                                                        |
+| Revocation                | Default denial, `close()`, window-manager close (`WM_DELETE_WINDOW`) and shutdown each end the capability; every application returns all ownership counters to zero.                |
+
+So on X11 a snapshot is a property of the host's X connection: the X screen
+size from the connection setup and one process-wide scale factor resolved at
+connection time from `GPUI_X11_SCALE_FACTOR`, `Xft.dpi` or RandR. The
+[client](https://github.com/zed-industries/zed/blob/ba63a022c9a22ca66d68ef2a8f0bb9b5b0a9984d/crates/gpui_linux/src/linux/x11/client.rs#L478-L480)
+reads the resource database and scale once; each
+[window](https://github.com/zed-industries/zed/blob/ba63a022c9a22ca66d68ef2a8f0bb9b5b0a9984d/crates/gpui_linux/src/linux/x11/window.rs#L826)
+stores an `X11Display` built from that setup. A window cannot migrate to
+another X screen, and moving it within a screen cannot change its snapshot.
+
+**No display-change subscription is added.** The pinned X11 window's
+[`on_display_changed`](https://github.com/zed-industries/zed/blob/ba63a022c9a22ca66d68ef2a8f0bb9b5b0a9984d/crates/gpui_linux/src/linux/x11/window.rs#L1728-L1730)
+is a no-op and the X11 platform reports `displays_changed` only when the
+backend connection is
+[replaced](https://github.com/zed-industries/zed/blob/ba63a022c9a22ca66d68ef2a8f0bb9b5b0a9984d/crates/gpui_linux/src/linux/platform.rs#L442-L470),
+not on RandR changes. A subscription on this backend would never fire for a
+real monitor change, so exposing one would overstate the platform. The
+following remain **unavailable** and are not part of the public result:
+
+- Display-change events and runtime geometry changes: Xvfb's RandR exposes a
+  single fixed mode and silently ignores `--setmonitor`, so no actual change
+  can be produced here; GPUI would not observe one anyway.
+- Monitor hotplug: Xvfb has no physical outputs.
+- Work area: the X11 display does not override
+  [`visible_bounds`](https://github.com/zed-industries/zed/blob/ba63a022c9a22ca66d68ef2a8f0bb9b5b0a9984d/crates/gpui/src/platform.rs#L655-L661),
+  which therefore equals `bounds`; `_NET_WORKAREA` is not read.
+- Monitor identity: the X11 display id is the X screen index and its UUID is
+  all zeros, so there is no persistent identity to expose.
+- Mixed DPI: one scale factor per host process; per-monitor scale is not
+  exposed by the X11 backend.
+- Wayland: not qualified. Its GPUI backend does report output changes, but no
+  compositor session is available in the Linux CI lane. macOS and Windows have
+  their own fixture, below.
+
+### macOS and Windows display semantics (#299)
+
+On macOS and Windows the host advertises two optional capabilities, behind the
+same `windowDisplay` launch grant; Linux advertises neither, and
+`serviceCapabilities.windowDisplay.details` / `.changes` report
+`'unavailable'` there:
+
+| Capability           | Public result                                | GPUI source (pinned)                                                                                                                                                                                                                                                                                                          |
+| -------------------- | -------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `display_details_v1` | `visibleBounds` (work area) and `displayId`  | macOS [`visible_bounds`/`uuid`](https://github.com/zed-industries/zed/blob/ba63a022c9a22ca66d68ef2a8f0bb9b5b0a9984d/crates/gpui_macos/src/display.rs#L85-L149), Windows [`rcWork`/`szDevice`](https://github.com/zed-industries/zed/blob/ba63a022c9a22ca66d68ef2a8f0bb9b5b0a9984d/crates/gpui_windows/src/display.rs#L39-L77) |
+| `display_changes_v1` | `window.onDisplayChange(listener) => remove` | [`observe_window_display`](https://github.com/zed-industries/zed/blob/ba63a022c9a22ca66d68ef2a8f0bb9b5b0a9984d/crates/gpui/src/window.rs#L2867-L2918), fed by [App `displays_changed`](https://github.com/zed-industries/zed/blob/ba63a022c9a22ca66d68ef2a8f0bb9b5b0a9984d/crates/gpui/src/app.rs#L1699-L1721)                |
+
+- **Work area.** macOS: `NSScreen.visibleFrame` relative to the screen's
+  top-left, so the menu bar and Dock are excluded. Windows: `rcWork` from
+  `GetMonitorInfoW` divided by the monitor's effective DPI scale, in the same
+  global logical coordinates as `bounds`.
+- **Identity.** macOS: `CGDisplayCreateUUIDFromDisplayID`, lowercased.
+  Windows: GPUI derives a v5 UUID from the GDI device name (`\\.\DISPLAYn`,
+  the whole 32-unit `szDevice` buffer), so it identifies an adapter output,
+  not a physical monitor, and can follow a different monitor after
+  reconfiguration. `displayId` is omitted if the OS returns no identifier.
+- **Display changes.** The host observes each owned window, only with the
+  launch grant, and sends `display_changed { sequence, window_id, snapshot }`
+  when GPUI reports that the window moved to another display or that its
+  display's bounds or refresh interval changed (`windowDidChangeScreen` and
+  `NSApplicationDidChangeScreenParametersNotification` on macOS;
+  `WM_DISPLAYCHANGE` on Windows). A change of only the work area or only the
+  scale factor is **not** reported by the pinned GPUI. The subscription
+  belongs to the window entry: closing the window (by `close()` or the OS)
+  drops it in the host, and `close()`, OS close and shutdown revoke every
+  listener in the core, aborting its event `signal`. Removing a listener is
+  immediate and idempotent; queued deliveries for it are dropped.
+
+[`tests/native/display-platform.ts`](../tests/native/display-platform.ts) runs
+in the **Native Platforms** workflow on the hosted `macos-15` and
+`windows-2022` runners, in development and inspected AOT, against the release
+host. Expected values come from oracles that never load GPUI:
+[`macos-display-oracle.m`](../tests/native/macos-display-oracle.m) (NSScreen
+and CoreGraphics), cross-checked by an `osascript` JXA NSScreen read, with
+`system_profiler SPDisplaysDataType` recorded; and
+[`windows-display-oracle.ps1`](../tests/native/windows-display-oracle.ps1)
+(`System.Windows.Forms.Screen` in a per-monitor-DPI-aware process and
+`GetDpiForMonitor`). The fixture asserts the default denial, bounds, work
+area, scale, identity, identical snapshots for two windows on one display,
+then makes a **real display-mode change** (`CGConfigureDisplayWithDisplayMode`
+for the session; `ChangeDisplaySettingsExW`), requires a `display_change`
+matching the OS's new geometry for both owned windows, removes one listener,
+restores the original mode, requires a change back for the other, and checks
+close and shutdown revocation and zero ownership counters.
+
+**This evidence is CI-only.** It was written on Linux, where only the shared
+protocol, core and host code compile and run; the macOS/Windows paths are
+selected by `cfg!` constants rather than separate code, but their native
+behavior is established only by the hosted run's `display-platform.json`
+artifact. If a hosted display offers no other desktop mode or refuses every
+change, the fixture records `displayChange` as unavailable with the mode list
+instead of claiming it. Always unavailable on hosted runners: window migration
+between displays and mixed DPI (one virtual display) and hotplug (no physical
+output).
 
 Reads share the public application's bounded serialized transaction queue.
 `displaySnapshot({ signal })` accepts a real `AbortSignal`; unknown options or
@@ -167,16 +292,16 @@ still fails the channel even if the caller cancelled in the meantime.
 ```ts
 const app = await createApplication({
   executable,
-  permissions: { clipboardRead: 'allow', clipboardWrite: 'allow' },
-})
-const window = await app.openWindow({ title: 'Explicit clipboard operations' })
+  permissions: { clipboardRead: "allow", clipboardWrite: "allow" },
+});
+const window = await app.openWindow({ title: "Explicit clipboard operations" });
 try {
-  await window.writeClipboardText('Text the application intentionally copies')
-  const result = await window.readClipboardText()
-  if (result.kind === 'text') console.log(result.text)
+  await window.writeClipboardText("Text the application intentionally copies");
+  const result = await window.readClipboardText();
+  if (result.kind === "text") console.log(result.text);
 } finally {
-  await app.shutdown()
-  await app.closed
+  await app.shutdown();
+  await app.closed;
 }
 ```
 
@@ -333,31 +458,43 @@ permission:
 const app = await createApplication({
   executable,
   permissions: {
-    filesystemRoots: [{ id: 'workspace', path: '/home/me/project', access: 'read_write' }],
+    filesystemRoots: [
+      { id: "workspace", path: "/home/me/project", access: "read_write" },
+    ],
   },
-})
-const window = await app.openWindow({ title: 'Workspace' })
-const grant = await window.openFileGrant('workspace', { access: 'read' })
-const page = await grant.list('src')
-const chunk = await grant.read('src/main.ts', { offset: 0, length: 16_384 })
-await grant.close()
+});
+const window = await app.openWindow({ title: "Workspace" });
+const grant = await window.openFileGrant("workspace", { access: "read" });
+const page = await grant.list("src");
+const chunk = await grant.read("src/main.ts", { offset: 0, length: 16_384 });
+await grant.close();
 ```
 
 Each root has an ID of lowercase letters, digits, `-` and `_`, an absolute
 normalized path and `read` or `read_write` access; at most eight are accepted.
 A grant requests at most its root's access and defaults to `read`. Readiness
 reports the same ordered roots, and the frozen capability record lists them by
-ID with `backend: 'openat2'`. The optional `filesystem_grants_v1` feature is
-advertised only on Linux with `openat2`; other targets report `unavailable` /
+ID with `backend: 'openat2'` on Linux or `backend: 'openat_walk'` on macOS.
+The optional `filesystem_grants_v1` feature is advertised only by a host built
+with one of those backends whose kernel probe succeeds: Linux with `openat2`
+(5.6 and later) and macOS. Windows and other targets report `unavailable` /
 `unsupported_platform`. No run-time path, dropped file name or model text can
 create a root or a grant.
 
 Paths are relative to the grant: `''` is the root itself and other paths are
 `/`-joined names without empty, `.`, `..` or control-character components (at
 most 1,024 bytes and 32 components). The host opens the root once as a
-directory descriptor and resolves every request beneath it with
-`openat2(RESOLVE_BENEATH | RESOLVE_NO_SYMLINKS | RESOLVE_NO_MAGICLINKS)`, so
-symbolic links are never followed, inside or out of the grant. `stat` and
+directory descriptor and resolves every request beneath it, so symbolic links
+are never followed, inside or out of the grant. Linux uses
+`openat2(RESOLVE_BENEATH | RESOLVE_NO_SYMLINKS | RESOLVE_NO_MAGICLINKS)`. macOS
+has no `openat2`; it walks the validated path one name at a time, each step an
+`openat(dirfd, name, O_NOFOLLOW | O_NOFOLLOW_ANY | O_CLOEXEC)` relative to the
+descriptor the previous step returned (intermediate steps add `O_DIRECTORY`),
+so no step can name anything but a direct child of a directory reached from the
+grant. On macOS every intermediate directory must be readable, not only
+searchable, and names resolve as the volume does (APFS is usually
+case-insensitive), always within the grant. macOS evidence comes only from
+the hosted `macos-15` Native Platforms job; it has not been run on a local Mac. `stat` and
 `list` report link entries as `symlink`; `remove` deletes the link, not its
 target. Renaming the root after a grant opens keeps that grant on the same
 directory. Reads and writes refuse anything but a regular file before any byte
@@ -394,6 +531,261 @@ confirm that the host rejects foreign, stale and reused grant IDs. See
 [ADR 0010](decisions/0010-filesystem-grants.md). macOS and Windows remain
 unavailable.
 
+## Owned processes
+
+`window.spawnProcess(executable, options, listener)` starts a child process
+from an executable the application named in its immutable `processes` launch
+permission, by ID:
+
+```ts
+const app = await createApplication({
+  executable,
+  permissions: {
+    processes: [{ id: 'shell', executable: '/bin/sh' }],
+    filesystemRoots: [{ id: 'workspace', path: '/home/me/project', access: 'read' }],
+  },
+})
+const window = await app.openWindow({ title: 'Terminal' })
+const grant = await window.openFileGrant('workspace')
+const child = await window.spawnProcess(
+  'shell',
+  {
+    args: ['-i'],
+    env: { PATH: '/usr/bin:/bin', TERM: 'xterm-256color' },
+    cwd: { grant, path: 'src' },
+    terminal: { columns: 80, rows: 24 },
+  },
+  async (event) => {
+    if (event.type === 'process_output') await terminalView.write(event.bytes)
+    else console.log('exited', event.exit)
+  }
+)
+await child.write(new TextEncoder().encode('ls\n'))
+await child.resize({ columns: 120, rows: 40 })
+await child.release()
+```
+
+Each launch entry has an ID of lowercase letters, digits, `-` and `_` and an
+absolute normalized executable path; at most eight are accepted and readiness
+reports the same ordered list. No wire command names a program path, and there
+is no command string or shell: `args` is an explicit array (at most 64 strings
+of 4,096 bytes) and `env` is the **complete** environment (at most 64 entries;
+nothing is inherited from the host), with arguments and environment together
+at most 32,768 bytes. A working directory comes only from a live file grant of
+the same window; the host resolves `path` beneath the grant descriptor with the
+same `openat2` rules as file requests, so links are never followed. macOS
+cannot start a child in a grant descriptor, so a working directory is refused
+there (`service_unavailable`).
+
+Without `terminal`, standard input, output and error are three pipes and output
+events name `stdout` or `stderr`. With `terminal: { columns, rows }` the child
+runs as a session leader on its own sized pseudo-terminal, which is its
+controlling terminal; output events name `terminal`, and `closeInput()` sends
+the terminal's end-of-file character. Either way the child leads its own
+process group.
+
+| Method / event              | Behavior                                                                                         |
+| --------------------------- | ------------------------------------------------------------------------------------------------ |
+| `process_output` event      | `{ stream, bytes }`, at most 16,384 bytes, in order; the next chunk waits for this callback      |
+| `process_exited` event      | `{ exit: { code } \| { signal } }`, always last, after the group is stopped and output delivered |
+| `write(bytes)`              | Queues 1–16,384 bytes of input; at most 64 KiB may wait unread                                   |
+| `closeInput()`              | Closes standard input, or sends end-of-file on a terminal                                        |
+| `resize({ columns, rows })` | Terminal processes only (1–1,000 each)                                                           |
+| `signal(name)`              | `interrupt`, `terminate`, `kill` or `hangup` to the whole process group                          |
+| `release()`                 | Idempotent; stops delivery, kills the group and reaps it                                         |
+
+Output is credited: the host reads at most four chunks a process has delivered
+but the core has not acknowledged, and the core acknowledges a chunk only after
+its callback settles, so a slow consumer pauses the child instead of growing a
+queue. When the direct child exits, the host stops the rest of its process
+group while the exited leader still holds the group ID, delivers the remaining
+output, reaps the leader and then reports the exit. A descendant that leaves
+the group (`setsid`) is outside this cleanup. An exited process stays
+`active` until released; later `write`, `signal` or `resize` calls reject with
+`invalid_state`.
+
+Failures are `NativeServiceError` with service `processes` and a code:
+`permission_denied` (not in the launch policy), `not_found` (missing executable
+or directory), `path_denied` (the directory crosses a link), `wrong_kind`,
+`access_denied`, `limit_exceeded` (at most eight live processes per session),
+`invalid_state`, `service_unavailable`, `native_failure` or `cancelled`.
+Releasing the process, closing its window or stopping the application kills
+and reaps its group; no later output or exit is delivered. The optional
+`processes_v1` feature is advertised on Linux with pidfd support and on macOS; the
+frozen `ptyProcess` capability record lists the executables by ID with
+`backend: 'posix'`, and other targets report `unavailable` /
+`unsupported_platform`.
+
+The [Native Linux workflow](../.github/workflows/native-linux.yml) runs
+[`tests/native/processes.ts`](../tests/native/processes.ts) in development and
+inspected AOT on an isolated display with real `/bin/sh` children. It checks
+outputs, exit statuses and the working directory independently, confirms
+through `/proc` that descendants stop with their group on exit, release, owner
+close and shutdown, and drives the private runtime to confirm that the host
+rejects foreign, stale and reused process IDs. See
+[ADR 0011](decisions/0011-owned-processes.md).
+
+The macOS backend (a pipe wake and a `waitid(WNOWAIT)` exit watcher in place of
+eventfd and pidfd; the same process groups and `pty-process` terminals) runs the
+host unit tests and the same native test in development and AOT in the
+[Native Platforms](../.github/workflows/native-platforms.yml) macOS 15 job,
+checking groups through `ps`. It is compile-checked locally only; macOS
+behavior is claimed from that CI job. Windows remains unavailable.
+
+## File dialogs
+
+```ts
+const app = await createApplication({
+  executable,
+  permissions: { fileDialogs: "allow" },
+});
+const window = await app.openWindow({ title: "Editor" });
+const opened = await window.showOpenDialog({
+  title: "Open a document",
+  select: "file", // 'files' for several, 'directory' for a folder
+  filters: [{ name: "Text", patterns: ["*.txt", "*.md"] }],
+});
+if (opened.kind === "selected") console.log(opened.paths); // data, not a grant
+const saved = await window.showSaveDialog({
+  title: "Save as",
+  name: "notes.txt",
+});
+```
+
+`showOpenDialog` and `showSaveDialog` show the operating system's file
+chooser, owned by the window, under the separate `fileDialogs` grant. The
+optional `file_dialogs_v1` feature is advertised on Linux when a D-Bus session
+bus is configured; the host talks to `org.freedesktop.portal.FileChooser`
+(xdg-desktop-portal) on that bus. A bus without a portal, or a portal without
+a file chooser backend, rejects with `service_unavailable` when a dialog is
+shown. Every bus call is bounded to two seconds; waiting for the user is not.
+
+Options are bounded and validated by both language implementations: a
+one-line `title` of at most 256 UTF-8 bytes, an optional `acceptLabel` of at
+most 64, an optional absolute starting `folder` (a hint), an optional save
+`name` that is one path component of at most 255 bytes, and at most 16
+`filters` of 1-16 glob patterns. A folder dialog takes no filters.
+
+The result is frozen: `{ kind: 'selected', paths }` from an open dialog,
+`{ kind: 'selected', path }` from a save dialog, or `{ kind: 'cancelled' }`
+when the user dismisses it (Cancel, Escape or the window manager's close
+button). **Paths are data, not authority.** A selection attaches no handle and
+grants nothing through Bun Native; a save selection does not create or write
+the file. A chosen path cannot become a scoped filesystem grant: grants open
+only on launch-policy roots (see [filesystem grants](#filesystem-grants)), and
+converting a user selection into one
+([#304](https://github.com/0xPlayerOne/bun-native/issues/304)) would be a
+separate, explicit operation. Non-local URIs, NUL bytes and non-UTF-8 names fail the
+whole selection with `native_failure`; more than 256 paths, or a result that
+would not fit one frame, fails with `payload_too_large`. No partial selection
+is returned.
+
+A window owns at most one file dialog (`limit_exceeded` otherwise). The OS
+dialog is parented to the owner's X11 window. Aborting the request's
+`signal` before dispatch sends nothing; after the dialog is shown it rejects
+with `cancelled` immediately and closes the OS dialog through the portal.
+Owner close rejects with `NativeStateError` `invalid_handle` and shutdown
+rejects pending dialogs; both close the OS dialog. Only a portal response from
+the bus connection that answered the request is accepted, so another bus
+client cannot forge a selection.
+
+The [Native Linux workflow](../.github/workflows/native-linux.yml) runs
+[`tests/native/file-dialogs.ts`](../tests/native/file-dialogs.ts) in
+development and inspected AOT on an isolated Xvfb with openbox and its own
+D-Bus session, against xdg-desktop-portal with the GTK backend. It requires
+default denial with no dialog, `service_unavailable` on a bus without a portal,
+a real GTK dialog transient for the owner window with the requested title,
+folder, filter and accept label, forged `Response` signals ignored, real
+keyboard selection of one file, several files and a folder, a save selection
+that creates no file, Escape cancellation, and the OS dialog closed after an
+aborted signal, owner close and shutdown. Wayland (unparented), Flatpak/Snap
+document-portal paths, other portal backends, macOS and Windows are not
+qualified. Message/confirm dialogs are not implemented: Linux has no portal
+for alerts, so use a modal overlay. See
+[ADR 0013](decisions/0013-native-file-dialogs.md).
+
+## Drag and drop
+
+`window.registerDropTarget(node, listener)` makes a committed node an owned
+drop target for local files. It needs the separate `dragDrop: 'allow'`
+permission. Solid and React export `registerDropTarget(ref, listener)` for a
+mounted element; it calls the same window method.
+
+```ts
+const app = await createApplication({
+  executable,
+  permissions: {
+    dragDrop: 'allow',
+    filesystemRoots: [{ id: 'workspace', path: '/home/me/project', access: 'read' }],
+  },
+})
+const window = await app.openWindow({ title: 'Drop files' })
+const target = await window.registerDropTarget(zone, async (event) => {
+  if (event.type !== 'drop') return
+  for (const item of event.items) {
+    const { root, path } = await item.resolve('workspace') // path_denied if outside
+    const grant = await window.openFileGrant(root)
+    console.log(item.name, (await grant.stat(path)).size)
+    await grant.close()
+  }
+})
+```
+
+Listeners receive frozen `drag_entered`, `drag_left`, `drop` and
+`drop_rejected` events. Each has a `sequence`, the `target` handle and an
+`AbortSignal`. A `drop` carries 1 to 64 items. Each item has only an untrusted
+display `name` (the final path component, lossily decoded, with control
+characters replaced, at most 255 bytes) and `resolve(root)`. Dropped paths
+never reach the application. `resolve` asks the host to match the path it
+retained for that drop beneath a launch root. It returns `{ root, path }` with
+a relative path, and file access still goes through `openFileGrant` and its
+`openat2` confinement. A drop grants no authority.
+
+`drop_rejected` reports `empty` (plain text or no files, on X11) or
+`limit_exceeded` (more than 64 items or, on X11 only, a URI list long enough
+that GPUI's 4,096-byte read may have truncated it). A drop outside every
+target produces no event.
+
+The capability's `backend` is `x11`, `appkit` or `ole`. On macOS and Windows a
+drag that carries no files never reaches a target: GPUI's AppKit and OLE
+destinations start no drag for it, and the button release they still
+synthesize for its drop is not reported as a `pointer_up`. Launch roots are
+POSIX paths, so on Windows no item resolves (`permission_denied` without a
+root, `path_denied` beneath one), and filesystem grants are Linux-only, so on
+macOS `resolve` returns the relative path while `openFileGrant` reports
+`service_unavailable`. See [ADR 0012](decisions/0012-native-drag-drop.md) for
+each backend's delivery quirks.
+Failures are `NativeServiceError` with service `drag_drop`:
+`permission_denied`, `service_unavailable`, `conflict` (the node already has
+a target), `limit_exceeded` (32 live targets), `path_denied`, `not_found` and
+`cancelled`.
+
+`close()` is idempotent and revokes locally first. Removing the node, closing
+the window or stopping the application does the same. The handle becomes
+inactive, its signal aborts, later host events are discarded and older items
+reject with `cancelled` without a native request. A newer drop or rejection on
+the same target also retires the previous drop's items.
+
+Hover follows the target's painted bounds, so nested targets can both report
+`drag_entered`. A drop goes to the innermost live target under the pointer,
+or to the nearest live ancestor when the frame still shows a removed element.
+Pointer down and up events are not delivered while a drag is active, so a
+drop is never a click.
+
+The pinned GPUI X11 backend always answers the drag source with accept and
+copy, so a source may report a copy for a drop the application rejected or
+ignored. If the window under a drag closes before the drop, the next drag on
+that X connection is not converted until its source leaves. The
+`drag_drop_files_v1` capability is advertised only on Linux X11. Wayland,
+macOS and Windows report `unavailable` / `unsupported_platform`. See
+[ADR 0012](decisions/0012-native-drag-drop.md).
+
+The [Native Linux workflow](../.github/workflows/native-linux.yml) runs
+[`tests/native/drag-drop.ts`](../tests/native/drag-drop.ts) and the Solid and
+React fixtures in development and inspected AOT on an isolated display. An
+independent x11rb XDND source process grabs and warps the real pointer and
+speaks XDND to the host. No GPUI event is synthesized.
+
 ## Service and platform matrix
 
 All services listed here share the core's policy boundary. The unavailable rows
@@ -401,17 +793,18 @@ are requirements for future work, not promises that an exported function
 already exists. The linked follow-ups belong to
 [#255](https://github.com/0xPlayerOne/bun-native/issues/255).
 
-| Service           | Current public surface                                        | Linux X11                                           | macOS                        | Windows                      | Required scope before exposing more operations                                                                                                                                  |
-| ----------------- | ------------------------------------------------------------- | --------------------------------------------------- | ---------------------------- | ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Window/display    | Existing owned open/close; permission-gated `displaySnapshot` | Core/Solid/React dev+AOT verified with release host | Service execution unverified | Service execution unverified | Display changes, physical-monitor/work-area semantics, placement and mixed-DPI evidence. [#299](https://github.com/0xPlayerOne/bun-native/issues/299).                          |
-| Clipboard text    | `readClipboardText` / `writeClipboardText`; separate grants   | X11 dev+AOT verified with release host              | Unavailable                  | Unavailable                  | Additional platforms/formats and extended lifecycle coverage. [#300](https://github.com/0xPlayerOne/bun-native/issues/300).                                                     |
-| Global shortcuts  | `registerGlobalShortcut`; `globalShortcuts` grant             | X11 dev+AOT verified with release host              | Unavailable                  | Unavailable                  | macOS/Windows backends, Wayland portal design and keyboard-map change tracking. [#301](https://github.com/0xPlayerOne/bun-native/issues/301).                                   |
-| System menus      | Capability `systemMenus`; unavailable                         | Unavailable                                         | Unavailable                  | Unavailable                  | Typed action identities, owned menu lifetime, keyboard/accessibility behavior and safe action revocation. [#239](https://github.com/0xPlayerOne/bun-native/issues/239).         |
-| Dialogs           | Capability `dialogs`; unavailable                             | Unavailable                                         | Unavailable                  | Unavailable                  | Owned-window modality, explicit cancellation, shutdown and file selection distinct from a file grant. [#239](https://github.com/0xPlayerOne/bun-native/issues/239).             |
-| Notifications     | `postNotification`; `notifications` grant                     | Freedesktop D-Bus (dunst) dev+AOT verified          | Unavailable                  | Unavailable                  | macOS/Windows backends, additional notification servers, named actions and replacement. [#302](https://github.com/0xPlayerOne/bun-native/issues/302).                           |
-| Drag/drop         | Capability `dragDrop`; unavailable                            | Unavailable                                         | Unavailable                  | Unavailable                  | Bounded untrusted payload, owned target, native cancellation and explicit file-grant conversion. [#303](https://github.com/0xPlayerOne/bun-native/issues/303).                  |
-| Filesystem grants | `openFileGrant`; `filesystemRoots` launch roots               | openat2 dev+AOT verified locally                    | Unavailable                  | Unavailable                  | OS file selection and dropped files as explicit user grants, macOS/Windows confinement. [#304](https://github.com/0xPlayerOne/bun-native/issues/304).                           |
-| PTY/process       | Capability `ptyProcess`; unavailable                          | Unavailable                                         | Unavailable                  | Unavailable                  | Executable/argument/environment policy, bounded streams, process identity, interruption and joined child cleanup. [#305](https://github.com/0xPlayerOne/bun-native/issues/305). |
+| Service           | Current public surface                                        | Linux X11                                                                                           | macOS                                             | Windows                                 | Required scope before exposing more operations                                                                                                                                                            |
+| ----------------- | ------------------------------------------------------------- | --------------------------------------------------------------------------------------------------- | ------------------------------------------------- | --------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Window/display    | Existing owned open/close; permission-gated `displaySnapshot` | Core/Solid/React dev+AOT verified with release host; X11 semantics fixture dev+AOT verified locally | Service execution unverified                      | Service execution unverified            | X11 semantics qualified; change events, work area, identity and mixed DPI unavailable on X11. Other platforms and placement remain. [#299](https://github.com/0xPlayerOne/bun-native/issues/299).         |
+| Clipboard text    | `readClipboardText` / `writeClipboardText`; separate grants   | X11 dev+AOT verified with release host                                                              | Unavailable                                       | Unavailable                             | Additional platforms/formats and extended lifecycle coverage. [#300](https://github.com/0xPlayerOne/bun-native/issues/300).                                                                               |
+| Global shortcuts  | `registerGlobalShortcut`; `globalShortcuts` grant             | X11 dev+AOT verified with release host                                                              | Unavailable                                       | Unavailable                             | macOS/Windows backends, Wayland portal design and keyboard-map change tracking. [#301](https://github.com/0xPlayerOne/bun-native/issues/301).                                                             |
+| System menus      | Capability `systemMenus`; unavailable                         | Unavailable                                                                                         | Unavailable                                       | Unavailable                             | Typed action identities, owned menu lifetime, keyboard/accessibility behavior and safe action revocation. [#239](https://github.com/0xPlayerOne/bun-native/issues/239).                                   |
+| File dialogs      | `showOpenDialog` / `showSaveDialog`; `fileDialogs` grant      | xdg-desktop-portal (GTK) dev+AOT verified                                                           | Unavailable                                       | Unavailable                             | macOS/Windows panels, Wayland parenting, sandboxed document-portal paths and explicit file-grant conversion. [#239](https://github.com/0xPlayerOne/bun-native/issues/239).                                |
+| Message dialogs   | Capability `messageDialogs`; unavailable                      | Unavailable (no portal; use a modal overlay)                                                        | Unavailable                                       | Unavailable                             | Native `NSAlert`/task dialogs with owned modality, programmatic close and qualification. [#239](https://github.com/0xPlayerOne/bun-native/issues/239).                                                    |
+| Notifications     | `postNotification`; `notifications` grant                     | Freedesktop D-Bus (dunst) dev+AOT verified                                                          | Unavailable                                       | Unavailable                             | macOS/Windows backends, additional notification servers, named actions and replacement. [#302](https://github.com/0xPlayerOne/bun-native/issues/302).                                                     |
+| Drag/drop         | `registerDropTarget`; `dragDrop` grant                        | XDND dev+AOT verified locally (core/Solid/React)                                                    | AppKit; hosted CI only (NSDraggingSession source) | OLE; hosted CI only (DoDragDrop source) | Other payload kinds and file promises, refusal (GPUI always accepts), Wayland, physical devices and real file managers, Windows resolution. [#303](https://github.com/0xPlayerOne/bun-native/issues/303). |
+| Filesystem grants | `openFileGrant`; `filesystemRoots` launch roots               | openat2 dev+AOT verified locally                                                                    | `openat` walk; CI-only                            | Unavailable                             | OS file selection and dropped files as explicit user grants, Windows confinement. [#304](https://github.com/0xPlayerOne/bun-native/issues/304).                                                           |
+| PTY/process       | `spawnProcess`; `processes` launch executables                | Pipes and PTY dev+AOT verified locally                                                              | Dev+AOT in CI only; no `cwd`                      | Unavailable                             | macOS `cwd`, Windows backend (ConPTY), descendants that leave the group, resource limits. [#305](https://github.com/0xPlayerOne/bun-native/issues/305).                                                   |
 
 For the deferred rows, the exported typed contract is the frozen availability
 record in `ServiceCapabilities`. There is no callable operation, configurable
@@ -424,8 +817,8 @@ The Adea port [#250](https://github.com/0xPlayerOne/bun-native/issues/250) must
 gate terminal/file features on these explicit statuses.
 [Filesystem grants #304](https://github.com/0xPlayerOne/bun-native/issues/304)
 and [PTY/process #305](https://github.com/0xPlayerOne/bun-native/issues/305)
-define the implementation path. Its future broker
-should accept validated executable/argument arrays and scoped file handles;
+define the implementation path: the process service accepts validated
+executable IDs, argument arrays and scoped file handles;
 displayed terminal text, model output or a dropped pathname must never create
 authority by itself. An application choosing ordinary Bun process/filesystem
 APIs uses its own trusted authority and must not describe that as a native

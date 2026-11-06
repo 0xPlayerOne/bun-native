@@ -21,6 +21,8 @@ fn input_tree() -> Tree {
                     element: Element::Input {
                         value: String::new(),
                         placeholder: String::new(),
+                        disabled: false,
+                        read_only: false,
                         style: Style::default(),
                     },
                 },

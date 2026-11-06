@@ -1,17 +1,33 @@
-import { parseElement, type Element, type Limits, type Operation } from '@bun-native/protocol'
+import {
+  DECORATION_FIELDS,
+  MAX_OVERLAY_DEPTH,
+  MAX_SCROLL_OFFSET,
+  parseElement,
+  type Capability,
+  type Element,
+  type Limits,
+  type Operation,
+  type Style,
+} from '@bun-native/protocol'
 import {
   NativeStateError,
   UnsupportedFeatureError,
+  type ContainerKind,
   type ElementKind,
   type NativeBatch,
   type NativeNode,
+  type ScrollOffset,
 } from './types.ts'
 
 const identities = new WeakMap<NativeNode, number>()
 const encoder = new TextEncoder()
 // Normalized elements are replaced, never mutated, so their size is stable.
 const textSizes = new WeakMap<Element, readonly number[]>()
-const elementKinds: readonly string[] = ['box', 'text', 'button', 'input']
+const elementKinds: readonly string[] = ['box', 'text', 'button', 'input', 'split', 'overlay']
+const isContainer = (element: Element) =>
+  element.kind === 'box' || element.kind === 'split' || element.kind === 'overlay'
+/** Splits and overlays carry placement rules that the incremental check leaves to the full walk. */
+const layered = (element: Element) => element.kind === 'split' || element.kind === 'overlay'
 
 function normalize(element: Element): Element {
   if (
@@ -22,6 +38,63 @@ function normalize(element: Element): Element {
   )
     throw new UnsupportedFeatureError('element:' + element.kind)
   return parseElement(element)
+}
+
+/** Optional element features fail locally instead of reaching a host that lacks them. */
+function supported(element: Element, capabilities: readonly Capability[]): Element {
+  if (element.kind === 'split' && !capabilities.includes('split_v1'))
+    throw new UnsupportedFeatureError('element:split')
+  if (element.kind === 'overlay' && !capabilities.includes('overlays_v1'))
+    throw new UnsupportedFeatureError('element:overlay')
+  const style: Style = element.style ?? {}
+  if (
+    !capabilities.includes('style_decoration_v1') &&
+    DECORATION_FIELDS.some((field) => style[field] !== undefined)
+  )
+    throw new UnsupportedFeatureError('style:decoration')
+  if (
+    (element.kind === 'box' || element.kind === 'overlay') &&
+    element.style?.scroll_anchor !== undefined &&
+    !capabilities.includes('scroll_anchor_v1')
+  )
+    throw new UnsupportedFeatureError('style:scroll_anchor')
+  if (
+    element.kind === 'overlay' &&
+    (element.autofocus !== undefined || element.navigation !== undefined) &&
+    !capabilities.includes('overlay_keyboard_v1')
+  )
+    throw new UnsupportedFeatureError(
+      element.autofocus === undefined ? 'overlay:navigation' : 'overlay:autofocus'
+    )
+  if (
+    element.kind === 'overlay' &&
+    element.surface === 'window' &&
+    !capabilities.includes('popup_windows_v1')
+  )
+    throw new UnsupportedFeatureError('overlay:surface_window')
+  if (
+    element.kind === 'input' &&
+    (element.disabled === true || element.read_only === true) &&
+    !capabilities.includes('input_states_v1')
+  )
+    throw new UnsupportedFeatureError('input:' + (element.disabled ? 'disabled' : 'read_only'))
+  return element
+}
+
+function requireCapability(
+  capabilities: readonly Capability[],
+  capability: Capability,
+  feature: string
+) {
+  if (!capabilities.includes(capability)) throw new UnsupportedFeatureError(feature)
+}
+
+/** A focus or scroll request checked against the final candidate tree. */
+type Request = {
+  type: 'focus' | 'scroll_to' | 'scroll_into_view'
+  id: number
+  x?: number
+  y?: number
 }
 
 export interface NodeState {
@@ -74,9 +147,9 @@ function textSizesOf(element: Element): readonly number[] {
     const texts =
       element.kind === 'input'
         ? [element.value, element.placeholder ?? '']
-        : element.kind === 'box'
-          ? []
-          : [element.text]
+        : 'text' in element
+          ? [element.text]
+          : []
     sizes = texts.map((text) => encoder.encode(text).byteLength)
     textSizes.set(element, sizes)
   }
@@ -185,6 +258,7 @@ class Overlay implements ReadonlyMap<number, NodeState> {
 export class Transaction implements NativeBatch {
   readonly nodes: Overlay
   readonly operations: Operation[] = []
+  private readonly requests: Request[] = []
   /** Created and moved nodes: the only places a batch can break ownership or depth. */
   private readonly attached: number[] = []
   private active = true
@@ -195,6 +269,7 @@ export class Transaction implements NativeBatch {
     private readonly rootId: number,
     private readonly allocateId: () => number,
     private readonly limits: Readonly<Limits>,
+    private readonly capabilities: readonly Capability[],
     private readonly text: CommittedText
   ) {
     this.nodes = new Overlay(current)
@@ -224,7 +299,7 @@ export class Transaction implements NativeBatch {
     this.check()
     if (this.nodes.size >= this.limits.max_nodes_per_window)
       throw new NativeStateError('limit_exceeded', 'Window node limit exceeded')
-    const normalized = normalize(element)
+    const normalized = supported(normalize(element), this.capabilities)
     const node = makeNode(this.allocateId(), normalized)
     this.nodes.write(node)
     this.attached.push(node.id)
@@ -244,7 +319,7 @@ export class Transaction implements NativeBatch {
   set(handle: NativeNode, value: Element, expectedInputRevision?: number): void {
     this.check()
     const node = this.writable(own(this.nodes, handle))
-    const element = normalize(value)
+    const element = supported(normalize(value), this.capabilities)
     if (element.kind !== node.element.kind)
       throw new NativeStateError(
         'invalid_state',
@@ -274,16 +349,18 @@ export class Transaction implements NativeBatch {
       this.operations.push({ type: 'set', node_id: node.id, element })
     }
     node.element = element
+    // An overlay's surface decides what its subtree may hold.
+    if (element.kind === 'overlay') this.attached.push(node.id)
   }
 
-  insert(parentHandle: NativeNode<'box'>, childHandle: NativeNode, index: number): void {
+  insert(parentHandle: NativeNode<ContainerKind>, childHandle: NativeNode, index: number): void {
     this.check()
     let parent = own(this.nodes, parentHandle)
     let child = own(this.nodes, childHandle)
-    if (parent.element.kind !== 'box' || child.id === this.rootId)
+    if (!isContainer(parent.element) || child.id === this.rootId)
       throw new NativeStateError(
         'invalid_state',
-        'Only boxes accept children and the root cannot move'
+        'Only boxes, splits and overlays accept children and the root cannot move'
       )
     let ancestor: NodeState | undefined = parent
     while (ancestor) {
@@ -306,7 +383,7 @@ export class Transaction implements NativeBatch {
     this.operations.push({ type: 'insert', parent_id: parent.id, child_id: child.id, index })
   }
 
-  append(parentHandle: NativeNode<'box'>, childHandle: NativeNode): void {
+  append(parentHandle: NativeNode<ContainerKind>, childHandle: NativeNode): void {
     const parent = own(this.nodes, parentHandle)
     const child = own(this.nodes, childHandle)
     this.insert(
@@ -332,6 +409,99 @@ export class Transaction implements NativeBatch {
       this.nodes.delete(id)
     }
     this.operations.push({ type: 'delete', node_id: node.id })
+  }
+
+  focus(handle: NativeNode<'button' | 'input'>): void {
+    this.check()
+    requireCapability(this.capabilities, 'focus_v1', 'operation:focus')
+    const node = own(this.nodes, handle)
+    this.requests.push({ type: 'focus', id: node.id })
+    this.operations.push({ type: 'focus', node_id: node.id })
+  }
+
+  scrollTo(handle: NativeNode<ContainerKind>, offset: ScrollOffset): void {
+    this.check()
+    requireCapability(this.capabilities, 'scroll_control_v1', 'operation:scroll_to')
+    const node = own(this.nodes, handle)
+    if (offset === null || typeof offset !== 'object')
+      throw new TypeError('A scroll offset must be an object')
+    const axes: { x?: number; y?: number } = {}
+    for (const axis of ['x', 'y'] as const) {
+      const value = offset[axis]
+      if (value === undefined) continue
+      if (
+        typeof value !== 'number' ||
+        !Number.isFinite(value) ||
+        value < 0 ||
+        value > MAX_SCROLL_OFFSET
+      )
+        throw new RangeError('Scroll offsets must be finite and between 0 and ' + MAX_SCROLL_OFFSET)
+      axes[axis] = value
+    }
+    if (axes.x === undefined && axes.y === undefined)
+      throw new TypeError('A scroll offset requires x or y')
+    this.requests.push({ type: 'scroll_to', id: node.id, ...axes })
+    this.operations.push({ type: 'scroll_to', node_id: node.id, ...axes })
+  }
+
+  scrollIntoView(handle: NativeNode): void {
+    this.check()
+    requireCapability(this.capabilities, 'scroll_control_v1', 'operation:scroll_into_view')
+    const node = own(this.nodes, handle)
+    this.requests.push({ type: 'scroll_into_view', id: node.id })
+    this.operations.push({ type: 'scroll_into_view', node_id: node.id })
+  }
+
+  /** The modal overlay highest in paint order: deepest, then later in tree order. */
+  private activeModal(): number | undefined {
+    let active: { depth: number; id: number } | undefined
+    const pending = [{ id: this.rootId, outer: 0 }]
+    while (pending.length) {
+      const { id, outer } = pending.pop()!
+      const node = this.nodes.get(id)!
+      let depth = outer
+      if (node.element.kind === 'overlay') {
+        depth += 1
+        if (node.element.modal && (!active || depth >= active.depth)) active = { depth, id }
+      }
+      for (let index = node.children.length - 1; index >= 0; index -= 1)
+        pending.push({ id: node.children[index]!, outer: depth })
+    }
+    return active?.id
+  }
+
+  private validateRequests(): void {
+    for (const request of this.requests) {
+      const node = this.nodes.get(request.id)
+      if (!node)
+        throw new NativeStateError('invalid_handle', 'Request target is removed by this batch')
+      const element = node.element
+      if (request.type === 'focus') {
+        if (element.kind !== 'input' && (element.kind !== 'button' || element.disabled))
+          throw new NativeStateError(
+            'invalid_state',
+            'Only an enabled button or an input can take focus'
+          )
+        const modal = this.activeModal()
+        let ancestor: NodeState | undefined = node
+        while (modal !== undefined && ancestor && ancestor.id !== modal)
+          ancestor = ancestor.parent === undefined ? undefined : this.nodes.get(ancestor.parent)
+        if (modal !== undefined && !ancestor)
+          throw new NativeStateError(
+            'invalid_state',
+            'Focus target is outside the active modal overlay'
+          )
+      } else if (request.type === 'scroll_to') {
+        const overflow = isContainer(element) ? element.style?.overflow : undefined
+        const horizontal = overflow === 'scroll_x' || overflow === 'scroll'
+        const vertical = overflow === 'scroll_y' || overflow === 'scroll'
+        if ((request.x !== undefined && !horizontal) || (request.y !== undefined && !vertical))
+          throw new NativeStateError(
+            'invalid_state',
+            'scrollTo requires a container scrolling on each given axis'
+          )
+      }
+    }
   }
 
   /**
@@ -388,8 +558,10 @@ export class Transaction implements NativeBatch {
       let top = nodes.get(id)
       if (!top || seen.has(id)) continue
       let depth = 0
+      if (layered(top.element)) return this.walk()
       while (top.parent !== undefined) {
         top = nodes.get(top.parent)!
+        if (layered(top.element)) return this.walk()
         depth += 1
       }
       if (top.id !== this.rootId) return this.walk()
@@ -400,39 +572,54 @@ export class Transaction implements NativeBatch {
         if (level > limits.max_depth) return this.walk()
         if (seen.has(next)) continue
         seen.add(next)
-        for (const child of nodes.get(next)!.children) pending.push(child, level + 1)
+        const state = nodes.get(next)!
+        if (layered(state.element)) return this.walk()
+        for (const child of state.children) pending.push(child, level + 1)
       }
     }
+    this.validateRequests()
   }
 
   private walk(): void {
     let seen = 0
     let bytes = 0
-    // Breadth-first, one level at a time, so the depth needs no per-node record.
-    let level = [this.rootId]
-    for (let depth = 0; level.length; depth += 1) {
+    // `popup` marks content beneath a popup window surface: keyboard focus
+    // stays on the parent window, so it holds no editor or further layer.
+    const pending = [{ id: this.rootId, depth: 0, overlays: 0, popup: false }]
+    for (const { id, depth, overlays: outer, popup: inPopup } of pending) {
       if (depth > this.limits.max_depth)
         throw new NativeStateError('limit_exceeded', 'Native tree depth limit exceeded')
-      const next: number[] = []
-      for (const id of level) {
-        const node = this.nodes.get(id)!
-        seen += 1
-        for (const size of textSizesOf(node.element)) {
-          if (size > this.limits.max_text_bytes)
-            throw new NativeStateError('limit_exceeded', 'Native text limit exceeded')
-          bytes += size
-        }
-        if (bytes > this.limits.max_text_bytes_per_window)
-          throw new NativeStateError('limit_exceeded', 'Window text memory limit exceeded')
-        for (const child of node.children) next.push(child)
+      const node = this.nodes.get(id)!
+      seen += 1
+      const element = node.element
+      if (element.kind === 'split' && node.children.length > 2)
+        throw new NativeStateError('limit_exceeded', 'A split owns at most two panes')
+      const overlays = outer + (element.kind === 'overlay' ? 1 : 0)
+      if (overlays > MAX_OVERLAY_DEPTH)
+        throw new NativeStateError('limit_exceeded', 'Overlay nesting limit exceeded')
+      if (inPopup && (element.kind === 'input' || element.kind === 'overlay'))
+        throw new NativeStateError(
+          'invalid_state',
+          'Popup window content cannot contain inputs or overlays'
+        )
+      const popup = inPopup || (element.kind === 'overlay' && element.surface === 'window')
+      for (const size of textSizesOf(element)) {
+        if (size > this.limits.max_text_bytes)
+          throw new NativeStateError('limit_exceeded', 'Native text limit exceeded')
+        bytes += size
       }
-      level = next
+      if (bytes > this.limits.max_text_bytes_per_window)
+        throw new NativeStateError('limit_exceeded', 'Window text memory limit exceeded')
+      pending.push(
+        ...node.children.map((child) => ({ id: child, depth: depth + 1, overlays, popup }))
+      )
     }
     if (seen !== this.nodes.size)
       throw new NativeStateError(
         'invalid_state',
         'Every created node must be attached before commit'
       )
+    this.validateRequests()
   }
 
   /**

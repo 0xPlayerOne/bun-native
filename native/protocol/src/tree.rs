@@ -2,8 +2,9 @@
 //! successful preparation, so invalid input cannot partially alter a window.
 
 use crate::{
-    validate_text, Element, ErrorCode, NodeId, Operation, Style, MAX_DEPTH, MAX_ID,
-    MAX_NODES_PER_WINDOW, MAX_OPERATIONS, MAX_TEXT_BYTES_PER_WINDOW,
+    validate_text, Element, ErrorCode, NodeId, Operation, Overflow, OverlaySurface, Style,
+    MAX_DEPTH, MAX_ID, MAX_NODES_PER_WINDOW, MAX_OPERATIONS, MAX_OVERLAY_DEPTH,
+    MAX_TEXT_BYTES_PER_WINDOW,
 };
 use nodes::NodeMap;
 use serde::Serialize;
@@ -63,10 +64,24 @@ pub struct BatchMetrics {
     pub preflight_nanos: u64,
 }
 
+/// A focus or scroll request validated against the batch's final tree. The
+/// native view applies requests in order after the tree commit.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum ViewRequest {
+    Focus(NodeId),
+    ScrollTo {
+        node_id: NodeId,
+        x: Option<f64>,
+        y: Option<f64>,
+    },
+    ScrollIntoView(NodeId),
+}
+
 pub struct PreparedBatch {
     pub tree: Tree,
     pub last_node_id: u64,
     pub metrics: BatchMetrics,
+    pub requests: Vec<ViewRequest>,
 }
 
 fn error(code: ErrorCode, message: &'static str) -> ModelError {
@@ -202,8 +217,10 @@ impl Tree {
         // and keeps sharing every untouched node and element `Arc`.
         let mut next = self.clone();
         // Created and moved nodes: the only places a batch can break the
-        // committed, already validated ownership graph.
+        // committed, already validated ownership graph. A `set` of an overlay
+        // is included because its surface decides what its subtree may hold.
         let mut attached = Vec::new();
+        let mut requests = Vec::new();
         for operation in operations {
             match operation {
                 Operation::Create { node_id, element } => {
@@ -278,7 +295,11 @@ impl Tree {
                     next.text_bytes = text_budget(
                         next.text_bytes - node.element.text_bytes() + element.text_bytes(),
                     )?;
+                    let overlay = matches!(element, Element::Overlay { .. });
                     node.element = Arc::new(element);
+                    if overlay {
+                        attached.push(node_id);
+                    }
                 }
                 Operation::Insert {
                     parent_id,
@@ -289,11 +310,21 @@ impl Tree {
                     attached.push(child_id);
                 }
                 Operation::Delete { node_id } => next.delete(node_id)?,
+                Operation::Focus { node_id } => requests.push(ViewRequest::Focus(node_id)),
+                Operation::ScrollTo { node_id, x, y } => {
+                    requests.push(ViewRequest::ScrollTo { node_id, x, y })
+                }
+                Operation::ScrollIntoView { node_id } => {
+                    requests.push(ViewRequest::ScrollIntoView(node_id))
+                }
             }
         }
         let verdict = next.validate_attached(&attached);
         debug_assert_eq!(verdict, next.validate_graph());
         verdict?;
+        for request in &requests {
+            next.validate_request(*request)?;
+        }
         next.revision = next_revision(self.revision)?;
         let metrics = BatchMetrics {
             operation_count,
@@ -306,7 +337,87 @@ impl Tree {
             tree: next,
             last_node_id,
             metrics,
+            requests,
         })
+    }
+
+    /// The modal overlay highest in paint order: deepest nesting first, then
+    /// the later one in tree pre-order. Focus and Tab order stay inside it.
+    pub fn active_modal(&self) -> Option<NodeId> {
+        let mut active: Option<(usize, NodeId)> = None;
+        let mut pending = vec![(self.root_id, 0)];
+        while let Some((id, outer)) = pending.pop() {
+            let Some(node) = self.nodes.get(id) else {
+                continue;
+            };
+            let depth = match node.element.as_ref() {
+                Element::Overlay { modal, .. } => {
+                    if *modal && active.is_none_or(|(depth, _)| outer + 1 >= depth) {
+                        active = Some((outer + 1, id));
+                    }
+                    outer + 1
+                }
+                _ => outer,
+            };
+            pending.extend(node.children.iter().rev().map(|child| (*child, depth)));
+        }
+        active.map(|(_, id)| id)
+    }
+
+    fn validate_request(&self, request: ViewRequest) -> Result<(), ModelError> {
+        match request {
+            ViewRequest::Focus(node_id) => {
+                let node = self.nodes.get(node_id).ok_or_else(invalid_handle)?;
+                if !matches!(
+                    node.element.as_ref(),
+                    Element::Button {
+                        disabled: false,
+                        ..
+                    } | Element::Input { .. }
+                ) {
+                    return Err(error(
+                        ErrorCode::InvalidState,
+                        "only an enabled button or an input can take focus",
+                    ));
+                }
+                let path = self.path(node_id).unwrap_or_default();
+                if self
+                    .active_modal()
+                    .is_some_and(|modal| !path.contains(&modal))
+                {
+                    return Err(error(
+                        ErrorCode::InvalidState,
+                        "focus target is outside the active modal overlay",
+                    ));
+                }
+            }
+            ViewRequest::ScrollTo { node_id, x, y } => {
+                let node = self.nodes.get(node_id).ok_or_else(invalid_handle)?;
+                let overflow = node.element.style().overflow;
+                if !overflow.is_some_and(Overflow::scrolls) {
+                    return Err(error(
+                        ErrorCode::InvalidState,
+                        "scroll_to requires a scrolling container",
+                    ));
+                }
+                // Offsets were bounded when the command was decoded.
+                for (value, axes) in [
+                    (x, [Overflow::ScrollX, Overflow::Scroll]),
+                    (y, [Overflow::ScrollY, Overflow::Scroll]),
+                ] {
+                    if value.is_some() && !overflow.is_some_and(|mode| axes.contains(&mode)) {
+                        return Err(error(
+                            ErrorCode::InvalidState,
+                            "scroll_to axis does not scroll on this container",
+                        ));
+                    }
+                }
+            }
+            ViewRequest::ScrollIntoView(node_id) => {
+                self.nodes.get(node_id).ok_or_else(invalid_handle)?;
+            }
+        }
+        Ok(())
     }
 
     /// Native editing advances only this input's revision, so typing cannot
@@ -342,10 +453,10 @@ impl Tree {
         index: usize,
     ) -> Result<(), ModelError> {
         let parent = self.nodes.get(parent_id).ok_or_else(invalid_handle)?;
-        if !matches!(parent.element.as_ref(), Element::Box { .. }) {
+        if !parent.element.is_container() {
             return Err(error(
                 ErrorCode::InvalidState,
-                "only box elements can own children",
+                "only box, split and overlay elements can own children",
             ));
         }
         if child_id == self.root_id {
@@ -436,9 +547,13 @@ impl Tree {
             }
             let mut depth = 0;
             let mut top = id;
+            // Overlay layers and the popup flag come from the ancestors, so a
+            // subtree is checked exactly as the walk from the root would.
+            let mut layers = Vec::new();
             while let Some(parent) = self.nodes.get(top).ok_or_else(invalid_handle)?.parent {
                 depth += 1;
                 top = parent;
+                layers.push(top);
                 if depth > self.nodes.len() {
                     return Err(error(
                         ErrorCode::InvalidState,
@@ -450,14 +565,30 @@ impl Tree {
                 detached = true;
                 continue;
             }
-            pending.push((id, depth));
-            while let Some((id, depth)) = pending.pop() {
+            let (mut overlays, mut popup) = (0, false);
+            for ancestor in layers.iter().rev() {
+                let node = self.nodes.get(*ancestor).ok_or_else(invalid_handle)?;
+                (overlays, popup) = check_node(node, overlays, popup)?;
+            }
+            if let Some(parent) = layers.first() {
+                let parent = self.nodes.get(*parent).ok_or_else(invalid_handle)?;
+                if parent.children.len() > parent.element.max_children() {
+                    return Err(split_panes());
+                }
+            }
+            pending.push((id, depth, overlays, popup));
+            while let Some((id, depth, overlays, popup)) = pending.pop() {
                 if depth > MAX_DEPTH {
                     return Err(too_deep());
                 }
                 if seen.insert(id) {
                     let node = self.nodes.get(id).ok_or_else(invalid_handle)?;
-                    pending.extend(node.children.iter().map(|child| (*child, depth + 1)));
+                    let (overlays, popup) = check_node(node, overlays, popup)?;
+                    pending.extend(
+                        node.children
+                            .iter()
+                            .map(|child| (*child, depth + 1, overlays, popup)),
+                    );
                 }
             }
         }
@@ -474,8 +605,10 @@ impl Tree {
         // One sized allocation; the ordered set rebalanced per node and
         // dominated small-update preflight on large trees.
         let mut seen = HashSet::with_capacity(self.nodes.len());
-        let mut pending = vec![(self.root_id, None, 0)];
-        while let Some((id, parent, depth)) = pending.pop() {
+        // `popup` is set beneath a popup window surface, whose content holds
+        // no text editor (keyboard focus stays on the parent) or further layer.
+        let mut pending = vec![(self.root_id, None, 0, 0, false)];
+        while let Some((id, parent, depth, overlays, popup)) = pending.pop() {
             if depth > MAX_DEPTH {
                 return Err(error(
                     ErrorCode::LimitExceeded,
@@ -489,6 +622,7 @@ impl Tree {
                 ));
             }
             let node = self.nodes.get(id).ok_or_else(invalid_handle)?;
+            let (overlays, popup) = check_node(node, overlays, popup)?;
             if node.parent != parent {
                 return Err(error(
                     ErrorCode::InvalidState,
@@ -498,7 +632,7 @@ impl Tree {
             pending.extend(
                 node.children
                     .iter()
-                    .map(|child| (*child, Some(id), depth + 1)),
+                    .map(|child| (*child, Some(id), depth + 1, overlays, popup)),
             );
         }
         if seen.len() != self.nodes.len() {
@@ -509,6 +643,46 @@ impl Tree {
         }
         Ok(())
     }
+}
+
+fn split_panes() -> ModelError {
+    error(ErrorCode::LimitExceeded, "a split owns at most two panes")
+}
+
+/// What one node requires of its position: its own child count, overlay
+/// nesting and popup content. Returns the overlay layers and popup flag its
+/// children inherit.
+fn check_node(node: &Node, overlays: usize, popup: bool) -> Result<(usize, bool), ModelError> {
+    if node.children.len() > node.element.max_children() {
+        return Err(split_panes());
+    }
+    let overlays = overlays + usize::from(matches!(*node.element, Element::Overlay { .. }));
+    if overlays > MAX_OVERLAY_DEPTH {
+        return Err(error(
+            ErrorCode::LimitExceeded,
+            "overlay nesting exceeds 8 layers",
+        ));
+    }
+    if popup
+        && matches!(
+            *node.element,
+            Element::Input { .. } | Element::Overlay { .. }
+        )
+    {
+        return Err(error(
+            ErrorCode::InvalidState,
+            "popup window content cannot contain inputs or overlays",
+        ));
+    }
+    let popup = popup
+        || matches!(
+            *node.element,
+            Element::Overlay {
+                surface: OverlaySurface::Window,
+                ..
+            }
+        );
+    Ok((overlays, popup))
 }
 
 mod nodes;

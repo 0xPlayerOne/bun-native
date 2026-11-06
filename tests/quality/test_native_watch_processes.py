@@ -3,6 +3,7 @@
 import importlib.util
 import io
 import json
+import os
 import subprocess
 import tempfile
 import threading
@@ -207,6 +208,15 @@ class CaptureTests(unittest.TestCase):
         self.assertEqual((self.root / "watch.log").read_bytes(), b"previous")
         with self.assertRaises(RuntimeError):
             capture.snapshot()
+
+
+class ProcessImageTests(unittest.TestCase):
+    def test_hidden_and_vanished_images_never_look_like_the_host(self):
+        with patch.object(PROCESS.Path, "resolve", side_effect=PermissionError):
+            self.assertEqual(PROCESS.process_image(7), "")
+        with patch.object(PROCESS.Path, "resolve", side_effect=FileNotFoundError):
+            self.assertIsNone(PROCESS.process_image(7))
+        self.assertTrue(PROCESS.process_image(os.getpid()).startswith("/"))
 
 
 class ProcessAuditTests(unittest.TestCase):

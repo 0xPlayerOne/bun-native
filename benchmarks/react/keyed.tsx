@@ -22,6 +22,9 @@ function fakeWindow(): NativeWindow {
     insert: () => {},
     append: () => {},
     remove: () => {},
+    focus: () => {},
+    scrollTo: () => {},
+    scrollIntoView: () => {},
   }
   return {
     root: handle('box'),

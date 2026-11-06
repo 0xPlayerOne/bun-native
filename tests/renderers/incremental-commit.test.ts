@@ -87,6 +87,9 @@ function modelWindow() {
             release(model)
           })
         },
+        focus: () => {},
+        scrollTo: () => {},
+        scrollIntoView: () => {},
       }
       const result = update(batch)
       for (const apply of pending) apply()

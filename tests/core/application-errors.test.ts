@@ -130,7 +130,7 @@ describe('application error paths (scripted headless subprocess)', () => {
         window.batch((batch) =>
           batch.append(label as unknown as NativeNode<'box'>, batch.create({ kind: 'box' }))
         ),
-        /Only boxes accept children and the root cannot move/
+        /Only boxes, splits and overlays accept children and the root cannot move/
       )
       await assert.rejects(
         window.batch((batch) => {

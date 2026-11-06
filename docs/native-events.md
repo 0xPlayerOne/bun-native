@@ -2,7 +2,7 @@
 
 This implements the shared native event foundation for [BN2 #234](https://github.com/0xPlayerOne/bun-native/issues/234). The GPUI host, protocol and public core own one event implementation. Solid and React map their listener props to that public API; they do not create native event backends or reconstruct a DOM.
 
-This contract was introduced in protocol 4. The [current native protocol](native-abi.md) still requires `interactions_v1` together with `tree`, `input_revisions`, `layout_v1` and `window_display_v1`; hosts that do not negotiate that exact protocol and capability set fail before a window opens. Rebuild and pin packages and the prebuilt native executable together. Historical protocol-2/3 artifacts remain evidence for their original revisions, not for this event contract.
+Protocol **4** requires `interactions_v1` together with `tree`, `input_revisions` and `layout_v1`. Earlier hosts are incompatible and fail negotiation before a window opens. Rebuild and pin packages and the prebuilt native executable together. Historical protocol-2/3 artifacts remain evidence for their original revisions, not for the new event contract.
 
 ## Public listener contract
 
@@ -52,13 +52,14 @@ The runtime cannot terminate arbitrary user JavaScript that ignores cancellation
 
 ## Observed native fields
 
-| Event                        | Additional public fields               | Native meaning                                                                                                 |
-| ---------------------------- | -------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
-| `click`                      | None                                   | Logical enabled-button activation through pointer or its native keyboard action.                               |
-| `input`                      | `value`, `revision`                    | Accepted native content change and its independent input revision. Selection-only changes do not increment it. |
-| `key_down`, `key_up`         | `key`, optional `keyChar`, `modifiers` | GPUI logical key identity and optional logical text. `keyChar` is not committed text or an IME notification.   |
-| `pointer_down`, `pointer_up` | `button`, `x`, `y`, `modifiers`        | Native hit-tested target; coordinates are logical pixels relative to the owned window.                         |
-| `focus`, `blur`              | None                                   | Observed native control focus transitions. They can arrive during GPUI's subsequent focus/render phase.        |
+| Event                        | Additional public fields               | Native meaning                                                                                                   |
+| ---------------------------- | -------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
+| `click`                      | None                                   | Logical enabled-button activation through pointer or its native keyboard action.                                 |
+| `input`                      | `value`, `revision`                    | Accepted native content change and its independent input revision. Selection-only changes do not increment it.   |
+| `key_down`, `key_up`         | `key`, optional `keyChar`, `modifiers` | GPUI logical key identity and optional logical text. `keyChar` is not committed text or an IME notification.     |
+| `pointer_down`, `pointer_up` | `button`, `x`, `y`, `modifiers`        | Native hit-tested target; coordinates are logical pixels relative to the owned window.                           |
+| `focus`, `blur`              | None                                   | Observed native control focus transitions. They can arrive during GPUI's subsequent focus/render phase.          |
+| `dismiss`                    | `reason` (`window_blur`)               | The host asks the application to close a popup window overlay (`popup_windows_v1`). Nothing is removed natively. |
 
 The five modifier fields are required booleans: `control`, `alt`, `shift`,
 `platform` and `function`. Supported pointer buttons are `left`, `right`,
@@ -86,9 +87,8 @@ synthesized merely because a listener was attached after focus occurred.
 
 Every node event has a native tree revision and a unique root-to-target route
 of at most 65 IDs. The existing maximum tree depth is 64 **edges**. All UI
-events, including window closure and the global-shortcut and notification
-service events, share one contiguous global sequence. A listener subscribed
-only to input or clicks sees an increasing subset with gaps.
+events, including window closure, share one contiguous global sequence. A
+listener subscribed only to input or clicks sees an increasing subset with gaps.
 
 The host commits a batch and queues its `applied` reply before a new-revision
 native event can be emitted. The core rejects impossible future revisions.
@@ -145,8 +145,11 @@ pixels, resize, restyle and joined cleanup in development and AOT. Its own
 changed-head hosted qualification remains pending under
 [#241](https://github.com/0xPlayerOne/bun-native/issues/241). The earlier short-input
 native evidence below belongs to its recorded source and is not relabeled as
-qualification of this change. RTL, complete IME, accessibility, physical input
-and HiDPI remain separate unsupported or unverified scope.
+qualification of this change. Grapheme editing, Hebrew input, dead-key
+composition, read-only/disabled states, Tab order, scale factor 2 and the AT-SPI
+tree have their own [native text support matrix](native-text.md). Full IME
+engines, RTL display/caret placement, screen reader speech, physical input and
+non-Linux platforms remain not run there.
 
 ## Reproduce actual native verification
 

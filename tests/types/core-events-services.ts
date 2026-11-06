@@ -163,7 +163,10 @@ export function checkErrors(error: unknown): string | undefined {
       | 'clipboard_write'
       | 'global_shortcuts'
       | 'notifications'
-      | 'filesystem_grants' = error.service
+      | 'filesystem_grants'
+      | 'processes'
+      | 'file_dialogs'
+      | 'drag_drop' = error.service
     return service + error.code
   }
   if (error instanceof NativeCommandError) {
@@ -241,7 +244,7 @@ export function checkCapabilities(app: NativeApplication): void {
     void backend
   }
   const menus: 'unavailable' = services.systemMenus.availability
-  const pty: 'not_implemented' = services.ptyProcess.reason
+  const pty: 'available' | 'unavailable' = services.ptyProcess.availability
   const diagnostics: number = app.diagnostics.serviceRequests + app.diagnostics.activeCallbacks
   const maxWindows: number = app.limits.max_windows
   void [menus, pty, diagnostics, maxWindows]

@@ -1,5 +1,5 @@
 //! No filesystem grant implementation is advertised on these targets: they
-//! lack the `openat2` confinement the Linux worker relies on.
+//! have neither Linux `openat2` nor the macOS per-name `openat` walk.
 
 use crate::channel::EventSink;
 use bun_native_protocol::{
@@ -8,6 +8,9 @@ use bun_native_protocol::{
 use gpui::{App, Task};
 
 type Failure = (ErrorCode, &'static str);
+
+/// No grant directory exists on these targets.
+pub(crate) struct Directory;
 
 #[derive(Clone)]
 pub(crate) struct Files;
@@ -54,6 +57,9 @@ impl Files {
             ErrorCode::InvalidHandle,
             "file grant is closed or is not owned by this window",
         ))
+    }
+    pub(crate) fn directory(&self, _window: WindowId, _grant: FileGrantId) -> Option<Directory> {
+        None
     }
     pub(crate) fn close_window(&self, _window: WindowId, _cx: &mut App) {}
     pub(crate) fn stop(&self, _cx: &mut App) -> Option<Task<()>> {

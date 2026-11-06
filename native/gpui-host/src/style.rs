@@ -1,7 +1,10 @@
 use bun_native_protocol::{
     AlignItems, Dimension, Direction, Element, JustifyContent, Overflow, Style,
 };
-use gpui::{Overflow as NativeOverflow, StyleRefinement, Styled, px, relative, rgb};
+use gpui::{
+    AbsoluteLength, BoxShadow, FontWeight, Overflow as NativeOverflow, StyleRefinement, Styled, px,
+    relative, rgb,
+};
 
 /// GPUI's `Styled` builders take the element by value, and a `Div` is over a
 /// kilobyte, so chaining them on the element itself copies it at every call.
@@ -21,7 +24,9 @@ pub(crate) fn element(target: &mut StyleRefinement, element: &Element, root: boo
     let base = InPlace(target).flex_shrink_0();
     let base = match element {
         Element::Box { .. } if root => base.size_full().flex().flex_col(),
-        Element::Box { .. } => base.flex().flex_col(),
+        Element::Box { .. } | Element::Overlay { .. } => base.flex().flex_col(),
+        // The style may turn the axis; a split lays out in a row otherwise.
+        Element::Split { .. } => base.flex().flex_row(),
         Element::Text { .. } => base,
         Element::Button { disabled, .. } => base
             .flex()
@@ -31,7 +36,9 @@ pub(crate) fn element(target: &mut StyleRefinement, element: &Element, root: boo
             .px(px(12.))
             .bg(rgb(if *disabled { 0x7a8396 } else { 0x2255cc }))
             .text_color(rgb(0xffffff)),
-        Element::Input { .. } => base.bg(rgb(0xffffff)),
+        Element::Input { disabled, .. } => {
+            base.bg(rgb(if *disabled { 0xe5e7eb } else { 0xffffff }))
+        }
     };
     apply(base, element.style());
 }
@@ -121,7 +128,48 @@ fn apply<T: Styled>(mut element: T, style: &Style) -> T {
     if let Some(size) = style.font_size {
         element = element.text_size(px(size as f32));
     }
+    if let Some(width) = style.border_width {
+        let width = AbsoluteLength::from(px(width as f32));
+        let edges = &mut element.style().border_widths;
+        edges.top = Some(width);
+        edges.right = Some(width);
+        edges.bottom = Some(width);
+        edges.left = Some(width);
+    }
+    if let Some(color) = style.border_color {
+        element.style().border_color = Some(rgb(color).into());
+    }
+    if let Some(radius) = style.corner_radius {
+        let radius = AbsoluteLength::from(px(radius as f32));
+        let corners = &mut element.style().corner_radii;
+        corners.top_left = Some(radius);
+        corners.top_right = Some(radius);
+        corners.bottom_right = Some(radius);
+        corners.bottom_left = Some(radius);
+    }
+    if let Some(opacity) = style.opacity {
+        element = element.opacity(opacity as f32);
+    }
+    if let Some(weight) = style.font_weight {
+        element = element.font_weight(FontWeight(weight as f32));
+    }
     element
+}
+
+/// The keyboard focus indicator: a 1-pixel white edge over a 2-pixel dark
+/// band, inset so ancestor clipping never hides it and layout never moves.
+/// The pair stays visible on light and dark control backgrounds alike.
+pub(crate) const FOCUS_RING_WIDTH: f32 = 3.;
+
+pub(crate) fn focus_ring() -> Vec<BoxShadow> {
+    vec![
+        BoxShadow::new(px(0.), px(0.), rgb(0x101828).into())
+            .spread_radius(px(FOCUS_RING_WIDTH))
+            .inset(),
+        BoxShadow::new(px(0.), px(0.), rgb(0xffffff).into())
+            .spread_radius(px(1.))
+            .inset(),
+    ]
 }
 
 #[cfg(test)]

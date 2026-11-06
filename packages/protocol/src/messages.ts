@@ -1,3 +1,9 @@
+import {
+  parseFileDialogOptions,
+  parseFileDialogResult,
+  type FileDialogOptions,
+  type FileDialogResult,
+} from './dialogs.ts'
 import { parseElement, type Element } from './elements.ts'
 import { MAX_FRAME_BYTES, ProtocolError } from './framing.ts'
 import {
@@ -31,6 +37,31 @@ import {
   type FileResult,
 } from './files.ts'
 import {
+  MAX_PROCESSES,
+  parseProcessExit,
+  parseProcessLaunch,
+  parseProcessOutput,
+  parseProcessSignal,
+  parseProcessStream,
+  parseTerminalSize,
+  type ProcessExit,
+  type ProcessLaunch,
+  type ProcessSignal,
+  type ProcessStream,
+  type TerminalSize,
+} from './processes.ts'
+import {
+  MAX_DROP_ITEMS,
+  MAX_DROP_TARGETS,
+  parseDragState,
+  parseDropItemIndex,
+  parseDroppedItems,
+  parseDropRejection,
+  type DragState,
+  type DroppedItem,
+  type DropRejection,
+} from './drops.ts'
+import {
   id,
   integer,
   keys,
@@ -41,7 +72,7 @@ import {
   string,
 } from './values.ts'
 
-export const PROTOCOL_VERSION = 9
+export const PROTOCOL_VERSION = 11
 export const MAX_OPERATIONS = 256
 const MAX_NODES_PER_WINDOW = 4_096
 const MAX_WINDOWS = 16
@@ -62,6 +93,9 @@ export interface Limits {
   max_notifications: number
   max_file_grants: number
   max_file_chunk_bytes: number
+  max_processes: number
+  max_drop_targets: number
+  max_drop_items: number
 }
 
 export const DEFAULT_LIMITS: Readonly<Limits> = Object.freeze({
@@ -78,11 +112,18 @@ export const DEFAULT_LIMITS: Readonly<Limits> = Object.freeze({
   max_notifications: MAX_NOTIFICATIONS,
   max_file_grants: MAX_FILE_GRANTS,
   max_file_chunk_bytes: MAX_FILE_CHUNK_BYTES,
+  max_processes: MAX_PROCESSES,
+  max_drop_targets: MAX_DROP_TARGETS,
+  max_drop_items: MAX_DROP_ITEMS,
 })
 
 export type Operation =
   | { type: 'create'; node_id: number; element: Element }
-  | { type: 'set'; node_id: number; element: Exclude<Element, { kind: 'input' }> }
+  | {
+      type: 'set'
+      node_id: number
+      element: Exclude<Element, { kind: 'input' }>
+    }
   | {
       type: 'set'
       node_id: number
@@ -91,6 +132,15 @@ export type Operation =
     }
   | { type: 'insert'; parent_id: number; child_id: number; index: number }
   | { type: 'delete'; node_id: number }
+  /** Requires `focus_v1`; applied after the batch's tree changes. */
+  | { type: 'focus'; node_id: number }
+  /** Requires `scroll_control_v1`; offsets from the content start, clamped natively. */
+  | { type: 'scroll_to'; node_id: number; x?: number; y?: number }
+  /** Requires `scroll_control_v1`. */
+  | { type: 'scroll_into_view'; node_id: number }
+
+/** Largest programmatic scroll offset, in logical pixels. */
+export const MAX_SCROLL_OFFSET = 1_000_000
 
 export type Command =
   | { id: number; type: 'hello'; protocol: typeof PROTOCOL_VERSION }
@@ -122,7 +172,12 @@ export type Command =
       key: string
       modifiers: ShortcutModifiers
     }
-  | { id: number; type: 'unregister_global_shortcut'; window_id: number; shortcut_id: number }
+  | {
+      id: number
+      type: 'unregister_global_shortcut'
+      window_id: number
+      shortcut_id: number
+    }
   | {
       id: number
       type: 'post_notification'
@@ -131,7 +186,12 @@ export type Command =
       title: string
       body: string
     }
-  | { id: number; type: 'withdraw_notification'; window_id: number; notification_id: number }
+  | {
+      id: number
+      type: 'withdraw_notification'
+      window_id: number
+      notification_id: number
+    }
   | {
       id: number
       type: 'open_file_grant'
@@ -140,7 +200,12 @@ export type Command =
       root: string
       access: FileAccess
     }
-  | { id: number; type: 'close_file_grant'; window_id: number; grant_id: number }
+  | {
+      id: number
+      type: 'close_file_grant'
+      window_id: number
+      grant_id: number
+    }
   | {
       id: number
       type: 'file_request'
@@ -148,6 +213,67 @@ export type Command =
       grant_id: number
       path: string
       operation: FileOperation
+    }
+  | {
+      id: number
+      type: 'spawn_process'
+      window_id: number
+      process_id: number
+      launch: ProcessLaunch
+    }
+  | { id: number; type: 'write_process'; window_id: number; process_id: number; data: string }
+  | { id: number; type: 'close_process_input'; window_id: number; process_id: number }
+  | {
+      id: number
+      type: 'resize_process'
+      window_id: number
+      process_id: number
+      size: TerminalSize
+    }
+  | {
+      id: number
+      type: 'signal_process'
+      window_id: number
+      process_id: number
+      signal: ProcessSignal
+    }
+  | {
+      id: number
+      type: 'acknowledge_process_output'
+      window_id: number
+      process_id: number
+      chunk: number
+    }
+  | { id: number; type: 'release_process'; window_id: number; process_id: number }
+  | {
+      id: number
+      type: 'show_file_dialog'
+      window_id: number
+      dialog_id: number
+      options: FileDialogOptions
+    }
+  | {
+      id: number
+      type: 'close_file_dialog'
+      window_id: number
+      dialog_id: number
+    }
+  | {
+      id: number
+      type: 'register_drop_target'
+      window_id: number
+      target_id: number
+      node_id: number
+    }
+  | { id: number; type: 'unregister_drop_target'; window_id: number; target_id: number }
+  | {
+      id: number
+      type: 'resolve_dropped_item'
+      window_id: number
+      target_id: number
+      drop_id: number
+      item: number
+      root: string
     }
   | { id: number; type: 'shutdown' }
 
@@ -186,6 +312,20 @@ const CAPABILITIES = [
   'global_shortcuts_v1',
   'notifications_v1',
   'filesystem_grants_v1',
+  'processes_v1',
+  'split_v1',
+  'style_decoration_v1',
+  'display_details_v1',
+  'display_changes_v1',
+  'file_dialogs_v1',
+  'overlays_v1',
+  'scroll_anchor_v1',
+  'focus_v1',
+  'scroll_control_v1',
+  'overlay_keyboard_v1',
+  'popup_windows_v1',
+  'drag_drop_files_v1',
+  'input_states_v1',
 ] as const
 export type Capability = (typeof CAPABILITIES)[number]
 
@@ -198,6 +338,8 @@ export interface KeyModifiers {
 }
 
 export type PointerButton = 'left' | 'right' | 'middle' | 'back' | 'forward'
+/** Why the host asks the application to close a popup window overlay. */
+export type DismissReason = 'window_blur'
 
 interface NodeEventRoute {
   sequence: number
@@ -214,10 +356,33 @@ type RoutedEvent = NodeEventRoute &
     | { type: 'focus' }
     | { type: 'blur' }
     | { type: 'input'; value: string; input_revision: number }
-    | { type: 'key_down'; key: string; key_char?: string; modifiers: KeyModifiers }
-    | { type: 'key_up'; key: string; key_char?: string; modifiers: KeyModifiers }
-    | { type: 'pointer_down'; button: PointerButton; x: number; y: number; modifiers: KeyModifiers }
-    | { type: 'pointer_up'; button: PointerButton; x: number; y: number; modifiers: KeyModifiers }
+    | {
+        type: 'key_down'
+        key: string
+        key_char?: string
+        modifiers: KeyModifiers
+      }
+    | {
+        type: 'key_up'
+        key: string
+        key_char?: string
+        modifiers: KeyModifiers
+      }
+    | {
+        type: 'pointer_down'
+        button: PointerButton
+        x: number
+        y: number
+        modifiers: KeyModifiers
+      }
+    | {
+        type: 'pointer_up'
+        button: PointerButton
+        x: number
+        y: number
+        modifiers: KeyModifiers
+      }
+    | { type: 'dismiss'; reason: DismissReason }
   )
 
 export type NativeEvent =
@@ -229,14 +394,41 @@ export type NativeEvent =
       service_policy: ServicePolicy
     }
   | { type: 'ack'; id: number }
-  | { type: 'opened'; id: number; window_id: number; root_id: number; tree_revision: number }
+  | {
+      type: 'opened'
+      id: number
+      window_id: number
+      root_id: number
+      tree_revision: number
+    }
   | { type: 'applied'; id: number; window_id: number; tree_revision: number }
-  | { type: 'display_snapshot'; id: number; window_id: number; snapshot: DisplaySnapshot }
-  | { type: 'clipboard_text'; id: number; window_id: number; result: ClipboardText }
+  | {
+      type: 'display_snapshot'
+      id: number
+      window_id: number
+      snapshot: DisplaySnapshot
+    }
+  | {
+      type: 'clipboard_text'
+      id: number
+      window_id: number
+      result: ClipboardText
+    }
   | { type: 'clipboard_written'; id: number; window_id: number }
-  | { type: 'global_shortcut_registered'; id: number; window_id: number; shortcut_id: number }
-  | { type: 'global_shortcut_unregistered'; id: number; window_id: number; shortcut_id: number }
+  | {
+      type: 'global_shortcut_registered'
+      id: number
+      window_id: number
+      shortcut_id: number
+    }
+  | {
+      type: 'global_shortcut_unregistered'
+      id: number
+      window_id: number
+      shortcut_id: number
+    }
   | RoutedEvent
+  | { type: 'display_changed'; sequence: number; window_id: number; snapshot: DisplaySnapshot }
   | { type: 'global_shortcut'; sequence: number; window_id: number; shortcut_id: number }
   | {
       type: 'notification_posted'
@@ -245,8 +437,18 @@ export type NativeEvent =
       notification_id: number
       activatable: boolean
     }
-  | { type: 'notification_withdrawn'; id: number; window_id: number; notification_id: number }
-  | { type: 'notification_activated'; sequence: number; window_id: number; notification_id: number }
+  | {
+      type: 'notification_withdrawn'
+      id: number
+      window_id: number
+      notification_id: number
+    }
+  | {
+      type: 'notification_activated'
+      sequence: number
+      window_id: number
+      notification_id: number
+    }
   | {
       type: 'notification_dismissed'
       sequence: number
@@ -257,6 +459,78 @@ export type NativeEvent =
   | { type: 'file_grant_opened'; id: number; window_id: number; grant_id: number }
   | { type: 'file_grant_closed'; id: number; window_id: number; grant_id: number }
   | { type: 'file_result'; id: number; window_id: number; grant_id: number; result: FileResult }
+  | { type: 'process_spawned'; id: number; window_id: number; process_id: number }
+  | { type: 'process_updated'; id: number; window_id: number; process_id: number }
+  | { type: 'process_released'; id: number; window_id: number; process_id: number }
+  | {
+      type: 'process_output'
+      sequence: number
+      window_id: number
+      process_id: number
+      chunk: number
+      stream: ProcessStream
+      data: string
+    }
+  | {
+      type: 'process_exited'
+      sequence: number
+      window_id: number
+      process_id: number
+      exit: ProcessExit
+    }
+  | {
+      type: 'file_dialog_opened'
+      id: number
+      window_id: number
+      dialog_id: number
+    }
+  | {
+      type: 'file_dialog_closed'
+      id: number
+      window_id: number
+      dialog_id: number
+    }
+  | {
+      type: 'file_dialog_completed'
+      sequence: number
+      window_id: number
+      dialog_id: number
+      result: FileDialogResult
+    }
+  | { type: 'drop_target_registered'; id: number; window_id: number; target_id: number }
+  | { type: 'drop_target_unregistered'; id: number; window_id: number; target_id: number }
+  | {
+      type: 'dropped_item_resolved'
+      id: number
+      window_id: number
+      target_id: number
+      drop_id: number
+      item: number
+      root: string
+      path: string
+    }
+  | {
+      type: 'drop_target_drag'
+      sequence: number
+      window_id: number
+      target_id: number
+      state: DragState
+    }
+  | {
+      type: 'drop_received'
+      sequence: number
+      window_id: number
+      target_id: number
+      drop_id: number
+      items: DroppedItem[]
+    }
+  | {
+      type: 'drop_rejected'
+      sequence: number
+      window_id: number
+      target_id: number
+      reason: DropRejection
+    }
   | { type: 'closed'; sequence: number; window_id: number }
   | { type: 'error'; id?: number; code: ErrorCode; message: string }
 
@@ -299,8 +573,17 @@ function operation(value: unknown): Operation {
         index: integer(data['index'], 'index', 0, MAX_NODES_PER_WINDOW),
       }
     case 'delete':
+    case 'focus':
+    case 'scroll_into_view':
       keys(data, ['type', 'node_id'])
-      return { type: 'delete', node_id: id(data['node_id']) }
+      return { type: data['type'], node_id: id(data['node_id']) }
+    case 'scroll_to': {
+      keys(data, ['type', 'node_id', 'x', 'y'])
+      if (!('x' in data) && !('y' in data)) throw new ProtocolError('scroll_to requires x or y')
+      const offset = (axis: 'x' | 'y') =>
+        axis in data ? { [axis]: number(data[axis], 'scroll ' + axis, 0, MAX_SCROLL_OFFSET) } : {}
+      return { type: 'scroll_to', node_id: id(data['node_id']), ...offset('x'), ...offset('y') }
+    }
     default:
       throw new ProtocolError('Unknown native operation')
   }
@@ -313,7 +596,11 @@ export function parseCommand(value: unknown): Command {
   switch (message['type']) {
     case 'hello':
       keys(message, ['id', 'type', 'protocol'])
-      return { id: request, type: 'hello', protocol: version(message['protocol']) }
+      return {
+        id: request,
+        type: 'hello',
+        protocol: version(message['protocol']),
+      }
     case 'open': {
       keys(message, ['id', 'type', 'window_id', 'root_id', 'title', 'width', 'height'])
       const title = string(message['title'], 'title', MAX_TITLE_BYTES)
@@ -348,7 +635,11 @@ export function parseCommand(value: unknown): Command {
     case 'display_snapshot':
     case 'clipboard_read':
       keys(message, ['id', 'type', 'window_id'])
-      return { id: request, type: message['type'], window_id: id(message['window_id']) }
+      return {
+        id: request,
+        type: message['type'],
+        window_id: id(message['window_id']),
+      }
     case 'clipboard_write':
       keys(message, ['id', 'type', 'window_id', 'text'])
       return {
@@ -425,6 +716,105 @@ export function parseCommand(value: unknown): Command {
         operation: parseFileOperation(message['operation'], path),
       }
     }
+    case 'spawn_process':
+      keys(message, ['id', 'type', 'window_id', 'process_id', 'launch'])
+      return {
+        id: request,
+        type: 'spawn_process',
+        window_id: id(message['window_id']),
+        process_id: id(message['process_id']),
+        launch: parseProcessLaunch(message['launch']),
+      }
+    case 'write_process':
+      keys(message, ['id', 'type', 'window_id', 'process_id', 'data'])
+      return {
+        id: request,
+        type: 'write_process',
+        window_id: id(message['window_id']),
+        process_id: id(message['process_id']),
+        data: parseProcessOutput(message['data']),
+      }
+    case 'close_process_input':
+    case 'release_process':
+      keys(message, ['id', 'type', 'window_id', 'process_id'])
+      return {
+        id: request,
+        type: message['type'],
+        window_id: id(message['window_id']),
+        process_id: id(message['process_id']),
+      }
+    case 'resize_process':
+      keys(message, ['id', 'type', 'window_id', 'process_id', 'size'])
+      return {
+        id: request,
+        type: 'resize_process',
+        window_id: id(message['window_id']),
+        process_id: id(message['process_id']),
+        size: parseTerminalSize(message['size']),
+      }
+    case 'signal_process':
+      keys(message, ['id', 'type', 'window_id', 'process_id', 'signal'])
+      return {
+        id: request,
+        type: 'signal_process',
+        window_id: id(message['window_id']),
+        process_id: id(message['process_id']),
+        signal: parseProcessSignal(message['signal']),
+      }
+    case 'acknowledge_process_output':
+      keys(message, ['id', 'type', 'window_id', 'process_id', 'chunk'])
+      return {
+        id: request,
+        type: 'acknowledge_process_output',
+        window_id: id(message['window_id']),
+        process_id: id(message['process_id']),
+        chunk: id(message['chunk']),
+      }
+    case 'show_file_dialog':
+      keys(message, ['id', 'type', 'window_id', 'dialog_id', 'options'])
+      return {
+        id: request,
+        type: 'show_file_dialog',
+        window_id: id(message['window_id']),
+        dialog_id: id(message['dialog_id']),
+        options: parseFileDialogOptions(message['options']),
+      }
+    case 'close_file_dialog':
+      keys(message, ['id', 'type', 'window_id', 'dialog_id'])
+      return {
+        id: request,
+        type: 'close_file_dialog',
+        window_id: id(message['window_id']),
+        dialog_id: id(message['dialog_id']),
+      }
+    case 'register_drop_target':
+      keys(message, ['id', 'type', 'window_id', 'target_id', 'node_id'])
+      return {
+        id: request,
+        type: 'register_drop_target',
+        window_id: id(message['window_id']),
+        target_id: id(message['target_id']),
+        node_id: id(message['node_id']),
+      }
+    case 'unregister_drop_target':
+      keys(message, ['id', 'type', 'window_id', 'target_id'])
+      return {
+        id: request,
+        type: 'unregister_drop_target',
+        window_id: id(message['window_id']),
+        target_id: id(message['target_id']),
+      }
+    case 'resolve_dropped_item':
+      keys(message, ['id', 'type', 'window_id', 'target_id', 'drop_id', 'item', 'root'])
+      return {
+        id: request,
+        type: 'resolve_dropped_item',
+        window_id: id(message['window_id']),
+        target_id: id(message['target_id']),
+        drop_id: id(message['drop_id']),
+        item: parseDropItemIndex(message['item']),
+        root: parseRootId(message['root']),
+      }
     case 'shutdown':
       keys(message, ['id', 'type'])
       return { id: request, type: 'shutdown' }
@@ -451,6 +841,9 @@ function limits(value: unknown): Limits {
     max_notifications: parse('max_notifications'),
     max_file_grants: parse('max_file_grants'),
     max_file_chunk_bytes: parse('max_file_chunk_bytes'),
+    max_processes: parse('max_processes'),
+    max_drop_targets: parse('max_drop_targets'),
+    max_drop_items: parse('max_drop_items'),
   }
 }
 
@@ -565,6 +958,14 @@ export function parseEvent(value: unknown): NativeEvent {
         window_id: id(message['window_id']),
         shortcut_id: id(message['shortcut_id']),
       }
+    case 'display_changed':
+      keys(message, ['type', 'sequence', 'window_id', 'snapshot'])
+      return {
+        type: 'display_changed',
+        sequence: id(message['sequence']),
+        window_id: id(message['window_id']),
+        snapshot: parseDisplaySnapshot(message['snapshot']),
+      }
     case 'global_shortcut':
       keys(message, ['type', 'sequence', 'window_id', 'shortcut_id'])
       return {
@@ -627,6 +1028,103 @@ export function parseEvent(value: unknown): NativeEvent {
         grant_id: id(message['grant_id']),
         result: parseFileResult(message['result']),
       }
+    case 'process_spawned':
+    case 'process_updated':
+    case 'process_released':
+      keys(message, ['type', 'id', 'window_id', 'process_id'])
+      return {
+        type: message['type'],
+        id: id(message['id']),
+        window_id: id(message['window_id']),
+        process_id: id(message['process_id']),
+      }
+    case 'process_output':
+      keys(message, ['type', 'sequence', 'window_id', 'process_id', 'chunk', 'stream', 'data'])
+      return {
+        type: 'process_output',
+        sequence: id(message['sequence']),
+        window_id: id(message['window_id']),
+        process_id: id(message['process_id']),
+        chunk: id(message['chunk']),
+        stream: parseProcessStream(message['stream']),
+        data: parseProcessOutput(message['data']),
+      }
+    case 'process_exited':
+      keys(message, ['type', 'sequence', 'window_id', 'process_id', 'exit'])
+      return {
+        type: 'process_exited',
+        sequence: id(message['sequence']),
+        window_id: id(message['window_id']),
+        process_id: id(message['process_id']),
+        exit: parseProcessExit(message['exit']),
+      }
+    case 'file_dialog_opened':
+    case 'file_dialog_closed':
+      keys(message, ['type', 'id', 'window_id', 'dialog_id'])
+      return {
+        type: message['type'],
+        id: id(message['id']),
+        window_id: id(message['window_id']),
+        dialog_id: id(message['dialog_id']),
+      }
+    case 'file_dialog_completed':
+      keys(message, ['type', 'sequence', 'window_id', 'dialog_id', 'result'])
+      return {
+        type: 'file_dialog_completed',
+        sequence: id(message['sequence']),
+        window_id: id(message['window_id']),
+        dialog_id: id(message['dialog_id']),
+        result: parseFileDialogResult(message['result']),
+      }
+    case 'drop_target_registered':
+    case 'drop_target_unregistered':
+      keys(message, ['type', 'id', 'window_id', 'target_id'])
+      return {
+        type: message['type'],
+        id: id(message['id']),
+        window_id: id(message['window_id']),
+        target_id: id(message['target_id']),
+      }
+    case 'dropped_item_resolved':
+      keys(message, ['type', 'id', 'window_id', 'target_id', 'drop_id', 'item', 'root', 'path'])
+      return {
+        type: 'dropped_item_resolved',
+        id: id(message['id']),
+        window_id: id(message['window_id']),
+        target_id: id(message['target_id']),
+        drop_id: id(message['drop_id']),
+        item: parseDropItemIndex(message['item']),
+        root: parseRootId(message['root']),
+        path: parseFilePath(message['path']),
+      }
+    case 'drop_target_drag':
+      keys(message, ['type', 'sequence', 'window_id', 'target_id', 'state'])
+      return {
+        type: 'drop_target_drag',
+        sequence: id(message['sequence']),
+        window_id: id(message['window_id']),
+        target_id: id(message['target_id']),
+        state: parseDragState(message['state']),
+      }
+    case 'drop_received':
+      keys(message, ['type', 'sequence', 'window_id', 'target_id', 'drop_id', 'items'])
+      return {
+        type: 'drop_received',
+        sequence: id(message['sequence']),
+        window_id: id(message['window_id']),
+        target_id: id(message['target_id']),
+        drop_id: id(message['drop_id']),
+        items: parseDroppedItems(message['items']),
+      }
+    case 'drop_rejected':
+      keys(message, ['type', 'sequence', 'window_id', 'target_id', 'reason'])
+      return {
+        type: 'drop_rejected',
+        sequence: id(message['sequence']),
+        window_id: id(message['window_id']),
+        target_id: id(message['target_id']),
+        reason: parseDropRejection(message['reason']),
+      }
     case 'click':
     case 'focus':
     case 'blur':
@@ -666,6 +1164,11 @@ export function parseEvent(value: unknown): NativeEvent {
         modifiers: modifiers(message['modifiers']),
       }
     }
+    case 'dismiss':
+      keys(message, [...ROUTE_KEYS, 'reason'])
+      if (message['reason'] !== 'window_blur')
+        throw new ProtocolError('Unknown native dismissal reason')
+      return { type: 'dismiss', ...route(message), reason: 'window_blur' }
     case 'closed':
       keys(message, ['type', 'sequence', 'window_id'])
       return {

@@ -26,7 +26,14 @@ fn by_value(element: &Element, root: bool) -> Div {
                 .text_color(rgb(0xffffff)),
             style,
         ),
-        Element::Input { style, .. } => apply(base.bg(rgb(0xffffff)), style),
+        Element::Input {
+            disabled, style, ..
+        } => apply(
+            base.bg(rgb(if *disabled { 0xe5e7eb } else { 0xffffff })),
+            style,
+        ),
+        Element::Split { style, .. } => apply(base.flex().flex_row(), style),
+        Element::Overlay { style, .. } => apply(base.flex().flex_col(), style),
     }
 }
 
@@ -84,6 +91,12 @@ fn style(seed: usize) -> Style {
         background: bit(13).then_some(0x112233),
         color: bit(14).then_some(0x445566),
         font_size: bit(15).then_some(14.),
+        border_width: bit(3).then_some(2.),
+        border_color: bit(5).then_some(0xaabbcc),
+        corner_radius: bit(6).then_some(4.),
+        opacity: bit(9).then_some(0.5),
+        font_weight: bit(10).then_some(600.),
+        ..Style::default()
     }
 }
 
@@ -110,6 +123,28 @@ fn elements(seed: usize) -> Vec<Element> {
         Element::Input {
             value: String::new(),
             placeholder: String::new(),
+            disabled: false,
+            read_only: false,
+            style: style.clone(),
+        },
+        Element::Input {
+            value: String::new(),
+            placeholder: String::new(),
+            disabled: true,
+            read_only: true,
+            style: style.clone(),
+        },
+        Element::Split {
+            ratio: 0.5,
+            min_size: 0.,
+            style: style.clone(),
+        },
+        Element::Overlay {
+            anchor: Default::default(),
+            modal: false,
+            autofocus: false,
+            navigation: Default::default(),
+            surface: Default::default(),
             style,
         },
     ]

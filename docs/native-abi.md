@@ -1,17 +1,35 @@
-# Native host protocol 9
+# Native host protocol 11
 
 This is the implemented private Bun-to-GPUI contract for BN1, shared native interactions and the initial BN4 layout primitives. Application code
 uses [`@bun-native/core`](../packages/core/README.md); Solid and React adapters
 must target that same public API. They do not import this transport or construct
 numeric handles. Protocols 1–8 are superseded without a compatibility fallback.
-Protocol 9 requires `tree`, `input_revisions`, `layout_v1`, `interactions_v1` and `window_display_v1`; missing features or
+Protocol 11 requires `tree`, `input_revisions`, `layout_v1`, `interactions_v1` and `window_display_v1`; missing features or
 older versions fail launch before a window is opened. The [layout contract](native-layout.md)
 defines the supported style subset; the [interaction contract](native-events.md)
 defines native event observations and public propagation. The
 [service contract](native-services.md) defines immutable launch policy and
 owned-window display reads, bounded clipboard transfers, owned global
-shortcut registrations, owned desktop notifications and scoped filesystem
-grants on launch-policy roots ([ADR 0010](decisions/0010-filesystem-grants.md)).
+shortcut registrations, owned desktop notifications, scoped filesystem
+grants on launch-policy roots ([ADR 0010](decisions/0010-filesystem-grants.md)),
+owned drop targets on Linux X11, macOS and Windows ([ADR 0012](decisions/0012-native-drag-drop.md))
+and owned OS file dialogs ([ADR 0013](decisions/0013-native-file-dialogs.md)).
+File dialogs add the optional `file_dialogs_v1` capability,
+`show_file_dialog`/`close_file_dialog` commands, `file_dialog_opened`/
+`file_dialog_closed` responses and a sequenced `file_dialog_completed` event
+without changing the protocol version; the policy's `file_dialogs` field is
+optional and omitted when denied.
+The optional
+`overlays_v1` and `scroll_anchor_v1` capabilities add the `overlay` container
+element and the `scroll_anchor` style field defined by the
+[overlay contract](native-overlays.md); core rejects both locally when a host
+does not advertise them. The optional `focus_v1` and `scroll_control_v1`
+capabilities add the `focus`, `scroll_to` and `scroll_into_view` batch
+operations, and `overlay_keyboard_v1` adds the overlay `autofocus` and
+`navigation` fields, under the same contract and local rejection rule. The optional
+`popup_windows_v1` capability, advertised only for a local X11 session, adds
+the overlay field `surface: "window"` and the routed `dismiss` event described
+in [popup windows](native-overlays.md#popup-windows-beyond-the-parent-window).
 
 The authoritative schemas and validators are
 [`packages/protocol/src/messages.ts`](../packages/protocol/src/messages.ts),
@@ -58,10 +76,13 @@ disposed handles. The runtime cannot terminate arbitrary consumer JavaScript.
 - Each frame is one UTF-8 JSON object followed by a newline. The payload limit is
   65,536 bytes. Invalid UTF-8, oversize/truncated framing, malformed JSON, unknown
   fields or invalid message shapes fail the session rather than resynchronizing.
-- The first request is `hello` with protocol `6`. The host emits `ready` with the
+- The first request is `hello` with protocol `10`. The host emits `ready` with the
   same protocol, implemented capabilities, resource limits and explicit
   `service_policy`, then acknowledges the request. `tree`, `input_revisions`,
-  `layout_v1`, `interactions_v1` and `window_display_v1` are mandatory. Missing features,
+  `layout_v1`, `interactions_v1` and `window_display_v1` are mandatory. Optional
+  element features (`split_v1` for the `split` element and `style_decoration_v1`
+  for border, radius, opacity and weight style fields) are advertised without a
+  protocol change; core rejects them locally when a host lacks them. Missing features,
   version mismatch, duplicate readiness or acknowledgement before readiness
   fail launch and clean up the child. The native service policy must exactly
   match the caller's immutable explicit launch permissions; readiness cannot
@@ -83,6 +104,17 @@ The two parsers deliberately agree on JavaScript-safe integral JSON numbers,
 including `1.0` and `1e0`, and on last-value semantics for duplicate JSON keys.
 Strings must be well-formed Unicode without NUL. This parity is covered by the
 shared [negative corpus](../tests/fixtures/bridge-security.json) and parser tests.
+
+The [wire conformance fixtures](../tests/fixtures/protocol-conformance.json) run
+the same frames through `parseCommand`/`parseEvent` and the Rust
+`CommandReader`/`Event::validate` (which `write_event` applies before emitting).
+The host therefore cannot emit an event the runtime rejects: `ready` must carry
+the implemented protocol, unique capabilities and every limit within
+`1..=default`; an `error` `id` is a request identity or absent, never `null`, and
+its `message` is bounded text (at most 16,384 UTF-8 bytes, no NUL). One
+difference is deliberate: the Rust reader decodes a `hello` for any safe `u32`
+protocol so the session can answer `version_mismatch`, while the TypeScript
+validator only lets the runtime send its own `PROTOCOL_VERSION`.
 
 ## Commands and replies
 
@@ -132,9 +164,9 @@ Each atomic `batch` supports the following operations:
 
 | Operation | Meaning                                                                                                               |
 | --------- | --------------------------------------------------------------------------------------------------------------------- |
-| `create`  | Allocate a new `box`, `text`, `button` or `input` with complete validated properties.                                 |
+| `create`  | Allocate a new `box`, `text`, `button`, `input` or `overlay` with complete validated properties.                      |
 | `set`     | Replace a node's properties with the same element kind; it is not a shallow property merge.                           |
-| `insert`  | Attach or move a node under a `box`; the index is evaluated after detaching it from its old parent.                   |
+| `insert`  | Attach or move a node under a `box` or `overlay`; the index is evaluated after detaching it from its old parent.      |
 | `delete`  | Remove a complete subtree and revoke its identities, input entities, focus and listeners. The root cannot be deleted. |
 
 Validation runs against a candidate graph before native commit. It checks the
@@ -150,7 +182,7 @@ All node events carry `sequence`, `window_id`, `node_id`, `tree_revision` and a
 captured `path` from the committed root to the target. The path contains unique
 positive IDs, ends at `node_id`, and has at most 65 entries: tree depth is bounded
 at 64 edges, not 64 nodes. `click`, `input`, `key_down`, `key_up`, `pointer_down`,
-`pointer_up`, `focus` and `blur` use this route. `closed` carries only sequence and
+`pointer_up`, `focus`, `blur` and `dismiss` use this route. `closed` carries only sequence and
 window identity. The transport checks contiguous sequence across **all** UI
 events; a click/input callback subset naturally has gaps.
 
@@ -188,6 +220,7 @@ is observed without echoing older values back to the native editor.
 | Live windows                                     |                                                  16 |
 | Nodes per window, including root                 |                                               4,096 |
 | Tree depth, measured in edges from root          |                                                  64 |
+| Nested overlay layers                            |                                                   8 |
 | Event ancestry, root and target included         |                                                  65 |
 | Key / optional logical-text UTF-8 bytes          |                                                 256 |
 | Pointer coordinate magnitude, logical pixels     |                                           1,048,576 |
@@ -251,11 +284,20 @@ values use `ProtocolError`, and unsupported element kinds use
 for consumer handling and experimental compatibility policy.
 
 The negotiated flags describe implemented features, not OS permission grants.
-Protocol 9's services additionally require their immutable explicit
+Protocol 11's services additionally require their immutable explicit
 launch policy; there is no wire grant or general service selector. File
 commands (`open_file_grant`, `close_file_grant`, `file_request`) name a
 launch-policy root ID and relative paths only; no command accepts an absolute
-path. No shell, process, network, update or browser service command exists. The
+path. Process commands (`spawn_process` and its controls) name a
+launch-policy executable ID with an explicit argument array and environment
+map; no command accepts a program path or a command string, and a working
+directory comes only from a live file grant. Drop commands
+(`register_drop_target`, `unregister_drop_target`, `resolve_dropped_item`) name
+an owned node, target and drop; drop events carry display names only, and
+resolution returns a path relative to a launch root
+([ADR 0012](decisions/0012-native-drag-drop.md)). `show_file_dialog` returns
+chosen paths as data and grants no access to them. No shell, network, update or browser service command
+exists. The
 [security ADR](decisions/0003-bridge-security.md) defines the trusted
 application/untrusted data boundary and default-deny requirements for future
 services. Neither AOT nor the child-process boundary sandboxes trusted Bun code.

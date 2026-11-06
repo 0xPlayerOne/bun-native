@@ -99,9 +99,11 @@ test('startup diagnostics are opt-in and do not record command payloads', async 
 
 test('a real unanswered open preserves its failed phase and bounded native stderr', async () => {
   const result = await run('timeout')
-  expect(result.failure?.message).toBe('Native open request 2 timed out')
+  expect(result.failure?.message).toMatch(
+    /^Native open request 2 timed out \(write flushed: queued \+0ms, written \+\d+ms, flushed \+\d+ms\)$/
+  )
   const failed = result.records.find((record) => record['phase'] === 'transport_failed')
-  expect(failed?.['error']).toBe('Native open request 2 timed out')
+  expect(failed?.['error']).toBe(result.failure?.message)
   expect(String(failed?.['stderr_tail'])).toHaveLength(4_096)
   expect(String(failed?.['stderr_tail'])).toContain('Owned diagnostic peer is waiting at open')
   expect(

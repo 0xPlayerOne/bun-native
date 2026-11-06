@@ -1,22 +1,28 @@
 use crate::{
     channel::EventSink,
     evidence::{Evidence, LayoutFrame},
-    input::{InputBinding, TextInput},
+    input::{EditPolicy, InputBinding, TextInput},
+    services::drops::Drops,
     state::SharedWindowState,
     style,
 };
 use bun_native_protocol::{
-    Element as NativeElement, Event, Node, NodeId, Overflow, Tree, WindowId,
+    DropTargetId, Element as NativeElement, Event, Node, NodeId, Overflow, OverlaySurface,
+    ScrollAnchor, Tree, ViewRequest, WindowId,
 };
 use gpui::{
-    AnyElement, App, Context, Entity, FocusHandle, Focusable, KeyBinding, MouseButton,
-    ScrollHandle, SharedString, Subscription, Window, actions, canvas, div, prelude::*, px, rgb,
+    AnyElement, AnyWindowHandle, App, Context, Div, Entity, ExternalPaths, FocusHandle, Focusable,
+    KeyBinding, MouseButton, Pixels, Role, ScrollHandle, SharedString, Size, Stateful,
+    Subscription, WeakEntity, Window, actions, canvas, deferred, div, point, prelude::*, px, rgb,
 };
-use std::collections::BTreeMap;
+use std::cell::RefCell;
+use std::collections::{BTreeMap, BTreeSet};
 use std::rc::Rc;
+use std::time::Instant;
 
 actions!(native_button, [ActivateButton]);
 actions!(native_window, [FocusNext, FocusPrevious]);
+actions!(native_menu, [MenuNext, MenuPrevious, MenuFirst, MenuLast]);
 
 pub(crate) fn bind_keys(cx: &mut App) {
     cx.bind_keys([
@@ -24,6 +30,11 @@ pub(crate) fn bind_keys(cx: &mut App) {
         KeyBinding::new("space", ActivateButton, Some("NativeButton")),
         KeyBinding::new("tab", FocusNext, Some("NativeWindow")),
         KeyBinding::new("shift-tab", FocusPrevious, Some("NativeWindow")),
+        // A focused input's own Home/End bindings are deeper and win.
+        KeyBinding::new("down", MenuNext, Some("NativeWindow")),
+        KeyBinding::new("up", MenuPrevious, Some("NativeWindow")),
+        KeyBinding::new("home", MenuFirst, Some("NativeWindow")),
+        KeyBinding::new("end", MenuLast, Some("NativeWindow")),
     ]);
 }
 
@@ -34,10 +45,26 @@ pub(crate) struct NativeView {
     buttons: BTreeMap<NodeId, FocusHandle>,
     scrolls: BTreeMap<NodeId, ScrollHandle>,
     index: NodeIndex,
+    splits: Splits,
+    /// Never a tab stop or reported node. Holding it keeps the window's key
+    /// context on the dispatch path, so Tab still works after a focused
+    /// control is disabled or removed, or before any control is focused.
+    root_focus: FocusHandle,
     focus_subscriptions: BTreeMap<NodeId, [Subscription; 2]>,
     reported_focus: Option<NodeId>,
-    _subscriptions: [Subscription; 2],
+    overlays: Overlays,
+    type_ahead: TypeAhead,
+    /// Viewports with a pending programmatic scroll this frame; their end
+    /// anchor does not re-pin them before GPUI resolves the request.
+    held_scrolls: RefCell<BTreeSet<NodeId>>,
+    popups: Popups,
+    weak: WeakEntity<NativeView>,
+    window_handle: AnyWindowHandle,
+    viewport: Size<Pixels>,
+    _subscriptions: [Subscription; 4],
     events: EventSink,
+    drops: Drops,
+    pressed: PressedButtons,
     evidence: Evidence,
 }
 
@@ -46,6 +73,7 @@ impl NativeView {
         window_id: WindowId,
         state: SharedWindowState,
         events: EventSink,
+        drops: Drops,
         evidence: Evidence,
         window: &mut Window,
         cx: &mut Context<Self>,
@@ -54,10 +82,22 @@ impl NativeView {
         let view = cx.weak_entity();
         let keyboard = cx.intercept_keystrokes(move |event, window, cx| {
             if window.window_handle() == owned_window {
-                let _ = view.update(cx, |view, cx| view.key(&event.keystroke, true, window, cx));
+                let _ = view.update(cx, |view, cx| {
+                    view.key(&event.keystroke, true, window, cx);
+                    view.type_ahead(&event.keystroke, window, cx);
+                });
             }
         });
         let focus_lost = cx.on_focus_lost(window, |view, window, cx| view.sync_focus(window, cx));
+        let deactivated = cx.observe_window_activation(window, |view, window, cx| {
+            if !window.is_window_active() {
+                view.dismiss_popups(cx);
+            }
+        });
+        let moved = cx.observe_window_bounds(window, |view, window, cx| {
+            view.popups.invalidate();
+            view.place_popups(window, cx);
+        });
         let index = NodeIndex::new(&state.borrow().tree);
         Self {
             window_id,
@@ -66,18 +106,38 @@ impl NativeView {
             buttons: BTreeMap::new(),
             scrolls: BTreeMap::new(),
             index,
+            splits: Splits::default(),
+            root_focus: cx.focus_handle(),
             focus_subscriptions: BTreeMap::new(),
             reported_focus: None,
-            _subscriptions: [keyboard, focus_lost],
+            overlays: Overlays::default(),
+            type_ahead: TypeAhead::default(),
+            held_scrolls: RefCell::default(),
+            popups: Popups::default(),
+            weak: cx.weak_entity(),
+            window_handle: window.window_handle(),
+            viewport: window.viewport_size(),
+            _subscriptions: [keyboard, focus_lost, deactivated, moved],
             events,
+            drops,
+            pressed: PressedButtons::default(),
             evidence,
         }
     }
 
     /// Called synchronously after complete transaction preflight. This method
     /// does not yield or dispatch native input between model and entity updates.
-    pub(crate) fn apply(&mut self, tree: Tree, window: &mut Window, cx: &mut Context<Self>) {
+    pub(crate) fn apply(
+        &mut self,
+        tree: Tree,
+        requests: &[ViewRequest],
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        let focused_before = self.focused_control(window, cx);
+        self.drops.retain_nodes(self.window_id, &tree);
         let previous = std::mem::replace(&mut self.state.borrow_mut().tree, tree);
+        self.splits.reconcile(&self.state.borrow().tree);
         // Snapshot cheap Arc-backed control properties before focus/IME
         // notifications: native callbacks must never run while the shared
         // model is borrowed. Sorted by ID, like the index it is read from.
@@ -117,7 +177,7 @@ impl NativeView {
                 return true;
             }
             if input.focus_handle(cx).is_focused(window) {
-                window.blur(cx);
+                window.focus(&self.root_focus, cx);
             }
             false
         });
@@ -133,19 +193,30 @@ impl NativeView {
                 )
             });
             if !enabled && focus.is_focused(window) {
-                window.blur(cx);
+                window.focus(&self.root_focus, cx);
             }
             node.is_some()
         });
         for (node_id, node) in controls {
             match node.element() {
                 NativeElement::Input {
-                    value, placeholder, ..
+                    value,
+                    placeholder,
+                    disabled,
+                    read_only,
+                    ..
                 } => {
+                    let policy = EditPolicy {
+                        disabled: *disabled,
+                        read_only: *read_only,
+                    };
                     if let Some(input) = self.inputs.get(&node_id) {
                         input.update(cx, |input, cx| {
-                            input.set_properties(value, placeholder, window, cx)
+                            input.set_properties(value, placeholder, policy, window, cx)
                         });
+                        if policy.disabled && input.focus_handle(cx).is_focused(window) {
+                            window.focus(&self.root_focus, cx);
+                        }
                     } else {
                         let binding = InputBinding {
                             state: Rc::downgrade(&self.state),
@@ -154,9 +225,13 @@ impl NativeView {
                             events: self.events.clone(),
                         };
                         let input = cx.new(|cx| {
-                            TextInput::new(value.clone(), placeholder.clone(), binding, cx)
+                            TextInput::new(value.clone(), placeholder.clone(), policy, binding, cx)
                         });
-                        if window.focused(cx).is_none() {
+                        if !policy.disabled
+                            && window
+                                .focused(cx)
+                                .is_none_or(|focus| focus == self.root_focus)
+                        {
                             window.focus(&input.focus_handle(cx), cx);
                         }
                         self.inputs.insert(node_id, input);
@@ -167,10 +242,19 @@ impl NativeView {
                         .entry(node_id)
                         .or_insert_with(|| cx.focus_handle().tab_stop(true));
                 }
-                NativeElement::Box { .. } | NativeElement::Text { .. } => {}
+                NativeElement::Box { .. }
+                | NativeElement::Text { .. }
+                | NativeElement::Split { .. }
+                | NativeElement::Overlay { .. } => {}
             }
         }
+        self.reconcile_overlays(focused_before, window, cx);
+        self.reconcile_popups(cx);
+        if window.focused(cx).is_none() {
+            window.focus(&self.root_focus, cx);
+        }
         self.reconcile_focus(window, cx);
+        self.apply_requests(requests, window, cx);
         cx.notify();
         #[cfg(target_os = "macos")]
         {
@@ -234,33 +318,75 @@ impl NativeView {
         node_id: NodeId,
         layout: Option<&LayoutFrame>,
         pointer: &PointerFrame,
+        drop_scope: &DropScope,
         cx: &mut Context<Self>,
     ) -> AnyElement {
         let node = tree
             .node(node_id)
             .expect("validated tree contains every child");
         let mut base = div();
-        if let Some(layout) = layout {
+        // A split reports each pane's child from inside its pane wrapper.
+        if let Some(layout) = layout
+            && !matches!(node.element(), NativeElement::Split { .. })
+        {
             base = layout.children(base, node.children(), 0, self.scrolls.get(&node_id));
         }
         pointer.target(&mut base, node_id);
         let mut base = base.id(node_id.get());
         style::element(base.style(), node.element(), node_id == tree.root_id());
+        let drop_scope = drop_scope.enter(node_id);
+        if let Some(chain) = drop_scope.target() {
+            base = drop_target(base, chain, &self.drops);
+        }
         match node.element() {
-            NativeElement::Box { .. } => {
-                if let Some(handle) = self.scrolls.get(&node_id) {
-                    base = base.track_scroll(handle);
-                }
-                base.children(
-                    node.children()
-                        .iter()
-                        .map(|child| self.render_node(tree, *child, layout, pointer, cx)),
-                )
-                .into_any_element()
+            NativeElement::Box { .. } => self
+                .container(tree, node_id, base, layout, pointer, &drop_scope, cx)
+                .into_any_element(),
+            NativeElement::Overlay {
+                surface: OverlaySurface::Window,
+                ..
+            } if self.popups.active() => self
+                .popup_anchor(node_id)
+                .unwrap_or_else(|| div().into_any_element()),
+            NativeElement::Overlay { anchor, .. } => {
+                // Occlusion keeps pointer input from reaching anything beneath
+                // the layer; a window layer is itself the modal backdrop.
+                let content = self
+                    .container(tree, node_id, base, layout, pointer, &drop_scope, cx)
+                    .occlude();
+                self.overlay_layer(node_id, *anchor, content, self.viewport)
             }
-            NativeElement::Text { .. } => base.child(self.label(node_id)).into_any_element(),
+            NativeElement::Split {
+                min_size,
+                style: properties,
+                ..
+            } => self.split(
+                tree,
+                node_id,
+                base,
+                *min_size,
+                properties,
+                layout,
+                pointer,
+                &drop_scope,
+                cx,
+            ),
+            NativeElement::Text { .. } => base
+                // AccessKit names labels from their value.
+                .role(Role::Label)
+                .aria_value(self.label(node_id))
+                .child(self.label(node_id))
+                .into_any_element(),
             NativeElement::Button { disabled, .. } => {
-                let mut button = base.child(self.label(node_id));
+                let mut button = base
+                    .role(Role::Button)
+                    .aria_label(self.label(node_id))
+                    .child(self.label(node_id));
+                if *disabled {
+                    button = button.a11y_synthetic_children(|builder| {
+                        builder.parent_node().set_disabled();
+                    });
+                }
                 if !disabled {
                     let focus = self
                         .buttons
@@ -269,6 +395,7 @@ impl NativeView {
                         .clone();
                     button = button
                         .track_focus(&focus)
+                        .focus_visible(|style| style.shadow(style::focus_ring()))
                         .key_context("NativeButton")
                         .cursor_pointer()
                         .on_mouse_down(MouseButton::Left, move |_, window, cx| {
@@ -293,11 +420,55 @@ impl NativeView {
     }
 }
 
+impl NativeView {
+    #[allow(clippy::too_many_arguments)]
+    fn container(
+        &self,
+        tree: &Tree,
+        node_id: NodeId,
+        base: Stateful<Div>,
+        layout: Option<&LayoutFrame>,
+        pointer: &PointerFrame,
+        drop_scope: &DropScope,
+        cx: &mut Context<Self>,
+    ) -> Stateful<Div> {
+        let node = tree
+            .node(node_id)
+            .expect("validated tree contains every container");
+        let mut container = base;
+        if let Some(handle) = self.scrolls.get(&node_id) {
+            // A viewport already showing its end stays there as content or
+            // the viewport changes; a user scroll away from the end releases it.
+            if node.element().style().scroll_anchor == Some(ScrollAnchor::End)
+                && !self.held_scrolls.borrow().contains(&node_id)
+                && handle.offset().y <= -handle.max_offset().y + px(1.)
+            {
+                handle.scroll_to_bottom();
+            }
+            container = container.track_scroll(handle);
+        }
+        container.children(
+            node.children()
+                .iter()
+                .map(|child| self.render_node(tree, *child, layout, pointer, drop_scope, cx)),
+        )
+    }
+}
+
 impl Render for NativeView {
-    fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
-        let render_started = crate::phases::now();
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        let render_started = Instant::now();
+        let phase_started = crate::phases::now();
+        self.viewport = window.viewport_size();
+        // GPUI ends an external drag on drop, on the source's leave and when
+        // the button is released outside every target; each refreshes.
+        if !cx.has_active_drag() {
+            self.drops.resume();
+            self.drops.drag_ended(self.window_id, cx);
+        }
+        let drop_scope = DropScope::new(self.drops.targets(self.window_id));
         let state = self.state.borrow();
-        let layout = self.evidence.enabled().then(|| {
+        let layout = self.evidence.layout_tracing().then(|| {
             let focus = self
                 .buttons
                 .iter()
@@ -319,14 +490,18 @@ impl Render for NativeView {
             }
         });
         let pointer = PointerFrame::default();
+        let pressed = self.pressed.clone();
         let body = self.render_node(
             &state.tree,
             state.tree.root_id(),
             layout.as_ref(),
             &pointer,
+            &drop_scope,
             cx,
         );
-        let phase_frame = render_started.and_then(|started| {
+        // Requests issued before this frame resolve in its prepaint.
+        self.held_scrolls.borrow_mut().clear();
+        let phase_frame = phase_started.and_then(|started| {
             crate::phases::render(self.window_id, started, state.tree.nodes().count())
         });
         let view = cx.weak_entity();
@@ -360,40 +535,149 @@ impl Render for NativeView {
             .text_color(rgb(0x17212b))
             .text_size(px(18.))
             .key_context("NativeWindow")
+            .track_focus(&self.root_focus)
             .capture_key_up(cx.listener(|view, event: &gpui::KeyUpEvent, window, cx| {
                 view.key(&event.keystroke, false, window, cx)
             }))
-            .on_action(|_: &FocusNext, window, cx| window.focus_next(cx))
-            .on_action(|_: &FocusPrevious, window, cx| window.focus_prev(cx))
+            .on_action(
+                cx.listener(|view, _: &FocusNext, window, cx| view.focus_step(true, window, cx)),
+            )
+            .on_action(
+                cx.listener(|view, _: &FocusPrevious, window, cx| {
+                    view.focus_step(false, window, cx)
+                }),
+            )
+            .on_action(cx.listener(|view, _: &MenuNext, window, cx| {
+                view.menu_action(MenuMove::Next, window, cx)
+            }))
+            .on_action(cx.listener(|view, _: &MenuPrevious, window, cx| {
+                view.menu_action(MenuMove::Previous, window, cx)
+            }))
+            .on_action(cx.listener(|view, _: &MenuFirst, window, cx| {
+                view.menu_action(MenuMove::First, window, cx)
+            }))
+            .on_action(cx.listener(|view, _: &MenuLast, window, cx| {
+                view.menu_action(MenuMove::Last, window, cx)
+            }))
             .children(pointer_trace)
             .child(body)
             .child(
-                canvas(
-                    |_, _, _| (),
-                    move |_, (), window, cx| {
-                        // Registered after native children: capture has already
-                        // selected the deepest GPUI hit before default actions.
-                        pointer.observe(window, &view);
-                        if let Some(frame) = phase_frame {
-                            crate::phases::painted(frame);
-                        }
-                        let state = paint_state.borrow();
-                        evidence.painted(
-                            window_id,
-                            &state.tree,
-                            layout.as_ref().map(|layout| layout.snapshot(window, cx)),
-                        );
-                    },
-                )
-                .absolute()
-                .top_0()
-                .left_0()
-                .size(px(1.)),
+                self.observer(
+                    canvas(
+                        |_, _, _| (),
+                        move |_, (), window, cx| {
+                            // Registered after native children: capture has already
+                            // selected the deepest GPUI hit before default actions.
+                            pointer.observe(window, &view, point(px(0.), px(0.)), &pressed);
+                            if let Some(frame) = phase_frame {
+                                crate::phases::painted(frame);
+                            }
+                            let state = paint_state.borrow();
+                            evidence.frame(window_id, &state.tree, render_started);
+                            evidence.painted(
+                                window_id,
+                                &state.tree,
+                                layout.as_ref().map(|layout| layout.snapshot(window, cx)),
+                            );
+                        },
+                    )
+                    .absolute()
+                    .top_0()
+                    .left_0()
+                    .size(px(1.)),
+                ),
             )
     }
 }
+
+impl NativeView {
+    fn menu_action(&mut self, step: MenuMove, window: &mut Window, cx: &mut Context<Self>) {
+        if !self.menu_move(step, window, cx) {
+            cx.propagate();
+        }
+    }
+
+    /// The final pointer observer must register after every overlay layer's
+    /// capture listeners, so it is deferred above them while any overlay lives.
+    fn observer(&self, observer: impl IntoElement) -> AnyElement {
+        if self.overlays.any() {
+            deferred(observer)
+                .with_priority(OBSERVER_PRIORITY)
+                .into_any_element()
+        } else {
+            observer.into_any_element()
+        }
+    }
+}
+
+/// The registered drop targets and, while rendering, the chain of target
+/// ancestors above the current node, innermost first.
+struct DropScope {
+    targets: Rc<BTreeMap<NodeId, DropTargetId>>,
+    chain: Rc<[DropTargetId]>,
+    own: bool,
+}
+
+impl DropScope {
+    fn new(targets: BTreeMap<NodeId, DropTargetId>) -> Self {
+        Self {
+            targets: Rc::new(targets),
+            chain: Rc::new([]),
+            own: false,
+        }
+    }
+
+    fn enter(&self, node: NodeId) -> Self {
+        let Some(target) = self.targets.get(&node) else {
+            return Self {
+                targets: self.targets.clone(),
+                chain: self.chain.clone(),
+                own: false,
+            };
+        };
+        Self {
+            targets: self.targets.clone(),
+            chain: std::iter::once(*target)
+                .chain(self.chain.iter().copied())
+                .collect(),
+            own: true,
+        }
+    }
+
+    /// This node's own target and its ancestors, when it is a target.
+    fn target(&self) -> Option<Rc<[DropTargetId]>> {
+        self.own.then(|| self.chain.clone())
+    }
+}
+
+/// GPUI hit tests the drop: the innermost hovered target takes it. Drag
+/// enter/leave compare the pointer with the target's painted bounds.
+fn drop_target(
+    element: Stateful<gpui::Div>,
+    chain: Rc<[DropTargetId]>,
+    drops: &Drops,
+) -> Stateful<gpui::Div> {
+    let target = chain[0];
+    let moved = drops.clone();
+    let dropped = drops.clone();
+    element
+        .on_drag_move::<ExternalPaths>(move |event, _, cx| {
+            moved.drag_moved(target, event.bounds.contains(&event.event.position), cx)
+        })
+        .on_drop::<ExternalPaths>(move |paths, _, cx| dropped.dropped(&chain, paths.paths(), cx))
+}
+
 mod index;
 mod interactions;
+mod keyboard;
+mod overlays;
+mod popups;
+mod split;
 
 use index::NodeIndex;
-use interactions::PointerFrame;
+use interactions::{PointerFrame, PressedButtons};
+use keyboard::{MenuMove, TypeAhead};
+use overlays::{OBSERVER_PRIORITY, Overlays};
+use popups::Popups;
+pub(crate) use popups::available as popups_available;
+use split::Splits;

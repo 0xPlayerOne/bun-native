@@ -29,7 +29,7 @@ names, or when two sources for one pin disagree.
 | `@babel/core`        | `7.29.7`                                   | root [`package.json`][root-manifest]                                                      |
 | `react`              | `19.3.1`                                   | [`@bun-native/react`][react-pin] and root `package.json`                                  |
 | `react-reconciler`   | `0.34.0`                                   | [`@bun-native/react`][react-pin]                                                          |
-| `native protocol`    | `9`                                        | [`PROTOCOL_VERSION`][protocol-ts] in TypeScript and [Rust][protocol-rs], which must match |
+| `native protocol`    | `11`                                       | [`PROTOCOL_VERSION`][protocol-ts] in TypeScript and [Rust][protocol-rs], which must match |
 
 The Solid compiler pairing is guarded separately: [#430][pr430] checks the
 installed Babel against both the preset and the JSX plugin peer ranges and keeps
@@ -64,7 +64,7 @@ the matching native contract. WebView/CEF is not a fallback.
 - **React:** the implemented `react-reconciler` host uses native primitives. Logic without browser assumptions may be reusable; `react-dom` components do not become native components automatically.
 - **Tailwind/CSS:** native layout/styling primitives are defined explicitly; arbitrary CSS selectors, cascade and browser painting effects are not promised.
 - **shadcn, Radix, Kobalte and browser-oriented UI libraries:** some source-level patterns may be reusable, but DOM-dependent components generally require native ports. No universal import compatibility claim.
-- **Native OS services:** display, clipboard, Linux X11 global shortcut, Linux freedesktop notification and Linux scoped filesystem access use explicit grants. PTY/process services, dialogs and menus remain outside the available native service set. Grants do not sandbox ordinary Bun filesystem or process APIs; applications are trusted programs.
+- **Native OS services:** display, clipboard, Linux X11 global shortcut, Linux freedesktop notification, Linux and macOS scoped filesystem access (macOS evidence from hosted CI only), Linux and macOS owned processes (macOS without a working directory, verified in CI only), Linux portal file dialog access and drag and drop (Linux X11, macOS and Windows; the latter two qualified in hosted CI only) use explicit grants. A chosen file path or a dropped file name is data, not a filesystem grant. Message dialogs and menus remain outside the available native service set. Grants do not sandbox ordinary Bun filesystem or process APIs; applications are trusted programs.
 - **Untrusted webpages:** there is no hidden browser sandbox. Displaying untrusted content requires a deliberately scoped, safe native content model.
 
 ## Evidence procedure

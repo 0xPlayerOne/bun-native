@@ -15,40 +15,29 @@ import { withApp } from './support.ts'
 /** Record each native element the renderer sends through an actual core batch. */
 function recordSets(window: NativeWindow) {
   const sets: Element[] = []
-  const recorded: NativeWindow = {
-    root: window.root,
-    get closed() {
-      return window.closed
+  const observe = (batch: NativeBatch): NativeBatch => ({
+    create: (element) => batch.create(element),
+    set: ((node: never, element: Element, revision?: number) => {
+      sets.push(element)
+      ;(batch.set as (...values: unknown[]) => void)(node, element, revision)
+    }) as NativeBatch['set'],
+    insert: (parent, child, index) => batch.insert(parent, child, index),
+    append: (parent, child) => batch.append(parent, child),
+    remove: (node) => batch.remove(node),
+    focus: (node) => batch.focus(node),
+    scrollTo: (node, offset) => batch.scrollTo(node, offset),
+    scrollIntoView: (node) => batch.scrollIntoView(node),
+  })
+  // Every other window member passes through, so new services need no mirror here.
+  const recorded = new Proxy(window, {
+    get(target, key) {
+      if (key === 'batch')
+        return (update: (batch: NativeBatch) => unknown) =>
+          target.batch((batch) => update(observe(batch)))
+      const value = Reflect.get(target, key, target)
+      return typeof value === 'function' ? value.bind(target) : value
     },
-    get revision() {
-      return window.revision
-    },
-    batch: (update) =>
-      window.batch((batch) => {
-        const observed: NativeBatch = {
-          create: (element) => batch.create(element),
-          set: ((node: never, element: Element, revision?: number) => {
-            sets.push(element)
-            ;(batch.set as (...values: unknown[]) => void)(node, element, revision)
-          }) as NativeBatch['set'],
-          insert: (parent, child, index) => batch.insert(parent, child, index),
-          append: (parent, child) => batch.append(parent, child),
-          remove: (node) => batch.remove(node),
-        }
-        return update(observed)
-      }),
-    close: window.close.bind(window),
-    displaySnapshot: window.displaySnapshot.bind(window),
-    readClipboardText: window.readClipboardText.bind(window),
-    writeClipboardText: window.writeClipboardText.bind(window),
-    registerGlobalShortcut: window.registerGlobalShortcut.bind(window),
-    postNotification: window.postNotification.bind(window),
-    openFileGrant: window.openFileGrant.bind(window),
-    input: window.input.bind(window),
-    on: window.on.bind(window),
-    onClick: window.onClick.bind(window),
-    onInput: window.onInput.bind(window),
-  }
+  })
   return { window: recorded, sets }
 }
 

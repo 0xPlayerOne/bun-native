@@ -21,8 +21,12 @@ export const solidSubpath = [
 ] as const
 
 export const nativeIntrinsics = [
-  same<keyof ReactJSX.IntrinsicElements, 'box' | 'text' | 'button' | 'input'>(true),
-  same<keyof SolidJSX.IntrinsicElements, 'box' | 'text' | 'button' | 'input'>(true),
+  same<keyof ReactJSX.IntrinsicElements, 'box' | 'text' | 'button' | 'input' | 'split' | 'overlay'>(
+    true
+  ),
+  same<keyof SolidJSX.IntrinsicElements, 'box' | 'text' | 'button' | 'input' | 'split' | 'overlay'>(
+    true
+  ),
   same<keyof SolidJSX.ElementChildrenAttribute, 'children'>(true),
 ] as const
 

@@ -18,6 +18,8 @@ The initial [shared native layout contract](native-layout.md) extends this tree 
 
 Later protocol versions added default-denied, owned [native services](native-services.md): window display snapshots, bounded clipboard text ([ADR 0007](decisions/0007-native-clipboard.md)), global shortcuts ([ADR 0008](decisions/0008-native-global-shortcuts.md)) and desktop notifications ([ADR 0009](decisions/0009-native-notifications.md)). Clipboard and global shortcuts are qualified only on local Linux X11, and notifications only against a Linux freedesktop.org notification server; other platforms remain unavailable.
 
+[Streaming lists](native-lists.md) documents app-level windowing, theme/density tokens and the bounded Solid/React streaming soak. The [overlay contract](native-overlays.md) adds optional dialog/menu/popover layers, modal focus and end-anchored scrolling. Text editing, focus, Unicode, composition, accessibility and scaling have their own [support matrix](native-text.md).
+
 ## Build and operate
 
 6. [Getting started](getting-started.md) — create, run and package a Solid/React app in a checkout with a prebuilt host

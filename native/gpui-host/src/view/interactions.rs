@@ -28,6 +28,37 @@ fn button(value: MouseButton) -> PointerButton {
     }
 }
 
+/// Buttons this window has seen pressed, across frames. GPUI's macOS and
+/// Windows backends synthesize a left release when a platform drag that
+/// carries no files is dropped on the window (AppKit `performDragOperation:`,
+/// OLE `IDropTarget::Drop`); no GPUI drag is active then. Such a release has
+/// no press in this window and is never reported as a pointer release.
+#[derive(Clone, Default)]
+pub(super) struct PressedButtons(Rc<Cell<u8>>);
+
+impl PressedButtons {
+    fn bit(button: MouseButton) -> u8 {
+        match button {
+            MouseButton::Left => 1,
+            MouseButton::Right => 2,
+            MouseButton::Middle => 4,
+            MouseButton::Navigate(NavigationDirection::Back) => 8,
+            MouseButton::Navigate(NavigationDirection::Forward) => 16,
+        }
+    }
+
+    fn press(&self, button: MouseButton) {
+        self.0.set(self.0.get() | Self::bit(button));
+    }
+
+    /// Clears the button and reports whether this window saw it pressed.
+    fn release(&self, button: MouseButton) -> bool {
+        let pressed = self.0.get() & Self::bit(button) != 0;
+        self.0.set(self.0.get() & !Self::bit(button));
+        pressed
+    }
+}
+
 /// GPUI runs capture in native paint order. Each hovered model element updates
 /// this candidate, leaving the deepest visible native hit for the final observer.
 /// The final capture observer consumes it before normal focus/edit/click actions.
@@ -44,12 +75,25 @@ impl PointerFrame {
         interactivity.capture_any_mouse_up(move |_, _, _| up.set(Some(node_id)));
     }
 
-    pub(super) fn observe(&self, window: &mut Window, view: &WeakEntity<NativeView>) {
+    /// `origin` is this window's content origin in the owning native window's
+    /// coordinates: zero for the window itself, the offset for a popup window.
+    pub(super) fn observe(
+        &self,
+        window: &mut Window,
+        view: &WeakEntity<NativeView>,
+        origin: Point<Pixels>,
+        pressed: &PressedButtons,
+    ) {
         let down = self.0.clone();
         let down_view = view.clone();
+        let down_pressed = pressed.clone();
         window.on_mouse_event(move |event: &MouseDownEvent, phase, window, cx| {
+            if phase == DispatchPhase::Capture {
+                down_pressed.press(event.button);
+            }
             if phase == DispatchPhase::Capture
                 && let Some(node_id) = down.take()
+                && !cx.has_active_drag()
                 && in_viewport(event.position, window)
             {
                 let _ = down_view.update(cx, |view, cx| {
@@ -57,7 +101,7 @@ impl PointerFrame {
                         node_id,
                         true,
                         event.button,
-                        event.position,
+                        event.position + origin,
                         event.modifiers,
                         cx,
                     )
@@ -66,9 +110,14 @@ impl PointerFrame {
         });
         let up = self.0.clone();
         let up_view = view.clone();
+        let up_pressed = pressed.clone();
         window.on_mouse_event(move |event: &MouseUpEvent, phase, window, cx| {
             if phase == DispatchPhase::Capture
                 && let Some(node_id) = up.take()
+                && up_pressed.release(event.button)
+                // An external file drop arrives as a synthesized button
+                // release; it is a drop, never a pointer release.
+                && !cx.has_active_drag()
                 && in_viewport(event.position, window)
             {
                 let _ = up_view.update(cx, |view, cx| {
@@ -76,7 +125,7 @@ impl PointerFrame {
                         node_id,
                         false,
                         event.button,
-                        event.position,
+                        event.position + origin,
                         event.modifiers,
                         cx,
                     )
@@ -185,8 +234,15 @@ impl NativeView {
         if !state.active {
             return;
         }
+        // An open popup window holds the keyboard route, so Escape reaches it
+        // while focus stays in this window. Without a focused control, a
+        // modal layer receives keys such as Escape.
         let node_id = self
-            .focused_node(window, cx)
+            .popups
+            .topmost()
+            .filter(|_| self.popups.active())
+            .or_else(|| self.focused_node(window, cx))
+            .or(self.overlays.active_modal())
             .unwrap_or_else(|| state.tree.root_id());
         let Some(path) = state.tree.path(node_id) else {
             return;

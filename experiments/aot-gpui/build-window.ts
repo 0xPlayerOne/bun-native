@@ -41,12 +41,23 @@ const entries = {
   fault: 'tests/native/fault.ts',
   scheduling: 'tests/native/scheduling.ts',
   layout: 'tests/native/layout.ts',
+  'layout-style': 'tests/native/layout-style.ts',
   interactions: 'tests/native/interactions.ts',
   services: 'tests/native/services.ts',
+  'display-semantics': 'tests/native/display-semantics.ts',
+  'display-platform': 'tests/native/display-platform.ts',
   clipboard: 'tests/native/clipboard.ts',
   'global-shortcuts': 'tests/native/global-shortcuts.ts',
   notifications: 'tests/native/notifications.ts',
   'filesystem-grants': 'tests/native/filesystem-grants.ts',
+  processes: 'tests/native/processes.ts',
+  'file-dialogs': 'tests/native/file-dialogs.ts',
+  overlays: 'tests/native/overlays.ts',
+  popups: 'tests/native/popups.ts',
+  'drag-drop': 'tests/native/drag-drop.ts',
+  'solid-drag-drop': 'tests/native/solid-drag-drop.tsx',
+  'react-drag-drop': 'tests/native/react-drag-drop.tsx',
+  'text-input': 'tests/native/text-input.ts',
   'solid-services': 'tests/native/solid-services.tsx',
   'react-services': 'tests/native/react-services.tsx',
   'platform-smoke': 'tests/native/platform-smoke.ts',
@@ -59,11 +70,15 @@ const entries = {
   'solid-input-intent': 'tests/native/solid-input-intent.tsx',
   'solid-interactions': 'tests/native/solid-interactions.tsx',
   'solid-input-viewport': 'tests/native/solid-input-viewport.tsx',
+  'solid-streaming-list': 'tests/native/solid-streaming-list.tsx',
+  'solid-layout-style': 'tests/native/solid-layout-style.tsx',
   react: 'examples/react-counter/main.tsx',
   'react-workspace': 'examples/react-workspace/main.tsx',
   'react-workspace-flow': 'tests/native/react-workspace.tsx',
   'react-interactions': 'tests/native/react-interactions.tsx',
   'react-input-viewport': 'tests/native/react-input-viewport.tsx',
+  'react-streaming-list': 'tests/native/react-streaming-list.tsx',
+  'react-layout-style': 'tests/native/react-layout-style.tsx',
   'react-behavior': 'tests/native/react-behavior.tsx',
   'react-workload': 'benchmarks/solid/react.tsx',
 } as const
@@ -81,17 +96,23 @@ const solidEntry =
   entry === 'solid-input-intent' ||
   entry === 'solid-interactions' ||
   entry === 'solid-input-viewport' ||
+  entry === 'solid-streaming-list' ||
+  entry === 'solid-layout-style' ||
   entry === 'solid-platform' ||
-  entry === 'solid-services'
+  entry === 'solid-services' ||
+  entry === 'solid-drag-drop'
 const reactEntry =
   entry === 'react' ||
   entry === 'react-workspace' ||
   entry === 'react-workspace-flow' ||
   entry === 'react-interactions' ||
   entry === 'react-input-viewport' ||
+  entry === 'react-streaming-list' ||
+  entry === 'react-layout-style' ||
   entry === 'react-behavior' ||
   entry === 'react-services' ||
   entry === 'react-platform' ||
+  entry === 'react-drag-drop' ||
   entry === 'react-workload'
 if (!values.host || !values.outdir || !isAbsolute(values.host) || !isAbsolute(values.outdir)) {
   throw new Error(
@@ -114,12 +135,21 @@ if (
     entry === 'fault' ||
     entry === 'scheduling' ||
     entry === 'layout' ||
+    entry === 'layout-style' ||
     entry === 'interactions' ||
     entry === 'services' ||
+    entry === 'display-semantics' ||
+    entry === 'display-platform' ||
     entry === 'clipboard' ||
     entry === 'global-shortcuts' ||
     entry === 'notifications' ||
     entry === 'filesystem-grants' ||
+    entry === 'processes' ||
+    entry === 'file-dialogs' ||
+    entry === 'overlays' ||
+    entry === 'popups' ||
+    entry === 'drag-drop' ||
+    entry === 'text-input' ||
     entry === 'platform-smoke' ||
     solidEntry ||
     reactEntry) &&
@@ -199,6 +229,15 @@ async function sourceHashes() {
     sources.add(path)
   if (entry === 'solid-input-viewport' || entry === 'react-input-viewport')
     sources.add('tests/native/renderer-input-viewport.ts')
+  if (entry === 'solid-streaming-list' || entry === 'react-streaming-list')
+    for (const path of [
+      'tests/native/renderer-streaming-list.ts',
+      'tests/native/streaming-list-model.ts',
+      'benchmarks/streaming-list-fixture.ts',
+    ])
+      sources.add(path)
+  if (entry === 'layout-style' || entry === 'solid-layout-style' || entry === 'react-layout-style')
+    sources.add('tests/native/layout-style-scene.ts')
   if (solidEntry) {
     for (const path of [
       'packages/solid/package.json',
@@ -242,6 +281,14 @@ async function sourceHashes() {
     sources.add('examples/react-workspace/model.ts')
   }
   if (entry === 'clipboard') sources.add('native/gpui-host/examples/clipboard-peer.rs')
+  if (entry === 'drag-drop' || entry === 'solid-drag-drop' || entry === 'react-drag-drop') {
+    sources.add('tests/native/drag-source.ts')
+    sources.add('native/gpui-host/examples/xdnd-source.rs')
+    sources.add('tests/native/macos-drag-source.m')
+    sources.add('tests/native/windows-drag-source.cs')
+  }
+  if (entry === 'solid-drag-drop' || entry === 'react-drag-drop')
+    sources.add('tests/native/drop-adapter.ts')
   for (const path of await nativeSourcePaths(source)) sources.add(path)
   return Promise.all(
     [...sources]

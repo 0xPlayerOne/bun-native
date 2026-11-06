@@ -1,5 +1,15 @@
 export { encodeFrame, FrameDecoder, MAX_FRAME_BYTES, ProtocolError } from './framing.ts'
-export { parseElement, type Element, type Style } from './elements.ts'
+export {
+  DECORATION_FIELDS,
+  MAX_OVERLAY_DEPTH,
+  parseElement,
+  SPLIT_DIVIDER,
+  type Element,
+  type OverlayElement,
+  type OverlayKeyboard,
+  type SplitStyle,
+  type Style,
+} from './elements.ts'
 export { MAX_TEXT_BYTES } from './values.ts'
 export {
   FILE_ACCESS,
@@ -22,6 +32,52 @@ export {
   type WriteMode,
 } from './files.ts'
 export {
+  MAX_PROCESS_ARGS,
+  MAX_PROCESS_ENV,
+  MAX_PROCESS_EXECUTABLES,
+  MAX_PROCESS_OUTPUT_CREDIT,
+  MAX_PROCESSES,
+  parseProcessExecutables,
+  parseProcessLaunch,
+  PROCESS_SIGNALS,
+  processArgument,
+  processesFromArguments,
+  type ProcessExecutable,
+  type ProcessExit,
+  type ProcessLaunch,
+  type ProcessSignal,
+  type ProcessStream,
+  type TerminalSize,
+} from './processes.ts'
+export {
+  FILE_DIALOG_MODES,
+  MAX_DIALOG_FILTER_NAME_BYTES,
+  MAX_DIALOG_FILTER_PATTERNS,
+  MAX_DIALOG_FILTERS,
+  MAX_DIALOG_LABEL_BYTES,
+  MAX_DIALOG_NAME_BYTES,
+  MAX_DIALOG_PATH_BYTES,
+  MAX_DIALOG_PATHS,
+  MAX_DIALOG_PATTERN_BYTES,
+  MAX_DIALOG_TITLE_BYTES,
+  MAX_FILE_DIALOGS,
+  parseFileDialogOptions,
+  type FileDialogMode,
+  type FileDialogOptions,
+  type FileDialogResult,
+  type FileFilter,
+} from './dialogs.ts'
+export {
+  DRAG_STATES,
+  DROP_REJECTIONS,
+  MAX_DROP_ITEMS,
+  MAX_DROP_NAME_BYTES,
+  MAX_DROP_TARGETS,
+  type DragState,
+  type DroppedItem,
+  type DropRejection,
+} from './drops.ts'
+export {
   GLOBAL_SHORTCUT_KEYS,
   MAX_CLIPBOARD_BYTES,
   MAX_GLOBAL_SHORTCUTS,
@@ -30,6 +86,7 @@ export {
   MAX_NOTIFICATIONS,
   NOTIFICATION_DISMISSALS,
   type ClipboardText,
+  type DisplaySnapshot,
   type NotificationDismissal,
   type ServicePolicy,
   type ShortcutModifiers,
@@ -38,6 +95,7 @@ export {
   DEFAULT_LIMITS,
   ERROR_CODES,
   MAX_OPERATIONS,
+  MAX_SCROLL_OFFSET,
   parseCommand,
   parseEvent,
   PROTOCOL_VERSION,
@@ -50,4 +108,5 @@ export {
   type Capability,
   type KeyModifiers,
   type PointerButton,
+  type DismissReason,
 } from './messages.ts'

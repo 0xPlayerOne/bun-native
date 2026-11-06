@@ -1,6 +1,7 @@
 //! Opt-in native paint instrumentation. A paint callback is not proof of display
 //! presentation; screenshots are separate. Every JSONL record is bounded.
 
+mod frames;
 mod layout;
 mod pointer;
 use bun_native_protocol::{BatchMetrics, MAX_FRAME_BYTES, NodeId, RequestId, Tree, WindowId};
@@ -27,6 +28,7 @@ struct Log {
     last_state: BTreeMap<WindowId, PaintVersion>,
     last_layout: BTreeMap<WindowId, LayoutSnapshot>,
     pointer: Option<pointer::PointerTrace>,
+    frames: Option<frames::FrameTrace>,
     input_viewports: bool,
     startup_started: Option<Instant>,
     startup_records: u16,
@@ -62,6 +64,7 @@ impl Evidence {
                 last_state: BTreeMap::new(),
                 last_layout: BTreeMap::new(),
                 pointer: pointer::PointerTrace::from_environment(),
+                frames: frames::FrameTrace::from_environment(),
                 input_viewports: std::env::var("BUN_NATIVE_INPUT_VIEWPORT_TRACE").as_deref()
                     == Ok("1"),
                 startup_started: (std::env::var("BUN_NATIVE_STARTUP_TRACE").as_deref() == Ok("1"))
@@ -258,6 +261,9 @@ impl Evidence {
             return;
         };
         let mut log = log.borrow_mut();
+        if log.frames.is_some() {
+            return;
+        }
         if let Some(snapshot) = layout
             && log.last_layout.get(&window_id) != Some(&snapshot)
         {

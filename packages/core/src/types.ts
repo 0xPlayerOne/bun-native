@@ -1,5 +1,6 @@
 import type {
   Capability,
+  DismissReason,
   Element,
   KeyModifiers,
   Limits,
@@ -8,6 +9,7 @@ import type {
 } from '@bun-native/protocol'
 import type { HostOptions } from '@bun-native/runtime'
 import type {
+  DisplayChangeEvent,
   NativeDisplaySnapshot,
   NativeClipboardText,
   ServiceCapabilities,
@@ -20,10 +22,20 @@ import type {
 } from './shortcuts.ts'
 import type { NativeNotification, NotificationEvent, NotificationOptions } from './notifications.ts'
 import type { FileGrantOptions, NativeFileGrant } from './files.ts'
+import type { NativeProcess, ProcessEvent, ProcessOptions } from './processes.ts'
+import type {
+  OpenDialogOptions,
+  OpenDialogResult,
+  SaveDialogOptions,
+  SaveDialogResult,
+} from './dialogs.ts'
+import type { DropTargetEvent, NativeDropTarget } from './drops.ts'
 
 export type { Element, KeyModifiers, PointerButton, Style }
 export type ApplicationOptions = HostOptions
 export type ElementKind = Element['kind']
+/** Element kinds that own ordered children. */
+export type ContainerKind = 'box' | 'split' | 'overlay'
 export type NativeCapability = Capability
 declare const nodeType: unique symbol
 
@@ -88,6 +100,17 @@ export interface FocusEvent<T extends 'focus' | 'blur' = 'focus' | 'blur'> exten
   readonly type: T
 }
 
+/**
+ * The host asks the application to close a popup window overlay, for example
+ * because its parent window stopped being active. Nothing is removed natively
+ * until a listener commits a batch.
+ */
+export interface DismissRequestEvent extends EventContext {
+  readonly type: 'dismiss'
+  readonly node: NativeNode<'overlay'>
+  readonly reason: DismissReason
+}
+
 export interface NativeEventMap {
   click: ClickEvent
   input: InputEvent
@@ -97,6 +120,7 @@ export interface NativeEventMap {
   pointer_up: PointerEvent<'pointer_up'>
   focus: FocusEvent<'focus'>
   blur: FocusEvent<'blur'>
+  dismiss: DismissRequestEvent
 }
 
 export type NativeEventType = keyof NativeEventMap
@@ -118,10 +142,32 @@ export interface NativeBatch {
     element: Extract<Element, { kind: NoInfer<K> }>
   ): void
   /** Index is evaluated after detaching the child from its previous parent. */
-  insert(parent: NativeNode<'box'>, child: NativeNode, index: number): void
-  append(parent: NativeNode<'box'>, child: NativeNode): void
+  insert(parent: NativeNode<ContainerKind>, child: NativeNode, index: number): void
+  append(parent: NativeNode<ContainerKind>, child: NativeNode): void
   /** Deletes the complete subtree; deleting a revoked node is an error. */
   remove(node: NativeNode): void
+  /**
+   * Requires `focus_v1`. Focus an enabled button or input after this batch's
+   * tree changes commit, and scroll it into view. The target must still be
+   * focusable in the committed tree and lie inside the active modal overlay.
+   */
+  focus(node: NativeNode<'button' | 'input'>): void
+  /**
+   * Requires `scroll_control_v1`. Set a scrolling container's offset from its
+   * content start in logical pixels; an omitted axis keeps its offset. The
+   * host clamps the offset to the laid-out maximum.
+   */
+  scrollTo(node: NativeNode<ContainerKind>, offset: ScrollOffset): void
+  /**
+   * Requires `scroll_control_v1`. Scroll every scrolling ancestor inside the
+   * node's own layer so the ancestor's child on the node's route is visible.
+   */
+  scrollIntoView(node: NativeNode): void
+}
+
+export interface ScrollOffset {
+  readonly x?: number
+  readonly y?: number
 }
 
 export interface WindowOptions {
@@ -150,6 +196,13 @@ export interface NativeWindow {
   input(node: NativeNode<'input'>): InputState
   /** Requires an immutable launch grant; cancellation never publishes a late snapshot. */
   displaySnapshot(options?: ServiceRequestOptions): Promise<NativeDisplaySnapshot>
+  /**
+   * Reports when the window moves to another display or the OS reconfigures its
+   * display, with the new snapshot. Requires the windowDisplay launch grant and
+   * `serviceCapabilities.windowDisplay.changes` (macOS and Windows). Returns an
+   * idempotent remover; window close and shutdown remove every listener.
+   */
+  onDisplayChange(listener: (event: DisplayChangeEvent) => void | Promise<void>): () => void
   /** Fixed native deadline; cancellation after dispatch drains but withholds the result. */
   readClipboardText(options?: ServiceRequestOptions): Promise<NativeClipboardText>
   /** A submitted write can change the OS clipboard even if ownership is subsequently revoked. */
@@ -179,6 +232,43 @@ export interface NativeWindow {
    * pathname or model text can create one. Closing the window revokes it.
    */
   openFileGrant(root: string, options?: FileGrantOptions): Promise<NativeFileGrant>
+  /**
+   * Start an owned child process from an executable the application named in
+   * its immutable `processes` launch permission, by ID. Arguments and the
+   * whole environment are explicit; a working directory comes only from a live
+   * file grant of this window. Closing the window stops its process group.
+   */
+  spawnProcess(
+    executable: string,
+    options: ProcessOptions,
+    listener: (event: ProcessEvent) => void | Promise<void>
+  ): Promise<NativeProcess>
+  /**
+   * Show an OS file-open or folder dialog owned by this window. Requires the
+   * immutable fileDialogs launch grant; at most one file dialog per window.
+   * The returned paths are data, never a filesystem grant. Aborting the signal,
+   * closing the window or shutting down closes the dialog.
+   */
+  showOpenDialog(
+    options: OpenDialogOptions,
+    request?: ServiceRequestOptions
+  ): Promise<OpenDialogResult>
+  /** Show an OS save dialog owned by this window. Nothing is written or created. */
+  showSaveDialog(
+    options: SaveDialogOptions,
+    request?: ServiceRequestOptions
+  ): Promise<SaveDialogResult>
+  /**
+   * Make a committed node an owned drop target for external file drags.
+   * Requires the immutable dragDrop launch grant. Dropped items arrive as
+   * untrusted display names; only `item.resolve(root)` maps one, through the
+   * host, beneath a launch root. Removing the node, closing the target or
+   * its window revokes it, and no later event is delivered.
+   */
+  registerDropTarget(
+    node: NativeNode,
+    listener: (event: DropTargetEvent) => void | Promise<void>
+  ): Promise<NativeDropTarget>
   /** Idempotent. Revokes listeners before requesting native window removal. */
   close(): Promise<void>
 }

@@ -55,7 +55,7 @@ export const sizes: readonly number[] = [
   MAX_OPERATIONS,
   MAX_TEXT_BYTES,
 ]
-export const version: 9 = PROTOCOL_VERSION
+export const version: 11 = PROTOCOL_VERSION
 
 export function checkFraming(bytes: Uint8Array): unknown[] {
   const frame: Uint8Array = encodeFrame({ type: 'ack', id: 1 })
@@ -139,7 +139,9 @@ export const policy: ServicePolicy = {
   clipboard_write: false,
   global_shortcuts: false,
   notifications: true,
+  drag_drop: false,
   filesystem_roots: [],
+  processes: [],
 }
 // @ts-expect-error The wire policy is boolean, unlike the allow/deny launch option.
 export const wirePolicy: ServicePolicy = { ...policy, notifications: 'allow' }

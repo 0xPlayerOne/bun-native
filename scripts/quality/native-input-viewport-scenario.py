@@ -126,6 +126,11 @@ def run(
                 size,
                 current["input"],
                 mode,
+                next(
+                    node["bounds"]
+                    for node in current["layout"]["nodes"]
+                    if node["node_id"] == identity
+                ),
             )
             observations[name] = {
                 "frame": current,

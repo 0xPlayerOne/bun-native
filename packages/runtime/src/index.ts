@@ -2,6 +2,8 @@ import {
   filesystemRootArgument,
   fileResultAnswers,
   parseFilesystemRoots,
+  parseProcessExecutables,
+  processArgument,
   encodeFrame,
   FrameDecoder,
   parseCommand,
@@ -48,6 +50,18 @@ export type WindowCommand = WithoutId<
         | 'open_file_grant'
         | 'close_file_grant'
         | 'file_request'
+        | 'spawn_process'
+        | 'write_process'
+        | 'close_process_input'
+        | 'resize_process'
+        | 'signal_process'
+        | 'acknowledge_process_output'
+        | 'release_process'
+        | 'show_file_dialog'
+        | 'close_file_dialog'
+        | 'register_drop_target'
+        | 'unregister_drop_target'
+        | 'resolve_dropped_item'
     }
   >
 >
@@ -69,6 +83,14 @@ export type HostResponse = Extract<
       | 'file_grant_opened'
       | 'file_grant_closed'
       | 'file_result'
+      | 'process_spawned'
+      | 'process_updated'
+      | 'process_released'
+      | 'file_dialog_opened'
+      | 'file_dialog_closed'
+      | 'drop_target_registered'
+      | 'drop_target_unregistered'
+      | 'dropped_item_resolved'
   }
 >
 
@@ -81,11 +103,20 @@ export interface ServicePermissions {
   readonly globalShortcuts?: 'allow' | 'deny'
   /** Desktop notifications posted by an owned window. */
   readonly notifications?: 'allow' | 'deny'
+  /** Owned drop targets that receive external file drops as untrusted names. */
+  readonly dragDrop?: 'allow' | 'deny'
   /**
    * Directories an owned window may open as scoped file grants. Each `path`
    * is absolute and normalized; `access` caps every grant on that root.
    */
   readonly filesystemRoots?: readonly Readonly<{ id: string; path: string; access: FileAccess }>[]
+  /**
+   * Executables an owned window may start as child processes, by ID. Each
+   * `executable` is an absolute normalized path; nothing else can be started.
+   */
+  readonly processes?: readonly Readonly<{ id: string; executable: string }>[]
+  /** OS file open/save/folder dialogs owned by a window. Paths are data, never grants. */
+  readonly fileDialogs?: 'allow' | 'deny'
 }
 
 export class NativeCommandError extends Error {
@@ -120,7 +151,10 @@ function launchPolicy(value: unknown = {}): Readonly<ServicePolicy> {
           'clipboardWrite',
           'globalShortcuts',
           'notifications',
+          'dragDrop',
           'filesystemRoots',
+          'processes',
+          'fileDialogs',
         ].includes(key)
     )
   )
@@ -137,8 +171,26 @@ function launchPolicy(value: unknown = {}): Readonly<ServicePolicy> {
     clipboard_write: grant('clipboardWrite'),
     global_shortcuts: grant('globalShortcuts'),
     notifications: grant('notifications'),
+    drag_drop: grant('dragDrop'),
     filesystem_roots: filesystemRoots(value),
+    processes: processes(value),
+    file_dialogs: grant('fileDialogs'),
   })
+}
+
+function processes(value: object): ServicePolicy['processes'] {
+  const entries = Object.hasOwn(value, 'processes')
+    ? (value as Record<string, unknown>)['processes']
+    : []
+  try {
+    return Object.freeze(
+      parseProcessExecutables(entries).map((entry) => Object.freeze(entry))
+    ) as ServicePolicy['processes']
+  } catch (error) {
+    throw new TypeError(
+      'processes must list at most 8 unique { id, executable } entries: ' + (error as Error).message
+    )
+  }
 }
 
 function filesystemRoots(value: object): ServicePolicy['filesystem_roots'] {
@@ -164,12 +216,20 @@ function samePolicy(left: Readonly<ServicePolicy>, right: Readonly<ServicePolicy
     left.clipboard_write === right.clipboard_write &&
     left.global_shortcuts === right.global_shortcuts &&
     left.notifications === right.notifications &&
+    (left.file_dialogs ?? false) === (right.file_dialogs ?? false) &&
+    left.drag_drop === right.drag_drop &&
     left.filesystem_roots.length === right.filesystem_roots.length &&
     left.filesystem_roots.every(
       (root, index) =>
         root.id === right.filesystem_roots[index]!.id &&
         root.path === right.filesystem_roots[index]!.path &&
         root.access === right.filesystem_roots[index]!.access
+    ) &&
+    left.processes.length === right.processes.length &&
+    left.processes.every(
+      (entry, index) =>
+        entry.id === right.processes[index]!.id &&
+        entry.executable === right.processes[index]!.executable
     )
   )
 }
@@ -179,6 +239,20 @@ type Pending = {
   resolve: (response: HostResponse) => void
   reject: (error: Error) => void
   timer: ReturnType<typeof setTimeout>
+}
+
+/** Diagnostic only: when the serialized stdin write and flush of one request settled. */
+type RequestWrite = { readonly queuedAt: number; writtenAt?: number; flushedAt?: number }
+
+function describeWrite(write: RequestWrite): string {
+  const at = (time: number) => '+' + Math.round(time - write.queuedAt) + 'ms'
+  const state =
+    write.flushedAt !== undefined ? 'flushed' : write.writtenAt !== undefined ? 'written' : 'queued'
+  return (
+    `write ${state}: queued +0ms` +
+    (write.writtenAt === undefined ? '' : ', written ' + at(write.writtenAt)) +
+    (write.flushedAt === undefined ? '' : ', flushed ' + at(write.flushedAt))
+  )
 }
 
 type WaitingReader = {
@@ -231,7 +305,10 @@ export class NativeHost implements AsyncIterable<WindowEvent> {
         ...(requestedPolicy.clipboard_write ? ['--bun-native-allow-clipboard-write'] : []),
         ...(requestedPolicy.global_shortcuts ? ['--bun-native-allow-global-shortcuts'] : []),
         ...(requestedPolicy.notifications ? ['--bun-native-allow-notifications'] : []),
+        ...(requestedPolicy.drag_drop ? ['--bun-native-allow-drag-drop'] : []),
         ...requestedPolicy.filesystem_roots.map(filesystemRootArgument),
+        ...requestedPolicy.processes.map(processArgument),
+        ...(requestedPolicy.file_dialogs ? ['--bun-native-allow-file-dialogs'] : []),
       ],
       stdin: 'pipe',
       stdout: 'pipe',
@@ -327,6 +404,40 @@ export class NativeHost implements AsyncIterable<WindowEvent> {
   send(
     command: Extract<WindowCommand, { type: 'file_request' }>
   ): Promise<Extract<HostResponse, { type: 'file_result' }>>
+  send(
+    command: Extract<WindowCommand, { type: 'spawn_process' }>
+  ): Promise<Extract<HostResponse, { type: 'process_spawned' }>>
+  send(
+    command: Extract<WindowCommand, { type: 'release_process' }>
+  ): Promise<Extract<HostResponse, { type: 'process_released' }>>
+  send(
+    command: Extract<
+      WindowCommand,
+      {
+        type:
+          | 'write_process'
+          | 'close_process_input'
+          | 'resize_process'
+          | 'signal_process'
+          | 'acknowledge_process_output'
+      }
+    >
+  ): Promise<Extract<HostResponse, { type: 'process_updated' }>>
+  send(
+    command: Extract<WindowCommand, { type: 'show_file_dialog' }>
+  ): Promise<Extract<HostResponse, { type: 'file_dialog_opened' }>>
+  send(
+    command: Extract<WindowCommand, { type: 'close_file_dialog' }>
+  ): Promise<Extract<HostResponse, { type: 'file_dialog_closed' }>>
+  send(
+    command: Extract<WindowCommand, { type: 'register_drop_target' }>
+  ): Promise<Extract<HostResponse, { type: 'drop_target_registered' }>>
+  send(
+    command: Extract<WindowCommand, { type: 'unregister_drop_target' }>
+  ): Promise<Extract<HostResponse, { type: 'drop_target_unregistered' }>>
+  send(
+    command: Extract<WindowCommand, { type: 'resolve_dropped_item' }>
+  ): Promise<Extract<HostResponse, { type: 'dropped_item_resolved' }>>
   send(command: WindowCommand): Promise<HostResponse>
   send(command: WindowCommand): Promise<HostResponse> {
     if (this.phase !== 'running') return Promise.reject(this.closedError())
@@ -416,9 +527,15 @@ export class NativeHost implements AsyncIterable<WindowEvent> {
     } catch (error) {
       return Promise.reject(error)
     }
+    const write: RequestWrite = { queuedAt: performance.now() }
     const result = new Promise<HostResponse>((resolve, reject) => {
       const timer = setTimeout(
-        () => this.fail(new Error(`Native ${command.type} request ${command.id} timed out`)),
+        () =>
+          this.fail(
+            new Error(
+              `Native ${command.type} request ${command.id} timed out (${describeWrite(write)})`
+            )
+          ),
         this.timeout
       )
       this.pending.set(command.id, {
@@ -435,9 +552,11 @@ export class NativeHost implements AsyncIterable<WindowEvent> {
         if (this.phase === 'closed') return
         this.startupTrace?.request('stdin_write_enter', command, this.process.pid)
         this.process.stdin.write(frame)
+        write.writtenAt = performance.now()
         this.startupTrace?.request('stdin_write_returned', command, this.process.pid)
         this.startupTrace?.request('stdin_flush_enter', command, this.process.pid)
         await this.process.stdin.flush()
+        write.flushedAt = performance.now()
         this.startupTrace?.request('stdin_flushed', command, this.process.pid)
       })
       .catch((error: unknown) => this.fail(error))
@@ -601,6 +720,14 @@ export class NativeHost implements AsyncIterable<WindowEvent> {
       event.type === 'file_grant_opened' ||
       event.type === 'file_grant_closed' ||
       event.type === 'file_result' ||
+      event.type === 'process_spawned' ||
+      event.type === 'process_updated' ||
+      event.type === 'process_released' ||
+      event.type === 'file_dialog_opened' ||
+      event.type === 'file_dialog_closed' ||
+      event.type === 'drop_target_registered' ||
+      event.type === 'drop_target_unregistered' ||
+      event.type === 'dropped_item_resolved' ||
       event.type === 'error'
     ) {
       if (event.type === 'error' && event.id === undefined)
@@ -681,6 +808,54 @@ export class NativeHost implements AsyncIterable<WindowEvent> {
           response.window_id === command.window_id &&
           response.grant_id === command.grant_id &&
           fileResultAnswers(command.operation, response.result)
+        )
+      case 'spawn_process':
+      case 'write_process':
+      case 'close_process_input':
+      case 'resize_process':
+      case 'signal_process':
+      case 'acknowledge_process_output':
+      case 'release_process':
+        return (
+          response.type ===
+            (command.type === 'spawn_process'
+              ? 'process_spawned'
+              : command.type === 'release_process'
+                ? 'process_released'
+                : 'process_updated') &&
+          response.window_id === command.window_id &&
+          response.process_id === command.process_id
+        )
+      case 'show_file_dialog':
+        return (
+          response.type === 'file_dialog_opened' &&
+          response.window_id === command.window_id &&
+          response.dialog_id === command.dialog_id
+        )
+      case 'close_file_dialog':
+        return (
+          response.type === 'file_dialog_closed' &&
+          response.window_id === command.window_id &&
+          response.dialog_id === command.dialog_id
+        )
+      case 'register_drop_target':
+      case 'unregister_drop_target':
+        return (
+          response.type ===
+            (command.type === 'register_drop_target'
+              ? 'drop_target_registered'
+              : 'drop_target_unregistered') &&
+          response.window_id === command.window_id &&
+          response.target_id === command.target_id
+        )
+      case 'resolve_dropped_item':
+        return (
+          response.type === 'dropped_item_resolved' &&
+          response.window_id === command.window_id &&
+          response.target_id === command.target_id &&
+          response.drop_id === command.drop_id &&
+          response.item === command.item &&
+          response.root === command.root
         )
       case 'open':
         return (

@@ -285,6 +285,25 @@ class InputViewportPaintControls(unittest.TestCase):
                 PAINT.pixel_counts(wrong, [160, 60], observation(), "end")["passed"]
             )
 
+    def test_focus_ring_is_host_chrome_but_padding_and_gutter_glyphs_still_fail(self):
+        node = [6, 6, 68, 38]
+        for column, passes in ((72, True), (70, False), (80, False)):
+            with self.subTest(column=column):
+                pixels = canvas()
+                fill(pixels, [45, 20, 6, 8], [255, 255, 255])
+                fill(pixels, [68, 10, 2, 30], [0, 0, 255])
+                fill(pixels, [column, 10, 1, 30], [255, 255, 255])
+                counts = PAINT.pixel_counts(
+                    pixels, [160, 60], observation(), "end", node
+                )
+                self.assertEqual(counts["passed"], passes)
+                # Without the node bounds nothing is exempt.
+                self.assertFalse(
+                    PAINT.pixel_counts(pixels, [160, 60], observation(), "end")[
+                        "passed"
+                    ]
+                )
+
     def test_recorded_lcd_glyph_edge_is_not_an_opaque_caret(self):
         recorded = json.loads(
             (

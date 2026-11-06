@@ -71,7 +71,7 @@ export function checkNodes(reference: RendererNode, handle: NativeNode<'input'>)
   setProperty(box, 'style', { gap: 4 })
   removeNode(box, text)
   const node: Node = asNode(reference)
-  const kind: 'box' | 'text' | 'button' | 'input' | 'text-node' = node.kind
+  const kind: 'box' | 'text' | 'button' | 'input' | 'split' | 'overlay' | 'text-node' = node.kind
   const state: InputState = inputState(reference)
   const owned: RendererNode = box
   void [kind, owned]

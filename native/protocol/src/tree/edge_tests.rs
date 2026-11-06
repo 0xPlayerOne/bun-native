@@ -30,6 +30,8 @@ fn input(value: &str, placeholder: &str) -> Element {
     Element::Input {
         value: value.into(),
         placeholder: placeholder.into(),
+        disabled: false,
+        read_only: false,
         style: Style::default(),
     }
 }
@@ -351,7 +353,10 @@ fn only_boxes_own_children_even_when_created_in_the_same_batch() {
             4,
             ErrorCode::InvalidState,
         );
-        assert_eq!(error.message, "only box elements can own children");
+        assert_eq!(
+            error.message,
+            "only box, split and overlay elements can own children"
+        );
     }
 }
 
