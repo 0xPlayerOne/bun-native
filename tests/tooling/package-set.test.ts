@@ -2,6 +2,7 @@ import { describe, expect, test } from 'bun:test'
 import { existsSync } from 'node:fs'
 import { copyFile, mkdir, readFile, rename, rm, symlink, writeFile } from 'node:fs/promises'
 import { dirname, join, resolve } from 'node:path'
+import { diagnose } from '../../scripts/native/doctor.ts'
 import { createProject, readProject } from '../../scripts/native/project.ts'
 import {
   parsePackageSet,
@@ -259,6 +260,15 @@ describe('standalone package source contracts (inert fixtures; no install, app b
           expect(read.packageSet?.source).toEqual({
             commit: set.source.commit,
             tree: set.source.tree,
+          })
+          expect(
+            (await diagnose(repository, { project: relocated })).find(
+              (result) => result.name === 'project'
+            )
+          ).toEqual({
+            name: 'project',
+            status: 'ok',
+            detail: `${framework} project ${relocated} with verified installed package set`,
           })
           expect(
             existsSync(
