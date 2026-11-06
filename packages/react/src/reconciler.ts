@@ -105,14 +105,29 @@ function updateEvent(node: Node, name: EventProperty, value: unknown): void {
   bindings.set(node, next)
 }
 
+function updateProperty(node: Node, name: string, value: unknown): void {
+  if (isEventProperty(name)) updateEvent(node, name, value)
+  else setProperty(node, name, value)
+}
+
+const reserved = (name: string) => name === 'children' || name === 'ref' || name === 'key'
+
+// React commits every rerendered host fiber, so this runs once per row of a
+// rerendered list: compare in place rather than allocating a merged key set.
 function updateProperties(node: Node, previous: Props, next: Props): void {
-  for (const name of new Set([...Object.keys(previous), ...Object.keys(next)])) {
-    if (name === 'children' || name === 'ref' || name === 'key') continue
+  for (const name of Object.keys(previous))
+    if (!reserved(name) && !Object.hasOwn(next, name)) updateProperty(node, name, undefined)
+  for (const name of Object.keys(next)) {
+    if (reserved(name)) continue
     const value = next[name]
     if (Object.hasOwn(previous, name) && Object.is(previous[name], value)) continue
-    if (isEventProperty(name)) updateEvent(node, name, value)
-    else setProperty(node, name, value)
+    updateProperty(node, name, value)
   }
+}
+
+function createProperties(node: Node, props: Props): void {
+  for (const name of Object.keys(props))
+    if (!reserved(name)) updateProperty(node, name, props[name])
 }
 
 const host: Config = {
@@ -132,7 +147,7 @@ const host: Config = {
   },
   createInstance(type, props) {
     const node = createElement(type)
-    updateProperties(node, {}, props)
+    createProperties(node, props)
     return node
   },
   createTextInstance: createTextNode,
@@ -177,7 +192,10 @@ const host: Config = {
   unhideInstance: unsupported.bind(null, 'hidden-subtrees'),
   unhideTextInstance: unsupported.bind(null, 'hidden-subtrees'),
   clearContainer(container) {
-    while (container.children.length) removeNode(container, container.children[0]!)
+    // Removing the last child pops it; removing the first would leave a hole
+    // that the next `children` read compacts, making the loop quadratic.
+    const children = container.children
+    while (children.length) removeNode(container, children[children.length - 1]!)
   },
   NotPendingTransition: null,
   HostTransitionContext: createContext(null),

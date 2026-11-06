@@ -1,6 +1,6 @@
 # Releasing Bun Native desktop applications
 
-**Status:** Distribution is a design target; there are no qualified Bun Native installers or signed production artifacts yet. [BN6 #223](https://github.com/0xPlayerOne/bun-native/issues/223) owns real packaging, signing, updates and rollback.
+**Status:** Distribution is a design target; there are no qualified Bun Native installers or signed production artifacts yet. [BN6 #223](https://github.com/0xPlayerOne/bun-native/issues/223) owns real packaging, signing, updates and rollback. An experimental [verified update and rollback tool](updates.md) exists for build outputs (#249); platform installers, OS code signing and notarization remain unimplemented.
 
 **Note (2026-11-05):** the `Code Foundry Release` workflow ([`release.yml`](../.github/workflows/release.yml)) runs Release Please on `main` and sets the workspace version (currently `0.19.0`). That version release is not an application artifact. It does not qualify native windows, packaging, signing or Bun AOT. `bun scripts/package-native.ts` produces framework package sets for [standalone projects](standalone-projects.md), not signed application installers. [`release-integrity.yml`](../.github/workflows/release-integrity.yml) only checks published immutable releases, and only once an administrator enables that setting.
 
@@ -32,6 +32,8 @@ Do not deploy or modify Adea production as a side effect of making Bun Native ex
 ## Updates and rollback
 
 Update manifests must be authenticated by a configured trust root, not just a checksum downloaded beside the payload. Stage to a private location, verify exact artifact identity and compatibility, replace atomically where supported, recover from interruption and preserve local user data. Native ABI mismatches must fail safely rather than continue with undefined behavior.
+
+The current experimental implementation and its tested cases are documented in [updates](updates.md).
 
 ## Release decision
 

@@ -36,14 +36,78 @@ jobs:
         run: node scripts/install-bun.mjs --destination "$RUNNER_TEMP/bun-native-bun"
       - name: Install pinned Rust toolchain
         run: rustup show active-toolchain
+      # The package set is unchanged. The one apt-get update below resolves exact
+      # versions; their index SHA256 hashes key a cache of the archive bytes, so a
+      # throttled mirror (47 MB at 37.9 kB/s took 20m42s in job 127546794220) is
+      # only paid when the resolved set changes. Cached bytes are rechecked against
+      # the index hashes before apt may use them.
+      - name: Resolve exact native build and isolated X11 prerequisite archives
+        id: apt-archives
+        run: |
+          packages=(
+            pkg-config libfontconfig-dev libglib2.0-dev libssl-dev libwayland-dev
+            libx11-xcb-dev libxkbcommon-x11-dev libvulkan1 libzstd-dev
+            mesa-vulkan-drivers xvfb xauth x11-utils openbox xdotool imagemagick
+            dbus-x11 dunst fonts-dejavu-core heaptrack binutils
+          )
+          printf '%s\n' "${packages[@]}" > "$RUNNER_TEMP/native-apt-packages"
+          # Outside the runner home so apt's sandboxed _apt user can download into it.
+          sudo install -d -o "$(id -u)" -g "$(id -g)" -m 0755 /var/cache/native-apt-archives
+          sudo apt-get update
+          apt-get install --print-uris -qq --no-install-recommends -y \
+            -o Acquire::ForceHash=SHA256 "${packages[@]}" > "$RUNNER_TEMP/native-apt-uris"
+          lock="$RUNNER_TEMP/native-apt-archives.lock"
+          : > "$lock"
+          while IFS= read -r line; do
+            pattern="^'[^']+' ([^ /]+\.deb) [0-9]+ SHA256:([0-9a-f]{64})$"
+            if [[ ! $line =~ $pattern ]]; then
+              echo "::error::Unexpected apt archive resolution: $line" >&2
+              exit 1
+            fi
+            printf '%s  %s\n' "${BASH_REMATCH[2]}" "${BASH_REMATCH[1]}" >> "$lock"
+          done < "$RUNNER_TEMP/native-apt-uris"
+          LC_ALL=C sort -o "$lock" "$lock"
+          echo "Resolved $(wc -l < "$lock") prerequisite archives:"
+          cat "$lock"
+          printf 'key=native-apt-%s-%s-%s\n' "$RUNNER_OS" "$RUNNER_ARCH" \
+            "$(sha256sum "$lock" | cut -d' ' -f1)" >> "$GITHUB_OUTPUT"
+      - name: Restore exact prerequisite archives
+        id: apt-cache
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: /var/cache/native-apt-archives
+          key: ${{ steps.apt-archives.outputs.key }}
       - name: Install native build and isolated X11 prerequisites
         run: |
-          sudo apt-get update
+          mapfile -t packages < "$RUNNER_TEMP/native-apt-packages"
+          lock="$RUNNER_TEMP/native-apt-archives.lock"
+          cached=/var/cache/native-apt-archives
+          mkdir -p "$cached"
+          reused=0
+          while read -r hash name; do
+            [[ -f $cached/$name ]] || continue
+            if [[ $(sha256sum "$cached/$name" | cut -d' ' -f1) == "$hash" ]]; then
+              reused=$((reused + 1))
+            else
+              rm -f "$cached/$name"
+            fi
+          done < "$lock"
+          echo "Reusing $reused of $(wc -l < "$lock") archives verified against the index"
+          sudo install -d -o _apt -m 0700 "$cached/partial"
+          # Manual-page index rebuilds are not used by any later step.
+          sudo rm -f /var/lib/man-db/auto-update
+          # apt downloads (and verifies) only the archives still missing.
           sudo apt-get install --no-install-recommends -y \
-            pkg-config libfontconfig-dev libglib2.0-dev libssl-dev libwayland-dev \
-            libx11-xcb-dev libxkbcommon-x11-dev libvulkan1 libzstd-dev \
-            mesa-vulkan-drivers xvfb xauth x11-utils openbox xdotool imagemagick \
-            dbus-x11 dunst fonts-dejavu-core heaptrack binutils
+            -o Dir::Cache::Archives="$cached/" -o APT::Keep-Downloaded-Packages=true \
+            "${packages[@]}"
+          sudo rm -rf "$cached/partial" "$cached/lock"
+          (cd "$cached" && sha256sum --check --strict --quiet "$lock")
+      - name: Save exact prerequisite archives
+        if: steps.apt-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: /var/cache/native-apt-archives
+          key: ${{ steps.apt-archives.outputs.key }}
       - name: Pin the installed Mesa CPU Vulkan ICD for isolated Xvfb
         run: |
           echo 'Installed Mesa Vulkan ICD files:'
@@ -96,6 +160,11 @@ jobs:
             sha256sum "$VK_DRIVER_FILES"
             printf 'Application modes: Bun development and verified machine-code AOT\nNative host profile: release\nDisplay: isolated Xvfb X11\nInput: XTest\nRenderer request: Mesa software Vulkan/GL; actual adapter in result.json\n'
           } > "$NATIVE_EVIDENCE/toolchain.txt"
+      - name: Keep the runner's Cargo home path out of native binaries
+        # Dependency sources live under CARGO_HOME, and their panic locations are
+        # otherwise embedded verbatim, so equal sources built under another home
+        # differ. See docs/reproducible-builds.md.
+        run: printf 'CARGO_ENCODED_RUSTFLAGS=--remap-path-prefix=%s=/cargo\n' "${CARGO_HOME:-$HOME/.cargo}" >> "$GITHUB_ENV"
       - name: Check native source formatting
         run: cargo fmt --manifest-path Cargo.toml --all -- --check
       - name: Build native executable
@@ -462,6 +531,30 @@ jobs:
                 --host-profile release -- "${command[@]}"
             done
           done
+      - name: Development release-host boundary rejection, online and in an empty network namespace
+        timeout-minutes: 3
+        env:
+          BUN_NATIVE_HOST: ${{ github.workspace }}/target/release/bun-native-host
+        run: |
+          # Raw frames to the actual host: version mismatch, pre-hello and
+          # duplicate hello, non-increasing ids, invalid/forbidden/oversized
+          # frames and a real window round trip (#247).
+          timeout 60s xvfb-run --auto-servernum --server-args='-screen 0 1280x800x24 -nolisten tcp' \
+            dbus-run-session -- bash scripts/quality/native-linux-session.sh \
+            "$NATIVE_EVIDENCE/boundary-online" -- bun tests/native/boundary.ts \
+            | tee "$NATIVE_EVIDENCE/boundary-online.json"
+          # Ubuntu 24.04 restricts unprivileged user namespaces through AppArmor.
+          # Lift it on this ephemeral runner so the same fixture runs with only
+          # loopback; the fixture itself asserts that no other interface exists.
+          if [[ -e /proc/sys/kernel/apparmor_restrict_unprivileged_userns ]]; then
+            sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
+          fi
+          BUN_NATIVE_REQUIRE_OFFLINE=1 timeout 60s unshare --map-root-user --net \
+            xvfb-run --auto-servernum --server-args='-screen 0 1280x800x24 -nolisten tcp' \
+            dbus-run-session -- bash scripts/quality/native-linux-session.sh \
+            "$NATIVE_EVIDENCE/boundary-offline" -- bun tests/native/boundary.ts \
+            | tee "$NATIVE_EVIDENCE/boundary-offline.json"
+          grep -q '"offline":true' "$NATIVE_EVIDENCE/boundary-offline.json"
       - name: Development bridge acknowledgement measurements
         timeout-minutes: 4
         run: |
@@ -528,6 +621,29 @@ jobs:
               "$evidence-session" -- python3 scripts/quality/native-diagnostics-linux.py \
               --scenario solid-workspace --mode "$mode" --host-profile release \
               --output "$evidence" -- "${command[@]}"
+          done
+      - name: Solid workspace long-session ownership in development and AOT
+        if: ${{ !cancelled() && steps.native-build.outcome == 'success' }}
+        timeout-minutes: 6
+        env:
+          BUN_NATIVE_HOST: ${{ github.workspace }}/target/release/bun-native-host
+        run: |
+          bun experiments/aot-gpui/build-window.ts \
+            --source "$GITHUB_WORKSPACE" \
+            --host "$BUN_NATIVE_HOST" --host-profile release \
+            --entry solid-workspace-soak --outdir "$NATIVE_EVIDENCE/solid-workspace-soak-package"
+          for mode in development aot; do
+            command=(bun "$NATIVE_EVIDENCE/solid-workspace-soak-package/development/application.js")
+            if [[ "$mode" == aot ]]; then
+              command=("$NATIVE_EVIDENCE/solid-workspace-soak-package/solid-workspace-soak")
+            fi
+            evidence="$NATIVE_EVIDENCE/diagnostics-$mode-solid-workspace-soak"
+            mkdir "$evidence"
+            BUN_NATIVE_DIAGNOSTICS_DIR="$evidence" \
+              xvfb-run --auto-servernum --server-args='-screen 0 1280x800x24 -nolisten tcp' \
+              dbus-run-session -- bash scripts/quality/native-linux-session.sh \
+              "$evidence-session" -- timeout 150s "${command[@]}" 2>&1 | tee "$evidence/fixture.log"
+            python3 scripts/quality/native-solid-workspace-soak.py "$evidence/soak-result.json"
           done
       - name: Generated Solid and React templates in development and inspected AOT
         if: ${{ !cancelled() && steps.native-build.outcome == 'success' }}
@@ -618,7 +734,17 @@ jobs:
         run: |
           sha256sum --check "$NATIVE_EVIDENCE/binary-sha256.txt"
           archive="$NATIVE_EVIDENCE/unsigned-native-host.tar.gz"
-          tar -czf "$archive" -C target/release bun-native-host
+          SOURCE_DATE_EPOCH="$(git log -1 --format=%ct)"
+          export SOURCE_DATE_EPOCH
+          bun scripts/native/host-archive.ts --output "$archive" target/release/bun-native-host
+          # Repack a copy from another directory with a different mtime: the
+          # archive must depend only on the executable bytes and the commit time.
+          copy="$RUNNER_TEMP/host-archive-repack"
+          mkdir "$copy"
+          cp target/release/bun-native-host "$copy/"
+          touch -d '2001-02-03 04:05:06' "$copy/bun-native-host"
+          bun scripts/native/host-archive.ts --output "$copy/repacked.tar.gz" "$copy/bun-native-host"
+          cmp "$archive" "$copy/repacked.tar.gz"
           sha256sum "$archive" > "$archive.sha256"
       - name: Retain native evidence even after failure
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2

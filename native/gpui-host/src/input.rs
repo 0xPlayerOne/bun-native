@@ -49,6 +49,16 @@ pub(crate) struct TextInput {
     is_selecting: bool,
 }
 
+/// Builds the edited value in one exact allocation. Chained `+` regrows the
+/// prefix, and the model would keep that doubled capacity for its lifetime.
+fn splice(content: &str, range: &Range<usize>, new_text: &str) -> String {
+    let mut value = String::with_capacity(content.len() - range.len() + new_text.len());
+    value.push_str(&content[..range.start]);
+    value.push_str(new_text);
+    value.push_str(&content[range.end..]);
+    value
+}
+
 impl TextInput {
     fn left(&mut self, _: &Left, window: &mut Window, cx: &mut Context<Self>) {
         self.selection.move_left(&self.content);
@@ -337,7 +347,7 @@ impl EntityInputHandler for TextInput {
             window.play_system_bell();
             return;
         }
-        let value = self.content[0..range.start].to_owned() + new_text + &self.content[range.end..];
+        let value = splice(&self.content, &range, new_text);
         let Some(value) = self.binding.edit(value, cx) else {
             window.play_system_bell();
             return;
@@ -370,7 +380,7 @@ impl EntityInputHandler for TextInput {
             window.play_system_bell();
             return;
         }
-        let value = self.content[0..range.start].to_owned() + new_text + &self.content[range.end..];
+        let value = splice(&self.content, &range, new_text);
         let Some(value) = self.binding.edit(value, cx) else {
             window.play_system_bell();
             return;

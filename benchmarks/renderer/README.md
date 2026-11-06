@@ -7,12 +7,25 @@ per sample in two scenarios:
 - `text`: a single `replaceText`; exactly one native `set`, nothing else.
 - `row`: one keyed row replaced in place (insert a new row before it, remove
   it); exactly one `remove`, three `create`s and three `insert`s.
+- `move`: one box holding every row moves to the other of two sibling boxes
+  under the root; exactly one `insert`.
+
+`stageP50Ms` is the median time of the staging calls alone, before the commit.
 
 Each run also checks that the committed node count does not drift.
 
 ```sh
 bun benchmarks/renderer/commit.ts          # 1,000 and 5,002 staged nodes
 bun benchmarks/renderer/commit.ts 333 1667 5000  # rows; three nodes per row
+```
+
+`clear.ts` mounts 20,000 `text` rows under the root and removes half of them in
+one batch (`front`, `alternate`, `middle`, `random` or `tail` rows), reporting
+the median staging time of the `removeNode` calls and of the following commit
+over five runs after a warm-up run.
+
+```sh
+bun benchmarks/renderer/clear.ts [rows] [runs]
 ```
 
 The window is an in-process stand-in that counts operations and acknowledges
@@ -72,3 +85,99 @@ of its direct children (the `text` row's cost at 15,001 nodes is the root's
 5,000-child scan), and a parent whose child list changes copies and diffs that
 whole list (the `row` scenario's root). Staged `insertNode`/`removeNode`
 sibling lookups are separate work.
+
+## Dirty children and deferred removal
+
+Linux x64 container, Bun `1.4.4-canary.1+da867c60b`, five processes each.
+"dirty walk" is `6ce6b55`; "dirty children" is this change. Ranges are
+per-process results. The Solid rows filter a 20,000-row `<For>` to half
+through `solid-js/universal` (median of five runs, staging only); they were
+measured with a scratch script that is not checked in.
+
+| Scenario | Tree         | dirty walk mean ms | dirty children mean ms | dirty walk p50 ms | dirty children p50 ms |
+| -------- | ------------ | ------------------ | ---------------------- | ----------------- | --------------------- |
+| `text`   | 1,000 nodes  | 0.0098–0.0149      | 0.0088–0.0127          | 0.0059–0.0096     | 0.0048–0.0054         |
+| `text`   | 5,002 nodes  | 0.0127–0.0166      | 0.0050–0.0070          | 0.0101–0.0144     | 0.0041–0.0059         |
+| `text`   | 15,001 nodes | 0.0364–0.0609      | 0.0048–0.0074          | 0.0333–0.0482     | 0.0040–0.0055         |
+| `row`    | 1,000 nodes  | 0.178–0.209        | 0.171–0.203            | 0.109–0.121       | 0.105–0.129           |
+| `row`    | 5,002 nodes  | 0.524–0.600        | 0.528–0.636            | 0.379–0.420       | 0.376–0.425           |
+| `row`    | 15,001 nodes | 1.59–1.76          | 1.69–1.84              | 1.20–1.29         | 1.22–1.32             |
+
+| Clear half of 20,000 | dirty walk stage ms | dirty children stage ms | dirty walk commit ms | dirty children commit ms |
+| -------------------- | ------------------- | ----------------------- | -------------------- | ------------------------ |
+| `front`              | 23.7–25.9           | 1.54–2.59               | 5.54–7.39            | 4.96–8.20                |
+| `alternate`          | 25.9–32.0           | 1.81–2.72               | 4.59–5.32            | 4.97–7.89                |
+| `middle`             | 23.9–29.8           | 1.56–1.74               | 4.69–5.77            | 4.65–5.49                |
+| `random`             | 28.3–31.8           | 4.66–6.08               | 5.43–6.87            | 6.14–7.07                |
+| `tail`               | 1.02–1.73           | 1.43–1.88               | 4.54–5.40            | 4.51–5.97                |
+| Solid `<For>` front  | 24.7–25.3           | 1.85–4.12               |                      |                          |
+| Solid `<For>` alt.   | 29.5–32.6           | 3.83–4.93               |                      |                          |
+| Solid `<For>` middle | 24.5–25.5           | 1.67–4.57               |                      |                          |
+| Solid `<For>` tail   | 23.2–24.5           | 1.58–4.43               |                      |                          |
+
+A node that becomes dirty now registers itself with its parent, so a parent
+whose own capture is current visits only its registered dirty children, sorted
+into child order because the diff emits native operations in snapshot order;
+the `text` commit no longer grows with the root's width. A recaptured parent
+still scans all of its children, which covers a child inserted already dirty.
+
+Staged sibling bookkeeping no longer searches or shifts the list on removal.
+Each child keeps a verified position hint, and a removal leaves an `undefined`
+hole in the parent's staged list instead of splicing it; the list is compacted
+in one pass (or one splice when the holes are adjacent) the next time its
+`children` are read, which a commit does once per recaptured parent, or when
+holes reach half the list. Solid's `getNextSibling` and `getFirstChild` use
+the same hints and skip a leading run of holes, so `cleanChildren` and keyed
+reconciliation stop scanning from the front. The old `tail` staging path was
+already O(1); Solid's tail case was not, because `getNextSibling` searched.
+
+What remains proportional to the tree: a parent whose child list changes still
+copies and diffs that whole list in the commit (the `row` scenario's root and
+the clear commits above), and an anchored insertion into a wide list still
+shifts it natively. Reading `children` of a list with scattered holes compacts
+it with a JavaScript pass, so a caller that alternates removals with full
+`children` reads (React's `clearContainer` reads `children[0]` each time) pays
+what the splice used to cost, not less.
+
+## Single-walk moves
+
+Linux x64 container, Bun `1.4.4-canary.1+da867c60b`, three processes each.
+"before" is `b5c2576`; "after" is this change. Ranges are per-process results;
+Solid and React rows are medians in µs of 200 samples over 1,000 rows
+(`sync` is staging only), React with `NODE_ENV=production`.
+
+| Scenario | Tree         | before stage p50 ms | after stage p50 ms | before p50 ms | after p50 ms |
+| -------- | ------------ | ------------------- | ------------------ | ------------- | ------------ |
+| `move`   | 1,003 nodes  | 0.0796–0.0816       | 0.0231–0.0246      | 1.69–1.80     | 1.22–1.49    |
+| `move`   | 5,005 nodes  | 0.388–0.398         | 0.0984–0.120       | 6.46–7.21     | 5.12–6.26    |
+| `move`   | 15,004 nodes | 1.34–1.47           | 0.369–0.416        | 20.7–23.9     | 19.6–20.5    |
+| `row`    | 15,001 nodes | 0.0116–0.0121       | 0.0103–0.0105      | 1.20–1.23     | 1.16–1.22    |
+
+| Clear half of 20,000 | before stage ms | after stage ms | before commit ms | after commit ms |
+| -------------------- | --------------- | -------------- | ---------------- | --------------- |
+| `front`              | 1.55–1.67       | 0.58–0.74      | 4.71–5.61        | 5.00–5.65       |
+| `alternate`          | 1.66–1.88       | 0.82–1.05      | 4.71–5.21        | 4.63–5.32       |
+| `middle`             | 1.47–1.49       | 0.59–0.66      | 4.58–7.34        | 4.38–4.73       |
+| `random`             | 4.25–5.07       | 2.36–2.72      | 5.81–6.36        | 5.64–6.19       |
+| `tail`               | 1.51–1.69       | 0.53–0.67      | 4.72–4.82        | 4.24–4.92       |
+
+| Keyed, 1,000 rows | before sync µs | after sync µs | before total µs | after total µs |
+| ----------------- | -------------- | ------------- | --------------- | -------------- |
+| Solid `swap`      | 112–138        | 105–135       | 418–486         | 447–464        |
+| Solid `clear`     | 438–566        | 285–335       |                 |                |
+| React `swap`      | 3,110–3,527    | 2,739–2,841   | 6,719–7,014     | 5,249–5,440    |
+| React `replace`   | 5,282–5,773    | 4,404–5,046   |                 |                |
+
+`insertNode` walked a moved subtree twice: once to reject nodes scoped to
+another render root, once to invalidate it and hand it to the new owner, each
+through a callback that also registered every node with its parent's
+`dirtyChildren`. A node only gains an owner together with that owner's scope,
+for its whole subtree, so a subtree its destination root already owns skips
+the scope walk. The remaining walk (shared with `removeNode`) clears captures
+directly and no longer fills `dirtyChildren`: each parent in the subtree has
+just lost its capture, so `snapshot()` scans all of its children anyway.
+
+The scope walk still runs for a subtree entering a root from outside it. The
+`move` commit is still dominated by recapturing the whole moved subtree, which
+the renderer keeps doing because an adapter may have cleared a detached
+subtree's lists directly.

@@ -1,7 +1,7 @@
 import { createApplication, type NativeApplication, type NativeWindow } from '@bun-native/core'
 import { heapStats } from 'bun:jsc'
 import assert from 'node:assert/strict'
-import { existsSync, readFileSync, statSync, writeFileSync } from 'node:fs'
+import { appendFileSync, existsSync, readFileSync, statSync, writeFileSync } from 'node:fs'
 import { isAbsolute } from 'node:path'
 import { parseArgs } from 'node:util'
 import { expectWindowRootOnly } from './ownership.ts'
@@ -20,10 +20,17 @@ export interface MeasuredView {
     unexpectedClicks: number
   }
 }
-export type Mount = (window: NativeWindow, rows: readonly Row[]) => Promise<MeasuredView>
+/** Without onClick, a fixture click is unexpected; the input scenario supplies it. */
+export type Mount = (
+  window: NativeWindow,
+  rows: readonly Row[],
+  onClick?: () => void
+) => Promise<MeasuredView>
 export const CONTENT_STYLE = { direction: 'column', gap: 8, padding: 16 } as const
 export const LIST_STYLE = { direction: 'column', gap: 0 } as const
 export const ROW_STYLE = { font_size: 12 } as const
+export const WINDOW_TITLE = 'Bun Native matched renderer workload'
+export const INPUT_LABEL = 'Clicked'
 
 export function count(value: string | undefined, name: string, maximum: number) {
   const parsed = Number(value)
@@ -65,7 +72,8 @@ async function heapSnapshot(phase: string) {
   }
 }
 
-function expectedNodes(rows: readonly Row[], label: string) {
+/** The complete native tree every adapter must paint for these rows and label. */
+export function expectedNodes(rows: readonly Row[], label: string) {
   return [
     { node_id: 1, element: { kind: 'box', style: {} }, children: [2] },
     { node_id: 2, element: { kind: 'box', style: {} }, children: [3] },
@@ -128,6 +136,14 @@ async function observedPaint(path: string, nonce: string, revision: number, node
   throw new Error(`Native calibration did not paint tree revision ${revision}`)
 }
 
+/** Application click evidence for the external XTest driver. */
+function recordClick(adapter: string) {
+  const path = process.env['BUN_NATIVE_EVIDENCE_LOG']!
+  const nonce = process.env['BUN_NATIVE_EVIDENCE_NONCE']!
+  const event = { nonce, type: 'click', target: 'benchmark-fixture', adapter }
+  appendFileSync(path, JSON.stringify({ ...event, stage: 'bun-application' }) + '\n')
+}
+
 function delta(after: Mutations, before: Mutations): Mutations {
   return {
     create: after.create - before.create,
@@ -150,6 +166,7 @@ export async function runWorkload(adapter: 'solid' | 'core' | 'react', mount: Mo
       mounts: { type: 'string', default: '100' },
       rows: { type: 'string', default: '32' },
       calibration: { type: 'boolean', default: false },
+      'input-latency': { type: 'boolean', default: false },
     },
     strict: true,
     allowPositionals: false,
@@ -164,6 +181,9 @@ export async function runWorkload(adapter: 'solid' | 'core' | 'react', mount: Mo
   const mounts = count(values.mounts, 'mounts', 1_000)
   const rowCount = count(values.rows, 'rows', 128)
   if (iterations % 10 !== 0) throw new Error('iterations must be a multiple of 10')
+  const inputLatency = values['input-latency']!
+  if (inputLatency && values.calibration)
+    throw new Error('--input-latency and --calibration are separate launches')
   const initial = Array.from({ length: rowCount }, (_, id) => ({ id, text: `Row ${id}` }))
   const result: Record<string, unknown> = {
     schemaVersion: 1,
@@ -173,7 +193,9 @@ export async function runWorkload(adapter: 'solid' | 'core' | 'react', mount: Mo
     declaredMode: values.mode,
     executable: process.execPath,
     bunRevision: Bun.revision,
-    workload: { iterations, rotations, mounts, rows: rowCount, warmup: 20 },
+    workload: inputLatency
+      ? { scenario: 'input-latency', rows: rowCount }
+      : { iterations, rotations, mounts, rows: rowCount, warmup: 20 },
     methodology: {
       timings: 'application update submission through public-core acknowledgement',
       synchronousSubmission:
@@ -181,9 +203,11 @@ export async function runWorkload(adapter: 'solid' | 'core' | 'react', mount: Mo
       presentation: 'not measured; an acknowledgement is not display presentation',
       heap: 'live JSC heap after full GC; not cumulative allocation or native heap totals',
       nativeRss: 'not measured by this runner',
-      instrumentation: values.calibration
-        ? 'separate native paint/GPU calibration; excluded from timed comparisons'
-        : 'native evidence disabled for the timed comparison',
+      instrumentation: inputLatency
+        ? 'native paint evidence enabled by the external XTest driver; excluded from timed comparisons'
+        : values.calibration
+          ? 'separate native paint/GPU calibration; excluded from timed comparisons'
+          : 'native evidence disabled for the timed comparison',
       retainedProbeObjects: mounts * 3,
       lifecycle: 'mount, one acknowledged label update, then dispose',
     },
@@ -191,6 +215,8 @@ export async function runWorkload(adapter: 'solid' | 'core' | 'react', mount: Mo
   let application: NativeApplication | undefined
   let active: MeasuredView | undefined
   let failure: unknown
+  let clicks = 0
+  let clicked: Promise<void> | undefined
   const started = performance.now()
   const deadline = started + 120_000
   function withinDeadline() {
@@ -201,19 +227,26 @@ export async function runWorkload(adapter: 'solid' | 'core' | 'react', mount: Mo
     if (values.calibration) {
       assert(evidence && isAbsolute(evidence), 'Calibration requires an explicit evidence path')
       assert.equal(process.env['BUN_NATIVE_EVIDENCE_NONCE'], values.nonce)
+    } else if (inputLatency) {
+      // The driver owns the evidence nonce; --nonce still binds this report.
+      assert(evidence && isAbsolute(evidence), 'Input latency requires the driver evidence path')
+      assert(process.env['BUN_NATIVE_EVIDENCE_NONCE'], 'Input latency requires the driver nonce')
     } else {
       delete process.env['BUN_NATIVE_EVIDENCE_LOG']
       delete process.env['BUN_NATIVE_EVIDENCE_NONCE']
     }
     application = await createApplication({ executable: values.host, requestTimeoutMs: 10_000 })
     const applicationReadyMs = performance.now()
-    const window = await application.openWindow({
-      title: 'Bun Native matched renderer workload',
-      width: 640,
-      height: 720,
-    })
+    const window = await application.openWindow({ title: WINDOW_TITLE, width: 640, height: 720 })
     const windowOpenedMs = performance.now()
-    active = await mount(window, initial)
+    const onClick = inputLatency
+      ? () => {
+          clicks++
+          recordClick(adapter)
+          clicked ??= active!.update([INPUT_LABEL])
+        }
+      : undefined
+    active = await mount(window, initial, onClick)
     // In-process startup milestones relative to the runtime time origin. The
     // controller combines timeOriginEpochMs with its own spawn time.
     result['startup'] = {
@@ -232,138 +265,154 @@ export async function runWorkload(adapter: 'solid' | 'core' | 'react', mount: Mo
         1,
         expectedNodes(initial, 'Initial')
       )
-    for (let index = 0; index < 20; index++) {
-      withinDeadline()
-      await active.update([`Warmup ${index}`])
-    }
-    const beforeHeap = await heapSnapshot('mounted view after 20 warmup updates')
-    const initialMutations = active.inspect().mutations
-    const phases: Record<string, unknown> = {}
-    result['phases'] = phases
-    async function measure(
-      name: string,
-      count: number,
-      operation: (index: number) => Promise<void>
-    ) {
-      const acknowledgement: number[] = []
-      const submission: number[] = []
-      const before = active!.inspect().mutations
-      for (let index = 0; index < count; index++) {
+    if (inputLatency) {
+      // The external XTest driver measures input command start to the matching
+      // native paint, then closes the window through the OS. One click per launch.
+      await window.closed
+      assert.equal(clicks, 1, 'Exactly one OS click must reach the fixture button')
+      await clicked
+      await active.dispose()
+      active = undefined
+      result['input'] = {
+        clicks,
+        label: INPUT_LABEL,
+        meaning:
+          'one real XTest click updates the label through this adapter; the driver owns the latency clock and OS close',
+      }
+    } else {
+      for (let index = 0; index < 20; index++) {
         withinDeadline()
-        const start = performance.now()
-        const pending = operation(index)
-        submission.push(performance.now() - start)
-        await pending
-        acknowledgement.push(performance.now() - start)
+        await active.update([`Warmup ${index}`])
       }
-      phases[name] = {
-        acknowledgement: distribution(acknowledgement),
-        synchronousSubmission: distribution(submission),
-        mutations: delta(active!.inspect().mutations, before),
+      const beforeHeap = await heapSnapshot('mounted view after 20 warmup updates')
+      const initialMutations = active.inspect().mutations
+      const phases: Record<string, unknown> = {}
+      result['phases'] = phases
+      async function measure(
+        name: string,
+        count: number,
+        operation: (index: number) => Promise<void>
+      ) {
+        const acknowledgement: number[] = []
+        const submission: number[] = []
+        const before = active!.inspect().mutations
+        for (let index = 0; index < count; index++) {
+          withinDeadline()
+          const start = performance.now()
+          const pending = operation(index)
+          submission.push(performance.now() - start)
+          await pending
+          acknowledgement.push(performance.now() - start)
+        }
+        phases[name] = {
+          acknowledgement: distribution(acknowledgement),
+          synchronousSubmission: distribution(submission),
+          mutations: delta(active!.inspect().mutations, before),
+        }
       }
-    }
-    await measure('signals', iterations, (index) => active!.update([`Update ${index}`]))
-    const coalesced = Array.from({ length: 10 }, (_, index) => `Batched ${index}`)
-    await measure('coalesced', iterations / 10, (index) =>
-      active!.update(coalesced.map((value) => `${index}: ${value}`))
-    )
-    let ordered = initial
-    await measure('keyedRotations', rotations, () => {
-      ordered = [...ordered.slice(1), ordered[0]!]
-      return active!.rotate(ordered)
-    })
-    assert.deepEqual(delta(active.inspect().mutations, initialMutations), {
-      create: 0,
-      set: iterations + iterations / 10,
-      insert: rowCount === 1 ? 0 : rotations,
-      remove: 0,
-    })
-    assert.equal(active.inspect().rowsCreated, rowCount)
-    assert.equal(active.inspect().rowsDisposed, 0)
-    assert.equal(active.inspect().unexpectedClicks, 0)
-    if (values.calibration)
-      result['finalNativePaint'] = await observedPaint(
-        evidence!,
-        values.nonce,
-        window.revision,
-        expectedNodes(ordered, `${iterations / 10 - 1}: Batched 9`)
+      await measure('signals', iterations, (index) => active!.update([`Update ${index}`]))
+      const coalesced = Array.from({ length: 10 }, (_, index) => `Batched ${index}`)
+      await measure('coalesced', iterations / 10, (index) =>
+        active!.update(coalesced.map((value) => `${index}: ${value}`))
       )
-    await active.dispose()
-    assert.equal(active.inspect().rowsDisposed, rowCount)
-    active = undefined
-    expectWindowRootOnly(application)
-    const afterUpdatesHeap = await heapSnapshot('view disposed; timing arrays retained')
-    const probes: WeakRef<object>[] = []
-    const lifecycle: number[] = []
-    let rowsCreated = 0
-    let rowsDisposed = 0
-    async function cycle(index: number) {
-      const view = await mount(window, initial)
-      const mounted = view.inspect().mutations
-      await view.update([`Lifecycle ${index}`])
-      assert.deepEqual(delta(view.inspect().mutations, mounted), {
+      let ordered = initial
+      await measure('keyedRotations', rotations, () => {
+        ordered = [...ordered.slice(1), ordered[0]!]
+        return active!.rotate(ordered)
+      })
+      assert.deepEqual(delta(active.inspect().mutations, initialMutations), {
         create: 0,
-        set: 1,
-        insert: 0,
+        set: iterations + iterations / 10,
+        insert: rowCount === 1 ? 0 : rotations,
         remove: 0,
       })
-      await view.dispose()
-      const state = view.inspect()
-      rowsCreated += state.rowsCreated
-      rowsDisposed += state.rowsDisposed
-      assert.equal(state.unexpectedClicks, 0)
-      return view.probes
-    }
-    for (let index = 0; index < mounts; index++) {
-      withinDeadline()
-      const start = performance.now()
-      probes.push(...(await cycle(index)))
-      lifecycle.push(performance.now() - start)
+      assert.equal(active.inspect().rowsCreated, rowCount)
+      assert.equal(active.inspect().rowsDisposed, 0)
+      assert.equal(active.inspect().unexpectedClicks, 0)
+      if (values.calibration)
+        result['finalNativePaint'] = await observedPaint(
+          evidence!,
+          values.nonce,
+          window.revision,
+          expectedNodes(ordered, `${iterations / 10 - 1}: Batched 9`)
+        )
+      await active.dispose()
+      assert.equal(active.inspect().rowsDisposed, rowCount)
+      active = undefined
       expectWindowRootOnly(application)
+      const afterUpdatesHeap = await heapSnapshot('view disposed; timing arrays retained')
+      const probes: WeakRef<object>[] = []
+      const lifecycle: number[] = []
+      let rowsCreated = 0
+      let rowsDisposed = 0
+      async function cycle(index: number) {
+        const view = await mount(window, initial)
+        const mounted = view.inspect().mutations
+        await view.update([`Lifecycle ${index}`])
+        assert.deepEqual(delta(view.inspect().mutations, mounted), {
+          create: 0,
+          set: 1,
+          insert: 0,
+          remove: 0,
+        })
+        await view.dispose()
+        const state = view.inspect()
+        rowsCreated += state.rowsCreated
+        rowsDisposed += state.rowsDisposed
+        assert.equal(state.unexpectedClicks, 0)
+        return view.probes
+      }
+      for (let index = 0; index < mounts; index++) {
+        withinDeadline()
+        const start = performance.now()
+        probes.push(...(await cycle(index)))
+        lifecycle.push(performance.now() - start)
+        expectWindowRootOnly(application)
+      }
+      assert.equal(probes.length, mounts * 3)
+      assert.equal(rowsCreated, rowCount * mounts)
+      assert.equal(rowsDisposed, rowsCreated)
+      result['lifecycles'] = {
+        ...distribution(lifecycle),
+        rowsCreated,
+        rowsDisposed,
+        acknowledgedUpdates: mounts,
+        retainedWeakRefObjects: probes.length,
+      }
+      await Bun.sleep(1)
+      Bun.gc(true)
+      const firstReachable = probes.flatMap((probe, index) =>
+        probe.deref() === undefined ? [] : [index]
+      )
+      // Exactly one JS/core queue fence after acknowledged disposal. It sends no
+      // native command and is outside timed samples; never repeat until zero.
+      await window.batch(() => undefined)
+      const afterLifecyclesHeap = await heapSnapshot(
+        'all views disposed; collection after a core queue fence and timer turn; timing/WeakRef instrumentation retained'
+      )
+      const stillReachable = probes.flatMap((probe, index) =>
+        probe.deref() === undefined ? [] : [index]
+      )
+      result['retentionObservation'] = {
+        firstReachable,
+        stillReachable,
+        probesPerMount: 3,
+        probeKinds:
+          adapter === 'core'
+            ? ['container handle', 'label handle', 'listener']
+            : ['render root', 'content node', 'listener'],
+        collectionCheckpoints: 2,
+        quiescence: 'empty core transaction queue fence; no additional native command',
+      }
+      result['heap'] = {
+        before: beforeHeap,
+        afterUpdates: afterUpdatesHeap,
+        afterLifecycles: afterLifecyclesHeap,
+      }
+      expectWindowRootOnly(application)
+      assert.equal(stillReachable.length, 0, 'Disposed view/callback targets remain observable')
+      await window.close()
     }
-    assert.equal(probes.length, mounts * 3)
-    assert.equal(rowsCreated, rowCount * mounts)
-    assert.equal(rowsDisposed, rowsCreated)
-    result['lifecycles'] = {
-      ...distribution(lifecycle),
-      rowsCreated,
-      rowsDisposed,
-      acknowledgedUpdates: mounts,
-      retainedWeakRefObjects: probes.length,
-    }
-    await Bun.sleep(1)
-    Bun.gc(true)
-    const firstReachable = probes.flatMap((probe, index) =>
-      probe.deref() === undefined ? [] : [index]
-    )
-    // Exactly one JS/core queue fence after acknowledged disposal. It sends no
-    // native command and is outside timed samples; never repeat until zero.
-    await window.batch(() => undefined)
-    const afterLifecyclesHeap = await heapSnapshot(
-      'all views disposed; collection after a core queue fence and timer turn; timing/WeakRef instrumentation retained'
-    )
-    const stillReachable = probes.flatMap((probe, index) =>
-      probe.deref() === undefined ? [] : [index]
-    )
-    result['retentionObservation'] = {
-      firstReachable,
-      stillReachable,
-      probesPerMount: 3,
-      probeKinds:
-        adapter === 'core'
-          ? ['container handle', 'label handle', 'listener']
-          : ['render root', 'content node', 'listener'],
-      collectionCheckpoints: 2,
-      quiescence: 'empty core transaction queue fence; no additional native command',
-    }
-    result['heap'] = {
-      before: beforeHeap,
-      afterUpdates: afterUpdatesHeap,
-      afterLifecycles: afterLifecyclesHeap,
-    }
-    expectWindowRootOnly(application)
-    assert.equal(stillReachable.length, 0, 'Disposed view/callback targets remain observable')
-    await window.close()
   } catch (error) {
     failure = error
   } finally {

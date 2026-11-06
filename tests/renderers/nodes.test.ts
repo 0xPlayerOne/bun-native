@@ -3,7 +3,9 @@ import {
   asNode,
   createElement,
   createTextNode,
+  firstChild,
   insertNode,
+  nextSibling,
   removeNode,
   replaceText,
   setProperty,
@@ -79,4 +81,95 @@ test('native properties validate JavaScript values and element kind before repla
   replaceText(literal, 'after')
   replaceText(literal, 'after')
   expect(literal.data).toBe('after')
+})
+
+test('sibling positions stay exact across removals, moves and direct truncation', () => {
+  const parent = asNode(createElement('box'))
+  const children = Array.from({ length: 200 }, () => asNode(createElement('box')))
+  for (const child of children) insertNode(parent, child)
+  const expected = [...children]
+  const check = () => {
+    expect(parent.children).toEqual(expected)
+    expected.forEach((child, index) => expect(nextSibling(child)).toBe(expected[index + 1]))
+  }
+  // Front, alternating, middle and tail removals leave stale position hints.
+  for (const position of [0, 0, 1, 3, 5, 90, 90, 90, -1]) {
+    const index = position < 0 ? expected.length + position : position
+    removeNode(parent, expected[index]!)
+    expected.splice(index, 1)
+    check()
+  }
+  // Anchored insertions and moves within the same parent shift later siblings.
+  for (const [from, to] of [
+    [150, 2],
+    [3, 120],
+    [0, 60],
+    [100, 99],
+  ] as const) {
+    const node = expected[from]!
+    const anchor = expected[to]!
+    insertNode(parent, node, anchor)
+    expected.splice(from, 1)
+    expected.splice(expected.indexOf(anchor), 0, node)
+    check()
+  }
+  // Adapters may clear a detached list directly, then reuse its children.
+  const other = asNode(createElement('box'))
+  const moved = expected.splice(0, 50)
+  for (const node of moved) insertNode(other, node)
+  other.children.length = 0
+  for (const node of moved.toReversed()) {
+    node.parent = undefined
+    insertNode(parent, node, expected[0])
+    expected.unshift(node)
+    check()
+  }
+})
+
+test('random sibling edits between reads match a reference list', () => {
+  for (const seed of [5, 31, 2024]) {
+    let state = seed
+    const next = (limit: number) => {
+      state ^= state << 13
+      state ^= state >>> 17
+      state ^= state << 5
+      return (state >>> 0) % limit
+    }
+    const parents = [asNode(createElement('box')), asNode(createElement('box'))]
+    const expected: ReturnType<typeof asNode>[][] = [[], []]
+    const pool = Array.from({ length: 400 }, () => asNode(createElement('box')))
+    const detached = [...pool]
+    // Reads go through the adapter helpers only until a checkpoint, so
+    // removals accumulate as deferred holes between them.
+    for (let step = 0; step < 3000; step += 1) {
+      const side = next(2)
+      const parent = parents[side]!
+      const list = expected[side]!
+      const choice = next(10)
+      if (choice < 4 && detached.length) {
+        const node = detached.splice(next(detached.length), 1)[0]!
+        const at = next(list.length + 1)
+        insertNode(parent, node, list[at])
+        list.splice(at, 0, node)
+      } else if (choice < 7 && list.length) {
+        const at = next(4) ? next(list.length) : next(2) ? 0 : list.length - 1
+        removeNode(parent, list[at]!)
+        detached.push(...list.splice(at, 1))
+      } else if (choice < 9 && list.length) {
+        // Move within or across parents before an anchor in the target.
+        const node = list.splice(next(list.length), 1)[0]!
+        const target = next(2)
+        const into = expected[target]!
+        const at = next(into.length + 1)
+        insertNode(parents[target]!, node, into[at])
+        into.splice(at, 0, node)
+      } else if (list.length) {
+        const at = next(list.length)
+        expect(nextSibling(list[at]!)).toBe(list[at + 1])
+        expect(firstChild(parent)).toBe(list[0])
+      }
+      if (step % 250 === 249)
+        parents.forEach((node, index) => expect(node.children).toEqual(expected[index]!))
+    }
+  }
 })

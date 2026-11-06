@@ -15,6 +15,18 @@ INITIAL_TITLES = [
     "Prepare the next release",
 ]
 
+PLAN_STEPS = [
+    "Clarify the goal",
+    "List what is already done",
+    "Pick the first concrete change",
+    "Note who needs to review it",
+    "Decide how to check the result",
+    "Estimate the remaining effort",
+    "Flag anything that blocks progress",
+    "Share the plan with the team",
+]
+PLAN_LABELS = [f"{index + 1}. {step}" for index, step in enumerate(PLAN_STEPS)]
+
 
 def require(items, description):
     """Return the first match, or fail with a diagnostic instead of StopIteration."""
@@ -454,7 +466,198 @@ def run(
     wait_for(lambda: state() and state()["selectedId"] == 1, "selection after deletion")
     input_value("Task title", INITIAL_TITLES[0])
     observations["final"] = final
-    observations["finalState"] = state()
     capture(window, "after.png")
+
+    # Local plan streaming: one owned React timer, keyed append-only rows,
+    # stop, selection-change cancellation and OS close while still pending.
+    def has_text(current, text):
+        return any(
+            item["element"]["kind"] == "text" and item["element"].get("text") == text
+            for item in current["paint"]["nodes"]
+        )
+
+    def plan_rows(current):
+        nodes = {item["node_id"]: item for item in current["paint"]["nodes"]}
+        first = next(
+            (
+                item
+                for item in nodes.values()
+                if item["element"]["kind"] == "text"
+                and item["element"].get("text") == PLAN_LABELS[0]
+            ),
+            None,
+        )
+        if not first:
+            return []
+        container = next(
+            item for item in nodes.values() if first["node_id"] in item["children"]
+        )
+        result = [nodes[child] for child in container["children"]]
+        labels = [row["element"].get("text") for row in result]
+        assert labels == PLAN_LABELS[: len(labels)], f"Unexpected plan rows {labels}"
+        return result
+
+    def plan(identity=None):
+        current = state()
+        value = current and current["plan"]
+        return (
+            value if value and (identity is None or value["id"] == identity) else None
+        )
+
+    def progress(status, count):
+        return f"{status} · {count} of {len(PLAN_STEPS)} steps"
+
+    button("Draft a plan")
+    partial = wait_frame(
+        lambda current: (
+            0 < len(plan_rows(current)) < len(PLAN_STEPS)
+            and has_text(current, progress("Drafting locally", len(plan_rows(current))))
+        ),
+        "partial native plan stream",
+    )
+    first_step = plan_rows(partial)[0]["node_id"]
+    capture(window, "plan-streaming.png")
+    complete = wait_frame(
+        lambda current: (
+            len(plan_rows(current)) == len(PLAN_STEPS)
+            and has_text(current, progress("Plan ready", len(PLAN_STEPS)))
+        ),
+        "complete native plan",
+    )
+    assert plan_rows(complete)[0]["node_id"] == first_step, (
+        "Streaming replaced a keyed plan step"
+    )
+    assert plan(1) == {
+        "id": 1,
+        "taskId": 1,
+        "steps": PLAN_STEPS,
+        "status": "complete",
+    }
+    # Filtering remounted the hidden keyed rows; compare with the final list.
+    assert {row["title"]: row["row"] for row in rows(complete)} == {
+        row["title"]: row["row"] for row in rows(final)
+    }, "Plan streaming remounted keyed task rows"
+
+    # Reveal the streamed rows in the native details scroll pane.
+    def details_scroll(current):
+        return next(
+            item for item in current["layout"]["scrolls"] if item["node_id"] != list_id
+        )
+
+    viewport = details_scroll(complete)["viewport"]
+    assert details_scroll(complete)["maximum"][1] > 0, (
+        "The complete plan must overflow the native details pane"
+    )
+    x, y = geometry_tools.pointer_point(
+        viewport, viewport, complete["layout"]["viewport"]
+    )
+    action(
+        "mousemove",
+        "--window",
+        window,
+        x,
+        y,
+        "click",
+        "--repeat",
+        "12",
+        "--delay",
+        "15",
+        "5",
+    )
+
+    def plan_revealed(current):
+        if not geometry_tools.at_scroll_end(details_scroll(current), 1):
+            return False
+        last = geometry(plan_rows(current)[-1]["node_id"], current)
+        bounds = geometry_tools.rectangle(last["bounds"])
+        return geometry_tools.intersects(bounds, last["ancestor_clip"]) == bounds
+
+    revealed = wait_frame(plan_revealed, "native plan rows scrolled into view")
+    assert plan_rows(revealed)[0]["node_id"] == first_step
+    capture(window, "plan-complete.png")
+    action(
+        "mousemove",
+        "--window",
+        window,
+        x,
+        y,
+        "click",
+        "--repeat",
+        "12",
+        "--delay",
+        "15",
+        "4",
+    )
+    wait_frame(
+        lambda current: details_scroll(current)["offset"] == [0, 0],
+        "native details pane returns to the plan controls",
+    )
+    observations["planComplete"] = complete
+
+    button("Draft a new plan")
+    wait_for(
+        lambda: plan(2) and plan(2)["status"] == "streaming" and plan(2)["steps"],
+        "second plan streaming",
+    )
+    button("Stop plan")
+    stopped = wait_for(
+        lambda: plan(2) if plan(2) and plan(2)["status"] == "stopped" else None,
+        "stopped plan",
+    )
+    count = len(stopped["steps"])
+    assert 0 < count < len(PLAN_STEPS), f"Stop arrived after {count} steps"
+    stopped_frame = wait_frame(
+        lambda current: (
+            len(plan_rows(current)) == count
+            and has_text(current, progress("Plan stopped", count))
+            and any(
+                item["element"].get("text") == "Draft a new plan"
+                for item in current["paint"]["nodes"]
+            )
+        ),
+        "native stopped plan",
+    )
+    capture(window, "plan-stopped.png")
+    observations["planStopped"] = stopped_frame
+
+    button("Draft a new plan")
+    wait_for(
+        lambda: plan(3) and plan(3)["status"] == "streaming" and plan(3)["steps"],
+        "third plan streaming",
+    )
+    button(INITIAL_TITLES[1])
+    switched = wait_for(
+        lambda: plan(3) if state()["selectedId"] == 2 else None,
+        "selection change during a plan",
+    )
+    assert switched["status"] == "stopped" and switched["taskId"] == 1
+    wait_frame(
+        lambda current: (
+            not plan_rows(current)
+            and has_text(current, "Draft a local plan. Nothing is sent anywhere.")
+        ),
+        "plan-free details for another task",
+    )
+    input_value("Task title", INITIAL_TITLES[1])
+    button(INITIAL_TITLES[0])
+    wait_for(lambda: state()["selectedId"] == 1, "return to the planned task")
+    wait_frame(
+        lambda current: (
+            len(plan_rows(current)) == len(switched["steps"])
+            and has_text(current, progress("Plan stopped", len(switched["steps"])))
+        ),
+        "retained partial plan after switching back",
+    )
+
+    button("Draft a new plan")
+    wait_frame(
+        lambda current: (
+            plan(4)
+            and plan(4)["status"] == "streaming"
+            and 0 < len(plan_rows(current)) < len(PLAN_STEPS)
+        ),
+        "plan streaming before window close",
+    )
+    observations["finalState"] = state()
     action("key", "--clearmodifiers", "alt+F4")
     return observations

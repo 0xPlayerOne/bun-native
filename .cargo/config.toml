@@ -1,0 +1,7 @@
+# GPUI's Linux XIM client enables ahash `compile-time-rng`, so const-random
+# embeds fresh random hasher seeds into gpui_linux on every compile and two
+# clean release builds of one commit differ. A fixed seed makes them
+# byte-identical; native/gpui-host also enables ahash `runtime-rng` so hash
+# keys stay randomized at runtime. See docs/reproducible-builds.md.
+[env]
+CONST_RANDOM_SEED = "bun-native-reproducible-build"

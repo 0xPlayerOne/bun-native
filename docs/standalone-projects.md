@@ -105,13 +105,19 @@ and teardown path:
 
 ```sh
 bun run check
+bun run format:check
 bun run dev --host /absolute/path/to/bun-native-host
 bun run build --host /absolute/path/to/bun-native-host --host-profile release
 ```
 
 `build` writes to the project's `dist` directory unless `--outdir` names another;
-the output directory must be empty. Supply the exact pinned Bun revision and a
-separately acquired, compatible native host. Ordinary source edits and AOT builds do not invoke Cargo. The compiler child
+the output directory must be empty.
+
+`format` and `format:check` run the installed CLI's built-in formatter command, which uses
+the template style unless the project supplies its own formatter config and skips `vendor/`.
+
+Supply the exact pinned Bun revision and a separately acquired, compatible native
+host. Ordinary source edits and AOT builds do not invoke Cargo. The compiler child
 also receives `--no-install`, so an absent import cannot silently trigger package
 acquisition during compilation. `--watch` uses the existing remount contract and
 resets state; see the [CLI lifecycle reference](developer-tooling.md).
