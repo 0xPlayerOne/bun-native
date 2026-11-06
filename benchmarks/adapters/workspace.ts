@@ -69,6 +69,9 @@ export function fakeWindow(rows: number) {
     append: () => {
       operations.insert += 1
     },
+    focus: () => {},
+    scrollTo: () => {},
+    scrollIntoView: () => {},
     remove: () => {
       operations.remove += 1
     },
