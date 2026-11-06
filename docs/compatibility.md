@@ -17,19 +17,20 @@ release API. The accepted [lockfile][lock] binds dependency integrity.
 fails `bun run test` when a row here differs from the repository source it
 names, or when two sources for one pin disagree.
 
-| Component            | Pin                                        | Repository source                                                                         |
-| -------------------- | ------------------------------------------ | ----------------------------------------------------------------------------------------- |
-| `bun`                | `1.4.4-canary.1`                           | [`toolchain.json`][toolchain] `bun.version` and root `package.json` `engines.bun`         |
-| `bun revision`       | `da867c60bf0bcbf9d6d36994f8ca0efa42075115` | [`toolchain.json`][toolchain] `bun.revision`                                              |
-| `rust`               | `1.98.1`                                   | [`toolchain.json`][toolchain] `rust.version`                                              |
-| `gpui revision`      | `ba63a022c9a22ca66d68ef2a8f0bb9b5b0a9984d` | [`toolchain.json`][toolchain] and both GPUI crates in [`gpui-host`][host-manifest]        |
-| `gpui`               | `0.2.2`                                    | [`toolchain.json`][toolchain] `gpui.version`                                              |
-| `solid-js`           | `1.9.18`                                   | [`@bun-native/solid`][solid-pin] and root `package.json`                                  |
-| `babel-preset-solid` | `1.9.16`                                   | root [`package.json`][root-manifest]; Babel 8 stays excluded under [#316][i316]           |
-| `@babel/core`        | `7.29.7`                                   | root [`package.json`][root-manifest]                                                      |
-| `react`              | `19.3.1`                                   | [`@bun-native/react`][react-pin] and root `package.json`                                  |
-| `react-reconciler`   | `0.34.0`                                   | [`@bun-native/react`][react-pin]                                                          |
-| `native protocol`    | `11`                                       | [`PROTOCOL_VERSION`][protocol-ts] in TypeScript and [Rust][protocol-rs], which must match |
+| Component            | Pin                                        | Repository source                                                                                                    |
+| -------------------- | ------------------------------------------ | -------------------------------------------------------------------------------------------------------------------- |
+| `bun`                | `1.4.4-canary.1`                           | [`toolchain.json`][toolchain] `bun.version` and root `package.json` `engines.bun`                                    |
+| `bun revision`       | `da867c60bf0bcbf9d6d36994f8ca0efa42075115` | [`toolchain.json`][toolchain] `bun.revision`                                                                         |
+| `rust`               | `1.98.1`                                   | [`toolchain.json`][toolchain] `rust.version`                                                                         |
+| `gpui revision`      | `ba63a022c9a22ca66d68ef2a8f0bb9b5b0a9984d` | [`toolchain.json`][toolchain] and both GPUI crates in [`gpui-host`][host-manifest]                                   |
+| `gpui`               | `0.2.2`                                    | [`toolchain.json`][toolchain] `gpui.version`                                                                         |
+| `solid-js`           | `1.9.18`                                   | [`@bun-native/solid`][solid-pin] and root `package.json`                                                             |
+| `babel-preset-solid` | `1.9.16`                                   | root [`package.json`][root-manifest]; Babel 8 stays excluded under [#316][i316]                                      |
+| `@babel/core`        | `7.29.7`                                   | root [`package.json`][root-manifest]                                                                                 |
+| `react`              | `19.3.1`                                   | [`@bun-native/react`][react-pin] and root `package.json`                                                             |
+| `oxlint`             | `1.90.0`                                   | root [`package.json`][root-manifest] `devDependencies`, the packaged CLI dependency and standalone consumer projects |
+| `react-reconciler`   | `0.34.0`                                   | [`@bun-native/react`][react-pin]                                                                                     |
+| `native protocol`    | `11`                                       | [`PROTOCOL_VERSION`][protocol-ts] in TypeScript and [Rust][protocol-rs], which must match                            |
 
 The Solid compiler pairing is guarded separately: [#430][pr430] checks the
 installed Babel against both the preset and the JSX plugin peer ranges and keeps
