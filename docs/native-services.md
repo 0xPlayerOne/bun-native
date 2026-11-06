@@ -694,8 +694,10 @@ paths. The granted executable is held open while it starts and must be its
 own canonical final path. The command line is the exact inverse of
 `CommandLineToArgvW` with no shell, and the environment holds only the given
 variables. `terminate` and `kill` end the whole job and report that signal.
-`interrupt` types ^C on a terminal; on pipes it is refused, like `hangup`, with
-`service_unavailable`. A grant working directory is walked with the Windows
+`interrupt` types ^C into a terminal, and into a pipe child's hidden console
+through a short-lived helper (the host binary started as the interrupt helper,
+so the host never attaches to a child's console); `hangup` has no Windows
+equivalent and is refused with `service_unavailable`. A grant working directory is walked with the Windows
 grant rules and held open while the child starts there. The host unit tests
 and the same native test, with real `cmd.exe` children, run in development and
 AOT in the Native Platforms `windows-2022` job. It is type-checked locally
@@ -1140,7 +1142,7 @@ already exists. The linked follow-ups belong to
 | Notifications     | `postNotification`; `notifications` grant                     | Freedesktop D-Bus (dunst) dev+AOT verified                                                          | Freedesktop (dunst) post and withdraw verified                     | Unavailable                                       | Unavailable                             | macOS/Windows backends, additional notification servers, named actions and replacement. [#302](https://github.com/0xPlayerOne/bun-native/issues/302).                                                     |
 | Drag/drop         | `registerDropTarget`; `dragDrop` grant                        | XDND dev+AOT verified locally (core/Solid/React)                                                    | Unavailable (`unsupported_platform`)                               | AppKit; hosted CI only (NSDraggingSession source) | OLE; hosted CI only (DoDragDrop source) | Other payload kinds and file promises, refusal (GPUI always accepts), Wayland, physical devices and real file managers, Windows resolution. [#303](https://github.com/0xPlayerOne/bun-native/issues/303). |
 | Filesystem grants | `openFileGrant`; `filesystemRoots` launch roots               | openat2 dev+AOT verified locally                                                                    | Advertised; display-independent, not run on Wayland                | `openat` walk; CI-only                            | `NtCreateFile` walk; CI-only            | OS file selection and dropped files as explicit user grants. [#304](https://github.com/0xPlayerOne/bun-native/issues/304).                                                                                |
-| PTY/process       | `spawnProcess`; `processes` launch executables                | Pipes and PTY dev+AOT verified locally                                                              | Advertised; display-independent, not run on Wayland                | Dev+AOT in CI only; `cwd` through `fchdir`        | Job object and ConPTY; CI-only          | Descendants that leave the group (POSIX), pipe `interrupt` and `hangup` on Windows, resource limits. [#305](https://github.com/0xPlayerOne/bun-native/issues/305).                                        |
+| PTY/process       | `spawnProcess`; `processes` launch executables                | Pipes and PTY dev+AOT verified locally                                                              | Advertised; display-independent, not run on Wayland                | Dev+AOT in CI only; `cwd` through `fchdir`        | Job object and ConPTY; CI-only          | Descendants that leave the group (POSIX), `hangup` on Windows, resource limits. [#305](https://github.com/0xPlayerOne/bun-native/issues/305).                                                             |
 
 For the deferred rows, the exported typed contract is the frozen availability
 record in `ServiceCapabilities`. There is no callable operation, configurable

@@ -146,9 +146,17 @@ GPUI already depends on.
   the child's raw bytes, and closing input types ^Z and Enter.
 - **Signals.** `terminate` and `kill` terminate the job and the exit reports
   that signal. `interrupt` on a terminal types ^C, which the console delivers
-  as `CTRL_C_EVENT`. `interrupt` on pipes and `hangup` have no Windows
-  equivalent and return `service_unavailable`. Other exit codes are reported
-  modulo 256, as POSIX does.
+  as `CTRL_C_EVENT`. `interrupt` on pipes types ^C into the child's hidden
+  console. Windows delivers a console control event only to processes attached
+  to that console, and a process has one console at a time, so the host does
+  not attach itself (that would detach it from its own and race every other
+  interrupt). It starts its own binary with `--bun-native-console-interrupt
+  <pid>` and no console; that helper releases its fresh console, attaches to
+  the child's, ignores ^C for itself, sends `CTRL_C_EVENT` to the console's
+  processes (the child's own job) and exits. The call waits at most three
+  seconds and then ends the helper. `hangup` has no Windows equivalent and
+  returns `service_unavailable`. Other exit codes are reported modulo 256, as
+  POSIX does (`STATUS_CONTROL_C_EXIT` is therefore code 58, not a signal).
 - **Working directory.** `CreateProcessW` takes only a path. The host walks
   the grant with the ADR 0010 rules and holds the root and every directory
   down to the target open without delete sharing, so none of them can be

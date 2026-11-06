@@ -380,8 +380,9 @@ async function terminal(window: NativeWindow) {
 }
 
 /**
- * Windows: a pipe child has no console to interrupt and no hangup, so both
- * are refused; terminate ends the whole job, descendants included.
+ * Windows: interrupt types ^C into a pipe child's hidden console and ends a
+ * waiting program well before its own 30 s; hangup has no equivalent and is
+ * refused; terminate ends the whole job, descendants included.
  */
 async function windowsSignals(window: NativeWindow) {
   const seen = watch()
@@ -398,8 +399,7 @@ async function windowsSignals(window: NativeWindow) {
   const deadline = performance.now() + 10_000
   while (!markedAlive(descendant.marker) && performance.now() < deadline) await Bun.sleep(50)
   assert.equal(markedAlive(descendant.marker), true)
-  for (const refused of ['interrupt', 'hangup'] as const)
-    await assert.rejects(child.signal(refused), rejected('service_unavailable'))
+  await assert.rejects(child.signal('hangup'), rejected('service_unavailable'))
   await child.signal('terminate')
   await seen.until(() => seen.exit !== undefined)
   assert.deepEqual(seen.exit, { signal: 15 })
@@ -407,9 +407,30 @@ async function windowsSignals(window: NativeWindow) {
   await assert.rejects(child.signal('kill'), rejected('invalid_state'))
   record('jobSignalAndExitStopsDescendants', {
     exit: seen.exit,
-    refused: ['interrupt', 'hangup'],
+    refused: ['hangup'],
     descendantStopped: true,
   })
+  await child.release()
+  await windowsInterrupt(window)
+}
+
+async function windowsInterrupt(window: NativeWindow) {
+  const seen = watch()
+  const started = performance.now()
+  const child = await window.spawnProcess(
+    'shell',
+    { args: script('echo ready&ping -n 30 127.0.0.1 >nul'), env: PATH },
+    seen.listener
+  )
+  await seen.until(() => (seen.streams['stdout'] ?? '').includes('ready'))
+  await Bun.sleep(500)
+  await child.signal('interrupt')
+  await seen.until(() => seen.exit !== undefined, 10_000)
+  // ping would run for 30 s; ^C ends it with STATUS_CONTROL_C_EXIT.
+  assert.ok(performance.now() - started < 15_000)
+  assert.notDeepEqual(seen.exit, { code: 0 })
+  await assert.rejects(child.signal('interrupt'), rejected('invalid_state'))
+  record('pipeInterruptEndsTheChild', { exit: seen.exit })
   await child.release()
 }
 
