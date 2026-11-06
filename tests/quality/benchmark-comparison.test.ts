@@ -114,6 +114,31 @@ test('bootstrap intervals are deterministic and bracket the estimate', () => {
   expect(ratio.low!).toBeGreaterThan(1)
 })
 
+test('quantile fractions outside (0, 1] are rejected', () => {
+  for (const fraction of [0, -0.5, 1.5, Number.NaN])
+    expect(() => nearestRank([1, 2, 3], fraction)).toThrow(/Quantile fraction/)
+  expect(nearestRank([1, 2, 3], 1)).toBe(3)
+})
+
+test('median ratios report no interval without three samples or a positive reference', () => {
+  const unbounded = { low: null, high: null, resamples: 0, seed: 244 }
+  expect(bootstrapMedianRatio([2, 4], [1, 2, 3])).toMatchObject({ estimate: 1.5, ...unbounded })
+  expect(bootstrapMedianRatio([2, 4, 6], [1, 2])).toMatchObject({ estimate: 4 / 1.5, ...unbounded })
+  expect(bootstrapMedianRatio([1, 2, 3], [0, 0, 0])).toMatchObject({
+    estimate: null,
+    ...unbounded,
+  })
+  expect(bootstrapMedianRatio([], [1, 2, 3])).toMatchObject({ estimate: null, ...unbounded })
+})
+
+test('a resampled zero reference median makes the ratio interval unbounded, not finite', () => {
+  const ratio = bootstrapMedianRatio([1, 1, 1, 1], [0, 0, 5, 5])
+  expect(ratio.estimate).toBeCloseTo(0.4, 5)
+  expect(ratio.resamples).toBe(2000)
+  expect(ratio.high).toBe(Number.POSITIVE_INFINITY)
+  expect(Number.isFinite(ratio.low!)).toBe(true)
+})
+
 test('equivalent workloads are accepted regardless of timings', () => {
   expect(() =>
     assertEquivalentWorkloads([
@@ -181,6 +206,34 @@ test('calibrated native trees and renderer identity must match', () => {
       { name: 'y', initial: paint('a', 'other GPU'), final: paint('b', 'other GPU') },
     ])
   ).toThrow(/renderer differs/)
+})
+
+test('paint equivalence ignores renderer nonces and timings but needs a native tree', () => {
+  const paint = (text: string, startedMs: number) => ({
+    renderer: {
+      nonce: crypto.randomUUID(),
+      adapter: 'llvmpipe',
+      startedMs,
+      first_frame_ms: 2,
+      time: 3,
+    },
+    paint: { nodes: [{ node_id: 1, text }] },
+  })
+  expect(() =>
+    assertEquivalentPaint([
+      { name: 'x', initial: paint('a', 1), final: paint('b', 2) },
+      { name: 'y', initial: paint('a', 10), final: paint('b', 20) },
+    ])
+  ).not.toThrow()
+  expect(() => assertEquivalentPaint([])).toThrow(/No calibrations/)
+  expect(() =>
+    assertEquivalentPaint([{ name: 'x', initial: paint('a', 1), final: { renderer: {} } }])
+  ).toThrow(/x lacks a native paint tree/)
+  expect(() =>
+    assertEquivalentPaint([
+      { name: 'x', initial: { paint: { nodes: 'none' } }, final: { paint: { nodes: 'none' } } },
+    ])
+  ).toThrow(/lacks a native paint tree/)
 })
 
 test('summaries keep first launches and failures separate from measured distributions', () => {
