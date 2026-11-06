@@ -87,7 +87,7 @@ bun test tests/react/workspace-model.test.ts tests/react/workspace.test.tsx
 The model tests cover full edit/filter/delete flows, capacity boundaries, plan
 ordering, stale or duplicate plan steps and the real 300 ms plan timer and its
 cancellation. The adapter tests use real public-core IPC with the existing
-headless event peer to exercise native event routing, input revisions, React
+headless event peer to exercise native event routing, the delete confirmation (declined, accepted and answered after teardown), input revisions, React
 commits, deleting every task through the empty state, plan timer ownership
 through stop, selection change and stale delivery, and window-close cleanup.
 They do not prove OS rendering, scrolling or focus.
@@ -96,7 +96,8 @@ The Native Linux workflow builds the `react-workspace` example and the
 `react-workspace-flow` fixture with the same AOT helper. The fixture mounts this
 exact `Workspace` component. Its controller uses actual host-reported geometry
 to click, type, complete and rename a task, search/filter, scroll, change theme,
-resize, delete, stream a complete plan, stop a second plan, switch tasks during
+resize, delete a task through the modal confirm dialog (Escape keeps it, the
+Delete button removes it), stream a complete plan, stop a second plan, switch tasks during
 a third, and close the OS window while a fourth plan still streams. Native
 paints independently verify the complete task list, ordered plan rows, retained
 keyed task and plan rows and the visible plan status; the details pane is
@@ -127,8 +128,10 @@ inspection and manifest alongside the native results.
 
 This is an incremental reference app for [#238](https://github.com/0xPlayerOne/bun-native/issues/238).
 Task changes are intentionally session-local and are not saved to disk.
-Menus and dialogs depend on [#239](https://github.com/0xPlayerOne/bun-native/issues/239);
-the example has no simulated menu or dialog. Accessibility qualification tracks
+Deleting a task asks first through the window's own `showConfirmDialog` (a modal
+overlay drawn by the host, [ADR 0014](../../docs/decisions/0014-message-dialogs.md)),
+so the example simulates no dialog of its own. Menus and OS-native alerts depend on
+[#239](https://github.com/0xPlayerOne/bun-native/issues/239). Accessibility qualification tracks
 [#241](https://github.com/0xPlayerOne/bun-native/issues/241). Large-history,
 virtualization, streaming, adaptive breakpoints, and performance qualification
 remain in [#257](https://github.com/0xPlayerOne/bun-native/issues/257).
@@ -149,10 +152,10 @@ are different fixtures, so no equal-workload performance comparison is made.
 | Bounded local streaming with keyed row retention | Native flow: 8-step plan, effect-owned timer                                                  | Native flow: 8-update reply, model-owned timer |
 | Stop and cancellation on selection change        | Native flow                                                                                   | Native flow                                    |
 | OS close with pending work, zero timers after    | Native flow, plus no timer fires after disposal                                               | Native flow                                    |
-| In-app confirmation panel                        | None                                                                                          | Clear-history confirmation                     |
+| Confirmation before a destructive action         | Native flow: modal confirm dialog (Escape keeps the task, Delete removes it)                  | Clear-history confirmation panel (in-app)      |
 | Screenshots                                      | scrolled, dark, resized, edited, filtered, after, plan-streaming, plan-complete, plan-stopped | Per-scenario captures in its native evidence   |
 
-Unsupported or unqualified for both: OS menus and dialogs (#239), accessibility
+Unsupported or unqualified for both: OS menus and alerts (#239), accessibility
 and screen readers, IME (#241), virtualization and long-session memory (#257),
 macOS and Windows workspace interaction, and matched comparative performance
 (#244). React-specific limits from the [behavior matrix](../../docs/react-behavior.md)

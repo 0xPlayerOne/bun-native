@@ -1,5 +1,5 @@
 /** @jsxImportSource @bun-native/react */
-import type { InputState } from '@bun-native/core'
+import type { ConfirmDialogOptions, InputState } from '@bun-native/core'
 import { inputState, type JSX, type NativeRef } from '@bun-native/react'
 import { useEffect, useReducer, useRef, useState, type Dispatch } from 'react'
 import {
@@ -50,21 +50,57 @@ function planStatus(plan: Plan | null): string {
   return plan.status === 'complete' ? `Plan ready · ${progress}` : `Plan stopped · ${progress}`
 }
 
+/**
+ * Asks the user to confirm a destructive action. The window's own
+ * `showConfirmDialog` satisfies it; the host draws the question on the modal
+ * overlay, so the workspace never simulates a dialog itself.
+ */
+export type ConfirmAction = (options: ConfirmDialogOptions) => Promise<boolean>
+
 function TaskDetails({
   task,
   plan,
   palette,
   dispatch,
+  confirm,
 }: {
   task: Task
   plan: Plan | null
   palette: Palette
   dispatch: Dispatch<WorkspaceAction>
+  confirm?: ConfirmAction | undefined
 }): JSX.Element {
   const streaming = plan?.status === 'streaming'
   const reference = useRef<NativeRef>(null)
   const [title, setTitle] = useState<InputState>({ value: task.title, revision: 0 })
   const validTitle = taskTitle(title.value)
+  // This component is keyed by task, so an answer that arrives after the task
+  // was deselected or the window closed finds it unmounted and does nothing.
+  const mounted = useRef(true)
+  const asking = useRef(false)
+  useEffect(() => {
+    mounted.current = true
+    return () => {
+      mounted.current = false
+    }
+  }, [])
+  function remove() {
+    if (!confirm) return dispatch({ type: 'remove', id: task.id })
+    // The dialog is modal, so a second press cannot arrive while it is shown.
+    if (asking.current) return
+    asking.current = true
+    const id = task.id
+    void confirm({
+      title: 'Delete task?',
+      message: `Delete “${task.title}”? This cannot be undone.`,
+      confirmLabel: 'Delete',
+      cancelLabel: 'Keep task',
+      destructive: true,
+    }).then((accepted) => {
+      asking.current = false
+      if (accepted && mounted.current) dispatch({ type: 'remove', id })
+    })
+  }
   function save() {
     if (!reference.current) return
     const observed = inputState(reference.current)
@@ -106,7 +142,7 @@ function TaskDetails({
       <button
         text="Delete task"
         style={{ height: 40, color: palette.text, background: palette.background }}
-        onClick={() => dispatch({ type: 'remove', id: task.id })}
+        onClick={remove}
       />
       <text style={{ color: palette.text, font_size: 18 }}>Plan</text>
       <button
@@ -138,9 +174,12 @@ function TaskDetails({
 export function Workspace({
   onChange,
   schedule = schedulePlanStep,
+  confirm,
 }: {
   onChange?: (state: WorkspaceState) => void
   schedule?: PlanScheduler
+  /** When given, deleting a task asks first. Without it the delete is immediate. */
+  confirm?: ConfirmAction | undefined
 }): JSX.Element {
   const [state, dispatch] = useReducer(workspaceReducer, undefined, createWorkspace)
   const [draft, setDraft] = useState<InputState>({ value: '', revision: 0 })
@@ -320,6 +359,7 @@ export function Workspace({
               plan={plan}
               palette={palette}
               dispatch={dispatch}
+              confirm={confirm}
             />
           ) : (
             <text style={{ padding: 20, color: palette.muted }}>Add a task to get started.</text>
