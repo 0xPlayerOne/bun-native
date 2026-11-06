@@ -263,6 +263,9 @@ export function insertNode(parent: Node, node: Node, anchor?: Node): void {
   // subtree already owned by this root needs no check.
   if (owner && node.owner !== owner) checkScope(node, owner.token)
   const previousOwner = node.owner
+  // An owner only holds nodes attached under its root (removal and disposal
+  // clear it), so this subtree moves without ever leaving the live tree.
+  const moved = owner !== undefined && previousOwner === owner && node.parent !== undefined
   if (previousOwner && previousOwner !== owner) previousOwner.detached(node)
   if (node.parent) detachChild(node.parent, node)
   invalidate(node.parent)
@@ -270,8 +273,11 @@ export function insertNode(parent: Node, node: Node, anchor?: Node): void {
   node.parent = parent
   attachChild(parent, node, anchor ? childIndex(parent, anchor) : parent.staged.length)
   // Adapters may clear detached nodes directly, so a reinserted subtree is
-  // always captured again from its current state.
-  adopt(node, owner)
+  // always captured again from its current state. A moved subtree's captures
+  // and dirty paths stay current below it: its root's capture names the old
+  // parent, so snapshot() recaptures that node alone, and the diff moves it
+  // natively while every descendant keeps its committed record.
+  if (!moved) adopt(node, owner)
   previousOwner?.changed()
   owner?.changed()
 }
@@ -376,8 +382,9 @@ function leafStyle(style: Style): NonNullable<Extract<Element, { kind: 'text' }>
  * capture its acknowledged committed record already holds. The walk descends
  * only dirty paths, so a clean subtree costs nothing. A node can leave its
  * committed position only through a mutation that invalidates its old parent
- * and, when it is reinserted, its whole subtree, so the diff finds removals
- * and moves from the old and new child lists of recaptured nodes alone.
+ * and leaves its own capture naming another parent (or none), so the diff
+ * finds removals and moves from the old and new child lists of recaptured
+ * nodes alone.
  */
 export function snapshot(root: Node): Map<Node, Snapshot> {
   const result = new Map<Node, Snapshot>()

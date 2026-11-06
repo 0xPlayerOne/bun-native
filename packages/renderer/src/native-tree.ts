@@ -113,7 +113,8 @@ export async function commitNativeTree(
     }
     // Rescue retained keyed descendants before deleting an obsolete ancestor.
     // Moving them temporarily to this root also frees capacity before creations.
-    // A retained descendant was reinserted, so its whole subtree was recaptured.
+    // A retained descendant was reinserted, so it was recaptured with its new
+    // parent; its own descendants keep their committed records and stay with it.
     // Root children already removed natively but not yet dropped from its list.
     let unlisted = 0
     const rescue = (node: Node): void => {

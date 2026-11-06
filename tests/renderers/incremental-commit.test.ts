@@ -324,3 +324,85 @@ test('a rejected batch publishes nothing and cleanup removes the acknowledged ro
   expect(model.ops.remove).toBe(1)
   expect(root.diagnostics).toMatchObject({ nodes: 0, listeners: 0 })
 })
+
+test('a subtree moved within its live root recaptures only its own root', async () => {
+  const model = modelWindow()
+  const groups: Node[] = []
+  const literals: Node[] = []
+  const moved = createElement('box')
+  let container!: Node
+  const root = createRenderRoot(model.window, (context) => {
+    container = context.container
+    for (let index = 0; index < 2; index += 1) {
+      const group = createElement('box')
+      insertNode(container, group)
+      groups.push(group)
+    }
+    for (let index = 0; index < 10; index += 1) {
+      const row = createElement('box')
+      const text = createElement('text')
+      const literal = createTextNode('row ' + index)
+      insertNode(text, literal)
+      insertNode(row, text)
+      const button = createElement('button')
+      setProperty(button, 'text', 'select')
+      setProperty(button, 'onClick', () => {})
+      insertNode(row, button)
+      insertNode(moved, row)
+      literals.push(literal)
+    }
+    insertNode(groups[0]!, moved)
+  })
+  await root.ready
+  const descendants: Node[] = []
+  const walk = (node: Node) => {
+    for (const child of node.children) {
+      descendants.push(child)
+      walk(child)
+    }
+  }
+  walk(moved)
+  const captures = descendants.map((node) => node.captured)
+  const converge = () => {
+    const expected = stagedShape(container)
+    expect(model.native().map(nativeShape)).toEqual([expected])
+    expect(root.diagnostics.nodes).toBe(count(expected))
+    expect(root.diagnostics.listeners).toBe(10)
+  }
+
+  // A move with an edit below it in the same batch: one insert, one set.
+  let before = { ...model.ops }
+  insertNode(groups[1]!, moved)
+  replaceText(literals[3]!, 'edited')
+  await root.flush()
+  expect(model.ops).toEqual({ ...before, insert: before.insert + 1, set: before.set + 1 })
+  converge()
+  descendants.forEach((node, index) => {
+    // The edited literal's text element was recaptured; nothing else below moved.
+    if (node === literals[3] || node === literals[3]!.parent) return
+    expect(node.captured).toBe(captures[index])
+  })
+
+  // Moving it out of a group that leaves in the same batch rescues it intact.
+  const kept = descendants.map((node) => node.captured)
+  before = { ...model.ops }
+  insertNode(container, moved, groups[0])
+  removeNode(container, groups[1]!)
+  await root.flush()
+  // The rescue parks it under the root before the removal, then places it.
+  expect(model.ops).toEqual({ ...before, insert: before.insert + 2, remove: before.remove + 1 })
+  converge()
+  descendants.forEach((node, index) => expect(node.captured).toBe(kept[index]))
+
+  // Moved back into a group after removal from the tree, it is recaptured whole.
+  removeNode(container, moved)
+  insertNode(groups[0]!, moved)
+  await root.flush()
+  converge()
+  descendants.forEach((node, index) => {
+    // Text literals are joined into their element's capture, never captured alone.
+    if (node.kind !== 'text-node') expect(node.captured).not.toBe(kept[index])
+  })
+  await root.dispose()
+  expect(model.native()).toEqual([])
+})
