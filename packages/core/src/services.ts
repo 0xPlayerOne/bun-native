@@ -18,6 +18,7 @@ type ServiceName =
   | 'file_dialogs'
   | 'message_dialogs'
   | 'drag_drop'
+  | 'app_menu'
 
 export type ServicePermissions = NonNullable<
   import('@bun-native/runtime').HostOptions['permissions']
@@ -56,8 +57,6 @@ export interface DisplayChangeEvent {
   readonly signal: AbortSignal
 }
 
-type UnavailableService = Readonly<{ availability: 'unavailable'; reason: 'not_implemented' }>
-
 export interface ServiceCapabilities {
   readonly windowDisplay: Readonly<{
     availability: 'available'
@@ -85,7 +84,19 @@ export interface ServiceCapabilities {
         backend: 'x11'
       }>
     | Readonly<{ availability: 'unavailable'; reason: 'unsupported_platform' }>
-  readonly systemMenus: UnavailableService
+  /**
+   * The application menu bar: a native NSMenu bar on macOS. GPUI's Linux and
+   * Windows backends only store menus, so they report it unavailable. OS
+   * context menus are not implemented.
+   */
+  readonly appMenu:
+    | Readonly<{
+        availability: 'available'
+        permission: 'allow' | 'deny'
+        scope: 'application'
+        backend: 'appkit'
+      }>
+    | Readonly<{ availability: 'unavailable'; reason: 'unsupported_platform' }>
   /** OS file open/save/folder dialogs. Selected paths are data, not filesystem grants. */
   readonly fileDialogs:
     | Readonly<{
@@ -177,11 +188,6 @@ export class NativeServiceError extends Error {
   }
 }
 
-const unavailable: UnavailableService = Object.freeze({
-  availability: 'unavailable',
-  reason: 'not_implemented',
-})
-
 export function serviceCapabilities(
   policy: Readonly<ServicePolicy>,
   capabilities: readonly Capability[]
@@ -211,7 +217,14 @@ export function serviceCapabilities(
           backend: 'x11',
         })
       : Object.freeze({ availability: 'unavailable', reason: 'unsupported_platform' }),
-    systemMenus: unavailable,
+    appMenu: capabilities.includes('app_menu_v1')
+      ? Object.freeze({
+          availability: 'available',
+          permission: policy.app_menu ? 'allow' : 'deny',
+          scope: 'application',
+          backend: 'appkit',
+        })
+      : Object.freeze({ availability: 'unavailable', reason: 'unsupported_platform' }),
     fileDialogs: capabilities.includes('file_dialogs_v1')
       ? Object.freeze({
           availability: 'available',

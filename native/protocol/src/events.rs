@@ -347,6 +347,18 @@ pub enum Event {
         sequence: EventSequence,
         window_id: WindowId,
     },
+    /// The menu bar `menu_id` is installed; the previous one is revoked.
+    AppMenuSet {
+        id: RequestId,
+        menu_id: crate::AppMenuId,
+    },
+    /// The user selected an item of the current menu bar. Application-scoped:
+    /// a menu bar belongs to the application, not to a window.
+    AppMenuItem {
+        sequence: EventSequence,
+        menu_id: crate::AppMenuId,
+        item_id: String,
+    },
     Error {
         #[serde(
             default,
@@ -489,6 +501,7 @@ impl Event {
             }
             Self::ProcessExited { exit, .. } => exit.validate()?,
             Self::FileDialogCompleted { result, .. } => result.validate()?,
+            Self::AppMenuItem { item_id, .. } => crate::validate_app_menu_item_id(item_id)?,
             Self::KeyDown { key, key_char, .. } | Self::KeyUp { key, key_char, .. } => {
                 validate_text(key)?;
                 if key.is_empty() || key.len() > MAX_KEY_BYTES {

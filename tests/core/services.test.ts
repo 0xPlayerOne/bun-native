@@ -97,6 +97,7 @@ describe('owned desktop service lifecycle (headless subprocess)', () => {
             'ptyProcess',
             'fileDialogs',
             'dragDrop',
+            'appMenu',
           ].includes(name)
         )
           expect(value).toEqual({
@@ -106,11 +107,6 @@ describe('owned desktop service lifecycle (headless subprocess)', () => {
         // This peer advertises no overlays, so the modal-overlay dialogs are unavailable.
         else if (name === 'messageDialogs')
           expect(value).toEqual({ availability: 'unavailable', reason: 'unsupported_host' })
-        else if (name !== 'windowDisplay')
-          expect(value).toEqual({
-            availability: 'unavailable',
-            reason: 'not_implemented',
-          })
       }
       const window = await app.openWindow({ title: 'Denied service' })
       await assert.rejects(window.displaySnapshot(), {

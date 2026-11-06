@@ -50,6 +50,7 @@ const entries = {
   'global-shortcuts': 'tests/native/global-shortcuts.ts',
   notifications: 'tests/native/notifications.ts',
   'filesystem-grants': 'tests/native/filesystem-grants.ts',
+  'app-menu': 'tests/native/app-menu.ts',
   processes: 'tests/native/processes.ts',
   'file-dialogs': 'tests/native/file-dialogs.ts',
   overlays: 'tests/native/overlays.ts',
@@ -146,6 +147,7 @@ if (
     entry === 'global-shortcuts' ||
     entry === 'notifications' ||
     entry === 'filesystem-grants' ||
+    entry === 'app-menu' ||
     entry === 'processes' ||
     entry === 'file-dialogs' ||
     entry === 'overlays' ||

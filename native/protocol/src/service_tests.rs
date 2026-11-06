@@ -54,6 +54,10 @@ fn service_commands_and_responses_share_the_checked_typescript_contract() {
             include_str!("../../../tests/fixtures/native-drag-drop.json"),
             "drag_drop_files_v1",
         ),
+        (
+            include_str!("../../../tests/fixtures/native-app-menu.json"),
+            "app_menu_v1",
+        ),
     ] {
         service_cases(source, capability);
     }

@@ -80,6 +80,7 @@ The same compiler and inspection pipeline supports these explicit entries:
 | `global-shortcuts`        | `tests/native/global-shortcuts.ts`      | `global-shortcuts`     | Existing prebuilt host referenced by absolute path |
 | `notifications`           | `tests/native/notifications.ts`         | `notifications`        | Existing prebuilt host referenced by absolute path |
 | `filesystem-grants`       | `tests/native/filesystem-grants.ts`     | `filesystem-grants`    | Existing prebuilt host referenced by absolute path |
+| `app-menu`                | `tests/native/app-menu.ts`              | `app-menu`             | Existing prebuilt host referenced by absolute path |
 | `processes`               | `tests/native/processes.ts`             | `processes`            | Existing prebuilt host referenced by absolute path |
 | `file-dialogs`            | `tests/native/file-dialogs.ts`          | `file-dialogs`         | Existing prebuilt host referenced by absolute path |
 | `overlays`                | `tests/native/overlays.ts`              | `overlays`             | Existing prebuilt host referenced by absolute path |

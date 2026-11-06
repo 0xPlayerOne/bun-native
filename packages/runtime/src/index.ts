@@ -62,10 +62,14 @@ export type WindowCommand = WithoutId<
         | 'register_drop_target'
         | 'unregister_drop_target'
         | 'resolve_dropped_item'
+        | 'set_app_menu'
     }
   >
 >
 export type WindowEvent = Extract<NativeEvent, { sequence: number; window_id: number }>
+/** Sequenced events owned by the application rather than one window. */
+export type ApplicationEvent = Extract<NativeEvent, { type: 'app_menu_item' }>
+export type HostEvent = WindowEvent | ApplicationEvent
 export type HostResponse = Extract<
   NativeEvent,
   {
@@ -91,6 +95,7 @@ export type HostResponse = Extract<
       | 'drop_target_registered'
       | 'drop_target_unregistered'
       | 'dropped_item_resolved'
+      | 'app_menu_set'
   }
 >
 
@@ -117,6 +122,8 @@ export interface ServicePermissions {
   readonly processes?: readonly Readonly<{ id: string; executable: string }>[]
   /** OS file open/save/folder dialogs owned by a window. Paths are data, never grants. */
   readonly fileDialogs?: 'allow' | 'deny'
+  /** The application menu bar (macOS). Selections are reported as item IDs. */
+  readonly appMenu?: 'allow' | 'deny'
 }
 
 export class NativeCommandError extends Error {
@@ -155,6 +162,7 @@ function launchPolicy(value: unknown = {}): Readonly<ServicePolicy> {
           'filesystemRoots',
           'processes',
           'fileDialogs',
+          'appMenu',
         ].includes(key)
     )
   )
@@ -175,6 +183,7 @@ function launchPolicy(value: unknown = {}): Readonly<ServicePolicy> {
     filesystem_roots: filesystemRoots(value),
     processes: processes(value),
     file_dialogs: grant('fileDialogs'),
+    app_menu: grant('appMenu'),
   })
 }
 
@@ -217,6 +226,7 @@ function samePolicy(left: Readonly<ServicePolicy>, right: Readonly<ServicePolicy
     left.global_shortcuts === right.global_shortcuts &&
     left.notifications === right.notifications &&
     (left.file_dialogs ?? false) === (right.file_dialogs ?? false) &&
+    (left.app_menu ?? false) === (right.app_menu ?? false) &&
     left.drag_drop === right.drag_drop &&
     left.filesystem_roots.length === right.filesystem_roots.length &&
     left.filesystem_roots.every(
@@ -256,7 +266,7 @@ function describeWrite(write: RequestWrite): string {
 }
 
 type WaitingReader = {
-  resolve: (value: IteratorResult<WindowEvent>) => void
+  resolve: (value: IteratorResult<HostEvent>) => void
   reject: (error: Error) => void
 }
 
@@ -267,14 +277,14 @@ const MAX_QUEUED_EVENTS = 128
  * Owns one native process and its bounded, versioned channel. Private transport;
  * framework-specific reconciliation belongs above this shared connection.
  */
-export class NativeHost implements AsyncIterable<WindowEvent> {
+export class NativeHost implements AsyncIterable<HostEvent> {
   readonly exited: Promise<number>
   private readonly process: Bun.Subprocess<'pipe', 'pipe', 'pipe'>
   private readonly stdout: ReadableStreamDefaultReader<Uint8Array>
   private readonly stderr: ReadableStreamDefaultReader<Uint8Array>
   private readonly timeout: number
   private readonly pending = new Map<number, Pending>()
-  private readonly events: WindowEvent[] = []
+  private readonly events: HostEvent[] = []
   private readonly finished: Promise<void>
   private waiting: WaitingReader | undefined
   private failure: Error | undefined
@@ -309,6 +319,7 @@ export class NativeHost implements AsyncIterable<WindowEvent> {
         ...requestedPolicy.filesystem_roots.map(filesystemRootArgument),
         ...requestedPolicy.processes.map(processArgument),
         ...(requestedPolicy.file_dialogs ? ['--bun-native-allow-file-dialogs'] : []),
+        ...(requestedPolicy.app_menu ? ['--bun-native-allow-app-menu'] : []),
       ],
       stdin: 'pipe',
       stdout: 'pipe',
@@ -438,6 +449,9 @@ export class NativeHost implements AsyncIterable<WindowEvent> {
   send(
     command: Extract<WindowCommand, { type: 'resolve_dropped_item' }>
   ): Promise<Extract<HostResponse, { type: 'dropped_item_resolved' }>>
+  send(
+    command: Extract<WindowCommand, { type: 'set_app_menu' }>
+  ): Promise<Extract<HostResponse, { type: 'app_menu_set' }>>
   send(command: WindowCommand): Promise<HostResponse>
   send(command: WindowCommand): Promise<HostResponse> {
     if (this.phase !== 'running') return Promise.reject(this.closedError())
@@ -471,7 +485,7 @@ export class NativeHost implements AsyncIterable<WindowEvent> {
     }
   }
 
-  [Symbol.asyncIterator](): AsyncIterator<WindowEvent> {
+  [Symbol.asyncIterator](): AsyncIterator<HostEvent> {
     if (this.iteratorTaken) throw new Error('Native events have exactly one consumer')
     this.iteratorTaken = true
     return {
@@ -482,7 +496,7 @@ export class NativeHost implements AsyncIterable<WindowEvent> {
         if (this.phase === 'closed') return Promise.resolve({ done: true, value: undefined })
         if (this.waiting)
           return Promise.reject(new Error('Concurrent event reads are not supported'))
-        return new Promise<IteratorResult<WindowEvent>>((resolve, reject) => {
+        return new Promise<IteratorResult<HostEvent>>((resolve, reject) => {
           this.waiting = { resolve, reject }
         })
       },
@@ -728,6 +742,7 @@ export class NativeHost implements AsyncIterable<WindowEvent> {
       event.type === 'drop_target_registered' ||
       event.type === 'drop_target_unregistered' ||
       event.type === 'dropped_item_resolved' ||
+      event.type === 'app_menu_set' ||
       event.type === 'error'
     ) {
       if (event.type === 'error' && event.id === undefined)
@@ -857,6 +872,8 @@ export class NativeHost implements AsyncIterable<WindowEvent> {
           response.item === command.item &&
           response.root === command.root
         )
+      case 'set_app_menu':
+        return response.type === 'app_menu_set' && response.menu_id === command.menu_id
       case 'open':
         return (
           response.type === 'opened' &&

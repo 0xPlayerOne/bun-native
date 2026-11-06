@@ -50,6 +50,21 @@ export {
   type TerminalSize,
 } from './processes.ts'
 export {
+  APP_MENU_KEYS,
+  APP_MENU_NAMED_KEYS,
+  APP_MENU_PUNCTUATION_KEYS,
+  MAX_APP_MENU_DEPTH,
+  MAX_APP_MENU_ENTRIES,
+  MAX_APP_MENU_ITEM_ID_BYTES,
+  MAX_APP_MENU_LABEL_BYTES,
+  MAX_APP_MENUS,
+  parseAppMenus,
+  type AppMenu,
+  type AppMenuEntry,
+  type MenuShortcut,
+  type MenuShortcutModifiers,
+} from './app-menu.ts'
+export {
   FILE_DIALOG_MODES,
   MAX_DIALOG_FILTER_NAME_BYTES,
   MAX_DIALOG_FILTER_PATTERNS,

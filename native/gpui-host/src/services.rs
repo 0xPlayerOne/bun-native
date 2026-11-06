@@ -12,6 +12,7 @@ use std::ffi::OsString;
 use std::rc::Rc;
 use std::time::Duration;
 
+pub(crate) mod app_menu;
 #[cfg(target_os = "linux")]
 pub(crate) mod clipboard;
 #[cfg(not(target_os = "linux"))]
@@ -97,6 +98,7 @@ fn filesystem_root(argument: &str) -> Result<FilesystemRoot, &'static str> {
 }
 
 pub(crate) const FILE_DIALOGS_ARGUMENT: &str = "--bun-native-allow-file-dialogs";
+pub(crate) const APP_MENU_ARGUMENT: &str = "--bun-native-allow-app-menu";
 
 pub(crate) fn policy(
     arguments: impl IntoIterator<Item = OsString>,
@@ -133,6 +135,8 @@ pub(crate) fn policy(
             &mut policy.file_dialogs
         } else if argument == DRAG_DROP_ARGUMENT {
             &mut policy.drag_drop
+        } else if argument == APP_MENU_ARGUMENT {
+            &mut policy.app_menu
         } else {
             return Err("unknown native host argument");
         };
@@ -304,6 +308,7 @@ mod tests {
                 filesystem_roots: Vec::new(),
                 processes: Vec::new(),
                 file_dialogs: false,
+                app_menu: false,
             }
         );
         assert_eq!(
@@ -328,6 +333,13 @@ mod tests {
             }
         );
         assert_eq!(
+            policy([OsString::from(APP_MENU_ARGUMENT)]).unwrap(),
+            ServicePolicy {
+                app_menu: true,
+                ..ServicePolicy::default()
+            }
+        );
+        assert_eq!(
             policy([OsString::from(DRAG_DROP_ARGUMENT)]).unwrap(),
             ServicePolicy {
                 drag_drop: true,
@@ -341,6 +353,7 @@ mod tests {
             NOTIFICATIONS_ARGUMENT,
             FILE_DIALOGS_ARGUMENT,
             DRAG_DROP_ARGUMENT,
+            APP_MENU_ARGUMENT,
         ] {
             assert!(policy([argument, argument].map(OsString::from)).is_err());
         }

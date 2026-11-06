@@ -9,6 +9,7 @@ import {
 import {
   NativeCommandError,
   NativeHost,
+  type ApplicationEvent,
   type HostOptions,
   type WindowEvent,
 } from '@bun-native/runtime'
@@ -41,6 +42,13 @@ import {
   type NotificationEvent,
   type NotificationOptions,
 } from './notifications.ts'
+import {
+  menuBarRequest,
+  MenuBarRegistration,
+  type AppMenuItemEvent,
+  type MenuOptions,
+  type NativeMenuBar,
+} from './app-menu.ts'
 import {
   DropTargetRegistration,
   type DropTargetEvent,
@@ -104,6 +112,8 @@ type Callback =
   | { windowId: number; process: ProcessRegistration; event: ProcessEvent; chunk: number }
   | { windowId: number; display: DisplaySubscription; event: DisplayChangeEvent }
   | { windowId: number; dropTarget: DropTargetRegistration; event: DropTargetEvent }
+  /** Application-scoped: no window owns the menu bar. */
+  | { menuBar: MenuBarRegistration; event: AppMenuItemEvent }
 
 class Application implements NativeApplication {
   readonly closed: Promise<void>
@@ -125,6 +135,9 @@ class Application implements NativeApplication {
   readonly dropTargets = new Map<number, DropTargetRegistration>()
   private nextDropTarget = 1
   private lastDrop = 0
+  /** The installed (or installing) menu bar; replaced bars are revoked. */
+  private menuBar: MenuBarRegistration | undefined
+  private nextMenuBar = 1
   private tail: Promise<void> = Promise.resolve()
   private queued = 0
   private readonly services = new Set<Promise<void>>()
@@ -226,7 +239,7 @@ class Application implements NativeApplication {
   cancelCallbacks(windowId: number): void {
     const window = this.windows.get(windowId)
     this.callbacks = this.callbacks.filter((callback) => {
-      if (callback.windowId !== windowId) return true
+      if ('menuBar' in callback || callback.windowId !== windowId) return true
       if ('shortcut' in callback) return callback.shortcut.live
       if ('notification' in callback) return callback.notification.deliverable
       if ('dropTarget' in callback) return callback.dropTarget.live
@@ -263,11 +276,16 @@ class Application implements NativeApplication {
   private async dispatchCallbacks(): Promise<void> {
     while (this.callbacks.length) {
       const callback = this.callbacks.shift()!
-      const window = this.windows.get(callback.windowId)
-      if (!window) continue
+      const window = 'menuBar' in callback ? undefined : this.windows.get(callback.windowId)
+      if (!window && !('menuBar' in callback)) continue
       this.activeCallbacks = 1
       try {
-        if ('shortcut' in callback) await dispatchShortcut(callback.shortcut, callback.event)
+        if ('menuBar' in callback) {
+          const listener = callback.menuBar.listener
+          if (listener && callback.menuBar.live)
+            await dispatchOwned(listener, callback.event, callback.menuBar.controller.signal)
+        } else if (!window) continue
+        else if ('shortcut' in callback) await dispatchShortcut(callback.shortcut, callback.event)
         else if ('dropTarget' in callback)
           await dispatchDropTarget(callback.dropTarget, callback.event)
         else if ('notification' in callback)
@@ -387,6 +405,7 @@ class Application implements NativeApplication {
   async shutdown(): Promise<void> {
     if (!this.stopping) {
       this.phase = 'stopping'
+      this.menuBar?.revoke()
       for (const window of this.windows.values()) window.revoke()
       this.stopping = (async () => {
         await this.tail
@@ -398,9 +417,110 @@ class Application implements NativeApplication {
     if (this.failure) throw this.failure
   }
 
+  async setMenuBar(
+    menus: readonly MenuOptions[],
+    listener: (event: AppMenuItemEvent) => void | Promise<void>
+  ): Promise<NativeMenuBar> {
+    const request = menuBarRequest(menus)
+    if (typeof listener !== 'function')
+      throw new TypeError('A menu bar listener must be a function')
+    this.checkMenuBar()
+    const registration = new MenuBarRegistration(this.allocateMenuBar(), listener, (item) =>
+      item === this.menuBar ? this.clearMenuBar() : Promise.resolve()
+    )
+    // Revoked at submission: no selection of the old bar is delivered after this call.
+    this.menuBar?.revoke()
+    this.menuBar = registration
+    await this.sendMenuBar(registration.id, request)
+    if (!registration.live)
+      throw new NativeServiceError(
+        'app_menu',
+        'cancelled',
+        'Menu bar was replaced or revoked while it was set'
+      )
+    return registration.handle
+  }
+
+  async clearMenuBar(): Promise<void> {
+    this.checkMenuBar()
+    const id = this.allocateMenuBar()
+    this.menuBar?.revoke()
+    this.menuBar = undefined
+    await this.sendMenuBar(id, [])
+  }
+
+  private checkMenuBar(): void {
+    if (this.phase !== 'running')
+      throw new NativeStateError('invalid_state', 'Application is shutting down')
+    const capability = this.serviceCapabilities.appMenu
+    if (capability.availability !== 'available')
+      throw new NativeServiceError(
+        'app_menu',
+        'service_unavailable',
+        'This native backend has no application menu bar'
+      )
+    if (capability.permission !== 'allow')
+      throw new NativeServiceError(
+        'app_menu',
+        'permission_denied',
+        'the application menu was not granted at native process launch'
+      )
+  }
+
+  private allocateMenuBar(): number {
+    if (!Number.isSafeInteger(this.nextMenuBar))
+      throw new NativeStateError('limit_exceeded', 'Menu bar identity space exhausted')
+    return this.nextMenuBar++
+  }
+
+  private async sendMenuBar(id: number, menus: ReturnType<typeof menuBarRequest>): Promise<void> {
+    try {
+      await this.service(() => this.host.send({ type: 'set_app_menu', menu_id: id, menus }))
+    } catch (error) {
+      if (this.menuBar?.id === id) {
+        this.menuBar.revoke()
+        this.menuBar = undefined
+      }
+      if (
+        error instanceof NativeCommandError &&
+        (MENU_ERRORS as readonly string[]).includes(error.code)
+      )
+        throw new NativeServiceError(
+          'app_menu',
+          error.code as NativeServiceError['code'],
+          error.message
+        )
+      throw error
+    }
+  }
+
+  private receiveMenuItem(event: ApplicationEvent): void {
+    if (!this.capabilities.includes('app_menu_v1'))
+      throw new ProtocolError('Native menu selection arrived without app_menu_v1')
+    if (event.menu_id >= this.nextMenuBar)
+      throw new ProtocolError('Native event names an unallocated menu bar')
+    const registration = this.menuBar
+    // A replaced or cleared bar's selection is stale and never delivered.
+    if (!registration?.live || registration.id !== event.menu_id) return
+    this.queueCallback({
+      menuBar: registration,
+      event: Object.freeze({
+        type: 'app_menu_item',
+        sequence: event.sequence,
+        itemId: event.item_id,
+        menuBar: registration.handle,
+        signal: registration.controller.signal,
+      }),
+    })
+  }
+
   private async consume(): Promise<void> {
     try {
       for await (const event of this.host) {
+        if (event.type === 'app_menu_item') {
+          this.receiveMenuItem(event)
+          continue
+        }
         if (event.type === 'global_shortcut' && !this.isAllocatedShortcut(event.shortcut_id))
           throw new ProtocolError('Native event names an unallocated global shortcut')
         if (
@@ -440,6 +560,7 @@ class Application implements NativeApplication {
       this.phase = 'stopping'
       await this.host.shutdown().catch(() => {})
     } finally {
+      this.menuBar?.revoke()
       for (const window of this.windows.values()) window.revoke()
       await this.dispatching
       await Promise.all(this.services)
@@ -553,6 +674,14 @@ const DIALOG_ERRORS = [
   'cancelled',
   'native_failure',
   'operation_timed_out',
+  'limit_exceeded',
+] as const
+
+const MENU_ERRORS = [
+  'permission_denied',
+  'service_unavailable',
+  'cancelled',
+  'native_failure',
   'limit_exceeded',
 ] as const
 

@@ -69,6 +69,7 @@ try {
     while (!closed) {
       const event = await events.next()
       assert(!event.done)
+      assert(event.value.type !== 'app_menu_item')
       assert.equal(event.value.window_id, window_id)
       closed = event.value.type === 'closed'
       if (!closed) assert(['focus', 'blur'].includes(event.value.type))

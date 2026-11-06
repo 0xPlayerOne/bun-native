@@ -21,6 +21,7 @@ import type {
   NativeGlobalShortcut,
 } from './shortcuts.ts'
 import type { NativeNotification, NotificationEvent, NotificationOptions } from './notifications.ts'
+import type { AppMenuItemEvent, MenuOptions, NativeMenuBar } from './app-menu.ts'
 import type { FileGrantOptions, NativeFileGrant } from './files.ts'
 import type { NativeProcess, ProcessEvent, ProcessOptions } from './processes.ts'
 import type {
@@ -312,6 +313,16 @@ export interface NativeApplication {
     serviceRequests: number
   }>
   openWindow(options: WindowOptions): Promise<NativeWindow>
+  /**
+   * Installs the application menu bar, replacing (and revoking) the previous
+   * one. Requires `serviceCapabilities.appMenu` and the `appMenu` grant.
+   */
+  setMenuBar(
+    menus: readonly MenuOptions[],
+    listener: (event: AppMenuItemEvent) => void | Promise<void>
+  ): Promise<NativeMenuBar>
+  /** Removes the application menu bar and revokes its items. */
+  clearMenuBar(): Promise<void>
   /** May be called from a listener. Await closed outside that listener to join dispatch. */
   shutdown(): Promise<void>
 }

@@ -393,6 +393,39 @@ jobs:
               throw "macOS $mode filesystem grant evidence does not name the macOS backend"
             }
           }
+      - name: macOS development and AOT application menu bar (#239)
+        if: ${{ runner.os == 'macOS' && !cancelled() && steps.native-build.outcome == 'success' }}
+        timeout-minutes: 6
+        run: |
+          $oracle = Join-Path $env:NATIVE_EVIDENCE 'macos-menu-oracle'
+          xcrun clang -fobjc-arc -Wall -Wextra -Werror -framework AppKit -framework ApplicationServices `
+            tests/native/macos-menu-oracle.m -o $oracle
+          if ($LASTEXITCODE -ne 0) { throw 'The independent Accessibility menu oracle did not compile' }
+          $env:BUN_NATIVE_MACOS_MENU_ORACLE = $oracle
+          $package = Join-Path $env:NATIVE_EVIDENCE 'app-menu-package'
+          bun experiments/aot-gpui/build-window.ts --entry app-menu `
+            --source $env:GITHUB_WORKSPACE --host $env:BUN_NATIVE_HOST `
+            --host-profile release --outdir $package
+          if ($LASTEXITCODE -ne 0) { throw 'The application menu AOT compiler or inspection failed' }
+          foreach ($mode in @('development', 'aot')) {
+            $evidence = Join-Path $env:NATIVE_EVIDENCE "app-menu-$mode"
+            New-Item -ItemType Directory $evidence | Out-Null
+            $env:BUN_NATIVE_APP_MENU_EVIDENCE = $evidence
+            $env:BUN_NATIVE_APP_MENU_MODE = $mode
+            if ($mode -eq 'development') {
+              bun tests/native/app-menu.ts 2>&1 | Tee-Object -FilePath (Join-Path $evidence 'run.log')
+            } else {
+              & (Join-Path $package 'app-menu') 2>&1 | Tee-Object -FilePath (Join-Path $evidence 'run.log')
+            }
+            if ($LASTEXITCODE -ne 0) { throw "macOS $mode application menu bar failed" }
+            $report = Get-Content -Raw (Join-Path $evidence 'app-menu.json') | ConvertFrom-Json
+            if ($report.platform -ne 'darwin' -or $report.mode -ne $mode) {
+              throw "macOS $mode application menu evidence does not name its platform and mode"
+            }
+            if ($report.status -ne 'verified') {
+              Write-Output "::warning::macOS $mode menu bar contents and selections are unverified: $($report.oracle)"
+            }
+          }
       - name: Display snapshot, work area, identity and display-change qualification (#299)
         if: ${{ !cancelled() && steps.native-build.outcome == 'success' }}
         timeout-minutes: 8

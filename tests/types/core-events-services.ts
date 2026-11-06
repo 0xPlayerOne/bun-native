@@ -167,7 +167,8 @@ export function checkErrors(error: unknown): string | undefined {
       | 'processes'
       | 'file_dialogs'
       | 'message_dialogs'
-      | 'drag_drop' = error.service
+      | 'drag_drop'
+      | 'app_menu' = error.service
     return service + error.code
   }
   if (error instanceof NativeCommandError) {
@@ -244,7 +245,7 @@ export function checkCapabilities(app: NativeApplication): void {
     const backend: 'freedesktop' = services.notifications.backend
     void backend
   }
-  const menus: 'unavailable' = services.systemMenus.availability
+  const menus: 'available' | 'unavailable' = services.appMenu.availability
   if (services.messageDialogs.availability === 'available') {
     const backend: 'modal_overlay' = services.messageDialogs.backend
     void backend
