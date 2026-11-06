@@ -277,6 +277,8 @@ const CAPABILITIES = [
   'display_details_v1',
   'display_changes_v1',
   'file_dialogs_v1',
+  'overlays_v1',
+  'scroll_anchor_v1',
 ] as const
 export type Capability = (typeof CAPABILITIES)[number]
 

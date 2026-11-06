@@ -21,5 +21,10 @@ export namespace JSX {
     }
     /** At most two pane children; the host owns the divider drag. */
     split: Base<'split'> & { children?: Element; ratio?: number; min_size?: number }
+    /** Painted above the ordinary tree; only window-anchored overlays may be modal. */
+    overlay: Base<'overlay'> & { children?: Element } & (
+        | { anchor?: 'window'; modal?: boolean }
+        | { anchor: 'parent'; modal?: false }
+      )
   }
 }

@@ -1,9 +1,11 @@
 export { encodeFrame, FrameDecoder, MAX_FRAME_BYTES, ProtocolError } from './framing.ts'
 export {
   DECORATION_FIELDS,
+  MAX_OVERLAY_DEPTH,
   parseElement,
   SPLIT_DIVIDER,
   type Element,
+  type OverlayElement,
   type SplitStyle,
   type Style,
 } from './elements.ts'

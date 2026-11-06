@@ -33,7 +33,7 @@ export type { Element, KeyModifiers, PointerButton, Style }
 export type ApplicationOptions = HostOptions
 export type ElementKind = Element['kind']
 /** Element kinds that own ordered children. */
-export type ContainerKind = 'box' | 'split'
+export type ContainerKind = 'box' | 'split' | 'overlay'
 export type NativeCapability = Capability
 declare const nodeType: unique symbol
 

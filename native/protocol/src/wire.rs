@@ -13,6 +13,9 @@ pub const MAX_OPERATIONS: usize = 256;
 pub const MAX_NODES_PER_WINDOW: usize = 4_096;
 pub const MAX_WINDOWS: usize = 16;
 pub const MAX_DEPTH: usize = 64;
+/// Overlays nested inside overlays, the outermost counting as one. GPUI
+/// processes each nested deferred layer in its own bounded prepaint round.
+pub const MAX_OVERLAY_DEPTH: usize = 8;
 
 macro_rules! identifier {
     ($name:ident) => {
@@ -158,6 +161,25 @@ impl Overflow {
     }
 }
 
+/// Which edge a vertical scroll viewport keeps visible as its content changes.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum ScrollAnchor {
+    Start,
+    End,
+}
+
+/// Where an overlay's layer is placed.
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum OverlayAnchor {
+    /// A layer covering the whole window viewport, blocking pointer input beneath it.
+    #[default]
+    Window,
+    /// A content-sized layer below its parent's bottom-left corner, kept inside the window.
+    Parent,
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum Fill {
@@ -269,6 +291,12 @@ pub struct Style {
     #[serde(
         default,
         skip_serializing_if = "Option::is_none",
+        deserialize_with = "non_null"
+    )]
+    pub scroll_anchor: Option<ScrollAnchor>,
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
         deserialize_with = "non_null_color"
     )]
     pub background: Option<u32>,
@@ -370,6 +398,17 @@ pub enum Element {
         /// The smallest main-axis size of each pane, in logical pixels.
         #[serde(default)]
         min_size: f64,
+        #[serde(default)]
+        style: Style,
+    },
+    /// A container painted above the ordinary tree. Nested overlays paint
+    /// above shallower ones; equal depths follow tree order.
+    Overlay {
+        #[serde(default)]
+        anchor: OverlayAnchor,
+        /// Traps keyboard focus and Tab order until removed.
+        #[serde(default)]
+        modal: bool,
         #[serde(default)]
         style: Style,
     },
@@ -592,6 +631,8 @@ pub enum Capability {
     /// Owned windows report `display_changed` (macOS, Windows).
     DisplayChangesV1,
     FileDialogsV1,
+    OverlaysV1,
+    ScrollAnchorV1,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -821,22 +862,25 @@ impl Element {
             Self::Input {
                 value, placeholder, ..
             } => value.len() + placeholder.len(),
-            Self::Box { .. } | Self::Split { .. } => 0,
+            Self::Box { .. } | Self::Split { .. } | Self::Overlay { .. } => 0,
         }
-    }
-
-    /// Boxes and splits own ordered children.
-    pub fn is_container(&self) -> bool {
-        matches!(self, Self::Box { .. } | Self::Split { .. })
     }
 
     /// The most children this element may own.
     pub fn max_children(&self) -> usize {
         match self {
-            Self::Box { .. } => MAX_NODES_PER_WINDOW,
+            Self::Box { .. } | Self::Overlay { .. } => MAX_NODES_PER_WINDOW,
             Self::Split { .. } => 2,
             Self::Text { .. } | Self::Button { .. } | Self::Input { .. } => 0,
         }
+    }
+
+    /// Boxes, splits and overlays own ordered children.
+    pub fn is_container(&self) -> bool {
+        matches!(
+            self,
+            Self::Box { .. } | Self::Split { .. } | Self::Overlay { .. }
+        )
     }
 
     pub fn style(&self) -> &Style {
@@ -845,7 +889,8 @@ impl Element {
             | Self::Text { style, .. }
             | Self::Button { style, .. }
             | Self::Input { style, .. }
-            | Self::Split { style, .. } => style,
+            | Self::Split { style, .. }
+            | Self::Overlay { style, .. } => style,
         }
     }
 
@@ -854,9 +899,18 @@ impl Element {
     }
 
     pub fn validate(&self) -> Result<(), &'static str> {
-        if !matches!(self, Self::Box { .. }) && self.style().overflow.is_some_and(Overflow::scrolls)
+        if !matches!(self, Self::Box { .. } | Self::Overlay { .. })
+            && self.style().overflow.is_some_and(Overflow::scrolls)
         {
-            return Err("scrolling is supported only on box elements");
+            return Err("scrolling is supported only on box and overlay elements");
+        }
+        if let Self::Overlay {
+            anchor: OverlayAnchor::Parent,
+            modal: true,
+            ..
+        } = self
+        {
+            return Err("a modal overlay must be anchored to the window");
         }
         match self {
             Self::Text { text, .. } | Self::Button { text, .. } => validate_text(text)?,
@@ -885,7 +939,7 @@ impl Element {
                     return Err("split panes do not accept gap or alignment");
                 }
             }
-            Self::Box { .. } => {}
+            Self::Box { .. } | Self::Overlay { .. } => {}
         }
         self.style().validate()
     }
@@ -940,6 +994,11 @@ impl Style {
         }
         for value in [self.flex_grow, self.flex_shrink].into_iter().flatten() {
             bounded(value, 0., 1_000., "flex factors must be between 0 and 1000")?;
+        }
+        if self.scroll_anchor.is_some()
+            && !matches!(self.overflow, Some(Overflow::ScrollY | Overflow::Scroll))
+        {
+            return Err("scroll_anchor requires vertical scrolling overflow");
         }
         if let Some(value) = self.font_size {
             bounded(

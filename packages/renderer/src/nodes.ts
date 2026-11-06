@@ -35,9 +35,11 @@ type Properties = EventListeners & {
   disabled?: boolean
   ratio?: number
   min_size?: number
+  anchor?: 'window' | 'parent'
+  modal?: boolean
 }
 
-const isContainer = (kind: Node['kind']) => kind === 'box' || kind === 'split'
+const isContainer = (kind: Node['kind']) => kind === 'box' || kind === 'split' || kind === 'overlay'
 
 const nodes = new WeakSet<object>()
 
@@ -62,7 +64,14 @@ export function asNode(value: RendererNode): Node {
 }
 
 export function createElement(tag: string): Node {
-  if (tag !== 'box' && tag !== 'text' && tag !== 'button' && tag !== 'input' && tag !== 'split')
+  if (
+    tag !== 'box' &&
+    tag !== 'text' &&
+    tag !== 'button' &&
+    tag !== 'input' &&
+    tag !== 'split' &&
+    tag !== 'overlay'
+  )
     throw new UnsupportedFeatureError('native-element:' + tag)
   return new Node(tag)
 }
@@ -182,6 +191,18 @@ export function setProperty(node: Node, name: string, value: unknown): void {
       else if (typeof value === 'number') props[name] = value
       else throw new TypeError(`Native split ${name} must be a number`)
       break
+    case 'anchor':
+      if (node.kind !== 'overlay') throw new TypeError('Only overlays accept anchor')
+      if (value === undefined) delete props.anchor
+      else if (value === 'window' || value === 'parent') props.anchor = value
+      else throw new TypeError('Native overlay anchor must be window or parent')
+      break
+    case 'modal':
+      if (node.kind !== 'overlay') throw new TypeError('Only overlays accept modal')
+      if (value === undefined) delete props.modal
+      else if (typeof value === 'boolean') props.modal = value
+      else throw new TypeError('Native modal must be boolean')
+      break
     default:
       throw new UnsupportedFeatureError('native-property:' + name)
   }
@@ -198,9 +219,12 @@ export type Snapshot = {
 }
 
 function leafStyle(style: Style): NonNullable<Extract<Element, { kind: 'text' }>['style']> {
-  const { overflow, ...rest } = style
-  if (overflow !== undefined && overflow !== 'visible' && overflow !== 'hidden')
-    throw new TypeError('Only native boxes support scrolling')
+  const { overflow, scroll_anchor, ...rest } = style
+  if (
+    scroll_anchor !== undefined ||
+    (overflow !== undefined && overflow !== 'visible' && overflow !== 'hidden')
+  )
+    throw new TypeError('Only native boxes and overlays support scrolling')
   return { ...rest, ...(overflow === undefined ? {} : { overflow }) }
 }
 
@@ -209,7 +233,7 @@ export function snapshot(root: Node): Map<Node, Snapshot> {
   const result = new Map<Node, Snapshot>()
   const capture = (node: Node, parent?: Node): void => {
     const props = node.properties
-    const style = props.style && node.kind !== 'box' ? { style: leafStyle(props.style) } : {}
+    const style = props.style && !isContainer(node.kind) ? { style: leafStyle(props.style) } : {}
     let element: Element
     if (node.kind === 'box')
       element = { kind: 'box', ...(props.style ? { style: { ...props.style } } : {}) }
@@ -221,6 +245,14 @@ export function snapshot(root: Node): Map<Node, Snapshot> {
         ...(props.min_size === undefined ? {} : { min_size: props.min_size }),
         ...style,
       }
+    else if (node.kind === 'overlay')
+      // Core validation rejects a modal parent-anchored overlay.
+      element = {
+        kind: 'overlay',
+        ...(props.anchor === undefined ? {} : { anchor: props.anchor }),
+        ...(props.modal === undefined ? {} : { modal: props.modal }),
+        ...(props.style ? { style: { ...props.style } } : {}),
+      } as Element
     else if (node.kind === 'input')
       element = {
         kind: 'input',

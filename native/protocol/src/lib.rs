@@ -26,6 +26,8 @@ mod event_tests;
 #[cfg(test)]
 mod layout_v2_tests;
 #[cfg(test)]
+mod overlay_tests;
+#[cfg(test)]
 mod security_tests;
 #[cfg(test)]
 mod service_tests;

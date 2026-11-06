@@ -3,7 +3,7 @@
 
 use crate::{
     validate_text, Element, ErrorCode, NodeId, Operation, Style, MAX_DEPTH, MAX_ID,
-    MAX_NODES_PER_WINDOW, MAX_OPERATIONS, MAX_TEXT_BYTES_PER_WINDOW,
+    MAX_NODES_PER_WINDOW, MAX_OPERATIONS, MAX_OVERLAY_DEPTH, MAX_TEXT_BYTES_PER_WINDOW,
 };
 use serde::Serialize;
 use std::collections::{BTreeMap, HashSet};
@@ -324,7 +324,7 @@ impl Tree {
         if !parent.element.is_container() {
             return Err(error(
                 ErrorCode::InvalidState,
-                "only box and split elements can own children",
+                "only box, split and overlay elements can own children",
             ));
         }
         if child_id == self.root_id {
@@ -402,8 +402,8 @@ impl Tree {
         // One sized allocation; the ordered set rebalanced per node and
         // dominated small-update preflight on large trees.
         let mut seen = HashSet::with_capacity(self.nodes.len());
-        let mut pending = vec![(self.root_id, None, 0)];
-        while let Some((id, parent, depth)) = pending.pop() {
+        let mut pending = vec![(self.root_id, None, 0, 0)];
+        while let Some((id, parent, depth, overlays)) = pending.pop() {
             if depth > MAX_DEPTH {
                 return Err(error(
                     ErrorCode::LimitExceeded,
@@ -423,6 +423,13 @@ impl Tree {
                     "a split owns at most two panes",
                 ));
             }
+            let overlays = overlays + usize::from(matches!(*node.element, Element::Overlay { .. }));
+            if overlays > MAX_OVERLAY_DEPTH {
+                return Err(error(
+                    ErrorCode::LimitExceeded,
+                    "overlay nesting exceeds 8 layers",
+                ));
+            }
             if node.parent != parent {
                 return Err(error(
                     ErrorCode::InvalidState,
@@ -432,7 +439,7 @@ impl Tree {
             pending.extend(
                 node.children
                     .iter()
-                    .map(|child| (*child, Some(id), depth + 1)),
+                    .map(|child| (*child, Some(id), depth + 1, overlays)),
             );
         }
         if seen.len() != self.nodes.len() {

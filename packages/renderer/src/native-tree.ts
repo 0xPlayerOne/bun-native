@@ -3,6 +3,7 @@ import {
   UnsupportedFeatureError,
   type NativeBatch,
   type Element,
+  type ContainerKind,
   type NativeNode,
   type NativeWindow,
 } from '@bun-native/core'
@@ -74,7 +75,7 @@ export async function commitNativeTree(
       const siblings = children.get(parent)!
       siblings.splice(index, 0, child)
       parents.set(child, parent)
-      batch.insert(handles.get(parent)! as NativeNode<'box'>, handles.get(child)!, index)
+      batch.insert(handles.get(parent)! as NativeNode<ContainerKind>, handles.get(child)!, index)
       counts.insert += 1
     }
     // Rescue retained keyed descendants before deleting an obsolete ancestor.

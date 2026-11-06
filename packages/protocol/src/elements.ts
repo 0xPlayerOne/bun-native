@@ -16,6 +16,8 @@ export interface Style {
   align_items?: 'start' | 'center' | 'end' | 'stretch'
   justify_content?: 'start' | 'center' | 'end' | 'space_between' | 'space_around' | 'space_evenly'
   overflow?: 'visible' | 'hidden' | 'scroll_x' | 'scroll_y' | 'scroll'
+  /** Requires `scroll_y` or `scroll`. `end` keeps a viewport already at its end pinned there. */
+  scroll_anchor?: 'start' | 'end'
   background?: number
   color?: number
   font_size?: number
@@ -31,7 +33,7 @@ export interface Style {
   font_weight?: 100 | 200 | 300 | 400 | 500 | 600 | 700 | 800 | 900
 }
 
-type LeafStyle = Omit<Style, 'overflow'> & { overflow?: 'visible' | 'hidden' }
+type LeafStyle = Omit<Style, 'overflow' | 'scroll_anchor'> & { overflow?: 'visible' | 'hidden' }
 /** A split's `direction` selects its axis; gap, alignment and scrolling do not apply. */
 export type SplitStyle = Omit<LeafStyle, 'gap' | 'align_items' | 'justify_content'>
 
@@ -47,6 +49,18 @@ export const DECORATION_FIELDS = Object.freeze([
   'font_weight',
 ] as const)
 
+/** Overlays nested inside overlays, the outermost counting as one. */
+export const MAX_OVERLAY_DEPTH = 8
+
+/**
+ * `window` covers the viewport and blocks pointer input beneath it; `parent`
+ * is content-sized below its parent's bottom-left corner. Only window
+ * overlays may be modal.
+ */
+export type OverlayElement =
+  | { kind: 'overlay'; anchor?: 'window'; modal?: boolean; style?: Style }
+  | { kind: 'overlay'; anchor: 'parent'; modal?: false; style?: Style }
+
 export type Element =
   | { kind: 'box'; style?: Style }
   | { kind: 'text'; text: string; style?: LeafStyle }
@@ -58,6 +72,7 @@ export type Element =
    * keeps a user's drag until a different ratio is declared.
    */
   | { kind: 'split'; ratio?: number; min_size?: number; style?: SplitStyle }
+  | OverlayElement
 
 function choice<T extends string>(value: unknown, name: string, values: readonly T[]): T {
   for (const candidate of values) if (candidate === value) return candidate
@@ -66,7 +81,7 @@ function choice<T extends string>(value: unknown, name: string, values: readonly
 
 function requireLeafStyle(style: Style): asserts style is LeafStyle {
   if (style.overflow !== undefined && style.overflow !== 'visible' && style.overflow !== 'hidden')
-    throw new ProtocolError('Scrolling is supported only on box elements')
+    throw new ProtocolError('Scrolling is supported only on box and overlay elements')
 }
 
 function parseStyle(value: unknown): Style {
@@ -86,6 +101,7 @@ function parseStyle(value: unknown): Style {
     'align_items',
     'justify_content',
     'overflow',
+    'scroll_anchor',
     'background',
     'color',
     'font_size',
@@ -134,6 +150,11 @@ function parseStyle(value: unknown): Style {
       'scroll_y',
       'scroll',
     ])
+  if ('scroll_anchor' in data) {
+    style.scroll_anchor = choice(data['scroll_anchor'], 'scroll_anchor', ['start', 'end'])
+    if (style.overflow !== 'scroll_y' && style.overflow !== 'scroll')
+      throw new ProtocolError('scroll_anchor requires vertical scrolling overflow')
+  }
   if ('font_size' in data) style.font_size = number(data['font_size'], 'font_size', 1, 512)
   if ('border_width' in data)
     style.border_width = number(data['border_width'], 'border_width', 0, 64)
@@ -196,6 +217,19 @@ export function parseElement(value: unknown): Element {
         min_size: 'min_size' in element ? number(element['min_size'], 'min_size', 0, 16_384) : 0,
         style,
       }
+    }
+    case 'overlay': {
+      keys(element, ['kind', 'anchor', 'modal', 'style'])
+      const anchor =
+        'anchor' in element ? choice(element['anchor'], 'anchor', ['window', 'parent']) : 'window'
+      if ('modal' in element && typeof element['modal'] !== 'boolean')
+        throw new ProtocolError('modal must be a boolean')
+      const modal = element['modal'] === true
+      if (anchor === 'parent') {
+        if (modal) throw new ProtocolError('A modal overlay must be anchored to the window')
+        return { kind: 'overlay', anchor, modal: false, style }
+      }
+      return { kind: 'overlay', anchor, modal, style }
     }
     default:
       throw new ProtocolError('Unknown native element kind')

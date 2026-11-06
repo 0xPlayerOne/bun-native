@@ -6,6 +6,7 @@ export { NativeServiceError } from './services.ts'
 export { DECORATION_FIELDS, SPLIT_DIVIDER } from '@bun-native/protocol'
 export { defaultTheme, defineTheme } from './theme.ts'
 export type { ResolvedStyle, Theme, ThemedStyle, ThemeTokens } from './theme.ts'
+export { onDismiss, type DismissEvent } from './overlays.ts'
 export type {
   DisplayChangeEvent,
   NativeDisplaySnapshot,

@@ -190,6 +190,8 @@ impl Session {
                     Capability::WindowDisplayV1,
                     Capability::SplitV1,
                     Capability::StyleDecorationV1,
+                    Capability::OverlaysV1,
+                    Capability::ScrollAnchorV1,
                 ];
                 if services::DISPLAY_DETAILS {
                     capabilities.push(Capability::DisplayDetailsV1);

@@ -5,10 +5,13 @@ use crate::{
     state::SharedWindowState,
     style,
 };
-use bun_native_protocol::{Element as NativeElement, Event, NodeId, Overflow, Tree, WindowId};
+use bun_native_protocol::{
+    Element as NativeElement, Event, NodeId, Overflow, ScrollAnchor, Style, Tree, WindowId,
+};
 use gpui::{
-    AnyElement, App, Context, Entity, FocusHandle, Focusable, KeyBinding, MouseButton,
-    ScrollHandle, SharedString, Subscription, Window, actions, canvas, div, prelude::*, px, rgb,
+    AnyElement, App, Context, Div, Entity, FocusHandle, Focusable, KeyBinding, MouseButton, Pixels,
+    ScrollHandle, SharedString, Size, Stateful, Subscription, Window, actions, canvas, deferred,
+    div, prelude::*, px, rgb,
 };
 use std::collections::BTreeMap;
 use std::rc::Rc;
@@ -38,6 +41,8 @@ pub(crate) struct NativeView {
     splits: Splits,
     focus_subscriptions: BTreeMap<NodeId, [Subscription; 2]>,
     reported_focus: Option<NodeId>,
+    overlays: Overlays,
+    viewport: Size<Pixels>,
     _subscriptions: [Subscription; 2],
     events: EventSink,
     evidence: Evidence,
@@ -70,6 +75,8 @@ impl NativeView {
             splits: Splits::default(),
             focus_subscriptions: BTreeMap::new(),
             reported_focus: None,
+            overlays: Overlays::default(),
+            viewport: window.viewport_size(),
             _subscriptions: [keyboard, focus_lost],
             events,
             evidence,
@@ -79,6 +86,7 @@ impl NativeView {
     /// Called synchronously after complete transaction preflight. This method
     /// does not yield or dispatch native input between model and entity updates.
     pub(crate) fn apply(&mut self, tree: Tree, window: &mut Window, cx: &mut Context<Self>) {
+        let focused_before = self.focused_control(window, cx);
         self.state.borrow_mut().tree = tree;
         self.splits.reconcile(&self.state.borrow().tree);
         // Snapshot cheap Arc-backed properties before focus/IME notifications:
@@ -184,9 +192,11 @@ impl NativeView {
                 }
                 NativeElement::Box { .. }
                 | NativeElement::Text { .. }
-                | NativeElement::Split { .. } => {}
+                | NativeElement::Split { .. }
+                | NativeElement::Overlay { .. } => {}
             }
         }
+        self.reconcile_overlays(focused_before, window, cx);
         self.reconcile_focus(window, cx);
         cx.notify();
         #[cfg(target_os = "macos")]
@@ -270,17 +280,20 @@ impl NativeView {
                 } else {
                     base
                 };
-                let mut container = style::apply(base.flex().flex_col(), properties);
-                if let Some(handle) = self.scrolls.get(&node_id) {
-                    container = container.track_scroll(handle);
-                }
-                container
-                    .children(
-                        node.children()
-                            .iter()
-                            .map(|child| self.render_node(tree, *child, layout, pointer, cx)),
-                    )
+                self.container(tree, node_id, base, properties, layout, pointer, cx)
                     .into_any_element()
+            }
+            NativeElement::Overlay {
+                anchor,
+                style: properties,
+                ..
+            } => {
+                // Occlusion keeps pointer input from reaching anything beneath
+                // the layer; a window layer is itself the modal backdrop.
+                let content = self
+                    .container(tree, node_id, base, properties, layout, pointer, cx)
+                    .occlude();
+                self.overlay_layer(node_id, *anchor, content, self.viewport)
             }
             NativeElement::Split {
                 min_size,
@@ -344,9 +357,43 @@ impl NativeView {
     }
 }
 
+impl NativeView {
+    #[allow(clippy::too_many_arguments)]
+    fn container(
+        &self,
+        tree: &Tree,
+        node_id: NodeId,
+        base: Stateful<Div>,
+        properties: &Style,
+        layout: Option<&LayoutFrame>,
+        pointer: &PointerFrame,
+        cx: &mut Context<Self>,
+    ) -> Stateful<Div> {
+        let mut container = style::apply(base.flex().flex_col(), properties);
+        if let Some(handle) = self.scrolls.get(&node_id) {
+            // A viewport already showing its end stays there as content or
+            // the viewport changes; a user scroll away from the end releases it.
+            if properties.scroll_anchor == Some(ScrollAnchor::End)
+                && handle.offset().y <= -handle.max_offset().y + px(1.)
+            {
+                handle.scroll_to_bottom();
+            }
+            container = container.track_scroll(handle);
+        }
+        container.children(
+            tree.node(node_id)
+                .expect("validated tree contains every child")
+                .children()
+                .iter()
+                .map(|child| self.render_node(tree, *child, layout, pointer, cx)),
+        )
+    }
+}
+
 impl Render for NativeView {
-    fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let render_started = Instant::now();
+        self.viewport = window.viewport_size();
         let state = self.state.borrow();
         let layout = self.evidence.layout_tracing().then(|| {
             let focus = self
@@ -411,35 +458,59 @@ impl Render for NativeView {
             .capture_key_up(cx.listener(|view, event: &gpui::KeyUpEvent, window, cx| {
                 view.key(&event.keystroke, false, window, cx)
             }))
-            .on_action(|_: &FocusNext, window, cx| window.focus_next(cx))
-            .on_action(|_: &FocusPrevious, window, cx| window.focus_prev(cx))
+            .on_action(
+                cx.listener(|view, _: &FocusNext, window, cx| view.focus_step(true, window, cx)),
+            )
+            .on_action(
+                cx.listener(|view, _: &FocusPrevious, window, cx| {
+                    view.focus_step(false, window, cx)
+                }),
+            )
             .children(pointer_trace)
             .child(body)
             .child(
-                canvas(
-                    |_, _, _| (),
-                    move |_, (), window, cx| {
-                        // Registered after native children: capture has already
-                        // selected the deepest GPUI hit before default actions.
-                        pointer.observe(window, &view);
-                        let state = paint_state.borrow();
-                        evidence.frame(window_id, &state.tree, render_started);
-                        evidence.painted(
-                            window_id,
-                            &state.tree,
-                            layout.as_ref().map(|layout| layout.snapshot(window, cx)),
-                        );
-                    },
-                )
-                .absolute()
-                .top_0()
-                .left_0()
-                .size(px(1.)),
+                self.observer(
+                    canvas(
+                        |_, _, _| (),
+                        move |_, (), window, cx| {
+                            // Registered after native children: capture has already
+                            // selected the deepest GPUI hit before default actions.
+                            pointer.observe(window, &view);
+                            let state = paint_state.borrow();
+                            evidence.frame(window_id, &state.tree, render_started);
+                            evidence.painted(
+                                window_id,
+                                &state.tree,
+                                layout.as_ref().map(|layout| layout.snapshot(window, cx)),
+                            );
+                        },
+                    )
+                    .absolute()
+                    .top_0()
+                    .left_0()
+                    .size(px(1.)),
+                ),
             )
     }
 }
+
+impl NativeView {
+    /// The final pointer observer must register after every overlay layer's
+    /// capture listeners, so it is deferred above them while any overlay lives.
+    fn observer(&self, observer: impl IntoElement) -> AnyElement {
+        if self.overlays.any() {
+            deferred(observer)
+                .with_priority(OBSERVER_PRIORITY)
+                .into_any_element()
+        } else {
+            observer.into_any_element()
+        }
+    }
+}
 mod interactions;
+mod overlays;
 mod split;
 
 use interactions::PointerFrame;
+use overlays::{OBSERVER_PRIORITY, Overlays};
 use split::Splits;

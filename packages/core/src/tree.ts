@@ -1,5 +1,6 @@
 import {
   DECORATION_FIELDS,
+  MAX_OVERLAY_DEPTH,
   parseElement,
   type Capability,
   type Element,
@@ -18,8 +19,9 @@ import {
 
 const identities = new WeakMap<NativeNode, number>()
 const encoder = new TextEncoder()
-const elementKinds: readonly string[] = ['box', 'text', 'button', 'input', 'split']
-const isContainer = (element: Element) => element.kind === 'box' || element.kind === 'split'
+const elementKinds: readonly string[] = ['box', 'text', 'button', 'input', 'split', 'overlay']
+const isContainer = (element: Element) =>
+  element.kind === 'box' || element.kind === 'split' || element.kind === 'overlay'
 
 function normalize(element: Element): Element {
   if (
@@ -36,12 +38,20 @@ function normalize(element: Element): Element {
 function supported(element: Element, capabilities: readonly Capability[]): Element {
   if (element.kind === 'split' && !capabilities.includes('split_v1'))
     throw new UnsupportedFeatureError('element:split')
+  if (element.kind === 'overlay' && !capabilities.includes('overlays_v1'))
+    throw new UnsupportedFeatureError('element:overlay')
   const style: Style = element.style ?? {}
   if (
     !capabilities.includes('style_decoration_v1') &&
     DECORATION_FIELDS.some((field) => style[field] !== undefined)
   )
     throw new UnsupportedFeatureError('style:decoration')
+  if (
+    (element.kind === 'box' || element.kind === 'overlay') &&
+    element.style?.scroll_anchor !== undefined &&
+    !capabilities.includes('scroll_anchor_v1')
+  )
+    throw new UnsupportedFeatureError('style:scroll_anchor')
   return element
 }
 
@@ -172,7 +182,7 @@ export class Transaction implements NativeBatch {
     if (!isContainer(parent.element) || child.id === this.rootId)
       throw new NativeStateError(
         'invalid_state',
-        'Only boxes and splits accept children and the root cannot move'
+        'Only boxes, splits and overlays accept children and the root cannot move'
       )
     let ancestor: NodeState | undefined = parent
     while (ancestor) {
@@ -223,8 +233,8 @@ export class Transaction implements NativeBatch {
   validate(): void {
     let seen = 0
     let bytes = 0
-    const pending = [{ id: this.rootId, depth: 0 }]
-    for (const { id, depth } of pending) {
+    const pending = [{ id: this.rootId, depth: 0, overlays: 0 }]
+    for (const { id, depth, overlays: outer } of pending) {
       if (depth > this.limits.max_depth)
         throw new NativeStateError('limit_exceeded', 'Native tree depth limit exceeded')
       const node = this.nodes.get(id)!
@@ -232,6 +242,9 @@ export class Transaction implements NativeBatch {
       const element = node.element
       if (element.kind === 'split' && node.children.length > 2)
         throw new NativeStateError('limit_exceeded', 'A split owns at most two panes')
+      const overlays = outer + (element.kind === 'overlay' ? 1 : 0)
+      if (overlays > MAX_OVERLAY_DEPTH)
+        throw new NativeStateError('limit_exceeded', 'Overlay nesting limit exceeded')
       const texts =
         element.kind === 'input'
           ? [element.value, element.placeholder ?? '']
@@ -246,7 +259,7 @@ export class Transaction implements NativeBatch {
       }
       if (bytes > this.limits.max_text_bytes_per_window)
         throw new NativeStateError('limit_exceeded', 'Window text memory limit exceeded')
-      pending.push(...node.children.map((child) => ({ id: child, depth: depth + 1 })))
+      pending.push(...node.children.map((child) => ({ id: child, depth: depth + 1, overlays })))
     }
     if (seen !== this.nodes.size)
       throw new NativeStateError(
