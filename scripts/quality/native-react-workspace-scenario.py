@@ -461,7 +461,47 @@ def run(
     expect_rows(["Ship native workspace", INITIAL_TITLES[0]])
     button("All tasks")
     expect_rows(["Ship native workspace", *INITIAL_TITLES])
-    button("Delete task")
+
+    # Deleting asks first through the window's modal confirm dialog. Escape
+    # cancels it and keeps every task; the second attempt is accepted.
+    def dialog_texts(current):
+        return {
+            item["element"].get("text")
+            for item in current["paint"]["nodes"]
+            if item["element"]["kind"] in ("text", "button")
+        }
+
+    def open_delete_dialog():
+        button("Delete task")
+        question = "Delete \u201cShip native workspace\u201d? This cannot be undone."
+        shown = wait_frame(
+            lambda current: (
+                {"Delete task?", question, "Keep task", "Delete"}
+                <= dialog_texts(current)
+            ),
+            "native delete confirmation dialog",
+        )
+        # A destructive confirmation focuses the safe choice.
+        focused = shown["layout"]["focused_node_id"]
+        assert focused == node("button", "Keep task")["node_id"], (
+            "The delete confirmation must focus Keep task"
+        )
+        return shown
+
+    open_delete_dialog()
+    capture(window, "delete-confirm.png")
+    action("key", "--clearmodifiers", "Escape")
+    wait_frame(
+        lambda current: "Delete task?" not in dialog_texts(current),
+        "delete confirmation dismissed by Escape",
+    )
+    expect_rows(["Ship native workspace", *INITIAL_TITLES])
+    open_delete_dialog()
+    button("Delete")
+    wait_frame(
+        lambda current: "Delete task?" not in dialog_texts(current),
+        "delete confirmation accepted",
+    )
     final = expect_rows(INITIAL_TITLES)
     wait_for(lambda: state() and state()["selectedId"] == 1, "selection after deletion")
     input_value("Task title", INITIAL_TITLES[0])
