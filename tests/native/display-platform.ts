@@ -500,10 +500,13 @@ try {
         () => matching(changes, after),
         // A missing event and a mismatching one need different fixes.
         () =>
-          `; ${changes.length} event(s) arrived, the OS reports ` +
-          JSON.stringify(after.map((item) => [item.id, item.bounds, item.scale])) +
+          `; before the change the OS reported ${JSON.stringify([display.bounds, display.visibleBounds])}; ` +
+          `${changes.length} event(s) arrived, after it the OS reported ` +
+          JSON.stringify(
+            after.map((item) => [item.id, item.bounds, item.visibleBounds, item.scale])
+          ) +
           (changes.length
-            ? ', the latest event reports ' + JSON.stringify(changes.at(-1)!.snapshot)
+            ? ', the events report ' + JSON.stringify(changes.map((item) => item.snapshot))
             : '')
       )
       assert(Object.isFrozen(event) && event.type === 'display_change')
