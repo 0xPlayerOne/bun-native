@@ -1,7 +1,7 @@
 import { isDeepStrictEqual } from 'node:util'
 
 /** Deterministic PRNG so a recorded summary can be recomputed bit-for-bit. */
-export function mulberry32(seed: number) {
+function mulberry32(seed: number) {
   let state = seed >>> 0
   return () => {
     state = (state + 0x6d2b79f5) >>> 0
@@ -137,7 +137,7 @@ export function bootstrapMedianRatio(
   }
 }
 
-export const PHASES = ['signals', 'coalesced', 'keyedRotations'] as const
+const PHASES = ['signals', 'coalesced', 'keyedRotations'] as const
 
 type Report = Record<string, unknown>
 
@@ -154,7 +154,7 @@ function field(value: unknown, path: readonly string[]): unknown {
  * The work each child actually performed, independent of framework or timings.
  * Two reports are the same workload only when these signatures are identical.
  */
-export function workloadSignature(report: Report) {
+function workloadSignature(report: Report) {
   return {
     workload: field(report, ['workload']),
     phases: Object.fromEntries(

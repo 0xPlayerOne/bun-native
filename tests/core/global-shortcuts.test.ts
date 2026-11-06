@@ -10,53 +10,19 @@ import {
   type ServicePermissions,
 } from '@bun-native/core'
 import assert from 'node:assert/strict'
-import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs'
+import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
+import { peerRequests, settle, withServicePeer } from './service-peer.ts'
 
 const ALLOW: ServicePermissions = { globalShortcuts: 'allow' }
 const COMBINATION: GlobalShortcutOptions = { key: 'k', control: true, alt: true }
 
-async function withShortcuts(
+const withShortcuts = (
   run: (app: NativeApplication, directory: string) => Promise<void>,
   mode = 'normal',
   permissions: ServicePermissions = ALLOW
-) {
-  const directory = mkdtempSync(join(tmpdir(), 'bun-native-shortcut-peer-'))
-  let app: NativeApplication | undefined
-  try {
-    app = await createApplication({
-      executable: process.execPath,
-      args: [resolve(import.meta.dir, 'shortcut-peer.ts'), directory, mode],
-      permissions,
-      requestTimeoutMs: 2_000,
-    })
-    await run(app, directory)
-  } finally {
-    await app?.shutdown().catch(() => {})
-    await app?.closed.catch(() => {})
-    if (app) expect(Object.values(app.diagnostics)).toEqual([0, 0, 0, 0, 0, 0, 0])
-    rmSync(directory, { recursive: true, force: true })
-  }
-}
-
-function requests(directory: string, type: string) {
-  const path = join(directory, 'requests.jsonl')
-  if (!existsSync(path)) return []
-  return readFileSync(path, 'utf8')
-    .trim()
-    .split('\n')
-    .map((line) => JSON.parse(line) as Record<string, unknown>)
-    .filter((value) => value['type'] === type)
-}
-
-async function settle(app: NativeApplication) {
-  // Let the transport deliver and the serialized callback queue drain.
-  for (let index = 0; index < 20; index += 1) {
-    await Bun.sleep(5)
-    if (!app.diagnostics.queuedCallbacks && !app.diagnostics.activeCallbacks) return
-  }
-}
+) => withServicePeer('shortcut-peer', run, mode, permissions)
 
 describe('owned global shortcuts (headless real subprocess)', () => {
   test('reports the implemented backend and the immutable launch grant', async () => {
@@ -116,7 +82,7 @@ describe('owned global shortcuts (headless real subprocess)', () => {
       expect(events[0]!.type).toBe('global_shortcut')
       expect(events[0]!.shortcut).toBe(shortcut)
       expect(events[0]!.signal.aborted).toBe(false)
-      const [registration] = requests(directory, 'register_global_shortcut')
+      const [registration] = peerRequests(directory, 'register_global_shortcut')
       expect(registration).toMatchObject({
         window_id: 1,
         shortcut_id: 1,
@@ -132,7 +98,7 @@ describe('owned global shortcuts (headless real subprocess)', () => {
       await settle(app)
       // The peer published a press after release; it was never delivered.
       expect(events).toHaveLength(1)
-      expect(requests(directory, 'unregister_global_shortcut')).toHaveLength(1)
+      expect(peerRequests(directory, 'unregister_global_shortcut')).toHaveLength(1)
       await window.close()
     }, 'late')
   })
@@ -154,7 +120,7 @@ describe('owned global shortcuts (headless real subprocess)', () => {
       await shortcut.unregister()
       await settle(app)
       expect(delivered).toBe(1)
-      expect(requests(directory, 'unregister_global_shortcut')).toHaveLength(0)
+      expect(peerRequests(directory, 'unregister_global_shortcut')).toHaveLength(0)
       await assert.rejects(
         window.registerGlobalShortcut(COMBINATION, () => {}),
         {
@@ -212,7 +178,7 @@ describe('owned global shortcuts (headless real subprocess)', () => {
         window.registerGlobalShortcut(COMBINATION, 'listener' as unknown as () => void),
         TypeError
       )
-      expect(requests(directory, 'register_global_shortcut')).toHaveLength(0)
+      expect(peerRequests(directory, 'register_global_shortcut')).toHaveLength(0)
     })
   })
 
