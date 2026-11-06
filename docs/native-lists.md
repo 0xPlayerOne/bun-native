@@ -9,7 +9,7 @@ A host virtual list (for example GPUI's `uniform_list`) is not justified yet:
 - Each native window accepts at most **4,096 nodes**. A 10,000-message history at three nodes per row cannot be mounted at all, so long lists must window regardless of the host.
 - The renderer snapshots its whole subtree on every commit, and the host rebuilds its GPUI element tree from the committed model on every frame. Both costs scale with mounted nodes, so a bounded window bounds both.
 - Applications do not observe native scroll offsets or wheel deltas. A host list would need new scroll events, an element kind and a capability, while the windowed pattern needs none of them.
-- End-anchored native scrolling (`scroll_anchor`, [#457](https://github.com/0xPlayerOne/bun-native/pull/457)) is not on `main`. This increment neither depends on it nor touches its overlay code.
+- End-anchored native scrolling (the optional `scroll_anchor_v1` style field, [#457](https://github.com/0xPlayerOne/bun-native/pull/457); see the [overlay contract](native-overlays.md)) pins a native `scroll_y` box to its end. It still mounts every child, so it does not bound node counts. This pattern does not use it.
 
 Reconsider a host primitive when a measured workload needs wheel-driven virtualization or variable-height rows that the app cannot compute.
 
@@ -19,7 +19,7 @@ The reference model is [`tests/native/streaming-list-model.ts`](../tests/native/
 
 - **History stays in JavaScript.** The model keeps the append-only message array. Only `rows` visible rows become native nodes (9 comfortable or 14 compact), plus 9 frame nodes.
 - **The scroll position is an index anchor**, owned by the application. When following, the anchor tails the stream. A detached anchor does not move when messages are appended, so the visible ids and the selection stay stable while streaming continues.
-- **Selection is a stable message id**, not a row position. Up/Down/PageUp/PageDown/Home move it and reveal it by adjusting the anchor. End re-attaches to the tail. A pointer press on a visible row selects that row through the row's adapter `onPointerDown`.
+- **Selection is a stable message id**, not a row position. Up/Down/PageUp/PageDown/Home move it and reveal it by adjusting the anchor; PageUp/PageDown also shift the anchor by one page. Any of these detaches the view, even when it lands on the newest message. Only End re-attaches to the tail. A pointer press on a visible row selects that row through the row's adapter `onPointerDown`.
 - **Rows are keyed by message id.** Solid uses `For` over primitive ids. React uses `key={id}` with a content-comparing `memo`. A streamed token therefore updates one existing native text node. Rows are created and removed only when the window shifts.
 - **Keyboard routing.** When no control has focus, native key events target the window root, which is outside the render root. The fixture listens there with a single capture listener (`window.on(window.root, 'key_down', …, { capture: true })`).
 - **Autoscroll without a scroll offset.** A following list uses `justify_content: 'end'` inside an `overflow: 'hidden'` column, so the newest row stays visible when the OS shrinks the window. A detached list is top-aligned.
@@ -33,14 +33,14 @@ The reference model is [`tests/native/streaming-list-model.ts`](../tests/native/
 These are native style values, not CSS. The [layout contract](native-layout.md) lists every accepted field.
 
 - There are no class names, selectors, cascade, CSS variables or `rem`/`em`/`%` units. Tokens are plain TypeScript values passed into `style`.
-- Text inherits only color and size through GPUI. There is no `line-height`, `font-weight`, `text-overflow: ellipsis` or `white-space` control. Clip long text with a fixed-height `overflow: 'hidden'` row.
+- Text inherits color, size and, on a host advertising `style_decoration_v1`, `font_weight`. There is no `line-height`, `text-overflow: ellipsis` or `white-space` control. Clip long text with a fixed-height `overflow: 'hidden'` row.
 - There is no `position: sticky`/`absolute`, `scroll-snap`, `overflow-anchor`, `content-visibility`, `IntersectionObserver` or `ResizeObserver`. The app cannot observe its size, so the visible row count comes from density rather than measured height.
 - `flex_grow` and `min_height: 0` with `height: 0` give a remaining-space region. `fill` is the parent's full size, not the remaining flex space.
 - Native `overflow: 'scroll_y'` boxes keep their own native offset, which the app cannot read. Do not combine them with app windowing in the same list.
 
 ## Accessibility, focus and selection impact (gated in #241)
 
-Windowed-out messages have no native node, so assistive technology could not reach them even if the host exposed accessibility, which it does not yet ([#241](https://github.com/0xPlayerOne/bun-native/issues/241)). Selection lives in application state and is drawn with the `selected` token. It is not native focus, there is no focus ring, and Tab does not enter rows because rows are not focusable controls. These gaps stay open under #241: an accessible list role, the active-descendant/position-in-set equivalent for the full history, and screen-reader announcement of streamed text. They must be qualified before any accessibility claim. A focused input or button inside a row that gets windowed out is removed and blurred, as the [layout contract](native-layout.md#scroll-clipping-and-lifetime) already describes.
+Windowed-out messages have no native node, so assistive technology cannot reach them. The host's AccessKit tree exposes only mounted text, buttons and inputs ([native text](native-text.md#contract), [#241](https://github.com/0xPlayerOne/bun-native/issues/241)), so a visible row reads as its two text labels, with no list semantics. Selection lives in application state and is drawn with the `selected` token. It is not native focus, there is no focus ring, and Tab does not enter rows because rows are not focusable controls. These gaps stay open under #241: an accessible list role, the active-descendant/position-in-set equivalent for the full history, and screen-reader announcement of streamed text. They must be qualified before any accessibility claim. A focused input or button inside a row that gets windowed out is removed and blurred, as the [layout contract](native-layout.md#scroll-clipping-and-lifetime) already describes.
 
 ## Versioned fixture
 
@@ -109,6 +109,6 @@ These are baselines, not thresholds. Release-host CI artifacts supersede them fo
 ## Unsupported and open
 
 - HiDPI, Wayland, macOS, Windows, physical GPUs, IME and accessibility are not covered.
-- Wheel-driven virtualization, variable-height row measurement and native scroll anchoring (#457) are not part of this increment.
+- Wheel-driven virtualization, variable-height row measurement and native scroll anchoring (`scroll_anchor_v1`) are not part of this pattern.
 - Split-pane drag resizing is not covered. Only native flex adaptation to OS resize is exercised.
 - Only the 10–15 s bounded soak runs in CI. Extended soak and repeated-teardown runs, CPU/GPU utilization and allocation profiles of this workload remain for #244 and the BN4 checkpoint.
