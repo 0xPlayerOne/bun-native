@@ -1,75 +1,24 @@
-import { afterAll, beforeAll, describe, expect, spyOn, test } from 'bun:test'
+import { describe, expect, spyOn, test } from 'bun:test'
 import * as fs from 'node:fs'
-import {
-  existsSync,
-  mkdirSync,
-  mkdtempSync,
-  readFileSync,
-  readdirSync,
-  rmSync,
-  writeFileSync,
-} from 'node:fs'
-import { dirname, join, resolve } from 'node:path'
-import { compileApplication } from '../../experiments/aot-gpui/compile.ts'
+import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from 'node:fs'
+import { dirname, join } from 'node:path'
 import * as inputs from '../../scripts/native/inputs.ts'
 import { createProject, readProject } from '../../scripts/native/project.ts'
 import { DevSession, type TeardownReport } from '../../scripts/native/session.ts'
 import { watchProject } from '../../scripts/native/watch.ts'
+import {
+  assertJoined,
+  directory,
+  isAlive,
+  lifetimes,
+  peer,
+  repository,
+  useReloadFixture,
+  zeroResources,
+} from './reload-fixture.ts'
 
-const repository = resolve(import.meta.dir, '../..')
-let directory: string
-let peer: string
-let peerLog: string
-const zeroResources = {
-  application: {
-    windows: 0,
-    nodes: 0,
-    callbacks: 0,
-    queuedTransactions: 0,
-    queuedCallbacks: 0,
-    activeCallbacks: 0,
-    serviceRequests: 0,
-  },
-  nodes: 0,
-} as const
-
-beforeAll(() => {
-  mkdirSync(join(repository, '.bun-native'), { recursive: true })
-  directory = mkdtempSync(join(repository, '.bun-native/remount-test-'))
-  peerLog = join(directory, 'peer-lifetimes.jsonl')
-  writeFileSync(peerLog, '')
-  const entry = join(directory, 'peer.ts')
-  writeFileSync(
-    entry,
-    `import { appendFileSync } from 'node:fs'\nconst log = (type: string) => appendFileSync(${JSON.stringify(peerLog)}, JSON.stringify({type,pid:process.pid})+'\\n')\nlog('started')\nprocess.on('exit',()=>log('exited'))\nawait import(${JSON.stringify(join(repository, 'tests/core/protocol-peer.ts'))})\n`
-  )
-  peer = join(directory, process.platform === 'win32' ? 'peer.exe' : 'peer')
-  compileApplication(entry, peer, repository)
-}, 130_000)
-
-afterAll(() => rmSync(directory, { recursive: true, force: true }))
-
-function lifetimes() {
-  return readFileSync(peerLog, 'utf8')
-    .trim()
-    .split('\n')
-    .filter(Boolean)
-    .map((line) => JSON.parse(line) as { type: 'started' | 'exited'; pid: number })
-}
-
-function assertJoined(events: ReturnType<typeof lifetimes>, expected: number) {
-  const alive = new Set<number>()
-  let started = 0
-  for (const event of events) {
-    if (event.type === 'started') {
-      expect(alive.size).toBe(0)
-      alive.add(event.pid)
-      started++
-    } else expect(alive.delete(event.pid)).toBe(true)
-  }
-  expect(started).toBe(expected)
-  expect(alive.size).toBe(0)
-}
+// The 101-remount scenarios are in reload-remount-{solid,react}.test.ts.
+useReloadFixture()
 
 async function rejected(operation: Promise<unknown>): Promise<Error> {
   try {
@@ -79,16 +28,6 @@ async function rejected(operation: Promise<unknown>): Promise<Error> {
     throw error
   }
   throw new Error('Expected operation to reject')
-}
-
-function isAlive(pid: number): boolean {
-  try {
-    process.kill(pid, 0)
-    return true
-  } catch (error) {
-    if (error instanceof Error && 'code' in error && error.code === 'ESRCH') return false
-    throw error
-  }
 }
 
 async function until(predicate: () => boolean, label: string): Promise<void> {
@@ -135,62 +74,6 @@ async function withWatcher(
 }
 
 describe('development remounts (real Bun processes and headless protocol peer, no GPUI)', () => {
-  for (const framework of ['solid', 'react'] as const) {
-    test(`joins 101 ${framework} remounts with zero owners before every replacement`, async () => {
-      const path = await createProject(
-        repository,
-        join(directory, framework),
-        framework,
-        'typescript'
-      )
-      const project = await readProject(repository, path)
-      const original = readFileSync(project.entry, 'utf8')
-      const mounted = join(path, 'mounted-value')
-      const start = lifetimes().length
-      const session = new DevSession(repository, path, peer)
-      let previous: number | undefined
-      const timings: number[] = []
-      try {
-        for (let index = 0; index <= 101; index++) {
-          writeFileSync(
-            project.entry,
-            original.replace(
-              'await view.ready',
-              `await view.ready\n  await Bun.write(${JSON.stringify(mounted)}, ${JSON.stringify(String(index))})`
-            )
-          )
-          const result = await session.reload()
-          expect(result.generation).toBe(index + 1)
-          expect(readFileSync(mounted, 'utf8')).toBe(String(index))
-          if (previous !== undefined) {
-            expect(result.previous).toEqual({ pid: previous, clean: true, ...zeroResources })
-            expect(isAlive(previous)).toBe(false)
-            timings.push(result.editToReadyMs)
-          }
-          expect(readdirSync(session.temporaryDirectory).length).toBe(1)
-          previous = result.pid
-        }
-      } finally {
-        await session.close()
-      }
-      expect(isAlive(previous!)).toBe(false)
-      expect(existsSync(session.temporaryDirectory)).toBe(false)
-      assertJoined(lifetimes().slice(start), 102)
-      expect(timings.length).toBe(101)
-      timings.sort((a, b) => a - b)
-      console.log(
-        JSON.stringify({
-          framework,
-          scope: 'headless acknowledgement, not native paint',
-          remounts: 101,
-          medianMs: timings[Math.floor(timings.length / 2)],
-          p95Ms: timings[Math.floor(timings.length * 0.95)],
-          samplesMs: timings,
-        })
-      )
-    }, 180_000)
-  }
-
   test('preserves a live app on compile error and rejects overlapping or post-close reloads', async () => {
     const path = await createProject(repository, join(directory, 'errors'), 'solid', 'typescript')
     const project = await readProject(repository, path)
@@ -346,6 +229,9 @@ describe('development remounts (real Bun processes and headless protocol peer, n
       mkdirSync(join(path, 'dist'))
       writeFileSync(join(path, 'dist/ignored.ts'), 'invalid syntax <\n')
       writeFileSync(join(path, 'README.md'), 'A documentation edit does not reload the app.\n')
+      // A save that leaves the imported bytes unchanged still raises a file event
+      // (macOS FSEvents also replays the setup writes late); only changed bytes remount.
+      writeFileSync(component, readFileSync(component))
       await Bun.sleep(100)
       expect(output.filter((line) => line.startsWith('bun-native:ready ')).length).toBe(1)
       writeFileSync(component, 'export const message = <\n')

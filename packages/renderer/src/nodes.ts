@@ -263,6 +263,9 @@ export function insertNode(parent: Node, node: Node, anchor?: Node): void {
   // subtree already owned by this root needs no check.
   if (owner && node.owner !== owner) checkScope(node, owner.token)
   const previousOwner = node.owner
+  // An owner only holds nodes attached under its root (removal and disposal
+  // clear it), so this subtree moves without ever leaving the live tree.
+  const moved = owner !== undefined && previousOwner === owner && node.parent !== undefined
   if (previousOwner && previousOwner !== owner) previousOwner.detached(node)
   if (node.parent) detachChild(node.parent, node)
   invalidate(node.parent)
@@ -270,8 +273,11 @@ export function insertNode(parent: Node, node: Node, anchor?: Node): void {
   node.parent = parent
   attachChild(parent, node, anchor ? childIndex(parent, anchor) : parent.staged.length)
   // Adapters may clear detached nodes directly, so a reinserted subtree is
-  // always captured again from its current state.
-  adopt(node, owner)
+  // always captured again from its current state. A moved subtree's captures
+  // and dirty paths stay current below it: its root's capture names the old
+  // parent, so snapshot() recaptures that node alone, and the diff moves it
+  // natively while every descendant keeps its committed record.
+  if (!moved) adopt(node, owner)
   previousOwner?.changed()
   owner?.changed()
 }
@@ -376,8 +382,9 @@ function leafStyle(style: Style): NonNullable<Extract<Element, { kind: 'text' }>
  * capture its acknowledged committed record already holds. The walk descends
  * only dirty paths, so a clean subtree costs nothing. A node can leave its
  * committed position only through a mutation that invalidates its old parent
- * and, when it is reinserted, its whole subtree, so the diff finds removals
- * and moves from the old and new child lists of recaptured nodes alone.
+ * and leaves its own capture naming another parent (or none), so the diff
+ * finds removals and moves from the old and new child lists of recaptured
+ * nodes alone.
  */
 export function snapshot(root: Node): Map<Node, Snapshot> {
   const result = new Map<Node, Snapshot>()
@@ -414,6 +421,21 @@ function inChildOrder(parent: Node, children: ReadonlySet<Node>): Node[] {
   return positioned.map((entry) => entry[1])
 }
 
+/**
+ * The staged children as an immutable list, sharing the previous capture's
+ * list when they are unchanged (a moved node), so the diff skips it by identity.
+ */
+function childList(node: Node): readonly Node[] {
+  const children = node.children
+  const previous = node.captured?.children
+  if (
+    previous?.length === children.length &&
+    previous.every((child, index) => child === children[index])
+  )
+    return previous
+  return [...children]
+}
+
 function build(node: Node, parent: Node | undefined): Snapshot {
   const props = node.properties
   const style = props.style && node.kind !== 'box' ? { style: leafStyle(props.style) } : {}
@@ -448,7 +470,7 @@ function build(node: Node, parent: Node | undefined): Snapshot {
   }
   return {
     element,
-    children: node.kind === 'box' ? [...node.children] : [],
+    children: node.kind === 'box' ? childList(node) : [],
     parent,
     events: listeners(props),
     initialValue: typeof props.value === 'string' ? props.value : undefined,

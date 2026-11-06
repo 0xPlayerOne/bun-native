@@ -34,7 +34,7 @@ def expected_tree(state):
     messages = conversation["messages"]
     streaming = any(message["status"] == "streaming" for message in messages)
     prompt_length = len(conversation["draft"].strip())
-    can_send = not streaming and 0 < prompt_length <= 240 and len(messages) <= 22
+    can_send = not streaming and 0 < prompt_length <= 240 and len(messages) <= 30
     plain = {"color": foreground, "background": panel}
     header = box(
         [
@@ -242,8 +242,8 @@ def expected_tree(state):
             ),
             text(
                 "History limit reached. Clear history to continue."
-                if len(messages) >= 24
-                else "Enter sends · Up to 240 characters · 24 messages per conversation",
+                if len(messages) >= 32
+                else "Enter sends · Up to 240 characters · 32 messages per conversation",
                 color=muted,
                 font_size=12,
             ),

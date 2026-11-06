@@ -1,29 +1,52 @@
-/** Retain a longest existing sibling subsequence; every other child needs a move. */
+/**
+ * Flag, by index in `desired`, a longest existing sibling subsequence; every
+ * other desired child needs a move. Children are distinct within each list.
+ */
 export function stableChildren<T extends object>(
   current: readonly T[],
   desired: readonly T[]
-): ReadonlySet<T> {
-  const positions = new Map(current.map((node, index) => [node, index]))
-  const tails: { node: T; position: number }[] = []
-  const preceding = new Map<T, T | undefined>()
-  for (const node of desired) {
-    const position = positions.get(node)
+): Uint8Array {
+  const stable = new Uint8Array(desired.length)
+  // A common prefix and suffix extend some longest subsequence, so only the
+  // middle needs the search; keyed edits usually leave both ends in place.
+  let start = 0
+  const shorter = Math.min(current.length, desired.length)
+  while (start < shorter && current[start] === desired[start]) stable[start++] = 1
+  let currentEnd = current.length
+  let desiredEnd = desired.length
+  while (
+    currentEnd > start &&
+    desiredEnd > start &&
+    current[currentEnd - 1] === desired[desiredEnd - 1]
+  ) {
+    currentEnd -= 1
+    stable[--desiredEnd] = 1
+  }
+  if (start === currentEnd || start === desiredEnd) return stable
+  const positions = new Map<T, number>()
+  for (let index = start; index < currentEnd; index += 1) positions.set(current[index]!, index)
+  // tails[length - 1]: desired index ending the lowest-positioned run of that length.
+  const size = desiredEnd - start
+  const tails = new Int32Array(size)
+  const tailPositions = new Int32Array(size)
+  const preceding = new Int32Array(size)
+  let length = 0
+  for (let index = start; index < desiredEnd; index += 1) {
+    const position = positions.get(desired[index]!)
     if (position === undefined) continue
-    let start = 0
-    let end = tails.length
-    while (start < end) {
-      const middle = (start + end) >>> 1
-      if (tails[middle]!.position < position) start = middle + 1
-      else end = middle
+    let low = 0
+    let high = length
+    while (low < high) {
+      const middle = (low + high) >>> 1
+      if (tailPositions[middle]! < position) low = middle + 1
+      else high = middle
     }
-    preceding.set(node, tails[start - 1]?.node)
-    tails[start] = { node, position }
+    preceding[index - start] = low > 0 ? tails[low - 1]! : -1
+    tails[low] = index
+    tailPositions[low] = position
+    if (low === length) length += 1
   }
-  const stable = new Set<T>()
-  let node = tails.at(-1)?.node
-  while (node !== undefined) {
-    stable.add(node)
-    node = preceding.get(node)
-  }
+  for (let index = length ? tails[length - 1]! : -1; index >= 0; index = preceding[index - start]!)
+    stable[index] = 1
   return stable
 }

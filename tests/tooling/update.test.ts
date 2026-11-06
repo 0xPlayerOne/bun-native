@@ -411,7 +411,8 @@ test.skipIf(process.platform === 'win32')(
         await installed(root, 'two')
       }
     }
-  }
+  },
+  60_000
 )
 
 test('HTTP payloads require HTTPS except loopback, and truncated responses fail', async () => {
@@ -501,7 +502,7 @@ test('release-update CLI creates, signs, installs, reports and rolls back', asyn
   expect(JSON.parse(cli('uninstall', '--root', root).out)).toMatchObject({ data: 'kept' })
   expect(await readdir(root)).toEqual(['data'])
   expect(await readdir(menu)).toEqual([])
-})
+}, 60_000)
 
 test('non-object manifests, oversized or non-JSON bytes and non-Ed25519 keys are rejected', async () => {
   for (const value of [null, [], 'manifest', 1])

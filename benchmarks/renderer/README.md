@@ -9,6 +9,8 @@ per sample in two scenarios:
   it); exactly one `remove`, three `create`s and three `insert`s.
 - `move`: one box holding every row moves to the other of two sibling boxes
   under the root; exactly one `insert`.
+- `swap`: the second and second-to-last keyed rows under the root trade
+  places; exactly two `insert`s.
 
 `stageP50Ms` is the median time of the staging calls alone, before the commit.
 
@@ -181,3 +183,51 @@ The scope walk still runs for a subtree entering a root from outside it. The
 `move` commit is still dominated by recapturing the whole moved subtree, which
 the renderer keeps doing because an adapter may have cleared a detached
 subtree's lists directly.
+
+## Live-root moves and list diffs
+
+Linux x64 container, Bun `1.4.4-canary.1+da867c60b`, three processes each.
+"before" is `35a1fce`; "after" is this change. Ranges are per-process p50s in
+ms. Solid rows are medians in µs of 200 samples over 5,000 rows, React rows
+medians of 100 samples over 1,000 rows with `NODE_ENV=production`; their
+`sync` (adapter staging) did not change.
+
+| Scenario | Tree         | before p50 ms | after p50 ms  |
+| -------- | ------------ | ------------- | ------------- |
+| `text`   | 15,001 nodes | 0.0060–0.0082 | 0.0067–0.0084 |
+| `row`    | 1,000 nodes  | 0.133–0.184   | 0.0243–0.0250 |
+| `row`    | 15,001 nodes | 1.56–1.67     | 0.221–0.232   |
+| `move`   | 1,003 nodes  | 1.50–1.74     | 0.0095–0.0109 |
+| `move`   | 5,005 nodes  | 9.07–9.83     | 0.0194–0.0330 |
+| `move`   | 15,004 nodes | 29.3–32.5     | 0.0633–0.126  |
+| `swap`   | 1,000 nodes  | 0.0899–0.0948 | 0.056–0.0988  |
+| `swap`   | 15,001 nodes | 1.56–2.13     | 0.504–0.730   |
+
+| Keyed           | before total µs | after total µs |
+| --------------- | --------------- | -------------- |
+| Solid `append`  | 3,049–3,339     | 1,457–1,792    |
+| Solid `swap`    | 2,849–3,169     | 1,617–1,681    |
+| Solid `remove`  | 2,056–2,215     | 998–1,186      |
+| Solid `prepend` | 3,033–3,299     | 1,393–1,654    |
+| React `swap`    | 6,263–7,737     | 4,354–4,682    |
+
+A subtree moved by `insertNode` while it stays attached to the same live root
+is no longer invalidated and recaptured whole. A node an owner holds is always
+attached under that owner's root, because removal and disposal clear the
+owner, so the subtree's captures and dirty paths stay current: the moved node
+alone is recaptured (its capture names its old parent) and shares its previous
+child list when that list is unchanged, so the diff skips it by identity.
+Subtrees entering from another root or from outside the tree, including a
+detached subtree reinserted later, are still recaptured whole, because an
+adapter may have edited them directly.
+
+A recaptured parent's committed and captured child lists are compared only
+between their common prefix and suffix, and the lost-child set is built only
+when the middles' counts of clean children differ. `stableChildren` likewise
+trims the common ends and runs its longest-subsequence search over typed
+arrays, returning flags by desired index instead of a set.
+
+What remains proportional to the tree: a recaptured wide parent still copies
+its child list, and a reorder whose middle spans the list (the `swap` rows)
+still builds one position map over that middle. Solid's own `<For>` mapping
+and react-reconciler's `getHostSibling` dominate the adapters' `sync` time.
