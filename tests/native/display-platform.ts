@@ -527,7 +527,13 @@ try {
       const restoredEvent = await waitFor('display_change back to the original mode', 10_000, () =>
         matching(changes.slice(before), back)
       )
-      assertSnapshot(initial, back, 'restored OS matches the initial snapshot')
+      // Restoring the mode returns the display's identity, size and scale. The
+      // work area follows the Dock and menu bar, which macOS may relayout by a
+      // few points across a mode cycle, so it is checked against the OS at
+      // restore time (above, through the restored event) rather than the start.
+      const original = owning(initial, back)
+      assert.equal(initial.scaleFactor, original.scale, 'restored scale')
+      assertRect(initial.bounds, original.bounds, 'restored bounds')
       await Bun.sleep(250)
       assert.equal(secondChanges.length, removedAt, 'a removed listener receives no later change')
       record('displayChange', {

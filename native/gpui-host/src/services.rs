@@ -7,7 +7,10 @@ use bun_native_protocol::{
     validate_process_executables,
 };
 use gpui::{AnyWindowHandle, App, Bounds, Pixels, Subscription, Window};
+use std::cell::RefCell;
 use std::ffi::OsString;
+use std::rc::Rc;
+use std::time::Duration;
 
 #[cfg(target_os = "linux")]
 pub(crate) mod clipboard;
@@ -181,6 +184,8 @@ pub(crate) fn observe_display(
     events: EventSink,
     cx: &mut App,
 ) -> Option<Subscription> {
+    // The last snapshot reported, so a settle re-read reports only a change.
+    let reported: Rc<RefCell<Option<DisplaySnapshot>>> = Rc::new(RefCell::new(None));
     handle
         .update(cx, |_, window, _| {
             window.observe_window_display(move |window, cx| {
@@ -190,19 +195,77 @@ pub(crate) fn observe_display(
                 // A window between displays has no snapshot to report; the
                 // next change, or an explicit read, observes where it lands.
                 if let Ok(snapshot) = display_snapshot(window, cx) {
-                    events.ui(
-                        |sequence| Event::DisplayChanged {
-                            sequence,
-                            window_id,
-                            snapshot,
-                        },
-                        cx,
-                    );
+                    report(&events, window_id, &reported, snapshot, cx);
                 }
+                settle(window, window_id, &state, &events, &reported, cx);
             })
         })
         .ok()
 }
+
+fn report(
+    events: &EventSink,
+    window_id: WindowId,
+    reported: &RefCell<Option<DisplaySnapshot>>,
+    snapshot: DisplaySnapshot,
+    cx: &mut App,
+) {
+    *reported.borrow_mut() = Some(snapshot.clone());
+    events.ui(
+        |sequence| Event::DisplayChanged {
+            sequence,
+            window_id,
+            snapshot,
+        },
+        cx,
+    );
+}
+
+/// macOS recomputes the work area (menu bar and Dock) after it has announced
+/// a display change, so the first snapshot can be stale. Re-read twice after
+/// the change and report only a snapshot that differs from the last reported.
+fn settle(
+    window: &Window,
+    window_id: WindowId,
+    state: &SharedWindowState,
+    events: &EventSink,
+    reported: &Rc<RefCell<Option<DisplaySnapshot>>>,
+    cx: &App,
+) {
+    if !cfg!(target_os = "macos") {
+        return;
+    }
+    let (state, events, reported) = (state.clone(), events.clone(), reported.clone());
+    window
+        .spawn(cx, async move |cx| {
+            for delay in DISPLAY_SETTLE_DELAYS {
+                cx.background_executor().timer(delay).await;
+                let reported = reported.clone();
+                let (state, events) = (state.clone(), events.clone());
+                let live = cx
+                    .update(move |window, cx| {
+                        if !state.borrow().active {
+                            return false;
+                        }
+                        if let Ok(snapshot) = display_snapshot(window, cx)
+                            && reported.borrow().as_ref() != Some(&snapshot)
+                        {
+                            report(&events, window_id, &reported, snapshot, cx);
+                        }
+                        true
+                    })
+                    .unwrap_or(false);
+                if !live {
+                    return;
+                }
+            }
+        })
+        .detach();
+}
+
+/// Delays after a display change at which the snapshot is read again.
+const DISPLAY_SETTLE_DELAYS: [Duration; 2] =
+    [Duration::from_millis(300), Duration::from_millis(1200)];
 
 #[cfg(test)]
 mod tests {
