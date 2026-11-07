@@ -162,7 +162,9 @@ export function compare(
   const comparable = baseline.environment.label === current.environment.label
   const findings: Finding[] = []
   for (const [name, reference] of Object.entries(baseline.metrics)) {
-    const now = current.metrics[name]
+    // A direct caller can supply an inherited metric. Only measurements owned by
+    // the current metrics map count as reported; prototype values are missing.
+    const now = Object.hasOwn(current.metrics, name) ? current.metrics[name] : undefined
     const empty = {
       name,
       unit: reference.unit,

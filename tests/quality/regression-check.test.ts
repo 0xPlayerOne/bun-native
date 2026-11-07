@@ -219,6 +219,26 @@ describe('metric regression gate', () => {
     expect(failed(compare(valid, structuredClone(valid)))).toBe(false)
   })
 
+  test('inherited current metrics do not masquerade as measurements', () => {
+    const baseline = file({
+      constructor: { samples: around(10) },
+      mount: { samples: around(10) },
+    })
+    const current = file({ mount: { samples: around(10) } })
+    // A normal object inherits its constructor, but that is not a measurement.
+    const ordinary = compare(baseline, current)
+    expect(ordinary.findings.find((f) => f.name === 'constructor')?.status).toBe('missing')
+    expect(failed(ordinary)).toBe(true)
+
+    // A direct caller may supply a map with an inherited metric that would
+    // otherwise look valid and turn a missing measurement into "unchanged".
+    const injected = file({})
+    Object.setPrototypeOf(injected.metrics, { mount: baseline.metrics.mount })
+    const forged = compare(file({ mount: { samples: around(10) } }), injected)
+    expect(forged.findings[0]!.status).toBe('missing')
+    expect(failed(forged)).toBe(true)
+  })
+
   test('direct comparison rejects sparse arrays instead of a false unchanged finding', () => {
     const valid = file({ mount: { samples: around(10) } })
     // Array.some() skips holes; the old guard accepted this as numeric samples.
