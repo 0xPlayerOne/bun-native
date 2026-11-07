@@ -46,6 +46,29 @@ describe('metric regression gate', () => {
     expect(summary(result)).toContain('Reproduce mount: `bun bench mount`')
   })
 
+  test('Markdown summaries escape metric columns, lines and command code delimiters', () => {
+    const name = 'mount|startup\nfake|row<script>'
+    const label = 'linux-x64\nspoofed'
+    const baseline = file(
+      {
+        [name]: {
+          unit: 'ms|operation',
+          samples: around(10),
+          reproduce: 'bun bench `cold`\n--samples 12',
+        },
+      },
+      label
+    )
+    const current = file({ [name]: { unit: 'ms|operation', samples: around(13) } }, label)
+    const report = summary(compare(baseline, current))
+    expect(report.split('\n').filter((line) => line.startsWith('| '))).toHaveLength(3)
+    expect(report).toContain('Environment: linux-x64<br>spoofed')
+    expect(report).toContain('mount\\|startup<br>fake\\|row&lt;script&gt;')
+    expect(report).toContain('ms\\|operation')
+    expect(report).toContain('Reproduce mount\\|startup<br>fake\\|row&lt;script&gt;: ``bun bench `cold` --samples 12``')
+    expect(report).not.toContain('\nfake|row')
+  })
+
   test('does not fail on noise-level movement or on an improvement', () => {
     const result = compare(
       file({ a: { samples: around(10) }, b: { samples: around(10) } }),
