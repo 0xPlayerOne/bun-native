@@ -132,6 +132,23 @@ describe('metric regression gate', () => {
     }
   })
 
+  test('direct comparisons reject malformed current accepted metadata like the JSON path', () => {
+    const baseline = file({ mount: { samples: around(10) } })
+    const current = file({ mount: { samples: around(10) } })
+    expect(failed(compare(baseline, current))).toBe(false)
+
+    // Only baseline ADRs may exempt regressions; the current file's metadata
+    // is ignored for exemptions, not exempt from format validation.
+    const malformed = structuredClone(current)
+    malformed.accepted = {
+      mount: { maxRatio: '100' as unknown as number, adr: '' },
+    }
+    expect(() => parseMetrics(JSON.stringify(malformed), 'current')).toThrow(
+      /current: accepted mount.maxRatio/
+    )
+    expect(() => compare(baseline, malformed)).toThrow(/current: accepted mount.maxRatio/)
+  })
+
   test('direct comparisons cannot silently accept a wrong schema or unlabelled environment', () => {
     const baseline = file({ mount: { samples: around(10) } })
     const current = file({ mount: { samples: around(10) } })

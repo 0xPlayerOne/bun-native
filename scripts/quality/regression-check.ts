@@ -154,6 +154,9 @@ export function compare(
   validateMetricsEntries(baseline, 'baseline', true)
   validateMetricsEntries(current, 'current', true)
   validateAcceptedTradeoffs(baseline, 'baseline')
+  // Current-side acceptance metadata is ignored for exemptions, but it must
+  // obey the same file contract as parseMetrics() before a comparison passes.
+  validateAcceptedTradeoffs(current, 'current')
   if (!Number.isFinite(threshold) || threshold <= 0)
     throw new RangeError('threshold must be a finite positive number')
   const comparable = baseline.environment.label === current.environment.label
