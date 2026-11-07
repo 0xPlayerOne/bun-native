@@ -246,6 +246,13 @@ function escapeTableCell(value: string): string {
     .replaceAll('>', '&gt;')
     .replaceAll('\\', '\\\\')
     .replaceAll('|', '\\|')
+    .replaceAll('`', '\\`')
+    .replaceAll('*', '\\*')
+    .replaceAll('_', '\\_')
+    .replaceAll('[', '\\[')
+    .replaceAll(']', '\\]')
+    .replaceAll('!', '\\!')
+    .replaceAll('~', '\\~')
     .replace(/\r\n?|\n/g, '<br>')
 }
 
