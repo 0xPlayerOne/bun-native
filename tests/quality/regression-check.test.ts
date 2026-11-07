@@ -132,6 +132,25 @@ describe('metric regression gate', () => {
     }
   })
 
+  test('direct comparisons cannot silently accept a wrong schema or unlabelled environment', () => {
+    const baseline = file({ mount: { samples: around(10) } })
+    const current = file({ mount: { samples: around(10) } })
+    // These two invalid schema inputs used to yield a passing unchanged comparison.
+    expect(failed(compare(baseline, current))).toBe(false)
+    for (const which of ['baseline', 'current'] as const) {
+      const malformed = structuredClone(which === 'baseline' ? baseline : current)
+      ;(malformed as { schemaVersion: number }).schemaVersion = 2
+      expect(() =>
+        compare(which === 'baseline' ? malformed : baseline, which === 'current' ? malformed : current)
+      ).toThrow(new RegExp(`${which}: schemaVersion`))
+    }
+    // Reject missing metadata before computing comparability.
+    const noLabel = structuredClone(current)
+    noLabel.environment.label = ''
+    expect(() => compare(baseline, noLabel)).toThrow(/current: environment\.label/)
+    expect(() => parseMetrics('null', 'baseline')).toThrow(/metrics file must be an object/)
+  })
+
   test('a baseline with a zero median cannot define a ratio', () => {
     const result = compare(
       file({ rss: { samples: [0, 0, 0] } }),
