@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.25.1](https://github.com/0xPlayerOne/bun-native/compare/v0.25.0...v0.25.1) (2026-11-07)
+
+
+### Bug Fixes
+
+* **build:** reproducible Windows host builds (/Brepro) and gate Windows ([#559](https://github.com/0xPlayerOne/bun-native/issues/559)) ([8e44362](https://github.com/0xPlayerOne/bun-native/commit/8e443620bbfaab91170993effa434090d34048d7))
+
 ## [0.25.0](https://github.com/0xPlayerOne/bun-native/compare/v0.24.0...v0.25.0) (2026-11-07)
 
 
