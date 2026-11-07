@@ -297,6 +297,20 @@ describe('metric regression gate', () => {
     expect(failed(compare(valid, structuredClone(valid)))).toBe(false)
   })
 
+  test('large finite samples cannot turn a proven regression into a NaN pass', () => {
+    const baseline = file({ rss: { samples: Array.from({ length: 12 }, () => 9e307) } })
+    const current = file({ rss: { samples: Array.from({ length: 12 }, () => 1.5e308) } })
+    // The original even-sized median overflowed to Infinity. Infinity / Infinity
+    // became NaN, which fell through to an incorrect unchanged/pass finding.
+    const comparison = compare(baseline, current)
+    const finding = comparison.findings[0]!
+    expect(finding.status).toBe('regressed')
+    expect(finding.ratio).toBeCloseTo(5 / 3, 5)
+    expect(finding.baselineMedian).toBe(9e307)
+    expect(finding.currentMedian).toBe(1.5e308)
+    expect(failed(comparison)).toBe(true)
+  })
+
   test('a baseline with a zero median cannot define a ratio', () => {
     const result = compare(
       file({ rss: { samples: [0, 0, 0] } }),

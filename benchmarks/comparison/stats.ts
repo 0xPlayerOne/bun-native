@@ -30,7 +30,13 @@ export function median(samples: readonly number[]) {
   const values = sorted(samples)
   if (values.length === 0) return null
   const middle = values.length >> 1
-  return values.length % 2 ? values[middle]! : (values[middle - 1]! + values[middle]!) / 2
+  if (values.length % 2) return values[middle]!
+  const lower = values[middle - 1]!
+  const upper = values[middle]!
+  // Adding two large finite values can overflow before dividing by two.
+  // Their difference is safe unless they have opposite signs and huge magnitudes.
+  const span = upper - lower
+  return Number.isFinite(span) ? lower + span / 2 : lower / 2 + upper / 2
 }
 
 export function describe(samples: readonly number[]) {
