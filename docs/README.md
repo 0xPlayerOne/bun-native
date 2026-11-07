@@ -54,6 +54,7 @@ Machine-readable [evidence records](evidence/) retain raw results cited by these
 - [Engineering quality and optimization](engineering-quality.md) — required audits every PR, every phase and before release
 - [Provenance](provenance.md) — licensing, copied code and attribution
 - [Security and crash qualification matrix](qualification-matrix.md) — native fault, malformed payload, version mismatch and offline cases with their deciding tests
+- [Real-machine validation runbook](real-machine-validation.md) — setup, permissions, commands and pass conditions for the Windows and macOS cases that need a physical machine, with what has not run
 - [Agent contract](../AGENTS.md) and [Contributing](../.github/CONTRIBUTING.md)
 - [Roadmap issue #1](https://github.com/0xPlayerOne/bun-native/issues/1) and [BN0–BN7 epics](https://github.com/0xPlayerOne/bun-native/milestones)
 
