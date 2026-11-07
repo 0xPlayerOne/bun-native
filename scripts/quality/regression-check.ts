@@ -122,8 +122,13 @@ function validateMetricsEntries(value: MetricsFile, what: string, allowEmpty = f
       throw new Error(`${what}: ${name} must be a metric object`)
     if (typeof metric.unit !== 'string' || metric.unit.trim() === '')
       throw new Error(`${what}: ${name} needs a unit`)
-    if (!Array.isArray(metric.samples) || metric.samples.some((x) => !Number.isFinite(x)))
+    if (!Array.isArray(metric.samples))
       throw new Error(`${what}: ${name} needs finite numeric samples`)
+    // Array.prototype.some skips holes; for...of yields undefined for every hole.
+    for (const sample of metric.samples) {
+      if (!Number.isFinite(sample))
+        throw new Error(`${what}: ${name} needs finite numeric samples`)
+    }
     if (metric.reproduce !== undefined && typeof metric.reproduce !== 'string')
       throw new Error(`${what}: ${name} reproduce must be a string`)
     if (metric.direction !== 'lower' && metric.direction !== 'higher')

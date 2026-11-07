@@ -202,6 +202,16 @@ describe('metric regression gate', () => {
     expect(failed(compare(valid, structuredClone(valid)))).toBe(false)
   })
 
+  test('direct comparison rejects sparse arrays instead of a false unchanged finding', () => {
+    const valid = file({ mount: { samples: around(10) } })
+    // Array.some() skips holes; the old guard accepted this as numeric samples.
+    // A sparse current array then produced NaN and a passing "unchanged" result.
+    const sparse = file({ mount: { samples: new Array<number>(12) } })
+    expect(() => compare(valid, sparse)).toThrow(/current: mount needs finite numeric samples/)
+    expect(() => compare(sparse, valid)).toThrow(/baseline: mount needs finite numeric samples/)
+    expect(failed(compare(valid, structuredClone(valid)))).toBe(false)
+  })
+
   test('a baseline with a zero median cannot define a ratio', () => {
     const result = compare(
       file({ rss: { samples: [0, 0, 0] } }),
