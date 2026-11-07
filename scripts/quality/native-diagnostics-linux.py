@@ -278,6 +278,11 @@ def main():
             if result:
                 return result
             if app.poll() is not None:
+                # The fixture may exit between the check above and this poll, so
+                # a condition that its exit satisfies is checked once more.
+                result = predicate()
+                if result:
+                    return result
                 raise RuntimeError(
                     f"Fixture exited {app.returncode} before {description}"
                 )
