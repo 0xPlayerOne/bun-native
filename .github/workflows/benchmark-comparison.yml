@@ -25,6 +25,8 @@ on:
     paths:
       - .github/workflows/benchmark-comparison.yml
       - benchmarks/comparison/**
+      - benchmarks/rust-gpui/**
+      - native/gpui-host/examples/workload-baseline.rs
       - benchmarks/solid/**
       - scripts/quality/native-input-linux.py
       - scripts/quality/native-paint-observer.py
@@ -85,6 +87,10 @@ jobs:
         run: |
           { time -p cargo build --locked --release --manifest-path Cargo.toml -p bun-native-host --bin bun-native-host; } 2>&1 | tee "$COMPARISON/host-build.log"
           sha256sum target/release/bun-native-host > "$COMPARISON/host-sha256.txt"
+      - name: Build the direct Rust GPUI baseline
+        run: |
+          cargo build --locked --release --manifest-path Cargo.toml -p bun-native-host --example workload-baseline 2>&1 | tee "$COMPARISON/rust-baseline-build.log"
+          sha256sum target/release/examples/workload-baseline > "$COMPARISON/rust-baseline-sha256.txt"
       - name: Run the equivalent-workload comparison in one isolated native session
         timeout-minutes: 40
         run: |
@@ -96,6 +102,23 @@ jobs:
             --host "$GITHUB_WORKSPACE/target/release/bun-native-host" --host-profile release \
             --output "$COMPARISON/run" --trials "$TRIALS" --input-trials "$INPUT_TRIALS" \
             "${extra[@]}"
+      # Same runner and session type, after the Bun Native trials. Its operation
+      # timings are state application, not acknowledgements; compare process metrics.
+      - name: Run the direct Rust GPUI baseline in one isolated native session
+        timeout-minutes: 10
+        run: |
+          xvfb-run --auto-servernum --server-args='-screen 0 1280x800x24 -nolisten tcp' \
+            dbus-run-session -- bash scripts/quality/native-linux-session.sh \
+            "$COMPARISON/rust-session" -- bun benchmarks/rust-gpui/run.ts \
+            --binary "$GITHUB_WORKSPACE/target/release/examples/workload-baseline" \
+            --output "$COMPARISON/rust-gpui" --trials "$TRIALS"
+          {
+            echo '## Direct Rust GPUI baseline (same runner)'
+            echo
+            echo '| Metric | median | 95% CI |'
+            echo '| --- | --- | --- |'
+            jq -r '.summary.perLaunch | to_entries[] | select(.key | test("spawnTo|processWall|cpu|peakTree")) | "| \(.key) | \(.value.median) | \(.value.medianInterval.low) to \(.value.medianInterval.high) |"' "$COMPARISON/rust-gpui/rust-gpui.json"
+          } >> "$GITHUB_STEP_SUMMARY"
       - name: Export the compact record and summary table
         if: ${{ always() && env.COMPARISON != '' }}
         run: |
@@ -123,6 +146,7 @@ jobs:
             ${{ runner.temp }}/comparison/
             !${{ runner.temp }}/comparison/run/*/application
             !${{ runner.temp }}/comparison/session/runtime/
+            !${{ runner.temp }}/comparison/rust-session/runtime/
           include-hidden-files: true
           if-no-files-found: error
           retention-days: 30

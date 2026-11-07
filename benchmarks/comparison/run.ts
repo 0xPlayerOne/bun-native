@@ -489,7 +489,7 @@ const report: Record<string, unknown> = {
         }
       : null,
     unsupported: [
-      'direct Rust GPUI baseline (no equivalent Rust workload exists yet)',
+      'direct Rust GPUI baseline (separate runner: benchmarks/rust-gpui/run.ts)',
       'Electrobun/WebView baselines',
       'display presentation (input latency ends at the validated native paint record)',
       ...(inputTrials ? [] : ['input-to-paint latency (run with --input-trials)']),

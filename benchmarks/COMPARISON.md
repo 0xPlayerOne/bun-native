@@ -164,8 +164,10 @@ samples and builds.
 
 ## Not measured here
 
-- A direct Rust GPUI baseline: no Rust application performing this workload
-  exists, and adding one is separate work.
+- A direct Rust GPUI baseline in this harness. It is a separate runner,
+  [`benchmarks/rust-gpui`](rust-gpui/README.md): the same workload as an ordinary
+  GPUI view with no Bun, protocol or IPC, with the same process metrics. Its
+  operation timings are state application, not acknowledgements.
 - Display presentation, per-keystroke or text input latency, GPU utilization and
   Windows. CPU time is recorded on Linux and macOS (see above) but not for the
   Electrobun baseline. The Electrobun WebView baseline

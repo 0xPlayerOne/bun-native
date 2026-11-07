@@ -102,7 +102,7 @@ figure is a heuristic upper bound that would also count unrelated WebKit work.
 timings are DOM mutation time (below the WebKit timer's 1 ms resolution) and time
 to the next animation frame (17 ms, the 60 Hz vsync). Do not set them against the
 Bun Native acknowledgement medians (about 0.1 to 0.2 ms). Per-operation latency,
-CPU and GPU use, input latency, and a direct Rust GPUI baseline were not measured.
+GPU use and input latency were not measured on macOS. CPU time is recorded by the comparison runner, and the direct Rust GPUI baseline (`benchmarks/rust-gpui`) has been recorded on Linux only.
 The Electrobun CEF renderer was not built.
 
 ## Install, update and rollback on macOS (#249, unsigned only)
