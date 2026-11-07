@@ -105,8 +105,18 @@ function validateAcceptedTradeoffs(value: MetricsFile, what: string): void {
 function validateMetricsHeader(value: MetricsFile, what: string): void {
   if (typeof value !== 'object' || value === null || Array.isArray(value))
     throw new Error(`${what}: metrics file must be an object`)
-  if (value.schemaVersion !== 1) throw new Error(`${what}: schemaVersion must be 1`)
-  if (typeof value.environment?.label !== 'string' || value.environment.label.trim() === '')
+  // JSON files cannot inherit identity fields; direct API inputs must match.
+  if (!Object.hasOwn(value, 'schemaVersion') || value.schemaVersion !== 1)
+    throw new Error(`${what}: schemaVersion must be 1`)
+  if (
+    !Object.hasOwn(value, 'environment') ||
+    typeof value.environment !== 'object' ||
+    value.environment === null ||
+    Array.isArray(value.environment) ||
+    !Object.hasOwn(value.environment, 'label') ||
+    typeof value.environment.label !== 'string' ||
+    value.environment.label.trim() === ''
+  )
     throw new Error(`${what}: environment.label must name the hardware and operating system`)
 }
 

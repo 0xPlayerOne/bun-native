@@ -176,6 +176,35 @@ describe('metric regression gate', () => {
     expect(() => parseMetrics('null', 'baseline')).toThrow(/metrics file must be an object/)
   })
 
+  test('direct comparisons cannot borrow required file identity from prototypes', () => {
+    const valid = file({ mount: { samples: around(10) } })
+    // JSON serialization omits inherited keys. A direct comparison previously
+    // accepted them, turning an invalid metrics file into a passing result.
+    const inheritedSchema = Object.assign(Object.create({ schemaVersion: 1 }), {
+      environment: valid.environment,
+      metrics: valid.metrics,
+    }) as MetricsFile
+    const inheritedEnvironment = Object.assign(
+      Object.create({ environment: valid.environment }),
+      { schemaVersion: 1, metrics: valid.metrics }
+    ) as MetricsFile
+    const inheritedLabel = {
+      ...valid,
+      environment: Object.create({ label: valid.environment.label }),
+    } as MetricsFile
+
+    for (const [malformed, detail] of [
+      [inheritedSchema, /schemaVersion/],
+      [inheritedEnvironment, /environment\\.label/],
+      [inheritedLabel, /environment\\.label/],
+    ] as const) {
+      expect(() => compare(valid, malformed)).toThrow(detail)
+      expect(() => compare(malformed, valid)).toThrow(detail)
+      expect(() => parseMetrics(JSON.stringify(malformed), 'current')).toThrow(detail)
+    }
+    expect(failed(compare(valid, structuredClone(valid)))).toBe(false)
+  })
+
   test('direct comparisons reject malformed metric units, directions and current-only entries', () => {
     const valid = file({ mount: { samples: around(10) } })
     // Both inputs previously compared as unchanged when their invalid metadata matched.
