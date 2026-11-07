@@ -103,14 +103,14 @@ describe('metric regression gate', () => {
   })
 
   test('a tradeoff recorded with an ADR is accepted only up to its bound', () => {
-    const accepted = { mount: { maxRatio: 1.3, adr: 'docs/decisions/0099-tradeoff.md' } }
+    const accepted = { mount: { maxRatio: 1.3, adr: 'docs/decisions/0011-owned-processes.md' } }
     const within = compare(
       file({ mount: { samples: around(10) } }, undefined, accepted),
       file({ mount: { samples: around(12) } })
     )
     expect(within.findings[0]).toMatchObject({
       status: 'accepted',
-      adr: 'docs/decisions/0099-tradeoff.md',
+      adr: 'docs/decisions/0011-owned-processes.md',
     })
     expect(failed(within)).toBe(false)
     const beyond = compare(
@@ -118,6 +118,18 @@ describe('metric regression gate', () => {
       file({ mount: { samples: around(14) } })
     )
     expect(beyond.findings[0]!.status).toBe('regressed')
+  })
+
+  test('direct comparisons reject malformed accepted tradeoffs without JSON parsing', () => {
+    const current = file({ mount: { samples: around(13) } })
+    for (const accepted of [
+      { maxRatio: '100' as unknown as number, adr: '' },
+      { maxRatio: Infinity, adr: 'docs/decisions/0011-owned-processes.md' },
+      { maxRatio: 1.4, adr: 'docs/decisions/9999-nonexistent-decision.md' },
+    ]) {
+      const baseline = file({ mount: { samples: around(10) } }, undefined, { mount: accepted })
+      expect(() => compare(baseline, current)).toThrow(/accepted mount/)
+    }
   })
 
   test('a baseline with a zero median cannot define a ratio', () => {

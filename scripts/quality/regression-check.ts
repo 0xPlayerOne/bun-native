@@ -65,23 +65,7 @@ export type Comparison = {
   findings: Finding[]
 }
 
-export function parseMetrics(text: string, what: string): MetricsFile {
-  const value = JSON.parse(text) as MetricsFile
-  if (value.schemaVersion !== 1) throw new Error(`${what}: schemaVersion must be 1`)
-  if (typeof value.environment?.label !== 'string' || value.environment.label === '')
-    throw new Error(`${what}: environment.label must name the hardware and operating system`)
-  const metrics = Object.entries(value.metrics ?? {})
-  if (metrics.length === 0) throw new Error(`${what}: metrics must hold at least one metric`)
-  for (const [name, metric] of metrics) {
-    if (typeof metric !== 'object' || metric === null)
-      throw new Error(`${what}: ${name} must be a metric object`)
-    if (typeof metric.unit !== 'string' || metric.unit === '')
-      throw new Error(`${what}: ${name} needs a unit`)
-    if (!Array.isArray(metric.samples) || metric.samples.some((x) => !Number.isFinite(x)))
-      throw new Error(`${what}: ${name} needs finite numeric samples`)
-    if (metric.direction !== 'lower' && metric.direction !== 'higher')
-      throw new Error(`${what}: ${name} direction must be "lower" or "higher"`)
-  }
+function validateAcceptedTradeoffs(value: MetricsFile, what: string): void {
   // An acceptance exception is a reviewed baseline decision, not an arbitrary
   // JSON value. A numeric string, blank ADR or unrelated metric must not turn
   // an otherwise confirmed regression into a pass via JS coercion.
@@ -115,6 +99,26 @@ export function parseMetrics(text: string, what: string): MetricsFile {
         throw new Error(`${what}: accepted ${name}.adr must reference an existing decision file`)
     }
   }
+}
+
+export function parseMetrics(text: string, what: string): MetricsFile {
+  const value = JSON.parse(text) as MetricsFile
+  if (value.schemaVersion !== 1) throw new Error(`${what}: schemaVersion must be 1`)
+  if (typeof value.environment?.label !== 'string' || value.environment.label === '')
+    throw new Error(`${what}: environment.label must name the hardware and operating system`)
+  const metrics = Object.entries(value.metrics ?? {})
+  if (metrics.length === 0) throw new Error(`${what}: metrics must hold at least one metric`)
+  for (const [name, metric] of metrics) {
+    if (typeof metric !== 'object' || metric === null)
+      throw new Error(`${what}: ${name} must be a metric object`)
+    if (typeof metric.unit !== 'string' || metric.unit === '')
+      throw new Error(`${what}: ${name} needs a unit`)
+    if (!Array.isArray(metric.samples) || metric.samples.some((x) => !Number.isFinite(x)))
+      throw new Error(`${what}: ${name} needs finite numeric samples`)
+    if (metric.direction !== 'lower' && metric.direction !== 'higher')
+      throw new Error(`${what}: ${name} direction must be "lower" or "higher"`)
+  }
+  validateAcceptedTradeoffs(value, what)
   return value
 }
 
@@ -123,6 +127,7 @@ export function compare(
   current: MetricsFile,
   { threshold = 0.1 }: { threshold?: number } = {}
 ): Comparison {
+  validateAcceptedTradeoffs(baseline, 'baseline')
   if (!Number.isFinite(threshold) || threshold <= 0)
     throw new RangeError('threshold must be a finite positive number')
   const comparable = baseline.environment.label === current.environment.label
