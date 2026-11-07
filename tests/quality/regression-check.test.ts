@@ -195,8 +195,8 @@ describe('metric regression gate', () => {
 
     for (const [malformed, detail] of [
       [inheritedSchema, /schemaVersion/],
-      [inheritedEnvironment, /environment\\.label/],
-      [inheritedLabel, /environment\\.label/],
+      [inheritedEnvironment, /environment\.label/],
+      [inheritedLabel, /environment\.label/],
     ] as const) {
       expect(() => compare(valid, malformed)).toThrow(detail)
       expect(() => compare(malformed, valid)).toThrow(detail)
