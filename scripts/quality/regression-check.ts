@@ -1,5 +1,5 @@
 #!/usr/bin/env bun
-import { readFileSync } from 'node:fs'
+import { existsSync, readFileSync, statSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { bootstrapMedianRatio, median } from '../../benchmarks/comparison/stats.ts'
 
@@ -108,6 +108,11 @@ export function parseMetrics(text: string, what: string): MetricsFile {
         !/^docs\/decisions\/\d{4}-[a-z0-9-]+\.md$/.test(tradeoff.adr)
       )
         throw new Error(`${what}: accepted ${name}.adr must reference docs/decisions/NNNN-name.md`)
+      // A syntactically plausible but nonexistent ADR must not suppress a stable
+      // regression. Resolve against this source checkout, not process.cwd().
+      const adrPath = resolve(import.meta.dir, '../..', tradeoff.adr)
+      if (!existsSync(adrPath) || !statSync(adrPath).isFile())
+        throw new Error(`${what}: accepted ${name}.adr must reference an existing decision file`)
     }
   }
   return value

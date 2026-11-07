@@ -243,6 +243,7 @@ describe('metric regression gate', () => {
       (v) => (v.accepted.mount.maxRatio = null),
       (v) => (v.accepted.mount.adr = ''),
       (v) => (v.accepted.mount.adr = '../unreviewed.md'),
+      (v) => (v.accepted.mount.adr = 'docs/decisions/9999-nonexistent-decision.md'),
       (v) =>
         (v.accepted.missing = {
           maxRatio: 100,
