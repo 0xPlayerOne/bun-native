@@ -212,7 +212,11 @@ export function compare(
       ? bootstrapMedianRatio(now.samples, reference.samples)
       : bootstrapMedianRatio(reference.samples, now.samples)
     const ratio = interval.estimate
-    const accepted = baseline.accepted?.[name]
+    // Inherited tradeoffs are not reviewed, recorded baseline exceptions.
+    const accepted =
+      baseline.accepted && Object.hasOwn(baseline.accepted, name)
+        ? baseline.accepted[name]
+        : undefined
     let status: Status = 'unchanged'
     let note = 'within the threshold'
     if (ratio === null) {

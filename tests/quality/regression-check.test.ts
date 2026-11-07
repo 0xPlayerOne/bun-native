@@ -239,6 +239,25 @@ describe('metric regression gate', () => {
     expect(failed(forged)).toBe(true)
   })
 
+  test('inherited acceptance metadata cannot exempt a proven regression', () => {
+    const baseline = file({ mount: { samples: around(10) } })
+    const current = file({ mount: { samples: around(12) } })
+    const tradeoff = { maxRatio: 1.3, adr: 'docs/decisions/0011-owned-processes.md' }
+    // Object.entries() validates own entries, but a property lookup used to
+    // trust an inherited exception that validation never examined.
+    baseline.accepted = Object.create({ mount: tradeoff }) as MetricsFile['accepted']
+    const rejected = compare(baseline, current)
+    expect(rejected.findings[0]!.status).toBe('regressed')
+    expect(rejected.findings[0]!.adr).toBeUndefined()
+    expect(failed(rejected)).toBe(true)
+
+    // An owned ADR within its documented bound is still accepted.
+    baseline.accepted = { mount: tradeoff }
+    const permitted = compare(baseline, current)
+    expect(permitted.findings[0]!.status).toBe('accepted')
+    expect(failed(permitted)).toBe(false)
+  })
+
   test('direct comparison rejects sparse arrays instead of a false unchanged finding', () => {
     const valid = file({ mount: { samples: around(10) } })
     // Array.some() skips holes; the old guard accepted this as numeric samples.
