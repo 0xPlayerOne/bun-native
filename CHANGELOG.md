@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.25.0](https://github.com/0xPlayerOne/bun-native/compare/v0.24.0...v0.25.0) (2026-11-07)
+
+
+### Features
+
+* **benchmarks:** direct Rust GPUI baseline for the matched workload ([#557](https://github.com/0xPlayerOne/bun-native/issues/557)) ([36fa134](https://github.com/0xPlayerOne/bun-native/commit/36fa134bdeb9bb0ec5afc39b08cf0e33c442715c))
+
 ## [0.24.0](https://github.com/0xPlayerOne/bun-native/compare/v0.23.1...v0.24.0) (2026-11-07)
 
 
