@@ -1,5 +1,5 @@
 #!/usr/bin/env bun
-import { readFileSync } from 'node:fs'
+import { existsSync, readFileSync, statSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { bootstrapMedianRatio, median } from '../../benchmarks/comparison/stats.ts'
 
@@ -65,6 +65,42 @@ export type Comparison = {
   findings: Finding[]
 }
 
+function validateAcceptedTradeoffs(value: MetricsFile, what: string): void {
+  // An acceptance exception is a reviewed baseline decision, not an arbitrary
+  // JSON value. A numeric string, blank ADR or unrelated metric must not turn
+  // an otherwise confirmed regression into a pass via JS coercion.
+  if (value.accepted !== undefined) {
+    if (
+      typeof value.accepted !== 'object' ||
+      value.accepted === null ||
+      Array.isArray(value.accepted)
+    )
+      throw new Error(`${what}: accepted must be a map of recorded tradeoffs`)
+    for (const [name, tradeoff] of Object.entries(value.accepted)) {
+      if (!Object.hasOwn(value.metrics, name))
+        throw new Error(`${what}: accepted ${name} does not name a measured metric`)
+      if (typeof tradeoff !== 'object' || tradeoff === null || Array.isArray(tradeoff))
+        throw new Error(`${what}: accepted ${name} must provide maxRatio and adr`)
+      if (
+        typeof tradeoff.maxRatio !== 'number' ||
+        !Number.isFinite(tradeoff.maxRatio) ||
+        tradeoff.maxRatio <= 1
+      )
+        throw new Error(`${what}: accepted ${name}.maxRatio must be a finite number greater than 1`)
+      if (
+        typeof tradeoff.adr !== 'string' ||
+        !/^docs\/decisions\/\d{4}-[a-z0-9-]+\.md$/.test(tradeoff.adr)
+      )
+        throw new Error(`${what}: accepted ${name}.adr must reference docs/decisions/NNNN-name.md`)
+      // A syntactically plausible but nonexistent ADR must not suppress a stable
+      // regression. Resolve against this source checkout, not process.cwd().
+      const adrPath = resolve(import.meta.dir, '../..', tradeoff.adr)
+      if (!existsSync(adrPath) || !statSync(adrPath).isFile())
+        throw new Error(`${what}: accepted ${name}.adr must reference an existing decision file`)
+    }
+  }
+}
+
 export function parseMetrics(text: string, what: string): MetricsFile {
   const value = JSON.parse(text) as MetricsFile
   if (value.schemaVersion !== 1) throw new Error(`${what}: schemaVersion must be 1`)
@@ -82,6 +118,7 @@ export function parseMetrics(text: string, what: string): MetricsFile {
     if (metric.direction !== 'lower' && metric.direction !== 'higher')
       throw new Error(`${what}: ${name} direction must be "lower" or "higher"`)
   }
+  validateAcceptedTradeoffs(value, what)
   return value
 }
 
@@ -90,6 +127,9 @@ export function compare(
   current: MetricsFile,
   { threshold = 0.1 }: { threshold?: number } = {}
 ): Comparison {
+  validateAcceptedTradeoffs(baseline, 'baseline')
+  if (!Number.isFinite(threshold) || threshold <= 0)
+    throw new RangeError('threshold must be a finite positive number')
   const comparable = baseline.environment.label === current.environment.label
   const findings: Finding[] = []
   for (const [name, reference] of Object.entries(baseline.metrics)) {
@@ -226,7 +266,7 @@ if (import.meta.main) {
   const [baselinePath, currentPath, ...rest] = process.argv.slice(2)
   const thresholdIndex = rest.indexOf('--threshold')
   const threshold = thresholdIndex === -1 ? 0.1 : Number(rest[thresholdIndex + 1])
-  if (!baselinePath || !currentPath || !(threshold > 0))
+  if (!baselinePath || !currentPath || !(threshold > 0) || !Number.isFinite(threshold))
     throw new Error('usage: regression-check.ts baseline.json current.json [--threshold 0.10]')
   const comparison = compare(
     parseMetrics(readFileSync(resolve(baselinePath), 'utf8'), baselinePath),

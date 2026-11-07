@@ -52,6 +52,9 @@ const { values } = parseArgs({
     'rss-interval-ms': { type: 'string', default: '20' },
     // Separate fresh launches with one real XTest click each; 0 skips them.
     'input-trials': { type: 'string', default: '0' },
+    // Linux only: sync and drop the page, dentry and inode caches before every
+    // timed, first, and calibration launch.
+    'cold-cache': { type: 'boolean', default: false },
   },
   strict: true,
   allowPositionals: false,
@@ -79,6 +82,9 @@ const inputTrials =
 if (inputTrials && inputTrials < 3) throw new Error('input-trials must be 0 or at least 3')
 if (inputTrials && (platform() !== 'linux' || !process.env['DISPLAY']))
   throw new Error('--input-trials requires the isolated Linux X11 session (XTest)')
+const coldCache = values['cold-cache'] === true
+if (coldCache && platform() !== 'linux')
+  throw new Error('--cold-cache requires Linux (/proc/sys/vm/drop_caches)')
 if (iterations % 10 !== 0) throw new Error('iterations must be a multiple of 10')
 assert.equal(Bun.revision, toolchain.bun.revision, 'Use the checksum-pinned Bun compiler')
 const source = resolve(import.meta.dir, '../..')
@@ -163,6 +169,7 @@ async function sourceFiles() {
 
 // Process-tree RSS sampling on Linux (/proc) and macOS (ps); other platforms report null rather than a guess.
 const rssSupported = platform() === 'linux' || platform() === 'darwin'
+const cpuSupported = rssSupported
 const pageSize = Number(optionalVersion(['getconf', 'PAGESIZE']) ?? '4096')
 /** pid -> parent pid, and (macOS only) resident bytes from one consistent `ps` snapshot. */
 function processTable() {
@@ -229,6 +236,32 @@ function loadAverage() {
   return readFileSync('/proc/loadavg', 'utf8').trim()
 }
 
+/**
+ * Flush dirty pages and drop the page cache, dentries and inodes so the next launch
+ * reads the executable, host and libraries from storage. Needs root or passwordless
+ * sudo; the controller calls it once before any build so a refusal fails the run.
+ */
+function dropPageCache() {
+  Bun.spawnSync(['sync'], { timeout: 60_000 })
+  try {
+    writeFileSync('/proc/sys/vm/drop_caches', '3\n')
+    return
+  } catch {
+    // Not root: fall through to passwordless sudo.
+  }
+  const result = Bun.spawnSync(['sudo', '-n', 'tee', '/proc/sys/vm/drop_caches'], {
+    stdin: Buffer.from('3\n'),
+    stdout: 'ignore',
+    stderr: 'pipe',
+    timeout: 30_000,
+  })
+  if (result.exitCode !== 0)
+    throw new Error(
+      `--cold-cache could not drop the page cache (needs root or passwordless sudo): ${result.stderr.toString().trim()}`
+    )
+}
+if (coldCache) dropPageCache()
+
 async function launch(
   name: string,
   argv: string[],
@@ -237,6 +270,7 @@ async function launch(
   const childEnv: Record<string, string> = {}
   for (const [key, value] of Object.entries({ ...process.env, ...env }))
     if (value !== undefined) childEnv[key] = value
+  if (coldCache) dropPageCache()
   const spawnEpochMs = Date.now()
   const start = performance.now()
   const child = Bun.spawn(argv, {
@@ -269,10 +303,17 @@ async function launch(
   }
   const exitCode = await child.exited
   clearTimeout(timer)
+  // wait4 resource usage of the application, including every descendant it reaped
+  // (the native host is waited for on an orderly exit). A host that is killed or
+  // orphaned is not counted, and GPU time is not measured.
+  const usage = cpuSupported ? child.resourceUsage() : undefined
   return {
     spawnEpochMs,
     wallMs: performance.now() - start,
     exitCode,
+    pageCacheDropped: coldCache,
+    cpuUserMs: usage ? Number(usage.cpuTime.user) / 1_000 : null,
+    cpuSystemMs: usage ? Number(usage.cpuTime.system) / 1_000 : null,
     peakTreeRssBytes: peakTree,
     peakApplicationRssBytes: peakApplication,
     peakHostRssBytes: peakHost,
@@ -415,8 +456,9 @@ const report: Record<string, unknown> = {
     adapters,
     modes: MODES,
     measuredTrials: trials,
-    firstLaunch:
-      'trial 0 runs every artifact once immediately after its build; it is reported separately as first-launch-after-build, never as a controlled cold-cache start',
+    firstLaunch: coldCache
+      ? 'trial 0 runs every artifact once immediately after its build and is reported separately; --cold-cache additionally syncs and drops the page, dentry and inode caches before this and every other timed launch, so all launches are cold-cache (input-latency launches excepted)'
+      : 'trial 0 runs every artifact once immediately after its build; it is reported separately as first-launch-after-build, never as a controlled cold-cache start',
     ordering:
       'every measured trial runs all adapter/mode pairs; the start offset rotates each trial and odd trials reverse the order',
     equivalence:
@@ -426,6 +468,7 @@ const report: Record<string, unknown> = {
     intervals:
       'per-launch metrics use each fresh process as the independent unit (percentile bootstrap, 2000 resamples, seed 244); pooled per-operation samples are described but not bootstrapped',
     rss: `controller samples ${platform() === 'darwin' ? 'ps rss' : '/proc statm'} of the launched process and its descendants (native host) every ${rssInterval} ms; peaks can be missed and shared pages are counted per process`,
+    cpu: 'CPU time is the wait4 user plus system time of the application including descendants it reaped (the native host on an orderly exit); GPU time is not measured',
     startup:
       'controller spawn epoch combined with child performance.timeOrigin milestones; window open and view mount are acknowledged native states, not display presentation',
     aotVerification:
@@ -450,8 +493,8 @@ const report: Record<string, unknown> = {
       'Electrobun/WebView baselines',
       'display presentation (input latency ends at the validated native paint record)',
       ...(inputTrials ? [] : ['input-to-paint latency (run with --input-trials)']),
-      'GPU/CPU utilization',
-      'controlled cold-cache startup',
+      'GPU utilization',
+      ...(coldCache ? [] : ['controlled cold-cache startup (run with --cold-cache on Linux)']),
       'hardware GPU (this runner uses the session renderer, recorded per calibration)',
       'macOS and Windows',
     ],

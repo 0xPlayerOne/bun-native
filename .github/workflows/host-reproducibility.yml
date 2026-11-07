@@ -1,0 +1,187 @@
+name: Native host reproducibility
+
+# Builds the release `bun-native-host` twice per operating system, each time on an
+# independent hosted runner with no restored build outputs, and compares the
+# SHA-256 of the two results (#223, docs/reproducible-builds.md). Linux and macOS
+# are gating inside this workflow; Windows is measured and reported until a run
+# shows that its PE output is stable. It is not a required check for merges and
+# is deliberately not scheduled: six cold Rust builds are expensive.
+on:
+  workflow_dispatch:
+  pull_request:
+    branches: [main]
+    # `ready_for_review` only: pushes to a ready PR do not start six cold builds.
+    types: [ready_for_review]
+    paths:
+      - .github/workflows/host-reproducibility.yml
+      - scripts/quality/host-reproducibility.ts
+
+permissions:
+  contents: read
+
+concurrency:
+  group: host-reproducibility-${{ github.event_name }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  build:
+    name: Build host (${{ matrix.name }}, attempt ${{ matrix.attempt }})
+    if: vars.CI_BILLING_PAUSED == 'false' && (github.event_name != 'pull_request' || github.event.pull_request.draft == false)
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        name: [linux, macos, windows]
+        attempt: [a, b]
+        include:
+          - name: linux
+            os: ubuntu-24.04
+            binary: bun-native-host
+          - name: macos
+            os: macos-15
+            binary: bun-native-host
+          - name: windows
+            os: windows-2022
+            binary: bun-native-host.exe
+    defaults:
+      run:
+        shell: pwsh
+    env:
+      CARGO_INCREMENTAL: 0
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Install checksum-pinned Bun compiler
+        run: node scripts/install-bun.mjs --destination (Join-Path $env:RUNNER_TEMP 'bun-native-bun')
+      - name: Install pinned Rust toolchain
+        run: rustup show active-toolchain
+      - name: Install Linux build prerequisites
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          sudo apt-get update
+          sudo apt-get install --no-install-recommends -y \
+            pkg-config libfontconfig-dev libglib2.0-dev libssl-dev libwayland-dev \
+            libx11-xcb-dev libxkbcommon-x11-dev libvulkan1 libzstd-dev
+      - name: Verify Xcode and precompiled Metal tools
+        if: runner.os == 'macOS'
+        run: |
+          xcodebuild -version
+          if ($LASTEXITCODE -ne 0) { throw 'A complete Xcode toolchain is required' }
+          xcrun --sdk macosx metal --version
+          if ($LASTEXITCODE -ne 0) {
+            xcodebuild -downloadComponent MetalToolchain
+            if ($LASTEXITCODE -ne 0) { throw 'The hosted Xcode Metal component could not be installed' }
+          }
+          xcrun --sdk macosx --find metallib
+          if ($LASTEXITCODE -ne 0) { throw 'GPUI requires the Xcode metallib linker' }
+      - name: Locate the installed Windows SDK shader compiler
+        if: runner.os == 'Windows'
+        run: |
+          $sdk = Join-Path ${env:ProgramFiles(x86)} 'Windows Kits/10/bin'
+          $fxc = Get-ChildItem -Directory $sdk |
+            Where-Object { $_.Name -match '^\d+\.\d+\.\d+\.\d+$' } |
+            Sort-Object { [version]$_.Name } -Descending |
+            ForEach-Object { Join-Path $_.FullName 'x64/fxc.exe' } |
+            Where-Object { Test-Path -LiteralPath $_ -PathType Leaf } |
+            Select-Object -First 1
+          if (!$fxc) { throw 'GPUI release shaders require the Windows SDK fxc.exe' }
+          "GPUI_FXC_PATH=$fxc" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+      # Only downloaded sources are cached. No build output is restored, so the two
+      # attempts share nothing that was compiled.
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ~/.bun/install/cache
+            ~/.cargo/registry/index
+            ~/.cargo/registry/cache
+            ~/.cargo/git/db
+          key: gpui-downloads-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('toolchain.json', 'bun.lock', 'rust-toolchain.toml', 'Cargo.lock') }}
+      - run: bun install --frozen-lockfile
+      - name: Keep the runner's Cargo home path out of native binaries
+        run: |
+          $cargoHome = if ($env:CARGO_HOME) { $env:CARGO_HOME } else { Join-Path $HOME '.cargo' }
+          "CARGO_ENCODED_RUSTFLAGS=--remap-path-prefix=$cargoHome=/cargo" |
+            Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+      - name: Build the release native host from a clean target directory
+        run: |
+          cargo build --locked --release -p bun-native-host
+          if ($LASTEXITCODE -ne 0) { throw "Native host build failed: $LASTEXITCODE" }
+      - name: Record the host hash and the toolchain that built it
+        run: |
+          $out = Join-Path $env:RUNNER_TEMP 'host-record'
+          New-Item -ItemType Directory $out | Out-Null
+          $host_path = (Resolve-Path (Join-Path 'target/release' '${{ matrix.binary }}')).Path
+          $env:SOURCE_DATE_EPOCH = git log -1 --format=%ct
+          if ($LASTEXITCODE -ne 0) { throw 'Source commit time is unavailable' }
+          $archive = Join-Path $out 'unsigned-native-host.tar.gz'
+          bun scripts/native/host-archive.ts --output $archive $host_path
+          if ($LASTEXITCODE -ne 0) { throw 'Native host archive failed' }
+          $tools = @(
+            '--tool', "image=$env:ImageOS $env:ImageVersion",
+            '--tool', "rustc=$((rustc --version --verbose) -join '; ')",
+            '--tool', "cargo=$(cargo --version)",
+            '--tool', "bun=$(bun --revision)"
+          )
+          if ($IsMacOS) {
+            $tools += '--tool', "xcode=$((xcodebuild -version) -join '; ')"
+            $tools += '--tool', "sdk=$(xcrun --sdk macosx --show-sdk-version)"
+          }
+          if ($IsLinux) {
+            $tools += '--tool', "cc=$((cc --version | Select-Object -First 1))"
+            $tools += '--tool', "ld=$((ld --version | Select-Object -First 1))"
+          }
+          if ($IsWindows) {
+            $tools += '--tool', "fxc=$env:GPUI_FXC_PATH"
+          }
+          bun scripts/quality/host-reproducibility.ts record `
+            --host $host_path --archive $archive `
+            --out (Join-Path $out '${{ matrix.name }}-${{ matrix.attempt }}.host-record.json') `
+            --os '${{ matrix.name }}' --arch '${{ runner.arch }}' --attempt '${{ matrix.attempt }}' `
+            --commit (git rev-parse HEAD) @tools
+          if ($LASTEXITCODE -ne 0) { throw 'Host record failed' }
+          Remove-Item $archive
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: host-record-${{ matrix.name }}-${{ matrix.attempt }}
+          path: ${{ runner.temp }}/host-record/
+          if-no-files-found: error
+          retention-days: 30
+
+  compare:
+    name: Compare independent host builds
+    needs: build
+    # A failed build job leaves its attempt missing, which the comparison reports
+    # as incomplete rather than skipping.
+    if: ${{ !cancelled() && needs.build.result != 'skipped' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      actions: read
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Install checksum-pinned Bun compiler
+        run: node scripts/install-bun.mjs --destination "$RUNNER_TEMP/bun-native-bun"
+      - name: Download the build records
+        run: gh run download "$GITHUB_RUN_ID" --repo "$GITHUB_REPOSITORY" --pattern 'host-record-*' --dir "$RUNNER_TEMP/records"
+      - name: Compare
+        run: |
+          set -o pipefail
+          bun scripts/quality/host-reproducibility.ts compare "$RUNNER_TEMP/records" \
+            --require linux,macos --output "$RUNNER_TEMP/host-reproducibility.json" \
+            | tee "$RUNNER_TEMP/summary.md"
+          { echo '## Native host reproducibility'; echo; cat "$RUNNER_TEMP/summary.md"; } >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: ${{ always() }}
+        with:
+          name: host-reproducibility-result
+          path: ${{ runner.temp }}/host-reproducibility.json
+          if-no-files-found: ignore
+          retention-days: 30
