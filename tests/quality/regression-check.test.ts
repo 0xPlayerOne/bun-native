@@ -148,6 +148,14 @@ describe('metric regression gate', () => {
     const noLabel = structuredClone(current)
     noLabel.environment.label = ''
     expect(() => compare(baseline, noLabel)).toThrow(/current: environment\.label/)
+    // A shared whitespace-only label must not make two unidentifiable hosts comparable.
+    const whitespace = file({ mount: { samples: around(10) } }, ' \t\n ')
+    expect(() => compare(whitespace, structuredClone(whitespace))).toThrow(
+      /baseline: environment\.label/
+    )
+    expect(() => parseMetrics(JSON.stringify(whitespace), 'baseline')).toThrow(
+      /baseline: environment\.label/
+    )
     expect(() => parseMetrics('null', 'baseline')).toThrow(/metrics file must be an object/)
   })
 

@@ -106,7 +106,7 @@ function validateMetricsHeader(value: MetricsFile, what: string): void {
   if (typeof value !== 'object' || value === null || Array.isArray(value))
     throw new Error(`${what}: metrics file must be an object`)
   if (value.schemaVersion !== 1) throw new Error(`${what}: schemaVersion must be 1`)
-  if (typeof value.environment?.label !== 'string' || value.environment.label === '')
+  if (typeof value.environment?.label !== 'string' || value.environment.label.trim() === '')
     throw new Error(`${what}: environment.label must name the hardware and operating system`)
 }
 
