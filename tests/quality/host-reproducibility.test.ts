@@ -6,6 +6,7 @@ import {
   buildRecord,
   compareRecords,
   loadRecords,
+  main,
   parseRecord,
   parseTools,
   renderMarkdown,
@@ -185,21 +186,21 @@ describe('command line', () => {
     const root = await mkdtemp(join(tmpdir(), 'bun-native-host-repro-'))
     temporary.push(root)
     const script = join(import.meta.dir, '../../scripts/quality/host-reproducibility.ts')
-    async function run(...args: string[]) {
-      const child = Bun.spawn(['bun', script, ...args], { stdout: 'pipe', stderr: 'pipe' })
-      const [out, err, code] = await Promise.all([
-        new Response(child.stdout).text(),
-        new Response(child.stderr).text(),
-        child.exited,
-      ])
-      return { out, err, code }
+    function run(...args: string[]) {
+      const lines: string[] = []
+      try {
+        const code = main(args, (line) => lines.push(line))
+        return { out: lines.join('\n'), code }
+      } catch (error) {
+        return { out: String(error), code: -1 }
+      }
     }
     async function recordBuild(attempt: string, bytes: string) {
       const dir = join(root, `record-${attempt}`)
       await mkdir(dir, { recursive: true })
       await writeFile(join(dir, 'host'), bytes)
       await writeFile(join(dir, 'host.tar.gz'), `archive:${bytes}`)
-      const result = await run(
+      const result = run(
         'record',
         '--host',
         join(dir, 'host'),
@@ -225,7 +226,7 @@ describe('command line', () => {
     await recordBuild('b', 'same')
     expect(loadRecords(root).map((loaded) => loaded.attempt)).toEqual(['a', 'b'])
     const output = join(root, 'result.json')
-    const ok = await run('compare', root, '--require', 'linux', '--output', output)
+    const ok = run('compare', root, '--require', 'linux', '--output', output)
     expect(ok.code).toBe(0)
     expect(ok.out).toContain('| linux | required | identical |')
     expect((await Bun.file(output).json()).ok).toBe(true)
@@ -233,11 +234,34 @@ describe('command line', () => {
     await writeFile(join(root, 'record-b', 'host'), 'changed')
     await rm(join(root, 'record-b', 'linux-X64-b.host-record.json'))
     await recordBuild('b', 'changed')
-    const bad = await run('compare', root, '--require', 'linux')
+    const bad = run('compare', root, '--require', 'linux')
     expect(bad.code).toBe(1)
     expect(bad.out).toContain('different')
 
-    expect((await run('record', '--host', 'relative')).code).not.toBe(0)
-    expect((await run('nonsense')).code).not.toBe(0)
+    expect(run('record', '--host', 'relative').out).toContain('--archive is required')
+    expect(
+      run(
+        'record',
+        '--host',
+        'h',
+        '--archive',
+        'a',
+        '--out',
+        'o',
+        '--os',
+        'linux',
+        '--arch',
+        'X64',
+        '--attempt',
+        'a',
+        '--commit',
+        commit
+      ).out
+    ).toContain('must be absolute')
+    expect(run('compare').out).toContain('usage')
+    expect(run('nonsense').code).toBe(-1)
+    // The script entry point itself.
+    const child = Bun.spawnSync(['bun', script, 'compare', root, '--require', 'linux'])
+    expect(child.exitCode).toBe(1)
   })
 })

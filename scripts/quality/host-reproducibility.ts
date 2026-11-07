@@ -213,8 +213,9 @@ export function loadRecords(directory: string): HostRecord[] {
   return collectRecordFiles(directory).map((file) => parseRecord(readFileSync(file, 'utf8'), file))
 }
 
-if (import.meta.main) {
-  const [command, ...rest] = process.argv.slice(2)
+/** The command line; returns the exit code. Exported so tests cover it in process. */
+export function main(argv: string[], log: (line: string) => void = console.log): number {
+  const [command, ...rest] = argv
   const usage =
     'usage: host-reproducibility.ts record --host H --archive A --out F --os OS --arch ARCH --attempt a|b --commit SHA [--tool name=value]...\n' +
     '       host-reproducibility.ts compare DIRECTORY [--require linux,macos] [--output result.json]'
@@ -247,9 +248,8 @@ if (import.meta.main) {
       tools: parseTools(values.tool ?? []),
     })
     writeFileSync(values.out as string, `${JSON.stringify(record, null, 2)}\n`)
-    console.log(
-      `${record.os}/${record.attempt} host ${record.hostSha256} (${record.hostBytes} bytes)`
-    )
+    log(`${record.os}/${record.attempt} host ${record.hostSha256} (${record.hostBytes} bytes)`)
+    return 0
   } else if (command === 'compare') {
     const { values, positionals } = parseArgs({
       args: rest,
@@ -265,7 +265,10 @@ if (import.meta.main) {
     )
     if (values.output)
       writeFileSync(resolve(values.output), `${JSON.stringify(comparison, null, 2)}\n`)
-    console.log(renderMarkdown(comparison))
-    process.exitCode = comparison.ok ? 0 : 1
-  } else throw new Error(usage)
+    log(renderMarkdown(comparison))
+    return comparison.ok ? 0 : 1
+  }
+  throw new Error(usage)
 }
+
+if (import.meta.main) process.exitCode = main(process.argv.slice(2))
