@@ -110,11 +110,13 @@ function validateMetricsHeader(value: MetricsFile, what: string): void {
     throw new Error(`${what}: environment.label must name the hardware and operating system`)
 }
 
-export function parseMetrics(text: string, what: string): MetricsFile {
-  const value = JSON.parse(text) as MetricsFile
-  validateMetricsHeader(value, what)
+/** Parse and direct-API comparisons must enforce the same metric shape. */
+function validateMetricsEntries(value: MetricsFile, what: string, allowEmpty = false): void {
   const metrics = Object.entries(value.metrics ?? {})
-  if (metrics.length === 0) throw new Error(`${what}: metrics must hold at least one metric`)
+  if (!allowEmpty && metrics.length === 0)
+    throw new Error(`${what}: metrics must hold at least one metric`)
+  if (typeof value.metrics !== 'object' || value.metrics === null || Array.isArray(value.metrics))
+    throw new Error(`${what}: metrics must be a map`)
   for (const [name, metric] of metrics) {
     if (typeof metric !== 'object' || metric === null)
       throw new Error(`${what}: ${name} must be a metric object`)
@@ -125,6 +127,12 @@ export function parseMetrics(text: string, what: string): MetricsFile {
     if (metric.direction !== 'lower' && metric.direction !== 'higher')
       throw new Error(`${what}: ${name} direction must be "lower" or "higher"`)
   }
+}
+
+export function parseMetrics(text: string, what: string): MetricsFile {
+  const value = JSON.parse(text) as MetricsFile
+  validateMetricsHeader(value, what)
+  validateMetricsEntries(value, what)
   validateAcceptedTradeoffs(value, what)
   return value
 }
@@ -136,6 +144,8 @@ export function compare(
 ): Comparison {
   validateMetricsHeader(baseline, 'baseline')
   validateMetricsHeader(current, 'current')
+  validateMetricsEntries(baseline, 'baseline', true)
+  validateMetricsEntries(current, 'current', true)
   validateAcceptedTradeoffs(baseline, 'baseline')
   if (!Number.isFinite(threshold) || threshold <= 0)
     throw new RangeError('threshold must be a finite positive number')

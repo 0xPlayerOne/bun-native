@@ -151,6 +151,28 @@ describe('metric regression gate', () => {
     expect(() => parseMetrics('null', 'baseline')).toThrow(/metrics file must be an object/)
   })
 
+  test('direct comparisons reject malformed metric units, directions and current-only entries', () => {
+    const valid = file({ mount: { samples: around(10) } })
+    // Both inputs previously compared as unchanged when their invalid metadata matched.
+    const blankUnit = file({ mount: { unit: '', samples: around(10) } })
+    expect(() => compare(blankUnit, blankUnit)).toThrow(/baseline: mount needs a unit/)
+    const badDirection = file({
+      mount: { direction: 'sideways' as Metric['direction'], samples: around(10) },
+    })
+    expect(() => compare(badDirection, badDirection)).toThrow(/baseline: mount direction/)
+    // The original baseline-only comparison loop ignored malformed extra current entries.
+    const extra = file({
+      mount: { samples: around(10) },
+      extra: { unit: '', samples: around(10) },
+    })
+    expect(() => compare(valid, extra)).toThrow(/current: extra needs a unit/)
+    const absent = structuredClone(valid)
+    delete (absent as Partial<MetricsFile>).metrics
+    expect(() => compare(valid, absent)).toThrow(/current: metrics must be a map/)
+    // Empty baseline metrics still fail closed rather than throwing.
+    expect(failed(compare(file({}), valid))).toBe(true)
+  })
+
   test('a baseline with a zero median cannot define a ratio', () => {
     const result = compare(
       file({ rss: { samples: [0, 0, 0] } }),
