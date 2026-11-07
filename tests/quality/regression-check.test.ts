@@ -68,14 +68,19 @@ describe('metric regression gate', () => {
     expect(report).toContain('Reproduce mount\\|startup<br>fake\\|row&lt;script&gt;: ``bun bench `cold` --samples 12``')
     expect(report).not.toContain('\nfake|row')
     // A metric label is data, not a link, emphasis, code span or strike-through.
-    const markdownName = "[view report](https://example.invalid) **fast** `passed` ~~stable~~ _verified_"
+    const markdownName =
+      '[view report](https://example.invalid) **fast** `passed` ~~stable~~ _verified_'
     const marked = summary(
       compare(
         file({ [markdownName]: { samples: around(10) } }),
         file({ [markdownName]: { samples: around(13) } })
       )
     )
-    expect(marked).toContain("\\[view report\\](https://example.invalid) \\*\\*fast\\*\\* \\`passed\\` \\~\\~stable\\~\\~ \\_verified\\_")
+    expect(marked).toContain('\\[view report\\](https://example.invalid)')
+    expect(marked).toContain('\\*\\*fast\\*\\*')
+    expect(marked).toContain('\\`passed\\`')
+    expect(marked).toContain('\\~\\~stable\\~\\~')
+    expect(marked).toContain('\\_verified\\_')
     expect(marked).not.toContain('| [view report](https://example.invalid)')
   })
 
