@@ -112,6 +112,24 @@ describe('relative markdown link check', () => {
     ])
   })
 
+  test('reports malformed percent escapes in anchors without aborting other checks', async () => {
+    const { root, tracked } = await fixture({
+      'README.md': [
+        '# Home',
+        '[encoded valid](docs/guide.md#valid%2Danchor)',
+        '[bad local](#bad%ZZ)',
+        '[bad target](docs/guide.md#%E0%A4%A)',
+        '[missing](docs/missing.md)',
+      ].join('\n'),
+      'docs/guide.md': '## Valid anchor',
+    })
+    expect(await checkDocLinks(root, tracked)).toEqual([
+      'README.md:3: malformed link #bad%ZZ',
+      'README.md:4: malformed link docs/guide.md#%E0%A4%A',
+      'README.md:5: missing link target docs/missing.md',
+    ])
+  })
+
   test('treats untracked files as missing so local-only files cannot satisfy a link', async () => {
     const { root } = await fixture({
       'README.md': '[draft](notes.md)',
