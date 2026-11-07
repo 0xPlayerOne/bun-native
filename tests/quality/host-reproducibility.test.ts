@@ -237,6 +237,14 @@ describe('command line', () => {
     const bad = run('compare', root, '--require', 'linux')
     expect(bad.code).toBe(1)
     expect(bad.out).toContain('different')
+    expect(bad.out).toContain('Byte differences on linux: executables were not uploaded.')
+
+    await writeFile(join(root, 'record-a', 'linux-a.host'), 'same')
+    await writeFile(join(root, 'record-b', 'linux-b.host'), 'changed')
+    const explained = run('compare', root, '--require', 'linux')
+    expect(explained.code).toBe(1)
+    expect(explained.out).toContain('Byte differences on linux: 7 bytes in 1 ranges (sizes 4, 7).')
+    expect(explained.out).toContain('| unmapped | 7 | 1 |')
 
     expect(run('record', '--host', 'relative').out).toContain('--archive is required')
     expect(
