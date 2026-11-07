@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.24.0](https://github.com/0xPlayerOne/bun-native/compare/v0.23.1...v0.24.0) (2026-11-07)
+
+
+### Features
+
+* **quality:** cross-runner host reproducibility, CPU and cold-cache benchmark metrics, quality-gate fixes ([#555](https://github.com/0xPlayerOne/bun-native/issues/555)) ([e292249](https://github.com/0xPlayerOne/bun-native/commit/e292249cab5fd8bfb6e102ea041e2b5e488c82cf))
+
+
+### Documentation
+
+* **validation:** real-machine runbook; resolve Windows drops beneath drive roots in the drag fixture ([#554](https://github.com/0xPlayerOne/bun-native/issues/554)) ([24936fb](https://github.com/0xPlayerOne/bun-native/commit/24936fbfbb1d90622d7a6db45d2ca0ec837681fd))
+
 ## [0.23.1](https://github.com/0xPlayerOne/bun-native/compare/v0.23.0...v0.23.1) (2026-11-06)
 
 
