@@ -147,7 +147,7 @@ describe('metric regression gate', () => {
     // Reject missing metadata before computing comparability.
     const noLabel = structuredClone(current)
     noLabel.environment.label = ''
-    expect(() => compare(baseline, noLabel)).toThrow(/current: environment\\.label/)
+    expect(() => compare(baseline, noLabel)).toThrow(/current: environment\.label/)
     expect(() => parseMetrics('null', 'baseline')).toThrow(/metrics file must be an object/)
   })
 
