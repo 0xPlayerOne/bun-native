@@ -1,0 +1,139 @@
+import { describe, expect, test } from 'bun:test'
+import {
+  differingRanges,
+  explainDifference,
+  peRegions,
+  renderDifference,
+} from '../../scripts/quality/binary-diff.ts'
+
+/**
+ * A minimal PE32+ image: DOS header, COFF header, optional header with a debug
+ * data directory, one `.rdata` section holding a CodeView (RSDS) and a REPRO
+ * debug directory entry.
+ */
+function pe(options: { stamp: number; guid: number; path: string; code: number }) {
+  const bytes = new Uint8Array(0x600)
+  const view = new DataView(bytes.buffer)
+  view.setUint16(0, 0x5a4d, true)
+  const peAt = 0x80
+  view.setUint32(0x3c, peAt, true)
+  view.setUint32(peAt, 0x00004550, true)
+  const coff = peAt + 4
+  view.setUint16(coff, 0x8664, true)
+  view.setUint16(coff + 2, 2, true)
+  view.setUint32(coff + 4, options.stamp, true)
+  const optionalSize = 240
+  view.setUint16(coff + 16, optionalSize, true)
+  const optional = coff + 20
+  view.setUint16(optional, 0x20b, true)
+  view.setUint32(optional + 64, options.stamp ^ 0xffff, true)
+  const table = optional + optionalSize
+  const section = (index: number, name: string, rva: number, raw: number, size: number) => {
+    const at = table + index * 40
+    bytes.set(new TextEncoder().encode(name), at)
+    view.setUint32(at + 8, size, true)
+    view.setUint32(at + 12, rva, true)
+    view.setUint32(at + 16, size, true)
+    view.setUint32(at + 20, raw, true)
+  }
+  section(0, '.text', 0x1000, 0x200, 0x200)
+  section(1, '.rdata', 0x2000, 0x400, 0x200)
+  view.setUint32(0x200 + 0x10, options.code, true)
+  // Debug directory at RVA 0x2000 (file 0x400): CodeView then REPRO.
+  view.setUint32(optional + 112 + 6 * 8, 0x2000, true)
+  view.setUint32(optional + 112 + 6 * 8 + 4, 56, true)
+  const codeview = 0x480
+  const path = new TextEncoder().encode(`${options.path}\0`)
+  view.setUint32(0x400 + 4, options.stamp, true)
+  view.setUint32(0x400 + 12, 2, true)
+  view.setUint32(0x400 + 16, 24 + path.length, true)
+  view.setUint32(0x400 + 24, codeview, true)
+  view.setUint32(codeview, 0x53445352, true)
+  view.setUint32(codeview + 4, options.guid, true)
+  view.setUint32(codeview + 20, 1, true)
+  bytes.set(path, codeview + 24)
+  view.setUint32(0x400 + 28 + 12, 16, true)
+  view.setUint32(0x400 + 28 + 16, 4, true)
+  view.setUint32(0x400 + 28 + 24, 0x500, true)
+  view.setUint32(0x500, options.guid, true)
+  return bytes
+}
+
+describe('differing ranges', () => {
+  test('merges adjacent bytes and reports a length tail', () => {
+    const a = Uint8Array.from([1, 2, 3, 4, 5, 6])
+    expect(differingRanges(a, a)).toEqual([])
+    expect(differingRanges(a, Uint8Array.from([1, 9, 9, 4, 5, 9]))).toEqual([
+      { start: 1, end: 3 },
+      { start: 5, end: 6 },
+    ])
+    expect(differingRanges(a, Uint8Array.from([1, 2, 3, 4, 5, 6, 7, 8]))).toEqual([
+      { start: 6, end: 8 },
+    ])
+    expect(differingRanges(a, Uint8Array.from([1, 2, 3, 4, 5, 0, 7]))).toEqual([
+      { start: 5, end: 7 },
+    ])
+  })
+})
+
+describe('PE regions', () => {
+  test('rejects files that are not PE images', () => {
+    expect(peRegions(new Uint8Array(16))).toBeNull()
+    const noSignature = pe({ stamp: 1, guid: 1, path: 'x.pdb', code: 1 })
+    noSignature[0x80] = 0
+    expect(peRegions(noSignature)).toBeNull()
+    const badMagic = pe({ stamp: 1, guid: 1, path: 'x.pdb', code: 1 })
+    new DataView(badMagic.buffer).setUint16(0x80 + 24, 0x999, true)
+    expect(peRegions(badMagic)).toBeNull()
+  })
+
+  test('names header, debug directory and section regions and reads the PDB path', () => {
+    const parsed = peRegions(pe({ stamp: 1, guid: 1, path: 'bun_native_host.pdb', code: 1 }))
+    expect(parsed?.pdbPath).toBe('bun_native_host.pdb')
+    expect(parsed?.regions.map((region) => region.name)).toEqual([
+      'COFF TimeDateStamp',
+      'optional header CheckSum',
+      'debug directory TimeDateStamp',
+      'CodeView GUID',
+      'CodeView age',
+      'CodeView PDB path',
+      'debug directory TimeDateStamp',
+      'REPRO hash',
+      'section .text',
+      'section .rdata',
+      'headers',
+    ])
+  })
+})
+
+describe('explaining a difference', () => {
+  test('a relink with a new timestamp and PDB identity touches only those fields', () => {
+    const a = pe({ stamp: 0x11111111, guid: 0x22222222, path: 'host.pdb', code: 7 })
+    const b = pe({ stamp: 0x33333333, guid: 0x44444444, path: 'host.pdb', code: 7 })
+    const difference = explainDifference(a, b)
+    expect(difference.regions.map((region) => region.name)).toEqual([
+      'COFF TimeDateStamp',
+      'optional header CheckSum',
+      'debug directory TimeDateStamp',
+      'CodeView GUID',
+      'REPRO hash',
+    ])
+    expect(difference.pdbPaths).toEqual(['host.pdb', 'host.pdb'])
+    const lines = renderDifference('windows', difference).join('\n')
+    expect(lines).toContain('Byte differences on windows')
+    expect(lines).toContain('| CodeView GUID |')
+    expect(lines).toContain('PDB paths: host.pdb | host.pdb')
+  })
+
+  test('a code difference is reported by section and non-PE bytes are unmapped', () => {
+    const a = pe({ stamp: 1, guid: 1, path: 'host.pdb', code: 7 })
+    const b = pe({ stamp: 1, guid: 1, path: 'host.pdb', code: 8 })
+    expect(explainDifference(a, b).regions).toEqual([
+      { name: 'section .text', bytes: 1, ranges: 1 },
+    ])
+    const plain = explainDifference(Uint8Array.from([1, 2]), Uint8Array.from([1, 3]))
+    expect(plain.regions).toEqual([{ name: 'unmapped', bytes: 1, ranges: 1 }])
+    expect(plain.pdbPaths).toEqual([null, null])
+    expect(renderDifference('linux', plain).join('\n')).not.toContain('PDB paths')
+  })
+})

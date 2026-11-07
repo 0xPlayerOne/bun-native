@@ -10,6 +10,7 @@ import { createHash } from 'node:crypto'
 import { readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs'
 import { isAbsolute, join, resolve } from 'node:path'
 import { parseArgs } from 'node:util'
+import { explainDifference, renderDifference } from './binary-diff.ts'
 
 export type Attempt = 'a' | 'b'
 
@@ -213,12 +214,44 @@ export function loadRecords(directory: string): HostRecord[] {
   return collectRecordFiles(directory).map((file) => parseRecord(readFileSync(file, 'utf8'), file))
 }
 
+function findFile(directory: string, name: string): string | null {
+  for (const entry of readdirSync(directory)) {
+    const path = join(directory, entry)
+    if (statSync(path).isDirectory()) {
+      const found = findFile(path, name)
+      if (found) return found
+    } else if (entry === name) return path
+  }
+  return null
+}
+
+/**
+ * Markdown lines naming the differing bytes of each operating system whose two
+ * builds differ, when both executables (`<os>-<attempt>.host`) were uploaded
+ * beside the records.
+ */
+export function explainDifferences(directory: string, comparison: Comparison): string[] {
+  const lines: string[] = []
+  for (const result of comparison.results) {
+    if (result.status !== 'different') continue
+    const [a, b] = (['a', 'b'] as const).map((attempt) =>
+      findFile(directory, `${result.os}-${attempt}.host`)
+    )
+    if (!a || !b) {
+      lines.push('', `Byte differences on ${result.os}: executables were not uploaded.`)
+      continue
+    }
+    lines.push(...renderDifference(result.os, explainDifference(readFileSync(a), readFileSync(b))))
+  }
+  return lines
+}
+
 /** The command line; returns the exit code. Exported so tests cover it in process. */
 export function main(argv: string[], log: (line: string) => void = console.log): number {
   const [command, ...rest] = argv
   const usage =
     'usage: host-reproducibility.ts record --host H --archive A --out F --os OS --arch ARCH --attempt a|b --commit SHA [--tool name=value]...\n' +
-    '       host-reproducibility.ts compare DIRECTORY [--require linux,macos] [--output result.json]'
+    '       host-reproducibility.ts compare DIRECTORY [--require linux,macos,windows] [--output result.json]'
   if (command === 'record') {
     const { values } = parseArgs({
       args: rest,
@@ -254,7 +287,10 @@ export function main(argv: string[], log: (line: string) => void = console.log):
     const { values, positionals } = parseArgs({
       args: rest,
       allowPositionals: true,
-      options: { require: { type: 'string', default: 'linux,macos' }, output: { type: 'string' } },
+      options: {
+        require: { type: 'string', default: 'linux,macos,windows' },
+        output: { type: 'string' },
+      },
     })
     const [directory] = positionals
     if (!directory || positionals.length !== 1) throw new Error(usage)
@@ -265,7 +301,9 @@ export function main(argv: string[], log: (line: string) => void = console.log):
     )
     if (values.output)
       writeFileSync(resolve(values.output), `${JSON.stringify(comparison, null, 2)}\n`)
-    log(renderMarkdown(comparison))
+    log(
+      [renderMarkdown(comparison), ...explainDifferences(resolve(directory), comparison)].join('\n')
+    )
     return comparison.ok ? 0 : 1
   }
   throw new Error(usage)

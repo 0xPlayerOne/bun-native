@@ -2,9 +2,9 @@ name: Native host reproducibility
 
 # Builds the release `bun-native-host` twice per operating system, each time on an
 # independent hosted runner with no restored build outputs, and compares the
-# SHA-256 of the two results (#223, docs/reproducible-builds.md). Linux and macOS
-# are gating inside this workflow; Windows is measured and reported until a run
-# shows that its PE output is stable. It is not a required check for merges and
+# SHA-256 of the two results (#223, docs/reproducible-builds.md). Linux, macOS and
+# Windows all gate this workflow; Windows since `/Brepro` (native/gpui-host/build.rs)
+# made its PE output stable. It is not a required check for merges and
 # is deliberately not scheduled: six cold Rust builds are expensive.
 on:
   workflow_dispatch:
@@ -143,6 +143,8 @@ jobs:
             --commit (git rev-parse HEAD) @tools
           if ($LASTEXITCODE -ne 0) { throw 'Host record failed' }
           Remove-Item $archive
+          # The compare job names the differing bytes when two builds differ.
+          Copy-Item $host_path (Join-Path $out '${{ matrix.name }}-${{ matrix.attempt }}.host')
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: host-record-${{ matrix.name }}-${{ matrix.attempt }}
@@ -175,7 +177,7 @@ jobs:
         run: |
           set -o pipefail
           bun scripts/quality/host-reproducibility.ts compare "$RUNNER_TEMP/records" \
-            --require linux,macos --output "$RUNNER_TEMP/host-reproducibility.json" \
+            --require linux,macos,windows --output "$RUNNER_TEMP/host-reproducibility.json" \
             | tee "$RUNNER_TEMP/summary.md"
           { echo '## Native host reproducibility'; echo; cat "$RUNNER_TEMP/summary.md"; } >> "$GITHUB_STEP_SUMMARY"
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
