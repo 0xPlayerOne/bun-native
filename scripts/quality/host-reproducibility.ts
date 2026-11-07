@@ -251,7 +251,7 @@ export function main(argv: string[], log: (line: string) => void = console.log):
   const [command, ...rest] = argv
   const usage =
     'usage: host-reproducibility.ts record --host H --archive A --out F --os OS --arch ARCH --attempt a|b --commit SHA [--tool name=value]...\n' +
-    '       host-reproducibility.ts compare DIRECTORY [--require linux,macos] [--output result.json]'
+    '       host-reproducibility.ts compare DIRECTORY [--require linux,macos,windows] [--output result.json]'
   if (command === 'record') {
     const { values } = parseArgs({
       args: rest,
@@ -287,7 +287,10 @@ export function main(argv: string[], log: (line: string) => void = console.log):
     const { values, positionals } = parseArgs({
       args: rest,
       allowPositionals: true,
-      options: { require: { type: 'string', default: 'linux,macos' }, output: { type: 'string' } },
+      options: {
+        require: { type: 'string', default: 'linux,macos,windows' },
+        output: { type: 'string' },
+      },
     })
     const [directory] = positionals
     if (!directory || positionals.length !== 1) throw new Error(usage)
