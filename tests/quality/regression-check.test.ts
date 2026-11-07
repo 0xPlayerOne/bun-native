@@ -256,6 +256,14 @@ describe('metric regression gate', () => {
     }
   })
 
+  test('invalid comparison thresholds cannot suppress a stable regression', () => {
+    const baseline = file({ mount: { samples: around(10) } })
+    const slower = file({ mount: { samples: around(13) } })
+    expect(failed(compare(baseline, slower))).toBe(true)
+    for (const threshold of [Number.NaN, Infinity, -Infinity, 0, -0.1])
+      expect(() => compare(baseline, slower, { threshold })).toThrow(/threshold/)
+  })
+
   test('the command line exits non-zero on a regression and rejects malformed files', () => {
     const directory = mkdtempSync(join(tmpdir(), 'regression-check-'))
     try {
@@ -277,6 +285,13 @@ describe('metric regression gate', () => {
       expect(failing.exitCode).toBe(1)
       expect(failing.stdout.toString()).toContain('regressed')
       expect(run(baseline, same).exitCode).toBe(0)
+      // Number('1e309') is Infinity. Without validation, this suppresses
+      // even a statistically stable slowdown by making every bound infinite.
+      for (const invalid of ['Infinity', '1e309']) {
+        const bypass = run(baseline, slow, '--threshold', invalid)
+        expect(bypass.exitCode).not.toBe(0)
+        expect(bypass.stderr.toString()).toContain('usage: regression-check.ts')
+      }
       // Before validation, the string "100" was coerced by <= and suppressed
       // a proven 30% slowdown, even though its ADR reference was blank.
       const invalidAcceptance = write(

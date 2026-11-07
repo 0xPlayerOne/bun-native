@@ -118,6 +118,8 @@ export function compare(
   current: MetricsFile,
   { threshold = 0.1 }: { threshold?: number } = {}
 ): Comparison {
+  if (!Number.isFinite(threshold) || threshold <= 0)
+    throw new RangeError('threshold must be a finite positive number')
   const comparable = baseline.environment.label === current.environment.label
   const findings: Finding[] = []
   for (const [name, reference] of Object.entries(baseline.metrics)) {
@@ -254,7 +256,7 @@ if (import.meta.main) {
   const [baselinePath, currentPath, ...rest] = process.argv.slice(2)
   const thresholdIndex = rest.indexOf('--threshold')
   const threshold = thresholdIndex === -1 ? 0.1 : Number(rest[thresholdIndex + 1])
-  if (!baselinePath || !currentPath || !(threshold > 0))
+  if (!baselinePath || !currentPath || !(threshold > 0) || !Number.isFinite(threshold))
     throw new Error('usage: regression-check.ts baseline.json current.json [--threshold 0.10]')
   const comparison = compare(
     parseMetrics(readFileSync(resolve(baselinePath), 'utf8'), baselinePath),
