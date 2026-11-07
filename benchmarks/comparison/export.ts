@@ -47,6 +47,8 @@ const groups = comparison.summary?.groups ?? {}
 const metrics: [string, string, number][] = [
   ['spawnToViewMountedMs', 'spawn to view mounted (ms)', 1],
   ['processWallMs', 'process wall (ms)', 1],
+  ['cpuTimeMs', 'CPU time, user + system (ms)', 1],
+  ['cpuUtilization', 'CPU per wall second (cores)', 1],
   ['peakTreeRssBytes', 'peak tree RSS (MB)', 1e-6],
   ['peakApplicationRssBytes', 'peak app RSS (MB)', 1e-6],
   ['peakHostRssBytes', 'peak host RSS (MB)', 1e-6],
