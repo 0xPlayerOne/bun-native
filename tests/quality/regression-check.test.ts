@@ -65,7 +65,10 @@ describe('metric regression gate', () => {
     expect(report).toContain('Environment: linux-x64<br>spoofed')
     expect(report).toContain('mount\\|startup<br>fake\\|row&lt;script&gt;')
     expect(report).toContain('ms\\|operation')
-    expect(report).toContain('Reproduce mount\\|startup<br>fake\\|row&lt;script&gt;: ``bun bench `cold` --samples 12``')
+    expect(report).toContain(
+      'Reproduce mount\\|startup<br>fake\\|row&lt;script&gt;: \n\n```sh\nbun bench `cold`\n--samples 12\n```'
+    )
+    expect(report).not.toContain('bun bench `cold` --samples 12')
     expect(report).not.toContain('\nfake|row')
     // A metric label is data, not a link, emphasis, code span or strike-through.
     const markdownName =
@@ -82,6 +85,19 @@ describe('metric regression gate', () => {
     expect(marked).toContain('\\~\\~stable\\~\\~')
     expect(marked).toContain('\\_verified\\_')
     expect(marked).not.toContain('| [view report](https://example.invalid)')
+  })
+
+  test('preserves a multiline heredoc reproduction without a premature Markdown fence', () => {
+    const command = "cat <<'EOF'\n```literal\nEOF\nbun bench mount"
+    const result = compare(
+      file({ mount: { samples: around(10), reproduce: command } }),
+      file({ mount: { samples: around(13) } })
+    )
+    const report = summary(result)
+    expect(report).toContain(
+      "Reproduce mount: \n\n````sh\ncat <<'EOF'\n```literal\nEOF\nbun bench mount\n````"
+    )
+    expect(report).not.toContain("cat <<'EOF' ```literal EOF")
   })
 
   test('does not fail on noise-level movement or on an improvement', () => {

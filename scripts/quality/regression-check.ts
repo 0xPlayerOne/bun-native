@@ -264,6 +264,16 @@ function inlineCode(value: string): string {
   return `${fence}${padding}${command}${padding}${fence}`
 }
 
+function reproductionCode(value: string): string {
+  if (!/[\r\n]/.test(value)) return inlineCode(value)
+  // A newline can be semantically significant (heredocs and compound commands).
+  // Keep a complete multi-line reproduction command copyable in a fenced block.
+  const command = value.replace(/\r\n?/g, '\n')
+  const longest = Math.max(0, ...(command.match(/`+/g) ?? []).map((run) => run.length))
+  const fence = '`'.repeat(Math.max(3, longest + 1))
+  return `\n\n${fence}sh\n${command}\n${fence}`
+}
+
 export function summary(comparison: Comparison): string {
   const lines = [
     '| Metric | Status | Baseline | Current | Worse-than ratio (95% interval) | Why |',
@@ -283,7 +293,7 @@ export function summary(comparison: Comparison): string {
   ]
   for (const f of comparison.findings)
     if (['regressed', 'suspected', 'missing'].includes(f.status) && f.reproduce)
-      out.push('', `Reproduce ${escapeTableCell(f.name)}: ${inlineCode(f.reproduce)}`)
+      out.push('', `Reproduce ${escapeTableCell(f.name)}: ${reproductionCode(f.reproduce)}`)
   return out.join('\n')
 }
 
