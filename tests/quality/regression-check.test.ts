@@ -181,6 +181,27 @@ describe('metric regression gate', () => {
     expect(failed(compare(file({}), valid))).toBe(true)
   })
 
+  test('whitespace-only units and non-string reproduction metadata fail closed', () => {
+    const valid = file({ mount: { samples: around(10) } })
+    const blankUnit = file({ mount: { unit: '   ', samples: around(10) } })
+    // The original comparator accepted identical but meaningless units as unchanged.
+    expect(() => compare(blankUnit, blankUnit)).toThrow(/baseline: mount needs a unit/)
+    expect(() => parseMetrics(JSON.stringify(blankUnit), 'baseline')).toThrow(
+      /baseline: mount needs a unit/
+    )
+    for (const invalid of [42, null, { command: 'bun bench mount' }]) {
+      const malformed = structuredClone(valid)
+      ;(malformed.metrics.mount as { reproduce?: unknown }).reproduce = invalid
+      // Reproduction commands must be strings; the old parser and comparator
+      // accepted these inputs, allowing a misleading unchanged result.
+      expect(() => compare(valid, malformed)).toThrow(/current: mount reproduce/)
+      expect(() => parseMetrics(JSON.stringify(malformed), 'current')).toThrow(
+        /current: mount reproduce/
+      )
+    }
+    expect(failed(compare(valid, structuredClone(valid)))).toBe(false)
+  })
+
   test('a baseline with a zero median cannot define a ratio', () => {
     const result = compare(
       file({ rss: { samples: [0, 0, 0] } }),

@@ -120,10 +120,12 @@ function validateMetricsEntries(value: MetricsFile, what: string, allowEmpty = f
   for (const [name, metric] of metrics) {
     if (typeof metric !== 'object' || metric === null)
       throw new Error(`${what}: ${name} must be a metric object`)
-    if (typeof metric.unit !== 'string' || metric.unit === '')
+    if (typeof metric.unit !== 'string' || metric.unit.trim() === '')
       throw new Error(`${what}: ${name} needs a unit`)
     if (!Array.isArray(metric.samples) || metric.samples.some((x) => !Number.isFinite(x)))
       throw new Error(`${what}: ${name} needs finite numeric samples`)
+    if (metric.reproduce !== undefined && typeof metric.reproduce !== 'string')
+      throw new Error(`${what}: ${name} reproduce must be a string`)
     if (metric.direction !== 'lower' && metric.direction !== 'higher')
       throw new Error(`${what}: ${name} direction must be "lower" or "higher"`)
   }
