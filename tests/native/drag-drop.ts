@@ -48,8 +48,12 @@ const record = (name: string, value: unknown) => {
 const denied = (code: string) => (error: unknown) =>
   error instanceof NativeServiceError && error.service === 'drag_drop' && error.code === code
 
-// Real paths: AppKit and the launch roots must name the same directories.
-const base = realpathSync(mkdtempSync(join(tmpdir(), 'bun-native-drop-')))
+// Real paths: AppKit and the launch roots must name the same directories. On
+// Windows the long, canonical drive path (no 8.3 names), which is also what the
+// host compares a dropped path against.
+const base = (process.platform === 'win32' ? realpathSync.native : realpathSync)(
+  mkdtempSync(join(tmpdir(), 'bun-native-drop-'))
+)
 const work = join(base, 'work')
 const docs = join(base, 'docs')
 const outside = join(base, 'outside')
@@ -60,14 +64,12 @@ writeFileSync(join(docs, 'readme.txt'), 'docs')
 writeFileSync(join(outside, 'secret'), 'outside')
 const many = Array.from({ length: 65 }, (_, index) => join(work, 'f' + index))
 for (const path of many) writeFileSync(path, '')
-// Launch roots are POSIX paths; no Windows drop can resolve beneath one.
-const roots =
-  backend === 'ole'
-    ? []
-    : [
-        { id: 'work', path: work, access: 'read' as const },
-        { id: 'docs', path: docs, access: 'read' as const },
-      ]
+// Launch roots are POSIX paths on Linux and macOS and drive paths (`C:\...`) on
+// Windows, where a POSIX root can never match a drop (a Rust unit test covers that).
+const roots = [
+  { id: 'work', path: work, access: 'read' as const },
+  { id: 'docs', path: docs, access: 'read' as const },
+]
 const sourceViews: Record<string, unknown> = {}
 type Logged = { target: string; type: DropTargetEvent['type']; detail?: unknown }
 const log: Logged[] = []
@@ -267,39 +269,33 @@ async function qualification() {
     const items = drops.get('left')!.items
     await assert.rejects(items[0]!.resolve('other'), denied('permission_denied'))
     await assert.rejects(items[0]!.resolve('../work'), TypeError)
-    if (backend === 'ole') {
-      // No POSIX launch root can be declared, so no item resolves.
-      await assert.rejects(items[0]!.resolve('work'), denied('permission_denied'))
-      record('explicitResolution', { roots: 0, work: 'permission_denied' })
-    } else {
-      const first = await items[0]!.resolve('work')
-      assert.deepEqual(first, { root: 'work', path: 'a.txt' })
-      assert.deepEqual(await items[1]!.resolve('work'), { root: 'work', path: 'b c.txt' })
-      assert.deepEqual(await items[2]!.resolve('docs'), { root: 'docs', path: 'readme.txt' })
-      await assert.rejects(items[2]!.resolve('work'), denied('path_denied'))
-      await assert.rejects(items[3]!.resolve('work'), denied('path_denied'))
-      await assert.rejects(items[3]!.resolve('docs'), denied('path_denied'))
-      let grantRead = 'unavailable'
-      if (grants) {
-        const grant = await window.openFileGrant(first.root)
-        grantRead = new TextDecoder().decode((await grant.read(first.path)).bytes)
-        assert.equal(grantRead, 'alpha')
-        await grant.close()
-      } else
-        await assert.rejects(
-          window.openFileGrant(first.root),
-          (error: unknown) =>
-            error instanceof NativeServiceError &&
-            error.service === 'filesystem_grants' &&
-            error.code === 'service_unavailable'
-        )
-      record('explicitResolution', {
-        work: ['a.txt', 'b c.txt'],
-        docs: 'readme.txt',
-        outside: 'path_denied',
-        grantRead,
-      })
-    }
+    const first = await items[0]!.resolve('work')
+    assert.deepEqual(first, { root: 'work', path: 'a.txt' })
+    assert.deepEqual(await items[1]!.resolve('work'), { root: 'work', path: 'b c.txt' })
+    assert.deepEqual(await items[2]!.resolve('docs'), { root: 'docs', path: 'readme.txt' })
+    await assert.rejects(items[2]!.resolve('work'), denied('path_denied'))
+    await assert.rejects(items[3]!.resolve('work'), denied('path_denied'))
+    await assert.rejects(items[3]!.resolve('docs'), denied('path_denied'))
+    let grantRead = 'unavailable'
+    if (grants) {
+      const grant = await window.openFileGrant(first.root)
+      grantRead = new TextDecoder().decode((await grant.read(first.path)).bytes)
+      assert.equal(grantRead, 'alpha')
+      await grant.close()
+    } else
+      await assert.rejects(
+        window.openFileGrant(first.root),
+        (error: unknown) =>
+          error instanceof NativeServiceError &&
+          error.service === 'filesystem_grants' &&
+          error.code === 'service_unavailable'
+      )
+    record('explicitResolution', {
+      work: ['a.txt', 'b c.txt'],
+      docs: 'readme.txt',
+      outside: 'path_denied',
+      grantRead,
+    })
 
     // 2. Cancel by moving off the target, then the source leaves.
     mark = log.length
@@ -594,8 +590,7 @@ async function rawHandles() {
       reusedId: 'invalid_handle',
       lowerId: 'invalid_handle',
       foreignUnregister: 'invalid_handle',
-      // Without a declared root (Windows), the root check comes first.
-      unknownDrop: backend === 'ole' ? 'permission_denied' : 'invalid_handle',
+      unknownDrop: 'invalid_handle',
       ungrantedRoot: 'permission_denied',
       staleUnregister: 'invalid_handle',
     })
