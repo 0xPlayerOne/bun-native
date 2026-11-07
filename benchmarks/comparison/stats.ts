@@ -243,6 +243,10 @@ export type Launch = {
     spawnEpochMs: number
     wallMs: number
     exitCode: number | null
+    /** True when the launch followed a page-cache drop (--cold-cache). */
+    pageCacheDropped?: boolean
+    cpuUserMs?: number | null
+    cpuSystemMs?: number | null
     peakTreeRssBytes: number | null
     peakApplicationRssBytes: number | null
     peakHostRssBytes: number | null
@@ -263,11 +267,27 @@ function startupMetrics(launch: Launch) {
   }
 }
 
+/**
+ * CPU seconds consumed per wall second: 1 means one core fully busy for the whole
+ * process lifetime. Null when the platform reported no usage or the wall time is
+ * not positive.
+ */
+export function cpuUtilization(launch: Launch) {
+  const { cpuUserMs, cpuSystemMs, wallMs } = launch.process
+  if (cpuUserMs == null || cpuSystemMs == null || !(wallMs > 0)) return null
+  return (cpuUserMs + cpuSystemMs) / wallMs
+}
+
 function perLaunch(launch: Launch) {
   const report = launch.report!
+  const { cpuUserMs, cpuSystemMs } = launch.process
   const metrics: Record<string, number | null> = {
     ...startupMetrics(launch),
     processWallMs: launch.process.wallMs,
+    cpuTimeMs: cpuUserMs == null || cpuSystemMs == null ? null : cpuUserMs + cpuSystemMs,
+    cpuUserMs: cpuUserMs ?? null,
+    cpuSystemMs: cpuSystemMs ?? null,
+    cpuUtilization: cpuUtilization(launch),
     peakTreeRssBytes: launch.process.peakTreeRssBytes,
     peakApplicationRssBytes: launch.process.peakApplicationRssBytes,
     peakHostRssBytes: launch.process.peakHostRssBytes,

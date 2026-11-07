@@ -160,7 +160,14 @@ export async function checkDocLinks(root: string, tracked: readonly string[]): P
         continue
       }
       if (fragment && resolved.endsWith('.md') && files.has(resolved)) {
-        if (!(await anchorsOf(resolved)).has(decodeURIComponent(fragment)))
+        let anchor: string
+        try {
+          anchor = decodeURIComponent(fragment)
+        } catch {
+          errors.push(`${file}:${line}: malformed link ${target}`)
+          continue
+        }
+        if (!(await anchorsOf(resolved)).has(anchor))
           errors.push(`${file}:${line}: missing heading anchor ${target}`)
       }
     }

@@ -7,6 +7,7 @@ import {
   describe as describeSamples,
   median,
   nearestRank,
+  cpuUtilization,
   summarize,
   summarizeInputLatency,
   type InputLaunch,
@@ -83,6 +84,8 @@ function launch(
       spawnEpochMs: 1_000_000,
       wallMs: 500,
       exitCode: status === 'passed' ? 0 : 1,
+      cpuUserMs: 120,
+      cpuSystemMs: 30,
       peakTreeRssBytes: 300,
       peakApplicationRssBytes: 100,
       peakHostRssBytes: 200,
@@ -249,6 +252,9 @@ test('summaries keep first launches and failures separate from measured distribu
   expect(aot.firstLaunchAfterBuild.spawnToViewMountedMs).toBe(10 + 400)
   expect(aot.perLaunch.spawnToViewMountedMs.median).toBe(10 + 80)
   expect(aot.perLaunch.peakTreeRssBytes.median).toBe(300)
+  expect(aot.perLaunch.cpuTimeMs.median).toBe(150)
+  expect(aot.perLaunch.cpuSystemMs.median).toBe(30)
+  expect(aot.perLaunch.cpuUtilization.median).toBeCloseTo(0.3, 10)
   expect(aot.pooledOperationSamplesMs.signals.count).toBe(30)
   const development = summary.groups['core/development'] as Record<string, any>
   expect(development.failed).toEqual(['core-development-4'])
@@ -304,4 +310,22 @@ test('input latency summaries count one sample per passed launch and exclude fai
   expect(ratio('core/aot', 'core/development')).toBeCloseTo(0.5, 5)
   expect(ratio('solid/aot', 'core/aot')).toBeCloseTo(3, 5)
   expect(summary.comparisons.some((item) => item['candidate'] === 'solid/development')).toBe(false)
+})
+
+test('CPU utilization is CPU seconds per wall second and absent without usage', () => {
+  const base = launch('core', 'aot', 1, report(1))
+  expect(cpuUtilization(base)).toBeCloseTo(150 / 500, 10)
+  expect(cpuUtilization({ ...base, process: { ...base.process, cpuUserMs: null } })).toBeNull()
+  expect(cpuUtilization({ ...base, process: { ...base.process, cpuSystemMs: null } })).toBeNull()
+  expect(cpuUtilization({ ...base, process: { ...base.process, wallMs: 0 } })).toBeNull()
+  const unsupported = launch('core', 'aot', 1, report(1))
+  delete unsupported.process.cpuUserMs
+  delete unsupported.process.cpuSystemMs
+  const summary = summarize([
+    unsupported,
+    launch('core', 'aot', 2, report(1)),
+    launch('core', 'aot', 3, report(1)),
+  ])
+  const group = summary.groups['core/aot'] as Record<string, any>
+  expect(group.perLaunch.cpuTimeMs.count).toBe(2)
 })

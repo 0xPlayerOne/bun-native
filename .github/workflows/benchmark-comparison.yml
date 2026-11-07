@@ -13,6 +13,10 @@ on:
       input-trials:
         description: XTest click-to-paint launches per artifact (0, or 3 to 30)
         default: '5'
+      cold-cache:
+        description: Sync and drop the page cache before every timed launch (sudo on the runner)
+        type: boolean
+        default: false
   schedule:
     - cron: '47 6 * * 3'
   pull_request:
@@ -48,6 +52,7 @@ jobs:
       # Dispatch inputs reach the shell only through the environment.
       TRIALS: ${{ github.event_name == 'workflow_dispatch' && inputs.trials || '5' }}
       INPUT_TRIALS: ${{ github.event_name == 'workflow_dispatch' && inputs['input-trials'] || '5' }}
+      COLD_CACHE: ${{ github.event_name == 'workflow_dispatch' && inputs['cold-cache'] || 'false' }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -83,11 +88,14 @@ jobs:
       - name: Run the equivalent-workload comparison in one isolated native session
         timeout-minutes: 40
         run: |
+          extra=()
+          if [[ "$COLD_CACHE" == 'true' ]]; then extra+=(--cold-cache); fi
           xvfb-run --auto-servernum --server-args='-screen 0 1280x800x24 -nolisten tcp' \
             dbus-run-session -- bash scripts/quality/native-linux-session.sh \
             "$COMPARISON/session" -- bun benchmarks/comparison/run.ts \
             --host "$GITHUB_WORKSPACE/target/release/bun-native-host" --host-profile release \
-            --output "$COMPARISON/run" --trials "$TRIALS" --input-trials "$INPUT_TRIALS"
+            --output "$COMPARISON/run" --trials "$TRIALS" --input-trials "$INPUT_TRIALS" \
+            "${extra[@]}"
       - name: Export the compact record and summary table
         if: ${{ always() && env.COMPARISON != '' }}
         run: |

@@ -43,7 +43,9 @@ Per launch (one fresh application and host process each): spawn-to-runtime
 origin, workload entry, application ready, window opened and view mounted
 (acknowledged native states, not display presentation); process wall time;
 sampled peak RSS of the application, its native-host descendants and the tree;
-total workload time; and per-phase operation medians. Every child report keeps
+CPU time (`cpuUserMs`, `cpuSystemMs`, `cpuTimeMs`) and `cpuUtilization`, the CPU
+seconds per wall second of the process (1 is one core fully busy for the whole
+run); total workload time; and per-phase operation medians. Every child report keeps
 its raw per-operation samples (individual updates, coalesced updates, keyed
 rotations, mount/update/dispose cycles).
 
@@ -80,11 +82,26 @@ native paint, OS close, cleanup) and the child report passes the same identity
 and cleanup checks as timed launches. Raw driver reports, screenshots and native
 evidence are kept under `input/`.
 
+CPU time comes from the `wait4` resource usage of the launched application, so it
+covers the application and every descendant it reaped, which includes the native
+host after an orderly close. A host that is killed or orphaned is not counted. It
+is user plus system time on Linux and macOS and is recorded as `null` elsewhere. The
+workload is paced by native acknowledgements and, for a WebView baseline, by frame
+callbacks, so `cpuUtilization` compares how busy each application is over its own
+run, not the cost of equal work per CPU second. GPU time is not measured.
+
 ## Statistics
 
 Trial 0 launches every freshly built artifact once and is reported separately as
-**first launch after build**. It is not a controlled cold-cache start: no page
-cache is flushed. Measured trials then run every adapter/mode pair, rotating the
+**first launch after build**. By default it is not a controlled cold-cache start:
+no page cache is flushed. On Linux, `--cold-cache` runs `sync` and then writes `3`
+to `/proc/sys/vm/drop_caches` (as root, else passwordless `sudo`) before every first,
+calibration and measured launch, so each one reads the executable, host and
+libraries from storage; the run fails before building anything if the drop is
+refused. Input-latency launches are not cold. A cold run is recorded in
+`methodology.firstLaunch` and each launch's `pageCacheDropped`; compare it only
+with another cold run on the same runner type, because a hosted runner's disk
+varies. The Linux CI workflow exposes it as the `cold-cache` dispatch input. Measured trials then run every adapter/mode pair, rotating the
 start offset each trial and reversing odd trials. Failed launches are retained
 with their logs, excluded from distributions, and never retried.
 
@@ -113,7 +130,7 @@ xvfb-run --auto-servernum --server-args='-screen 0 1280x800x24 -nolisten tcp' \
 
 Options: `--adapters core,solid,react`, `--trials 3..30`, `--iterations`,
 `--rotations`, `--mounts`, `--rows` (same bounds as the shared workload),
-`--rss-interval-ms` and `--input-trials`. `comparison.json` holds provenance, builds, calibrations,
+`--rss-interval-ms`, `--input-trials` and `--cold-cache`. `comparison.json` holds provenance, builds, calibrations,
 per-launch process observations with child-report digests, load averages and
 the summary; `launches/` holds every raw child report and log, and `input/`
 every input-latency launch.
@@ -149,8 +166,9 @@ samples and builds.
 
 - A direct Rust GPUI baseline: no Rust application performing this workload
   exists, and adding one is separate work.
-- Display presentation, per-keystroke or text input latency, CPU/GPU
-  utilization and Windows. The Electrobun WebView baseline
+- Display presentation, per-keystroke or text input latency, GPU utilization and
+  Windows. CPU time is recorded on Linux and macOS (see above) but not for the
+  Electrobun baseline. The Electrobun WebView baseline
   ([`benchmarks/electrobun`](electrobun/README.md)) covers process-level metrics
   only; its operation timings are not comparable.
 
