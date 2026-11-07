@@ -120,7 +120,7 @@ describe('relative markdown link check', () => {
         '[bad local](#bad%ZZ)',
         '[bad target](docs/guide.md#%E0%A4%A)',
         '[missing](docs/missing.md)',
-      ].join('\\n'),
+      ].join('\n'),
       'docs/guide.md': '## Valid anchor',
     })
     expect(await checkDocLinks(root, tracked)).toEqual([
