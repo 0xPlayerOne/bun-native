@@ -101,11 +101,18 @@ function validateAcceptedTradeoffs(value: MetricsFile, what: string): void {
   }
 }
 
-export function parseMetrics(text: string, what: string): MetricsFile {
-  const value = JSON.parse(text) as MetricsFile
+/** The exported comparator must enforce the same input identity as the JSON path. */
+function validateMetricsHeader(value: MetricsFile, what: string): void {
+  if (typeof value !== 'object' || value === null || Array.isArray(value))
+    throw new Error(`${what}: metrics file must be an object`)
   if (value.schemaVersion !== 1) throw new Error(`${what}: schemaVersion must be 1`)
   if (typeof value.environment?.label !== 'string' || value.environment.label === '')
     throw new Error(`${what}: environment.label must name the hardware and operating system`)
+}
+
+export function parseMetrics(text: string, what: string): MetricsFile {
+  const value = JSON.parse(text) as MetricsFile
+  validateMetricsHeader(value, what)
   const metrics = Object.entries(value.metrics ?? {})
   if (metrics.length === 0) throw new Error(`${what}: metrics must hold at least one metric`)
   for (const [name, metric] of metrics) {
@@ -127,6 +134,8 @@ export function compare(
   current: MetricsFile,
   { threshold = 0.1 }: { threshold?: number } = {}
 ): Comparison {
+  validateMetricsHeader(baseline, 'baseline')
+  validateMetricsHeader(current, 'current')
   validateAcceptedTradeoffs(baseline, 'baseline')
   if (!Number.isFinite(threshold) || threshold <= 0)
     throw new RangeError('threshold must be a finite positive number')
