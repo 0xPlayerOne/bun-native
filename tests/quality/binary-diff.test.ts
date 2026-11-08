@@ -26,6 +26,7 @@ function pe(options: { stamp: number; guid: number; path: string; code: number }
   view.setUint16(coff + 16, optionalSize, true)
   const optional = coff + 20
   view.setUint16(optional, 0x20b, true)
+  view.setUint32(optional + 108, 16, true)
   view.setUint32(optional + 64, options.stamp ^ 0xffff, true)
   const table = optional + optionalSize
   const section = (index: number, name: string, rva: number, raw: number, size: number) => {
@@ -85,6 +86,44 @@ describe('PE regions', () => {
     const badMagic = pe({ stamp: 1, guid: 1, path: 'x.pdb', code: 1 })
     new DataView(badMagic.buffer).setUint16(0x80 + 24, 0x999, true)
     expect(peRegions(badMagic)).toBeNull()
+  })
+
+  test('does not invent debug metadata from undeclared or out-of-bounds optional directories', () => {
+    const bytes = pe({ stamp: 1, guid: 1, path: 'host.pdb', code: 1 })
+    const view = new DataView(bytes.buffer)
+    const coff = 0x80 + 4
+    const optional = coff + 20
+    const directoryCount = optional + 108
+    const timestamps = () =>
+      peRegions(bytes)?.regions.filter((region) => region.name === 'debug directory TimeDateStamp')
+
+    // The bytes may be present, but NumberOfRvaAndSizes does not declare
+    // the debug directory unless it includes entry 6.
+    view.setUint32(directoryCount, 0, true)
+    expect(peRegions(bytes)?.pdbPath).toBeNull()
+    expect(timestamps()).toEqual([])
+    view.setUint32(directoryCount, 6, true)
+    expect(peRegions(bytes)?.pdbPath).toBeNull()
+    expect(timestamps()).toEqual([])
+    view.setUint32(directoryCount, 7, true)
+    expect(peRegions(bytes)?.pdbPath).toBe('host.pdb')
+
+    // The directory count alone is insufficient if SizeOfOptionalHeader
+    // ends before entry 6. Poison the first section name with bytes that
+    // would otherwise be read as a valid debug RVA/size pair.
+    view.setUint32(directoryCount, 16, true)
+    const table = optional + 240
+    const shortTable = optional + 160
+    bytes.copyWithin(shortTable, table, table + 80)
+    bytes.set([0, 0x20, 0, 0, 56, 0, 0, 0], shortTable)
+    view.setUint16(coff + 16, 160, true)
+    expect(peRegions(bytes)?.pdbPath).toBeNull()
+    expect(timestamps()).toEqual([])
+
+    // A header lacking even the fixed optional fields is not a PE image
+    // whose debug metadata can be analyzed.
+    view.setUint16(coff + 16, 16, true)
+    expect(peRegions(bytes)).toBeNull()
   })
 
   test('does not map a virtual-only debug RVA into unrelated raw section bytes', () => {

@@ -67,7 +67,16 @@ export function peRegions(bytes: Uint8Array): { regions: Region[]; pdbPath: stri
   const optionalSize = r.u16(coff + 16)
   const optional = coff + 20
   const magic = r.u16(optional)
-  if (sectionCount === null || optionalSize === null || (magic !== 0x10b && magic !== 0x20b))
+  // Require the fixed optional-header fields before interpreting any
+  // directories: a short header can otherwise expose section-table bytes.
+  const dataDirectoriesOffset = magic === 0x20b ? 112 : 96
+  if (
+    sectionCount === null ||
+    optionalSize === null ||
+    (magic !== 0x10b && magic !== 0x20b) ||
+    optionalSize < dataDirectoriesOffset ||
+    !r.fits(optional, optionalSize)
+  )
     return null
   const regions: Region[] = [
     { name: 'COFF TimeDateStamp', start: coff + 4, end: coff + 8 },
@@ -108,9 +117,14 @@ export function peRegions(bytes: Uint8Array): { regions: Region[]; pdbPath: stri
     return null
   }
   let pdbPath: string | null = null
-  const directories = optional + (magic === 0x20b ? 112 : 96)
-  const debugRva = r.u32(directories + 6 * 8)
-  const debugSize = r.u32(directories + 6 * 8 + 4) ?? 0
+  // NumberOfRvaAndSizes, and the declared optional-header byte range,
+  // must both include entry 6 before it can name a debug directory.
+  const directoryCount = r.u32(optional + dataDirectoriesOffset - 4)
+  const debugOffset = dataDirectoriesOffset + 6 * 8
+  const hasDebugDirectory =
+    directoryCount !== null && directoryCount > 6 && optionalSize >= debugOffset + 8
+  const debugRva = hasDebugDirectory ? r.u32(optional + debugOffset) : null
+  const debugSize = hasDebugDirectory ? (r.u32(optional + debugOffset + 4) ?? 0) : 0
   const debug = debugRva ? fileOffset(debugRva, debugSize) : null
   for (let i = 0; debug !== null && i < Math.floor(debugSize / 28); i++) {
     const entry = debug + i * 28
