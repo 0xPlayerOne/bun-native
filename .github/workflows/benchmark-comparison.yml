@@ -17,6 +17,9 @@ on:
         description: Sync and drop the page cache before every timed launch (sudo on the runner)
         type: boolean
         default: false
+      streaming-trials:
+        description: Streaming-list soaks per framework and mode (1 to 10)
+        default: '3'
   schedule:
     - cron: '47 6 * * 3'
   pull_request:
@@ -28,6 +31,9 @@ on:
       - benchmarks/rust-gpui/**
       - native/gpui-host/examples/workload-baseline.rs
       - benchmarks/solid/**
+      - benchmarks/streaming-list-fixture.ts
+      - tests/native/*streaming-list*
+      - scripts/quality/regression-check.ts
       - scripts/quality/native-input-linux.py
       - scripts/quality/native-paint-observer.py
 
@@ -55,6 +61,7 @@ jobs:
       TRIALS: ${{ github.event_name == 'workflow_dispatch' && inputs.trials || '5' }}
       INPUT_TRIALS: ${{ github.event_name == 'workflow_dispatch' && inputs['input-trials'] || '5' }}
       COLD_CACHE: ${{ github.event_name == 'workflow_dispatch' && inputs['cold-cache'] || 'false' }}
+      STREAMING_TRIALS: ${{ github.event_name == 'workflow_dispatch' && inputs['streaming-trials'] || '3' }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -119,6 +126,44 @@ jobs:
             echo '| --- | --- | --- |'
             jq -r '.summary.perLaunch | to_entries[] | select(.key | test("spawnTo|processWall|cpu|peakTree")) | "| \(.key) | \(.value.median) | \(.value.medianInterval.low) to \(.value.medianInterval.high) |"' "$COMPARISON/rust-gpui/rust-gpui.json"
           } >> "$GITHUB_STEP_SUMMARY"
+      # The versioned streaming/virtualization fixture (#257) through Solid and
+      # React in development and AOT on the same host and runner. Each soak is
+      # one fresh launch and one sample per metric for the regression gate.
+      - name: Run the streaming-list fixture through Solid and React in development and AOT
+        if: ${{ !cancelled() && hashFiles('target/release/bun-native-host') != '' }}
+        timeout-minutes: 20
+        env:
+          BUN_NATIVE_HOST: ${{ github.workspace }}/target/release/bun-native-host
+        run: |
+          if [[ ! "$STREAMING_TRIALS" =~ ^([1-9]|10)$ ]]; then
+            echo "streaming-trials must be 1 to 10, got $STREAMING_TRIALS" >&2
+            exit 1
+          fi
+          mkdir -p "$COMPARISON/streaming"
+          for framework in solid react; do
+            entry="$framework-streaming-list"
+            package="$COMPARISON/streaming/$entry-package"
+            bun experiments/aot-gpui/build-window.ts \
+              --source "$GITHUB_WORKSPACE" --host "$BUN_NATIVE_HOST" \
+              --host-profile release --entry "$entry" --outdir "$package"
+            for trial in $(seq 1 "$STREAMING_TRIALS"); do
+              for mode in development aot; do
+                command=(bun "$package/development/application.js")
+                if [[ "$mode" == aot ]]; then
+                  command=("$package/$entry")
+                fi
+                evidence="$COMPARISON/streaming/$framework-$mode-$trial"
+                xvfb-run --auto-servernum --server-args='-screen 0 1280x800x24 -nolisten tcp' \
+                  dbus-run-session -- bash scripts/quality/native-linux-session.sh \
+                  "$evidence-session" -- python3 tests/native/streaming-list.py \
+                  --framework "$framework" --mode "$mode" --host-profile release \
+                  --output "$evidence" -- "${command[@]}"
+              done
+            done
+          done
+          python3 tests/native/streaming-list.py summarize \
+            --output "$COMPARISON/streaming/streaming-list-baseline.json" \
+            "$COMPARISON"/streaming/*-[0-9]*/result.json
       - name: Export the compact record and summary table
         if: ${{ always() && env.COMPARISON != '' }}
         run: |
@@ -136,6 +181,37 @@ jobs:
             echo
             echo 'Click to native paint is the driver interval from immediately before the XTest click command to the validated complete native paint record; it is not display presentation. See benchmarks/COMPARISON.md.'
           } >> "$GITHUB_STEP_SUMMARY"
+      # Regression gate (#259): per-launch samples against the committed baseline
+      # with the identical environment label. A model with no baseline is
+      # reported, not gated. Fails on a stable >25% regression or missing metric:
+      # two hosted VMs with the same CPU model measured identical code 12-15%
+      # apart (run 42432829952), so 10% is a dedicated-machine threshold.
+      - name: Regression gate against the committed baseline for this runner
+        if: ${{ !cancelled() && env.COMPARISON != '' }}
+        run: |
+          if [[ ! -f "$COMPARISON/export/comparison.json" ]]; then
+            echo 'No exported comparison, so nothing was gated; the comparison step failed.' >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          streaming=()
+          for result in "$COMPARISON"/streaming/*-[0-9]*/result.json; do
+            [[ -f "$result" ]] && streaming+=("$result")
+          done
+          bun benchmarks/comparison/metrics.ts export "$COMPARISON/export" \
+            --output "$COMPARISON/metrics.json" --streaming "${streaming[@]}"
+          status=0
+          bun benchmarks/comparison/metrics.ts gate "$COMPARISON/metrics.json" \
+            benchmarks/comparison/baselines --threshold 0.25 > "$COMPARISON/regression.md" || status=$?
+          {
+            echo '## Regression gate'
+            echo
+            cat "$COMPARISON/regression.md"
+          } >> "$GITHUB_STEP_SUMMARY"
+          cat "$COMPARISON/regression.md"
+          if [[ "$status" != 0 ]]; then
+            echo '::error title=Performance regression::A stable regression or missing metric against the committed baseline; see the Regression gate summary.'
+          fi
+          exit "$status"
       - name: Retain raw results, including failures
         if: ${{ always() && env.COMPARISON != '' }}
         timeout-minutes: 3
@@ -147,6 +223,8 @@ jobs:
             !${{ runner.temp }}/comparison/run/*/application
             !${{ runner.temp }}/comparison/session/runtime/
             !${{ runner.temp }}/comparison/rust-session/runtime/
+            !${{ runner.temp }}/comparison/streaming/*-package/
+            !${{ runner.temp }}/comparison/streaming/*-session/runtime/
           include-hidden-files: true
           if-no-files-found: error
           retention-days: 30

@@ -111,4 +111,4 @@ These are baselines, not thresholds. Release-host CI artifacts supersede them fo
 - HiDPI, Wayland, macOS, Windows, physical GPUs, IME and accessibility are not covered.
 - Wheel-driven virtualization, variable-height row measurement and native scroll anchoring (`scroll_anchor_v1`) are not part of this pattern.
 - Split-pane drag resizing is not covered. Only native flex adaptation to OS resize is exercised.
-- Only the 10–15 s bounded soak runs in CI. Extended soak and repeated-teardown runs, CPU/GPU utilization and allocation profiles of this workload remain for #244 and the BN4 checkpoint.
+- Only the 10–15 s bounded soak runs in CI. The [Benchmark comparison](../.github/workflows/benchmark-comparison.yml) workflow also runs it three times per framework and mode (development and AOT) on the same runner and release host as the [equivalent-workload comparison](../benchmarks/COMPARISON.md#streaming-list-fixture), and records update-to-ack, frame-interval and render-to-paint tails and peak RSS per launch for the regression gate. Extended soak and repeated-teardown runs, CPU/GPU utilization and allocation profiles of this workload remain for the BN4 checkpoint.

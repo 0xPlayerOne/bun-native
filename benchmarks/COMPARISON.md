@@ -162,6 +162,46 @@ child report plus its driver `result.json`). It prints Markdown summary tables
 for per-launch metrics (with input latency when present), pooled operation
 samples and builds.
 
+## Streaming-list fixture
+
+The same workflow then runs the versioned streaming/virtualization fixture
+([`benchmarks/streaming-list-fixture.ts`](streaming-list-fixture.ts), version 1:
+10,000 history messages and a 2,400-token stream; see
+[`docs/native-lists.md`](../docs/native-lists.md)) through Solid and React in
+development and AOT, on the same runner and release host, with
+`tests/native/streaming-list.py`. Each soak is a fresh launch with real XTest
+navigation, pointer selection, restyle and WM resize, and must pass its
+node/listener bounds, detached-anchor check, cross-adapter digest and zero
+owners after OS close before any figure is used. Scheduled and pull request runs
+use 3 soaks per framework and mode (`streaming-trials` on dispatch, 1 to 10).
+Per launch it records update-to-ack p50 and p95, paint-callback interval p95,
+render-to-paint p95 and peak host and application RSS. These are software-GPU
+paint-callback figures, not presentation timing. `streaming-list-baseline.json`
+in the artifact holds the compact cross-run summary.
+
+## Regression gate
+
+After the export, `bun benchmarks/comparison/metrics.ts export` converts the run
+(per-launch comparison metrics, click-to-paint and the streaming soaks) into the
+metrics-file shape of
+[`scripts/quality/regression-check.ts`](../scripts/quality/regression-check.ts),
+and `metrics.ts gate` compares it with the committed baseline in
+[`comparison/baselines/`](comparison/baselines/README.md) that has the identical
+environment label (OS release, CPU count and model, renderer, cache state). The
+table goes to the job summary; a stable regression of 25% or more (median worse
+and the bootstrap interval excluding no change) or a metric missing from the run
+fails the job. The hosted threshold is 25%, not the 10% of a dedicated machine:
+two VMs with the same CPU model measured identical code 12–15% apart on React
+development CPU time and lifecycle median
+([run 42432829952](https://github.com/0xPlayerOne/bun-native/actions/runs/42432829952)). A runner CPU without a baseline is reported, not gated, and
+metrics the baseline does not have yet (the streaming soaks today) are listed as
+recorded without a baseline. A passed measured launch or input launch that lacks a metric, or a passed soak
+that lacks any of its six measurements
+(a null distribution, a missing process RSS) fails the export rather than
+dropping the sample, so a group is never gated on fewer samples than it ran.
+`metrics.json` and `regression.md` are kept in the
+artifact, so adopting a new baseline is a copy (see the baselines README).
+
 ## Not measured here
 
 - A direct Rust GPUI baseline in this harness. It is a separate runner,
