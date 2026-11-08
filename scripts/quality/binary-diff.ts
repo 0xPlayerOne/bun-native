@@ -121,10 +121,15 @@ export function peRegions(bytes: Uint8Array): { regions: Region[]; pdbPath: stri
     regions.push({ name: `debug directory TimeDateStamp`, start: entry + 4, end: entry + 8 })
     // Debug payload pointers are raw file offsets, not validated by the
     // debug directory table's RVA bounds. Never name partial CodeView data.
-    if (type === 2 && size >= 24 && r.fits(data, size) && r.u32(data) === 0x53445352) {
+    if (
+      type === 2 &&
+      size >= 24 &&
+      r.fits(data, size) &&
+      r.u32(data) === 0x53445352
+    ) {
       regions.push({ name: 'CodeView GUID', start: data + 4, end: data + 20 })
       regions.push({ name: 'CodeView age', start: data + 20, end: data + 24 })
-      const end = Math.min(data + size, bytes.length)
+      const end = data + size
       regions.push({ name: 'CodeView PDB path', start: data + 24, end })
       const path = bytes.subarray(data + 24, end)
       const nul = path.indexOf(0)

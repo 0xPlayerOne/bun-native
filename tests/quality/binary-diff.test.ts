@@ -125,7 +125,6 @@ describe('PE regions', () => {
     ).toHaveLength(2)
   })
 
-
   test('does not classify incomplete CodeView or REPRO payloads as file-backed bytes', () => {
     const bytes = pe({ stamp: 1, guid: 1, path: 'host.pdb', code: 1 })
     const view = new DataView(bytes.buffer)
@@ -152,7 +151,7 @@ describe('PE regions', () => {
 
     // Restore the complete CodeView record; reject only the truncated REPRO
     // record instead of inventing a hash region outside the file.
-    view.setUint32(entry + 16, 24 + 'host.pdb\\0'.length, true)
+    view.setUint32(entry + 16, 24 + 'host.pdb'.length + 1, true)
     view.setUint32(entry + 28 + 24, bytes.length - 2, true)
     const repro = peRegions(bytes)
     expect(repro?.pdbPath).toBe('host.pdb')
