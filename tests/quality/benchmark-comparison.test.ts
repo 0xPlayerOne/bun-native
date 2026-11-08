@@ -254,6 +254,33 @@ test('paint equivalence ignores renderer nonces and timings but needs a native t
   ).toThrow(/lacks a native paint tree/)
 })
 
+test('renderer runtime identity is not discarded as a timing field', () => {
+  const paint = (runtime: string, startedMs: number) => ({
+    renderer: {
+      nonce: crypto.randomUUID(),
+      type: 'renderer',
+      runtime,
+      startedMs,
+      first_frame_ms: startedMs,
+      time: startedMs,
+    },
+    paint: { nodes: [{ node_id: 1, text: 'same' }] },
+  })
+  const first = { name: 'gpui', initial: paint('GPUI', 1), final: paint('GPUI', 2) }
+  const different = {
+    name: 'headless',
+    initial: paint('HEADLESS', 3),
+    final: paint('HEADLESS', 4),
+  }
+  expect(() => assertEquivalentPaint([first, different])).toThrow(/renderer differs/)
+  expect(() =>
+    assertEquivalentPaint([
+      first,
+      { name: 'same', initial: paint('GPUI', 5), final: paint('GPUI', 6) },
+    ])
+  ).not.toThrow()
+})
+
 test('summaries keep first launches and failures separate from measured distributions', () => {
   const launches = [
     launch('core', 'aot', 0, report(5)),

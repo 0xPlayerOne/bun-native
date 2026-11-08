@@ -238,7 +238,9 @@ export function assertEquivalentPaint(
     if (!value || typeof value !== 'object') return value
     // The nonce and timestamps differ by construction; the adapter must not.
     const { nonce: _nonce, ...rest } = value as Record<string, unknown>
-    for (const key of Object.keys(rest)) if (/time|_ms$|Ms$/.test(key)) delete rest[key]
+    // Only timing fields vary: a renderer identity such as `runtime` must survive.
+    for (const key of Object.keys(rest))
+      if (key === 'time' || /(?:_ms|Ms)$/.test(key)) delete rest[key]
     return rest
   }
   const [first, ...rest] = calibrations
