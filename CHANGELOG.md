@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.27.1](https://github.com/0xPlayerOne/bun-native/compare/v0.27.0...v0.27.1) (2026-11-08)
+
+
+### Maintenance
+
+* **ci:** move to Code Foundry 1.54.0 ([#569](https://github.com/0xPlayerOne/bun-native/issues/569)) ([9e8b032](https://github.com/0xPlayerOne/bun-native/commit/9e8b0328bc94974e91871948daf22cb4706e4f95))
+
 ## [0.27.0](https://github.com/0xPlayerOne/bun-native/compare/v0.26.0...v0.27.0) (2026-11-08)
 
 
