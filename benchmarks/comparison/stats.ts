@@ -278,7 +278,8 @@ export function cpuUtilization(launch: Launch) {
   return (cpuUserMs + cpuSystemMs) / wallMs
 }
 
-function perLaunch(launch: Launch) {
+/** Raw per-launch metrics of one passed, reported launch (the independent unit). */
+export function perLaunch(launch: Launch) {
   const report = launch.report!
   const { cpuUserMs, cpuSystemMs } = launch.process
   const metrics: Record<string, number | null> = {
