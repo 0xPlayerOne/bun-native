@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.26.0](https://github.com/0xPlayerOne/bun-native/compare/v0.25.2...v0.26.0) (2026-11-08)
+
+
+### Features
+
+* **quality:** gate benchmark runs against hosted baselines; duplicate-dependency and code-health checks ([#563](https://github.com/0xPlayerOne/bun-native/issues/563)) ([b0e5c42](https://github.com/0xPlayerOne/bun-native/commit/b0e5c421597ee5bf99e7eb1fe6e42f5981276640))
+
 ## [0.25.2](https://github.com/0xPlayerOne/bun-native/compare/v0.25.1...v0.25.2) (2026-11-08)
 
 
