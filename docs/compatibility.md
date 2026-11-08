@@ -59,6 +59,33 @@ the dependency-bot Babel major exclusion, with
 Both adapters use one Rust GPUI host. Packages and the prebuilt host must share
 the matching native contract. WebView/CEF is not a fallback.
 
+
+### Adea component-port example after the accepted-source snapshot
+
+At [source `e848d5a`](https://github.com/0xPlayerOne/bun-native/commit/e848d5a149a6f123d5e57865a6ea11e33abafc00),
+the [Adea components example](../examples/adea-components/README.md) ports
+Button, Input, DropdownMenu, Dialog and a streaming conversation view to the
+**public Solid adapter** and shared native box, input, button, text and overlay
+primitives. It retains Adea's `keyedRows` source unchanged and adapts two lines
+of `transcript-history`; the example records source identities and its
+retained/adapted/reimplemented inventory. It neither modifies Adea production
+nor provides drop-in compatibility for Adea's DOM, Tailwind or Kobalte layers.
+
+The [component contract test](../tests/examples/adea-components.test.ts)
+exercises mounting, streaming row identity, theme changes, menu and dialog
+dismissal, and cleanup against an explicitly **synthetic headless protocol
+peer**. Its assertions are not real GPUI input, pixels, focus, keyboard
+navigation or accessibility evidence. The
+[native screenshots record](../examples/adea-components/screenshots/README.md)
+is a separately documented local manual observation; it is not a
+cross-platform automated acceptance result. Packaging, physical-GPU
+performance, IME/assistive technology and full Adea workspace portability
+remain unqualified for these components. See [PR #566](https://github.com/0xPlayerOne/bun-native/pull/566)
+and [workspace issue #250](https://github.com/0xPlayerOne/bun-native/issues/250)
+for their precise scope. This later example does not retroactively expand the
+immutable accepted-source snapshot or the release-readiness decision.
+
+
 ## Web compatibility boundary
 
 **JSX is a source authoring syntax, not a browser renderer.** Components relying on HTML elements, the DOM, `window`, `document`, CSS layout, CSSOM or browser events cannot be assumed to work unchanged.
