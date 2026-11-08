@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.27.0](https://github.com/0xPlayerOne/bun-native/compare/v0.26.0...v0.27.0) (2026-11-08)
+
+
+### Features
+
+* **examples:** port Adea Button, Input, DropdownMenu, Dialog and conversation view ([#566](https://github.com/0xPlayerOne/bun-native/issues/566)) ([e848d5a](https://github.com/0xPlayerOne/bun-native/commit/e848d5a149a6f123d5e57865a6ea11e33abafc00))
+
 ## [0.26.0](https://github.com/0xPlayerOne/bun-native/compare/v0.25.2...v0.26.0) (2026-11-08)
 
 
