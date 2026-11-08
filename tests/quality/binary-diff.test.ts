@@ -103,6 +103,28 @@ describe('PE regions', () => {
     expect(parsed?.regions.filter((region) => region.name === 'debug directory TimeDateStamp')).toEqual([])
   })
 
+  test('does not read a debug directory across raw section boundaries', () => {
+    const bytes = pe({ stamp: 1, guid: 1, path: 'host.pdb', code: 1 })
+    const view = new DataView(bytes.buffer)
+    const debugRva = 0x80 + 4 + 20 + 112 + 6 * 8
+    // Only 16 bytes of .text remain at RVA 0x11f0. The 56-byte directory
+    // would otherwise read unrelated on-disk .rdata bytes after that boundary.
+    view.setUint32(debugRva, 0x11f0, true)
+    const crossing = peRegions(bytes)
+    expect(crossing).not.toBeNull()
+    expect(crossing?.pdbPath).toBeNull()
+    expect(
+      crossing?.regions.filter((region) => region.name === 'debug directory TimeDateStamp')
+    ).toEqual([])
+
+    // A full 56-byte table ending exactly at the raw boundary remains mapped.
+    view.setUint32(debugRva, 0x11c8, true)
+    const within = peRegions(bytes)
+    expect(
+      within?.regions.filter((region) => region.name === 'debug directory TimeDateStamp')
+    ).toHaveLength(2)
+  })
+
   test('names header, debug directory and section regions and reads the PDB path', () => {
     const parsed = peRegions(pe({ stamp: 1, guid: 1, path: 'bun_native_host.pdb', code: 1 }))
     expect(parsed?.pdbPath).toBe('bun_native_host.pdb')

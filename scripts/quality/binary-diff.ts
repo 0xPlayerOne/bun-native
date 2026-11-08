@@ -91,12 +91,18 @@ export function peRegions(bytes: Uint8Array): { regions: Region[]; pdbPath: stri
       raw: r.u32(at + 20) as number,
     })
   }
-  const fileOffset = (rva: number) => {
+  const fileOffset = (rva: number, size: number) => {
     for (const s of sections) {
       const offset = rva - s.rva
       // VirtualSize may include zero-filled memory beyond the file's raw
-      // section bytes. Such an RVA must not read a different on-disk region.
-      if (offset >= 0 && offset < s.rawSize && r.fits(s.raw + offset, 1))
+      // section bytes. A debug directory must also fit in one raw section:
+      // accepting only its first byte could read the next on-disk section.
+      if (
+        offset >= 0 &&
+        offset < s.rawSize &&
+        offset + size <= s.rawSize &&
+        r.fits(s.raw + offset, size)
+      )
         return s.raw + offset
     }
     return null
@@ -105,7 +111,7 @@ export function peRegions(bytes: Uint8Array): { regions: Region[]; pdbPath: stri
   const directories = optional + (magic === 0x20b ? 112 : 96)
   const debugRva = r.u32(directories + 6 * 8)
   const debugSize = r.u32(directories + 6 * 8 + 4) ?? 0
-  const debug = debugRva ? fileOffset(debugRva) : null
+  const debug = debugRva ? fileOffset(debugRva, debugSize) : null
   for (let i = 0; debug !== null && i < Math.floor(debugSize / 28); i++) {
     const entry = debug + i * 28
     if (!r.fits(entry, 28)) break
