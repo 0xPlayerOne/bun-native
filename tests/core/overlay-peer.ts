@@ -12,12 +12,13 @@ import {
 import { PeerTree } from './peer-tree.ts'
 
 /**
- * `target` is a button label, `overlay#N` or `split#N`, the Nth created one.
+ * `target` is a button label, an input placeholder (for `input`), `overlay#N`
+ * or `split#N`, the Nth created one.
  * `activate` clicks the button the last focus request moved to, as Enter does
  * natively.
  */
 type Spec = {
-  type: 'key_down' | 'pointer_down' | 'dismiss' | 'click' | 'activate' | 'split_resize'
+  type: 'key_down' | 'pointer_down' | 'dismiss' | 'click' | 'activate' | 'split_resize' | 'input'
   target?: string
   key?: string
   shift?: boolean
@@ -37,6 +38,7 @@ const popups = process.argv.includes('--popups')
 const splits = process.argv.includes('--splits')
 const splitResize = process.argv.includes('--split-resize')
 const inputStates = process.argv.includes('--input-states')
+const decoration = process.argv.includes('--decoration')
 let sequence = 0
 async function emit(value: unknown) {
   output.write(encodeFrame(value))
@@ -55,8 +57,10 @@ async function event(window_id: number, tree: PeerTree, spec: Spec) {
   const created = [...tree.nodes].filter(([, node]) => node.element.kind === kind)
   const target = spec.target.includes('#')
     ? created[Number(spec.target.split('#')[1])]
-    : [...tree.nodes].find(
-        ([, node]) => node.element.kind === 'button' && node.element.text === spec.target
+    : [...tree.nodes].find(([, node]) =>
+        spec.type === 'input'
+          ? node.element.kind === 'input' && node.element.placeholder === spec.target
+          : node.element.kind === 'button' && node.element.text === spec.target
       )
   if (!target) throw new Error('Unknown fixture event target')
   const modifiers = {
@@ -68,7 +72,13 @@ async function event(window_id: number, tree: PeerTree, spec: Spec) {
     ...spec.modifiers,
   }
   const base = { type: spec.type, window_id, sequence: ++sequence, ...tree.route(target[0]) }
-  if (spec.type === 'dismiss') await emit({ ...base, reason: 'window_blur' })
+  if (spec.type === 'input') {
+    const node = target[1]
+    if (node.element.kind !== 'input') throw new Error('Fixture input requires an input')
+    node.inputRevision++
+    node.element = { ...node.element, value: 'native edit' }
+    await emit({ ...base, value: node.element.value, input_revision: node.inputRevision })
+  } else if (spec.type === 'dismiss') await emit({ ...base, reason: 'window_blur' })
   else if (spec.type === 'click') await emit(base)
   else if (spec.type === 'split_resize')
     await emit({ ...base, ratio: spec.ratio, source: spec.source })
@@ -101,6 +111,7 @@ for await (const chunk of Bun.stdin.stream()) {
           ...(splits ? ['split_v1'] : []),
           ...(splitResize ? ['split_resize_v1', 'accessibility_v1'] : []),
           ...(inputStates ? ['input_states_v1'] : []),
+          ...(decoration ? ['style_decoration_v1'] : []),
         ],
         limits: { ...DEFAULT_LIMITS },
       })
