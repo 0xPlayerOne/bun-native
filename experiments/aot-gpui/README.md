@@ -100,6 +100,7 @@ The same compiler and inspection pipeline supports these explicit entries:
 | `react-platform`          | `tests/native/react-platform.tsx`       | `react-platform`       | Existing prebuilt host referenced by absolute path |
 | `solid`                   | `examples/solid-counter/main.tsx`       | `solid`                | Existing prebuilt host referenced by absolute path |
 | `solid-workspace`         | `examples/solid-workspace/main.tsx`     | `solid-workspace`      | Existing prebuilt host referenced by absolute path |
+| `adea-components`         | `examples/adea-components/main.tsx`     | `adea-components`      | Existing prebuilt host referenced by absolute path |
 | `solid-workspace-flow`    | `tests/native/solid-workspace.tsx`      | `solid-workspace-flow` | Existing prebuilt host referenced by absolute path |
 | `solid-workspace-soak`    | `tests/native/solid-workspace-soak.tsx` | `solid-workspace-soak` | Existing prebuilt host referenced by absolute path |
 | `solid-input-intent`      | `tests/native/solid-input-intent.tsx`   | `solid-input-intent`   | Existing prebuilt host referenced by absolute path |

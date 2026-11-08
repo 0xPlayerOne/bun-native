@@ -70,6 +70,7 @@ const entries = {
   'react-platform': 'tests/native/react-platform.tsx',
   solid: 'examples/solid-counter/main.tsx',
   'solid-workspace': 'examples/solid-workspace/main.tsx',
+  'adea-components': 'examples/adea-components/main.tsx',
   'solid-workspace-flow': 'tests/native/solid-workspace.tsx',
   'solid-workspace-soak': 'tests/native/solid-workspace-soak.tsx',
   'solid-input-intent': 'tests/native/solid-input-intent.tsx',
@@ -96,6 +97,7 @@ const entryPath = entries[entry]
 const solidEntry =
   entry === 'solid' ||
   entry === 'solid-workspace' ||
+  entry === 'adea-components' ||
   entry === 'solid-workspace-flow' ||
   entry === 'solid-workspace-soak' ||
   entry === 'solid-input-intent' ||
@@ -286,6 +288,17 @@ async function sourceHashes() {
     sources.add('examples/solid-workspace/app.tsx')
     sources.add('examples/solid-workspace/model.ts')
   }
+  if (entry === 'adea-components')
+    for (const path of [
+      'examples/adea-components/app.tsx',
+      'examples/adea-components/components.tsx',
+      'examples/adea-components/conversation.tsx',
+      'examples/adea-components/tokens.ts',
+      'examples/adea-components/types.ts',
+      'examples/adea-components/retained/keyed-rows.ts',
+      'examples/adea-components/retained/transcript-history.ts',
+    ])
+      sources.add(path)
   if (entry === 'react-workspace' || entry === 'react-workspace-flow') {
     sources.add('examples/react-workspace/app.tsx')
     sources.add('examples/react-workspace/model.ts')
