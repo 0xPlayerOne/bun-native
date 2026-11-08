@@ -76,7 +76,6 @@ export function peRegions(bytes: Uint8Array): { regions: Region[]; pdbPath: stri
   const sections: {
     name: string
     rva: number
-    virtualSize: number
     raw: number
     rawSize: number
   }[] = []
@@ -87,7 +86,6 @@ export function peRegions(bytes: Uint8Array): { regions: Region[]; pdbPath: stri
     const name = new TextDecoder().decode(bytes.subarray(at, at + 8)).replace(/\0+$/, '')
     sections.push({
       name,
-      virtualSize: r.u32(at + 8) as number,
       rva: r.u32(at + 12) as number,
       rawSize: r.u32(at + 16) as number,
       raw: r.u32(at + 20) as number,
