@@ -223,6 +223,29 @@ describe('PE regions', () => {
     expect(peRegions(bytes)?.pdbPath).toBe('host.pdb')
   })
 
+  test('does not call bytes after the PDB terminator a PDB path difference', () => {
+    const a = pe({ stamp: 1, guid: 1, path: 'host.pdb', code: 1 })
+    const b = a.slice()
+    const declared = 24 + 'host.pdb'.length + 1 + 3
+    new DataView(a.buffer).setUint32(0x400 + 16, declared, true)
+    new DataView(b.buffer).setUint32(0x400 + 16, declared, true)
+    const pathStart = 0x480 + 24
+    const padding = pathStart + 'host.pdb'.length + 1
+
+    // Different CodeView padding does not change either NUL-terminated identity.
+    b[padding] = 0x58
+    const difference = explainDifference(a, b)
+    expect(difference.pdbPaths).toEqual(['host.pdb', 'host.pdb'])
+    expect(difference.regions).toEqual([{ name: 'section .rdata', bytes: 1, ranges: 1 }])
+
+    // Changes inside the actual filename still belong to the PDB-path region.
+    const changedPath = a.slice()
+    changedPath[pathStart] = 'H'.charCodeAt(0)
+    expect(explainDifference(a, changedPath).regions).toEqual([
+      { name: 'CodeView PDB path', bytes: 1, ranges: 1 },
+    ])
+  })
+
   test('names header, debug directory and section regions and reads the PDB path', () => {
     const parsed = peRegions(pe({ stamp: 1, guid: 1, path: 'bun_native_host.pdb', code: 1 }))
     expect(parsed?.pdbPath).toBe('bun_native_host.pdb')

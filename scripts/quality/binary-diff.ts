@@ -150,7 +150,7 @@ export function peRegions(bytes: Uint8Array): { regions: Region[]; pdbPath: stri
       // from a record whose declared data ends before its path terminator.
       // The valid GUID and age fields remain independently attributable.
       if (nul >= 0) {
-        regions.push({ name: 'CodeView PDB path', start: data + 24, end })
+        regions.push({ name: 'CodeView PDB path', start: data + 24, end: data + 24 + nul + 1 })
         pdbPath = new TextDecoder().decode(path.subarray(0, nul))
       }
     } else if (type === 16 && data > 0 && size > 0 && r.fits(data, size)) {
