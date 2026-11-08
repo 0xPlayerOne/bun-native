@@ -101,23 +101,54 @@ function validateAcceptedTradeoffs(value: MetricsFile, what: string): void {
   }
 }
 
-export function parseMetrics(text: string, what: string): MetricsFile {
-  const value = JSON.parse(text) as MetricsFile
-  if (value.schemaVersion !== 1) throw new Error(`${what}: schemaVersion must be 1`)
-  if (typeof value.environment?.label !== 'string' || value.environment.label === '')
+/** The exported comparator must enforce the same input identity as the JSON path. */
+function validateMetricsHeader(value: MetricsFile, what: string): void {
+  if (typeof value !== 'object' || value === null || Array.isArray(value))
+    throw new Error(`${what}: metrics file must be an object`)
+  // JSON files cannot inherit identity fields; direct API inputs must match.
+  if (!Object.hasOwn(value, 'schemaVersion') || value.schemaVersion !== 1)
+    throw new Error(`${what}: schemaVersion must be 1`)
+  if (
+    !Object.hasOwn(value, 'environment') ||
+    typeof value.environment !== 'object' ||
+    value.environment === null ||
+    Array.isArray(value.environment) ||
+    !Object.hasOwn(value.environment, 'label') ||
+    typeof value.environment.label !== 'string' ||
+    value.environment.label.trim() === ''
+  )
     throw new Error(`${what}: environment.label must name the hardware and operating system`)
+}
+
+/** Parse and direct-API comparisons must enforce the same metric shape. */
+function validateMetricsEntries(value: MetricsFile, what: string, allowEmpty = false): void {
   const metrics = Object.entries(value.metrics ?? {})
-  if (metrics.length === 0) throw new Error(`${what}: metrics must hold at least one metric`)
+  if (!allowEmpty && metrics.length === 0)
+    throw new Error(`${what}: metrics must hold at least one metric`)
+  if (typeof value.metrics !== 'object' || value.metrics === null || Array.isArray(value.metrics))
+    throw new Error(`${what}: metrics must be a map`)
   for (const [name, metric] of metrics) {
     if (typeof metric !== 'object' || metric === null)
       throw new Error(`${what}: ${name} must be a metric object`)
-    if (typeof metric.unit !== 'string' || metric.unit === '')
+    if (typeof metric.unit !== 'string' || metric.unit.trim() === '')
       throw new Error(`${what}: ${name} needs a unit`)
-    if (!Array.isArray(metric.samples) || metric.samples.some((x) => !Number.isFinite(x)))
+    if (!Array.isArray(metric.samples))
       throw new Error(`${what}: ${name} needs finite numeric samples`)
+    // Array.prototype.some skips holes; for...of yields undefined for every hole.
+    for (const sample of metric.samples) {
+      if (!Number.isFinite(sample)) throw new Error(`${what}: ${name} needs finite numeric samples`)
+    }
+    if (metric.reproduce !== undefined && typeof metric.reproduce !== 'string')
+      throw new Error(`${what}: ${name} reproduce must be a string`)
     if (metric.direction !== 'lower' && metric.direction !== 'higher')
       throw new Error(`${what}: ${name} direction must be "lower" or "higher"`)
   }
+}
+
+export function parseMetrics(text: string, what: string): MetricsFile {
+  const value = JSON.parse(text) as MetricsFile
+  validateMetricsHeader(value, what)
+  validateMetricsEntries(value, what)
   validateAcceptedTradeoffs(value, what)
   return value
 }
@@ -127,13 +158,22 @@ export function compare(
   current: MetricsFile,
   { threshold = 0.1 }: { threshold?: number } = {}
 ): Comparison {
+  validateMetricsHeader(baseline, 'baseline')
+  validateMetricsHeader(current, 'current')
+  validateMetricsEntries(baseline, 'baseline', true)
+  validateMetricsEntries(current, 'current', true)
   validateAcceptedTradeoffs(baseline, 'baseline')
+  // Current-side acceptance metadata is ignored for exemptions, but it must
+  // obey the same file contract as parseMetrics() before a comparison passes.
+  validateAcceptedTradeoffs(current, 'current')
   if (!Number.isFinite(threshold) || threshold <= 0)
     throw new RangeError('threshold must be a finite positive number')
   const comparable = baseline.environment.label === current.environment.label
   const findings: Finding[] = []
   for (const [name, reference] of Object.entries(baseline.metrics)) {
-    const now = current.metrics[name]
+    // A direct caller can supply an inherited metric. Only measurements owned by
+    // the current metrics map count as reported; prototype values are missing.
+    const now = Object.hasOwn(current.metrics, name) ? current.metrics[name] : undefined
     const empty = {
       name,
       unit: reference.unit,
@@ -181,7 +221,11 @@ export function compare(
       ? bootstrapMedianRatio(now.samples, reference.samples)
       : bootstrapMedianRatio(reference.samples, now.samples)
     const ratio = interval.estimate
-    const accepted = baseline.accepted?.[name]
+    // Inherited tradeoffs are not reviewed, recorded baseline exceptions.
+    const accepted =
+      baseline.accepted && Object.hasOwn(baseline.accepted, name)
+        ? baseline.accepted[name]
+        : undefined
     let status: Status = 'unchanged'
     let note = 'within the threshold'
     if (ratio === null) {

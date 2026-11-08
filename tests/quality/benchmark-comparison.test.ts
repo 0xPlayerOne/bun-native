@@ -104,6 +104,21 @@ test('quantiles use nearest rank and the median averages the middle pair', () =>
   expect(() => describeSamples([1, Number.NaN])).toThrow()
 })
 
+test('finite large-magnitude samples retain finite mean and standard deviation', () => {
+  const constant = describeSamples(Array.from({ length: 12 }, () => 1.5e308))
+  expect(constant.mean).toBe(1.5e308)
+  expect(constant.sampleStdDev).toBe(0)
+
+  const spread = describeSamples([1e308, 1.5e308])
+  expect(spread.mean).toBe(1.25e308)
+  expect(spread.sampleStdDev! / 3.535533905932738e307).toBeCloseTo(1, 10)
+
+  // Squaring first also overflows for a finite, representable signed deviation.
+  const signed = describeSamples([-1e308, 1e308])
+  expect(signed.mean).toBe(0)
+  expect(signed.sampleStdDev! / 1.4142135623730951e308).toBeCloseTo(1, 10)
+})
+
 test('bootstrap intervals are deterministic and bracket the estimate', () => {
   const values = [10, 11, 12, 13, 14, 15, 30]
   const first = bootstrapMedian(values)
