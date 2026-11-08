@@ -353,7 +353,7 @@ describe('PE regions', () => {
     expect(peRegions(rawAlias)?.pdbPath).toBeNull()
     expect(sections(rawAlias)).toEqual([])
     const modified = rawAlias.slice()
-    modified[0x410] ^= 1
+    modified[0x410] = (modified[0x410] ?? 0) ^ 1
     expect(explainDifference(rawAlias, modified).regions).toEqual([
       { name: 'unmapped', bytes: 1, ranges: 1 },
     ])
