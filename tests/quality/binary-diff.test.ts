@@ -156,6 +156,10 @@ describe('PE regions', () => {
     const repro = peRegions(bytes)
     expect(repro?.pdbPath).toBe('host.pdb')
     expect(repro?.regions.some((region) => region.name === 'REPRO hash')).toBe(false)
+
+    // A zero PointerToRawData cannot identify a hash in the DOS header.
+    view.setUint32(entry + 28 + 24, 0, true)
+    expect(peRegions(bytes)?.regions.some((region) => region.name === 'REPRO hash')).toBe(false)
   })
 
   test('names header, debug directory and section regions and reads the PDB path', () => {

@@ -134,7 +134,7 @@ export function peRegions(bytes: Uint8Array): { regions: Region[]; pdbPath: stri
       const path = bytes.subarray(data + 24, end)
       const nul = path.indexOf(0)
       pdbPath = new TextDecoder().decode(nul < 0 ? path : path.subarray(0, nul))
-    } else if (type === 16 && size > 0 && r.fits(data, size)) {
+    } else if (type === 16 && data > 0 && size > 0 && r.fits(data, size)) {
       regions.push({ name: 'REPRO hash', start: data, end: data + size })
     }
   }
