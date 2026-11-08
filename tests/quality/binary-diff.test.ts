@@ -201,6 +201,28 @@ describe('PE regions', () => {
     expect(peRegions(bytes)?.regions.some((region) => region.name === 'REPRO hash')).toBe(false)
   })
 
+  test('does not invent a PDB path when an RSDS record lacks its terminator', () => {
+    const bytes = pe({ stamp: 1, guid: 1, path: 'host.pdb', code: 1 })
+    const view = new DataView(bytes.buffer)
+    const terminator = 0x480 + 24 + 'host.pdb'.length
+    expect(peRegions(bytes)?.pdbPath).toBe('host.pdb')
+
+    // A fully file-backed RSDS header and GUID are not enough: the declared
+    // path bytes must contain the mandatory NUL terminator.
+    bytes[terminator] = 0x58
+    const unterminated = peRegions(bytes)
+    expect(unterminated?.pdbPath).toBeNull()
+    expect(unterminated?.regions.some((region) => region.name === 'CodeView GUID')).toBe(true)
+    expect(unterminated?.regions.some((region) => region.name === 'CodeView PDB path')).toBe(
+      false
+    )
+
+    // NUL plus additional declared padding remains a valid PDB path.
+    bytes[terminator] = 0
+    view.setUint32(0x400 + 16, 24 + 'host.pdb'.length + 1 + 3, true)
+    expect(peRegions(bytes)?.pdbPath).toBe('host.pdb')
+  })
+
   test('names header, debug directory and section regions and reads the PDB path', () => {
     const parsed = peRegions(pe({ stamp: 1, guid: 1, path: 'bun_native_host.pdb', code: 1 }))
     expect(parsed?.pdbPath).toBe('bun_native_host.pdb')

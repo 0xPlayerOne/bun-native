@@ -144,10 +144,15 @@ export function peRegions(bytes: Uint8Array): { regions: Region[]; pdbPath: stri
       regions.push({ name: 'CodeView GUID', start: data + 4, end: data + 20 })
       regions.push({ name: 'CodeView age', start: data + 20, end: data + 24 })
       const end = data + size
-      regions.push({ name: 'CodeView PDB path', start: data + 24, end })
       const path = bytes.subarray(data + 24, end)
       const nul = path.indexOf(0)
-      pdbPath = new TextDecoder().decode(nul < 0 ? path : path.subarray(0, nul))
+      // RSDS filenames are NUL-terminated. Do not invent a PDB identity
+      // from a record whose declared data ends before its path terminator.
+      // The valid GUID and age fields remain independently attributable.
+      if (nul >= 0) {
+        regions.push({ name: 'CodeView PDB path', start: data + 24, end })
+        pdbPath = new TextDecoder().decode(path.subarray(0, nul))
+      }
     } else if (type === 16 && data > 0 && size > 0 && r.fits(data, size)) {
       regions.push({ name: 'REPRO hash', start: data, end: data + size })
     }
