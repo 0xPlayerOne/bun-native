@@ -239,6 +239,41 @@ export function failed(comparison: Comparison): boolean {
 
 const number = (value: number | null) => (value === null ? 'n/a' : value.toPrecision(4))
 
+function escapeTableCell(value: string): string {
+  return value
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('\\', '\\\\')
+    .replaceAll('|', '\\|')
+    .replaceAll('`', '\\`')
+    .replaceAll('*', '\\*')
+    .replaceAll('_', '\\_')
+    .replaceAll('[', '\\[')
+    .replaceAll(']', '\\]')
+    .replaceAll('!', '\\!')
+    .replaceAll('~', '\\~')
+    .replace(/\r\n?|\n/g, '<br>')
+}
+
+function inlineCode(value: string): string {
+  const command = value.replace(/\r\n?|\n/g, ' ')
+  const longest = Math.max(0, ...(command.match(/`+/g) ?? []).map((run) => run.length))
+  const fence = '`'.repeat(longest + 1)
+  const padding = command.startsWith('`') || command.endsWith('`') ? ' ' : ''
+  return `${fence}${padding}${command}${padding}${fence}`
+}
+
+function reproductionCode(value: string): string {
+  if (!/[\r\n]/.test(value)) return inlineCode(value)
+  // A newline can be semantically significant (heredocs and compound commands).
+  // Keep a complete multi-line reproduction command copyable in a fenced block.
+  const command = value.replace(/\r\n?/g, '\n')
+  const longest = Math.max(0, ...(command.match(/`+/g) ?? []).map((run) => run.length))
+  const fence = '`'.repeat(Math.max(3, longest + 1))
+  return `\n\n${fence}sh\n${command}\n${fence}`
+}
+
 export function summary(comparison: Comparison): string {
   const lines = [
     '| Metric | Status | Baseline | Current | Worse-than ratio (95% interval) | Why |',
@@ -246,19 +281,19 @@ export function summary(comparison: Comparison): string {
   ]
   for (const f of comparison.findings)
     lines.push(
-      `| ${f.name} | ${f.status} | ${number(f.baselineMedian)} ${f.unit} | ${number(f.currentMedian)} ${f.unit} | ${number(f.ratio)} (${number(f.low)} to ${number(f.high)}) | ${f.note} |`
+      `| ${escapeTableCell(f.name)} | ${f.status} | ${number(f.baselineMedian)} ${escapeTableCell(f.unit)} | ${number(f.currentMedian)} ${escapeTableCell(f.unit)} | ${number(f.ratio)} (${number(f.low)} to ${number(f.high)}) | ${escapeTableCell(f.note)} |`
     )
   const out = [
     comparison.comparable
-      ? `Environment: ${comparison.environments.current}`
-      : `NOT COMPARABLE: baseline "${comparison.environments.baseline}" vs current "${comparison.environments.current}". Samples from different hardware or operating systems are never compared.`,
+      ? `Environment: ${escapeTableCell(comparison.environments.current)}`
+      : `NOT COMPARABLE: baseline "${escapeTableCell(comparison.environments.baseline)}" vs current "${escapeTableCell(comparison.environments.current)}". Samples from different hardware or operating systems are never compared.`,
     `Threshold: ${comparison.threshold * 100}% worse than the baseline median.`,
     '',
     ...lines,
   ]
   for (const f of comparison.findings)
     if (['regressed', 'suspected', 'missing'].includes(f.status) && f.reproduce)
-      out.push('', `Reproduce ${f.name}: \`${f.reproduce}\``)
+      out.push('', `Reproduce ${escapeTableCell(f.name)}: ${reproductionCode(f.reproduce)}`)
   return out.join('\n')
 }
 
