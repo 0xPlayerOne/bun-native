@@ -188,9 +188,12 @@ metrics-file shape of
 and `metrics.ts gate` compares it with the committed baseline in
 [`comparison/baselines/`](comparison/baselines/README.md) that has the identical
 environment label (OS release, CPU count and model, renderer, cache state). The
-table goes to the job summary; a stable regression of 10% or more (median worse
+table goes to the job summary; a stable regression of 25% or more (median worse
 and the bootstrap interval excluding no change) or a metric missing from the run
-fails the job. A runner CPU without a baseline is reported, not gated, and
+fails the job. The hosted threshold is 25%, not the 10% of a dedicated machine:
+two VMs with the same CPU model measured identical code 12–15% apart on React
+development CPU time and lifecycle median
+([run 42432829952](https://github.com/0xPlayerOne/bun-native/actions/runs/42432829952)). A runner CPU without a baseline is reported, not gated, and
 metrics the baseline does not have yet (the streaming soaks today) are listed as
 recorded without a baseline. `metrics.json` and `regression.md` are kept in the
 artifact, so adopting a new baseline is a copy (see the baselines README).

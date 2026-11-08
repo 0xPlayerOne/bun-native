@@ -8,7 +8,9 @@ workflow's `gate` step compares every new run with the file whose
 `environment.label` is identical (OS release, CPU count and model, renderer and
 cache state). Hosted `ubuntu-24.04` runners come with different CPU models, so
 there is one file per model. A run on a model with no file is recorded and
-reported, not gated: samples from different hardware are never compared.
+reported, not gated: samples from different hardware are never compared. The
+workflow gates at a 25% threshold because separate VMs with the same CPU model
+still differ by up to 15% on identical code.
 
 Every sample is one fresh process from a measured trial (5 per adapter/mode
 here). Warmup launches, failed launches and pooled operation samples are not

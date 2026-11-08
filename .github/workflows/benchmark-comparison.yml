@@ -183,7 +183,9 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
       # Regression gate (#259): per-launch samples against the committed baseline
       # with the identical environment label. A model with no baseline is
-      # reported, not gated. Fails on a stable >10% regression or missing metric.
+      # reported, not gated. Fails on a stable >25% regression or missing metric:
+      # two hosted VMs with the same CPU model measured identical code 12-15%
+      # apart (run 42432829952), so 10% is a dedicated-machine threshold.
       - name: Regression gate against the committed baseline for this runner
         if: ${{ !cancelled() && env.COMPARISON != '' }}
         run: |
@@ -199,7 +201,7 @@ jobs:
             --output "$COMPARISON/metrics.json" --streaming "${streaming[@]}"
           status=0
           bun benchmarks/comparison/metrics.ts gate "$COMPARISON/metrics.json" \
-            benchmarks/comparison/baselines > "$COMPARISON/regression.md" || status=$?
+            benchmarks/comparison/baselines --threshold 0.25 > "$COMPARISON/regression.md" || status=$?
           {
             echo '## Regression gate'
             echo
