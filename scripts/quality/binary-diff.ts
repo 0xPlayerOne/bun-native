@@ -102,8 +102,15 @@ export function peRegions(bytes: Uint8Array): { regions: Region[]; pdbPath: stri
       raw: r.u32(at + 20) as number,
     })
   }
+  // Malformed section raw pointers may alias the DOS/PE headers or extend
+  // beyond the file. Only complete, non-header raw ranges can own bytes or
+  // translate debug-directory RVAs into file offsets.
+  const headerEnd = table + sectionCount * 40
+  const fileBackedSections = sections.filter(
+    (s) => s.rawSize > 0 && s.raw >= headerEnd && r.fits(s.raw, s.rawSize)
+  )
   const fileOffset = (rva: number, size: number) => {
-    for (const s of sections) {
+    for (const s of fileBackedSections) {
       const offset = rva - s.rva
       // VirtualSize may include zero-filled memory beyond the file's raw
       // section bytes. A debug directory must also fit in one raw section:
@@ -166,16 +173,14 @@ export function peRegions(bytes: Uint8Array): { regions: Region[]; pdbPath: stri
       regions.push({ name: 'REPRO hash', start: data, end: data + size })
     }
   }
-  for (const s of sections)
+  for (const s of fileBackedSections)
     regions.push({ name: `section ${s.name}`, start: s.raw, end: s.raw + s.rawSize })
   // A zero-filled section such as .bss can be declared first with no raw
   // bytes and PointerToRawData=0. Bound headers by the first file-backed
   // section, not the first section-table entry.
   let firstRaw: number | null = null
-  for (const s of sections) {
-    if (s.rawSize > 0 && s.raw >= table + sectionCount * 40 && r.fits(s.raw, s.rawSize))
-      firstRaw = firstRaw === null ? s.raw : Math.min(firstRaw, s.raw)
-  }
+  for (const s of fileBackedSections)
+    firstRaw = firstRaw === null ? s.raw : Math.min(firstRaw, s.raw)
   regions.push({
     name: 'headers',
     start: 0,

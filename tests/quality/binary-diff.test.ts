@@ -295,6 +295,51 @@ describe('PE regions', () => {
     expect(parsed?.regions.filter((region) => region.name === 'CodeView PDB path')).toHaveLength(3)
   })
 
+  test('does not map header-aliasing or truncated raw sections as PE data', () => {
+    const make = () => pe({ stamp: 1, guid: 1, path: 'host.pdb', code: 1 })
+    const table = 0x80 + 4 + 20 + 240
+    const debugSize = 0x80 + 4 + 20 + 112 + 6 * 8 + 4
+
+    // A corrupt .rdata raw pointer of zero aliases the DOS header. The
+    // apparent CodeView record at that offset must not fabricate a PDB path
+    // or claim DOS-header differences as .rdata section data.
+    const alias = make()
+    const aliasView = new DataView(alias.buffer)
+    aliasView.setUint32(table + 40 + 20, 0, true)
+    aliasView.setUint32(debugSize, 28, true)
+    aliasView.setUint32(12, 2, true)
+    aliasView.setUint32(16, 24 + 'host.pdb'.length + 1, true)
+    aliasView.setUint32(24, 0x480, true)
+    const parsedAlias = peRegions(alias)
+    expect(parsedAlias?.pdbPath).toBeNull()
+    expect(
+      parsedAlias?.regions.filter((region) => region.name === 'debug directory TimeDateStamp')
+    ).toEqual([])
+    expect(parsedAlias?.regions.some((region) => region.name === 'section .rdata')).toBe(false)
+    const changedHeader = alias.slice()
+    changedHeader[0x41] = 0x58
+    expect(explainDifference(alias, changedHeader).regions).toEqual([
+      { name: 'headers', bytes: 1, ranges: 1 },
+    ])
+
+    // A section whose declared raw extent goes past EOF is not file-backed,
+    // even if the bytes at the beginning of the incomplete range resemble
+    // a fully in-bounds debug directory and independent CodeView record.
+    const truncated = make()
+    const truncatedView = new DataView(truncated.buffer)
+    truncatedView.setUint32(table + 40 + 20, 0x580, true)
+    truncatedView.setUint32(debugSize, 28, true)
+    truncatedView.setUint32(0x580 + 12, 2, true)
+    truncatedView.setUint32(0x580 + 16, 24 + 'host.pdb'.length + 1, true)
+    truncatedView.setUint32(0x580 + 24, 0x480, true)
+    const parsedTruncated = peRegions(truncated)
+    expect(parsedTruncated?.pdbPath).toBeNull()
+    expect(parsedTruncated?.regions.some((region) => region.name === 'section .rdata')).toBe(false)
+
+    // A complete, normally mapped .rdata section retains its PDB identity.
+    expect(peRegions(make())?.pdbPath).toBe('host.pdb')
+  })
+
   test('uses the earliest file-backed section rather than an uninitialized section for headers', () => {
     const a = pe({ stamp: 1, guid: 1, path: 'host.pdb', code: 1 })
     const view = new DataView(a.buffer)
