@@ -119,7 +119,9 @@ export function peRegions(bytes: Uint8Array): { regions: Region[]; pdbPath: stri
     const size = r.u32(entry + 16) as number
     const data = r.u32(entry + 24) as number
     regions.push({ name: `debug directory TimeDateStamp`, start: entry + 4, end: entry + 8 })
-    if (type === 2 && r.u32(data) === 0x53445352) {
+    // Debug payload pointers are raw file offsets, not validated by the
+    // debug directory table's RVA bounds. Never name partial CodeView data.
+    if (type === 2 && size >= 24 && r.fits(data, size) && r.u32(data) === 0x53445352) {
       regions.push({ name: 'CodeView GUID', start: data + 4, end: data + 20 })
       regions.push({ name: 'CodeView age', start: data + 20, end: data + 24 })
       const end = Math.min(data + size, bytes.length)
@@ -127,7 +129,7 @@ export function peRegions(bytes: Uint8Array): { regions: Region[]; pdbPath: stri
       const path = bytes.subarray(data + 24, end)
       const nul = path.indexOf(0)
       pdbPath = new TextDecoder().decode(nul < 0 ? path : path.subarray(0, nul))
-    } else if (type === 16) {
+    } else if (type === 16 && size > 0 && r.fits(data, size)) {
       regions.push({ name: 'REPRO hash', start: data, end: data + size })
     }
   }

@@ -125,6 +125,40 @@ describe('PE regions', () => {
     ).toHaveLength(2)
   })
 
+
+  test('does not classify incomplete CodeView or REPRO payloads as file-backed bytes', () => {
+    const bytes = pe({ stamp: 1, guid: 1, path: 'host.pdb', code: 1 })
+    const view = new DataView(bytes.buffer)
+    const entry = 0x400
+    const codeview = 0x480
+
+    // The fixed 24-byte RSDS header must fit inside the declared SizeOfData.
+    view.setUint32(entry + 16, 4, true)
+    expect(peRegions(bytes)?.pdbPath).toBeNull()
+    expect(peRegions(bytes)?.regions.some((region) => region.name === 'CodeView GUID')).toBe(false)
+
+    // A signature four bytes before EOF is not a complete CodeView record.
+    view.setUint32(entry + 16, 28, true)
+    view.setUint32(entry + 24, bytes.length - 4, true)
+    view.setUint32(bytes.length - 4, 0x53445352, true)
+    const truncated = peRegions(bytes)
+    expect(truncated?.pdbPath).toBeNull()
+    expect(truncated?.regions.some((region) => region.name === 'CodeView GUID')).toBe(false)
+
+    // An in-bounds signature cannot authenticate a declared payload beyond EOF.
+    view.setUint32(entry + 16, 0x200, true)
+    view.setUint32(entry + 24, codeview, true)
+    expect(peRegions(bytes)?.pdbPath).toBeNull()
+
+    // Restore the complete CodeView record; reject only the truncated REPRO
+    // record instead of inventing a hash region outside the file.
+    view.setUint32(entry + 16, 24 + 'host.pdb\\0'.length, true)
+    view.setUint32(entry + 28 + 24, bytes.length - 2, true)
+    const repro = peRegions(bytes)
+    expect(repro?.pdbPath).toBe('host.pdb')
+    expect(repro?.regions.some((region) => region.name === 'REPRO hash')).toBe(false)
+  })
+
   test('names header, debug directory and section regions and reads the PDB path', () => {
     const parsed = peRegions(pe({ stamp: 1, guid: 1, path: 'bun_native_host.pdb', code: 1 }))
     expect(parsed?.pdbPath).toBe('bun_native_host.pdb')
