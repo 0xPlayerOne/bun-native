@@ -185,12 +185,23 @@ export function exportMetrics(directory: string, streaming: readonly string[] = 
   ) as Comparison
   if (comparison.status !== 'passed')
     throw new Error(`The comparison status is ${comparison.status}; a failed run is not a baseline`)
-  const reports = new Map(
-    readJsonl(join(directory, 'launches.jsonl.gz')).map((row) => [
-      row['name'] as string,
-      row['report'] as Record<string, unknown> | null,
-    ])
-  )
+  // Each recorded process must contribute at most one independent sample.
+  // A repeated identity would otherwise reuse one retained report or overwrite
+  // an earlier JSONL report before the regression gate sees it.
+  const identities = new Set<string>()
+  for (const launch of [...comparison.launches, ...(comparison.inputLaunches ?? [])]) {
+    if (typeof launch.name !== 'string' || !launch.name)
+      throw new Error('Comparison launch lacks a name')
+    if (identities.has(launch.name)) throw new Error(`Duplicate comparison launch ${launch.name}`)
+    identities.add(launch.name)
+  }
+  const reports = new Map<string, Record<string, unknown> | null>()
+  for (const row of readJsonl(join(directory, 'launches.jsonl.gz'))) {
+    const name = row['name']
+    if (typeof name !== 'string' || !name) throw new Error('Retained launch report lacks a name')
+    if (reports.has(name)) throw new Error(`Duplicate retained launch report ${name}`)
+    reports.set(name, row['report'] as Record<string, unknown> | null)
+  }
   const metrics = fromComparison(comparison, reports)
   const streamed = fromStreaming(
     streaming.map((path) => JSON.parse(readFileSync(path, 'utf8')) as StreamingResult)

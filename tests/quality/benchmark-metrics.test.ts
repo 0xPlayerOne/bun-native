@@ -2,7 +2,7 @@ import { describe, expect, test } from 'bun:test'
 import { mkdtempSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
-import { gzipSync } from 'node:zlib'
+import { gunzipSync, gzipSync } from 'node:zlib'
 import {
   environmentLabel,
   exportMetrics,
@@ -185,6 +185,28 @@ describe('benchmark metrics export', () => {
     const { directory } = writeExport()
     writeFileSync(join(directory, 'launches.jsonl.gz'), gzipSync(''))
     expect(() => exportMetrics(directory)).toThrow('has no retained child report')
+  })
+
+  test('rejects duplicate launch and retained-report names instead of reusing a sample', () => {
+    const { directory, comparison } = writeExport()
+    comparison.launches.push({ ...comparison.launches[1]! })
+    writeFileSync(join(directory, 'comparison.json'), JSON.stringify(comparison))
+    expect(() => exportMetrics(directory)).toThrow('Duplicate comparison launch core-aot-1')
+
+    const input = writeExport()
+    input.comparison.inputLaunches.push({ ...input.comparison.inputLaunches[0]! })
+    writeFileSync(join(input.directory, 'comparison.json'), JSON.stringify(input.comparison))
+    expect(() => exportMetrics(input.directory)).toThrow(
+      'Duplicate comparison launch core-aot-input-1'
+    )
+
+    const recorded = writeExport()
+    const path = join(recorded.directory, 'launches.jsonl.gz')
+    const lines = gunzipSync(readFileSync(path)).toString('utf8').trimEnd().split('\n')
+    writeFileSync(path, gzipSync([...lines, lines[1]!].join('\n') + '\n'))
+    expect(() => exportMetrics(recorded.directory)).toThrow(
+      'Duplicate retained launch report core-aot-1'
+    )
   })
 
   test('adds streaming-list soaks as one sample per launch and refuses a failed soak', () => {
