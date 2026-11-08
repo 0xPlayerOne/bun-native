@@ -42,15 +42,32 @@ export function median(samples: readonly number[]) {
 export function describe(samples: readonly number[]) {
   const values = sorted(samples)
   const n = values.length
-  const mean = n ? values.reduce((sum, value) => sum + value, 0) / n : null
-  const variance =
-    n > 1 ? values.reduce((sum, value) => sum + (value - mean!) ** 2, 0) / (n - 1) : null
+  // Sum-first means overflow for large finite samples. Update the mean online,
+  // using a weighted midpoint when opposite-signed extremes overflow the delta.
+  let mean: number | null = n ? values[0]! : null
+  for (let index = 1; index < n; index++) {
+    const value = values[index]!
+    const difference = value - mean!
+    mean = Number.isFinite(difference)
+      ? mean! + difference / (index + 1)
+      : mean! * (index / (index + 1)) + value / (index + 1)
+  }
+  // Sum of squared deviations can overflow although the standard deviation
+  // fits in a number. Scale before accumulating a Euclidean norm.
+  const standardDeviationScale = n > 1 ? Math.sqrt(n - 1) : 1
+  const sampleStdDev =
+    n > 1
+      ? values.reduce(
+          (length, value) => Math.hypot(length, (value - mean!) / standardDeviationScale),
+          0
+        )
+      : null
   return {
     count: n,
     min: values[0] ?? null,
     median: median(values),
     mean,
-    sampleStdDev: variance === null ? null : Math.sqrt(variance),
+    sampleStdDev,
     p95: nearestRank(values, 0.95),
     p99: nearestRank(values, 0.99),
     max: values[n - 1] ?? null,
