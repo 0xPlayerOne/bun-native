@@ -10,6 +10,10 @@ The methodology, equivalence rules and statistics are in
   `tests/quality/benchmark-comparison.test.ts`.
 - `export.ts`: copies a finished run into a compact, committable record and
   prints a Markdown summary table.
+- `metrics.ts`: converts an exported run into the regression gate's metrics file
+  (`export`) and gates it against the matching committed baseline (`gate`),
+  covered by `tests/quality/benchmark-metrics.test.ts`.
+- `baselines/`: committed regression baselines, one per hosted runner CPU.
 - `results/`: recorded runs, each with its own README.
 
 ## Run
@@ -46,3 +50,14 @@ bun benchmarks/comparison/export.ts "$out" \
 The export writes `comparison.json` and `launches.jsonl.gz` (every raw child
 report plus the tail of its stderr log). Write the run's README by hand from the
 printed table and the recorded environment.
+
+## Gate a run against the committed baseline
+
+```sh
+bun benchmarks/comparison/metrics.ts export "$PWD/benchmarks/comparison/results/<run>" \
+  --output /tmp/metrics.json [--streaming RESULT.json ...]
+bun benchmarks/comparison/metrics.ts gate /tmp/metrics.json benchmarks/comparison/baselines
+```
+
+`gate` exits 1 on a stable regression or a missing metric and 0 when no
+baseline has the run's environment label.

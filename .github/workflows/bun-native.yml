@@ -40,7 +40,11 @@ jobs:
           bun run typecheck
           bun run check:boundaries
           bun run check:health
+          bun run check:duplicates
           bun run build
+      - name: Code-health summary
+        if: ${{ !cancelled() }}
+        run: bun scripts/quality/health-summary.ts >> "$GITHUB_STEP_SUMMARY"
       - name: TypeScript tests and coverage
         run: bun test tests --coverage
       - name: Install checksum-pinned workflow linter

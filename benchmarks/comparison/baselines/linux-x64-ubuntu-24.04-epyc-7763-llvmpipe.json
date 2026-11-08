@@ -1,0 +1,361 @@
+{
+  "schemaVersion": 1,
+  "environment": {
+    "label": "linux-x64 | Ubuntu 24.04.5 LTS | 4 cpu | AMD EPYC 7763 64-Core Processor | llvmpipe | warm-cache"
+  },
+  "metrics": {
+    "core/development spawnToViewMountedMs": {
+      "unit": "ms",
+      "direction": "lower",
+      "samples": [
+        131.891770671875, 146.56171909375, 145.042697546875, 141.853747625, 155.716983109375
+      ],
+      "reproduce": "gh workflow run benchmark-comparison.yml (local: benchmarks/comparison/README.md \"Run\")"
+    },
+    "core/development processWallMs": {
+      "unit": "ms",
+      "direction": "lower",
+      "samples": [
+        1007.1439590000009, 1022.2976320000016, 999.0324640000035, 1016.3478309999991,
+        1021.4518590000007
+      ],
+      "reproduce": "gh workflow run benchmark-comparison.yml (local: benchmarks/comparison/README.md \"Run\")"
+    },
+    "core/development cpuTimeMs": {
+      "unit": "ms",
+      "direction": "lower",
+      "samples": [1788.8400000000001, 1786.263, 1746.007, 1793.899, 1791.998],
+      "reproduce": "gh workflow run benchmark-comparison.yml (local: benchmarks/comparison/README.md \"Run\")"
+    },
+    "core/development peakTreeRssMB": {
+      "unit": "MB",
+      "direction": "lower",
+      "samples": [209.408, 209.14175999999998, 209.584128, 209.874944, 208.26111999999998],
+      "reproduce": "gh workflow run benchmark-comparison.yml (local: benchmarks/comparison/README.md \"Run\")"
+    },
+    "core/development peakApplicationRssMB": {
+      "unit": "MB",
+      "direction": "lower",
+      "samples": [78.958592, 78.31551999999999, 78.65548799999999, 78.68415999999999, 77.438976],
+      "reproduce": "gh workflow run benchmark-comparison.yml (local: benchmarks/comparison/README.md \"Run\")"
+    },
+    "core/development lifecycleMedianMs": {
+      "unit": "ms",
+      "direction": "lower",
+      "samples": [
+        0.817786999999953, 0.7877095000000054, 0.8000884999999585, 0.7715489999999932,
+        0.7923700000000053
+      ],
+      "reproduce": "gh workflow run benchmark-comparison.yml (local: benchmarks/comparison/README.md \"Run\")"
+    },
+    "core/development signalsAcknowledgementMedianMs": {
+      "unit": "ms",
+      "direction": "lower",
+      "samples": [
+        0.12852499999999623, 0.13031349999999975, 0.1276979999999952, 0.12829449999998133,
+        0.12744800000001533
+      ],
+      "reproduce": "gh workflow run benchmark-comparison.yml (local: benchmarks/comparison/README.md \"Run\")"
+    },
+    "react/aot spawnToViewMountedMs": {
+      "unit": "ms",
+      "direction": "lower",
+      "samples": [
+        123.382224359375, 114.627868625, 126.52361259375, 116.19100596875, 117.037924890625
+      ],
+      "reproduce": "gh workflow run benchmark-comparison.yml (local: benchmarks/comparison/README.md \"Run\")"
+    },
+    "react/aot processWallMs": {
+      "unit": "ms",
+      "direction": "lower",
+      "samples": [
+        1133.9196389999997, 1116.4885179999983, 1136.4396979999947, 1119.8949109999958,
+        1115.0664830000023
+      ],
+      "reproduce": "gh workflow run benchmark-comparison.yml (local: benchmarks/comparison/README.md \"Run\")"
+    },
+    "react/aot cpuTimeMs": {
+      "unit": "ms",
+      "direction": "lower",
+      "samples": [1825.7530000000002, 1793.983, 1823.1480000000001, 1806.5610000000001, 1787.375],
+      "reproduce": "gh workflow run benchmark-comparison.yml (local: benchmarks/comparison/README.md \"Run\")"
+    },
+    "react/aot peakTreeRssMB": {
+      "unit": "MB",
+      "direction": "lower",
+      "samples": [185.24979199999999, 185.97888, 186.335232, 184.39782399999999, 184.741888],
+      "reproduce": "gh workflow run benchmark-comparison.yml (local: benchmarks/comparison/README.md \"Run\")"
+    },
+    "react/aot peakApplicationRssMB": {
+      "unit": "MB",
+      "direction": "lower",
+      "samples": [54.730751999999995, 55.17312, 55.279616, 54.173696, 54.317056],
+      "reproduce": "gh workflow run benchmark-comparison.yml (local: benchmarks/comparison/README.md \"Run\")"
+    },
+    "react/aot lifecycleMedianMs": {
+      "unit": "ms",
+      "direction": "lower",
+      "samples": [
+        0.8667690000000903, 0.8864730000000236, 0.8428434999999581, 0.8328100000000518,
+        0.848374500000034
+      ],
+      "reproduce": "gh workflow run benchmark-comparison.yml (local: benchmarks/comparison/README.md \"Run\")"
+    },
+    "react/aot signalsAcknowledgementMedianMs": {
+      "unit": "ms",
+      "direction": "lower",
+      "samples": [
+        0.1638514999999927, 0.1603799999999751, 0.16043100000001687, 0.16178500000000895,
+        0.1600090000000023
+      ],
+      "reproduce": "gh workflow run benchmark-comparison.yml (local: benchmarks/comparison/README.md \"Run\")"
+    },
+    "react/development spawnToViewMountedMs": {
+      "unit": "ms",
+      "direction": "lower",
+      "samples": [152.933579296875, 150.00731765625, 154.74281975, 149.38857846875, 148.6003328125],
+      "reproduce": "gh workflow run benchmark-comparison.yml (local: benchmarks/comparison/README.md \"Run\")"
+    },
+    "react/development processWallMs": {
+      "unit": "ms",
+      "direction": "lower",
+      "samples": [
+        1604.2031850000021, 1536.1783830000059, 1546.8471189999982, 1539.3043480000051,
+        1553.0210789999983
+      ],
+      "reproduce": "gh workflow run benchmark-comparison.yml (local: benchmarks/comparison/README.md \"Run\")"
+    },
+    "react/development cpuTimeMs": {
+      "unit": "ms",
+      "direction": "lower",
+      "samples": [3327.936, 3152.782, 3191.948, 3177.949, 3189.961],
+      "reproduce": "gh workflow run benchmark-comparison.yml (local: benchmarks/comparison/README.md \"Run\")"
+    },
+    "react/development peakTreeRssMB": {
+      "unit": "MB",
+      "direction": "lower",
+      "samples": [238.92787199999998, 236.60134399999998, 235.843584, 235.331584, 237.883392],
+      "reproduce": "gh workflow run benchmark-comparison.yml (local: benchmarks/comparison/README.md \"Run\")"
+    },
+    "react/development peakApplicationRssMB": {
+      "unit": "MB",
+      "direction": "lower",
+      "samples": [108.27776, 106.12736, 105.00095999999999, 104.378368, 107.249664],
+      "reproduce": "gh workflow run benchmark-comparison.yml (local: benchmarks/comparison/README.md \"Run\")"
+    },
+    "react/development lifecycleMedianMs": {
+      "unit": "ms",
+      "direction": "lower",
+      "samples": [
+        1.366899999999987, 1.2743199999999888, 1.2915285000001404, 1.315644999999904,
+        1.3316405000000486
+      ],
+      "reproduce": "gh workflow run benchmark-comparison.yml (local: benchmarks/comparison/README.md \"Run\")"
+    },
+    "react/development signalsAcknowledgementMedianMs": {
+      "unit": "ms",
+      "direction": "lower",
+      "samples": [
+        0.2336385000000405, 0.22306200000002718, 0.2292190000000005, 0.22567700000001878,
+        0.22519799999997758
+      ],
+      "reproduce": "gh workflow run benchmark-comparison.yml (local: benchmarks/comparison/README.md \"Run\")"
+    },
+    "solid/aot spawnToViewMountedMs": {
+      "unit": "ms",
+      "direction": "lower",
+      "samples": [
+        116.635490125, 120.848713171875, 110.895778265625, 116.783256953125, 118.15556375
+      ],
+      "reproduce": "gh workflow run benchmark-comparison.yml (local: benchmarks/comparison/README.md \"Run\")"
+    },
+    "solid/aot processWallMs": {
+      "unit": "ms",
+      "direction": "lower",
+      "samples": [
+        998.6965589999963, 996.3269779999973, 985.3760639999964, 992.3849780000019,
+        1008.0907709999956
+      ],
+      "reproduce": "gh workflow run benchmark-comparison.yml (local: benchmarks/comparison/README.md \"Run\")"
+    },
+    "solid/aot cpuTimeMs": {
+      "unit": "ms",
+      "direction": "lower",
+      "samples": [1567.754, 1566.715, 1571.9440000000002, 1578.73, 1585.716],
+      "reproduce": "gh workflow run benchmark-comparison.yml (local: benchmarks/comparison/README.md \"Run\")"
+    },
+    "solid/aot peakTreeRssMB": {
+      "unit": "MB",
+      "direction": "lower",
+      "samples": [
+        184.16844799999998, 184.496128, 183.64416, 184.36915199999999, 184.44697599999998
+      ],
+      "reproduce": "gh workflow run benchmark-comparison.yml (local: benchmarks/comparison/README.md \"Run\")"
+    },
+    "solid/aot peakApplicationRssMB": {
+      "unit": "MB",
+      "direction": "lower",
+      "samples": [53.530623999999996, 53.792767999999995, 53.248, 53.8624, 53.833728],
+      "reproduce": "gh workflow run benchmark-comparison.yml (local: benchmarks/comparison/README.md \"Run\")"
+    },
+    "solid/aot lifecycleMedianMs": {
+      "unit": "ms",
+      "direction": "lower",
+      "samples": [
+        0.7063689999999383, 0.7296880000000101, 0.702015499999959, 0.686702500000024,
+        0.6982820000000061
+      ],
+      "reproduce": "gh workflow run benchmark-comparison.yml (local: benchmarks/comparison/README.md \"Run\")"
+    },
+    "solid/aot signalsAcknowledgementMedianMs": {
+      "unit": "ms",
+      "direction": "lower",
+      "samples": [
+        0.12277950000000715, 0.12577000000001703, 0.12317350000002136, 0.12182249999997907,
+        0.12732450000000028
+      ],
+      "reproduce": "gh workflow run benchmark-comparison.yml (local: benchmarks/comparison/README.md \"Run\")"
+    },
+    "solid/development spawnToViewMountedMs": {
+      "unit": "ms",
+      "direction": "lower",
+      "samples": [
+        155.65871065625, 145.372250734375, 152.36607815625, 155.2072453125, 144.636512171875
+      ],
+      "reproduce": "gh workflow run benchmark-comparison.yml (local: benchmarks/comparison/README.md \"Run\")"
+    },
+    "solid/development processWallMs": {
+      "unit": "ms",
+      "direction": "lower",
+      "samples": [
+        1234.534958999997, 1230.4931240000005, 1253.1611339999945, 1270.5570979999975,
+        1257.2050919999965
+      ],
+      "reproduce": "gh workflow run benchmark-comparison.yml (local: benchmarks/comparison/README.md \"Run\")"
+    },
+    "solid/development cpuTimeMs": {
+      "unit": "ms",
+      "direction": "lower",
+      "samples": [2282.217, 2284.326, 2309.977, 2334.103, 2332.142],
+      "reproduce": "gh workflow run benchmark-comparison.yml (local: benchmarks/comparison/README.md \"Run\")"
+    },
+    "solid/development peakTreeRssMB": {
+      "unit": "MB",
+      "direction": "lower",
+      "samples": [213.590016, 214.40102399999998, 214.335488, 213.602304, 214.900736],
+      "reproduce": "gh workflow run benchmark-comparison.yml (local: benchmarks/comparison/README.md \"Run\")"
+    },
+    "solid/development peakApplicationRssMB": {
+      "unit": "MB",
+      "direction": "lower",
+      "samples": [83.034112, 83.808256, 83.378176, 82.6368, 84.11135999999999],
+      "reproduce": "gh workflow run benchmark-comparison.yml (local: benchmarks/comparison/README.md \"Run\")"
+    },
+    "solid/development lifecycleMedianMs": {
+      "unit": "ms",
+      "direction": "lower",
+      "samples": [
+        1.1285049999999046, 1.0749114999999847, 1.1263999999999896, 1.0601949999999078,
+        1.1132185000000163
+      ],
+      "reproduce": "gh workflow run benchmark-comparison.yml (local: benchmarks/comparison/README.md \"Run\")"
+    },
+    "solid/development signalsAcknowledgementMedianMs": {
+      "unit": "ms",
+      "direction": "lower",
+      "samples": [
+        0.1626269999999863, 0.16076000000001045, 0.16337049999998499, 0.1643600000000447,
+        0.1600389999999834
+      ],
+      "reproduce": "gh workflow run benchmark-comparison.yml (local: benchmarks/comparison/README.md \"Run\")"
+    },
+    "core/aot spawnToViewMountedMs": {
+      "unit": "ms",
+      "direction": "lower",
+      "samples": [
+        111.613367265625, 113.588123171875, 111.069703671875, 111.689356046875, 118.86364228125
+      ],
+      "reproduce": "gh workflow run benchmark-comparison.yml (local: benchmarks/comparison/README.md \"Run\")"
+    },
+    "core/aot processWallMs": {
+      "unit": "ms",
+      "direction": "lower",
+      "samples": [
+        865.4203410000046, 886.2863030000008, 869.201310000004, 868.3984670000063, 889.3624620000046
+      ],
+      "reproduce": "gh workflow run benchmark-comparison.yml (local: benchmarks/comparison/README.md \"Run\")"
+    },
+    "core/aot cpuTimeMs": {
+      "unit": "ms",
+      "direction": "lower",
+      "samples": [1339.3110000000001, 1367.4189999999999, 1335.562, 1340.683, 1369.628],
+      "reproduce": "gh workflow run benchmark-comparison.yml (local: benchmarks/comparison/README.md \"Run\")"
+    },
+    "core/aot peakTreeRssMB": {
+      "unit": "MB",
+      "direction": "lower",
+      "samples": [181.673984, 181.727232, 181.141504, 181.313536, 181.460992],
+      "reproduce": "gh workflow run benchmark-comparison.yml (local: benchmarks/comparison/README.md \"Run\")"
+    },
+    "core/aot peakApplicationRssMB": {
+      "unit": "MB",
+      "direction": "lower",
+      "samples": [50.8928, 51.052544, 50.999296, 50.925568, 50.962432],
+      "reproduce": "gh workflow run benchmark-comparison.yml (local: benchmarks/comparison/README.md \"Run\")"
+    },
+    "core/aot lifecycleMedianMs": {
+      "unit": "ms",
+      "direction": "lower",
+      "samples": [
+        0.5849324999999794, 0.5743960000000357, 0.5676354999999944, 0.5749190000000226,
+        0.5606619999999793
+      ],
+      "reproduce": "gh workflow run benchmark-comparison.yml (local: benchmarks/comparison/README.md \"Run\")"
+    },
+    "core/aot signalsAcknowledgementMedianMs": {
+      "unit": "ms",
+      "direction": "lower",
+      "samples": [
+        0.10145950000000425, 0.10345850000000212, 0.10319249999999158, 0.10234150000000852,
+        0.10585149999999999
+      ],
+      "reproduce": "gh workflow run benchmark-comparison.yml (local: benchmarks/comparison/README.md \"Run\")"
+    },
+    "core/development clickToPaintMs": {
+      "unit": "ms",
+      "direction": "lower",
+      "samples": [16.709543, 15.441541, 7.133515, 17.719121, 14.574744],
+      "reproduce": "gh workflow run benchmark-comparison.yml (local: benchmarks/comparison/README.md \"Run\")"
+    },
+    "react/aot clickToPaintMs": {
+      "unit": "ms",
+      "direction": "lower",
+      "samples": [13.264026, 11.378006, 9.317416, 8.705329, 17.394075],
+      "reproduce": "gh workflow run benchmark-comparison.yml (local: benchmarks/comparison/README.md \"Run\")"
+    },
+    "react/development clickToPaintMs": {
+      "unit": "ms",
+      "direction": "lower",
+      "samples": [16.186415, 13.895778, 9.062009, 17.593371, 22.465032],
+      "reproduce": "gh workflow run benchmark-comparison.yml (local: benchmarks/comparison/README.md \"Run\")"
+    },
+    "solid/aot clickToPaintMs": {
+      "unit": "ms",
+      "direction": "lower",
+      "samples": [16.801023, 20.071934, 12.144378, 12.133801, 9.995301],
+      "reproduce": "gh workflow run benchmark-comparison.yml (local: benchmarks/comparison/README.md \"Run\")"
+    },
+    "solid/development clickToPaintMs": {
+      "unit": "ms",
+      "direction": "lower",
+      "samples": [19.720832, 17.796541, 10.361452, 20.100332, 20.497243],
+      "reproduce": "gh workflow run benchmark-comparison.yml (local: benchmarks/comparison/README.md \"Run\")"
+    },
+    "core/aot clickToPaintMs": {
+      "unit": "ms",
+      "direction": "lower",
+      "samples": [7.428461, 12.182647, 10.427539, 8.573476, 20.038421],
+      "reproduce": "gh workflow run benchmark-comparison.yml (local: benchmarks/comparison/README.md \"Run\")"
+    }
+  }
+}
