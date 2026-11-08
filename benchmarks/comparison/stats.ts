@@ -269,6 +269,13 @@ export function assertEquivalentPaint(
     }
   }
 }
+  // Cross-calibration agreement can conceal a renderer switch in every run:
+  // the initial records all match, and the final records all match, but one
+  // window was observed with two distinct native renderer identities.
+  for (const item of calibrations)
+    if (!isDeepStrictEqual(renderer(item.initial), renderer(item.final)))
+      throw new Error(`${item.name} changes native renderer identity between paint stages`)
+
 
 export type Launch = {
   name: string

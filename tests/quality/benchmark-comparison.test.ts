@@ -299,6 +299,32 @@ test('matching absent or volatile-only renderers cannot qualify native paint', (
   ).not.toThrow()
 })
 
+test('a calibration cannot switch renderer identity between native paint stages', () => {
+  const paint = (device: string, nonce: string, timing: number) => ({
+    renderer: {
+      nonce,
+      type: 'renderer',
+      window_id: 1,
+      gpu: { device_name: device },
+      time: timing,
+    },
+    paint: { nodes: [{ node_id: 1, text: 'same' }] },
+  })
+  // The original per-stage cross-calibration checks accepted both records:
+  // initial matches initial, final matches final, but each switched GPU.
+  const calibrations = (finalDevice: string) =>
+    ['core', 'solid'].map((name, index) => ({
+      name,
+      initial: paint('llvmpipe', `initial-${index}`, 1),
+      final: paint(finalDevice, `final-${index}`, 10),
+    }))
+  expect(() => assertEquivalentPaint(calibrations('other-gpu'))).toThrow(
+    /changes native renderer identity between paint stages/
+  )
+  // Different nonces and timing fields remain explicitly permissible.
+  expect(() => assertEquivalentPaint(calibrations('llvmpipe'))).not.toThrow()
+})
+
 test('summaries keep first launches and failures separate from measured distributions', () => {
   const launches = [
     launch('core', 'aot', 0, report(5)),
