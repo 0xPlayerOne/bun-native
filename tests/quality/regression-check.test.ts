@@ -158,7 +158,10 @@ describe('metric regression gate', () => {
       const malformed = structuredClone(which === 'baseline' ? baseline : current)
       ;(malformed as { schemaVersion: number }).schemaVersion = 2
       expect(() =>
-        compare(which === 'baseline' ? malformed : baseline, which === 'current' ? malformed : current)
+        compare(
+          which === 'baseline' ? malformed : baseline,
+          which === 'current' ? malformed : current
+        )
       ).toThrow(new RegExp(`${which}: schemaVersion`))
     }
     // Reject missing metadata before computing comparability.
@@ -184,10 +187,10 @@ describe('metric regression gate', () => {
       environment: valid.environment,
       metrics: valid.metrics,
     }) as MetricsFile
-    const inheritedEnvironment = Object.assign(
-      Object.create({ environment: valid.environment }),
-      { schemaVersion: 1, metrics: valid.metrics }
-    ) as MetricsFile
+    const inheritedEnvironment = Object.assign(Object.create({ environment: valid.environment }), {
+      schemaVersion: 1,
+      metrics: valid.metrics,
+    }) as MetricsFile
     const inheritedLabel = {
       ...valid,
       environment: Object.create({ label: valid.environment.label }),
@@ -274,7 +277,7 @@ describe('metric regression gate', () => {
     const tradeoff = { maxRatio: 1.3, adr: 'docs/decisions/0011-owned-processes.md' }
     // Object.entries() validates own entries, but a property lookup used to
     // trust an inherited exception that validation never examined.
-    baseline.accepted = Object.create({ mount: tradeoff }) as MetricsFile['accepted']
+    baseline.accepted = Object.create({ mount: tradeoff }) as NonNullable<MetricsFile['accepted']>
     const rejected = compare(baseline, current)
     expect(rejected.findings[0]!.status).toBe('regressed')
     expect(rejected.findings[0]!.adr).toBeUndefined()
@@ -291,7 +294,9 @@ describe('metric regression gate', () => {
     const valid = file({ mount: { samples: around(10) } })
     // Array.some() skips holes; the old guard accepted this as numeric samples.
     // A sparse current array then produced NaN and a passing "unchanged" result.
-    const sparse = file({ mount: { samples: new Array<number>(12) } })
+    const holes: number[] = []
+    holes.length = 12
+    const sparse = file({ mount: { samples: holes } })
     expect(() => compare(valid, sparse)).toThrow(/current: mount needs finite numeric samples/)
     expect(() => compare(sparse, valid)).toThrow(/baseline: mount needs finite numeric samples/)
     expect(failed(compare(valid, structuredClone(valid)))).toBe(false)

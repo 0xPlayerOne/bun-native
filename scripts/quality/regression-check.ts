@@ -136,8 +136,7 @@ function validateMetricsEntries(value: MetricsFile, what: string, allowEmpty = f
       throw new Error(`${what}: ${name} needs finite numeric samples`)
     // Array.prototype.some skips holes; for...of yields undefined for every hole.
     for (const sample of metric.samples) {
-      if (!Number.isFinite(sample))
-        throw new Error(`${what}: ${name} needs finite numeric samples`)
+      if (!Number.isFinite(sample)) throw new Error(`${what}: ${name} needs finite numeric samples`)
     }
     if (metric.reproduce !== undefined && typeof metric.reproduce !== 'string')
       throw new Error(`${what}: ${name} reproduce must be a string`)
