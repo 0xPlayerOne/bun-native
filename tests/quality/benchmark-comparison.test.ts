@@ -117,6 +117,14 @@ test('finite large-magnitude samples retain finite mean and standard deviation',
   const signed = describeSamples([-1e308, 1e308])
   expect(signed.mean).toBe(0)
   expect(signed.sampleStdDev! / 1.4142135623730951e308).toBeCloseTo(1, 10)
+
+  // One negative extreme among many positive values has a finite sample
+  // deviation, although subtracting its mean overflows before division.
+  const count = 1_000
+  const skewed = describeSamples([-1.7e308, ...Array(count - 1).fill(1.7e308)])
+  const expected = (1.7e308 / Math.sqrt(count)) * 2
+  expect(Number.isFinite(skewed.sampleStdDev)).toBe(true)
+  expect(skewed.sampleStdDev! / expected).toBeCloseTo(1, 10)
 })
 
 test('bootstrap intervals are deterministic and bracket the estimate', () => {
