@@ -161,14 +161,20 @@ export function fromStreaming(results: readonly StreamingResult[]): Record<strin
       throw new Error(`Streaming soak ${result.framework}/${result.mode} did not pass`)
     const prefix = `streaming ${result.framework.toLowerCase()}/${result.mode}`
     const { frames, processes } = result.measurements
-    add(metrics, `${prefix} updateToAckP50Ms`, 'ms', result.application.stream.updateToAck.p50Ms)
-    add(metrics, `${prefix} updateToAckP95Ms`, 'ms', result.application.stream.updateToAck.p95Ms)
-    add(metrics, `${prefix} frameIntervalP95Ms`, 'ms', frames.intervalMs.p95)
-    add(metrics, `${prefix} renderToPaintP95Ms`, 'ms', frames.renderToPaintMs.p95)
-    for (const role of ['host', 'application'] as const) {
-      const max = processes[role]?.rssBytes?.max
-      add(metrics, `${prefix} ${role}PeakRssMB`, 'MB', max == null ? null : max * 1e-6)
+    // A passed soak must carry every measurement: a null distribution (for
+    // example fewer than two frame records) fails closed instead of silently
+    // dropping a sample the baseline may not gate yet.
+    const need = (name: string, unit: string, value: number | null | undefined, scale = 1) => {
+      if (typeof value !== 'number' || !Number.isFinite(value))
+        throw new Error(`Passed streaming soak ${prefix} lacks ${name}`)
+      add(metrics, `${prefix} ${name}`, unit, value * scale)
     }
+    need('updateToAckP50Ms', 'ms', result.application?.stream?.updateToAck?.p50Ms)
+    need('updateToAckP95Ms', 'ms', result.application?.stream?.updateToAck?.p95Ms)
+    need('frameIntervalP95Ms', 'ms', frames?.intervalMs?.p95)
+    need('renderToPaintP95Ms', 'ms', frames?.renderToPaintMs?.p95)
+    for (const role of ['host', 'application'] as const)
+      need(`${role}PeakRssMB`, 'MB', processes?.[role]?.rssBytes?.max, 1e-6)
   }
   return metrics
 }

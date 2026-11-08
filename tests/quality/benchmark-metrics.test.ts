@@ -204,6 +204,22 @@ describe('benchmark metrics export', () => {
     writeFileSync(path, JSON.stringify(streamingResult('Solid', 'aot')))
     expect(Object.keys(exportMetrics(directory, [path]).metrics)).toHaveLength(22)
   })
+
+  test('a passed soak with a missing measurement fails closed instead of dropping the sample', () => {
+    type Result = Parameters<typeof fromStreaming>[0][number]
+    const soak = (result: Record<string, any>) => [result as unknown as Result]
+    const noFrames = streamingResult('Solid', 'aot') as Record<string, any>
+    noFrames['measurements'].frames.intervalMs.p95 = null
+    expect(() => fromStreaming(soak(noFrames))).toThrow(
+      'Passed streaming soak streaming solid/aot lacks frameIntervalP95Ms'
+    )
+    const noHost = streamingResult('React', 'development') as Record<string, any>
+    noHost['measurements'].processes.host = null
+    expect(() => fromStreaming(soak(noHost))).toThrow('lacks hostPeakRssMB')
+    const noAck = streamingResult('React', 'aot') as Record<string, any>
+    delete noAck['application'].stream.updateToAck.p95Ms
+    expect(() => fromStreaming(soak(noAck))).toThrow('lacks updateToAckP95Ms')
+  })
 })
 
 describe('benchmark regression gate', () => {
