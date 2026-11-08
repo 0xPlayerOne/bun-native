@@ -5,7 +5,7 @@ import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 import { buildSolid } from '../../scripts/solid-build.ts'
-import { oklchToRgb, tint } from '../../examples/adea-components/tokens.ts'
+import { adeaTheme, oklchToRgb, tint } from '../../examples/adea-components/tokens.ts'
 
 const EXAMPLE = resolve(import.meta.dir, '../../examples/adea-components')
 
@@ -112,6 +112,20 @@ test('Adea OKLCH tokens convert to the sRGB values a browser computes', () => {
   expect(oklchToRgb('oklch(0.6951 0.1809 145.62)').toString(16)).toBe('3fb950')
   expect(() => oklchToRgb('#fff')).toThrow('Unsupported color')
   expect(tint(0xffffff, 0.5, 0x000000)).toBe(0x808080)
+})
+
+test('Adea themes carry the converted tokens and the composited primary-subtle tint', () => {
+  const light = adeaTheme('light').tokens
+  const dark = adeaTheme('dark').tokens
+  expect(light.colors.background).toBe(0xffffff)
+  expect(light.colors.primary).toBe(0x7a49b5)
+  expect(dark.colors.background).toBe(0x111013)
+  expect(dark.colors.primary).toBe(0xbc8cff)
+  // color-mix(primary 10% / 16%, background), composited once in sRGB.
+  expect(light.colors.primarySubtle).toBe(tint(0x7a49b5, 0.1, 0xffffff))
+  expect(dark.colors.primarySubtle).toBe(tint(0xbc8cff, 0.16, 0x111013))
+  expect(Object.keys(light.colors).sort()).toEqual(Object.keys(dark.colors).sort())
+  expect(light.radii.md).toBe(8)
 })
 
 test('retained Adea sources match their recorded upstream blobs', () => {
