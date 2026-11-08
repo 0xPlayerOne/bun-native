@@ -205,6 +205,41 @@ describe('benchmark metrics export', () => {
     expect(Object.keys(exportMetrics(directory, [path]).metrics)).toHaveLength(22)
   })
 
+  test('a passed launch with a missing measurement fails closed instead of losing a sample', () => {
+    const edit = (change: (comparison: Record<string, any>) => void) => {
+      const { directory, comparison } = writeExport()
+      change(comparison)
+      writeFileSync(join(directory, 'comparison.json'), JSON.stringify(comparison))
+      return () => exportMetrics(directory)
+    }
+    expect(
+      edit((comparison) => {
+        comparison['launches'][1].process.cpuSystemMs = null
+      })
+    ).toThrow('Passed launch core-aot-1 lacks cpuTimeMs')
+    expect(
+      edit((comparison) => {
+        comparison['launches'][2].process.peakTreeRssBytes = null
+      })
+    ).toThrow('Passed launch core-aot-2 lacks peakTreeRssMB')
+    expect(
+      edit((comparison) => {
+        comparison['inputLaunches'][0].commandStartToPaintObservedMs = null
+      })
+    ).toThrow('Passed input launch core/aot lacks commandStartToPaintObservedMs')
+    // A failed input launch without an observation is not a sample and is ignored.
+    const failedInput = edit((comparison) => {
+      comparison['inputLaunches'].push({
+        name: 'core-aot-input-failed',
+        adapter: 'core',
+        mode: 'aot',
+        status: 'failed',
+        commandStartToPaintObservedMs: null,
+      })
+    })
+    expect(failedInput().metrics['core/aot clickToPaintMs']!.samples).toHaveLength(5)
+  })
+
   test('a passed soak with a missing measurement fails closed instead of dropping the sample', () => {
     type Result = Parameters<typeof fromStreaming>[0][number]
     const soak = (result: Record<string, any>) => [result as unknown as Result]

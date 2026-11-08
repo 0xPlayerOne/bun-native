@@ -195,9 +195,11 @@ two VMs with the same CPU model measured identical code 12–15% apart on React
 development CPU time and lifecycle median
 ([run 42432829952](https://github.com/0xPlayerOne/bun-native/actions/runs/42432829952)). A runner CPU without a baseline is reported, not gated, and
 metrics the baseline does not have yet (the streaming soaks today) are listed as
-recorded without a baseline. A passed soak that lacks any of its six measurements
+recorded without a baseline. A passed measured launch or input launch that lacks a metric, or a passed soak
+that lacks any of its six measurements
 (a null distribution, a missing process RSS) fails the export rather than
-dropping the sample. `metrics.json` and `regression.md` are kept in the
+dropping the sample, so a group is never gated on fewer samples than it ran.
+`metrics.json` and `regression.md` are kept in the
 artifact, so adopting a new baseline is a copy (see the baselines README).
 
 ## Not measured here

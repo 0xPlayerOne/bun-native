@@ -134,22 +134,22 @@ export function fromComparison(
     for (const [key, unit, scale] of LAUNCH_METRICS) {
       const value = values[key]
       const name = scale === 1 ? key : key.replace(/Bytes$/, unit)
-      add(
-        metrics,
-        `${launch.adapter}/${launch.mode} ${name}`,
-        unit,
-        value == null ? null : value * scale
-      )
+      // A passed measured launch carries every metric; a missing one fails
+      // closed so a group can never be gated on fewer samples than it ran.
+      if (typeof value !== 'number' || !Number.isFinite(value))
+        throw new Error(`Passed launch ${launch.name} lacks ${name}`)
+      add(metrics, `${launch.adapter}/${launch.mode} ${name}`, unit, value * scale)
     }
   }
-  for (const launch of comparison.inputLaunches ?? [])
-    if (launch.status === 'passed')
-      add(
-        metrics,
-        `${launch.adapter}/${launch.mode} clickToPaintMs`,
-        'ms',
-        launch.commandStartToPaintObservedMs
+  for (const launch of comparison.inputLaunches ?? []) {
+    if (launch.status !== 'passed') continue
+    const value = launch.commandStartToPaintObservedMs
+    if (typeof value !== 'number' || !Number.isFinite(value))
+      throw new Error(
+        `Passed input launch ${launch.adapter}/${launch.mode} lacks commandStartToPaintObservedMs`
       )
+    add(metrics, `${launch.adapter}/${launch.mode} clickToPaintMs`, 'ms', value)
+  }
   return metrics
 }
 
