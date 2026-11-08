@@ -94,9 +94,13 @@ export function peRegions(bytes: Uint8Array): { regions: Region[]; pdbPath: stri
     })
   }
   const fileOffset = (rva: number) => {
-    for (const s of sections)
-      if (rva >= s.rva && rva < s.rva + Math.max(s.virtualSize, s.rawSize))
-        return s.raw + rva - s.rva
+    for (const s of sections) {
+      const offset = rva - s.rva
+      // VirtualSize may include zero-filled memory beyond the file's raw
+      // section bytes. Such an RVA must not read a different on-disk region.
+      if (offset >= 0 && offset < s.rawSize && r.fits(s.raw + offset, 1))
+        return s.raw + offset
+    }
     return null
   }
   let pdbPath: string | null = null

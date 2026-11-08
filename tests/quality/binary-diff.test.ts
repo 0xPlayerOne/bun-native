@@ -87,6 +87,22 @@ describe('PE regions', () => {
     expect(peRegions(badMagic)).toBeNull()
   })
 
+  test('does not map a virtual-only debug RVA into unrelated raw section bytes', () => {
+    const bytes = pe({ stamp: 1, guid: 1, path: 'host.pdb', code: 1 })
+    const view = new DataView(bytes.buffer)
+    const coff = 0x80 + 4
+    const optional = coff + 20
+    const table = optional + 240
+    // .text maps 0x200 raw bytes but reserves 0x500 virtual bytes. RVA 0x1300
+    // is inside its zero-filled tail; raw + 0x300 points into .rdata on disk.
+    view.setUint32(table + 8, 0x500, true)
+    view.setUint32(optional + 112 + 6 * 8, 0x1300, true)
+    const parsed = peRegions(bytes)
+    expect(parsed).not.toBeNull()
+    expect(parsed?.pdbPath).toBeNull()
+    expect(parsed?.regions.filter((region) => region.name === 'debug directory TimeDateStamp')).toEqual([])
+  })
+
   test('names header, debug directory and section regions and reads the PDB path', () => {
     const parsed = peRegions(pe({ stamp: 1, guid: 1, path: 'bun_native_host.pdb', code: 1 }))
     expect(parsed?.pdbPath).toBe('bun_native_host.pdb')
