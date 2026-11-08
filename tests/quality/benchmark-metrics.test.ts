@@ -227,6 +227,21 @@ describe('benchmark metrics export', () => {
     expect(Object.keys(exportMetrics(directory, [path]).metrics)).toHaveLength(22)
   })
 
+  test('refuses duplicate streaming files while retaining distinct launch samples', () => {
+    const { directory } = writeExport()
+    const first = join(directory, 'stream-one.json')
+    const second = join(directory, 'stream-two.json')
+    writeFileSync(first, JSON.stringify(streamingResult('Solid', 'aot')))
+    writeFileSync(second, JSON.stringify(streamingResult('Solid', 'aot', 1.1)))
+    expect(() => exportMetrics(directory, [first, first])).toThrow('Duplicate streaming result')
+    expect(() => exportMetrics(directory, [first, `${directory}/./stream-one.json`])).toThrow(
+      'Duplicate streaming result'
+    )
+    const distinct = exportMetrics(directory, [first, second])
+    const samples = distinct.metrics['streaming solid/aot frameIntervalP95Ms']!.samples
+    expect(samples).toEqual([17, 17 * 1.1])
+  })
+
   test('a passed launch with a missing measurement fails closed instead of losing a sample', () => {
     const edit = (change: (comparison: Record<string, any>) => void) => {
       const { directory, comparison } = writeExport()

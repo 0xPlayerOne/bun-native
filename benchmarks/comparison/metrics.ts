@@ -1,5 +1,5 @@
 #!/usr/bin/env bun
-import { existsSync, readFileSync, readdirSync, writeFileSync } from 'node:fs'
+import { existsSync, readFileSync, readdirSync, realpathSync, writeFileSync } from 'node:fs'
 import { basename, join, resolve } from 'node:path'
 import { gunzipSync } from 'node:zlib'
 import {
@@ -203,8 +203,15 @@ export function exportMetrics(directory: string, streaming: readonly string[] = 
     reports.set(name, row['report'] as Record<string, unknown> | null)
   }
   const metrics = fromComparison(comparison, reports)
+  // A path alias must not count one streaming soak as two independent launches.
+  const seenStreaming = new Set<string>()
   const streamed = fromStreaming(
-    streaming.map((path) => JSON.parse(readFileSync(path, 'utf8')) as StreamingResult)
+    streaming.map((path) => {
+      const identity = realpathSync(path)
+      if (seenStreaming.has(identity)) throw new Error(`Duplicate streaming result ${identity}`)
+      seenStreaming.add(identity)
+      return JSON.parse(readFileSync(path, 'utf8')) as StreamingResult
+    })
   )
   for (const [name, metric] of Object.entries(streamed)) {
     if (Object.hasOwn(metrics, name)) throw new Error(`Duplicate metric ${name}`)
