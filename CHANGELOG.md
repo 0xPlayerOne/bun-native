@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.25.2](https://github.com/0xPlayerOne/bun-native/compare/v0.25.1...v0.25.2) (2026-11-08)
+
+
+### Bug Fixes
+
+* **quality:** escape metric metadata in Markdown regression summaries ([#562](https://github.com/0xPlayerOne/bun-native/issues/562)) ([922c190](https://github.com/0xPlayerOne/bun-native/commit/922c1905a5c2105d800f187bc4c5b51290c7e057))
+* **quality:** validate direct comparison metrics and headers ([#259](https://github.com/0xPlayerOne/bun-native/issues/259)) ([#561](https://github.com/0xPlayerOne/bun-native/issues/561)) ([45072ae](https://github.com/0xPlayerOne/bun-native/commit/45072aef6f3ab9d9dbaec71f32a8ab4cfef670af))
+
 ## [0.25.1](https://github.com/0xPlayerOne/bun-native/compare/v0.25.0...v0.25.1) (2026-11-07)
 
 
