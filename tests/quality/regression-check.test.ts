@@ -186,6 +186,190 @@ describe('metric regression gate', () => {
     }
   })
 
+  test('direct comparisons reject malformed current accepted metadata like the JSON path', () => {
+    const baseline = file({ mount: { samples: around(10) } })
+    const current = file({ mount: { samples: around(10) } })
+    expect(failed(compare(baseline, current))).toBe(false)
+
+    // Only baseline ADRs may exempt regressions; the current file's metadata
+    // is ignored for exemptions, not exempt from format validation.
+    const malformed = structuredClone(current)
+    malformed.accepted = {
+      mount: { maxRatio: '100' as unknown as number, adr: '' },
+    }
+    expect(() => parseMetrics(JSON.stringify(malformed), 'current')).toThrow(
+      /current: accepted mount.maxRatio/
+    )
+    expect(() => compare(baseline, malformed)).toThrow(/current: accepted mount.maxRatio/)
+  })
+
+  test('direct comparisons cannot silently accept a wrong schema or unlabelled environment', () => {
+    const baseline = file({ mount: { samples: around(10) } })
+    const current = file({ mount: { samples: around(10) } })
+    // These two invalid schema inputs used to yield a passing unchanged comparison.
+    expect(failed(compare(baseline, current))).toBe(false)
+    for (const which of ['baseline', 'current'] as const) {
+      const malformed = structuredClone(which === 'baseline' ? baseline : current)
+      ;(malformed as { schemaVersion: number }).schemaVersion = 2
+      expect(() =>
+        compare(
+          which === 'baseline' ? malformed : baseline,
+          which === 'current' ? malformed : current
+        )
+      ).toThrow(new RegExp(`${which}: schemaVersion`))
+    }
+    // Reject missing metadata before computing comparability.
+    const noLabel = structuredClone(current)
+    noLabel.environment.label = ''
+    expect(() => compare(baseline, noLabel)).toThrow(/current: environment\.label/)
+    // A shared whitespace-only label must not make two unidentifiable hosts comparable.
+    const whitespace = file({ mount: { samples: around(10) } }, ' \t\n ')
+    expect(() => compare(whitespace, structuredClone(whitespace))).toThrow(
+      /baseline: environment\.label/
+    )
+    expect(() => parseMetrics(JSON.stringify(whitespace), 'baseline')).toThrow(
+      /baseline: environment\.label/
+    )
+    expect(() => parseMetrics('null', 'baseline')).toThrow(/metrics file must be an object/)
+  })
+
+  test('direct comparisons cannot borrow required file identity from prototypes', () => {
+    const valid = file({ mount: { samples: around(10) } })
+    // JSON serialization omits inherited keys. A direct comparison previously
+    // accepted them, turning an invalid metrics file into a passing result.
+    const inheritedSchema = Object.assign(Object.create({ schemaVersion: 1 }), {
+      environment: valid.environment,
+      metrics: valid.metrics,
+    }) as MetricsFile
+    const inheritedEnvironment = Object.assign(Object.create({ environment: valid.environment }), {
+      schemaVersion: 1,
+      metrics: valid.metrics,
+    }) as MetricsFile
+    const inheritedLabel = {
+      ...valid,
+      environment: Object.create({ label: valid.environment.label }),
+    } as MetricsFile
+
+    for (const [malformed, detail] of [
+      [inheritedSchema, /schemaVersion/],
+      [inheritedEnvironment, /environment\.label/],
+      [inheritedLabel, /environment\.label/],
+    ] as const) {
+      expect(() => compare(valid, malformed)).toThrow(detail)
+      expect(() => compare(malformed, valid)).toThrow(detail)
+      expect(() => parseMetrics(JSON.stringify(malformed), 'current')).toThrow(detail)
+    }
+    expect(failed(compare(valid, structuredClone(valid)))).toBe(false)
+  })
+
+  test('direct comparisons reject malformed metric units, directions and current-only entries', () => {
+    const valid = file({ mount: { samples: around(10) } })
+    // Both inputs previously compared as unchanged when their invalid metadata matched.
+    const blankUnit = file({ mount: { unit: '', samples: around(10) } })
+    expect(() => compare(blankUnit, blankUnit)).toThrow(/baseline: mount needs a unit/)
+    const badDirection = file({
+      mount: { direction: 'sideways' as Metric['direction'], samples: around(10) },
+    })
+    expect(() => compare(badDirection, badDirection)).toThrow(/baseline: mount direction/)
+    // The original baseline-only comparison loop ignored malformed extra current entries.
+    const extra = file({
+      mount: { samples: around(10) },
+      extra: { unit: '', samples: around(10) },
+    })
+    expect(() => compare(valid, extra)).toThrow(/current: extra needs a unit/)
+    const absent = structuredClone(valid)
+    delete (absent as Partial<MetricsFile>).metrics
+    expect(() => compare(valid, absent)).toThrow(/current: metrics must be a map/)
+    // Empty baseline metrics still fail closed rather than throwing.
+    expect(failed(compare(file({}), valid))).toBe(true)
+  })
+
+  test('whitespace-only units and non-string reproduction metadata fail closed', () => {
+    const valid = file({ mount: { samples: around(10) } })
+    const blankUnit = file({ mount: { unit: '   ', samples: around(10) } })
+    // The original comparator accepted identical but meaningless units as unchanged.
+    expect(() => compare(blankUnit, blankUnit)).toThrow(/baseline: mount needs a unit/)
+    expect(() => parseMetrics(JSON.stringify(blankUnit), 'baseline')).toThrow(
+      /baseline: mount needs a unit/
+    )
+    for (const invalid of [42, null, { command: 'bun bench mount' }]) {
+      const malformed = structuredClone(valid)
+      ;(malformed.metrics.mount as { reproduce?: unknown }).reproduce = invalid
+      // Reproduction commands must be strings; the old parser and comparator
+      // accepted these inputs, allowing a misleading unchanged result.
+      expect(() => compare(valid, malformed)).toThrow(/current: mount reproduce/)
+      expect(() => parseMetrics(JSON.stringify(malformed), 'current')).toThrow(
+        /current: mount reproduce/
+      )
+    }
+    expect(failed(compare(valid, structuredClone(valid)))).toBe(false)
+  })
+
+  test('inherited current metrics do not masquerade as measurements', () => {
+    const baseline = file({
+      constructor: { samples: around(10) },
+      mount: { samples: around(10) },
+    })
+    const current = file({ mount: { samples: around(10) } })
+    // A normal object inherits its constructor, but that is not a measurement.
+    const ordinary = compare(baseline, current)
+    expect(ordinary.findings.find((f) => f.name === 'constructor')?.status).toBe('missing')
+    expect(failed(ordinary)).toBe(true)
+
+    // A direct caller may supply a map with an inherited metric that would
+    // otherwise look valid and turn a missing measurement into "unchanged".
+    const injected = file({})
+    Object.setPrototypeOf(injected.metrics, { mount: baseline.metrics.mount })
+    const forged = compare(file({ mount: { samples: around(10) } }), injected)
+    expect(forged.findings[0]!.status).toBe('missing')
+    expect(failed(forged)).toBe(true)
+  })
+
+  test('inherited acceptance metadata cannot exempt a proven regression', () => {
+    const baseline = file({ mount: { samples: around(10) } })
+    const current = file({ mount: { samples: around(12) } })
+    const tradeoff = { maxRatio: 1.3, adr: 'docs/decisions/0011-owned-processes.md' }
+    // Object.entries() validates own entries, but a property lookup used to
+    // trust an inherited exception that validation never examined.
+    baseline.accepted = Object.create({ mount: tradeoff }) as NonNullable<MetricsFile['accepted']>
+    const rejected = compare(baseline, current)
+    expect(rejected.findings[0]!.status).toBe('regressed')
+    expect(rejected.findings[0]!.adr).toBeUndefined()
+    expect(failed(rejected)).toBe(true)
+
+    // An owned ADR within its documented bound is still accepted.
+    baseline.accepted = { mount: tradeoff }
+    const permitted = compare(baseline, current)
+    expect(permitted.findings[0]!.status).toBe('accepted')
+    expect(failed(permitted)).toBe(false)
+  })
+
+  test('direct comparison rejects sparse arrays instead of a false unchanged finding', () => {
+    const valid = file({ mount: { samples: around(10) } })
+    // Array.some() skips holes; the old guard accepted this as numeric samples.
+    // A sparse current array then produced NaN and a passing "unchanged" result.
+    const holes: number[] = []
+    holes.length = 12
+    const sparse = file({ mount: { samples: holes } })
+    expect(() => compare(valid, sparse)).toThrow(/current: mount needs finite numeric samples/)
+    expect(() => compare(sparse, valid)).toThrow(/baseline: mount needs finite numeric samples/)
+    expect(failed(compare(valid, structuredClone(valid)))).toBe(false)
+  })
+
+  test('large finite samples cannot turn a proven regression into a NaN pass', () => {
+    const baseline = file({ rss: { samples: Array.from({ length: 12 }, () => 9e307) } })
+    const current = file({ rss: { samples: Array.from({ length: 12 }, () => 1.5e308) } })
+    // The original even-sized median overflowed to Infinity. Infinity / Infinity
+    // became NaN, which fell through to an incorrect unchanged/pass finding.
+    const comparison = compare(baseline, current)
+    const finding = comparison.findings[0]!
+    expect(finding.status).toBe('regressed')
+    expect(finding.ratio).toBeCloseTo(5 / 3, 5)
+    expect(finding.baselineMedian).toBe(9e307)
+    expect(finding.currentMedian).toBe(1.5e308)
+    expect(failed(comparison)).toBe(true)
+  })
+
   test('a baseline with a zero median cannot define a ratio', () => {
     const result = compare(
       file({ rss: { samples: [0, 0, 0] } }),
