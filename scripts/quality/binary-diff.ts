@@ -152,6 +152,9 @@ export function peRegions(bytes: Uint8Array): { regions: Region[]; pdbPath: stri
   for (let i = 0; debug !== null && i < Math.floor(debugSize / 28); i++) {
     const entry = debug + i * 28
     if (!r.fits(entry, 28)) break
+    // Characteristics is reserved and must be zero in IMAGE_DEBUG_DIRECTORY.
+    // A malformed entry cannot substantiate a CodeView or REPRO payload.
+    if (r.u32(entry) !== 0) continue
     const type = r.u32(entry + 12) as number
     const size = r.u32(entry + 16) as number
     const data = r.u32(entry + 24) as number

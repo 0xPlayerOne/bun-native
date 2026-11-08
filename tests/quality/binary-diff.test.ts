@@ -217,6 +217,26 @@ describe('PE regions', () => {
     expect(peRegions(bytes)?.regions.some((region) => region.name === 'REPRO hash')).toBe(false)
   })
 
+  test('ignores debug records with nonzero reserved Characteristics', () => {
+    const bytes = pe({ stamp: 1, guid: 1, path: 'host.pdb', code: 1 })
+    const view = new DataView(bytes.buffer)
+    expect(peRegions(bytes)?.pdbPath).toBe('host.pdb')
+
+    // The first entry is corrupted. Its fully in-bounds RSDS bytes must not
+    // establish a PDB identity, while the valid REPRO sibling remains usable.
+    view.setUint32(0x400, 1, true)
+    const corrupted = peRegions(bytes)
+    expect(corrupted?.pdbPath).toBeNull()
+    expect(corrupted?.regions.some((region) => region.name === 'CodeView GUID')).toBe(false)
+    expect(
+      corrupted?.regions.filter((region) => region.name === 'debug directory TimeDateStamp')
+    ).toHaveLength(1)
+    expect(corrupted?.regions.some((region) => region.name === 'REPRO hash')).toBe(true)
+
+    view.setUint32(0x400, 0, true)
+    expect(peRegions(bytes)?.pdbPath).toBe('host.pdb')
+  })
+
   test('does not invent a PDB path when an RSDS record lacks its terminator', () => {
     const bytes = pe({ stamp: 1, guid: 1, path: 'host.pdb', code: 1 })
     const view = new DataView(bytes.buffer)
