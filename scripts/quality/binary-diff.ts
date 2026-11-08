@@ -117,6 +117,7 @@ export function peRegions(bytes: Uint8Array): { regions: Region[]; pdbPath: stri
     return null
   }
   let pdbPath: string | null = null
+  let conflictingPdbPaths = false
   // NumberOfRvaAndSizes, and the declared optional-header byte range,
   // must both include entry 6 before it can name a debug directory.
   const directoryCount = r.u32(optional + dataDirectoriesOffset - 4)
@@ -151,7 +152,13 @@ export function peRegions(bytes: Uint8Array): { regions: Region[]; pdbPath: stri
       // The valid GUID and age fields remain independently attributable.
       if (nul >= 0) {
         regions.push({ name: 'CodeView PDB path', start: data + 24, end: data + 24 + nul + 1 })
-        pdbPath = new TextDecoder().decode(path.subarray(0, nul))
+        const candidatePath = new TextDecoder().decode(path.subarray(0, nul))
+        if (!conflictingPdbPaths && pdbPath !== null && pdbPath !== candidatePath) {
+          // Several complete RSDS records disagree. Do not claim that
+          // the last record defines one unambiguous PDB identity.
+          conflictingPdbPaths = true
+          pdbPath = null
+        } else if (!conflictingPdbPaths) pdbPath = candidatePath
       }
     } else if (type === 16 && data > 0 && size > 0 && r.fits(data, size)) {
       regions.push({ name: 'REPRO hash', start: data, end: data + size })

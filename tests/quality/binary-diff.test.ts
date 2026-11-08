@@ -246,6 +246,39 @@ describe('PE regions', () => {
     ])
   })
 
+  test('does not select an arbitrary PDB path from conflicting CodeView records', () => {
+    const bytes = pe({ stamp: 1, guid: 1, path: 'first.pdb', code: 1 })
+    const view = new DataView(bytes.buffer)
+    const second = 0x400 + 28
+    const writeCodeView = (entry: number, pointer: number, filename: string) => {
+      const path = new TextEncoder().encode(filename)
+      view.setUint32(entry + 12, 2, true)
+      view.setUint32(entry + 16, 24 + path.length + 1, true)
+      view.setUint32(entry + 24, pointer, true)
+      view.setUint32(pointer, 0x53445352, true)
+      view.setUint32(pointer + 20, 1, true)
+      bytes.set(path, pointer + 24)
+      bytes[pointer + 24 + path.length] = 0
+    }
+
+    // Several complete CodeView entries with the same path are consistent.
+    writeCodeView(second, 0x540, 'first.pdb')
+    expect(peRegions(bytes)?.pdbPath).toBe('first.pdb')
+
+    // A different valid second path makes the image ambiguous: last-wins
+    // would otherwise report 'second.pdb' as its only PDB identity.
+    writeCodeView(second, 0x540, 'second.pdb')
+    expect(peRegions(bytes)?.pdbPath).toBeNull()
+
+    // Later entries must not restore a single path after a contradiction.
+    const optional = 0x80 + 4 + 20
+    view.setUint32(optional + 112 + 6 * 8 + 4, 84, true)
+    writeCodeView(0x400 + 56, 0x580, 'first.pdb')
+    const parsed = peRegions(bytes)
+    expect(parsed?.pdbPath).toBeNull()
+    expect(parsed?.regions.filter((region) => region.name === 'CodeView PDB path')).toHaveLength(3)
+  })
+
   test('names header, debug directory and section regions and reads the PDB path', () => {
     const parsed = peRegions(pe({ stamp: 1, guid: 1, path: 'bun_native_host.pdb', code: 1 }))
     expect(parsed?.pdbPath).toBe('bun_native_host.pdb')
