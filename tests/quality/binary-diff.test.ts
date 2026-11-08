@@ -126,6 +126,22 @@ describe('PE regions', () => {
     expect(peRegions(bytes)).toBeNull()
   })
 
+  test('rejects truncated or inflated COFF section tables', () => {
+    const complete = pe({ stamp: 1, guid: 1, path: 'host.pdb', code: 1 })
+    expect(peRegions(complete)?.pdbPath).toBe('host.pdb')
+
+    // The COFF header declares two 40-byte section headers; only one remains.
+    // A partial table is not a valid map for diagnosing the PE image.
+    const sectionTable = 0x80 + 4 + 20 + 240
+    expect(peRegions(complete.subarray(0, sectionTable + 40))).toBeNull()
+
+    // Previously an exaggerated section count generated a fictitious header
+    // region spanning millions of bytes beyond the actual file.
+    const inflated = complete.slice()
+    new DataView(inflated.buffer).setUint16(0x80 + 4 + 2, 0xffff, true)
+    expect(peRegions(inflated)).toBeNull()
+  })
+
   test('does not map a virtual-only debug RVA into unrelated raw section bytes', () => {
     const bytes = pe({ stamp: 1, guid: 1, path: 'host.pdb', code: 1 })
     const view = new DataView(bytes.buffer)

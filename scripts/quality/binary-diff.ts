@@ -89,9 +89,11 @@ export function peRegions(bytes: Uint8Array): { regions: Region[]; pdbPath: stri
     rawSize: number
   }[] = []
   const table = optional + optionalSize
+  // All declared section headers must be file-backed. A truncated table can
+  // otherwise produce a partial RVA map and a fictitious oversized header region.
+  if (!r.fits(table, sectionCount * 40)) return null
   for (let i = 0; i < sectionCount; i++) {
     const at = table + i * 40
-    if (!r.fits(at, 40)) break
     const name = new TextDecoder().decode(bytes.subarray(at, at + 8)).replace(/\0+$/, '')
     sections.push({
       name,
