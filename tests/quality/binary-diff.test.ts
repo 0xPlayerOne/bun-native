@@ -340,6 +340,45 @@ describe('PE regions', () => {
     expect(peRegions(make())?.pdbPath).toBe('host.pdb')
   })
 
+  test('refuses overlapping raw or RVA section aliases in PE diagnostic attribution', () => {
+    const make = () => pe({ stamp: 1, guid: 1, path: 'host.pdb', code: 1 })
+    const table = 0x80 + 4 + 20 + 240
+    const sections = (bytes: Uint8Array) =>
+      peRegions(bytes)?.regions.filter((region) => region.name.startsWith('section '))
+
+    // Both file-backed sections claim the same raw bytes. The old parser
+    // reported a PDB path from .rdata and attributed its bytes to .text.
+    const rawAlias = make()
+    new DataView(rawAlias.buffer).setUint32(table + 20, 0x400, true)
+    expect(peRegions(rawAlias)?.pdbPath).toBeNull()
+    expect(sections(rawAlias)).toEqual([])
+    const modified = rawAlias.slice()
+    modified[0x410] ^= 1
+    expect(explainDifference(rawAlias, modified).regions).toEqual([
+      { name: 'unmapped', bytes: 1, ranges: 1 },
+    ])
+
+    // Even a partial raw overlap has no unique section owner.
+    const partial = make()
+    new DataView(partial.buffer).setUint32(table + 20, 0x300, true)
+    expect(sections(partial)).toEqual([])
+
+    // Two different raw locations claiming the same RVA are equally
+    // ambiguous when translating a debug-directory RVA.
+    const rvaAlias = make()
+    new DataView(rvaAlias.buffer).setUint32(table + 12, 0x2000, true)
+    expect(peRegions(rvaAlias)?.pdbPath).toBeNull()
+    expect(sections(rvaAlias)).toEqual([])
+
+    // Properly disjoint, adjacent sections still retain all metadata.
+    const valid = make()
+    expect(peRegions(valid)?.pdbPath).toBe('host.pdb')
+    expect(sections(valid)?.map((region) => region.name)).toEqual([
+      'section .text',
+      'section .rdata',
+    ])
+  })
+
   test('uses the earliest file-backed section rather than an uninitialized section for headers', () => {
     const a = pe({ stamp: 1, guid: 1, path: 'host.pdb', code: 1 })
     const view = new DataView(a.buffer)

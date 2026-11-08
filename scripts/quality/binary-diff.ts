@@ -106,8 +106,21 @@ export function peRegions(bytes: Uint8Array): { regions: Region[]; pdbPath: stri
   // beyond the file. Only complete, non-header raw ranges can own bytes or
   // translate debug-directory RVAs into file offsets.
   const headerEnd = table + sectionCount * 40
-  const fileBackedSections = sections.filter(
+  const completeSections = sections.filter(
     (s) => s.rawSize > 0 && s.raw >= headerEnd && r.fits(s.raw, s.rawSize)
+  )
+  // Overlapping raw bytes or file-backed RVAs make a section owner ambiguous.
+  // Do not assign such bytes a section name or infer a debug payload identity.
+  const overlaps = (a: number, aSize: number, b: number, bSize: number) =>
+    a < b + bSize && b < a + aSize
+  const fileBackedSections = completeSections.filter(
+    (section, index) =>
+      !completeSections.some(
+        (other, otherIndex) =>
+          index !== otherIndex &&
+          (overlaps(section.raw, section.rawSize, other.raw, other.rawSize) ||
+            overlaps(section.rva, section.rawSize, other.rva, other.rawSize))
+      )
   )
   const fileOffset = (rva: number, size: number) => {
     for (const s of fileBackedSections) {
