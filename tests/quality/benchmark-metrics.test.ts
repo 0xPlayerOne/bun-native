@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test'
-import { mkdtempSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from 'node:fs'
+import { linkSync, mkdtempSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 import { gunzipSync, gzipSync } from 'node:zlib'
@@ -237,6 +237,10 @@ describe('benchmark metrics export', () => {
     expect(() => exportMetrics(directory, [first, `${directory}/./stream-one.json`])).toThrow(
       'Duplicate streaming result'
     )
+    // realpath() alone cannot identify two hard links to one physical result.
+    const hardLink = join(directory, 'stream-hard-link.json')
+    linkSync(first, hardLink)
+    expect(() => exportMetrics(directory, [first, hardLink])).toThrow('Duplicate streaming result')
     const distinct = exportMetrics(directory, [first, second])
     const samples = distinct.metrics['streaming solid/aot frameIntervalP95Ms']!.samples
     expect(samples).toEqual([17, 17 * 1.1])

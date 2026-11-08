@@ -1,5 +1,5 @@
 #!/usr/bin/env bun
-import { existsSync, readFileSync, readdirSync, realpathSync, writeFileSync } from 'node:fs'
+import { existsSync, readFileSync, readdirSync, realpathSync, statSync, writeFileSync } from 'node:fs'
 import { basename, join, resolve } from 'node:path'
 import { gunzipSync } from 'node:zlib'
 import {
@@ -203,13 +203,19 @@ export function exportMetrics(directory: string, streaming: readonly string[] = 
     reports.set(name, row['report'] as Record<string, unknown> | null)
   }
   const metrics = fromComparison(comparison, reports)
-  // A path alias must not count one streaming soak as two independent launches.
+  // Paths and hard links to the same physical soak must not become independent launches.
   const seenStreaming = new Set<string>()
+  const seenStreamingFiles = new Set<string>()
   const streamed = fromStreaming(
     streaming.map((path) => {
       const identity = realpathSync(path)
-      if (seenStreaming.has(identity)) throw new Error(`Duplicate streaming result ${identity}`)
+      const stats = statSync(identity, { bigint: true })
+      // Some filesystems do not expose inode identity; retain the path guard there.
+      const fileId = stats.ino === 0n ? null : `${stats.dev}:${stats.ino}`
+      if (seenStreaming.has(identity) || (fileId !== null && seenStreamingFiles.has(fileId)))
+        throw new Error(`Duplicate streaming result ${identity}`)
       seenStreaming.add(identity)
+      if (fileId !== null) seenStreamingFiles.add(fileId)
       return JSON.parse(readFileSync(path, 'utf8')) as StreamingResult
     })
   )
