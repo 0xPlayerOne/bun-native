@@ -254,6 +254,20 @@ export function assertEquivalentPaint(
   }
   if (!Array.isArray(nodes(first!.initial)) || !Array.isArray(nodes(first!.final)))
     throw new Error(`${first!.name} lacks a native paint tree`)
+  // Matching missing or nonce-only renderer records do not establish native
+  // renderer equivalence. Require stable identity at both stages of every run.
+  for (const item of calibrations) {
+    for (const stage of ['initial', 'final'] as const) {
+      const identity = renderer(item[stage])
+      if (
+        !identity ||
+        typeof identity !== 'object' ||
+        Array.isArray(identity) ||
+        Object.keys(identity).length === 0
+      )
+        throw new Error(`${item.name} ${stage} lacks native renderer identity`)
+    }
+  }
 }
 
 export type Launch = {

@@ -281,6 +281,24 @@ test('renderer runtime identity is not discarded as a timing field', () => {
   ).not.toThrow()
 })
 
+test('matching absent or volatile-only renderers cannot qualify native paint', () => {
+  const paint = (identity: unknown) => ({
+    renderer: identity,
+    paint: { nodes: [{ node_id: 1, text: 'same' }] },
+  })
+  const calibrations = (identity: unknown) => [
+    { name: 'first', initial: paint(identity), final: paint(identity) },
+    { name: 'second', initial: paint(identity), final: paint(identity) },
+  ]
+  for (const identity of [undefined, {}, { nonce: 'one', time: 1, startedMs: 2 }])
+    expect(() => assertEquivalentPaint(calibrations(identity))).toThrow(
+      /lacks native renderer identity/
+    )
+  expect(() =>
+    assertEquivalentPaint(calibrations({ type: 'renderer', gpu: { adapter: 'llvmpipe' } }))
+  ).not.toThrow()
+})
+
 test('summaries keep first launches and failures separate from measured distributions', () => {
   const launches = [
     launch('core', 'aot', 0, report(5)),
