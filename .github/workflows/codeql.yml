@@ -26,10 +26,10 @@ jobs:
       contents: read
       packages: read
       security-events: write
-    uses: 0xPlayerOne/code-foundry/.github/workflows/codeql.yml@945e548d1a1de5f6ca6195d245e9d82fc8e4ca63
+    uses: 0xPlayerOne/code-foundry/.github/workflows/codeql.yml@a8fcac90f8c96e1f294aecc7f3a2e874803b9c2b
     with:
       runtime-repository: 0xPlayerOne/code-foundry
-      runtime-ref: 945e548d1a1de5f6ca6195d245e9d82fc8e4ca63
+      runtime-ref: a8fcac90f8c96e1f294aecc7f3a2e874803b9c2b
       runner: ubuntu-latest
       rust-shards: '["all"]'
       rust-threads: '1'
