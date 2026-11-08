@@ -1,5 +1,12 @@
 #!/usr/bin/env bun
-import { existsSync, readFileSync, readdirSync, realpathSync, statSync, writeFileSync } from 'node:fs'
+import {
+  existsSync,
+  readFileSync,
+  readdirSync,
+  realpathSync,
+  statSync,
+  writeFileSync,
+} from 'node:fs'
 import { basename, join, resolve } from 'node:path'
 import { gunzipSync } from 'node:zlib'
 import {
