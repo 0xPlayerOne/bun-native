@@ -168,7 +168,19 @@ export function peRegions(bytes: Uint8Array): { regions: Region[]; pdbPath: stri
   }
   for (const s of sections)
     regions.push({ name: `section ${s.name}`, start: s.raw, end: s.raw + s.rawSize })
-  regions.push({ name: 'headers', start: 0, end: sections[0]?.raw ?? table + sectionCount * 40 })
+  // A zero-filled section such as .bss can be declared first with no raw
+  // bytes and PointerToRawData=0. Bound headers by the first file-backed
+  // section, not the first section-table entry.
+  let firstRaw: number | null = null
+  for (const s of sections) {
+    if (s.rawSize > 0 && s.raw >= table + sectionCount * 40 && r.fits(s.raw, s.rawSize))
+      firstRaw = firstRaw === null ? s.raw : Math.min(firstRaw, s.raw)
+  }
+  regions.push({
+    name: 'headers',
+    start: 0,
+    end: firstRaw ?? table + sectionCount * 40,
+  })
   return { regions, pdbPath }
 }
 

@@ -295,6 +295,49 @@ describe('PE regions', () => {
     expect(parsed?.regions.filter((region) => region.name === 'CodeView PDB path')).toHaveLength(3)
   })
 
+  test('uses the earliest file-backed section rather than an uninitialized section for headers', () => {
+    const a = pe({ stamp: 1, guid: 1, path: 'host.pdb', code: 1 })
+    const view = new DataView(a.buffer)
+    const table = 0x80 + 4 + 20 + 240
+
+    // A valid zero-filled .bss can precede the first section with raw data.
+    // PointerToRawData=0 is not the end of the DOS/PE headers.
+    a.fill(0, table, table + 8)
+    a.set(new TextEncoder().encode('.bss'), table)
+    view.setUint32(table + 16, 0, true)
+    view.setUint32(table + 20, 0, true)
+    expect(peRegions(a)?.pdbPath).toBe('host.pdb')
+    expect(peRegions(a)?.regions.find((region) => region.name === 'headers')).toEqual({
+      name: 'headers',
+      start: 0,
+      end: 0x400,
+    })
+    const b = a.slice()
+    b[0x41] = 0x58
+    expect(explainDifference(a, b).regions).toEqual([
+      { name: 'headers', bytes: 1, ranges: 1 },
+    ])
+
+    // With no file-backed section, the complete COFF section table is the
+    // header boundary, never a zero PointerToRawData value.
+    const noRaw = a.slice()
+    const noRawView = new DataView(noRaw.buffer)
+    noRawView.setUint32(table + 40 + 16, 0, true)
+    noRawView.setUint32(table + 40 + 20, 0, true)
+    expect(peRegions(noRaw)?.regions.find((region) => region.name === 'headers')?.end).toBe(
+      table + 80
+    )
+
+    // The section-table order does not determine on-disk header extent.
+    const reordered = pe({ stamp: 1, guid: 1, path: 'host.pdb', code: 1 })
+    const reorderedView = new DataView(reordered.buffer)
+    reorderedView.setUint32(table + 20, 0x400, true)
+    reorderedView.setUint32(table + 40 + 20, 0x200, true)
+    expect(peRegions(reordered)?.regions.find((region) => region.name === 'headers')?.end).toBe(
+      0x200
+    )
+  })
+
   test('names header, debug directory and section regions and reads the PDB path', () => {
     const parsed = peRegions(pe({ stamp: 1, guid: 1, path: 'bun_native_host.pdb', code: 1 }))
     expect(parsed?.pdbPath).toBe('bun_native_host.pdb')
