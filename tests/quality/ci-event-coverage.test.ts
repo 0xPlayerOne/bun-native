@@ -33,6 +33,20 @@ function pullRequestTypes(workflow: string): string[] {
   throw new Error('missing pull_request.types')
 }
 
+// Each implementation job must preserve the draft guard; a marker elsewhere in
+// the workflow is insufficient when a new job is added.
+function unguardedJobs(workflow: string, exempt: readonly string[] = []): string[] {
+  const parsed = Bun.YAML.parse(workflow) as { jobs?: Record<string, { if?: string }> }
+  const jobs = parsed.jobs
+  if (!jobs || Object.keys(jobs).length === 0) throw new Error('missing workflow jobs')
+  return Object.entries(jobs)
+    .filter(
+      ([name, job]) =>
+        !exempt.includes(name) && !job.if?.includes('github.event.pull_request.draft == false')
+    )
+    .map(([name]) => name)
+}
+
 const readyOnlyWorkflows = [
   '.github/workflows/bun-native.yml',
   '.github/workflows/codeql.yml',
@@ -48,9 +62,26 @@ for (const path of readyOnlyWorkflows) {
 
     for (const event of readyEvents) expect(types).toContain(event)
     expect(new Set(types).size).toBe(types.length)
-    expect(source).toContain('github.event.pull_request.draft == false')
+    const exempt = path === '.github/workflows/bun-native.yml' ? ['gate'] : []
+    expect(unguardedJobs(source, exempt)).toEqual([])
+    if (exempt.length) {
+      const jobs = (Bun.YAML.parse(source) as { jobs: Record<string, { if?: string }> }).jobs
+      expect(jobs.gate?.if).toBe('always()')
+    }
   })
 }
+
+test('draft guards apply to every implementation job, not merely the workflow', () => {
+  const fixture = [
+    'jobs:',
+    '  guarded:',
+    '    if: github.event.pull_request.draft == false',
+    '  unguarded:',
+    '    runs-on: ubuntu-24.04',
+  ].join('\n')
+  expect(unguardedJobs(fixture)).toEqual(['unguarded'])
+  expect(() => unguardedJobs('name: no jobs')).toThrow('missing workflow jobs')
+})
 
 test('event contract parsing supports both activity syntaxes and fails closed', () => {
   expect(pullRequestTypes('on:\n  pull_request:\n    types: [opened, reopened]\n')).toEqual([
