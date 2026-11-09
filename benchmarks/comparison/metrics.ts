@@ -244,7 +244,14 @@ function assertCompleteTrialCohort(comparison: Comparison) {
   // The input-latency cohort is measured separately. A passed comparison
   // must not drop its click-to-paint trials from the regression baseline.
   const inputPolicy = policy.inputLatency
-  if (inputPolicy == null) return // Older archives can omit input-latency trials.
+  if (inputPolicy === null) {
+    // The controller records null only when --input-trials=0. Undeclared
+    // input launches must not enter a partial click-to-paint baseline.
+    if (comparison.inputLaunches?.length)
+      throw new Error('Comparison declares no input-latency trials but contains input launches')
+    return
+  }
+  if (inputPolicy === undefined) return // Older archives can omit input-latency metadata.
   const inputTrials = inputPolicy.trials
   // The controller caps --input-trials at 30. Reject corrupt declarations
   // before constructing an unbounded expected-trial set.

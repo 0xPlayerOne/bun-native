@@ -286,6 +286,42 @@ describe('benchmark metrics export', () => {
     expect(() => exportMetrics(directory)).toThrow('lacks a valid input trial cohort')
   })
 
+  test('explicitly disabled input-latency measurement cannot contain input launches', () => {
+    const { directory, comparison } = writeExport({ trials: 3 })
+    const record = {
+      ...comparison,
+      methodology: {
+        adapters: ['core', 'solid'],
+        modes: ['aot'],
+        measuredTrials: 3,
+        inputLatency: null,
+      },
+    }
+    const save = (value: object) =>
+      writeFileSync(join(directory, 'comparison.json'), JSON.stringify(value))
+
+    // The real controller writes inputLatency: null with zero input launches.
+    // Previously a forged passed export could retain one undeclared input
+    // sample and silently produce an undersampled click-to-paint baseline.
+    record.inputLaunches = record.inputLaunches.slice(0, 1)
+    save(record)
+    expect(() => exportMetrics(directory)).toThrow(
+      'Comparison declares no input-latency trials but contains input launches'
+    )
+    record.inputLaunches = []
+    save(record)
+    expect(() => exportMetrics(directory)).not.toThrow()
+
+    // Older archives without the field stay readable; only an explicit
+    // controller opt-out rules out recorded input launches.
+    save({
+      ...record,
+      inputLaunches: comparison.inputLaunches,
+      methodology: { adapters: ['core', 'solid'], modes: ['aot'], measuredTrials: 3 },
+    })
+    expect(() => exportMetrics(directory)).not.toThrow()
+  })
+
   test('rejects retained reports not linked to comparison launches', () => {
     const { directory, comparison } = writeExport()
     const path = join(directory, 'launches.jsonl.gz')
