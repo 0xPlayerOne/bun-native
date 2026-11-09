@@ -202,10 +202,15 @@ export function exportMetrics(directory: string, streaming: readonly string[] = 
     if (identities.has(launch.name)) throw new Error(`Duplicate comparison launch ${launch.name}`)
     identities.add(launch.name)
   }
+  const expectedReportNames = new Set(comparison.launches.map((launch) => launch.name))
   const reports = new Map<string, Record<string, unknown> | null>()
   for (const row of readJsonl(join(directory, 'launches.jsonl.gz'))) {
     const name = row['name']
     if (typeof name !== 'string' || !name) throw new Error('Retained launch report lacks a name')
+    // The exporter emits reports only for comparison launches, never input trials.
+    // Unreferenced records cannot silently survive into an accepted baseline.
+    if (!expectedReportNames.has(name))
+      throw new Error(`Unexpected retained launch report ${name}`)
     if (reports.has(name)) throw new Error(`Duplicate retained launch report ${name}`)
     reports.set(name, row['report'] as Record<string, unknown> | null)
   }

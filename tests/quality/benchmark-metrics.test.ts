@@ -209,6 +209,30 @@ describe('benchmark metrics export', () => {
     )
   })
 
+  test('rejects retained reports not linked to comparison launches', () => {
+    const { directory, comparison } = writeExport()
+    const path = join(directory, 'launches.jsonl.gz')
+    const rows = gunzipSync(readFileSync(path)).toString('utf8').trimEnd().split('\n')
+    const writeExtra = (name: string) =>
+      writeFileSync(
+        path,
+        gzipSync([...rows, JSON.stringify({ name, report: report(1) })].join('\n') + '\n')
+      )
+
+    // A stray report used to be silently ignored when constructing the baseline.
+    writeExtra('orphan-aot-1')
+    expect(() => exportMetrics(directory)).toThrow('Unexpected retained launch report orphan-aot-1')
+
+    // An input trial is already a known identity but is not a child launch report.
+    const inputName = comparison.inputLaunches[0]!.name
+    writeExtra(inputName)
+    expect(() => exportMetrics(directory)).toThrow(`Unexpected retained launch report ${inputName}`)
+
+    // The unchanged exporter output remains valid.
+    writeFileSync(path, gzipSync(rows.join('\n') + '\n'))
+    expect(() => exportMetrics(directory)).not.toThrow()
+  })
+
   test('adds streaming-list soaks as one sample per launch and refuses a failed soak', () => {
     const metrics = fromStreaming([
       streamingResult('Solid', 'aot'),
