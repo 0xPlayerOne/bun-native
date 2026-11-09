@@ -29,6 +29,8 @@ updates:
       bun-dependencies:
         applies-to: version-updates
         patterns: ['*']
+        # Babel's pinned compiler pairing and transitive lockfile need separate validation.
+        exclude-patterns: ['@babel/core']
   - package-ecosystem: cargo
     directory: /
     target-branch: main
@@ -40,6 +42,8 @@ updates:
       cargo-dependencies:
         applies-to: version-updates
         patterns: ['*']
+        # GPUI pins AccessKit 0.24; isolate upgrades until the native ABI aligns.
+        exclude-patterns: ['accesskit']
   - package-ecosystem: pip
     directory: /scripts/quality
     target-branch: main
