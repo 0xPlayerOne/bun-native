@@ -619,6 +619,7 @@ jobs:
               Start-Sleep -Seconds 2
               Write-Output "modifier flags after the display change: $(& $flags)"
             }
+            $failed = @()
             foreach ($scenario in @('react-workspace', 'solid-workspace')) {
               $package = Join-Path $env:NATIVE_EVIDENCE "$scenario-flow-package"
               bun experiments/aot-gpui/build-window.ts --entry "$scenario-flow" `
@@ -630,9 +631,11 @@ jobs:
                 & '${{ matrix.python }}' scripts/quality/native-workspace-macos.py `
                   --scenario $scenario --mode $mode `
                   --output (Join-Path $env:NATIVE_EVIDENCE "$scenario-macos-$mode") -- @command
-                if ($LASTEXITCODE -ne 0) { throw "The macOS $scenario reference was not verified in $mode (exit $LASTEXITCODE)" }
+                if ($LASTEXITCODE -ne 0) { $failed += "$scenario $mode (exit $LASTEXITCODE)" }
               }
             }
+            # Every case runs so one failure does not hide the others' evidence.
+            if ($failed) { throw "macOS workspace references not verified: $($failed -join ', ')" }
           } finally {
             if ($original -ge 0) { & $oracle set $main.number $original | Out-Null }
             Write-Output "modifier flags after the restore: $(& $flags)"

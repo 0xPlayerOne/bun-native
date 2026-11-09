@@ -419,6 +419,17 @@ static AXUIElementRef owned_ax_window(pid_t pid, NSDictionary *state) {
     return (AXUIElementRef)CFRetain(match);
 }
 
+// A listen-only tap on the owned process sees the wheel events WindowServer
+// actually routes to it, independent of what GPUI does with them.
+static CGEventRef record_delivered_wheel(CGEventTapProxy proxy, CGEventType type, CGEventRef event,
+                                         void *refcon) {
+    (void)proxy;
+    if (type == kCGEventScrollWheel)
+        [(__bridge NSMutableArray *)refcon
+            addObject:@(CGEventGetIntegerValueField(event, kCGScrollWheelEventDeltaAxis1))];
+    return event;
+}
+
 static NSDictionary *input(NSDictionary *request, NSDictionary *state) {
     NSDictionary *expected = request[@"expected"];
     if (![expected isKindOfClass:NSDictionary.class]) fail(@"A previously observed identity is required");
@@ -468,6 +479,11 @@ static NSDictionary *input(NSDictionary *request, NSDictionary *state) {
         id owned = CFBridgingRelease(move);
         require_foreground(pid);
         require_pointer_target(state, point);
+        NSMutableArray *delivered = [NSMutableArray array];
+        CFMachPortRef tap = CGEventTapCreateForPid(pid, kCGHeadInsertEventTap, kCGEventTapOptionListenOnly,
+            CGEventMaskBit(kCGEventScrollWheel), record_delivered_wheel, (__bridge void *)delivered);
+        CFRunLoopSourceRef tapSource = tap ? CFMachPortCreateRunLoopSource(NULL, tap, 0) : NULL;
+        if (tapSource) CFRunLoopAddSource(CFRunLoopGetCurrent(), tapSource, kCFRunLoopDefaultMode);
         CGEventPost(kCGSessionEventTap, (__bridge CGEventRef)owned);
         for (int i = 0; i < [repeat intValue]; i++) {
             if (i) pause_ms(request[@"delayMs"]);
@@ -481,6 +497,16 @@ static NSDictionary *input(NSDictionary *request, NSDictionary *state) {
             CGEventPost(kCGSessionEventTap, (__bridge CGEventRef)ownedWheel);
         }
         events = 1 + [repeat unsignedIntegerValue];
+        if (tapSource) {
+            CFRunLoopRunInMode(kCFRunLoopDefaultMode, 0.3, false);
+            CFRunLoopRemoveSource(CFRunLoopGetCurrent(), tapSource, kCFRunLoopDefaultMode);
+            CFRelease(tapSource);
+        }
+        if (tap) {
+            CFMachPortInvalidate(tap);
+            CFRelease(tap);
+        }
+        result[@"deliveredWheelDeltas"] = tap ? (id)delivered : (id)[NSNull null];
         result[@"screenPoint"] = @[@(point.x), @(point.y)];
         result[@"windowServerTargetVerified"] = @YES;
     } else if ([action isEqualToString:@"resize"] || [action isEqualToString:@"close"]) {

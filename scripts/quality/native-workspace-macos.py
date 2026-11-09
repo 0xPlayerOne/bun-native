@@ -193,13 +193,17 @@ class MacCommands:
         ):
             # X11 buttons 4 and 5 are one wheel notch up and down, which GPUI's
             # X11 client turns into SCROLL_LINES (3) lines; post the same.
-            self.input.scroll(
+            result = self.input.scroll(
                 x,
                 y,
                 self.viewport(),
                 X11_NOTCH_LINES if rest[4] == "4" else -X11_NOTCH_LINES,
                 int(rest[1]),
                 int(rest[3]),
+            )
+            # What the owned process was routed, from a listen-only tap on it.
+            self.log[-1].append(
+                {"deliveredWheelDeltas": (result or {}).get("deliveredWheelDeltas")}
             )
             return ""
         raise RuntimeError(f"Unsupported pointer command {arguments}")
