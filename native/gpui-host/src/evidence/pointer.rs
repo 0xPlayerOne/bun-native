@@ -7,7 +7,7 @@ use gpui::{
     Window,
 };
 use serde_json::{Value, json};
-use std::collections::BTreeSet;
+use std::{collections::BTreeSet, time::Duration};
 
 const RECORD_LIMIT: u16 = 64;
 
@@ -17,6 +17,13 @@ pub(super) struct PointerTrace {
     keys: u16,
     scrolls: u16,
     windows: BTreeSet<WindowId>,
+    /// Paints observed while tracing; a wheel event that is never followed by
+    /// one is reported, so a stalled frame source is not mistaken for an
+    /// ignored wheel.
+    paints: u64,
+    last_scroll: (u16, u64),
+    watching: bool,
+    stalls: u16,
 }
 
 impl PointerTrace {
@@ -50,6 +57,11 @@ impl Evidence {
     /// Called by the first, non-hitbox canvas during paint. These listeners
     /// observe capture before the body and never mutate dispatch or focus.
     pub(crate) fn observe_pointer(&self, window_id: WindowId, window: &mut Window) {
+        if let Some(log) = &self.0
+            && let Some(trace) = log.borrow_mut().pointer.as_mut()
+        {
+            trace.paints += 1;
+        }
         self.pointer_record(window_id, json!({"event":"ready"}), true, window);
         let moved = self.clone();
         window.on_mouse_event(move |event: &MouseMoveEvent, phase, window, _| {
@@ -78,9 +90,10 @@ impl Evidence {
             }
         });
         let scrolled = self.clone();
-        window.on_mouse_event(move |event: &ScrollEvent, phase, window, _| {
+        window.on_mouse_event(move |event: &ScrollEvent, phase, window, cx| {
             if phase == DispatchPhase::Capture {
                 scrolled.scroll_record(window_id, event, window);
+                scrolled.watch_scroll_paint(window_id, window, cx);
             }
         });
         let up = self.clone();
@@ -127,6 +140,84 @@ impl Evidence {
             "trace_index": index,
             "trace_limit": RECORD_LIMIT,
             "window_active": window.is_window_active(),
+        });
+        if let Err(error) = append(&mut log.file, &record) {
+            eprintln!("Bun Native scroll trace unavailable: {error}");
+        }
+    }
+
+    /// Checks, once per burst, that a paint follows the last wheel event. A
+    /// wheel that moves no scroll offset needs no paint, so a stall record is
+    /// read against the layout records around it. After a stall the window
+    /// asks for one frame explicitly and records whether that frame arrives.
+    fn watch_scroll_paint(&self, window_id: WindowId, window: &Window, cx: &App) {
+        let Some(log) = &self.0 else { return };
+        {
+            let mut log = log.borrow_mut();
+            let Some(trace) = log.pointer.as_mut() else {
+                return;
+            };
+            trace.last_scroll = (trace.scrolls, trace.paints);
+            if trace.watching || trace.stalls == RECORD_LIMIT {
+                return;
+            }
+            trace.watching = true;
+        }
+        let evidence = self.clone();
+        window
+            .spawn(cx, async move |cx| {
+                cx.background_executor()
+                    .timer(Duration::from_millis(400))
+                    .await;
+                let _ = cx.update(|window, _| evidence.check_scroll_paint(window_id, window));
+            })
+            .detach();
+    }
+
+    fn check_scroll_paint(&self, window_id: WindowId, window: &Window) {
+        let Some(log) = &self.0 else { return };
+        let mut log = log.borrow_mut();
+        let nonce = log.nonce.clone();
+        let Some(trace) = log.pointer.as_mut() else {
+            return;
+        };
+        trace.watching = false;
+        let (scroll, paints) = trace.last_scroll;
+        if trace.paints > paints || trace.stalls == RECORD_LIMIT {
+            return;
+        }
+        trace.stalls += 1;
+        let record = json!({
+            "nonce": nonce,
+            "type": "scroll_paint_stall",
+            "stage": "gpui-window-input",
+            "window_id": window_id,
+            "scroll_index": scroll,
+            "paints": paints,
+            "waited_ms": 400,
+            "window_active": window.is_window_active(),
+        });
+        if let Err(error) = append(&mut log.file, &record) {
+            eprintln!("Bun Native scroll trace unavailable: {error}");
+        }
+        drop(log);
+        let evidence = self.clone();
+        window.on_next_frame(move |_, _| evidence.scroll_paint_woken(window_id, scroll));
+    }
+
+    fn scroll_paint_woken(&self, window_id: WindowId, scroll: u16) {
+        let Some(log) = &self.0 else { return };
+        let mut log = log.borrow_mut();
+        let Some(paints) = log.pointer.as_ref().map(|trace| trace.paints) else {
+            return;
+        };
+        let record = json!({
+            "nonce": log.nonce,
+            "type": "scroll_paint_woken",
+            "stage": "gpui-window-input",
+            "window_id": window_id,
+            "scroll_index": scroll,
+            "paints": paints,
         });
         if let Err(error) = append(&mut log.file, &record) {
             eprintln!("Bun Native scroll trace unavailable: {error}");
