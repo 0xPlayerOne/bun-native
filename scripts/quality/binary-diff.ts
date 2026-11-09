@@ -148,7 +148,9 @@ export function peRegions(bytes: Uint8Array): { regions: Region[]; pdbPath: stri
     directoryCount !== null && directoryCount > 6 && optionalSize >= debugOffset + 8
   const debugRva = hasDebugDirectory ? r.u32(optional + debugOffset) : null
   const debugSize = hasDebugDirectory ? (r.u32(optional + debugOffset + 4) ?? 0) : 0
-  const debug = debugRva ? fileOffset(debugRva, debugSize) : null
+  // The debug directory consists of whole 28-byte IMAGE_DEBUG_DIRECTORY entries.
+  // A trailing partial entry makes its record count ambiguous; do not infer PDB identity.
+  const debug = debugRva && debugSize % 28 === 0 ? fileOffset(debugRva, debugSize) : null
   for (let i = 0; debug !== null && i < Math.floor(debugSize / 28); i++) {
     const entry = debug + i * 28
     if (!r.fits(entry, 28)) break

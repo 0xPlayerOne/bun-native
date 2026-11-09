@@ -217,6 +217,36 @@ describe('PE regions', () => {
     expect(peRegions(bytes)?.regions.some((region) => region.name === 'REPRO hash')).toBe(false)
   })
 
+  test('rejects partial trailing IMAGE_DEBUG_DIRECTORY entries', () => {
+    const bytes = pe({ stamp: 1, guid: 1, path: 'host.pdb', code: 1 })
+    const view = new DataView(bytes.buffer)
+    const sizeAt = 0x80 + 4 + 20 + 112 + 6 * 8 + 4
+    const timestamps = () =>
+      peRegions(bytes)?.regions.filter((region) => region.name === 'debug directory TimeDateStamp')
+
+    expect(peRegions(bytes)?.pdbPath).toBe('host.pdb')
+    expect(timestamps()).toHaveLength(2)
+
+    // With an incomplete trailing record, the declared array is malformed.
+    // Do not silently floor its size and authenticate the earlier CodeView.
+    view.setUint32(sizeAt, 57, true)
+    expect(peRegions(bytes)?.pdbPath).toBeNull()
+    expect(timestamps()).toEqual([])
+
+    view.setUint32(sizeAt, 29, true)
+    expect(peRegions(bytes)?.pdbPath).toBeNull()
+    expect(timestamps()).toEqual([])
+
+    // Whole-record arrays remain valid, including a single CodeView entry.
+    view.setUint32(sizeAt, 28, true)
+    expect(peRegions(bytes)?.pdbPath).toBe('host.pdb')
+    expect(timestamps()).toHaveLength(1)
+
+    view.setUint32(sizeAt, 56, true)
+    expect(peRegions(bytes)?.pdbPath).toBe('host.pdb')
+    expect(timestamps()).toHaveLength(2)
+  })
+
   test('ignores debug records with nonzero reserved Characteristics', () => {
     const bytes = pe({ stamp: 1, guid: 1, path: 'host.pdb', code: 1 })
     const view = new DataView(bytes.buffer)
