@@ -42,8 +42,9 @@ updates:
       cargo-dependencies:
         applies-to: version-updates
         patterns: ['*']
-        # GPUI pins AccessKit 0.24; isolate upgrades until the native ABI aligns.
-        exclude-patterns: ['accesskit']
+        # #578 demonstrated duplicate GPUI-bound crate identities and native ABI failures.
+        # Keep these upgrades individually reviewable until a compatible integration lands.
+        exclude-patterns: ['accesskit', 'base64', 'x11rb']
   - package-ecosystem: pip
     directory: /scripts/quality
     target-branch: main

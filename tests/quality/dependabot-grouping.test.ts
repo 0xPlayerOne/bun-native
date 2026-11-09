@@ -35,20 +35,22 @@ function includedInGroup(group: Group, dependency: string): boolean {
   )
 }
 
-test('Dependabot keeps incompatible Babel and AccessKit updates individually eligible', () => {
+test('Dependabot isolates all incompatible compiler and native upgrades', () => {
   expect(document.version).toBe(2)
   for (const { ecosystem, groupName, isolated, companions } of [
     {
       ecosystem: 'bun',
       groupName: 'bun-dependencies',
-      isolated: '@babel/core',
+      isolated: ['@babel/core'],
       companions: ['oxc-parser', 'oxlint'],
     },
     {
       ecosystem: 'cargo',
       groupName: 'cargo-dependencies',
-      isolated: 'accesskit',
-      companions: ['base64', 'x11rb'],
+      // #578 failed duplicate-identity checks for all three direct upgrades;
+      // AccessKit also caused actual GPUI/host Rust type errors.
+      isolated: ['accesskit', 'base64', 'x11rb'],
+      companions: ['serde', 'log'],
     },
   ]) {
     const update = updateFor(ecosystem)
@@ -56,14 +58,23 @@ test('Dependabot keeps incompatible Babel and AccessKit updates individually eli
     expect(group).toBeDefined()
     expect(group!.patterns).toEqual(['*'])
     expect(group!['applies-to']).toBe('version-updates')
-    expect(group!['exclude-patterns']).toEqual([isolated])
-    expect(includedInGroup(group!, isolated)).toBe(false)
+    expect(group!['exclude-patterns']).toEqual(isolated)
+    for (const dependency of isolated) {
+      expect(includedInGroup(group!, dependency)).toBe(false)
+      // Negative control: deleting any one exclusion restores that dependency
+      // to the catch-all group; this assertion detects partial regressions.
+      expect(
+        includedInGroup(
+          { ...group!, 'exclude-patterns': isolated.filter((item) => item !== dependency) },
+          dependency
+        )
+      ).toBe(true)
+      // Isolation must not hide upgrade notices behind Dependabot ignore policy.
+      expect(update.ignore?.some((item) => item['dependency-name'] === dependency) ?? false).toBe(
+        dependency === '@babel/core'
+      )
+    }
     for (const companion of companions) expect(includedInGroup(group!, companion)).toBe(true)
-    // Control: deleting the exclusion must make the test's decision change.
-    expect(includedInGroup({ ...group!, 'exclude-patterns': [] }, isolated)).toBe(true)
-    expect(update.ignore?.some((item) => item['dependency-name'] === isolated) ?? false).toBe(
-      ecosystem === 'bun'
-    )
   }
 })
 
