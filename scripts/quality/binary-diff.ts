@@ -245,6 +245,15 @@ export function explainDifference(a: Uint8Array, b: Uint8Array): Difference {
   }
 }
 
+// Binary-sourced section labels and PDB paths are untrusted Markdown content.
+function escapeMarkdownDiagnostic(value: string): string {
+  return value
+    .replaceAll('\\', '\\\\')
+    .replaceAll('|', '\\|')
+    .replaceAll('\r', '\\r')
+    .replaceAll('\n', '\\n')
+}
+
 export function renderDifference(os: string, difference: Difference): string[] {
   const lines = [
     '',
@@ -253,11 +262,15 @@ export function renderDifference(os: string, difference: Difference): string[] {
     '| Region | Bytes | Ranges |',
     '| ------ | ----: | -----: |',
     ...difference.regions.map(
-      (region) => `| ${region.name} | ${region.bytes} | ${region.ranges} |`
+      (region) => `| ${escapeMarkdownDiagnostic(region.name)} | ${region.bytes} | ${region.ranges} |`
     ),
   ]
-  if (difference.pdbPaths.some((path) => path !== null))
-    lines.push('', `PDB paths: ${difference.pdbPaths.map((path) => path ?? '(none)').join(' | ')}`)
+  if (difference.pdbPaths.some((path) => path !== null)) {
+    const paths = difference.pdbPaths.map((path) =>
+      path === null ? '(none)' : escapeMarkdownDiagnostic(path)
+    )
+    lines.push('', `PDB paths: ${paths.join(' | ')}`)
+  }
   const shown = difference.ranges.slice(0, 20)
   lines.push(
     '',

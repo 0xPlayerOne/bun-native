@@ -557,3 +557,24 @@ describe('explaining a difference', () => {
     expect(renderDifference('linux', plain).join('\n')).not.toContain('PDB paths')
   })
 })
+
+test('escapes binary-sourced labels and paths in Markdown diagnostics', () => {
+  const difference = {
+    sizes: [1, 1] as [number, number],
+    differingBytes: 1,
+    ranges: [{ start: 0, end: 1 }],
+    regions: [{ name: 'section .bad|col\ninjected', bytes: 1, ranges: 1 }],
+    pdbPaths: ['C:\\build\\source|other\nbad.pdb', null] as [string | null, string | null],
+  }
+  const lines = renderDifference('windows', difference)
+  expect(lines).toContain(String.raw`| section .bad\|col\ninjected | 1 | 1 |`)
+  expect(lines).toContain(String.raw`PDB paths: C:\\build\\source\|other\nbad.pdb | (none)`)
+  expect(lines).toHaveLength(10)
+  const clean = {
+    ...difference,
+    regions: [{ name: 'section .text', bytes: 1, ranges: 1 }],
+    pdbPaths: ['host.pdb', null] as [string | null, string | null],
+  }
+  expect(renderDifference('windows', clean)).toContain('| section .text | 1 | 1 |')
+  expect(renderDifference('windows', clean)).toContain('PDB paths: host.pdb | (none)')
+})
