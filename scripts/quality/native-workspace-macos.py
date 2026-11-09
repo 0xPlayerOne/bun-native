@@ -220,6 +220,30 @@ class MacCommands:
         return ""
 
 
+def sample_hosts(host, output):
+    """Record each live host's thread stacks before teardown, so a stalled
+    frame source can be told apart from a main thread parked in a nested loop."""
+    samples = []
+    for row in FAULT.owned_processes(os.getpid(), FAULT.process_table()):
+        if Path(row["executable"]).resolve() != host:
+            continue
+        path = output / f"host-sample-{row['pid']}.txt"
+        try:
+            completed = subprocess.run(
+                ["/usr/bin/sample", str(row["pid"]), "2", "-file", str(path)],
+                capture_output=True,
+                text=True,
+                timeout=30,
+                check=False,
+            )
+            samples.append(
+                {"pid": row["pid"], "file": path.name, "exitCode": completed.returncode}
+            )
+        except (OSError, subprocess.TimeoutExpired) as error:
+            samples.append({"pid": row["pid"], "error": str(error)})
+    return samples
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--output", required=True, type=Path)
@@ -459,6 +483,8 @@ def main():
     except Exception as error:
         LOGGER.exception("macOS workspace scenario failed")
         report["error"] = {"type": type(error).__name__, "message": str(error)}
+        if app is not None and app.poll() is None:
+            report["hostSamples"] = sample_hosts(host, output)
     finally:
         signal.alarm(0)
         if commands is not None:
