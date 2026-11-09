@@ -429,6 +429,41 @@ describe('PE regions', () => {
     ])
   })
 
+  test('respects declared file-aligned PE headers before assigning raw section ownership', () => {
+    const bytes = pe({ stamp: 1, guid: 1, path: 'host.pdb', code: 1 })
+    const view = new DataView(bytes.buffer)
+    const optional = 0x80 + 4 + 20
+    const table = optional + 240
+
+    // SizeOfHeaders includes aligned padding beyond the section descriptors.
+    // A malformed raw pointer in that padding must not claim header bytes.
+    view.setUint32(optional + 60, 0x200, true)
+    const valid = peRegions(bytes)
+    expect(valid?.pdbPath).toBe('host.pdb')
+    expect(valid?.regions.some((region) => region.name === 'section .text')).toBe(true)
+    expect(valid?.regions.find((region) => region.name === 'headers')?.end).toBe(0x200)
+
+    view.setUint32(table + 20, 0x1e0, true)
+    const alias = peRegions(bytes)
+    expect(alias?.regions.some((region) => region.name === 'section .text')).toBe(false)
+    expect(alias?.pdbPath).toBe('host.pdb')
+    const changedHeader = bytes.slice()
+    changedHeader[0x1f0] = 0x58
+    expect(explainDifference(bytes, changedHeader).regions).toEqual([
+      { name: 'headers', bytes: 1, ranges: 1 },
+    ])
+
+    // A declared header extent must contain the complete section table and
+    // fit inside the file. Zero still means undeclared for minimal PE fixtures.
+    view.setUint32(table + 20, 0x200, true)
+    view.setUint32(optional + 60, 0x180, true)
+    expect(peRegions(bytes)).toBeNull()
+    view.setUint32(optional + 60, 0x2000, true)
+    expect(peRegions(bytes)).toBeNull()
+    view.setUint32(optional + 60, 0, true)
+    expect(peRegions(bytes)?.regions.some((region) => region.name === 'section .text')).toBe(true)
+  })
+
   test('uses the earliest file-backed section rather than an uninitialized section for headers', () => {
     const a = pe({ stamp: 1, guid: 1, path: 'host.pdb', code: 1 })
     const view = new DataView(a.buffer)

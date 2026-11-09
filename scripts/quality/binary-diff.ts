@@ -105,7 +105,14 @@ export function peRegions(bytes: Uint8Array): { regions: Region[]; pdbPath: stri
   // Malformed section raw pointers may alias the DOS/PE headers or extend
   // beyond the file. Only complete, non-header raw ranges can own bytes or
   // translate debug-directory RVAs into file offsets.
-  const headerEnd = table + sectionCount * 40
+  const sectionTableEnd = table + sectionCount * 40
+  // SizeOfHeaders includes file-aligned padding after the section table. A
+  // section starting in that padding aliases header bytes even when it starts
+  // beyond the final 40-byte section descriptor.
+  const declaredHeaders = r.u32(optional + 60) ?? 0
+  if (declaredHeaders > 0 && (declaredHeaders < sectionTableEnd || !r.fits(0, declaredHeaders)))
+    return null
+  const headerEnd = Math.max(sectionTableEnd, declaredHeaders)
   const completeSections = sections.filter(
     (s) => s.rawSize > 0 && s.raw >= headerEnd && r.fits(s.raw, s.rawSize)
   )
