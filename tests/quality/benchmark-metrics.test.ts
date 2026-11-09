@@ -121,6 +121,23 @@ function writeExport({
     join(directory, 'launches.jsonl.gz'),
     gzipSync(rows.map((row) => JSON.stringify(row)).join('\n') + '\n')
   )
+  // Input-latency exporter preserves each XTest driver's observation.
+  const inputRows = inputs.map((item) => ({
+    name: item.name,
+    report: report(1),
+    driver: {
+      status: 'passed',
+      measurements: {
+        native_paint_file_observation: {
+          command_start_to_paint_observed_ms: item.commandStartToPaintObservedMs,
+        },
+      },
+    },
+  }))
+  writeFileSync(
+    join(directory, 'input-launches.jsonl.gz'),
+    gzipSync(inputRows.map((row) => JSON.stringify(row)).join('\n') + '\n')
+  )
   return { directory, comparison }
 }
 
@@ -423,6 +440,55 @@ describe('benchmark metrics export', () => {
     record.launches.push({ ...first, name: 'core-aot-first-copy' })
     save()
     expect(() => exportMetrics(directory)).toThrow('Duplicate comparison first launch core/aot')
+  })
+
+  test('declared input trials retain matching XTest and child evidence', () => {
+    const { directory, comparison } = writeExport({ trials: 3 })
+    writeFileSync(
+      join(directory, 'comparison.json'),
+      JSON.stringify({
+        ...comparison,
+        launches: comparison.launches.filter((launch) => launch.status === 'passed'),
+        methodology: {
+          adapters: ['core', 'solid'],
+          modes: ['aot'],
+          measuredTrials: 3,
+          inputLatency: { trials: 3 },
+        },
+      })
+    )
+    const path = join(directory, 'input-launches.jsonl.gz')
+    const original = gunzipSync(readFileSync(path)).toString('utf8').trimEnd().split('\n')
+    const save = (lines: string[]) => writeFileSync(path, gzipSync(lines.join('\n') + '\n'))
+    const name = 'core-aot-input-1'
+    const change = (replacement: Record<string, unknown>) =>
+      save(
+        original.map((line) => {
+          const row = JSON.parse(line) as { name: string; report: unknown; driver: unknown }
+          return JSON.stringify(row.name === name ? { ...row, ...replacement } : row)
+        })
+      )
+
+    expect(() => exportMetrics(directory)).not.toThrow()
+    save(original.filter((line) => (JSON.parse(line) as { name: string }).name !== name))
+    expect(() => exportMetrics(directory)).toThrow('Missing retained input launches: core-aot-input-1')
+    save([...original, original[0]!])
+    expect(() => exportMetrics(directory)).toThrow('Duplicate retained input launch core-aot-input-1')
+    change({ report: null })
+    expect(() => exportMetrics(directory)).toThrow('has no retained child report')
+    change({ driver: { status: 'failed' } })
+    expect(() => exportMetrics(directory)).toThrow('has no successful retained XTest driver')
+    change({
+      driver: {
+        status: 'passed',
+        measurements: {
+          native_paint_file_observation: { command_start_to_paint_observed_ms: 0.001 },
+        },
+      },
+    })
+    expect(() => exportMetrics(directory)).toThrow('has mismatched retained XTest latency')
+    save(original)
+    expect(() => exportMetrics(directory)).not.toThrow()
   })
 
   test('requires all declared input-latency trials for a passed benchmark baseline', () => {

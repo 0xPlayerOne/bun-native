@@ -318,6 +318,58 @@ function assertCompleteTrialCohort(comparison: Comparison) {
     throw new Error(`Missing input comparison trials: ${missingInput.join(', ')}`)
 }
 
+
+/** Bind declared input-latency samples to the preserved XTest and child evidence. */
+function assertRetainedInputEvidence(comparison: Comparison, directory: string) {
+  if (!comparison.methodology?.inputLatency) return
+  const launches = comparison.inputLaunches ?? []
+  const path = join(directory, 'input-launches.jsonl.gz')
+  if (!existsSync(path)) throw new Error('Missing retained input-latency evidence')
+  const expected = new Map(launches.map((launch) => [launch.name, launch]))
+  const seen = new Set<string>()
+  for (const row of readJsonl(path)) {
+    const name = row['name']
+    if (typeof name !== 'string' || !expected.has(name))
+      throw new Error(`Unexpected retained input launch ${String(name)}`)
+    if (seen.has(name)) throw new Error(`Duplicate retained input launch ${name}`)
+    const report = row['report']
+    if (!report || typeof report !== 'object' || Array.isArray(report))
+      throw new Error(`Input launch ${name} has no retained child report`)
+    const driver = row['driver']
+    if (
+      !driver ||
+      typeof driver !== 'object' ||
+      Array.isArray(driver) ||
+      !('status' in driver) ||
+      driver.status !== 'passed'
+    )
+      throw new Error(`Input launch ${name} has no successful retained XTest driver`)
+    const measurements = 'measurements' in driver ? driver.measurements : undefined
+    const observation =
+      measurements &&
+      typeof measurements === 'object' &&
+      'native_paint_file_observation' in measurements
+        ? measurements.native_paint_file_observation
+        : undefined
+    const observed =
+      observation &&
+      typeof observation === 'object' &&
+      'command_start_to_paint_observed_ms' in observation
+        ? observation.command_start_to_paint_observed_ms
+        : undefined
+    if (
+      typeof observed !== 'number' ||
+      !Number.isFinite(observed) ||
+      observed < 0 ||
+      observed !== expected.get(name)!.commandStartToPaintObservedMs
+    )
+      throw new Error(`Input launch ${name} has mismatched retained XTest latency`)
+    seen.add(name)
+  }
+  const missing = launches.filter((launch) => !seen.has(launch.name)).map((launch) => launch.name)
+  if (missing.length) throw new Error(`Missing retained input launches: ${missing.join(', ')}`)
+}
+
 export function exportMetrics(directory: string, streaming: readonly string[] = []): MetricsFile {
   const comparison = JSON.parse(
     readFileSync(join(directory, 'comparison.json'), 'utf8')
@@ -360,6 +412,7 @@ export function exportMetrics(directory: string, streaming: readonly string[] = 
         throw new Error(`Passed first launch ${launch.name} has no retained child report`)
     }
   }
+  assertRetainedInputEvidence(comparison, directory)
   const metrics = fromComparison(comparison, reports)
   // Paths and hard links to the same physical soak must not become independent launches.
   const seenStreaming = new Set<string>()
