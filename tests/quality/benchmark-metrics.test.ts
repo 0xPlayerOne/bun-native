@@ -284,7 +284,6 @@ describe('benchmark metrics export', () => {
     expect(() => exportMetrics(directory)).toThrow('lacks a valid trial cohort')
   })
 
-
   test('rejects swapped process names that silently exchange measured trial reports', () => {
     const { directory, comparison } = writeExport({ trials: 3 })
     const record = {

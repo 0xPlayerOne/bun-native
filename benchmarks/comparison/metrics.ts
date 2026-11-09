@@ -239,7 +239,7 @@ function assertCompleteTrialCohort(comparison: Comparison) {
     if (!expected.has(identity)) throw new Error(`Unexpected comparison trial ${identity}`)
     if (observed.has(identity)) throw new Error(`Duplicate comparison trial ${identity}`)
     // The controller names each process from its recorded cohort identity.
-    // A swapped name otherwise associates another trial\u0027s retained report with this sample.
+    // A swapped name otherwise associates another trial's retained report with this sample.
     if (launch.name !== `${launch.adapter}-${launch.mode}-${launch.trial}`)
       throw new Error(`Comparison trial ${identity} has mismatched launch name ${launch.name}`)
     if (launch.status !== 'passed')
