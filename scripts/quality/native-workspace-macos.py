@@ -270,6 +270,8 @@ def main():
         "BUN_NATIVE_DIAGNOSTICS_SCENARIO": args.scenario,
         "BUN_NATIVE_EVIDENCE_LOG": str(output / "native.jsonl"),
         "BUN_NATIVE_EVIDENCE_NONCE": nonce,
+        # Bounded pointer, key and wheel receipt records in native.jsonl.
+        "BUN_NATIVE_POINTER_TRACE": "1",
     }
     observed = {}
     threads = []
@@ -385,10 +387,11 @@ def main():
         commands.window = str(state["window"]["id"])
         FAULT.host_row(app, host, observed)
         report["window"] = state["window"]
-        if state["window"]["titledContentSize"] != SIZES[args.scenario]:
+        content = state["window"]["titledContentSize"]
+        if any(have < want for have, want in zip(content, SIZES[args.scenario])):
             raise RuntimeError(
                 "AppKit fitted the window to a smaller display: content "
-                f"{state['window']['titledContentSize']}, fixture {SIZES[args.scenario]}"
+                f"{content}, fixture {SIZES[args.scenario]}"
             )
         wait_for(
             lambda: any(

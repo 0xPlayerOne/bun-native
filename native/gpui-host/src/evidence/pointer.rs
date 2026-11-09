@@ -2,7 +2,10 @@
 
 use super::{Evidence, append};
 use bun_native_protocol::WindowId;
-use gpui::{App, DispatchPhase, MouseDownEvent, MouseMoveEvent, MouseUpEvent, Window};
+use gpui::{
+    App, DispatchPhase, MouseDownEvent, MouseMoveEvent, MouseUpEvent, ScrollDelta, ScrollEvent,
+    Window,
+};
 use serde_json::{Value, json};
 use std::collections::BTreeSet;
 
@@ -12,6 +15,7 @@ const RECORD_LIMIT: u16 = 64;
 pub(super) struct PointerTrace {
     records: u16,
     keys: u16,
+    scrolls: u16,
     windows: BTreeSet<WindowId>,
 }
 
@@ -73,6 +77,12 @@ impl Evidence {
                 );
             }
         });
+        let scrolled = self.clone();
+        window.on_mouse_event(move |event: &ScrollEvent, phase, window, _| {
+            if phase == DispatchPhase::Capture {
+                scrolled.scroll_record(window_id, event, window);
+            }
+        });
         let up = self.clone();
         window.on_mouse_event(move |event: &MouseUpEvent, phase, window, _| {
             if phase == DispatchPhase::Capture {
@@ -86,6 +96,41 @@ impl Evidence {
                 );
             }
         });
+    }
+
+    /// Wheel events GPUI received in an owned window, before any element
+    /// handles them, with their own bound so pointer moves cannot starve them.
+    fn scroll_record(&self, window_id: WindowId, event: &ScrollEvent, window: &Window) {
+        let Some(log) = &self.0 else { return };
+        let mut log = log.borrow_mut();
+        let Some(trace) = log.pointer.as_mut() else {
+            return;
+        };
+        if trace.scrolls == RECORD_LIMIT {
+            return;
+        }
+        trace.scrolls += 1;
+        let index = trace.scrolls;
+        let (unit, delta) = match event.delta {
+            ScrollDelta::Lines(lines) => ("lines", [lines.x, lines.y]),
+            ScrollDelta::Pixels(pixels) => ("pixels", [f32::from(pixels.x), f32::from(pixels.y)]),
+        };
+        let record = json!({
+            "nonce": log.nonce,
+            "type": "scroll_trace",
+            "stage": "gpui-window-input",
+            "window_id": window_id,
+            "position": [f32::from(event.position.x), f32::from(event.position.y)],
+            "unit": unit,
+            "delta": delta,
+            "touch_phase": format!("{:?}", event.touch_phase),
+            "trace_index": index,
+            "trace_limit": RECORD_LIMIT,
+            "window_active": window.is_window_active(),
+        });
+        if let Err(error) = append(&mut log.file, &record) {
+            eprintln!("Bun Native scroll trace unavailable: {error}");
+        }
     }
 
     /// Modified key downs (control, alt or platform) GPUI received in any
