@@ -247,6 +247,43 @@ describe('benchmark metrics export', () => {
     expect(() => exportMetrics(directory)).toThrow('lacks a valid trial cohort')
   })
 
+  test('rejects invented benchmark adapters and modes even with complete sample counts', () => {
+    const { directory, comparison } = writeExport({ trials: 3 })
+    const passed = comparison.launches.filter((launch) => launch.status === 'passed')
+    const record = {
+      ...comparison,
+      launches: passed,
+      inputLaunches: [],
+      methodology: {
+        adapters: ['core', 'solid'],
+        modes: ['aot'],
+        measuredTrials: 3,
+        inputLatency: null,
+      },
+    }
+    const save = () => writeFileSync(join(directory, 'comparison.json'), JSON.stringify(record))
+
+    save()
+    expect(() => exportMetrics(directory)).not.toThrow()
+
+    // The old validator accepted a fictitious adapter so long as its sample
+    // names and measured-trial indices matched its forged methodology.
+    record.methodology.adapters[1] = 'invented'
+    record.launches = passed.map((launch) => ({
+      ...launch,
+      adapter: launch.adapter === 'solid' ? 'invented' : launch.adapter,
+    }))
+    save()
+    expect(() => exportMetrics(directory)).toThrow('lacks a valid trial cohort')
+
+    // A fictitious execution mode was accepted in exactly the same way.
+    record.methodology.adapters[1] = 'solid'
+    record.methodology.modes[0] = 'invented'
+    record.launches = passed.map((launch) => ({ ...launch, mode: 'invented' }))
+    save()
+    expect(() => exportMetrics(directory)).toThrow('lacks a valid trial cohort')
+  })
+
   test('requires all declared input-latency trials for a passed benchmark baseline', () => {
     const { directory, comparison } = writeExport({ trials: 3 })
     const originals = comparison.inputLaunches.map((launch) => ({ ...launch }))

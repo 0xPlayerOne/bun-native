@@ -204,13 +204,17 @@ function assertCompleteTrialCohort(comparison: Comparison) {
   const policy = comparison.methodology
   if (!policy) return
   const { adapters, modes, measuredTrials } = policy
+  // These are the controller's only accepted adapter/mode options. Otherwise
+  // invented labels can qualify a forged baseline or expand a huge cross product.
+  const controllerAdapters = new Set(['core', 'solid', 'react'])
+  const controllerModes = new Set(['development', 'aot'])
   if (
     !Array.isArray(adapters) ||
     !adapters.length ||
     !Array.isArray(modes) ||
     !modes.length ||
-    adapters.some((adapter) => typeof adapter !== 'string' || !adapter) ||
-    modes.some((mode) => typeof mode !== 'string' || !mode) ||
+    adapters.some((adapter) => !controllerAdapters.has(adapter)) ||
+    modes.some((mode) => !controllerModes.has(mode)) ||
     new Set(adapters).size !== adapters.length ||
     new Set(modes).size !== modes.length ||
     typeof measuredTrials !== 'number' ||
