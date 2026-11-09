@@ -209,6 +209,37 @@ describe('benchmark metrics export', () => {
     )
   })
 
+  test('refuses incomplete or duplicated recorded trial cohorts despite passed status', () => {
+    const { directory, comparison } = writeExport({ trials: 3 })
+    // The writer's successful controller records only passed processes. Keep
+    // the older mixed-status fixture behavior for the other exporter tests.
+    const record = {
+      ...comparison,
+      launches: comparison.launches.filter((launch) => launch.status === 'passed'),
+      methodology: { adapters: ['core', 'solid'], modes: ['aot'], measuredTrials: 3 },
+    }
+    const save = () => writeFileSync(join(directory, 'comparison.json'), JSON.stringify(record))
+    save()
+    expect(() => exportMetrics(directory)).not.toThrow()
+
+    // Before cohort validation both missing fourth trials and distinct names
+    // claiming the same adapter/mode/trial were accepted as a valid baseline.
+    record.methodology.measuredTrials = 4
+    save()
+    expect(() => exportMetrics(directory)).toThrow('Missing comparison trials: core/aot/4')
+
+    record.methodology.measuredTrials = 3
+    const duplicated = record.launches.find((launch) => launch.name === 'solid-aot-2')!
+    duplicated.trial = 1
+    save()
+    expect(() => exportMetrics(directory)).toThrow('Duplicate comparison trial solid/aot/1')
+
+    duplicated.trial = 2
+    record.methodology.modes.push('development')
+    save()
+    expect(() => exportMetrics(directory)).toThrow('Missing comparison trials: core/development/1')
+  })
+
   test('rejects retained reports not linked to comparison launches', () => {
     const { directory, comparison } = writeExport()
     const path = join(directory, 'launches.jsonl.gz')

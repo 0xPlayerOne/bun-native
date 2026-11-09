@@ -57,7 +57,7 @@ type Comparison = {
   schemaVersion: number
   status: string
   source?: { commit?: string }
-  methodology?: { measuredTrials?: number }
+  methodology?: { measuredTrials?: number; adapters?: string[]; modes?: string[] }
   target: {
     os: string
     osRelease: string
@@ -186,12 +186,60 @@ export function fromStreaming(results: readonly StreamingResult[]): Record<strin
   return metrics
 }
 
+/**
+ * A status of "passed" must describe every timed process the controller
+ * promised to run. Missing entire launches otherwise shrink regression samples
+ * without failing the export, even when all retained reports are well formed.
+ *
+ * Pre-methodology archives remain readable; current controller runs publish
+ * adapters, modes and measuredTrials together.
+ */
+function assertCompleteTrialCohort(comparison: Comparison) {
+  const policy = comparison.methodology
+  if (!policy) return
+  const { adapters, modes, measuredTrials } = policy
+  if (
+    !Array.isArray(adapters) ||
+    !adapters.length ||
+    !Array.isArray(modes) ||
+    !modes.length ||
+    adapters.some((adapter) => typeof adapter !== 'string' || !adapter) ||
+    modes.some((mode) => typeof mode !== 'string' || !mode) ||
+    new Set(adapters).size !== adapters.length ||
+    new Set(modes).size !== modes.length ||
+    typeof measuredTrials !== 'number' ||
+    !Number.isInteger(measuredTrials) ||
+    measuredTrials < 3
+  )
+    throw new Error('Comparison methodology lacks a valid trial cohort')
+
+  const expected = new Set<string>()
+  for (const adapter of adapters)
+    for (const mode of modes)
+      for (let trial = 1; trial <= measuredTrials; trial++)
+        expected.add(`${adapter}/${mode}/${trial}`)
+
+  const observed = new Set<string>()
+  for (const launch of comparison.launches) {
+    if (launch.warmup) continue
+    const identity = `${launch.adapter}/${launch.mode}/${launch.trial}`
+    if (!expected.has(identity)) throw new Error(`Unexpected comparison trial ${identity}`)
+    if (observed.has(identity)) throw new Error(`Duplicate comparison trial ${identity}`)
+    if (launch.status !== 'passed')
+      throw new Error(`Non-passing comparison trial ${identity} in a passed comparison`)
+    observed.add(identity)
+  }
+  const missing = [...expected].filter((identity) => !observed.has(identity))
+  if (missing.length) throw new Error(`Missing comparison trials: ${missing.join(', ')}`)
+}
+
 export function exportMetrics(directory: string, streaming: readonly string[] = []): MetricsFile {
   const comparison = JSON.parse(
     readFileSync(join(directory, 'comparison.json'), 'utf8')
   ) as Comparison
   if (comparison.status !== 'passed')
     throw new Error(`The comparison status is ${comparison.status}; a failed run is not a baseline`)
+  assertCompleteTrialCohort(comparison)
   // Each recorded process must contribute at most one independent sample.
   // A repeated identity would otherwise reuse one retained report or overwrite
   // an earlier JSONL report before the regression gate sees it.
