@@ -334,6 +334,36 @@ describe('benchmark metrics export', () => {
     expect(() => exportMetrics(directory)).not.toThrow()
   })
 
+  test('requires one successful first-launch warmup for every declared adapter/mode', () => {
+    const { directory, comparison } = writeExport({ trials: 3 })
+    const launches = comparison.launches.filter((launch) => launch.status === 'passed')
+    const record = {
+      ...comparison,
+      launches: launches.map((launch) => ({ ...launch })),
+      methodology: { adapters: ['core', 'solid'], modes: ['aot'], measuredTrials: 3 },
+    }
+    const save = () => writeFileSync(join(directory, 'comparison.json'), JSON.stringify(record))
+    save()
+    expect(() => exportMetrics(directory)).not.toThrow()
+
+    // Previously all three malformed records were accepted: only measured
+    // launches were checked, even though trial zero runs each built artifact.
+    record.launches = launches.filter((launch) => !(launch.warmup && launch.adapter === 'core'))
+    save()
+    expect(() => exportMetrics(directory)).toThrow('Missing comparison first launches: core/aot')
+
+    record.launches = launches.map((launch) => ({ ...launch }))
+    const first = record.launches.find((launch) => launch.warmup && launch.adapter === 'core')!
+    first.status = 'failed'
+    save()
+    expect(() => exportMetrics(directory)).toThrow('Non-passing or invalid comparison first launch core/aot')
+
+    first.status = 'passed'
+    record.launches.push({ ...first, name: 'core-aot-first-copy' })
+    save()
+    expect(() => exportMetrics(directory)).toThrow('Duplicate comparison first launch core/aot')
+  })
+
   test('requires all declared input-latency trials for a passed benchmark baseline', () => {
     const { directory, comparison } = writeExport({ trials: 3 })
     const originals = comparison.inputLaunches.map((launch) => ({ ...launch }))

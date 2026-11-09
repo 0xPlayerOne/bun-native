@@ -232,9 +232,26 @@ function assertCompleteTrialCohort(comparison: Comparison) {
       for (let trial = 1; trial <= measuredTrials; trial++)
         expected.add(`${adapter}/${mode}/${trial}`)
 
+  // Trial zero is the controller's mandatory first launch of every built
+  // adapter/mode pair. A missing or failed warmup makes subsequent measured
+  // samples incomparable to the declared warm-cache methodology.
+  const expectedFirst = new Set<string>()
+  for (const adapter of adapters)
+    for (const mode of modes) expectedFirst.add(`${adapter}/${mode}`)
+  const observedFirst = new Set<string>()
   const observed = new Set<string>()
   for (const launch of comparison.launches) {
-    if (launch.warmup) continue
+    if (launch.warmup) {
+      const identity = `${launch.adapter}/${launch.mode}`
+      if (!expectedFirst.has(identity))
+        throw new Error(`Unexpected comparison first launch ${identity}`)
+      if (observedFirst.has(identity))
+        throw new Error(`Duplicate comparison first launch ${identity}`)
+      if (launch.trial !== 0 || launch.status !== 'passed')
+        throw new Error(`Non-passing or invalid comparison first launch ${identity}`)
+      observedFirst.add(identity)
+      continue
+    }
     const identity = `${launch.adapter}/${launch.mode}/${launch.trial}`
     if (!expected.has(identity)) throw new Error(`Unexpected comparison trial ${identity}`)
     if (observed.has(identity)) throw new Error(`Duplicate comparison trial ${identity}`)
@@ -246,6 +263,9 @@ function assertCompleteTrialCohort(comparison: Comparison) {
       throw new Error(`Non-passing comparison trial ${identity} in a passed comparison`)
     observed.add(identity)
   }
+  const missingFirst = [...expectedFirst].filter((identity) => !observedFirst.has(identity))
+  if (missingFirst.length)
+    throw new Error(`Missing comparison first launches: ${missingFirst.join(', ')}`)
   const missing = [...expected].filter((identity) => !observed.has(identity))
   if (missing.length) throw new Error(`Missing comparison trials: ${missing.join(', ')}`)
 
