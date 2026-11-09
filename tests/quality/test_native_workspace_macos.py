@@ -78,7 +78,7 @@ class MacCommandTests(unittest.TestCase):
                 "5",
             ]
         )
-        mac.scroll.assert_called_once_with(5.0, 6.0, [1000, 760], -1, 30, 10)
+        mac.scroll.assert_called_once_with(5.0, 6.0, [1000, 760], -3, 30, 10)
         driver.run(["xdotool", "key", "--clearmodifiers", "ctrl+a"])
         mac.key.assert_called_once_with("a", ["control"])
         driver.run(["xdotool", "type", "--clearmodifiers", "--delay", "10", "Ship"])
@@ -88,7 +88,7 @@ class MacCommandTests(unittest.TestCase):
         driver.run(["xdotool", "key", "--clearmodifiers", "alt+F4"])
         mac.os_close.assert_called_once_with()
 
-    def test_wheel_up_is_a_positive_line(self):
+    def test_wheel_up_is_three_positive_lines_like_gpuis_x11_notch(self):
         driver, mac = commands()
         driver.run(
             [
@@ -106,7 +106,7 @@ class MacCommandTests(unittest.TestCase):
                 "4",
             ]
         )
-        mac.scroll.assert_called_once_with(5.0, 6.0, [1000, 760], 1, 12, 15)
+        mac.scroll.assert_called_once_with(5.0, 6.0, [1000, 760], 3, 12, 15)
 
     def test_unknown_words_windows_and_keys_are_refused(self):
         driver, mac = commands()

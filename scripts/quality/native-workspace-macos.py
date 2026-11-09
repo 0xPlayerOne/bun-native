@@ -35,6 +35,8 @@ TITLES = {
 }
 # The size each fixture opens at; the scenarios assert this viewport.
 SIZES = {"react-workspace": [1000, 760], "solid-workspace": [1120, 760]}
+# gpui_linux/src/linux/platform.rs SCROLL_LINES at the pinned GPUI revision.
+X11_NOTCH_LINES = 3
 X11_MODIFIERS = {
     "ctrl": "control",
     "shift": "shift",
@@ -189,12 +191,13 @@ class MacCommands:
             and rest[2] == "--delay"
             and rest[4] in ("4", "5")
         ):
-            # X11 buttons 4 and 5 are one wheel line up and down.
+            # X11 buttons 4 and 5 are one wheel notch up and down, which GPUI's
+            # X11 client turns into SCROLL_LINES (3) lines; post the same.
             self.input.scroll(
                 x,
                 y,
                 self.viewport(),
-                1 if rest[4] == "4" else -1,
+                X11_NOTCH_LINES if rest[4] == "4" else -X11_NOTCH_LINES,
                 int(rest[1]),
                 int(rest[3]),
             )

@@ -167,15 +167,15 @@ and [React](../scripts/quality/native-react-workspace-scenario.py)) run unchange
 on macOS through [`native-workspace-macos.py`](../scripts/quality/native-workspace-macos.py).
 It maps their X11 command words to the SDK helper's owned-window actions:
 
-| Scenario word                     | macOS action in [`native-platform-macos.m`](../scripts/quality/native-platform-macos.m)          |
-| --------------------------------- | ------------------------------------------------------------------------------------------------ |
-| `click 1`                         | `click`: CoreGraphics mouse down/up after the AppKit hit-target check                            |
-| `click --repeat N --delay D 4/5`  | `scroll`: one pointer move, then N line-unit wheel events (4 up, 5 down), each target-checked    |
-| `key ctrl+a`, `Return`, `Escape`… | `key`: named ANSI key code with modifier flags                                                   |
-| `type --delay D TEXT`             | `type`: printable ASCII, one key pair per character                                              |
-| `windowsize W H`                  | `resize`: Accessibility `kAXSizeAttribute` on the owned window, keeping the frame-content insets |
-| `alt+F4`                          | `close`: Accessibility press of the owned window's standard close button                         |
-| `getwindowgeometry`               | AppKit's titled content size for the observed Quartz frame                                       |
+| Scenario word                     | macOS action in [`native-platform-macos.m`](../scripts/quality/native-platform-macos.m)                               |
+| --------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
+| `click 1`                         | `click`: CoreGraphics mouse down/up after the AppKit hit-target check                                                 |
+| `click --repeat N --delay D 4/5`  | `scroll`: one pointer move, then N three-line wheel events (4 up, 5 down; GPUI X11 SCROLL_LINES), each target-checked |
+| `key ctrl+a`, `Return`, `Escape`… | `key`: named ANSI key code with modifier flags                                                                        |
+| `type --delay D TEXT`             | `type`: printable ASCII, one key pair per character                                                                   |
+| `windowsize W H`                  | `resize`: Accessibility `kAXSizeAttribute` on the owned window, keeping the frame-content insets                      |
+| `alt+F4`                          | `close`: Accessibility press of the owned window's standard close button                                              |
+| `getwindowgeometry`               | AppKit's titled content size for the observed Quartz frame                                                            |
 
 Screenshots are cropped to the content and scaled to the GPUI viewport, so the
 pixel checks see what an X11 client capture shows. `resize` and `close` need

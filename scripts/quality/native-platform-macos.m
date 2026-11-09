@@ -459,7 +459,7 @@ static NSDictionary *input(NSDictionary *request, NSDictionary *state) {
     } else if ([action isEqualToString:@"scroll"]) {
         CGPoint point = content_point(request, state);
         id lines = request[@"lines"], repeat = request[@"repeat"];
-        if (!number(lines) || ([lines intValue] != 1 && [lines intValue] != -1)
+        if (!number(lines) || [lines intValue] == 0 || abs([lines intValue]) > 3
             || [lines doubleValue] != [lines intValue]
             || !number(repeat) || [repeat doubleValue] < 1 || [repeat doubleValue] > 64
             || floor([repeat doubleValue]) != [repeat doubleValue]) fail(@"Invalid bounded wheel request");
