@@ -249,6 +249,9 @@ function assertCompleteTrialCohort(comparison: Comparison) {
         throw new Error(`Duplicate comparison first launch ${identity}`)
       if (launch.trial !== 0 || launch.status !== 'passed')
         throw new Error(`Non-passing or invalid comparison first launch ${identity}`)
+      // Trial zero uses the controller's first-launch process identity, not a measured trial name.
+      if (launch.name !== `${launch.adapter}-${launch.mode}-first`)
+        throw new Error(`Comparison first launch ${identity} has mismatched launch name ${launch.name}`)
       observedFirst.add(identity)
       continue
     }

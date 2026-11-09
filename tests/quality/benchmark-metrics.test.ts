@@ -51,7 +51,7 @@ function writeExport({
   const inputs = []
   for (const adapter of ['core', 'solid']) {
     for (let trial = 0; trial <= trials; trial++) {
-      const name = `${adapter}-aot-${trial}`
+      const name = trial === 0 ? `${adapter}-aot-first` : `${adapter}-aot-${trial}`
       launches.push({
         name,
         adapter,
@@ -343,6 +343,31 @@ describe('benchmark metrics export', () => {
       methodology: { adapters: ['core', 'solid'], modes: ['aot'], measuredTrials: 3 },
     }
     const save = () => writeFileSync(join(directory, 'comparison.json'), JSON.stringify(record))
+    save()
+    expect(() => exportMetrics(directory)).not.toThrow()
+
+    // A forged first-launch identity previously passed cohort validation when
+    // its retained JSONL name was changed consistently. The controller always
+    // names trial-zero processes `<adapter>-<mode>-first`.
+    const firstLaunch = record.launches.find(
+      (launch) => launch.warmup && launch.adapter === 'core'
+    )!
+    const reportsPath = join(directory, 'launches.jsonl.gz')
+    const originalReports = gunzipSync(readFileSync(reportsPath)).toString('utf8')
+    expect(originalReports).toContain('"name":"core-aot-first"')
+    firstLaunch.name = 'core-aot-first-forged'
+    writeFileSync(
+      reportsPath,
+      gzipSync(
+        originalReports.replace('"name":"core-aot-first"', '"name":"core-aot-first-forged"')
+      )
+    )
+    save()
+    expect(() => exportMetrics(directory)).toThrow(
+      'Comparison first launch core/aot has mismatched launch name core-aot-first-forged'
+    )
+    record.launches = launches.map((launch) => ({ ...launch }))
+    writeFileSync(reportsPath, gzipSync(originalReports))
     save()
     expect(() => exportMetrics(directory)).not.toThrow()
 
