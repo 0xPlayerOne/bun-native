@@ -33,6 +33,8 @@ TITLES = {
     "react-workspace": "Bun Native React Workspace",
     "solid-workspace": "Bun Native Solid Workspace",
 }
+# The size each fixture opens at; the scenarios assert this viewport.
+SIZES = {"react-workspace": [1000, 760], "solid-workspace": [1120, 760]}
 X11_MODIFIERS = {
     "ctrl": "control",
     "shift": "shift",
@@ -376,6 +378,11 @@ def main():
         commands.window = str(state["window"]["id"])
         FAULT.host_row(app, host, observed)
         report["window"] = state["window"]
+        if state["window"]["titledContentSize"] != SIZES[args.scenario]:
+            raise RuntimeError(
+                "AppKit fitted the window to a smaller display: content "
+                f"{state['window']['titledContentSize']}, fixture {SIZES[args.scenario]}"
+            )
         wait_for(
             lambda: any(
                 row.get("type") == "rendered"
