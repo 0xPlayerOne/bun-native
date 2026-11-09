@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.27.2](https://github.com/0xPlayerOne/bun-native/compare/v0.27.1...v0.27.2) (2026-11-09)
+
+
+### Maintenance
+
+* **deps:** bump ruff from 0.17.3 to 0.17.4 in /scripts/quality ([#575](https://github.com/0xPlayerOne/bun-native/issues/575)) ([bbd375b](https://github.com/0xPlayerOne/bun-native/commit/bbd375bceaaa2348e963f88a52da86d85bed36d0))
+* **deps:** bump taiki-e/install-action ([#576](https://github.com/0xPlayerOne/bun-native/issues/576)) ([bcc2661](https://github.com/0xPlayerOne/bun-native/commit/bcc2661bd050f252ea56bc0e3b26408a6e63a27c))
+
 ## [0.27.1](https://github.com/0xPlayerOne/bun-native/compare/v0.27.0...v0.27.1) (2026-11-08)
 
 
