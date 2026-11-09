@@ -21,6 +21,16 @@ INITIAL_TITLES = [
 ]
 
 
+def submission_is_streaming(conversation):
+    """Treat a pre-commit empty message list as pending, not an index error."""
+    messages = conversation["messages"]
+    return (
+        bool(messages)
+        and messages[-1]["status"] == "streaming"
+        and conversation["draft"] == ""
+    )
+
+
 def run(
     driver,
     geometry_tools,
@@ -141,10 +151,7 @@ def run(
         action("key", "--clearmodifiers", "Return")
         return wait_frame(
             "native local-stream submission",
-            lambda row: (
-                conversation(snapshot=row)["messages"][-1]["status"] == "streaming"
-                and conversation(snapshot=row)["draft"] == ""
-            ),
+            lambda row: submission_is_streaming(conversation(snapshot=row)),
         )
 
     def message_row(message_id, current):

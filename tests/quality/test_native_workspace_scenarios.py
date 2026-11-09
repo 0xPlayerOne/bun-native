@@ -257,6 +257,27 @@ class SolidScenarioTests(unittest.TestCase):
             finally:
                 painted.assert_called_with({"type": "rendered"}, None, state)
 
+    def test_transient_empty_submission_is_pending_until_an_actual_stream_exists(self):
+        # A newly selected empty conversation is a valid pre-reply frame.
+        # Previously the polling predicate raised IndexError immediately,
+        # before the bounded wait could observe the eventual streaming state.
+        self.assertFalse(SOLID.submission_is_streaming({"messages": [], "draft": ""}))
+        self.assertFalse(
+            SOLID.submission_is_streaming(
+                {"messages": [{"status": "complete"}], "draft": ""}
+            )
+        )
+        self.assertFalse(
+            SOLID.submission_is_streaming(
+                {"messages": [{"status": "streaming"}], "draft": "pending"}
+            )
+        )
+        self.assertTrue(
+            SOLID.submission_is_streaming(
+                {"messages": [{"status": "streaming"}], "draft": ""}
+            )
+        )
+
     def test_initial_conversation_titles_are_an_independent_oracle(self):
         state = self.state(["Project brief"])
         with self.assertRaises(AssertionError):
