@@ -394,11 +394,16 @@ describe('metric regression gate', () => {
     const invalidCurrent = file({
       rate: { direction: 'higher', unit: 'rows/s', samples: around(-100) },
     })
-    // An invalid baseline with a positive median was previously accepted as
-    // unchanged; a negative current throughput was considered an improvement.
+    const invalidLatency = compare(
+      file({ latency: { samples: around(10) } }),
+      file({ latency: { samples: around(-2) } })
+    )
+    // An invalid throughput baseline with a positive median was previously
+    // accepted as unchanged; negative latency passed as an improvement.
     for (const comparison of [
       compare(invalidBaseline, validBaseline),
       compare(validBaseline, invalidCurrent),
+      invalidLatency,
     ]) {
       expect(comparison.findings[0]).toMatchObject({ status: 'unmeasured', ratio: null })
       expect(comparison.findings[0]?.note).toContain('negative samples')
