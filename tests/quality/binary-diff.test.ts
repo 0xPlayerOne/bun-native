@@ -78,6 +78,37 @@ describe('differing ranges', () => {
 })
 
 describe('PE regions', () => {
+  test('maps complete debug directories in declared header padding only', () => {
+    const bytes = pe({ stamp: 1, guid: 1, path: 'host.pdb', code: 1 })
+    const view = new DataView(bytes.buffer)
+    const optional = 0x80 + 4 + 20
+    const debugRva = optional + 112 + 6 * 8
+
+    // The section descriptors end at 0x1d8. A 28-byte CodeView directory
+    // fits entirely in the declared 0x1d8..0x200 header padding.
+    view.setUint32(optional + 60, 0x200, true)
+    bytes.copyWithin(0x1e0, 0x400, 0x400 + 28)
+    view.setUint32(debugRva, 0x1e0, true)
+    view.setUint32(debugRva + 4, 28, true)
+    const inHeaders = peRegions(bytes)
+    expect(inHeaders?.pdbPath).toBe('host.pdb')
+    expect(
+      inHeaders?.regions.filter((region) => region.name === 'debug directory TimeDateStamp')
+    ).toEqual([{ name: 'debug directory TimeDateStamp', start: 0x1e4, end: 0x1e8 }])
+
+    // Do not interpret section descriptors or an incomplete table crossing
+    // the declared header boundary as valid header-resident debug records.
+    view.setUint32(debugRva, 0x1d0, true)
+    expect(peRegions(bytes)?.pdbPath).toBeNull()
+    view.setUint32(debugRva, 0x1f0, true)
+    expect(peRegions(bytes)?.pdbPath).toBeNull()
+
+    // Existing section-backed debug directories must retain their identity.
+    view.setUint32(debugRva, 0x2000, true)
+    view.setUint32(debugRva + 4, 56, true)
+    expect(peRegions(bytes)?.pdbPath).toBe('host.pdb')
+  })
+
   test('rejects files that are not PE images', () => {
     expect(peRegions(new Uint8Array(16))).toBeNull()
     const noSignature = pe({ stamp: 1, guid: 1, path: 'x.pdb', code: 1 })

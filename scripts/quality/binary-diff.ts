@@ -130,6 +130,16 @@ export function peRegions(bytes: Uint8Array): { regions: Region[]; pdbPath: stri
       )
   )
   const fileOffset = (rva: number, size: number) => {
+    // Header RVAs map directly to file offsets. Accept a complete debug table
+    // in declared padding after the section descriptors, but never reinterpret
+    // the PE metadata itself or read across the declared header boundary.
+    if (
+      rva >= sectionTableEnd &&
+      rva < headerEnd &&
+      rva + size <= headerEnd &&
+      r.fits(rva, size)
+    )
+      return rva
     for (const s of fileBackedSections) {
       const offset = rva - s.rva
       // VirtualSize may include zero-filled memory beyond the file's raw
