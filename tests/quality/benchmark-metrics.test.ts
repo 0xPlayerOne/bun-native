@@ -188,6 +188,42 @@ describe('benchmark metrics export', () => {
     expect(() => exportMetrics(directory)).toThrow('has no retained child report')
   })
 
+  test('requires the retained child report of every declared successful first launch', () => {
+    const { directory, comparison } = writeExport({ trials: 3 })
+    const record = {
+      ...comparison,
+      launches: comparison.launches.filter((launch) => launch.status === 'passed'),
+      methodology: { adapters: ['core', 'solid'], modes: ['aot'], measuredTrials: 3 },
+    }
+    writeFileSync(join(directory, 'comparison.json'), JSON.stringify(record))
+    const path = join(directory, 'launches.jsonl.gz')
+    const original = gunzipSync(readFileSync(path)).toString('utf8').trimEnd().split('\n')
+    const name = 'core-aot-first'
+    const save = (lines: string[]) => writeFileSync(path, gzipSync(lines.join('\n') + '\n'))
+    expect(() => exportMetrics(directory)).not.toThrow()
+
+    // The exporter retains one row for every launch. Cohort validation alone
+    // previously accepted a completed first launch with no retained evidence.
+    save(original.filter((line) => (JSON.parse(line) as { name: string }).name !== name))
+    expect(() => exportMetrics(directory)).toThrow(
+      'Passed first launch core-aot-first has no retained child report'
+    )
+
+    // A present row with an absent child payload is equally insufficient.
+    save(
+      original.map((line) => {
+        const row = JSON.parse(line) as { name: string; report: unknown }
+        return JSON.stringify(row.name === name ? { ...row, report: null } : row)
+      })
+    )
+    expect(() => exportMetrics(directory)).toThrow(
+      'Passed first launch core-aot-first has no retained child report'
+    )
+
+    save(original)
+    expect(() => exportMetrics(directory)).not.toThrow()
+  })
+
   test('rejects duplicate launch and retained-report names instead of reusing a sample', () => {
     const { directory, comparison } = writeExport()
     comparison.launches.push({ ...comparison.launches[1]! })

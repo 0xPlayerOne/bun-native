@@ -347,6 +347,19 @@ export function exportMetrics(directory: string, streaming: readonly string[] = 
     if (reports.has(name)) throw new Error(`Duplicate retained launch report ${name}`)
     reports.set(name, row['report'] as Record<string, unknown> | null)
   }
+  // A passed trial-zero warmup must retain its child report as well as its
+  // launch metadata. fromComparison deliberately excludes warmups from metric
+  // distributions, so it cannot detect an absent/corrupt warmup report here.
+  // Require this only for cohort-declaring archives; older archives predate
+  // the mandatory-first-launch methodology contract.
+  if (comparison.methodology) {
+    for (const launch of comparison.launches) {
+      if (!launch.warmup) continue
+      const report = reports.get(launch.name)
+      if (!report || typeof report !== 'object' || Array.isArray(report))
+        throw new Error(`Passed first launch ${launch.name} has no retained child report`)
+    }
+  }
   const metrics = fromComparison(comparison, reports)
   // Paths and hard links to the same physical soak must not become independent launches.
   const seenStreaming = new Set<string>()
