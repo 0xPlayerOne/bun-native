@@ -347,53 +347,6 @@ jobs:
               --output (Join-Path $env:NATIVE_EVIDENCE "fault-$mode") --mode $mode -- @command
             if ($LASTEXITCODE -ne 0) { throw "macOS native fault containment was not verified in $mode" }
           }
-      - name: Development and AOT macOS Solid and React workspace references (#248, #250)
-        if: ${{ runner.os == 'macOS' && !cancelled() && steps.native-build.outcome == 'success' }}
-        timeout-minutes: 12
-        run: |
-          # The Linux workspace scenarios, unchanged, driven by CoreGraphics
-          # pointer, wheel and key events and Accessibility resize/close.
-          if (-not (Get-Command magick -ErrorAction SilentlyContinue) -and -not (Get-Command convert -ErrorAction SilentlyContinue)) {
-            brew install imagemagick
-            if ($LASTEXITCODE -ne 0) { throw 'ImageMagick for the workspace pixel checks did not install' }
-          }
-          # The fixtures open 1000x760 and 1120x760 windows, which AppKit fits
-          # to the hosted 1024x768 display. Use the smallest desktop mode that
-          # holds them for this step only, and restore the original afterwards.
-          $oracle = Join-Path $env:NATIVE_EVIDENCE 'macos-workspace-display-oracle'
-          xcrun clang -fobjc-arc -Wall -Wextra -Werror -framework AppKit -framework CoreGraphics `
-            -framework ApplicationServices tests/native/macos-display-oracle.m -o $oracle
-          if ($LASTEXITCODE -ne 0) { throw 'The display oracle did not compile' }
-          $main = (& $oracle screens | ConvertFrom-Json) | Where-Object { $_.main } | Select-Object -First 1
-          if (!$main) { throw 'No main display is available' }
-          $modes = & $oracle modes $main.number | ConvertFrom-Json
-          $original = $modes.currentIndex
-          $large = $modes.modes | Where-Object { $_.width -ge 1200 -and $_.height -ge 900 } |
-            Sort-Object { $_.width * $_.height } | Select-Object -First 1
-          if (!$large) { throw 'The hosted display offers no desktop mode that holds the workspace fixtures' }
-          try {
-            if ($modes.current.height -lt 900 -or $modes.current.width -lt 1200) {
-              & $oracle set $main.number $large.index | Tee-Object -FilePath (Join-Path $env:NATIVE_EVIDENCE 'workspace-display-mode.json')
-              if ($LASTEXITCODE -ne 0) { throw 'The workspace display mode was not applied' }
-              Start-Sleep -Seconds 2
-            }
-            foreach ($scenario in @('react-workspace', 'solid-workspace')) {
-              $package = Join-Path $env:NATIVE_EVIDENCE "$scenario-flow-package"
-              bun experiments/aot-gpui/build-window.ts --entry "$scenario-flow" `
-                --source $env:GITHUB_WORKSPACE --host $env:BUN_NATIVE_HOST `
-                --host-profile release --outdir $package
-              if ($LASTEXITCODE -ne 0) { throw "The macOS $scenario AOT compiler or inspection failed" }
-              foreach ($mode in @('development', 'aot')) {
-                [string[]]$command = if ($mode -eq 'aot') { @((Join-Path $package "$scenario-flow")) } else { @('bun', (Join-Path $package 'development/application.js')) }
-                & '${{ matrix.python }}' scripts/quality/native-workspace-macos.py `
-                  --scenario $scenario --mode $mode `
-                  --output (Join-Path $env:NATIVE_EVIDENCE "$scenario-macos-$mode") -- @command
-                if ($LASTEXITCODE -ne 0) { throw "The macOS $scenario reference was not verified in $mode (exit $LASTEXITCODE)" }
-              }
-            }
-          } finally {
-            if ($original -ge 0) { & $oracle set $main.number $original | Out-Null }
-          }
       - name: Development and AOT owned processes
         if: ${{ runner.os != 'Linux' && !cancelled() && steps.native-build.outcome == 'success' }}
         timeout-minutes: 6
@@ -631,6 +584,59 @@ jobs:
             }
           }
           if ($failures.Count -gt 0) { throw ($failures -join '; ') }
+      - name: Development and AOT macOS Solid and React workspace references (#248, #250)
+        if: ${{ runner.os == 'macOS' && !cancelled() && steps.native-build.outcome == 'success' }}
+        timeout-minutes: 12
+        run: |
+          # The Linux workspace scenarios, unchanged, driven by CoreGraphics
+          # pointer, wheel and key events and Accessibility resize/close.
+          if (-not (Get-Command magick -ErrorAction SilentlyContinue) -and -not (Get-Command convert -ErrorAction SilentlyContinue)) {
+            brew install imagemagick
+            if ($LASTEXITCODE -ne 0) { throw 'ImageMagick for the workspace pixel checks did not install' }
+          }
+          # The fixtures open 1000x760 and 1120x760 windows, which AppKit fits
+          # to the hosted 1024x768 display. Use the smallest desktop mode that
+          # holds them for this step only, and restore the original afterwards.
+          $oracle = Join-Path $env:NATIVE_EVIDENCE 'macos-workspace-display-oracle'
+          xcrun clang -fobjc-arc -Wall -Wextra -Werror -framework AppKit -framework CoreGraphics `
+            -framework ApplicationServices tests/native/macos-display-oracle.m -o $oracle
+          if ($LASTEXITCODE -ne 0) { throw 'The display oracle did not compile' }
+          $main = (& $oracle screens | ConvertFrom-Json) | Where-Object { $_.main } | Select-Object -First 1
+          if (!$main) { throw 'No main display is available' }
+          $modes = & $oracle modes $main.number | ConvertFrom-Json
+          $original = $modes.currentIndex
+          $large = $modes.modes | Where-Object { $_.width -ge 1200 -and $_.height -ge 900 } |
+            Sort-Object { $_.width * $_.height } | Select-Object -First 1
+          if (!$large) { throw 'The hosted display offers no desktop mode that holds the workspace fixtures' }
+          # Record the session's held modifier flags around each display change:
+          # the OS input helper refuses to inject while any is held.
+          $flags = { & '${{ matrix.python }}' -c "import ctypes; a=ctypes.CDLL('/System/Library/Frameworks/ApplicationServices.framework/ApplicationServices'); a.CGEventSourceFlagsState.restype=ctypes.c_uint64; print(hex(a.CGEventSourceFlagsState(0)))" }
+          Write-Output "modifier flags before the display change: $(& $flags)"
+          try {
+            if ($modes.current.height -lt 900 -or $modes.current.width -lt 1200) {
+              & $oracle set $main.number $large.index | Tee-Object -FilePath (Join-Path $env:NATIVE_EVIDENCE 'workspace-display-mode.json')
+              if ($LASTEXITCODE -ne 0) { throw 'The workspace display mode was not applied' }
+              Start-Sleep -Seconds 2
+              Write-Output "modifier flags after the display change: $(& $flags)"
+            }
+            foreach ($scenario in @('react-workspace', 'solid-workspace')) {
+              $package = Join-Path $env:NATIVE_EVIDENCE "$scenario-flow-package"
+              bun experiments/aot-gpui/build-window.ts --entry "$scenario-flow" `
+                --source $env:GITHUB_WORKSPACE --host $env:BUN_NATIVE_HOST `
+                --host-profile release --outdir $package
+              if ($LASTEXITCODE -ne 0) { throw "The macOS $scenario AOT compiler or inspection failed" }
+              foreach ($mode in @('development', 'aot')) {
+                [string[]]$command = if ($mode -eq 'aot') { @((Join-Path $package "$scenario-flow")) } else { @('bun', (Join-Path $package 'development/application.js')) }
+                & '${{ matrix.python }}' scripts/quality/native-workspace-macos.py `
+                  --scenario $scenario --mode $mode `
+                  --output (Join-Path $env:NATIVE_EVIDENCE "$scenario-macos-$mode") -- @command
+                if ($LASTEXITCODE -ne 0) { throw "The macOS $scenario reference was not verified in $mode (exit $LASTEXITCODE)" }
+              }
+            }
+          } finally {
+            if ($original -ge 0) { & $oracle set $main.number $original | Out-Null }
+            Write-Output "modifier flags after the restore: $(& $flags)"
+          }
       - name: Retain unsigned native host for reproducibility
         if: ${{ !cancelled() && steps.native-build.outcome == 'success' }}
         run: |

@@ -148,7 +148,9 @@ static void foreground(NSDictionary *request, NSDictionary *state) {
     CGEventFlags held = CGEventSourceFlagsState(kCGEventSourceStateCombinedSessionState);
     if (held & (kCGEventFlagMaskShift | kCGEventFlagMaskControl | kCGEventFlagMaskAlternate
                 | kCGEventFlagMaskCommand | kCGEventFlagMaskAlphaShift))
-        unavailable(@"An external modifier is active; no input was injected");
+        unavailable([NSString
+            stringWithFormat:@"An external modifier is active; no input was injected (flags 0x%llx)",
+                             (unsigned long long)held]);
     if (CGEventSourceButtonState(kCGEventSourceStateCombinedSessionState, kCGMouseButtonLeft))
         unavailable(@"An external pointer button is held; no input was injected");
 }
