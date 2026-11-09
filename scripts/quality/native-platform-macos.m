@@ -256,6 +256,15 @@ static void require_pointer_target(NSDictionary *state, CGPoint point) {
     verify_pointer_target(state, windows, point, hitWindow);
 }
 
+static void post_modifier(CGKeyCode code, CGEventFlags flags, bool down) {
+    CGEventRef event = CGEventCreateKeyboardEvent(NULL, code, down);
+    if (!event) fail(@"Cannot allocate a bounded CoreGraphics modifier event");
+    CGEventSetType(event, kCGEventFlagsChanged);
+    CGEventSetFlags(event, flags);
+    CGEventPost(kCGSessionEventTap, event);
+    CFRelease(event);
+}
+
 static void key_with(pid_t pid, CGKeyCode code, CGEventFlags flags, UniChar character) {
     CGEventRef down = CGEventCreateKeyboardEvent(NULL, code, true);
     CGEventRef up = CGEventCreateKeyboardEvent(NULL, code, false);
@@ -272,11 +281,29 @@ static void key_with(pid_t pid, CGKeyCode code, CGEventFlags flags, UniChar char
         CFRelease(down);
         @throw error;
     }
+    // Flags on a key event alone leave the session's modifier state held after
+    // the key-up, so press and release each modifier key around the chord, as
+    // a physical keyboard does (kVK_Control, kVK_Option, kVK_Shift, kVK_Command).
+    static const struct { CGEventFlags mask; CGKeyCode code; } modifiers[] = {
+        {kCGEventFlagMaskControl, 59}, {kCGEventFlagMaskAlternate, 58},
+        {kCGEventFlagMaskShift, 56}, {kCGEventFlagMaskCommand, 55}};
+    const int count = (int)(sizeof modifiers / sizeof modifiers[0]);
+    CGEventFlags held = 0;
+    for (int i = 0; i < count; i++) {
+        if (!(flags & modifiers[i].mask)) continue;
+        held |= modifiers[i].mask;
+        post_modifier(modifiers[i].code, held, true);
+    }
     for (int i = 0; i < 2; i++) {
         CGEventRef event = i == 0 ? down : up;
         CGEventSetFlags(event, flags);
         if (character) CGEventKeyboardSetUnicodeString(event, 1, &character);
         CGEventPost(kCGSessionEventTap, event);
+    }
+    for (int i = count - 1; i >= 0; i--) {
+        if (!(flags & modifiers[i].mask)) continue;
+        held &= ~modifiers[i].mask;
+        post_modifier(modifiers[i].code, held, false);
     }
     CFRelease(up);
     CFRelease(down);
@@ -417,7 +444,7 @@ static NSDictionary *input(NSDictionary *request, NSDictionary *state) {
         CGKeyCode code = named_key(request[@"key"]);
         CGEventFlags flags = modifier_flags(request[@"modifiers"]);
         key_with(pid, code, flags, 0);
-        events = 2;
+        events = 2 + 2 * (NSUInteger)__builtin_popcountll(flags);
     } else if ([action isEqualToString:@"type"]) {
         NSString *text = request[@"text"];
         NSCharacterSet *printable = [NSCharacterSet characterSetWithRange:NSMakeRange(0x20, 0x5f)];
