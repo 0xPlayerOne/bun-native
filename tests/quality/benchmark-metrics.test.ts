@@ -239,6 +239,12 @@ describe('benchmark metrics export', () => {
     record.methodology.modes.push('development')
     save()
     expect(() => exportMetrics(directory)).toThrow('Missing comparison trials: core/development/1')
+
+    // A forged run cannot request billions of expected samples and exhaust
+    // the exporter while building its expected-trial identities.
+    record.methodology.measuredTrials = 1_000_000_000
+    save()
+    expect(() => exportMetrics(directory)).toThrow('lacks a valid trial cohort')
   })
 
   test('requires all declared input-latency trials for a passed benchmark baseline', () => {

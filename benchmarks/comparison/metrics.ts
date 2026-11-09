@@ -215,10 +215,13 @@ function assertCompleteTrialCohort(comparison: Comparison) {
     new Set(modes).size !== modes.length ||
     typeof measuredTrials !== 'number' ||
     !Number.isInteger(measuredTrials) ||
-    measuredTrials < 3
+    measuredTrials < 3 ||
+    measuredTrials > 30
   )
     throw new Error('Comparison methodology lacks a valid trial cohort')
 
+  // The controller caps --trials at 30. Do not expand an unbounded cohort
+  // from malformed or adversarial retained methodology metadata.
   const expected = new Set<string>()
   for (const adapter of adapters)
     for (const mode of modes)
@@ -262,8 +265,10 @@ function assertCompleteTrialCohort(comparison: Comparison) {
   const observedInput = new Set<string>()
   for (const launch of comparison.inputLaunches ?? []) {
     const identity = `${launch.adapter}/${launch.mode}/${launch.trial}`
-    if (!expectedInput.has(identity)) throw new Error(`Unexpected input comparison trial ${identity}`)
-    if (observedInput.has(identity)) throw new Error(`Duplicate input comparison trial ${identity}`)
+    if (!expectedInput.has(identity))
+      throw new Error(`Unexpected input comparison trial ${identity}`)
+    if (observedInput.has(identity))
+      throw new Error(`Duplicate input comparison trial ${identity}`)
     if (launch.status !== 'passed')
       throw new Error(`Non-passing input comparison trial ${identity} in a passed comparison`)
     observedInput.add(identity)
