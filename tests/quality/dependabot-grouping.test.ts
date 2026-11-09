@@ -29,8 +29,10 @@ function updateFor(ecosystem: string): Update {
 // The configured groups use '*' plus literal exclusions. This is a policy
 // assertion for those exact patterns, not a replacement for Dependabot's matcher.
 function includedInGroup(group: Group, dependency: string): boolean {
-  return group.patterns?.includes('*') === true &&
+  return (
+    group.patterns?.includes('*') === true &&
     group['exclude-patterns']?.includes(dependency) !== true
+  )
 }
 
 test('Dependabot keeps incompatible Babel and AccessKit updates individually eligible', () => {
@@ -73,7 +75,7 @@ test('Babel major upgrades remain held without suppressing its patch updates', (
       'update-types': ['version-update:semver-major'],
     },
   ])
-  expect(updateFor('cargo').ignore?.some((item) => item['dependency-name'] === 'accesskit')).not.toBe(
-    true
-  )
+  expect(
+    updateFor('cargo').ignore?.some((item) => item['dependency-name'] === 'accesskit')
+  ).not.toBe(true)
 })
