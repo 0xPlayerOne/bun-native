@@ -497,6 +497,19 @@ describe('PE regions', () => {
       table + 80
     )
 
+    // With no file-backed sections, SizeOfHeaders still owns the aligned
+    // padding after the section table. It must not become unmapped.
+    const padded = noRaw.slice()
+    new DataView(padded.buffer).setUint32(0x80 + 4 + 20 + 60, 0x200, true)
+    expect(peRegions(padded)?.regions.find((region) => region.name === 'headers')?.end).toBe(
+      0x200
+    )
+    const paddedChanged = padded.slice()
+    paddedChanged[0x1f0] = 1
+    expect(explainDifference(padded, paddedChanged).regions).toEqual([
+      { name: 'headers', bytes: 1, ranges: 1 },
+    ])
+
     // The section-table order does not determine on-disk header extent.
     const reordered = pe({ stamp: 1, guid: 1, path: 'host.pdb', code: 1 })
     const reorderedView = new DataView(reordered.buffer)

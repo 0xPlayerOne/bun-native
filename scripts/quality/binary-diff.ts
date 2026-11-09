@@ -209,7 +209,7 @@ export function peRegions(bytes: Uint8Array): { regions: Region[]; pdbPath: stri
   regions.push({
     name: 'headers',
     start: 0,
-    end: firstRaw ?? table + sectionCount * 40,
+    end: firstRaw ?? headerEnd,
   })
   return { regions, pdbPath }
 }
