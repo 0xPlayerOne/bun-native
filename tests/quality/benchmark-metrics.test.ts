@@ -284,6 +284,57 @@ describe('benchmark metrics export', () => {
     expect(() => exportMetrics(directory)).toThrow('lacks a valid trial cohort')
   })
 
+
+  test('rejects swapped process names that silently exchange measured trial reports', () => {
+    const { directory, comparison } = writeExport({ trials: 3 })
+    const record = {
+      ...comparison,
+      launches: comparison.launches.filter((launch) => launch.status === 'passed'),
+      methodology: {
+        adapters: ['core', 'solid'],
+        modes: ['aot'],
+        measuredTrials: 3,
+        inputLatency: { trials: 3 },
+      },
+    }
+    const save = () => writeFileSync(join(directory, 'comparison.json'), JSON.stringify(record))
+    const swapNames = (left: { name: string }, right: { name: string }) => {
+      const name = left.name
+      left.name = right.name
+      right.name = name
+    }
+    save()
+    expect(() => exportMetrics(directory)).not.toThrow()
+
+    // Every cohort identity and report name still exists. Before name checks,
+    // two distinct trials could borrow each other's retained report samples.
+    const first = record.launches.find((launch) => launch.name === 'core-aot-1')!
+    const second = record.launches.find((launch) => launch.name === 'core-aot-2')!
+    swapNames(first, second)
+    save()
+    expect(() => exportMetrics(directory)).toThrow(
+      'Comparison trial core/aot/1 has mismatched launch name core-aot-2'
+    )
+    swapNames(first, second)
+
+    // Input measurements must also retain their controller-generated process
+    // identities despite not consuming the retained comparison JSONL reports.
+    const inputFirst = record.inputLaunches.find(
+      (launch) => launch.name === 'core-aot-input-1'
+    )!
+    const inputSecond = record.inputLaunches.find(
+      (launch) => launch.name === 'core-aot-input-2'
+    )!
+    swapNames(inputFirst, inputSecond)
+    save()
+    expect(() => exportMetrics(directory)).toThrow(
+      'Input comparison trial core/aot/1 has mismatched launch name core-aot-input-2'
+    )
+    swapNames(inputFirst, inputSecond)
+    save()
+    expect(() => exportMetrics(directory)).not.toThrow()
+  })
+
   test('requires all declared input-latency trials for a passed benchmark baseline', () => {
     const { directory, comparison } = writeExport({ trials: 3 })
     const originals = comparison.inputLaunches.map((launch) => ({ ...launch }))

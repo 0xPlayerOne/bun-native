@@ -238,6 +238,10 @@ function assertCompleteTrialCohort(comparison: Comparison) {
     const identity = `${launch.adapter}/${launch.mode}/${launch.trial}`
     if (!expected.has(identity)) throw new Error(`Unexpected comparison trial ${identity}`)
     if (observed.has(identity)) throw new Error(`Duplicate comparison trial ${identity}`)
+    // The controller names each process from its recorded cohort identity.
+    // A swapped name otherwise associates another trial\u0027s retained report with this sample.
+    if (launch.name !== `${launch.adapter}-${launch.mode}-${launch.trial}`)
+      throw new Error(`Comparison trial ${identity} has mismatched launch name ${launch.name}`)
     if (launch.status !== 'passed')
       throw new Error(`Non-passing comparison trial ${identity} in a passed comparison`)
     observed.add(identity)
@@ -280,6 +284,8 @@ function assertCompleteTrialCohort(comparison: Comparison) {
       throw new Error(`Unexpected input comparison trial ${identity}`)
     if (observedInput.has(identity))
       throw new Error(`Duplicate input comparison trial ${identity}`)
+    if (launch.name !== `${launch.adapter}-${launch.mode}-input-${launch.trial}`)
+      throw new Error(`Input comparison trial ${identity} has mismatched launch name ${launch.name}`)
     if (launch.status !== 'passed')
       throw new Error(`Non-passing input comparison trial ${identity} in a passed comparison`)
     observedInput.add(identity)
