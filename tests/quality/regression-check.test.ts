@@ -384,6 +384,34 @@ describe('metric regression gate', () => {
     expect(failed(zero)).toBe(false)
   })
 
+  test('rejects negative baseline and higher-direction throughput samples', () => {
+    const validBaseline = file({
+      rate: { direction: 'higher', unit: 'rows/s', samples: around(1_000) },
+    })
+    const invalidBaseline = file({
+      rate: { direction: 'higher', unit: 'rows/s', samples: [-1, ...around(1_000).slice(1)] },
+    })
+    const invalidCurrent = file({
+      rate: { direction: 'higher', unit: 'rows/s', samples: around(-100) },
+    })
+    // An invalid baseline with a positive median was previously accepted as
+    // unchanged; a negative current throughput was considered an improvement.
+    for (const comparison of [
+      compare(invalidBaseline, validBaseline),
+      compare(validBaseline, invalidCurrent),
+    ]) {
+      expect(comparison.findings[0]).toMatchObject({ status: 'unmeasured', ratio: null })
+      expect(comparison.findings[0]?.note).toContain('negative samples')
+      expect(failed(comparison)).toBe(true)
+    }
+    const improvement = compare(
+      validBaseline,
+      file({ rate: { direction: 'higher', unit: 'rows/s', samples: around(1_200) } })
+    )
+    expect(improvement.findings[0]?.status).toBe('improved')
+    expect(failed(improvement)).toBe(false)
+  })
+
   test('a baseline with a zero median cannot define a ratio', () => {
     const result = compare(
       file({ rss: { samples: [0, 0, 0] } }),
