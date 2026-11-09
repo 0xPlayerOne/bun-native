@@ -1,10 +1,11 @@
 // Thin SDK-typed test helper. It addresses only the launched app's direct child
 // after checking libproc creation identity, image path and Quartz window owner.
 // Compile with: xcrun clang -fobjc-arc -Wall -Wextra -Werror -framework AppKit
-//   -framework CoreGraphics native-platform-macos.m -o native-platform-macos
+//   -framework CoreGraphics -framework ApplicationServices native-platform-macos.m -o native-platform-macos
 // API contracts: developer.apple.com/documentation/coregraphics/quartz-window-services
 // and the target SDK's libproc.h / sys/proc_info.h. No handwritten ABI layouts.
 #import <AppKit/AppKit.h>
+#import <ApplicationServices/ApplicationServices.h>
 #import <CoreGraphics/CoreGraphics.h>
 #include <libproc.h>
 #include <limits.h>
@@ -95,10 +96,16 @@ static NSDictionary *snapshot(NSDictionary *request) {
             || bounds.size.height <= 0 || bounds.size.height > 32768)
             fail(@"Owned Quartz window bounds are invalid");
         if (window) fail(@"Multiple visible native windows match the owned fixture");
+        // AppKit's own content rectangle for a standard titled window of this
+        // frame on this OS: an independent check of the GPUI viewport.
+        NSRect content = [NSWindow contentRectForFrameRect:NSMakeRect(0, 0, bounds.size.width, bounds.size.height)
+            styleMask:NSWindowStyleMaskTitled | NSWindowStyleMaskClosable
+                | NSWindowStyleMaskMiniaturizable | NSWindowStyleMaskResizable];
         window = @{@"id": candidate[(__bridge NSString *)kCGWindowNumber],
             @"title": name ?: NSNull.null, @"titleVerified": @(name.length > 0),
             @"visible": @YES, @"frame": @[@(bounds.origin.x), @(bounds.origin.y),
-                @(bounds.size.width), @(bounds.size.height)]};
+                @(bounds.size.width), @(bounds.size.height)],
+            @"titledContentSize": @[@(content.size.width), @(content.size.height)]};
     }
     if (!window) return @{@"status": @"not-ready", @"reason": @"No owned onscreen native window yet"};
     if (![process(root) isEqualToDictionary:app]
@@ -106,7 +113,8 @@ static NSDictionary *snapshot(NSDictionary *request) {
         fail(@"Owned process identity changed during window enumeration");
     return @{@"status": @"ready", @"method": @"libproc + creation identity + Quartz onscreen window enumeration",
         @"application": app, @"host": host, @"window": window,
-        @"postEventAccess": @(CGPreflightPostEventAccess())};
+        @"postEventAccess": @(CGPreflightPostEventAccess()),
+        @"frontmostPID": @(NSWorkspace.sharedWorkspace.frontmostApplication.processIdentifier)};
 }
 
 static void verify(NSDictionary *expected, NSDictionary *actual) {
@@ -246,7 +254,7 @@ static void require_pointer_target(NSDictionary *state, CGPoint point) {
     verify_pointer_target(state, windows, point, hitWindow);
 }
 
-static void key(pid_t pid, CGKeyCode code, UniChar character) {
+static void key_with(pid_t pid, CGKeyCode code, CGEventFlags flags, UniChar character) {
     CGEventRef down = CGEventCreateKeyboardEvent(NULL, code, true);
     CGEventRef up = CGEventCreateKeyboardEvent(NULL, code, false);
     if (!down || !up) {
@@ -264,12 +272,47 @@ static void key(pid_t pid, CGKeyCode code, UniChar character) {
     }
     for (int i = 0; i < 2; i++) {
         CGEventRef event = i == 0 ? down : up;
-        CGEventSetFlags(event, 0);
+        CGEventSetFlags(event, flags);
         if (character) CGEventKeyboardSetUnicodeString(event, 1, &character);
         CGEventPost(kCGSessionEventTap, event);
     }
     CFRelease(up);
     CFRelease(down);
+}
+
+static void key(pid_t pid, CGKeyCode code, UniChar character) {
+    key_with(pid, code, 0, character);
+}
+
+// Named keys use ANSI virtual key codes (HIToolbox Events.h); the active
+// keyboard layout supplies the characters, as for a physical key press.
+static CGKeyCode named_key(NSString *name) {
+    NSDictionary *codes = @{@"Return": @36, @"Escape": @53, @"BackSpace": @51, @"Delete": @117,
+        @"Tab": @48, @"space": @49, @"Left": @123, @"Right": @124, @"Down": @125, @"Up": @126,
+        @"Home": @115, @"End": @119, @"a": @0, @"c": @8, @"v": @9, @"x": @7};
+    NSNumber *code = [name isKindOfClass:NSString.class] ? codes[name] : nil;
+    if (!code) fail(@"Unknown bounded key name");
+    return (CGKeyCode)code.unsignedShortValue;
+}
+
+static CGEventFlags modifier_flags(id modifiers) {
+    if (!modifiers) return 0;
+    if (![modifiers isKindOfClass:NSArray.class] || [modifiers count] > 4) fail(@"Invalid bounded key modifiers");
+    NSDictionary *masks = @{@"control": @(kCGEventFlagMaskControl), @"shift": @(kCGEventFlagMaskShift),
+        @"option": @(kCGEventFlagMaskAlternate), @"command": @(kCGEventFlagMaskCommand)};
+    CGEventFlags flags = 0;
+    for (id modifier in modifiers) {
+        NSNumber *mask = [modifier isKindOfClass:NSString.class] ? masks[modifier] : nil;
+        if (!mask || (flags & mask.unsignedLongLongValue)) fail(@"Unknown or repeated key modifier");
+        flags |= mask.unsignedLongLongValue;
+    }
+    return flags;
+}
+
+static void pause_ms(id value) {
+    if (!value) return;
+    if (!number(value) || [value doubleValue] < 0 || [value doubleValue] > 100) fail(@"Invalid bounded input delay");
+    [NSThread sleepForTimeInterval:[value doubleValue] / 1000];
 }
 
 static NSArray *pointer_events(CGPoint point) {
@@ -292,6 +335,61 @@ static NSArray *pointer_events(CGPoint point) {
     return events;
 }
 
+// The same viewport-in-frame bound the click uses: GPUI's measured viewport
+// sits centered horizontally and at the bottom of the observed Quartz frame.
+static CGPoint content_point(NSDictionary *request, NSDictionary *state) {
+    NSArray *viewport = request[@"viewport"];
+    if (![viewport isKindOfClass:NSArray.class] || viewport.count != 2
+        || !number(viewport[0]) || !number(viewport[1])
+        || !number(request[@"x"]) || !number(request[@"y"])) fail(@"Invalid bounded pointer geometry");
+    double width = [viewport[0] doubleValue], height = [viewport[1] doubleValue];
+    double x = [request[@"x"] doubleValue], y = [request[@"y"] doubleValue];
+    NSArray *frame = state[@"window"][@"frame"];
+    double side = ([frame[2] doubleValue] - width) / 2;
+    double top = [frame[3] doubleValue] - height - side;
+    if (width <= 0 || height <= 0 || x < 0 || x >= width || y < 0 || y >= height
+        || side < 0 || side > 16 || top < 0 || top > 96)
+        fail(@"GPUI viewport cannot be bounded within the owned Quartz frame");
+    return CGPointMake([frame[0] doubleValue] + side + x, [frame[1] doubleValue] + top + y);
+}
+
+// The one accessibility window of the owned host whose position and size are
+// the observed Quartz frame. Both use global top-left logical coordinates.
+static AXUIElementRef owned_ax_window(pid_t pid, NSDictionary *state) {
+    if (!AXIsProcessTrusted())
+        unavailable(@"Accessibility control is not granted to this process; no permission was requested");
+    AXUIElementRef application = AXUIElementCreateApplication(pid);
+    if (!application) fail(@"Cannot address the owned native application");
+    id ownedApplication = CFBridgingRelease(application);
+    CFTypeRef value = NULL;
+    if (AXUIElementCopyAttributeValue((__bridge AXUIElementRef)ownedApplication, kAXWindowsAttribute, &value)
+            != kAXErrorSuccess || !value)
+        unavailable(@"The owned native application exposes no accessible windows");
+    NSArray *windows = CFBridgingRelease(value);
+    if (![windows isKindOfClass:NSArray.class] || windows.count > 64) fail(@"Invalid bounded accessibility window list");
+    NSArray *frame = state[@"window"][@"frame"];
+    AXUIElementRef match = NULL;
+    for (id candidate in windows) {
+        CFTypeRef position = NULL, size = NULL;
+        CGPoint origin = CGPointZero;
+        CGSize extent = CGSizeZero;
+        AXError positionError = AXUIElementCopyAttributeValue((__bridge AXUIElementRef)candidate, kAXPositionAttribute, &position);
+        AXError sizeError = AXUIElementCopyAttributeValue((__bridge AXUIElementRef)candidate, kAXSizeAttribute, &size);
+        id ownedPosition = position ? CFBridgingRelease(position) : nil;
+        id ownedSize = size ? CFBridgingRelease(size) : nil;
+        if (positionError != kAXErrorSuccess || sizeError != kAXErrorSuccess || !ownedPosition || !ownedSize
+            || !AXValueGetValue((__bridge AXValueRef)ownedPosition, kAXValueTypeCGPoint, &origin)
+            || !AXValueGetValue((__bridge AXValueRef)ownedSize, kAXValueTypeCGSize, &extent)) continue;
+        if (fabs(origin.x - [frame[0] doubleValue]) >= 1 || fabs(origin.y - [frame[1] doubleValue]) >= 1
+            || fabs(extent.width - [frame[2] doubleValue]) >= 1 || fabs(extent.height - [frame[3] doubleValue]) >= 1)
+            continue;
+        if (match) fail(@"Multiple accessible windows match the owned Quartz frame");
+        match = (__bridge AXUIElementRef)candidate;
+    }
+    if (!match) unavailable(@"No accessible window matches the owned Quartz frame");
+    return (AXUIElementRef)CFRetain(match);
+}
+
 static NSDictionary *input(NSDictionary *request, NSDictionary *state) {
     NSDictionary *expected = request[@"expected"];
     if (![expected isKindOfClass:NSDictionary.class]) fail(@"A previously observed identity is required");
@@ -301,7 +399,9 @@ static NSDictionary *input(NSDictionary *request, NSDictionary *state) {
     NSString *action = request[@"action"];
     NSUInteger events = 0;
     NSMutableDictionary *result = [NSMutableDictionary dictionaryWithDictionary:state];
-    if ([action isEqualToString:@"tab"]) {
+    if ([action isEqualToString:@"activate"]) {
+        events = 0;
+    } else if ([action isEqualToString:@"tab"]) {
         key(pid, 48, 0);
         events = 2;
     } else if ([action isEqualToString:@"text"]) {
@@ -311,24 +411,107 @@ static NSDictionary *input(NSDictionary *request, NSDictionary *state) {
             fail(@"OS text injection accepts only a bounded hexadecimal run nonce");
         for (NSUInteger i = 0; i < text.length; i++) key(pid, 0, [text characterAtIndex:i]);
         events = text.length * 2;
-    } else if ([action isEqualToString:@"click"]) {
+    } else if ([action isEqualToString:@"key"]) {
+        CGKeyCode code = named_key(request[@"key"]);
+        CGEventFlags flags = modifier_flags(request[@"modifiers"]);
+        key_with(pid, code, flags, 0);
+        events = 2;
+    } else if ([action isEqualToString:@"type"]) {
+        NSString *text = request[@"text"];
+        NSCharacterSet *printable = [NSCharacterSet characterSetWithRange:NSMakeRange(0x20, 0x5f)];
+        if (![text isKindOfClass:NSString.class] || !text.length || text.length > 256
+            || [text rangeOfCharacterFromSet:printable.invertedSet].location != NSNotFound)
+            fail(@"OS typing accepts only bounded printable ASCII text");
+        for (NSUInteger i = 0; i < text.length; i++) {
+            if (i) pause_ms(request[@"delayMs"]);
+            key(pid, 0, [text characterAtIndex:i]);
+        }
+        events = text.length * 2;
+    } else if ([action isEqualToString:@"scroll"]) {
+        CGPoint point = content_point(request, state);
+        id lines = request[@"lines"], repeat = request[@"repeat"];
+        if (!number(lines) || ([lines intValue] != 1 && [lines intValue] != -1)
+            || [lines doubleValue] != [lines intValue]
+            || !number(repeat) || [repeat doubleValue] < 1 || [repeat doubleValue] > 64
+            || floor([repeat doubleValue]) != [repeat doubleValue]) fail(@"Invalid bounded wheel request");
+        CGEventRef move = CGEventCreateMouseEvent(NULL, kCGEventMouseMoved, point, kCGMouseButtonLeft);
+        if (!move) fail(@"Cannot allocate a bounded CoreGraphics pointer move");
+        id owned = CFBridgingRelease(move);
+        require_foreground(pid);
+        require_pointer_target(state, point);
+        CGEventPost(kCGSessionEventTap, (__bridge CGEventRef)owned);
+        for (int i = 0; i < [repeat intValue]; i++) {
+            if (i) pause_ms(request[@"delayMs"]);
+            // Line units, one wheel axis: positive scrolls up, negative down.
+            CGEventRef wheel = CGEventCreateScrollWheelEvent(NULL, kCGScrollEventUnitLine, 1, [lines intValue]);
+            if (!wheel) fail(@"Cannot allocate a bounded CoreGraphics wheel event");
+            id ownedWheel = CFBridgingRelease(wheel);
+            CGEventSetLocation(wheel, point);
+            require_foreground(pid);
+            require_pointer_target(state, point);
+            CGEventPost(kCGSessionEventTap, (__bridge CGEventRef)ownedWheel);
+        }
+        events = 1 + [repeat unsignedIntegerValue];
+        result[@"screenPoint"] = @[@(point.x), @(point.y)];
+        result[@"windowServerTargetVerified"] = @YES;
+    } else if ([action isEqualToString:@"resize"] || [action isEqualToString:@"close"]) {
+        AXUIElementRef window = owned_ax_window(pid, state);
+        id ownedWindow = CFBridgingRelease(window);
+        if ([action isEqualToString:@"close"]) {
+            CFTypeRef button = NULL;
+            if (AXUIElementCopyAttributeValue((__bridge AXUIElementRef)ownedWindow, kAXCloseButtonAttribute, &button)
+                    != kAXErrorSuccess || !button)
+                unavailable(@"The owned window exposes no accessible close button");
+            id ownedButton = CFBridgingRelease(button);
+            require_foreground(pid);
+            if (AXUIElementPerformAction((__bridge AXUIElementRef)ownedButton, kAXPressAction) != kAXErrorSuccess)
+                fail(@"The owned window's close button refused the press");
+            result[@"injection"] = @{@"method": @"Accessibility AXPress on the owned window's standard close button",
+                @"postedEvents": @0, @"delivery": @"Requires independent native close evidence"};
+            return result;
+        }
         NSArray *viewport = request[@"viewport"];
-        if (![viewport isKindOfClass:NSArray.class] || viewport.count != 2
-            || !number(viewport[0]) || !number(viewport[1])
-            || !number(request[@"x"]) || !number(request[@"y"])) fail(@"Invalid bounded pointer geometry");
-        double width = [viewport[0] doubleValue], height = [viewport[1] doubleValue];
-        double x = [request[@"x"] doubleValue], y = [request[@"y"] doubleValue];
+        id width = request[@"width"], height = request[@"height"];
+        if (![viewport isKindOfClass:NSArray.class] || viewport.count != 2 || !number(viewport[0])
+            || !number(viewport[1]) || !number(width) || !number(height)
+            || [width doubleValue] < 200 || [width doubleValue] > 4096
+            || [height doubleValue] < 200 || [height doubleValue] > 4096) fail(@"Invalid bounded resize request");
         NSArray *frame = state[@"window"][@"frame"];
-        double side = ([frame[2] doubleValue] - width) / 2;
-        double top = [frame[3] doubleValue] - height - side;
-        if (width <= 0 || height <= 0 || x < 0 || x >= width || y < 0 || y >= height
-            || side < 0 || side > 16 || top < 0 || top > 96)
-            fail(@"GPUI viewport cannot be bounded within the owned Quartz frame");
+        // Keep the observed frame-to-content insets: the request names the GPUI viewport.
+        CGSize size = CGSizeMake([width doubleValue] + [frame[2] doubleValue] - [viewport[0] doubleValue],
+            [height doubleValue] + [frame[3] doubleValue] - [viewport[1] doubleValue]);
+        AXValueRef value = AXValueCreate(kAXValueTypeCGSize, &size);
+        if (!value) fail(@"Cannot allocate a bounded accessibility size");
+        id ownedValue = CFBridgingRelease(value);
+        require_foreground(pid);
+        if (AXUIElementSetAttributeValue((__bridge AXUIElementRef)ownedWindow, kAXSizeAttribute,
+                (__bridge CFTypeRef)ownedValue) != kAXErrorSuccess)
+            fail(@"The owned window refused the accessibility resize");
+        NSTimeInterval deadline = NSProcessInfo.processInfo.systemUptime + 2;
+        NSDictionary *resized = nil;
+        while (NSProcessInfo.processInfo.systemUptime < deadline) {
+            NSDictionary *current = snapshot(request);
+            NSArray *now = current[@"window"][@"frame"];
+            if ([current[@"status"] isEqualToString:@"ready"]
+                && fabs([now[2] doubleValue] - size.width) < 1 && fabs([now[3] doubleValue] - size.height) < 1) {
+                resized = current;
+                break;
+            }
+            [NSThread sleepForTimeInterval:0.02];
+        }
+        if (!resized) fail(@"The owned Quartz window did not reach the requested size");
+        if (![resized[@"application"] isEqual:state[@"application"]] || ![resized[@"host"] isEqual:state[@"host"]]
+            || ![resized[@"window"][@"id"] isEqual:state[@"window"][@"id"]])
+            fail(@"Owned identity changed during the resize");
+        NSMutableDictionary *after = [resized mutableCopy];
+        after[@"injection"] = @{@"method": @"Accessibility kAXSizeAttribute on the owned window",
+            @"postedEvents": @0, @"delivery": @"Requires independent native layout evidence"};
+        return after;
+    } else if ([action isEqualToString:@"click"]) {
+        CGPoint point = content_point(request, state);
         id window = state[@"window"][@"id"];
         if (!number(window) || [window doubleValue] < 1 || [window doubleValue] > UINT32_MAX
             || floor([window doubleValue]) != [window doubleValue]) fail(@"Invalid owned Quartz window number");
-        CGPoint point = CGPointMake([frame[0] doubleValue] + side + x,
-            [frame[1] doubleValue] + top + y);
         NSArray *mouse = pointer_events(point);
         for (id event in mouse) {
             require_foreground(pid);

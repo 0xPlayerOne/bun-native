@@ -139,6 +139,7 @@ batches and kills it.
 cargo build --locked --release -p bun-native-host
 export BUN_NATIVE_HOST="$PWD/target/release/bun-native-host"
 xcrun clang -fobjc-arc -Wall -Wextra -Werror -framework AppKit -framework CoreGraphics \
+  -framework ApplicationServices \
   scripts/quality/native-platform-macos.m -o /tmp/bn-qual/native-platform-macos
 export BUN_NATIVE_PLATFORM_HELPER=/tmp/bn-qual/native-platform-macos
 bun experiments/aot-gpui/build-window.ts --entry fault --source "$PWD" \
@@ -161,28 +162,46 @@ instrument injects one; that stays open.
 
 ## macOS workspace references (#248, #250)
 
-These cannot be run today, even with the permission. The Linux scenarios
-([Solid](../scripts/quality/native-solid-workspace-scenario.py),
-[React](../scripts/quality/native-react-workspace-scenario.py), and the
-[Solid soak](../scripts/quality/native-solid-workspace-soak.py)) drive X11 with
-`xdotool`: keys, wheel, window resize and an OS close. The macOS controller
-([`native-platform-macos.m`](../scripts/quality/native-platform-macos.m)) can
-post only a click, Tab and text, and there is no macOS scenario script.
+The Linux scenarios ([Solid](../scripts/quality/native-solid-workspace-scenario.py)
+and [React](../scripts/quality/native-react-workspace-scenario.py)) run unchanged
+on macOS through [`native-workspace-macos.py`](../scripts/quality/native-workspace-macos.py).
+It maps their X11 command words to the SDK helper's owned-window actions:
 
-What has to be built before a Mac run is meaningful, in order:
+| Scenario word                     | macOS action in [`native-platform-macos.m`](../scripts/quality/native-platform-macos.m)          |
+| --------------------------------- | ------------------------------------------------------------------------------------------------ |
+| `click 1`                         | `click`: CoreGraphics mouse down/up after the AppKit hit-target check                            |
+| `click --repeat N --delay D 4/5`  | `scroll`: one pointer move, then N line-unit wheel events (4 up, 5 down), each target-checked    |
+| `key ctrl+a`, `Return`, `Escape`… | `key`: named ANSI key code with modifier flags                                                   |
+| `type --delay D TEXT`             | `type`: printable ASCII, one key pair per character                                              |
+| `windowsize W H`                  | `resize`: Accessibility `kAXSizeAttribute` on the owned window, keeping the frame-content insets |
+| `alt+F4`                          | `close`: Accessibility press of the owned window's standard close button                         |
+| `getwindowgeometry`               | AppKit's titled content size for the observed Quartz frame                                       |
 
-1. Controller actions for a named key with modifiers (Enter, arrows, Escape),
-   wheel scrolling at a point, window resize to a size, and an OS close of the
-   owned window, each behind the same process, window, foreground and
-   permission checks as `click`.
-2. macOS scenario drivers equivalent to the Solid and React ones, with their
-   assertions against the host's own paint and layout records.
-3. Hosted macOS may run them without any permission grant, as it does for the
-   click, Tab and text input today. Prefer that route and use the physical Mac
-   only for what hosted macOS cannot show.
+Screenshots are cropped to the content and scaled to the GPUI viewport, so the
+pixel checks see what an X11 client capture shows. `resize` and `close` need
+the process to be trusted for Accessibility as well as event posting; the
+helper never requests either and reports a missing grant as unavailable
+(exit 2), not as a pass. Hosted `macos-15` runs both scenarios in development
+and AOT in the "macOS Solid and React workspace references" step.
 
-Nothing about #248 or #250 is claimed for macOS until then. Accessibility, a
-PTY and long-session stability are separate gaps ([#241](https://github.com/0xPlayerOne/bun-native/issues/241),
+```sh
+brew install imagemagick   # the pixel checks use ImageMagick, as on Linux
+xcrun clang -fobjc-arc -Wall -Wextra -Werror -framework AppKit -framework CoreGraphics \
+  -framework ApplicationServices \
+  scripts/quality/native-platform-macos.m -o /tmp/bn-qual/native-platform-macos
+export BUN_NATIVE_PLATFORM_HELPER=/tmp/bn-qual/native-platform-macos
+bun experiments/aot-gpui/build-window.ts --entry react-workspace-flow --source "$PWD" \
+  --host "$BUN_NATIVE_HOST" --host-profile release --outdir /tmp/bn-qual/react-workspace-flow
+python3 scripts/quality/native-workspace-macos.py --scenario react-workspace --mode aot \
+  --output /tmp/bn-qual/react-workspace-aot -- /tmp/bn-qual/react-workspace-flow/react-workspace-flow
+```
+
+Use `--entry solid-workspace-flow` and `--scenario solid-workspace` for Solid,
+and `bun <package>/development/application.js` for development mode.
+**Evidence that counts:** the final JSON line has `"status": "passed"` and
+`result.json` has `hostSurvivors: 0` and `application.status: "passed"`.
+The Solid long-session soak, accessibility, a PTY and long-session stability
+remain separate gaps ([#241](https://github.com/0xPlayerOne/bun-native/issues/241),
 [#305](https://github.com/0xPlayerOne/bun-native/issues/305)).
 
 ## macOS: next 65-file drag-entry failure (#303)
@@ -241,4 +260,4 @@ ran, the final status line, and the directory. Mark each as one of **passed**,
 | macOS permission check             | Mac, Accessibility for the terminal | Drag source exits 0                                        |
 | macOS real-click fault, dev + AOT  | The same                            | Both final lines `passed` with `osClick: "required"`       |
 | macOS 65-file entry                | The same                            | A pass is not evidence; a failure carries trace and sample |
-| macOS #248 and #250 workspaces     | A macOS controller and scenarios    | Cannot run yet                                             |
+| macOS #248 and #250 workspaces     | The same, plus Accessibility        | Both final lines `passed` in each mode                     |
