@@ -57,7 +57,12 @@ type Comparison = {
   schemaVersion: number
   status: string
   source?: { commit?: string }
-  methodology?: { measuredTrials?: number; adapters?: string[]; modes?: string[] }
+  methodology?: {
+    measuredTrials?: number
+    adapters?: string[]
+    modes?: string[]
+    inputLatency?: { trials?: number } | null
+  }
   target: {
     os: string
     osRelease: string
@@ -71,6 +76,7 @@ type Comparison = {
     name: string
     adapter: string
     mode: string
+    trial?: number
     status: string
     commandStartToPaintObservedMs: number | null
   }[]
@@ -231,6 +237,40 @@ function assertCompleteTrialCohort(comparison: Comparison) {
   }
   const missing = [...expected].filter((identity) => !observed.has(identity))
   if (missing.length) throw new Error(`Missing comparison trials: ${missing.join(', ')}`)
+
+  // The input-latency cohort is measured separately. A passed comparison
+  // must not drop its click-to-paint trials from the regression baseline.
+  const inputPolicy = policy.inputLatency
+  if (inputPolicy == null) return // Older archives can omit input-latency trials.
+  const inputTrials = inputPolicy.trials
+  // The controller caps --input-trials at 30. Reject corrupt declarations
+  // before constructing an unbounded expected-trial set.
+  if (
+    typeof inputTrials !== 'number' ||
+    !Number.isInteger(inputTrials) ||
+    inputTrials < 3 ||
+    inputTrials > 30
+  )
+    throw new Error('Comparison methodology lacks a valid input trial cohort')
+
+  const expectedInput = new Set<string>()
+  for (const adapter of adapters)
+    for (const mode of modes)
+      for (let trial = 1; trial <= inputTrials; trial++)
+        expectedInput.add(`${adapter}/${mode}/${trial}`)
+
+  const observedInput = new Set<string>()
+  for (const launch of comparison.inputLaunches ?? []) {
+    const identity = `${launch.adapter}/${launch.mode}/${launch.trial}`
+    if (!expectedInput.has(identity)) throw new Error(`Unexpected input comparison trial ${identity}`)
+    if (observedInput.has(identity)) throw new Error(`Duplicate input comparison trial ${identity}`)
+    if (launch.status !== 'passed')
+      throw new Error(`Non-passing input comparison trial ${identity} in a passed comparison`)
+    observedInput.add(identity)
+  }
+  const missingInput = [...expectedInput].filter((identity) => !observedInput.has(identity))
+  if (missingInput.length)
+    throw new Error(`Missing input comparison trials: ${missingInput.join(', ')}`)
 }
 
 export function exportMetrics(directory: string, streaming: readonly string[] = []): MetricsFile {

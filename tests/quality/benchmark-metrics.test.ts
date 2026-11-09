@@ -79,6 +79,7 @@ function writeExport({
           name: `${adapter}-aot-input-${trial}`,
           adapter,
           mode: 'aot',
+          trial,
           status: 'passed',
           commandStartToPaintObservedMs: (8 + trial * 0.1) * scale,
         })
@@ -238,6 +239,45 @@ describe('benchmark metrics export', () => {
     record.methodology.modes.push('development')
     save()
     expect(() => exportMetrics(directory)).toThrow('Missing comparison trials: core/development/1')
+  })
+
+  test('requires all declared input-latency trials for a passed benchmark baseline', () => {
+    const { directory, comparison } = writeExport({ trials: 3 })
+    const originals = comparison.inputLaunches.map((launch) => ({ ...launch }))
+    const record = {
+      ...comparison,
+      launches: comparison.launches.filter((launch) => launch.status === 'passed'),
+      inputLaunches: originals.map((launch) => ({ ...launch })),
+      methodology: {
+        adapters: ['core', 'solid'],
+        modes: ['aot'],
+        measuredTrials: 3,
+        inputLatency: { trials: 3 },
+      },
+    }
+    const save = () => writeFileSync(join(directory, 'comparison.json'), JSON.stringify(record))
+    save()
+    expect(() => exportMetrics(directory)).not.toThrow()
+
+    // Before this check, dropping an entire passed input sample was accepted.
+    record.inputLaunches.pop()
+    save()
+    expect(() => exportMetrics(directory)).toThrow('Missing input comparison trials: solid/aot/3')
+
+    record.inputLaunches = originals.map((launch) => ({ ...launch }))
+    record.inputLaunches[5]!.trial = 2
+    save()
+    expect(() => exportMetrics(directory)).toThrow('Duplicate input comparison trial solid/aot/2')
+
+    record.inputLaunches = originals.map((launch) => ({ ...launch }))
+    record.inputLaunches[0]!.status = 'failed'
+    save()
+    expect(() => exportMetrics(directory)).toThrow('Non-passing input comparison trial core/aot/1')
+
+    record.inputLaunches = originals.map((launch) => ({ ...launch }))
+    record.methodology.inputLatency.trials = 1_000_000_000
+    save()
+    expect(() => exportMetrics(directory)).toThrow('lacks a valid input trial cohort')
   })
 
   test('rejects retained reports not linked to comparison launches', () => {
