@@ -637,6 +637,47 @@ async function qualify(app: NativeApplication) {
     inputMethodDoneEvents: Number(preeditState['serial']),
   })
 
+  // 3d. Editing through compositor keys: Backspace removes a whole grapheme
+  // (base letter plus combining mark, then a ZWJ family), Hebrew is committed
+  // in logical order, and Tab/Shift+Tab move focus between the field and the
+  // button, shown by Space activating the button and typing landing back in
+  // the field.
+  await window.batch((batch) =>
+    batch.set(ui.field, { kind: 'input', value: '' }, window.input(ui.field).revision)
+  )
+  await waitFor(() => window.input(ui.field).value === '', 'the cleared input')
+  await clickAt(...center(origin, field), origin)
+  const FAMILY = '\u{1f468}\u200d\u{1f469}\u200d\u{1f467}'
+  await type('ae\u0301' + FAMILY)
+  await waitFor(() => window.input(ui.field).value === 'ae\u0301' + FAMILY, 'typed graphemes')
+  await key('BackSpace')
+  await waitFor(() => window.input(ui.field).value === 'ae\u0301', 'Backspace over the family')
+  await key('BackSpace')
+  await waitFor(() => window.input(ui.field).value === 'a', 'Backspace over e and its mark')
+  const HEBREW = '\u05e9\u05dc\u05d5\u05dd'
+  await type(HEBREW)
+  await waitFor(() => window.input(ui.field).value === 'a' + HEBREW, 'Hebrew in logical order')
+  await key('BackSpace')
+  await waitFor(
+    () => window.input(ui.field).value === 'a' + HEBREW.slice(0, -1),
+    'Backspace removes the last logical Hebrew letter'
+  )
+  const clicksBeforeTab = clicks
+  await key('Tab')
+  await key('space')
+  await waitFor(() => clicks === clicksBeforeTab + 1, 'Space on the button Tab focused')
+  await run(['wtype', '-M', 'shift', '-k', 'Tab', '-m', 'shift'])
+  await type('z')
+  await waitFor(
+    () => window.input(ui.field).value === 'a' + HEBREW.slice(0, -1) + 'z',
+    'typing in the field Shift+Tab focused'
+  )
+  record('editing', {
+    value: window.input(ui.field).value,
+    graphemeBackspace: true,
+    tabOrder: ['field', 'button', 'field'],
+  })
+
   // 4. Pixels read back through the compositor match the painted tree.
   origin = (await mapped(TITLE)).rect
   const swatch = bounds(typed, (node) => node.style?.background === SWATCH)
