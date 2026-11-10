@@ -1,6 +1,6 @@
 import { afterEach, expect, test } from 'bun:test'
 import { existsSync } from 'node:fs'
-import { copyFile, mkdir, readFile, readdir, realpath, writeFile } from 'node:fs/promises'
+import { copyFile, mkdir, readFile, readdir, realpath, rm, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import toolchain from '../../toolchain.json'
 import { fileDigest } from '../../scripts/native/artifact.ts'
@@ -402,8 +402,8 @@ test('a self-contained bundle installs, integrates and starts without Bun or the
   expect(compiled.stderr.toString()).toContain('needs the Bun Native repository')
 }, 180_000)
 
-test('a concurrent start of the same pending release cannot erase another launch report', async () => {
-  const work = await temporary()
+/** Release 1.0.1 confirmed, then 1.0.2 installed awaiting its health check. */
+async function installPending(work: string): Promise<string> {
   const root = join(work, 'install')
   for (const [label, sequence, health] of [
     ['first', '1', []],
@@ -435,6 +435,12 @@ test('a concurrent start of the same pending release cannot erase another launch
       ...health
     )
   }
+  return root
+}
+
+test('a concurrent start of the same pending release cannot erase another launch report', async () => {
+  const work = await temporary()
+  const root = await installPending(work)
   // Launch A reports health at once, then keeps running until the test lets it exit.
   const go = join(work, 'go')
   const reportThenWait = [
@@ -476,4 +482,59 @@ test('a concurrent start of the same pending release cannot erase another launch
   const after = cli('launch', '--root', root, '--', ...reportHealth)
   expect(JSON.parse(after.out)).toEqual({ pending: false, reported: false })
   expect(await readdir(mailbox)).toEqual([])
+}, 120_000)
+
+test('a report survives a busy installation lock while running and after exit', async () => {
+  const runtime = JSON.stringify(join(repository, 'packages/runtime/src/installation.ts'))
+  const launchWith = (root: string, script: string) =>
+    Bun.spawn(
+      [
+        process.execPath,
+        join(repository, 'scripts/release-update.ts'),
+        'launch',
+        '--root',
+        root,
+        '--',
+        '-e',
+        script,
+      ],
+      { stdout: 'pipe', stderr: 'pipe' }
+    )
+  const pending = async (root: string) =>
+    JSON.parse(cli('launch', '--root', root, '--', ...reportHealth).out) as { pending: boolean }
+
+  // While running: the app holds the lock as a live process across several polls, then frees it.
+  const running = await installPending(await temporary())
+  const lock = JSON.stringify(join(running, 'lock'))
+  const whileRunning = launchWith(
+    running,
+    `const { writeFileSync, rmSync } = require('node:fs');
+     writeFileSync(${lock}, process.pid + '\\n');
+     require(${runtime}).reportHealthy().then(async () => {
+       await Bun.sleep(700);
+       rmSync(${lock});
+       await Bun.sleep(700);
+     })`
+  )
+  expect(await whileRunning.exited).toBe(0)
+  expect(await new Response(whileRunning.stderr).text()).toBe('')
+  expect(await pending(running)).toEqual({ pending: false, reported: false })
+
+  // After exit: a live process (this test) holds the lock when the app has already exited.
+  const exited = await installPending(await temporary())
+  const exitedLock = join(exited, 'lock')
+  const afterExit = launchWith(
+    exited,
+    `const { writeFileSync } = require('node:fs');
+     writeFileSync(${JSON.stringify(exitedLock)}, ${process.pid} + '\\n');
+     require(${runtime}).reportHealthy()`
+  )
+  const deadline = Date.now() + 30_000
+  while (!existsSync(exitedLock) && Date.now() < deadline) await Bun.sleep(5)
+  await Bun.sleep(700)
+  expect(afterExit.exitCode).toBeNull()
+  await rm(exitedLock)
+  expect(await afterExit.exited).toBe(0)
+  expect(await new Response(afterExit.stderr).text()).toBe('')
+  expect(await pending(exited)).toEqual({ pending: false, reported: false })
 }, 120_000)

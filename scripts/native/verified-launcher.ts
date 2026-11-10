@@ -4,6 +4,7 @@ import { constants } from 'node:os'
 import { dirname, join, resolve } from 'node:path'
 import { readKeySet } from './installation.ts'
 import { confirmHealthy, launch } from './lifecycle.ts'
+import { UpdateError } from './update-manifest.ts'
 import type { KeySet } from './update-keys.ts'
 
 /**
@@ -20,6 +21,10 @@ import type { KeySet } from './update-keys.ts'
  * Without explicit `keys`, the key set persisted by an accepted rotation applies when there
  * is one. Returns the application's exit code, or 128 plus the signal number.
  */
+const pollInterval = 200
+/** Polls after exit while another updater operation holds the lock: about 5 seconds. */
+const exitRetries = 25
+
 export async function runVerified(
   root: string,
   args: readonly string[],
@@ -51,9 +56,16 @@ export async function runVerified(
       ...(health ? { BUN_NATIVE_HEALTH_FILE: health } : {}),
     },
   })
-  let confirmed = false
-  const confirm = async () => {
-    if (!health || confirmed) return
+  // 'confirmed' only after a durable confirmation; a transient failure keeps the report so a
+  // later poll, or the retries after exit, try again. Attempts never overlap.
+  let state: 'waiting' | 'confirmed' | 'failed' = 'waiting'
+  let attempt: Promise<void> | undefined
+  const confirm = (): Promise<void> => {
+    attempt ??= confirmOnce().finally(() => (attempt = undefined))
+    return attempt
+  }
+  const confirmOnce = async () => {
+    if (!health || state !== 'waiting') return
     let reported = ''
     try {
       reported = (await readFile(health, 'utf8')).trim()
@@ -61,15 +73,36 @@ export async function runVerified(
       return // Not reported yet.
     }
     if (reported !== release) return
-    confirmed = true
     try {
       await confirmHealthy(base, release)
+      state = 'confirmed'
       await rm(health, { force: true })
     } catch (error) {
+      // Another updater operation holds the installation lock: retry on the next attempt.
+      if (error instanceof UpdateError && error.code === 'busy') return
+      state = 'failed'
       console.error(`Could not confirm release ${resolved.release.version}: ${String(error)}`)
     }
   }
-  const poll = health ? setInterval(() => void confirm(), 200) : undefined
+  const poll = health ? setInterval(() => void confirm(), pollInterval) : undefined
+  /** After exit: confirm a report, retrying a busy installation lock for a bounded time. */
+  const settle = async () => {
+    await confirm()
+    if (!health || state !== 'waiting') return
+    const reported = await readFile(health, 'utf8').then(
+      (text) => text.trim() === release,
+      () => false
+    )
+    if (!reported) return
+    for (let retry = 0; retry < exitRetries && state === 'waiting'; retry++) {
+      await Bun.sleep(pollInterval)
+      await confirm()
+    }
+    if (state === 'waiting')
+      console.error(
+        `Could not confirm release ${resolved.release.version}: the installation stayed locked`
+      )
+  }
   // A terminal interrupt reaches the whole foreground group; a targeted stop is forwarded.
   const forward = (signal: NodeJS.Signals) => () => child.kill(signal)
   const stops = (['SIGTERM', 'SIGHUP'] as const).map((signal) => {
@@ -80,7 +113,7 @@ export async function runVerified(
   try {
     const code = await child.exited
     clearInterval(poll)
-    await confirm()
+    await settle()
     if (health) await rm(health, { force: true })
     const signal = child.signalCode as NodeJS.Signals | null
     return signal ? 128 + (constants.signals[signal] ?? 0) : code
