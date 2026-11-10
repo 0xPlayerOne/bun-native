@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.28.0](https://github.com/0xPlayerOne/bun-native/compare/v0.27.2...v0.28.0) (2026-11-10)
+
+
+### Features
+
+* **macos:** qualify native Solid and React workspaces ([#582](https://github.com/0xPlayerOne/bun-native/issues/582)) ([e456a6d](https://github.com/0xPlayerOne/bun-native/commit/e456a6d2f65f8771b663a7fb8f3a6026ce0a9a54))
+
 ## [0.27.2](https://github.com/0xPlayerOne/bun-native/compare/v0.27.1...v0.27.2) (2026-11-09)
 
 
