@@ -162,6 +162,69 @@ try {
   const ids = (await run(['xdotool', 'search', '--sync', '--name', '^' + TITLE + '$'])).split('\n')
   assert.equal(ids.length, 1, 'exactly one owned window')
   const xid = ids[0]!
+
+  type Entry = { role: string; text?: string; extents?: number[][] }
+  /**
+   * Bidirectional display oracle: the AT-SPI character extents of the focused
+   * entry come from the host's painted glyphs. Latin characters advance to
+   * the right, the Hebrew letters after them run right to left in logical
+   * order, and every box covers dark glyph ink in a capture of the window.
+   */
+  const rtlLayout = async (text: string) => {
+    let entry: Entry | undefined
+    const until = performance.now() + 5_000
+    while (!entry?.extents?.every((box) => box[2]! >= 0)) {
+      const tree = JSON.parse(await run([atspiPython!, '-I', probe, 'dump', TITLE])) as {
+        roles: Entry[]
+      }
+      entry = tree.roles.find((node) => node.role === 'entry' && node.text === text)
+      if (performance.now() > until)
+        throw new Error('no painted extents for ' + text + ': ' + JSON.stringify(entry))
+      await Bun.sleep(50)
+    }
+    const boxes = entry!.extents!
+    const characters = [...text]
+    assert.equal(boxes.length, characters.length)
+    const hebrew = characters.findIndex((character) => /[\u0590-\u05ff]/.test(character))
+    for (let index = 1; index < hebrew; index += 1)
+      assert(boxes[index]![0]! >= boxes[index - 1]![0]! + boxes[index - 1]![2]! - 1, 'LTR order')
+    for (let index = hebrew + 1; index < characters.length; index += 1)
+      assert(
+        boxes[index]![0]! + boxes[index]![2]! <= boxes[index - 1]![0]! + 1,
+        'each later Hebrew letter is painted left of the one before it'
+      )
+    const space = boxes[hebrew - 1]!
+    assert(
+      boxes.slice(hebrew).every((box) => box[0]! >= space[0]! + space[2]! - 1),
+      'the Hebrew run is painted after the Latin run'
+    )
+    const capture = join(output, 'rtl-layout.png')
+    await run(['import', '-window', xid, capture])
+    const ink = await Promise.all(
+      boxes
+        .slice(hebrew)
+        .map(async ([x, y, w, h]) =>
+          Number(
+            await run([
+              'convert',
+              capture,
+              '-crop',
+              `${w}x${h}+${x}+${y}`,
+              '-colorspace',
+              'Gray',
+              '-format',
+              '%[fx:minima]',
+              'info:',
+            ])
+          )
+        )
+    )
+    assert(
+      ink.every((darkest) => darkest < 0.5),
+      'every Hebrew box covers glyph ink: ' + ink.join()
+    )
+    return { boxes, ink }
+  }
   await run(['xdotool', 'windowactivate', '--sync', xid])
   // The first enabled input owns initial focus once the window is active.
   await waitFor(() => focusTrace.includes('edit'), 'initial input focus')
@@ -208,6 +271,7 @@ try {
     () => JSON.stringify(values.edit.slice(typedFrom))
   )
   assert.equal(values.edit.length - typedFrom, [...HEBREW].length)
+  if (atspiEnabled) record('rtlLayout', await rtlLayout('Ca ' + HEBREW))
   // Backspace removes the logically previous (visually leftmost) letter.
   await press('BackSpace')
   await waitFor(() => lastEdit() === 'Ca ' + HEBREW.slice(0, -1), 'RTL backspace')
