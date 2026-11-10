@@ -39,7 +39,7 @@ jobs:
       # matrix row does not constitute an actual CodeQL analysis.
       # The pinned Code Foundry plan executes each analyzer on the PR head.
       plan: >-
-        {"enabled":"true","rust_build_mode":"none","matrix":[{"display":"Actions","language":"actions","category":"/language:actions","build_mode":"none","changed":true},{"display":"TypeScript","language":"javascript-typescript","category":"/language:javascript-typescript","build_mode":"none","changed":true},{"display":"Python","language":"python","category":"/language:python","build_mode":"none","changed":true},{"display":"Rust","language":"rust","category":"/language:rust","build_mode":"none","changed":true,"shard":"all"}]}
+        {"enabled":"true","rust_build_mode":"none","matrix":"[{\"display\":\"Actions\",\"language\":\"actions\",\"category\":\"/language:actions\",\"build_mode\":\"none\",\"changed\":true},{\"display\":\"TypeScript\",\"language\":\"javascript-typescript\",\"category\":\"/language:javascript-typescript\",\"build_mode\":\"none\",\"changed\":true},{\"display\":\"Python\",\"language\":\"python\",\"category\":\"/language:python\",\"build_mode\":\"none\",\"changed\":true},{\"display\":\"Rust\",\"language\":\"rust\",\"category\":\"/language:rust\",\"build_mode\":\"none\",\"changed\":true,\"shard\":\"all\"}]"}
 
   qualification:
     name: Qualification
