@@ -23,7 +23,7 @@ jobs:
     # Source, protocol and security checks still run, and main always runs all.
     name: Classify changes
     if: vars.CI_BILLING_PAUSED == 'false' && (github.event_name != 'pull_request' || github.event.pull_request.draft == false)
-    runs-on: ubuntu-slim
+    runs-on: ubuntu-24.04
     timeout-minutes: 2
     permissions:
       contents: read
@@ -310,7 +310,7 @@ jobs:
     # ready, before the ready-stage implementation jobs exist. A draft run
     # fails here instead; the ready-stage run replaces it on the same head.
     if: always()
-    runs-on: ubuntu-slim
+    runs-on: ubuntu-24.04
     timeout-minutes: 2
     steps:
       - name: Refuse draft-stage validation

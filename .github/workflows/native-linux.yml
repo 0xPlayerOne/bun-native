@@ -945,7 +945,7 @@ jobs:
               --output "$evidence" -- "${command[@]}"
           done
       - name: Solid workspace long-session ownership in development and AOT
-        if: ${{ matrix.shard == 3 && (!cancelled() && steps.native-build.outcome == 'success') }}
+        if: ${{ matrix.shard == 1 && (!cancelled() && steps.native-build.outcome == 'success') }}
         timeout-minutes: 6
         env:
           BUN_NATIVE_HOST: ${{ github.workspace }}/target/release/bun-native-host
