@@ -11,6 +11,16 @@
 //!   move X Y W H   absolute motion to X,Y within a W x H output layout
 //!   press          left button down
 //!   release        left button up
+//!
+//! It is also the seat's one input method (`zwp_input_method_v2`), created on
+//! the first `ime-` command, so text reaches the focused client's
+//! `zwp_text_input_v3` through the compositor as from an IME engine:
+//!   ime-active          wait (bounded) until the compositor activates the
+//!                       input method for a focused text input
+//!   ime-preedit B E T   preedit T (rest of the line), cursor at bytes B..E
+//!   ime-commit T        commit T (rest of the line), ending any preedit
+//!   ime-clear           an empty preedit, cancelling the composition
+//!   ime-state           `ok active=<0|1> serial=<done events>`
 
 #[cfg(target_os = "linux")]
 fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -20,11 +30,15 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 #[cfg(target_os = "linux")]
 mod peer {
     use std::io::{BufRead, Write};
-    use std::time::Instant;
+    use std::time::{Duration, Instant};
     use wayland_client::globals::{GlobalListContents, registry_queue_init};
     use wayland_client::protocol::wl_pointer::ButtonState;
     use wayland_client::protocol::{wl_registry, wl_seat};
     use wayland_client::{Connection, Dispatch, QueueHandle, delegate_noop};
+    use wayland_protocols_misc::zwp_input_method_v2::client::{
+        zwp_input_method_manager_v2::ZwpInputMethodManagerV2,
+        zwp_input_method_v2::{self, ZwpInputMethodV2},
+    };
     use wayland_protocols_wlr::virtual_pointer::v1::client::{
         zwlr_virtual_pointer_manager_v1::ZwlrVirtualPointerManagerV1,
         zwlr_virtual_pointer_v1::ZwlrVirtualPointerV1,
@@ -33,7 +47,15 @@ mod peer {
     /// linux/input-event-codes.h BTN_LEFT.
     const BTN_LEFT: u32 = 0x110;
 
-    struct State;
+    /// What the compositor has told the input method. Activation takes effect
+    /// on `done`, which also counts the serial every commit must carry.
+    #[derive(Default)]
+    struct State {
+        pending_active: bool,
+        active: bool,
+        serial: u32,
+        unavailable: bool,
+    }
 
     impl Dispatch<wl_registry::WlRegistry, GlobalListContents> for State {
         fn event(
@@ -46,9 +68,40 @@ mod peer {
         ) {
         }
     }
+
+    impl Dispatch<ZwpInputMethodV2, ()> for State {
+        fn event(
+            state: &mut Self,
+            _: &ZwpInputMethodV2,
+            event: zwp_input_method_v2::Event,
+            _: &(),
+            _: &Connection,
+            _: &QueueHandle<Self>,
+        ) {
+            match event {
+                zwp_input_method_v2::Event::Activate => state.pending_active = true,
+                zwp_input_method_v2::Event::Deactivate => state.pending_active = false,
+                zwp_input_method_v2::Event::Done => {
+                    state.active = state.pending_active;
+                    state.serial = state.serial.wrapping_add(1);
+                }
+                zwp_input_method_v2::Event::Unavailable => state.unavailable = true,
+                _ => {}
+            }
+        }
+    }
     delegate_noop!(State: ignore wl_seat::WlSeat);
+    delegate_noop!(State: ZwpInputMethodManagerV2);
     delegate_noop!(State: ZwlrVirtualPointerManagerV1);
     delegate_noop!(State: ZwlrVirtualPointerV1);
+
+    /// The text after the first `count` space-separated words of a line.
+    fn rest(line: &str, count: usize) -> String {
+        line.splitn(count + 1, ' ')
+            .nth(count)
+            .unwrap_or("")
+            .to_owned()
+    }
 
     pub(super) fn run() -> Result<(), Box<dyn std::error::Error>> {
         let connection = Connection::connect_to_env()?;
@@ -57,7 +110,9 @@ mod peer {
         let seat: wl_seat::WlSeat = globals.bind(&handle, 1..=1, ())?;
         let manager: ZwlrVirtualPointerManagerV1 = globals.bind(&handle, 1..=1, ())?;
         let pointer = manager.create_virtual_pointer(Some(&seat), &handle, ());
-        queue.roundtrip(&mut State)?;
+        let mut state = State::default();
+        queue.roundtrip(&mut state)?;
+        let mut input_method: Option<ZwpInputMethodV2> = None;
         let started = Instant::now();
         let time = || u32::try_from(started.elapsed().as_millis()).unwrap_or(u32::MAX);
         let mut stdout = std::io::stdout().lock();
@@ -66,8 +121,57 @@ mod peer {
         for line in std::io::stdin().lock().lines() {
             let line = line?;
             let words: Vec<&str> = line.split_whitespace().collect();
-            let result: Result<(), String> = match words.as_slice() {
-                ["move", x, y, width, height] => {
+            let ime = words.first().is_some_and(|word| word.starts_with("ime-"));
+            if ime && input_method.is_none() {
+                match globals.bind::<ZwpInputMethodManagerV2, _, _>(&handle, 1..=1, ()) {
+                    Ok(manager) => {
+                        input_method = Some(manager.get_input_method(&seat, &handle, ()));
+                        queue.roundtrip(&mut state)?;
+                    }
+                    Err(error) => {
+                        writeln!(stdout, "error: no input method manager: {error}")?;
+                        stdout.flush()?;
+                        continue;
+                    }
+                }
+            }
+            let result: Result<(), String> = match (words.as_slice(), input_method.as_ref()) {
+                (["ime-active"], Some(_)) => {
+                    let deadline = Instant::now() + Duration::from_secs(5);
+                    while !state.active && !state.unavailable && Instant::now() < deadline {
+                        queue.roundtrip(&mut state).map_err(|e| e.to_string())?;
+                        std::thread::sleep(Duration::from_millis(20));
+                    }
+                    if state.unavailable {
+                        Err("the seat already has an input method".into())
+                    } else if state.active {
+                        Ok(())
+                    } else {
+                        Err("the input method was never activated".into())
+                    }
+                }
+                (["ime-preedit", begin, end, ..], Some(method)) => {
+                    match (begin.parse::<i32>(), end.parse::<i32>()) {
+                        (Ok(begin), Ok(end)) => {
+                            method.set_preedit_string(rest(&line, 3), begin, end);
+                            method.commit(state.serial);
+                            Ok(())
+                        }
+                        _ => Err("invalid preedit cursor".into()),
+                    }
+                }
+                (["ime-commit", ..], Some(method)) => {
+                    method.commit_string(rest(&line, 1));
+                    method.commit(state.serial);
+                    Ok(())
+                }
+                (["ime-clear"], Some(method)) => {
+                    method.set_preedit_string(String::new(), 0, 0);
+                    method.commit(state.serial);
+                    Ok(())
+                }
+                (["ime-state"], Some(_)) => Ok(()),
+                (["move", x, y, width, height], _) => {
                     let parse = |value: &str| value.parse::<u32>().map_err(|e| e.to_string());
                     match (parse(x), parse(y), parse(width), parse(height)) {
                         (Ok(x), Ok(y), Ok(width), Ok(height)) if x < width && y < height => {
@@ -78,12 +182,12 @@ mod peer {
                         _ => Err("invalid move".into()),
                     }
                 }
-                ["press"] => {
+                (["press"], _) => {
                     pointer.button(time(), BTN_LEFT, ButtonState::Pressed);
                     pointer.frame();
                     Ok(())
                 }
-                ["release"] => {
+                (["release"], _) => {
                     pointer.button(time(), BTN_LEFT, ButtonState::Released);
                     pointer.frame();
                     Ok(())
@@ -91,16 +195,25 @@ mod peer {
                 _ => Err("unknown command".into()),
             };
             // The compositor has processed the request once the round trip returns.
-            queue.roundtrip(&mut State)?;
+            queue.roundtrip(&mut state)?;
             match result {
+                Ok(()) if words.first() == Some(&"ime-state") => writeln!(
+                    stdout,
+                    "ok active={} serial={}",
+                    u8::from(state.active),
+                    state.serial
+                )?,
                 Ok(()) => writeln!(stdout, "ok")?,
                 Err(message) => writeln!(stdout, "error: {message}")?,
             }
             stdout.flush()?;
         }
+        if let Some(method) = input_method {
+            method.destroy();
+        }
         pointer.destroy();
         manager.destroy();
-        queue.roundtrip(&mut State)?;
+        queue.roundtrip(&mut state)?;
         Ok(())
     }
 }

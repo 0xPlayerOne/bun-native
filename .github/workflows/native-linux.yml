@@ -13,10 +13,18 @@ concurrency:
 
 jobs:
   native:
-    name: GPUI release, native contracts and baselines
+    name: GPUI release, native contracts and baselines (shard ${{ matrix.shard }}/3)
     if: vars.CI_BILLING_PAUSED == 'false' && (github.event_name != 'pull_request' || github.event.pull_request.draft == false)
     runs-on: ubuntu-24.04
     timeout-minutes: 60
+    # The X11/Wayland suites were one serial ~18 min job. Each shard builds the
+    # same reproducible release host from the shared dependency cache and runs
+    # its own suites (`if: matrix.shard == N`); balance by step time when adding
+    # one. A suite step without a shard condition runs in every shard.
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3]
     defaults:
       run:
         shell: bash
@@ -183,11 +191,12 @@ jobs:
           sha256sum target/release/examples/xdnd-source > "$NATIVE_EVIDENCE/xdnd-source-sha256.txt"
           sha256sum target/release/examples/wayland-input-peer > "$NATIVE_EVIDENCE/wayland-input-peer-sha256.txt"
       - name: Lint and test actual native host
+        if: matrix.shard == 3
         run: |
           cargo clippy --locked --release --manifest-path Cargo.toml -p bun-native-host --all-targets -- -D warnings
           cargo test --locked --release --manifest-path Cargo.toml -p bun-native-host
       - name: Save release dependency build outputs from protected main
-        if: success() && github.event_name == 'push' && github.ref == 'refs/heads/main' && steps.target-cache.outputs.cache-hit != 'true'
+        if: ${{ matrix.shard == 3 && (success() && github.event_name == 'push' && github.ref == 'refs/heads/main' && steps.target-cache.outputs.cache-hit != 'true') }}
         uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: |
@@ -196,6 +205,7 @@ jobs:
             target/release/.fingerprint
           key: native-release-target-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('rust-toolchain.toml', 'Cargo.lock', 'Cargo.toml', 'native/vendor/**') }}
       - name: Qualify fixed allocation regions with the actual Rust and Heaptrack ABI
+        if: matrix.shard == 1
         timeout-minutes: 3
         run: |
           python3 benchmarks/native-allocation-control.py \
@@ -207,6 +217,7 @@ jobs:
         timeout-minutes: 2
         run: python3 scripts/quality/warm-gpu-driver.py --output "$NATIVE_EVIDENCE/gpu-driver-warmup.json"
       - name: Development public API input, stale revision and window lifecycle
+        if: matrix.shard == 1
         env:
           BUN_NATIVE_HOST: ${{ github.workspace }}/target/release/bun-native-host
           BUN_NATIVE_STARTUP_LOG: '1'
@@ -215,6 +226,7 @@ jobs:
             dbus-run-session -- bash scripts/quality/native-linux-session.sh \
             "$NATIVE_EVIDENCE/development" development bun examples/native-window/main.ts
       - name: Development checked-JavaScript consumer input
+        if: matrix.shard == 1
         env:
           BUN_NATIVE_HOST: ${{ github.workspace }}/target/release/bun-native-host
         run: |
@@ -222,6 +234,7 @@ jobs:
             dbus-run-session -- bash scripts/quality/native-linux-session.sh \
             "$NATIVE_EVIDENCE/javascript-development" javascript bun tests/native/javascript.js
       - name: Development public listener and subtree lifecycle
+        if: matrix.shard == 1
         env:
           BUN_NATIVE_HOST: ${{ github.workspace }}/target/release/bun-native-host
         run: |
@@ -229,6 +242,7 @@ jobs:
             dbus-run-session -- bash scripts/quality/native-linux-session.sh \
             "$NATIVE_EVIDENCE/lifecycle-development" core-lifecycle bun tests/native/public-lifecycle.ts
       - name: Development native input event throughput
+        if: matrix.shard == 1
         env:
           BUN_NATIVE_HOST: ${{ github.workspace }}/target/release/bun-native-host
         run: |
@@ -236,18 +250,41 @@ jobs:
             dbus-run-session -- bash scripts/quality/native-linux-session.sh \
             "$NATIVE_EVIDENCE/events-development" event-throughput bun tests/native/event-throughput.ts
       - name: Compile and inspect the actual AOT entries
+        env:
+          SHARD: ${{ matrix.shard }}
         run: |
+          # Each shard compiles only the entries its own steps run; shard 3's steps
+          # compile their fixtures inline. A new entry defaults to shard 2.
+          shard1=' native-window input-race bridge javascript core-lifecycle event-throughput fault scheduling layout interactions '
+          # shellcheck disable=SC2016 # the xargs child shell expands its own variables
           for entry in native-window input-race bridge javascript core-lifecycle event-throughput fault scheduling layout interactions services display-semantics clipboard global-shortcuts notifications overlays message-dialogs popups wayland filesystem-grants text-input accessibility ime processes file-dialogs drag-drop solid-drag-drop react-drag-drop solid-services react-services solid solid-input-intent solid-interactions react react-interactions react-behavior react-workload react-workspace react-workspace-flow; do
+            case "$SHARD" in
+              1) [[ $shard1 == *" $entry "* ]] || continue ;;
+              2) [[ $shard1 != *" $entry "* ]] || continue ;;
+              *) continue ;;
+            esac
+            echo "$entry"
+          done | xargs -r -P 2 -n 1 bash -c '
+            set -euo pipefail
+            entry=$1
             outdir="$NATIVE_EVIDENCE/$entry-package"
             if [[ "$entry" == native-window ]]; then
               outdir="$NATIVE_EVIDENCE/package"
             fi
+            # Each entry owns its outdir; logs are printed whole so parallel output never interleaves.
+            log="$RUNNER_TEMP/aot-build-$entry.log"
+            status=0
             bun experiments/aot-gpui/build-window.ts \
               --source "$GITHUB_WORKSPACE" \
               --host "$GITHUB_WORKSPACE/target/release/bun-native-host" \
-              --entry "$entry" --host-profile release --outdir "$outdir"
-          done
+              --entry "$entry" --host-profile release --outdir "$outdir" > "$log" 2>&1 || status=$?
+            echo "::group::AOT entry $entry (exit $status)"
+            cat "$log"
+            echo "::endgroup::"
+            exit "$status"
+          ' _
       - name: Development and AOT bounded X11 clipboard service
+        if: matrix.shard == 2
         timeout-minutes: 3
         env:
           BUN_NATIVE_HOST: ${{ github.workspace }}/target/release/bun-native-host
@@ -266,6 +303,7 @@ jobs:
               --host-profile release -- "${command[@]}"
           done
       - name: Development and AOT X11 global shortcuts
+        if: matrix.shard == 2
         timeout-minutes: 3
         env:
           BUN_NATIVE_HOST: ${{ github.workspace }}/target/release/bun-native-host
@@ -284,6 +322,7 @@ jobs:
               "$evidence-session" -- "${command[@]}" 2>&1 | tee "$evidence/run.log"
           done
       - name: Development and AOT X11 text, focus, Unicode, composition, AT-SPI and scaling
+        if: matrix.shard == 2
         timeout-minutes: 5
         env:
           BUN_NATIVE_HOST: ${{ github.workspace }}/target/release/bun-native-host
@@ -308,6 +347,7 @@ jobs:
             done
           done
       - name: Development and AOT X11 input method composition through IBus Hangul
+        if: matrix.shard == 2
         timeout-minutes: 4
         env:
           BUN_NATIVE_HOST: ${{ github.workspace }}/target/release/bun-native-host
@@ -327,6 +367,7 @@ jobs:
             test -s "$evidence/result.json"
           done
       - name: Development and AOT X11 accessibility roles and keyboard split divider (AT-SPI)
+        if: matrix.shard == 2
         timeout-minutes: 4
         env:
           BUN_NATIVE_HOST: ${{ github.workspace }}/target/release/bun-native-host
@@ -348,6 +389,7 @@ jobs:
             test -s "$evidence/result.json"
           done
       - name: Development and AOT freedesktop notifications
+        if: matrix.shard == 2
         timeout-minutes: 3
         env:
           BUN_NATIVE_HOST: ${{ github.workspace }}/target/release/bun-native-host
@@ -365,6 +407,7 @@ jobs:
               "$evidence-session" -- "${command[@]}" 2>&1 | tee "$evidence/run.log"
           done
       - name: Development and AOT X11 display snapshot semantics
+        if: matrix.shard == 2
         timeout-minutes: 3
         env:
           BUN_NATIVE_HOST: ${{ github.workspace }}/target/release/bun-native-host
@@ -385,6 +428,7 @@ jobs:
               "$evidence-session" -- "${command[@]}" 2>&1 | tee "$evidence/run.log"
           done
       - name: Development and AOT filesystem grants
+        if: matrix.shard == 2
         timeout-minutes: 3
         env:
           BUN_NATIVE_HOST: ${{ github.workspace }}/target/release/bun-native-host
@@ -402,6 +446,7 @@ jobs:
               "$evidence-session" -- "${command[@]}" 2>&1 | tee "$evidence/run.log"
           done
       - name: Development and AOT owned processes
+        if: matrix.shard == 2
         timeout-minutes: 3
         env:
           BUN_NATIVE_HOST: ${{ github.workspace }}/target/release/bun-native-host
@@ -419,6 +464,7 @@ jobs:
               "$evidence-session" -- "${command[@]}" 2>&1 | tee "$evidence/run.log"
           done
       - name: Development and AOT OS file dialogs through xdg-desktop-portal
+        if: matrix.shard == 2
         timeout-minutes: 3
         env:
           BUN_NATIVE_HOST: ${{ github.workspace }}/target/release/bun-native-host
@@ -436,6 +482,7 @@ jobs:
               "$evidence-session" -- "${command[@]}" 2>&1 | tee "$evidence/run.log"
           done
       - name: Development and AOT overlays, modal focus, keyboard menus and scrolling
+        if: matrix.shard == 2
         timeout-minutes: 3
         env:
           BUN_NATIVE_HOST: ${{ github.workspace }}/target/release/bun-native-host
@@ -455,6 +502,7 @@ jobs:
               "$evidence-session" -- "${command[@]}" 2>&1 | tee "$evidence/run.log"
           done
       - name: Development and AOT message and confirm dialogs on the modal overlay
+        if: matrix.shard == 2
         timeout-minutes: 3
         env:
           BUN_NATIVE_HOST: ${{ github.workspace }}/target/release/bun-native-host
@@ -474,6 +522,7 @@ jobs:
               "$evidence-session" -- "${command[@]}" 2>&1 | tee "$evidence/run.log"
           done
       - name: Development and AOT popup windows beyond the parent window
+        if: matrix.shard == 2
         timeout-minutes: 3
         env:
           BUN_NATIVE_HOST: ${{ github.workspace }}/target/release/bun-native-host
@@ -496,6 +545,7 @@ jobs:
       # One development and one inspected AOT run at scale 1, and development
       # at output scale 2; each run takes seconds after the shared AOT compile.
       - name: Development and AOT Wayland window, input, pixels, services and close on headless sway
+        if: matrix.shard == 2
         timeout-minutes: 3
         env:
           BUN_NATIVE_HOST: ${{ github.workspace }}/target/release/bun-native-host
@@ -525,6 +575,7 @@ jobs:
             test -s "$evidence/wayland.json"
           done
       - name: Development and AOT X11 drag and drop through core, Solid and React
+        if: matrix.shard == 2
         timeout-minutes: 6
         env:
           BUN_NATIVE_HOST: ${{ github.workspace }}/target/release/bun-native-host
@@ -548,6 +599,7 @@ jobs:
             done
           done
       - name: Development and AOT native display service through core, Solid and React
+        if: matrix.shard == 2
         timeout-minutes: 5
         env:
           BUN_NATIVE_HOST: ${{ github.workspace }}/target/release/bun-native-host
@@ -570,6 +622,7 @@ jobs:
             done
           done
       - name: Development and AOT Solid native input, keyed updates and event phases
+        if: matrix.shard == 2
         timeout-minutes: 8
         env:
           BUN_NATIVE_HOST: ${{ github.workspace }}/target/release/bun-native-host
@@ -595,6 +648,7 @@ jobs:
             done
           done
       - name: Development and AOT React keyed counter, input and cleanup
+        if: matrix.shard == 2
         timeout-minutes: 3
         env:
           BUN_NATIVE_HOST: ${{ github.workspace }}/target/release/bun-native-host
@@ -613,6 +667,7 @@ jobs:
             done
           done
       - name: Development and AOT React native event phases, caret and selection
+        if: matrix.shard == 2
         timeout-minutes: 4
         env:
           BUN_NATIVE_HOST: ${{ github.workspace }}/target/release/bun-native-host
@@ -632,6 +687,7 @@ jobs:
             done
           done
       - name: Development and AOT React hooks, boundaries and cleanup failures
+        if: matrix.shard == 2
         timeout-minutes: 6
         env:
           BUN_NATIVE_HOST: ${{ github.workspace }}/target/release/bun-native-host
@@ -650,6 +706,7 @@ jobs:
             done
           done
       - name: Development and AOT React workspace task flow, scrolling and cleanup
+        if: matrix.shard == 2
         timeout-minutes: 3
         env:
           BUN_NATIVE_HOST: ${{ github.workspace }}/target/release/bun-native-host
@@ -667,6 +724,7 @@ jobs:
               --output "$evidence" -- "${command[@]}"
           done
       - name: Development and AOT React update and lifecycle diagnostics
+        if: matrix.shard == 2
         timeout-minutes: 7
         env:
           BUN_NATIVE_HOST: ${{ github.workspace }}/target/release/bun-native-host
@@ -707,6 +765,7 @@ jobs:
               --mounts 1000 --rows 32 > "$evidence/$mode.log" 2>&1
           done
       - name: AOT public API pointer, text, keyboard, paint and close
+        if: matrix.shard == 1
         env:
           BUN_NATIVE_HOST: ${{ runner.temp }}/native-evidence/package/bun-native-host
         run: |
@@ -714,6 +773,7 @@ jobs:
             dbus-run-session -- bash scripts/quality/native-linux-session.sh \
             "$NATIVE_EVIDENCE/aot" aot "$NATIVE_EVIDENCE/package/native-window"
       - name: AOT stale native input rejection
+        if: matrix.shard == 1
         env:
           BUN_NATIVE_HOST: ${{ github.workspace }}/target/release/bun-native-host
         run: |
@@ -721,6 +781,7 @@ jobs:
             dbus-run-session -- bash scripts/quality/native-linux-session.sh \
             "$NATIVE_EVIDENCE/input-race-aot" aot-input-race "$NATIVE_EVIDENCE/input-race-package/input-race"
       - name: AOT checked-JavaScript consumer input
+        if: matrix.shard == 1
         env:
           BUN_NATIVE_HOST: ${{ github.workspace }}/target/release/bun-native-host
         run: |
@@ -728,6 +789,7 @@ jobs:
             dbus-run-session -- bash scripts/quality/native-linux-session.sh \
             "$NATIVE_EVIDENCE/javascript-aot" aot-javascript "$NATIVE_EVIDENCE/javascript-package/javascript"
       - name: AOT public listener and subtree lifecycle
+        if: matrix.shard == 1
         env:
           BUN_NATIVE_HOST: ${{ github.workspace }}/target/release/bun-native-host
         run: |
@@ -735,6 +797,7 @@ jobs:
             dbus-run-session -- bash scripts/quality/native-linux-session.sh \
             "$NATIVE_EVIDENCE/lifecycle-aot" aot-core-lifecycle "$NATIVE_EVIDENCE/core-lifecycle-package/core-lifecycle"
       - name: AOT native input event throughput
+        if: matrix.shard == 1
         env:
           BUN_NATIVE_HOST: ${{ github.workspace }}/target/release/bun-native-host
         run: |
@@ -742,6 +805,7 @@ jobs:
             dbus-run-session -- bash scripts/quality/native-linux-session.sh \
             "$NATIVE_EVIDENCE/events-aot" aot-event-throughput "$NATIVE_EVIDENCE/event-throughput-package/event-throughput"
       - name: Development and AOT native failure, scheduling, layout and interaction contracts
+        if: matrix.shard == 1
         timeout-minutes: 4
         env:
           BUN_NATIVE_HOST: ${{ github.workspace }}/target/release/bun-native-host
@@ -767,6 +831,7 @@ jobs:
             done
           done
       - name: Development release-host boundary rejection, online and in an empty network namespace
+        if: matrix.shard == 1
         timeout-minutes: 3
         env:
           BUN_NATIVE_HOST: ${{ github.workspace }}/target/release/bun-native-host
@@ -793,6 +858,7 @@ jobs:
           grep -q '"display":true' "$NATIVE_EVIDENCE/boundary-online.json"
           grep -q '"display":true' "$NATIVE_EVIDENCE/boundary-offline.json"
       - name: Release host with no display, a real GPUI startup panic and offline inspected AOT
+        if: matrix.shard == 1
         timeout-minutes: 5
         env:
           BUN_NATIVE_HOST: ${{ github.workspace }}/target/release/bun-native-host
@@ -808,6 +874,7 @@ jobs:
             exit 1
           fi
       - name: Development bridge acknowledgement measurements
+        if: matrix.shard == 1
         timeout-minutes: 4
         run: |
           xvfb-run --auto-servernum --server-args='-screen 0 1280x800x24 -nolisten tcp' \
@@ -817,6 +884,7 @@ jobs:
             --host-profile release --source "$GITHUB_WORKSPACE" \
             --output "$NATIVE_EVIDENCE/bridge-development" 2>&1 | tee "$NATIVE_EVIDENCE/bridge-development.log"
       - name: Profile native allocations during development and AOT lifecycle
+        if: matrix.shard == 1
         timeout-minutes: 5
         run: |
           for mode in development aot; do
@@ -832,6 +900,7 @@ jobs:
               --host-profile release --mode "$mode" -- "${command[@]}"
           done
       - name: AOT bridge acknowledgement measurements
+        if: matrix.shard == 1
         timeout-minutes: 4
         run: |
           xvfb-run --auto-servernum --server-args='-screen 0 1280x800x24 -nolisten tcp' \
@@ -842,6 +911,7 @@ jobs:
             --source "$GITHUB_WORKSPACE" --output "$NATIVE_EVIDENCE/bridge-aot" \
             2>&1 | tee "$NATIVE_EVIDENCE/bridge-aot.log"
       - name: Repeated matched development and AOT release-host baseline
+        if: matrix.shard == 1
         timeout-minutes: 8
         run: |
           xvfb-run --auto-servernum --server-args='-screen 0 1280x800x24 -nolisten tcp' \
@@ -851,7 +921,7 @@ jobs:
             --bun "$(command -v bun)" --samples 5 --warmups 1 --idle-seconds 2 \
             2>&1 | tee "$NATIVE_EVIDENCE/baseline.log"
       - name: Solid local-stream workspace development and AOT native flow
-        if: ${{ !cancelled() && steps.native-build.outcome == 'success' }}
+        if: ${{ matrix.shard == 3 && (!cancelled() && steps.native-build.outcome == 'success') }}
         timeout-minutes: 3
         env:
           BUN_NATIVE_HOST: ${{ github.workspace }}/target/release/bun-native-host
@@ -875,7 +945,7 @@ jobs:
               --output "$evidence" -- "${command[@]}"
           done
       - name: Solid workspace long-session ownership in development and AOT
-        if: ${{ !cancelled() && steps.native-build.outcome == 'success' }}
+        if: ${{ matrix.shard == 3 && (!cancelled() && steps.native-build.outcome == 'success') }}
         timeout-minutes: 6
         env:
           BUN_NATIVE_HOST: ${{ github.workspace }}/target/release/bun-native-host
@@ -898,7 +968,7 @@ jobs:
             python3 scripts/quality/native-solid-workspace-soak.py "$evidence/soak-result.json"
           done
       - name: React workspace long-session ownership in development and AOT
-        if: ${{ !cancelled() && steps.native-build.outcome == 'success' }}
+        if: ${{ matrix.shard == 3 && (!cancelled() && steps.native-build.outcome == 'success') }}
         timeout-minutes: 6
         env:
           BUN_NATIVE_HOST: ${{ github.workspace }}/target/release/bun-native-host
@@ -921,7 +991,7 @@ jobs:
             python3 scripts/quality/native-react-workspace-soak.py "$evidence/soak-result.json"
           done
       - name: Generated Solid and React templates in development and inspected AOT
-        if: ${{ !cancelled() && steps.native-build.outcome == 'success' }}
+        if: ${{ matrix.shard == 3 && (!cancelled() && steps.native-build.outcome == 'success') }}
         timeout-minutes: 6
         run: |
           packages="$NATIVE_EVIDENCE/cli-templates"
@@ -945,7 +1015,7 @@ jobs:
           done
           exit "$template_status"
       - name: Native CLI watch with 101 source-edit remounts per framework
-        if: ${{ !cancelled() && steps.native-build.outcome == 'success' }}
+        if: ${{ matrix.shard == 1 && (!cancelled() && steps.native-build.outcome == 'success') }}
         timeout-minutes: 14
         run: |
           watch_status=0
@@ -962,7 +1032,7 @@ jobs:
           exit "$watch_status"
       - name: Prepare four installed external Solid and React consumers
         id: standalone-prepare
-        if: ${{ !cancelled() && steps.native-build.outcome == 'success' }}
+        if: ${{ matrix.shard == 3 && (!cancelled() && steps.native-build.outcome == 'success') }}
         timeout-minutes: 10
         run: |
           python3 tests/native/cli-standalone.py prepare \
@@ -972,15 +1042,15 @@ jobs:
             --host-sha256-file "$NATIVE_EVIDENCE/binary-sha256.txt" \
             --source-commit "$(git rev-parse HEAD)" --source-tree "$(git rev-parse 'HEAD^{tree}')"
       - name: Installed external consumers in development and inspected AOT
-        if: ${{ !cancelled() && steps.standalone-prepare.outcome == 'success' }}
+        if: ${{ matrix.shard == 3 && (!cancelled() && steps.standalone-prepare.outcome == 'success') }}
         timeout-minutes: 6
         run: python3 tests/native/cli-standalone.py run --output "$NATIVE_EVIDENCE/cli-standalone"
       - name: Finalize owned standalone consumer cleanup
-        if: ${{ always() && contains(fromJSON('["success","failure","cancelled"]'), steps.standalone-prepare.outcome) }}
+        if: ${{ matrix.shard == 3 && (always() && contains(fromJSON('["success","failure","cancelled"]'), steps.standalone-prepare.outcome)) }}
         timeout-minutes: 1
         run: python3 tests/native/cli-standalone.py cleanup --output "$NATIVE_EVIDENCE/cli-standalone"
       - name: Shared input viewport pixels through Solid and React in development and AOT
-        if: ${{ !cancelled() && steps.native-build.outcome == 'success' }}
+        if: ${{ matrix.shard == 3 && (!cancelled() && steps.native-build.outcome == 'success') }}
         timeout-minutes: 4
         env:
           BUN_NATIVE_HOST: ${{ github.workspace }}/target/release/bun-native-host
@@ -1005,7 +1075,7 @@ jobs:
             done
           done
       - name: Development and AOT streaming-list soak through Solid and React
-        if: ${{ !cancelled() && steps.native-build.outcome == 'success' }}
+        if: ${{ matrix.shard == 2 && (!cancelled() && steps.native-build.outcome == 'success') }}
         timeout-minutes: 6
         env:
           BUN_NATIVE_HOST: ${{ github.workspace }}/target/release/bun-native-host
@@ -1034,7 +1104,7 @@ jobs:
           python3 tests/native/streaming-list.py summarize \
             --output "$NATIVE_EVIDENCE/streaming-list-baseline.json" "${reports[@]}"
       - name: Shared layout, split panes and theme tokens through core, Solid and React at scale 1 and 2 in development and AOT
-        if: ${{ !cancelled() && steps.native-build.outcome == 'success' }}
+        if: ${{ matrix.shard == 3 && (!cancelled() && steps.native-build.outcome == 'success') }}
         timeout-minutes: 8
         env:
           BUN_NATIVE_HOST: ${{ github.workspace }}/target/release/bun-native-host
@@ -1073,7 +1143,7 @@ jobs:
           bun tests/native/layout-style-compare.ts "${reports[@]}" |
             tee "$NATIVE_EVIDENCE/diagnostics-layout-style-comparison/report.json"
       - name: Retain unsigned native host for reproducibility
-        if: ${{ !cancelled() && steps.native-build.outcome == 'success' }}
+        if: ${{ matrix.shard == 1 && (!cancelled() && steps.native-build.outcome == 'success') }}
         run: |
           sha256sum --check "$NATIVE_EVIDENCE/binary-sha256.txt"
           archive="$NATIVE_EVIDENCE/unsigned-native-host.tar.gz"
@@ -1093,7 +1163,8 @@ jobs:
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: ${{ !cancelled() }}
         with:
-          name: native-linux-${{ runner.arch }}
+          # Shard 1 keeps the documented native-linux-<arch> name (it retains the host archive).
+          name: native-linux-${{ runner.arch }}${{ matrix.shard != 1 && format('-shard-{0}', matrix.shard) || '' }}
           path: |
             ${{ runner.temp }}/native-evidence/toolchain.txt
             ${{ runner.temp }}/native-evidence/gpu-driver-warmup.json
@@ -1168,6 +1239,7 @@ jobs:
           if-no-files-found: error
           retention-days: 14
       - name: State verified scope
+        if: matrix.shard == 1
         run: |
           {
             echo 'One release GPUI host artifact passed the BN1 native suite through both development Bun and inspected machine-code AOT entries.'
