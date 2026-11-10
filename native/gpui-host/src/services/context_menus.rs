@@ -14,6 +14,25 @@ use std::rc::Rc;
 
 type Failure = (ErrorCode, &'static str);
 
+/// Test diagnostics: when `BUN_NATIVE_CONTEXT_MENU_TRACE` names an absolute
+/// file, each menu step is appended to it. Off otherwise.
+pub(crate) fn trace(step: &str) {
+    use std::io::Write as _;
+    let Some(path) = std::env::var_os("BUN_NATIVE_CONTEXT_MENU_TRACE") else {
+        return;
+    };
+    if !std::path::Path::new(&path).is_absolute() {
+        return;
+    }
+    if let Ok(mut file) = std::fs::OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(path)
+    {
+        let _ = writeln!(file, "{step}");
+    }
+}
+
 #[cfg(target_os = "macos")]
 mod platform {
     use super::model;
@@ -104,14 +123,13 @@ mod platform {
         (handle, window.scale_factor())
     }
 
-    /// Enter the menu from a GPUI task, outside any borrow, and report the
-    /// chosen tag when it closes.
+    /// Schedule the menu from a posted window message, outside GPUI's task
+    /// queue, and report the chosen tag when it closes.
     pub(crate) fn show(
         owner: &Owner,
         (x, y): (f64, f64),
         items: &[AppMenuEntry],
         done: impl FnOnce(Option<u32>) + 'static,
-        cx: &mut gpui::App,
     ) -> Result<Closer, ()> {
         let (window, scale) = *owner;
         if window == 0 {
@@ -134,18 +152,18 @@ mod platform {
             &mut 0,
         );
         let physical = |value: f64| (value * f64::from(scale)).round() as i32;
-        let (x, y) = (physical(x), physical(y));
         let closed: Closer = Rc::new(Cell::new(false));
-        let gate = closed.clone();
-        cx.spawn(async move |_| {
-            let chosen = if gate.get() {
-                None
-            } else {
-                context_menu::show(window, x, y, &nodes).ok().flatten()
-            };
-            done(chosen.filter(|_| !gate.get()));
-        })
-        .detach();
+        context_menu::show(
+            window,
+            (physical(x), physical(y)),
+            nodes,
+            closed.clone(),
+            move |result| {
+                super::trace(&format!("windows: menu returned {result:?}"));
+                done(result.ok().flatten());
+            },
+        )
+        .map_err(|_| ())?;
         Ok(closed)
     }
 
@@ -229,6 +247,7 @@ impl ContextMenus {
         }
         let (sender, receiver) = async_channel::bounded::<Option<u32>>(1);
         let done = move |tag| {
+            trace(&format!("done {tag:?}"));
             let _ = sender.try_send(tag);
         };
         #[cfg(target_os = "macos")]
@@ -239,13 +258,14 @@ impl ContextMenus {
             platform::show(&owner, position, items, done)
         };
         #[cfg(windows)]
-        let closer = platform::show(&owner, position, items, done, cx);
+        let closer = platform::show(&owner, position, items, done);
         let closer = closer.map_err(|()| {
             (
                 ErrorCode::InvalidHandle,
                 "native window has no handle for a context menu",
             )
         })?;
+        trace("scheduled");
         self.0.last_menu.set(menu.get());
         *self.0.live.borrow_mut() = Some(Live {
             window,
@@ -274,6 +294,7 @@ impl ContextMenus {
 
     /// The menu closed. What the application hears depends on who closed it.
     fn finished(&self, menu: ContextMenuId, tag: Option<u32>, cx: &mut App) {
+        trace(&format!("finished {tag:?}"));
         let live = {
             let mut slot = self.0.live.borrow_mut();
             if slot.as_ref().is_none_or(|live| live.menu != menu) {

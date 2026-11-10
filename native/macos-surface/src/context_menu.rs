@@ -205,5 +205,9 @@ pub fn show(
     });
     // SAFETY: the main run loop runs the block on this (the main) thread.
     unsafe { NSRunLoop::mainRunLoop().performBlock(&block) };
+    // A queued run-loop block does not wake a sleeping run loop by itself.
+    if let Some(main) = objc2_core_foundation::CFRunLoop::main() {
+        main.wake_up();
+    }
     Ok(ContextMenu(state))
 }

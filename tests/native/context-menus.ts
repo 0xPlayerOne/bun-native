@@ -9,7 +9,7 @@
  */
 import { createApplication, NativeServiceError, NativeStateError } from '@bun-native/core'
 import assert from 'node:assert/strict'
-import { statSync, writeFileSync } from 'node:fs'
+import { existsSync, readFileSync, statSync, writeFileSync } from 'node:fs'
 import { isAbsolute, join } from 'node:path'
 
 const macOS = process.platform === 'darwin'
@@ -29,6 +29,12 @@ if (
   throw new Error(
     'OS context menus need a Windows or macOS desktop, evidence directory, host and oracle'
   )
+
+// The host appends its menu steps here (diagnostics only).
+const tracePath = join(output!, 'host-trace.log')
+process.env['BUN_NATIVE_CONTEXT_MENU_TRACE'] = tracePath
+const hostTrace = () =>
+  existsSync(tracePath) ? readFileSync(tracePath, 'utf8').trim().split('\n').join(' / ') : 'none'
 
 const started = performance.now()
 const outcomes: Record<string, unknown> = {}
@@ -128,7 +134,9 @@ try {
         ),
         Bun.sleep(0).then(() => 'still pending'),
       ])
-      throw new Error(`${String(error)} (the menu promise is ${settled})`)
+      throw new Error(
+        `${String(error)} (the menu promise is ${settled}; host trace: ${hostTrace()})`
+      )
     })
     for (const label of ['Copy', 'Paste', 'Share', 'Word Wrap', 'Delete'])
       assert.ok(shown.includes(label), `${label} missing from ${shown}`)

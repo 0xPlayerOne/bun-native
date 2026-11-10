@@ -49,11 +49,14 @@ queue: while the menu tracks, GPUI's queued work keeps running and a close
 calls `cancelTracking`. A private target object records the chosen item's
 tag. `y` is flipped because GPUI's view is not flipped.
 
-**Windows.** GPUI posts its main-thread work to its own window as messages,
-and the menu's modal loop dispatches them, so the host enters
-`TrackPopupMenuEx` (`TPM_RETURNCMD`) from a GPUI task outside any borrow and
-a close calls `EndMenu`. The point is scaled to physical pixels and mapped
-with `ClientToScreen`. Shortcuts are shown as right-aligned hints
+**Windows.** GPUI posts one wake message for its queued main-thread work
+and posts no other while one of those tasks runs, so a menu entered from a
+GPUI task would stall every later task, including the close request. The
+host instead posts a message to its own message-only window and enters
+`TrackPopupMenuEx` (`TPM_RETURNCMD`) from that window's procedure, outside
+GPUI's queue: the menu loop dispatches GPUI's wake messages, so GPUI keeps
+running and a close calls `EndMenu`. The point is scaled to physical pixels
+and mapped with `ClientToScreen`. Shortcuts are shown as right-aligned hints
 (`Ctrl+Shift+S`); they bind nothing.
 
 **Core.** The menu is cancelled by an abort signal (which sends

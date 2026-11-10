@@ -1,19 +1,28 @@
 //! Win32 popup menus for OS context menus. `TrackPopupMenuEx` runs a modal
 //! menu loop on the calling thread, which must own the owner window, and
 //! returns the chosen command. The loop dispatches the thread's other window
-//! messages, so the caller's posted work, including [`end`], keeps running.
+//! messages. GPUI posts one wake message for its queued work and posts no
+//! other while a task of that queue is running, so a menu entered from a
+//! GPUI task would stall every later task, including a close request. The
+//! menu is therefore entered from this module's own message-only window,
+//! from a posted message, outside GPUI's task queue: while it tracks, GPUI's
+//! wake messages are dispatched by the menu loop and its tasks keep running.
 #![allow(unsafe_code, reason = "the reviewed popup menu calls of this boundary")]
 
 use crate::context_menu_spec::MenuNode;
 use crate::wide::terminated;
+use std::cell::{Cell, RefCell};
 use std::ffi::OsStr;
 use std::io;
-use windows_sys::Win32::Foundation::{HWND, POINT};
+use std::rc::Rc;
+use windows_sys::Win32::Foundation::{HWND, LPARAM, LRESULT, POINT, WPARAM};
 use windows_sys::Win32::Graphics::Gdi::ClientToScreen;
+use windows_sys::Win32::System::LibraryLoader::GetModuleHandleW;
 use windows_sys::Win32::UI::WindowsAndMessaging::{
-    AppendMenuW, CreatePopupMenu, DestroyMenu, EndMenu, HMENU, MF_CHECKED, MF_GRAYED, MF_POPUP,
-    MF_SEPARATOR, MF_STRING, PostMessageW, SetForegroundWindow, TPM_LEFTALIGN, TPM_RETURNCMD,
-    TPM_RIGHTBUTTON, TPM_TOPALIGN, TrackPopupMenuEx, WM_NULL,
+    AppendMenuW, CreatePopupMenu, CreateWindowExW, DefWindowProcW, DestroyMenu, EndMenu, HMENU,
+    HWND_MESSAGE, MF_CHECKED, MF_GRAYED, MF_POPUP, MF_SEPARATOR, MF_STRING, PostMessageW,
+    RegisterClassW, SetForegroundWindow, TPM_LEFTALIGN, TPM_RETURNCMD, TPM_RIGHTBUTTON,
+    TPM_TOPALIGN, TrackPopupMenuEx, WM_APP, WM_NULL, WNDCLASSW,
 };
 
 /// Destroys the top-level menu, and with it every attached submenu.
@@ -77,7 +86,7 @@ fn append(menu: HMENU, nodes: &[MenuNode]) -> io::Result<()> {
 /// Show the menu at `(x, y)` physical pixels of `owner`'s client area (an
 /// `HWND`) and wait for it to close. Returns the chosen command, or `None`
 /// when the menu was dismissed or ended with [`end`].
-pub fn show(owner: isize, x: i32, y: i32, nodes: &[MenuNode]) -> io::Result<Option<u32>> {
+fn track(owner: isize, x: i32, y: i32, nodes: &[MenuNode]) -> io::Result<Option<u32>> {
     let window = owner as HWND;
     // SAFETY: creates an empty popup menu or returns null.
     let menu = unsafe { CreatePopupMenu() };
@@ -115,4 +124,120 @@ pub fn show(owner: isize, x: i32, y: i32, nodes: &[MenuNode]) -> io::Result<Opti
 pub fn end() {
     // SAFETY: no arguments; ends the calling thread's active menu, if any.
     unsafe { EndMenu() };
+}
+
+const WM_SHOW_MENU: u32 = WM_APP + 0x4D;
+
+struct Job {
+    owner: isize,
+    x: i32,
+    y: i32,
+    nodes: Vec<MenuNode>,
+    closed: Rc<Cell<bool>>,
+    done: Box<dyn FnOnce(io::Result<Option<u32>>)>,
+}
+
+thread_local! {
+    /// This thread's message-only window, created on first use.
+    static WINDOW: Cell<HWND> = const { Cell::new(std::ptr::null_mut()) };
+    static JOBS: RefCell<Vec<Job>> = const { RefCell::new(Vec::new()) };
+}
+
+unsafe extern "system" fn procedure(
+    window: HWND,
+    message: u32,
+    wparam: WPARAM,
+    lparam: LPARAM,
+) -> LRESULT {
+    if message != WM_SHOW_MENU {
+        // SAFETY: the default procedure for this window's other messages.
+        return unsafe { DefWindowProcW(window, message, wparam, lparam) };
+    }
+    // Jobs are taken one at a time, so one posted message runs one job.
+    let job = JOBS.with(|jobs| {
+        let mut jobs = jobs.borrow_mut();
+        (!jobs.is_empty()).then(|| jobs.remove(0))
+    });
+    if let Some(job) = job {
+        let result = if job.closed.get() {
+            Ok(None)
+        } else {
+            track(job.owner, job.x, job.y, &job.nodes)
+        };
+        let result = result.map(|chosen| chosen.filter(|_| !job.closed.get()));
+        (job.done)(result);
+    }
+    0
+}
+
+fn window() -> io::Result<HWND> {
+    if let Some(window) = WINDOW.with(|window| Some(window.get()).filter(|w| !w.is_null())) {
+        return Ok(window);
+    }
+    let name = terminated(OsStr::new("BunNativeContextMenuHost"))?;
+    // SAFETY: a null module name returns this process's executable module.
+    let instance = unsafe { GetModuleHandleW(std::ptr::null()) };
+    let class = WNDCLASSW {
+        lpfnWndProc: Some(procedure),
+        hInstance: instance,
+        lpszClassName: name.as_ptr(),
+        // SAFETY: the remaining fields are plain integers and nullable handles.
+        ..unsafe { std::mem::zeroed() }
+    };
+    // SAFETY: `class` points at a NUL-terminated name that outlives the call;
+    // registering an existing class fails harmlessly and creation still works.
+    unsafe { RegisterClassW(&class) };
+    // SAFETY: a message-only window of the class registered above.
+    let window = unsafe {
+        CreateWindowExW(
+            0,
+            name.as_ptr(),
+            name.as_ptr(),
+            0,
+            0,
+            0,
+            0,
+            0,
+            HWND_MESSAGE,
+            std::ptr::null_mut(),
+            instance,
+            std::ptr::null(),
+        )
+    };
+    if window.is_null() {
+        return Err(io::Error::last_os_error());
+    }
+    WINDOW.with(|cell| cell.set(window));
+    Ok(window)
+}
+
+/// Schedule the menu on this (the owner's) thread. `done` runs once with
+/// the chosen command, `None` when dismissed or closed first. Setting
+/// `closed` and calling [`end`] closes it; a menu closed before it is
+/// entered never appears.
+pub fn show(
+    owner: isize,
+    (x, y): (i32, i32),
+    nodes: Vec<MenuNode>,
+    closed: Rc<Cell<bool>>,
+    done: impl FnOnce(io::Result<Option<u32>>) + 'static,
+) -> io::Result<()> {
+    let window = window()?;
+    JOBS.with(|jobs| {
+        jobs.borrow_mut().push(Job {
+            owner,
+            x,
+            y,
+            nodes,
+            closed,
+            done: Box::new(done),
+        })
+    });
+    // SAFETY: posts to this thread's own live message-only window.
+    if unsafe { PostMessageW(window, WM_SHOW_MENU, 0, 0) } == 0 {
+        let error = io::Error::last_os_error();
+        JOBS.with(|jobs| jobs.borrow_mut().pop());
+        return Err(error);
+    }
+    Ok(())
 }

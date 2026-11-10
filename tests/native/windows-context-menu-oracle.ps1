@@ -25,6 +25,8 @@ public static extern bool PostMessageW(System.IntPtr window, uint message, Syste
 public static extern System.IntPtr FindWindowExW(System.IntPtr parent, System.IntPtr after, string className, string windowName);
 [System.Runtime.InteropServices.DllImport("user32.dll")]
 public static extern bool IsWindowVisible(System.IntPtr window);
+[System.Runtime.InteropServices.DllImport("user32.dll", CharSet = System.Runtime.InteropServices.CharSet.Unicode)]
+public static extern int GetClassNameW(System.IntPtr window, System.Text.StringBuilder name, int size);
 '@
 
 $Scope = [System.Windows.Automation.TreeScope]
@@ -47,7 +49,7 @@ function Menus {
   $menus = @()
   $handle = [System.IntPtr]::Zero
   while ($true) {
-    $handle = [Win32.Native]::FindWindowExW([System.IntPtr]::Zero, $handle, '#32768', $null)
+    $handle = [Win32.Native]::FindWindowExW([System.IntPtr]::Zero, $handle, '#32768', [NullString]::Value)
     if ($handle -eq [System.IntPtr]::Zero) { break }
     if (-not [Win32.Native]::IsWindowVisible($handle)) { continue }
     try { $menus += [System.Windows.Automation.AutomationElement]::FromHandle($handle) } catch {}
@@ -96,7 +98,18 @@ if ($Command -eq 'absent') {
 $menu = Wait-Menu $Title $true
 if ($null -eq $menu) {
   $open = @(Menus | ForEach-Object { @(Items $_ | ForEach-Object { Label $_ }) -join ',' }) -join ' | '
-  Write-Error "no open menu has an item '$Title'; open menus: $open"
+  # Diagnostics: the class of every visible top-level window.
+  $classes = @()
+  $handle = [System.IntPtr]::Zero
+  while ($true) {
+    $handle = [Win32.Native]::FindWindowExW([System.IntPtr]::Zero, $handle, [NullString]::Value, [NullString]::Value)
+    if ($handle -eq [System.IntPtr]::Zero) { break }
+    if (-not [Win32.Native]::IsWindowVisible($handle)) { continue }
+    $name = New-Object System.Text.StringBuilder 256
+    $null = [Win32.Native]::GetClassNameW($handle, $name, 256)
+    $classes += $name.ToString()
+  }
+  Write-Error "no open menu has an item '$Title'; open menus: $open; visible windows: $($classes -join ',')"
   exit 1
 }
 
