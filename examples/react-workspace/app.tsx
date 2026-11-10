@@ -255,8 +255,14 @@ export function Workspace({
   onChange,
   schedule = schedulePlanStep,
   confirm,
+  onDispatch,
 }: {
   onChange?: (state: WorkspaceState) => void
+  /**
+   * Qualification only: receives the component's own reducer dispatch, so a
+   * long-session fixture can drive the same actions its controls dispatch.
+   */
+  onDispatch?: (dispatch: Dispatch<WorkspaceAction>) => void
   schedule?: PlanScheduler
   /** When given, deleting a task asks first. Without it the delete is immediate. */
   confirm?: ConfirmAction | undefined
@@ -274,6 +280,7 @@ export function Workspace({
   const plan = selectedPlan(state)
   const streamingPlan = state.plan?.status === 'streaming' ? state.plan : null
   useEffect(() => onChange?.(state), [onChange, state])
+  useEffect(() => onDispatch?.(dispatch), [onDispatch])
   // Keep, Escape and the backdrop return focus natively to the control that
   // opened the panel. A confirmed clear disables that control, so focus moves
   // to the composer once the panel has left the native tree.

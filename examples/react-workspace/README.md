@@ -154,6 +154,35 @@ python scripts/quality/native-workspace-windows.py --scenario react-workspace `
   bun C:\absolute\react-workspace-flow-package\development\application.js
 ```
 
+## Long-session ownership
+
+`tests/native/react-workspace-soak.tsx` mounts the same `Workspace` with two
+qualification-only props: a fixture-owned plan clock (`schedule`) and the
+component's own reducer `dispatch` (`onDispatch`). The interactive entry passes
+neither and keeps its real 300 ms timer. Each of 60 native rounds adds a task and
+drafts eight plans for it: half stream all eight steps, a quarter are stopped
+after three steps and then receive their stale callback (which must change no
+state and stage no native mutation), and a quarter are cancelled by selecting
+another task, which also remounts the keyed details pane. Every plan toggles the
+theme. The round then renames, filters and searches, adds and deletes a second
+task, and clears its task through the in-app confirmation (dismissed once, then
+confirmed, mounting and removing the modal overlay each time). Every action
+waits for React's commit and its native acknowledgement.
+
+After every round the state returns to the mounted shape, so React root nodes and
+listeners and all public application resources must equal the mounted baseline
+exactly, with no plan timer pending. The mounted baseline (round 0) and every
+tenth round record a forced-collection `heapStats()` sample, Bun RSS and the owned
+host's `VmRSS`; `scripts/quality/native-react-workspace-soak.py` independently
+checks the totals, final zero resources and samples. The Native Linux workflow
+runs the fixture in development and as an inspected AOT executable. The headless
+`tests/react/workspace-soak.test.ts` runs three rounds against the overlay peer.
+
+As for Solid, this is fixture-driven work with native acknowledgements, no OS
+input and no paint assertion, and the samples are single-run observations on
+Linux Xvfb/llvmpipe, not a leak-freedom, latency or capacity claim. Locally, 60
+rounds (480 plans, 5,040 actions) took about 14 s with the release host.
+
 ## Dialogs and focus
 
 The example uses both kinds of confirmation the host offers:
@@ -196,27 +225,26 @@ Both apps run on the same core, renderer primitives and GPUI host, and use the
 same development/AOT helper, owned X11 driver and native evidence records. They
 are different fixtures, so no equal-workload performance comparison is made.
 
-| Behavior                                         | React task workspace                                                                          | Solid conversation workspace                   |
-| ------------------------------------------------ | --------------------------------------------------------------------------------------------- | ---------------------------------------------- |
-| Text entry, native focus, latest input revisions | Native flow (add, rename, search)                                                             | Native flow (per-conversation drafts)          |
-| Keyed list add/edit/delete, filtering            | Native flow                                                                                   | Native flow (history, new/close conversation)  |
-| Native scroll, theme, resize                     | Native flow, dark input pixels sampled                                                        | Native flow, dark composer pixels sampled      |
-| Bounded local streaming with keyed row retention | Native flow: 8-step plan, effect-owned timer                                                  | Native flow: 8-update reply, model-owned timer |
-| Stop and cancellation on selection change        | Native flow                                                                                   | Native flow                                    |
-| OS close with pending work, zero timers after    | Native flow, plus no timer fires after disposal                                               | Native flow                                    |
-| Confirmation before a destructive action         | Native flow: modal confirm dialog (Escape keeps the task, Delete removes it)                  | Clear-history confirmation panel (in-app)      |
-| In-app confirmation panel                        | Native flow: modal overlay, autofocus, Tab trap, Escape/backdrop keep, focus return           | Native flow: inline panel, confirm/keep        |
-| Keyboard-only dialog flow and programmatic focus | Native flow: Tab/Return/Escape, focus moved to the composer after clearing                    | Not exercised                                  |
-| macOS hosted development and AOT                 | Native flow (same scenario)                                                                   | Native flow (same scenario)                    |
-| Windows hosted development and AOT               | Native flow (same scenario)                                                                   | Not yet run on Windows                         |
-| Screenshots                                      | scrolled, dark, resized, edited, filtered, after, plan-streaming, plan-complete, plan-stopped | Per-scenario captures in its native evidence   |
+| Behavior                                         | React task workspace                                                                          | Solid conversation workspace                            |
+| ------------------------------------------------ | --------------------------------------------------------------------------------------------- | ------------------------------------------------------- |
+| Text entry, native focus, latest input revisions | Native flow (add, rename, search)                                                             | Native flow (per-conversation drafts)                   |
+| Keyed list add/edit/delete, filtering            | Native flow                                                                                   | Native flow (history, new/close conversation)           |
+| Native scroll, theme, resize                     | Native flow, dark input pixels sampled                                                        | Native flow, dark composer pixels sampled               |
+| Bounded local streaming with keyed row retention | Native flow: 8-step plan, effect-owned timer                                                  | Native flow: 8-update reply, model-owned timer          |
+| Stop and cancellation on selection change        | Native flow                                                                                   | Native flow                                             |
+| OS close with pending work, zero timers after    | Native flow, plus no timer fires after disposal                                               | Native flow                                             |
+| Confirmation before a destructive action         | Native flow: modal confirm dialog (Escape keeps the task, Delete removes it)                  | Clear-history confirmation panel (in-app)               |
+| In-app confirmation panel                        | Native flow: modal overlay, autofocus, Tab trap, Escape/backdrop keep, focus return           | Native flow: inline panel, confirm/keep                 |
+| Keyboard-only dialog flow and programmatic focus | Native flow: Tab/Return/Escape, focus moved to the composer after clearing                    | Not exercised                                           |
+| macOS hosted development and AOT                 | Native flow (same scenario)                                                                   | Native flow (same scenario)                             |
+| Windows hosted development and AOT               | Native flow (same scenario)                                                                   | Native flow (same scenario)                             |
+| Long-session ownership soak (60 rounds, dev+AOT) | Native Linux: plans, stale callbacks, remounts, clear overlay; exact per-round baseline       | Native Linux: replies, stale callbacks, remounts, clear |
+| Screenshots                                      | scrolled, dark, resized, edited, filtered, after, plan-streaming, plan-complete, plan-stopped | Per-scenario captures in its native evidence            |
 
 Unsupported or unqualified for both: OS menus and alerts (#239), accessibility
 and screen readers, IME (#241), virtualization and long-session memory (#257),
 physical input devices and non-hosted display configurations (hosted runners use
-injected OS events at scale 1), and matched comparative performance (#244). The
-Windows run covers the React workspace only; the Solid workspace has not yet run
-there. React-specific limits from the [behavior matrix](../../docs/react-behavior.md)
+injected OS events at scale 1), and matched comparative performance (#244). React-specific limits from the [behavior matrix](../../docs/react-behavior.md)
 also apply: suspended/hidden subtrees, hydration, portals and view-transition
 animations are outside the adapter contract.
 

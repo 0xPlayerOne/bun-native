@@ -895,6 +895,29 @@ jobs:
               "$evidence-session" -- timeout 150s "${command[@]}" 2>&1 | tee "$evidence/fixture.log"
             python3 scripts/quality/native-solid-workspace-soak.py "$evidence/soak-result.json"
           done
+      - name: React workspace long-session ownership in development and AOT
+        if: ${{ !cancelled() && steps.native-build.outcome == 'success' }}
+        timeout-minutes: 6
+        env:
+          BUN_NATIVE_HOST: ${{ github.workspace }}/target/release/bun-native-host
+        run: |
+          bun experiments/aot-gpui/build-window.ts \
+            --source "$GITHUB_WORKSPACE" \
+            --host "$BUN_NATIVE_HOST" --host-profile release \
+            --entry react-workspace-soak --outdir "$NATIVE_EVIDENCE/react-workspace-soak-package"
+          for mode in development aot; do
+            command=(bun "$NATIVE_EVIDENCE/react-workspace-soak-package/development/application.js")
+            if [[ "$mode" == aot ]]; then
+              command=("$NATIVE_EVIDENCE/react-workspace-soak-package/react-workspace-soak")
+            fi
+            evidence="$NATIVE_EVIDENCE/diagnostics-$mode-react-workspace-soak"
+            mkdir "$evidence"
+            BUN_NATIVE_DIAGNOSTICS_DIR="$evidence" \
+              xvfb-run --auto-servernum --server-args='-screen 0 1280x800x24 -nolisten tcp' \
+              dbus-run-session -- bash scripts/quality/native-linux-session.sh \
+              "$evidence-session" -- timeout 150s "${command[@]}" 2>&1 | tee "$evidence/fixture.log"
+            python3 scripts/quality/native-react-workspace-soak.py "$evidence/soak-result.json"
+          done
       - name: Generated Solid and React templates in development and inspected AOT
         if: ${{ !cancelled() && steps.native-build.outcome == 'success' }}
         timeout-minutes: 6
