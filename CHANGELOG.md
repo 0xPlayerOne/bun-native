@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.31.0](https://github.com/0xPlayerOne/bun-native/compare/v0.30.0...v0.31.0) (2026-11-10)
+
+
+### Features
+
+* app-reported update health; React workspace runs the shared shell ([#604](https://github.com/0xPlayerOne/bun-native/issues/604)) ([ee7f64f](https://github.com/0xPlayerOne/bun-native/commit/ee7f64f5ab7ca9552901c23e4954d4fbb945c0a9))
+
+
+### Performance
+
+* **ci:** shard macOS/Windows native jobs; classifier and Gate on standard runners ([#606](https://github.com/0xPlayerOne/bun-native/issues/606)) ([a024a35](https://github.com/0xPlayerOne/bun-native/commit/a024a3574e9f623fea6bb6d4a584755a6dc1f35e))
+
 ## [0.30.0](https://github.com/0xPlayerOne/bun-native/compare/v0.29.0...v0.30.0) (2026-11-10)
 
 
