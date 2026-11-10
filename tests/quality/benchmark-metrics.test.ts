@@ -291,7 +291,10 @@ describe('benchmark metrics export', () => {
     duplicated.trial = 2
     record.methodology.modes.push('development')
     save()
-    expect(() => exportMetrics(directory)).toThrow('Missing comparison trials: core/development/1')
+    // The development pair has neither its first launch nor its trials; the first launch is checked first.
+    expect(() => exportMetrics(directory)).toThrow(
+      'Missing comparison first launches: core/development, solid/development'
+    )
 
     // A forged run cannot request billions of expected samples and exhaust
     // the exporter while building its expected-trial identities.
@@ -371,12 +374,8 @@ describe('benchmark metrics export', () => {
 
     // Input measurements must also retain their controller-generated process
     // identities despite not consuming the retained comparison JSONL reports.
-    const inputFirst = record.inputLaunches.find(
-      (launch) => launch.name === 'core-aot-input-1'
-    )!
-    const inputSecond = record.inputLaunches.find(
-      (launch) => launch.name === 'core-aot-input-2'
-    )!
+    const inputFirst = record.inputLaunches.find((launch) => launch.name === 'core-aot-input-1')!
+    const inputSecond = record.inputLaunches.find((launch) => launch.name === 'core-aot-input-2')!
     swapNames(inputFirst, inputSecond)
     save()
     expect(() => exportMetrics(directory)).toThrow(
@@ -411,9 +410,7 @@ describe('benchmark metrics export', () => {
     firstLaunch.name = 'core-aot-first-forged'
     writeFileSync(
       reportsPath,
-      gzipSync(
-        originalReports.replace('"name":"core-aot-first"', '"name":"core-aot-first-forged"')
-      )
+      gzipSync(originalReports.replace('"name":"core-aot-first"', '"name":"core-aot-first-forged"'))
     )
     save()
     expect(() => exportMetrics(directory)).toThrow(
@@ -434,7 +431,9 @@ describe('benchmark metrics export', () => {
     const first = record.launches.find((launch) => launch.warmup && launch.adapter === 'core')!
     first.status = 'failed'
     save()
-    expect(() => exportMetrics(directory)).toThrow('Non-passing or invalid comparison first launch core/aot')
+    expect(() => exportMetrics(directory)).toThrow(
+      'Non-passing or invalid comparison first launch core/aot'
+    )
 
     first.status = 'passed'
     record.launches.push({ ...first, name: 'core-aot-first-copy' })
@@ -471,9 +470,13 @@ describe('benchmark metrics export', () => {
 
     expect(() => exportMetrics(directory)).not.toThrow()
     save(original.filter((line) => (JSON.parse(line) as { name: string }).name !== name))
-    expect(() => exportMetrics(directory)).toThrow('Missing retained input launches: core-aot-input-1')
+    expect(() => exportMetrics(directory)).toThrow(
+      'Missing retained input launches: core-aot-input-1'
+    )
     save([...original, original[0]!])
-    expect(() => exportMetrics(directory)).toThrow('Duplicate retained input launch core-aot-input-1')
+    expect(() => exportMetrics(directory)).toThrow(
+      'Duplicate retained input launch core-aot-input-1'
+    )
     change({ report: null })
     expect(() => exportMetrics(directory)).toThrow('has no retained child report')
     change({ driver: { status: 'failed' } })
@@ -534,6 +537,7 @@ describe('benchmark metrics export', () => {
     const { directory, comparison } = writeExport({ trials: 3 })
     const record = {
       ...comparison,
+      launches: comparison.launches.filter((launch) => launch.status === 'passed'),
       methodology: {
         adapters: ['core', 'solid'],
         modes: ['aot'],

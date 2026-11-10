@@ -133,12 +133,7 @@ export function peRegions(bytes: Uint8Array): { regions: Region[]; pdbPath: stri
     // Header RVAs map directly to file offsets. Accept a complete debug table
     // in declared padding after the section descriptors, but never reinterpret
     // the PE metadata itself or read across the declared header boundary.
-    if (
-      rva >= sectionTableEnd &&
-      rva < headerEnd &&
-      rva + size <= headerEnd &&
-      r.fits(rva, size)
-    )
+    if (rva >= sectionTableEnd && rva < headerEnd && rva + size <= headerEnd && r.fits(rva, size))
       return rva
     for (const s of fileBackedSections) {
       const offset = rva - s.rva
@@ -180,12 +175,7 @@ export function peRegions(bytes: Uint8Array): { regions: Region[]; pdbPath: stri
     regions.push({ name: `debug directory TimeDateStamp`, start: entry + 4, end: entry + 8 })
     // Debug payload pointers are raw file offsets, not validated by the
     // debug directory table's RVA bounds. Never name partial CodeView data.
-    if (
-      type === 2 &&
-      size >= 24 &&
-      r.fits(data, size) &&
-      r.u32(data) === 0x53445352
-    ) {
+    if (type === 2 && size >= 24 && r.fits(data, size) && r.u32(data) === 0x53445352) {
       regions.push({ name: 'CodeView GUID', start: data + 4, end: data + 20 })
       regions.push({ name: 'CodeView age', start: data + 20, end: data + 24 })
       const end = data + size
@@ -272,7 +262,8 @@ export function renderDifference(os: string, difference: Difference): string[] {
     '| Region | Bytes | Ranges |',
     '| ------ | ----: | -----: |',
     ...difference.regions.map(
-      (region) => `| ${escapeMarkdownDiagnostic(region.name)} | ${region.bytes} | ${region.ranges} |`
+      (region) =>
+        `| ${escapeMarkdownDiagnostic(region.name)} | ${region.bytes} | ${region.ranges} |`
     ),
   ]
   if (difference.pdbPaths.some((path) => path !== null)) {

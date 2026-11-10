@@ -67,7 +67,6 @@ the dependency-bot Babel major exclusion, with
 Both adapters use one Rust GPUI host. Packages and the prebuilt host must share
 the matching native contract. WebView/CEF is not a fallback.
 
-
 ### Adea component-port example after the accepted-source snapshot
 
 At [source `e848d5a`](https://github.com/0xPlayerOne/bun-native/commit/e848d5a149a6f123d5e57865a6ea11e33abafc00),
@@ -92,7 +91,6 @@ remain unqualified for these components. See [PR #566](https://github.com/0xPlay
 and [workspace issue #250](https://github.com/0xPlayerOne/bun-native/issues/250)
 for their precise scope. This later example does not retroactively expand the
 immutable accepted-source snapshot or the release-readiness decision.
-
 
 ## Web compatibility boundary
 

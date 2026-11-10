@@ -186,7 +186,9 @@ describe('PE regions', () => {
     const parsed = peRegions(bytes)
     expect(parsed).not.toBeNull()
     expect(parsed?.pdbPath).toBeNull()
-    expect(parsed?.regions.filter((region) => region.name === 'debug directory TimeDateStamp')).toEqual([])
+    expect(
+      parsed?.regions.filter((region) => region.name === 'debug directory TimeDateStamp')
+    ).toEqual([])
   })
 
   test('does not read a debug directory across raw section boundaries', () => {
@@ -310,9 +312,7 @@ describe('PE regions', () => {
     const unterminated = peRegions(bytes)
     expect(unterminated?.pdbPath).toBeNull()
     expect(unterminated?.regions.some((region) => region.name === 'CodeView GUID')).toBe(true)
-    expect(unterminated?.regions.some((region) => region.name === 'CodeView PDB path')).toBe(
-      false
-    )
+    expect(unterminated?.regions.some((region) => region.name === 'CodeView PDB path')).toBe(false)
 
     // NUL plus additional declared padding remains a valid PDB path.
     bytes[terminator] = 0
@@ -514,9 +514,7 @@ describe('PE regions', () => {
     })
     const b = a.slice()
     b[0x41] = 0x58
-    expect(explainDifference(a, b).regions).toEqual([
-      { name: 'headers', bytes: 1, ranges: 1 },
-    ])
+    expect(explainDifference(a, b).regions).toEqual([{ name: 'headers', bytes: 1, ranges: 1 }])
 
     // With no file-backed section, the complete COFF section table is the
     // header boundary, never a zero PointerToRawData value.
@@ -532,9 +530,7 @@ describe('PE regions', () => {
     // padding after the section table. It must not become unmapped.
     const padded = noRaw.slice()
     new DataView(padded.buffer).setUint32(0x80 + 4 + 20 + 60, 0x200, true)
-    expect(peRegions(padded)?.regions.find((region) => region.name === 'headers')?.end).toBe(
-      0x200
-    )
+    expect(peRegions(padded)?.regions.find((region) => region.name === 'headers')?.end).toBe(0x200)
     const paddedChanged = padded.slice()
     paddedChanged[0x1f0] = 1
     expect(explainDifference(padded, paddedChanged).regions).toEqual([

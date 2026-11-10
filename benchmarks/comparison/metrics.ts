@@ -236,8 +236,7 @@ function assertCompleteTrialCohort(comparison: Comparison) {
   // adapter/mode pair. A missing or failed warmup makes subsequent measured
   // samples incomparable to the declared warm-cache methodology.
   const expectedFirst = new Set<string>()
-  for (const adapter of adapters)
-    for (const mode of modes) expectedFirst.add(`${adapter}/${mode}`)
+  for (const adapter of adapters) for (const mode of modes) expectedFirst.add(`${adapter}/${mode}`)
   const observedFirst = new Set<string>()
   const observed = new Set<string>()
   for (const launch of comparison.launches) {
@@ -251,7 +250,9 @@ function assertCompleteTrialCohort(comparison: Comparison) {
         throw new Error(`Non-passing or invalid comparison first launch ${identity}`)
       // Trial zero uses the controller's first-launch process identity, not a measured trial name.
       if (launch.name !== `${launch.adapter}-${launch.mode}-first`)
-        throw new Error(`Comparison first launch ${identity} has mismatched launch name ${launch.name}`)
+        throw new Error(
+          `Comparison first launch ${identity} has mismatched launch name ${launch.name}`
+        )
       observedFirst.add(identity)
       continue
     }
@@ -305,10 +306,11 @@ function assertCompleteTrialCohort(comparison: Comparison) {
     const identity = `${launch.adapter}/${launch.mode}/${launch.trial}`
     if (!expectedInput.has(identity))
       throw new Error(`Unexpected input comparison trial ${identity}`)
-    if (observedInput.has(identity))
-      throw new Error(`Duplicate input comparison trial ${identity}`)
+    if (observedInput.has(identity)) throw new Error(`Duplicate input comparison trial ${identity}`)
     if (launch.name !== `${launch.adapter}-${launch.mode}-input-${launch.trial}`)
-      throw new Error(`Input comparison trial ${identity} has mismatched launch name ${launch.name}`)
+      throw new Error(
+        `Input comparison trial ${identity} has mismatched launch name ${launch.name}`
+      )
     if (launch.status !== 'passed')
       throw new Error(`Non-passing input comparison trial ${identity} in a passed comparison`)
     observedInput.add(identity)
@@ -317,7 +319,6 @@ function assertCompleteTrialCohort(comparison: Comparison) {
   if (missingInput.length)
     throw new Error(`Missing input comparison trials: ${missingInput.join(', ')}`)
 }
-
 
 /** Bind declared input-latency samples to the preserved XTest and child evidence. */
 function assertRetainedInputEvidence(comparison: Comparison, directory: string) {
@@ -394,8 +395,7 @@ export function exportMetrics(directory: string, streaming: readonly string[] = 
     if (typeof name !== 'string' || !name) throw new Error('Retained launch report lacks a name')
     // The exporter emits reports only for comparison launches, never input trials.
     // Unreferenced records cannot silently survive into an accepted baseline.
-    if (!expectedReportNames.has(name))
-      throw new Error(`Unexpected retained launch report ${name}`)
+    if (!expectedReportNames.has(name)) throw new Error(`Unexpected retained launch report ${name}`)
     if (reports.has(name)) throw new Error(`Duplicate retained launch report ${name}`)
     reports.set(name, row['report'] as Record<string, unknown> | null)
   }

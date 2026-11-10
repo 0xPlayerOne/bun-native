@@ -88,10 +88,9 @@ test('event contract parsing supports both activity syntaxes and fails closed', 
     'opened',
     'reopened',
   ])
-  expect(pullRequestTypes('on:\n  pull_request:\n    types:\n      - opened\n      - reopened\n')).toEqual([
-    'opened',
-    'reopened',
-  ])
+  expect(
+    pullRequestTypes('on:\n  pull_request:\n    types:\n      - opened\n      - reopened\n')
+  ).toEqual(['opened', 'reopened'])
   expect(() => pullRequestTypes('on:\n  push:\n    branches: [main]\n')).toThrow(
     'missing pull_request trigger'
   )
