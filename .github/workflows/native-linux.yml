@@ -504,6 +504,8 @@ jobs:
           BUN_NATIVE_STARTUP_TRACE: '1'
           # Bounded raw GPUI input records, read only by the #526 failure evidence.
           BUN_NATIVE_POINTER_TRACE: '1'
+          # The system Python carries PyGObject and the Atspi typelib.
+          BUN_NATIVE_ATSPI_PYTHON: /usr/bin/python3
         run: |
           for run in development-scale-1 aot-scale-1 development-scale-2; do
             mode=${run%%-*}
