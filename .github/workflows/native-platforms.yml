@@ -595,7 +595,7 @@ jobs:
             if ($LASTEXITCODE -ne 0) { throw 'ImageMagick for the workspace pixel checks did not install' }
           }
           # The fixtures open 1000x760 and 1120x760 windows, which AppKit fits
-          # to the hosted 1024x768 display. Use the smallest desktop mode that
+          # to the hosted 1024x768 display. Use the smallest 1x desktop mode that
           # holds them for this step only, and restore the original afterwards.
           $oracle = Join-Path $env:NATIVE_EVIDENCE 'macos-workspace-display-oracle'
           xcrun clang -fobjc-arc -Wall -Wextra -Werror -framework AppKit -framework CoreGraphics `
@@ -605,7 +605,7 @@ jobs:
           if (!$main) { throw 'No main display is available' }
           $modes = & $oracle modes $main.number | ConvertFrom-Json
           $original = $modes.currentIndex
-          $large = $modes.modes | Where-Object { $_.width -ge 1200 -and $_.height -ge 900 } |
+          $large = $modes.modes | Where-Object { $_.pixelWidth -eq $_.width -and $_.width -ge 1200 -and $_.height -ge 900 } |
             Sort-Object { $_.width * $_.height } | Select-Object -First 1
           if (!$large) { throw 'The hosted display offers no desktop mode that holds the workspace fixtures' }
           # Record the session's held modifier flags around each display change:
