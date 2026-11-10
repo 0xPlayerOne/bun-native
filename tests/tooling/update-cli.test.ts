@@ -501,7 +501,7 @@ test('a report survives a busy installation lock while running and after exit', 
       { stdout: 'pipe', stderr: 'pipe' }
     )
   const pending = async (root: string) =>
-    JSON.parse(cli('launch', '--root', root, '--', ...reportHealth).out) as { pending: boolean }
+    JSON.parse(cli('launch', '--root', root, '--', ...reportHealth).out) as { pending: boolean; reported: boolean }
 
   // While running: the app holds the lock as a live process across several polls, then frees it.
   const running = await installPending(await temporary())
