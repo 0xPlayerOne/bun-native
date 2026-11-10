@@ -123,7 +123,7 @@ class MacInput:
         self.state = None
         self.application = self._call("identity")["application"]
 
-    def _call(self, action, **extra):
+    def _call(self, action, timeout=3, **extra):
         request = {
             "action": action,
             "app_pid": self.app_pid,
@@ -135,7 +135,7 @@ class MacInput:
             [str(self.helper), json.dumps(request, separators=(",", ":"))],
             check=False,
             capture_output=True,
-            timeout=3,
+            timeout=timeout,
         )
         if len(result.stdout) > 16384 or len(result.stderr) > 16384:
             raise RuntimeError("macOS OS helper exceeded its output bound")
@@ -166,7 +166,7 @@ class MacInput:
         self.state = value
         return value
 
-    def _input(self, action, **extra):
+    def _input(self, action, timeout=3, **extra):
         if self.state is None:
             raise RuntimeError("An independently observed macOS window is required")
         available = self.state.get("postEventAccess")
@@ -178,6 +178,8 @@ class MacInput:
             )
         # The helper still rechecks current permission, process identity,
         # window geometry and foreground state before every permitted post.
+        if timeout != 3:
+            extra["timeout"] = timeout
         return self._call(action, expected=self.state, **extra)
 
     def click(self, x, y, viewport):
@@ -188,6 +190,43 @@ class MacInput:
 
     def type_text(self, text):
         return self._input("text", text=text)
+
+    def activate(self):
+        return self._input("activate")
+
+    def key(self, name, modifiers=()):
+        return self._input("key", key=name, modifiers=list(modifiers))
+
+    def type_printable(self, text, delay_ms=10):
+        # The helper paces each key; allow for the whole bounded run.
+        return self._input(
+            "type", timeout=3 + len(text) * delay_ms / 1000, text=text, delayMs=delay_ms
+        )
+
+    def scroll(self, x, y, viewport, lines, repeat, delay_ms):
+        return self._input(
+            "scroll",
+            timeout=3 + repeat * delay_ms / 1000,
+            x=x,
+            y=y,
+            viewport=viewport,
+            lines=lines,
+            repeat=repeat,
+            delayMs=delay_ms,
+        )
+
+    def resize(self, width, height, viewport):
+        result = self._input(
+            "resize", timeout=5, width=width, height=height, viewport=viewport
+        )
+        if result.get("application") != self.application:
+            raise RuntimeError("Owned macOS application identity changed")
+        # The resized window is the observed state for every later input.
+        self.state = {key: value for key, value in result.items() if key != "injection"}
+        return result
+
+    def os_close(self):
+        return self._input("close")
 
     def close(self):
         # Helper commands release their own CoreFoundation objects and exit.

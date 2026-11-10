@@ -404,7 +404,10 @@ function candidates(current: OsMode, modes: OsMode[]) {
       const key = `${candidate.width}x${candidate.height}`
       const same =
         platform === 'darwin'
-          ? candidate['refresh'] === current['refresh']
+          ? candidate['refresh'] === current['refresh'] &&
+            // The oracle also lists HiDPI duplicates; keep the current scale.
+            Number(candidate['pixelWidth']) * current.width ===
+              Number(current['pixelWidth']) * candidate.width
           : candidate['bitsPerPel'] === current['bitsPerPel'] &&
             candidate['frequency'] === current['frequency']
       if (

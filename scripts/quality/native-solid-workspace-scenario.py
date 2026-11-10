@@ -142,7 +142,10 @@ def run(
         return wait_frame(
             "native local-stream submission",
             lambda row: (
-                conversation(snapshot=row)["messages"][-1]["status"] == "streaming"
+                # A frame from before the submission may show a new, empty
+                # conversation.
+                conversation(snapshot=row)["messages"]
+                and conversation(snapshot=row)["messages"][-1]["status"] == "streaming"
                 and conversation(snapshot=row)["draft"] == ""
             ),
         )

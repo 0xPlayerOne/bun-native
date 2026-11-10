@@ -69,6 +69,8 @@ pub(crate) struct NativeView {
     evidence: Evidence,
     /// Whether the last render saw GPUI's active drag (for the drag trace).
     drag_seen: bool,
+    #[cfg(target_os = "macos")]
+    frame_keeper: frame_keeper::FrameKeeper,
 }
 
 impl NativeView {
@@ -126,6 +128,8 @@ impl NativeView {
             pressed: PressedButtons::default(),
             evidence,
             drag_seen: false,
+            #[cfg(target_os = "macos")]
+            frame_keeper: frame_keeper::FrameKeeper::default(),
         }
     }
 
@@ -541,6 +545,8 @@ impl Render for NativeView {
             .left_0()
             .size(px(1.))
         });
+        #[cfg(target_os = "macos")]
+        let frame_keeper = self.frame_keeper.clone();
         let mut base = div();
         if let Some(layout) = &layout {
             base = layout.children(
@@ -594,6 +600,8 @@ impl Render for NativeView {
                             if let Some(frame) = phase_frame {
                                 crate::phases::painted(frame);
                             }
+                            #[cfg(target_os = "macos")]
+                            frame_keeper.painted(window_id, &evidence, window);
                             let state = paint_state.borrow();
                             evidence.frame(window_id, &state.tree, render_started);
                             evidence.painted(
@@ -691,6 +699,8 @@ fn drop_target(
 }
 
 mod accessibility;
+#[cfg(target_os = "macos")]
+mod frame_keeper;
 mod index;
 mod interactions;
 mod keyboard;

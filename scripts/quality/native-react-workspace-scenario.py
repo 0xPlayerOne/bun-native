@@ -694,6 +694,9 @@ def run(
         lambda current: (
             plan(4)
             and plan(4)["status"] == "streaming"
+            # Plan 3's retained rows can still be on screen before plan 4's
+            # first step; the fixture requires that step to have fired.
+            and plan(4)["steps"]
             and 0 < len(plan_rows(current)) < len(PLAN_STEPS)
         ),
         "plan streaming before window close",
