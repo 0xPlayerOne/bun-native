@@ -58,7 +58,15 @@ export function describe(samples: readonly number[]) {
   const sampleStdDev =
     n > 1
       ? values.reduce(
-          (length, value) => Math.hypot(length, (value - mean!) / standardDeviationScale),
+          (length, value) => {
+            const difference = value - mean!
+            // Subtraction can overflow across signs even when the sample
+            // deviation is representable after scaling by sqrt(n - 1).
+            const scaled = Number.isFinite(difference)
+              ? difference / standardDeviationScale
+              : value / standardDeviationScale - mean! / standardDeviationScale
+            return Math.hypot(length, scaled)
+          },
           0
         )
       : null
