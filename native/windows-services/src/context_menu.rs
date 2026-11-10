@@ -134,6 +134,7 @@ struct Job {
     y: i32,
     nodes: Vec<MenuNode>,
     closed: Rc<Cell<bool>>,
+    tracking: Box<dyn FnOnce()>,
     done: Box<dyn FnOnce(io::Result<Option<u32>>)>,
 }
 
@@ -162,6 +163,7 @@ unsafe extern "system" fn procedure(
         let result = if job.closed.get() {
             Ok(None)
         } else {
+            (job.tracking)();
             track(job.owner, job.x, job.y, &job.nodes)
         };
         let result = result.map(|chosen| chosen.filter(|_| !job.closed.get()));
@@ -211,7 +213,8 @@ fn window() -> io::Result<HWND> {
     Ok(window)
 }
 
-/// Schedule the menu on this (the owner's) thread. `done` runs once with
+/// Schedule the menu on this (the owner's) thread. `tracking` runs just
+/// before the menu starts tracking. `done` runs once with
 /// the chosen command, `None` when dismissed or closed first. Setting
 /// `closed` and calling [`end`] closes it; a menu closed before it is
 /// entered never appears.
@@ -220,6 +223,7 @@ pub fn show(
     (x, y): (i32, i32),
     nodes: Vec<MenuNode>,
     closed: Rc<Cell<bool>>,
+    tracking: impl FnOnce() + 'static,
     done: impl FnOnce(io::Result<Option<u32>>) + 'static,
 ) -> io::Result<()> {
     let window = window()?;
@@ -230,6 +234,7 @@ pub fn show(
             y,
             nodes,
             closed,
+            tracking: Box::new(tracking),
             done: Box::new(done),
         })
     });

@@ -91,7 +91,18 @@ mod platform {
             },
             &mut 0,
         );
-        context_menu::show(owner, x, y, &nodes, done).map_err(|_| ())
+        context_menu::show(
+            owner,
+            x,
+            y,
+            &nodes,
+            || super::trace("macos: tracking"),
+            move |tag| {
+                super::trace("macos: tracking ended");
+                done(tag);
+            },
+        )
+        .map_err(|_| ())
     }
 
     pub(crate) fn close(closer: &Closer) {
@@ -158,6 +169,7 @@ mod platform {
             (physical(x), physical(y)),
             nodes,
             closed.clone(),
+            || super::trace("windows: tracking"),
             move |result| {
                 super::trace(&format!("windows: menu returned {result:?}"));
                 done(result.ok().flatten());

@@ -155,13 +155,15 @@ impl ContextMenu {
 }
 
 /// Schedule the menu at `(x, y)` (logical points from the view's top-left).
-/// `done` runs once on the main thread with the chosen item's tag, or `None`
-/// when the menu was dismissed or closed.
+/// `tracking` runs just before the menu starts tracking. `done` runs once on
+/// the main thread with the chosen item's tag, or `None` when the menu was
+/// dismissed or closed.
 pub fn show(
     owner: &MenuOwner,
     x: f64,
     y: f64,
     nodes: &[MenuNode],
+    tracking: impl FnOnce() + 'static,
     done: impl FnOnce(Option<u32>) + 'static,
 ) -> Result<ContextMenu, SurfaceError> {
     let main_thread = main_thread()?;
@@ -172,6 +174,7 @@ pub fn show(
     });
     let view = owner.0.clone();
     let done = Cell::new(Some(done));
+    let tracking = Cell::new(Some(tracking));
     let block = RcBlock::new({
         let state = state.clone();
         move || {
@@ -191,6 +194,9 @@ pub fn show(
                     bounds.size.height - y
                 },
             );
+            if let Some(tracking) = tracking.take() {
+                tracking();
+            }
             let chosen =
                 state
                     .menu
