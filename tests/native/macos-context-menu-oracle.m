@@ -119,6 +119,56 @@ static id focused_menu(AXUIElementRef application, NSString *title) {
     return nil;
 }
 
+// The AXMenu above `element`, if it has a top-level entry titled `title`.
+static id menu_above(id element, NSString *title) {
+    for (int depth = 0; element && depth < 6; depth++) {
+        AXUIElementRef node = (__bridge AXUIElementRef)element;
+        if (has_role(node, kAXMenuRole) && entry(node, title)) return element;
+        element = attribute(node, kAXParentAttribute);
+    }
+    return nil;
+}
+
+// The pop-up menu windows of `pid` on screen, as CoreGraphics lists them
+// (top-left origin, the same space as the Accessibility API).
+static NSArray<NSValue *> *menu_windows(pid_t pid) {
+    NSMutableArray *frames = [NSMutableArray array];
+    CFArrayRef list = CGWindowListCopyWindowInfo(kCGWindowListOptionOnScreenOnly, kCGNullWindowID);
+    if (!list) return frames;
+    for (NSDictionary *window in (__bridge NSArray *)list) {
+        if ([window[(__bridge NSString *)kCGWindowOwnerPID] intValue] != pid) continue;
+        if ([window[(__bridge NSString *)kCGWindowLayer] intValue] != kCGPopUpMenuWindowLevel) continue;
+        CGRect frame;
+        if (!CGRectMakeWithDictionaryRepresentation(
+                (__bridge CFDictionaryRef)window[(__bridge NSString *)kCGWindowBounds], &frame))
+            continue;
+        [frames addObject:[NSValue valueWithRect:NSRectFromCGRect(frame)]];
+    }
+    CFRelease(list);
+    return frames;
+}
+
+// The menu under a point of each pop-up menu window, by hit-testing the
+// Accessibility tree there: a tracking menu need not be a child of its
+// application element.
+static id hit_menu(pid_t pid, NSString *title) {
+    AXUIElementRef system = AXUIElementCreateSystemWide();
+    id found = nil;
+    for (NSValue *value in menu_windows(pid)) {
+        NSRect frame = value.rectValue;
+        for (CGFloat offset = 8; offset < frame.size.height && !found; offset += 16) {
+            AXUIElementRef hit = NULL;
+            if (AXUIElementCopyElementAtPosition(system, (float)NSMidX(frame),
+                                                 (float)(frame.origin.y + offset), &hit) == kAXErrorSuccess &&
+                hit)
+                found = menu_above(CFBridgingRelease(hit), title);
+        }
+        if (found) break;
+    }
+    CFRelease(system);
+    return found;
+}
+
 static id find_menu(pid_t pid, NSString *title) {
     AXUIElementRef application = AXUIElementCreateApplication(pid);
     if (!application) fail(@"No accessibility element for the process");
@@ -126,6 +176,7 @@ static id find_menu(pid_t pid, NSString *title) {
     id menu = search(application, title, 0);
     if (!menu) menu = focused_menu(application, title);
     CFRelease(application);
+    if (!menu) menu = hit_menu(pid, title);
     return menu;
 }
 
@@ -147,6 +198,7 @@ static NSString *describe_process(pid_t pid) {
     NSMutableArray *lines = [NSMutableArray array];
     tree(application, 0, lines);
     id focused = attribute(application, kAXFocusedUIElementAttribute);
+    [lines addObject:[NSString stringWithFormat:@"menu windows:%lu", (unsigned long)menu_windows(pid).count]];
     if (focused)
         [lines addObject:[NSString stringWithFormat:@"focused:%@:%@",
                                                     text((__bridge AXUIElementRef)focused, kAXRoleAttribute),

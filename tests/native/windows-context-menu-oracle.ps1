@@ -1,11 +1,13 @@
-# Independent UI Automation oracle for Windows OS context menus (#239).
-# It never loads GPUI or the Bun Native host. It finds the open pop-up menu
-# (a top-level window of class #32768) that has an item named -Title, reads
-# its items through the accessibility tree and acts on them.
+# Independent oracle for Windows OS context menus (#239). It never loads
+# GPUI or the Bun Native host. It finds the open pop-up menu (a visible
+# top-level window of class #32768) that has an item named -Title, reads the
+# menu's items from its menu handle (MN_GETHMENU, GetMenuString and
+# GetMenuState) and acts on it with real key messages, as a user's keyboard
+# does: the menu loop reads its thread's keyboard input whatever its window.
 #   find    print the menu's items as JSON (waits for it)
-#   invoke  invoke the item named -Name, or -Name inside the submenu -Title
-#           names when -Submenu is set
-#   escape  send Escape to the menu, as a user's key press does
+#   invoke  choose the item named -Name, or -Name inside the submenu named
+#           -Submenu, with arrow keys and Enter
+#   escape  send Escape to the menu
 #   absent  succeed once no such menu is open
 param(
   [Parameter(Mandatory = $true)][ValidateSet('find', 'invoke', 'escape', 'absent')][string]$Command,
@@ -16,75 +18,112 @@ param(
 )
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version 3.0
-Add-Type -AssemblyName UIAutomationClient, UIAutomationTypes
 
-Add-Type -Namespace Win32 -Name Native -MemberDefinition @'
-[System.Runtime.InteropServices.DllImport("user32.dll")]
-public static extern bool PostMessageW(System.IntPtr window, uint message, System.IntPtr wparam, System.IntPtr lparam);
-[System.Runtime.InteropServices.DllImport("user32.dll", CharSet = System.Runtime.InteropServices.CharSet.Unicode)]
-public static extern System.IntPtr FindWindowExW(System.IntPtr parent, System.IntPtr after, string className, string windowName);
-[System.Runtime.InteropServices.DllImport("user32.dll")]
-public static extern bool IsWindowVisible(System.IntPtr window);
+Add-Type -TypeDefinition @'
+using System;
+using System.Collections.Generic;
+using System.Runtime.InteropServices;
+using System.Text;
+
+public static class PopupMenus {
+    delegate bool EnumProc(IntPtr window, IntPtr data);
+    [DllImport("user32.dll")] static extern bool EnumWindows(EnumProc callback, IntPtr data);
+    [DllImport("user32.dll", CharSet = CharSet.Unicode)]
+    static extern int GetClassNameW(IntPtr window, StringBuilder name, int size);
+    [DllImport("user32.dll")] static extern bool IsWindowVisible(IntPtr window);
+    [DllImport("user32.dll")] static extern IntPtr SendMessageW(IntPtr window, uint message, IntPtr wparam, IntPtr lparam);
+    [DllImport("user32.dll")] static extern bool PostMessageW(IntPtr window, uint message, IntPtr wparam, IntPtr lparam);
+    [DllImport("user32.dll")] static extern int GetMenuItemCount(IntPtr menu);
+    [DllImport("user32.dll")] static extern uint GetMenuState(IntPtr menu, uint item, uint flags);
+    [DllImport("user32.dll", CharSet = CharSet.Unicode)]
+    static extern int GetMenuStringW(IntPtr menu, uint item, StringBuilder text, int size, uint flags);
+
+    const uint MN_GETHMENU = 0x01E1;
+    const uint MF_BYPOSITION = 0x400;
+    const uint MF_GRAYED = 0x1, MF_DISABLED = 0x2, MF_CHECKED = 0x8, MF_POPUP = 0x10, MF_SEPARATOR = 0x800;
+
+    public class Item {
+        public string Name; public string Accelerator; public bool Enabled; public bool Checked;
+        public bool Separator; public bool Submenu;
+    }
+
+    /// Visible pop-up menu windows, topmost first.
+    public static List<IntPtr> Windows() {
+        var found = new List<IntPtr>();
+        EnumWindows((window, data) => {
+            var name = new StringBuilder(64);
+            GetClassNameW(window, name, 64);
+            if (name.ToString() == "#32768" && IsWindowVisible(window)) found.Add(window);
+            return true;
+        }, IntPtr.Zero);
+        return found;
+    }
+
+    public static List<Item> Items(IntPtr window) {
+        var items = new List<Item>();
+        IntPtr menu = SendMessageW(window, MN_GETHMENU, IntPtr.Zero, IntPtr.Zero);
+        if (menu == IntPtr.Zero) return items;
+        int count = GetMenuItemCount(menu);
+        for (uint index = 0; index < count; index++) {
+            uint state = GetMenuState(menu, index, MF_BYPOSITION);
+            var text = new StringBuilder(256);
+            GetMenuStringW(menu, index, text, 256, MF_BYPOSITION);
+            string[] parts = text.ToString().Split('\t');
+            items.Add(new Item {
+                Name = parts[0],
+                Accelerator = parts.Length > 1 ? parts[1] : "",
+                Enabled = (state & (MF_GRAYED | MF_DISABLED)) == 0,
+                Checked = (state & MF_CHECKED) != 0,
+                Separator = (state & MF_SEPARATOR) != 0,
+                Submenu = (state & MF_POPUP) != 0,
+            });
+        }
+        return items;
+    }
+
+    public static void Key(IntPtr window, int key) {
+        PostMessageW(window, 0x0100, (IntPtr)key, (IntPtr)1);
+        PostMessageW(window, 0x0101, (IntPtr)key, unchecked((IntPtr)(int)0xC0000001));
+    }
+}
 '@
 
-$Scope = [System.Windows.Automation.TreeScope]
-
-# A menu item's name is its label; a shortcut hint after a tab is the
-# accelerator, not part of the name.
-function Label($element) { ($element.Current.Name -split "`t")[0] }
-
-function Items($menu) {
-  $condition = New-Object System.Windows.Automation.PropertyCondition(
-    [System.Windows.Automation.AutomationElement]::ControlTypeProperty,
-    [System.Windows.Automation.ControlType]::MenuItem)
-  @($menu.FindAll($Scope::Descendants, $condition))
-}
-
-# A pop-up menu is owned by the window it opened over, and UI Automation
-# lists an owned window under its owner, not under the desktop, so the menu
-# windows are found by class and opened from their handles.
-function Menus {
-  $menus = @()
-  $handle = [System.IntPtr]::Zero
-  while ($true) {
-    $handle = [Win32.Native]::FindWindowExW([System.IntPtr]::Zero, $handle, '#32768', [NullString]::Value)
-    if ($handle -eq [System.IntPtr]::Zero) { break }
-    if (-not [Win32.Native]::IsWindowVisible($handle)) { continue }
-    try { $menus += [System.Windows.Automation.AutomationElement]::FromHandle($handle) } catch {}
-  }
-  $menus
-}
+$VK = @{ Down = 0x28; Right = 0x27; Return = 0x0D; Escape = 0x1B }
 
 function Find-Menu([string]$label) {
-  foreach ($menu in Menus) {
-    foreach ($item in Items $menu) { if ((Label $item) -eq $label) { return $menu } }
+  foreach ($window in [PopupMenus]::Windows()) {
+    foreach ($item in [PopupMenus]::Items($window)) { if ($item.Name -eq $label) { return $window } }
   }
   $null
-}
-
-function Find-Item($menu, [string]$label) {
-  Items $menu | Where-Object { (Label $_) -eq $label } | Select-Object -First 1
 }
 
 function Wait-Menu([string]$label, [bool]$Present) {
   $deadline = [DateTime]::UtcNow.AddMilliseconds($TimeoutMs)
   while ([DateTime]::UtcNow -lt $deadline) {
-    $menu = Find-Menu $label
-    if (($null -ne $menu) -eq $Present) { return $menu }
+    $window = Find-Menu $label
+    if (($null -ne $window) -eq $Present) { return $window }
     Start-Sleep -Milliseconds 25
   }
   $null
 }
 
-function Invoke-Item($item) {
-  $pattern = $null
-  if ($item.TryGetCurrentPattern([System.Windows.Automation.InvokePattern]::Pattern, [ref]$pattern)) {
-    $pattern.Invoke(); return
+# Arrow-key presses from no highlight to the item named $label: separators
+# are skipped by the menu loop and so are not counted.
+function Steps($window, [string]$label) {
+  $steps = 0
+  foreach ($item in [PopupMenus]::Items($window)) {
+    if ($item.Separator) { continue }
+    $steps += 1
+    if ($item.Name -eq $label) { return $steps }
   }
-  if ($item.TryGetCurrentPattern([System.Windows.Automation.ExpandCollapsePattern]::Pattern, [ref]$pattern)) {
-    $pattern.Expand(); return
+  throw "menu item '$label' not found"
+}
+
+function Press($window, [int]$key, [int]$times = 1) {
+  for ($index = 0; $index -lt $times; $index++) {
+    [PopupMenus]::Key($window, $key)
+    Start-Sleep -Milliseconds 60
   }
-  throw "menu item '$(Label $item)' can be neither invoked nor expanded"
 }
 
 if ($Command -eq 'absent') {
@@ -95,32 +134,30 @@ if ($Command -eq 'absent') {
 
 $menu = Wait-Menu $Title $true
 if ($null -eq $menu) {
-  $open = @(Menus | ForEach-Object { @(Items $_ | ForEach-Object { Label $_ }) -join ',' }) -join ' | '
-  Write-Error "no open menu has an item '$Title'; open menus: $open"
+  $open = @([PopupMenus]::Windows() | ForEach-Object {
+      @([PopupMenus]::Items($_) | ForEach-Object { $_.Name }) -join ','
+    })
+  Write-Error "no open menu has an item '$Title'; $($open.Count) visible menu windows: $($open -join ' | ')"
   exit 1
 }
 
 switch ($Command) {
   'find' {
-    $toggle = [System.Windows.Automation.TogglePattern]::Pattern
-    $items = @(Items $menu | ForEach-Object {
-        $state = $null
-        $pattern = $null
-        if ($_.TryGetCurrentPattern($toggle, [ref]$pattern)) { $state = "$($pattern.Current.ToggleState)" }
+    $items = @([PopupMenus]::Items($menu) | Where-Object { -not $_.Separator } | ForEach-Object {
         [pscustomobject]@{
-          name = Label $_
-          accelerator = $_.Current.AcceleratorKey
-          enabled = $_.Current.IsEnabled
-          toggle = $state
+          name = $_.Name
+          accelerator = $_.Accelerator
+          enabled = $_.Enabled
+          checked = $_.Checked
+          submenu = $_.Submenu
         }
       })
     ConvertTo-Json -Compress -InputObject $items
   }
   'invoke' {
     if ($Submenu) {
-      $parent = Find-Item $menu $Submenu
-      if ($null -eq $parent) { Write-Error "submenu '$Submenu' not found"; exit 1 }
-      Invoke-Item $parent
+      Press $menu $VK.Down (Steps $menu $Submenu)
+      Press $menu $VK.Right
       $deadline = [DateTime]::UtcNow.AddMilliseconds($TimeoutMs)
       do {
         $inner = Find-Menu $Name
@@ -128,18 +165,17 @@ switch ($Command) {
         Start-Sleep -Milliseconds 25
       } while ([DateTime]::UtcNow -lt $deadline)
       if ($null -eq $inner) { Write-Error "submenu '$Submenu' did not open"; exit 1 }
-      Invoke-Item (Find-Item $inner $Name)
+      # Opening a submenu from the keyboard highlights its first item.
+      Press $inner $VK.Down ((Steps $inner $Name) - 1)
+      Press $inner $VK.Return
     } else {
-      $item = Find-Item $menu $Name
-      if ($null -eq $item) { Write-Error "item '$Name' not found"; exit 1 }
-      Invoke-Item $item
+      Press $menu $VK.Down (Steps $menu $Name)
+      Press $menu $VK.Return
     }
+    'keys'
   }
   'escape' {
-    # The menu loop reads its thread's keyboard messages whatever their window.
-    $window = [System.IntPtr]$menu.Current.NativeWindowHandle
-    $null = [Win32.Native]::PostMessageW($window, 0x0100, [System.IntPtr]0x1B, [System.IntPtr]0x00010001)
-    $null = [Win32.Native]::PostMessageW($window, 0x0101, [System.IntPtr]0x1B, [System.IntPtr]::new(0xC0010001))
+    Press $menu $VK.Escape
     'key'
   }
 }
