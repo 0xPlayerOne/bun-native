@@ -43,15 +43,15 @@ Rust. The application supplies an existing native host with the matching protoco
 
 ## Exports
 
-| Import path                         | Exports                                                                                   |
-| ----------------------------------- | ----------------------------------------------------------------------------------------- |
-| `@bun-native/react`                 | `render`, `inputState`; types `ReactRenderRoot`, `ReactRenderOptions`, `NativeRef`, `JSX` |
-| `@bun-native/react/jsx-runtime`     | `jsx`, `jsxs`, `Fragment` from React, with this package's native `JSX` namespace          |
-| `@bun-native/react/jsx-dev-runtime` | `jsxDEV`, `Fragment` from React, with this package's native `JSX` namespace               |
+| Import path                         | Exports                                                                                                                                                            |
+| ----------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `@bun-native/react`                 | `render`, `inputState`, `focusNode`, `scrollNodeTo`, `scrollNodeIntoView`, `registerDropTarget`; types `ReactRenderRoot`, `ReactRenderOptions`, `NativeRef`, `JSX` |
+| `@bun-native/react/jsx-runtime`     | `jsx`, `jsxs`, `Fragment` from React, with this package's native `JSX` namespace                                                                                   |
+| `@bun-native/react/jsx-dev-runtime` | `jsxDEV`, `Fragment` from React, with this package's native `JSX` namespace                                                                                        |
 
 Select the JSX runtime per file with `/** @jsxImportSource @bun-native/react */`,
 as the examples do, or set `jsxImportSource` in your `tsconfig.json`. Hooks,
-components and other React APIs are imported from `react` itself.
+components and other React APIs are imported from `react` itself. The [public API reference](../../docs/api-reference.md#adapter-node-helpers) describes the node helpers, which both adapters share.
 
 For a larger consumer, the [React workspace](../../examples/react-workspace/README.md)
 combines editable tasks, keyed rows, native scrolling, search, filters, light/dark

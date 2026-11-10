@@ -82,6 +82,7 @@ const entries = {
   react: 'examples/react-counter/main.tsx',
   'react-workspace': 'examples/react-workspace/main.tsx',
   'react-workspace-flow': 'tests/native/react-workspace.tsx',
+  'react-workspace-soak': 'tests/native/react-workspace-soak.tsx',
   'react-interactions': 'tests/native/react-interactions.tsx',
   'react-input-viewport': 'tests/native/react-input-viewport.tsx',
   'react-streaming-list': 'tests/native/react-streaming-list.tsx',
@@ -113,6 +114,7 @@ const reactEntry =
   entry === 'react' ||
   entry === 'react-workspace' ||
   entry === 'react-workspace-flow' ||
+  entry === 'react-workspace-soak' ||
   entry === 'react-interactions' ||
   entry === 'react-input-viewport' ||
   entry === 'react-streaming-list' ||
@@ -288,7 +290,9 @@ async function sourceHashes() {
   ) {
     sources.add('examples/solid-workspace/app.tsx')
     sources.add('examples/solid-workspace/model.ts')
+    sources.add('examples/solid-workspace/terminal.ts')
   }
+  if (entry === 'processes') sources.add('examples/solid-workspace/terminal.ts')
   if (entry === 'adea-components')
     for (const path of [
       'examples/adea-components/app.tsx',
@@ -300,7 +304,11 @@ async function sourceHashes() {
       'examples/adea-components/retained/transcript-history.ts',
     ])
       sources.add(path)
-  if (entry === 'react-workspace' || entry === 'react-workspace-flow') {
+  if (
+    entry === 'react-workspace' ||
+    entry === 'react-workspace-flow' ||
+    entry === 'react-workspace-soak'
+  ) {
     sources.add('examples/react-workspace/app.tsx')
     sources.add('examples/react-workspace/model.ts')
   }

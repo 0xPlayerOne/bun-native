@@ -1,13 +1,21 @@
 # Compatibility and support scope
 
-**Status:** This describes [accepted source `38634595`][snapshot]. BN0 and BN1 are
-complete within their recorded Linux scope. The shared core, Solid and React
-adapters, native layout, four Linux services, the checkout CLI and standalone
-package projects are implemented. Their APIs and qualification remain
-experimental; no signed, installed, cross-platform application release is
-qualified. [ADR 0013](decisions/0013-release-readiness.md) records the resulting
-release-readiness decision and its blocking risks. The [BN0 audit][bn0] and
-[BN1 audit][bn1] retain their own source, host and compiler identities.
+**Version:** Bun Native **0.27.2**, main [`e456a6d`][v0272]. The exact pins
+below are current for that source. The capability table under
+[Languages, frameworks and platforms](#languages-frameworks-and-platforms)
+describes [accepted source `38634595`][snapshot] (November 5, 2026), and
+[Changes in 0.27.2](#changes-in-0272) lists every capability merged after it,
+each with its own evidence. A capability that appears in neither is not
+supported.
+
+**Status:** BN0 and BN1 are complete within their recorded Linux scope. The
+shared core, Solid and React adapters, native layout, Linux services, the
+checkout CLI and standalone package projects are implemented. Their APIs and
+qualification remain experimental; no signed, installed, cross-platform
+application release is qualified. [ADR 0013](decisions/0013-release-readiness.md)
+records the resulting release-readiness decision and its blocking risks. The
+[BN0 audit][bn0] and [BN1 audit][bn1] retain their own source, host and
+compiler identities.
 
 ## Exact pins
 
@@ -70,6 +78,32 @@ the matching native contract. WebView/CEF is not a fallback.
 - **Native OS services:** display (macOS and Windows add a work area, display identity and display-change events), Linux X11 clipboard, Linux X11 global shortcut, Linux freedesktop notification, Linux, macOS and Windows scoped filesystem access (macOS and Windows evidence from hosted CI only), Linux, macOS and Windows owned processes (macOS and Windows verified in CI only), Linux portal file dialog access and drag and drop (Linux X11, macOS and Windows; the latter two qualified in hosted CI only) and the macOS application menu bar (hosted CI evidence only; Linux and Windows report it unavailable) use explicit grants. A chosen file path or a dropped file name is data, not a filesystem grant. Message and confirm dialogs are drawn by public core on the in-window modal overlay on every platform (qualified on Linux X11 only), not as OS alerts; OS context menus remain outside the available native service set. Grants do not sandbox ordinary Bun filesystem or process APIs; applications are trusted programs.
 - **Untrusted webpages:** there is no hidden browser sandbox. Displaying untrusted content requires a deliberately scoped, safe native content model.
 
+## Changes in 0.27.2
+
+Merged between [`38634595`][snapshot] and [`e456a6d`][v0272]. Each row is
+qualified only at its linked source and environment. "Hosted" means a GitHub
+runner (`ubuntu-24.04`, `macos-15` or `windows-2022`) with software rendering
+or a virtual display; it is not physical hardware.
+
+| Area                           | Merged scope                                                                                                                                                                                                                                                                                             | Evidence and limits                                                                                                                                                                  |
+| ------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| BN4 primitives and services    | Streaming lists, split panes, overlays and popups, scoped filesystem grants, owned processes, file dialogs, drag and drop, display details ([#481][pr481], protocol 11)                                                                                                                                  | Linux native fixtures; macOS and Windows steps run in hosted CI and are **unverified** per [capabilities by platform](native-platforms.md#advertised-capabilities-by-platform).      |
+| Dialogs and menus              | Message and confirm dialogs drawn by core on the modal overlay ([ADR 0014](decisions/0014-message-dialogs.md)), macOS application menu bar ([ADR 0015](decisions/0015-application-menu-bar.md)), Windows OS task dialogs ([#547][pr547], [ADR 0018](decisions/0018-windows-task-dialogs.md))             | Core dialogs: Linux native and React workspace delete confirmation ([#545][pr545]). Menu bar and task dialogs: hosted oracles only, unverified.                                      |
+| Linux Wayland                  | Core window, input, pixels, display snapshot, notification, portal dialog and compositor close on headless sway ([ADR 0017](decisions/0017-wayland.md), [#519][pr519])                                                                                                                                   | Observed, not supported. GNOME, KDE, fractional scaling, IME, clipboard, shortcuts, drag and drop and popups are not qualified ([Linux Wayland](native-platforms.md#linux-wayland)). |
+| Text input and accessibility   | Keyboard split divider and AT-SPI roles ([#519][pr519]); one IBus Hangul composition over XIM in development and AOT ([#545][pr545])                                                                                                                                                                     | Linux X11 only. No macOS or Windows IME, no screen-reader run. [#241][i241] stays open.                                                                                              |
+| Processes on macOS and Windows | macOS working directory, Windows job objects, ConPTY and pipe interrupt ([#519][pr519], [#549][pr549])                                                                                                                                                                                                   | Hosted only, unverified. [#305][i305] stays open.                                                                                                                                    |
+| macOS workspaces               | Solid conversation and React task workspace references with keys, text, wheel, resize and OS close, development and AOT ([#582][pr582])                                                                                                                                                                  | Hosted `macos-15`, [Validation 42746456002][run582]. Includes the scroll repaint fix [#586][i586] and the Ctrl-C fix [#584][i584].                                                   |
+| macOS physical Mac             | Fault containment, reproducible builds, a Metal workload run and unsigned install/rollback ([#521][pr521], [macOS qualification](macos-qualification.md)); clean-clone Solid and React quick-start in development and AOT on 2026-11-09 ([getting started](getting-started.md#macos-arm64-physical-mac)) | One Apple M2 Max. Quick-start window presence from CGWindowList only, no input; earlier cases needing event posting are **not run**.                                                 |
+| Reproducible hosts             | Cross-runner host hash comparison, Windows `/Brepro` link ([#555][pr555], [#559][pr559])                                                                                                                                                                                                                 | See [reproducible builds](reproducible-builds.md).                                                                                                                                   |
+| Benchmarks                     | Direct Rust GPUI baseline ([#557][pr557]); hosted regression gate with committed baselines ([#563][pr563])                                                                                                                                                                                               | Describes the recorded runners only; no comparative claim. [#244][i244] stays open.                                                                                                  |
+| Adea component example         | Button, Input, DropdownMenu, Dialog and a conversation view on the public Solid adapter ([#566][pr566])                                                                                                                                                                                                  | Headless contract test against a synthetic peer; not native input or accessibility evidence.                                                                                         |
+| Documentation checks           | Documented commands, Cargo-free tutorials and `doctor` OS/CPU logging ([#546][pr546]); comparative claims must cite a record ([#563][pr563])                                                                                                                                                             | [`docs-commands.test.ts`](../tests/quality/docs-commands.test.ts) and [`docs-claims.test.ts`](../tests/quality/docs-claims.test.ts) run in Source quality.                           |
+
+Still unsupported in 0.27.2: signed or notarized artifacts and installers
+([#249][i249]), Windows physical hardware, Linux ARM64, macOS x64 and Windows
+ARM64 GUI, Babel 8 with the Solid compiler ([#316][i316]), and every DOM, CSS
+cascade and WebView path described below.
+
 ## Evidence procedure
 
 For each component/platform capability, record:
@@ -101,6 +135,25 @@ complete user-documentation acceptance.
 Read [architecture](architecture.md), [testing](testing.md), [releasing](releasing.md) and the [roadmap](https://github.com/0xPlayerOne/bun-native/issues/1).
 
 [snapshot]: https://github.com/0xPlayerOne/bun-native/tree/3863459588378532a4af4fb27188f051fa0955df
+[v0272]: https://github.com/0xPlayerOne/bun-native/tree/e456a6d2f65f8771b663a7fb8f3a6026ce0a9a54
+[pr481]: https://github.com/0xPlayerOne/bun-native/pull/481
+[pr519]: https://github.com/0xPlayerOne/bun-native/pull/519
+[pr521]: https://github.com/0xPlayerOne/bun-native/pull/521
+[pr545]: https://github.com/0xPlayerOne/bun-native/pull/545
+[pr546]: https://github.com/0xPlayerOne/bun-native/pull/546
+[pr547]: https://github.com/0xPlayerOne/bun-native/pull/547
+[pr549]: https://github.com/0xPlayerOne/bun-native/pull/549
+[pr555]: https://github.com/0xPlayerOne/bun-native/pull/555
+[pr557]: https://github.com/0xPlayerOne/bun-native/pull/557
+[pr559]: https://github.com/0xPlayerOne/bun-native/pull/559
+[pr563]: https://github.com/0xPlayerOne/bun-native/pull/563
+[pr566]: https://github.com/0xPlayerOne/bun-native/pull/566
+[pr582]: https://github.com/0xPlayerOne/bun-native/pull/582
+[run582]: https://github.com/0xPlayerOne/bun-native/actions/runs/42746456002
+[i249]: https://github.com/0xPlayerOne/bun-native/issues/249
+[i305]: https://github.com/0xPlayerOne/bun-native/issues/305
+[i584]: https://github.com/0xPlayerOne/bun-native/issues/584
+[i586]: https://github.com/0xPlayerOne/bun-native/issues/586
 [bn0]: https://github.com/0xPlayerOne/bun-native/blob/3863459588378532a4af4fb27188f051fa0955df/docs/bn0-audit.md
 [bn1]: https://github.com/0xPlayerOne/bun-native/blob/3863459588378532a4af4fb27188f051fa0955df/docs/bn1-audit.md
 [lock]: ../bun.lock
