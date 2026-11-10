@@ -625,6 +625,31 @@ Linux starts the child through the open descriptor's `/proc/self/fd` path; macOS
 runs `fchdir` on the descriptor in the child before `exec`; Windows walks the
 grant with NT handles. A path string is never the authority.
 
+### Resource limits
+
+A launch entry may carry `limits`, which apply to every child started from it:
+
+```ts
+processes: [{ id: 'build', executable: '/usr/bin/make', limits: { cpuSeconds: 60, openFiles: 256 } }]
+```
+
+| Limit         | Range        | Linux           | macOS           | Windows                          |
+| ------------- | ------------ | --------------- | --------------- | -------------------------------- |
+| `cpuSeconds`  | 1 to 604,800 | `RLIMIT_CPU`    | `RLIMIT_CPU`    | job per-process user time        |
+| `memoryBytes` | 2^20 to 2^48 | `RLIMIT_AS`     | refused         | job per-process committed memory |
+| `openFiles`   | 3 to 2^20    | `RLIMIT_NOFILE` | `RLIMIT_NOFILE` | refused                          |
+
+On POSIX each limit is set in the forked child before `exec`. The CPU limit
+delivers `SIGXCPU` (the exit reports `{ signal: 24 }`), and a child that
+ignores it is killed one second later. An address-space or descriptor limit
+makes the allocation or `open` fail inside the child. On Windows the job ends a
+process that exceeds its CPU time, and an allocation past the memory limit
+fails. A limit the platform cannot enforce is never ignored: `spawnProcess`
+rejects with `service_unavailable`. The limits travel with the executable on
+the host's private `--bun-native-process-limits=<id>:...` launch argument,
+readiness reports them, and `serviceCapabilities.ptyProcess.executables`
+lists them per ID.
+
 Without `terminal`, standard input, output and error are three pipes and output
 events name `stdout` or `stderr`. With `terminal: { columns, rows }` the child
 runs as a session leader on its own sized pseudo-terminal, which is its

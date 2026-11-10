@@ -22,6 +22,8 @@ if (
   !['startup-failure', 'host-crash'].includes(scenario ?? '')
 )
   throw new Error('Explicit native diagnostics directory, host and scenario are required')
+// native-fault-windows.py terminates the suspended host with this code.
+const WINDOWS_FAULT_EXIT_CODE = 0xad
 const started = performance.now()
 function record(type: string, fields: Record<string, unknown> = {}): void {
   appendFileSync(
@@ -141,8 +143,10 @@ try {
     if (failure instanceof NativeHostExitError)
       assert.deepEqual(
         [failure.diagnostic.reason, failure.diagnostic.signal, failure.diagnostic.exitCode],
-        ['signal', 'SIGKILL', null],
-        'The controller SIGKILLs the stopped host'
+        process.platform === 'win32'
+          ? ['exit', null, WINDOWS_FAULT_EXIT_CODE]
+          : ['signal', 'SIGKILL', null],
+        'The controller kills the stopped host'
       )
     record('crash-contained', {
       diagnostic: failure instanceof NativeHostExitError ? failure.diagnostic : null,

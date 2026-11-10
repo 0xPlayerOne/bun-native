@@ -8,7 +8,7 @@
 
 use super::Failure;
 use crate::services::files::{Directory, directory_beneath, failure as path_failure};
-use bun_native_protocol::ErrorCode;
+use bun_native_protocol::{ErrorCode, ProcessLimits};
 use rustix::fs::{OFlags, fcntl_getfl, fcntl_setfl};
 use rustix::io::Errno;
 use rustix::process::{Pid, WaitId, WaitIdOptions, waitid};
@@ -141,4 +141,22 @@ pub(super) fn start_in_terminal(
     directory: &OwnedFd,
 ) -> Result<pty_process::blocking::Command, Failure> {
     bun_native_posix_services::start_in_terminal(command, directory).map_err(|_| DIRECTORY_STEP)
+}
+
+/// macOS accepts but does not enforce `RLIMIT_AS`, so a memory limit is refused.
+pub(super) fn supported_limits(limits: ProcessLimits) -> Result<(), Failure> {
+    if limits.memory_bytes.is_some() {
+        return Err((
+            ErrorCode::ServiceUnavailable,
+            "macOS cannot enforce a process memory limit",
+        ));
+    }
+    Ok(())
+}
+
+pub(super) fn posix_limits(limits: ProcessLimits) -> bun_native_posix_services::Limits {
+    bun_native_posix_services::Limits {
+        cpu_seconds: limits.cpu_seconds,
+        open_files: limits.open_files,
+    }
 }

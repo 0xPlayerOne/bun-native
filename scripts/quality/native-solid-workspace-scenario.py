@@ -9,6 +9,13 @@ SPEC = importlib.util.spec_from_file_location(
 PAINT = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(PAINT)
 
+# Short wheel bursts that reach a possibly still-growing history's end, and how
+# long each waits for a frame there. Sixteen bursts are 48 notches, more than
+# the former single 30; the last keeps the former 10 s wait.
+BURSTS = 16
+BURST_NOTCHES = "3"
+BURST_SETTLE_SECONDS = 0.4
+
 INITIAL_TITLES = [
     "Project brief",
     "Native interactions",
@@ -172,31 +179,49 @@ def run(
                 if row["node_id"] == history
             )
 
+        def at_end():
+            snapshot = frame()
+            if snapshot and geometry_tools.at_scroll_end(history_scroll(snapshot), 1):
+                return snapshot
+            return None
+
         scroll_state = history_scroll(current)
         if scroll_state["maximum"][1] > 0:
             viewport = scroll_state["viewport"]
             x, y = geometry_tools.pointer_point(
                 viewport, viewport, current["layout"]["viewport"]
             )
-            action(
-                "mousemove",
-                "--window",
-                window,
-                x,
-                y,
-                "click",
-                "--repeat",
-                "30",
-                "--delay",
-                "10",
-                "5",
-            )
-            current = wait_frame(
-                "latest native message scroll endpoint",
-                lambda snapshot: geometry_tools.at_scroll_end(
-                    history_scroll(snapshot), 1
-                ),
-            )
+            # The revealed reply may still be streaming (a chunk every 250 ms),
+            # so the history can grow after a burst lands at its end. On hosted
+            # macOS one 30-notch burst took longer than the whole reply (about
+            # 55 ms a notch) although the end came at its second notch (runs
+            # 42787338710 and 42791130372). Short bursts, each followed by the
+            # same strict end check, reach the end and follow its growth while
+            # the reply still streams.
+            for burst in range(BURSTS):
+                action(
+                    "mousemove",
+                    "--window",
+                    window,
+                    x,
+                    y,
+                    "click",
+                    "--repeat",
+                    BURST_NOTCHES,
+                    "--delay",
+                    "10",
+                    "5",
+                )
+                try:
+                    current = wait_for(
+                        at_end,
+                        "latest native message scroll endpoint",
+                        10 if burst == BURSTS - 1 else BURST_SETTLE_SECONDS,
+                    )
+                    break
+                except RuntimeError as error:
+                    if burst == BURSTS - 1 or not str(error).startswith("Timed out"):
+                        raise
         bounds = geometry(row_id, current)
         if (
             geometry_tools.intersects(bounds["bounds"], bounds["ancestor_clip"])

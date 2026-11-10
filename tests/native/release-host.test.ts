@@ -1,8 +1,19 @@
 import { afterAll, expect, test } from 'bun:test'
-import { existsSync, mkdtempSync, readdirSync, rmSync, statSync } from 'node:fs'
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  readdirSync,
+  rmSync,
+  statSync,
+} from 'node:fs'
 import { tmpdir } from 'node:os'
 import { isAbsolute, join, resolve } from 'node:path'
 import { compileApplication } from '../../experiments/aot-gpui/compile.ts'
+import { buildProject } from '../../scripts/native/build.ts'
+import { prebuiltHost } from '../../scripts/native/host.ts'
+import { createProject, readProject } from '../../scripts/native/project.ts'
 import { readLauncherReport } from './launcher-report.ts'
 import { PROTOCOL_VERSION } from '@bun-native/protocol'
 import toolchain from '../../toolchain.json'
@@ -212,6 +223,152 @@ test.if(!aotSkip)(
       true,
       true
     )
+  },
+  300_000
+)
+
+// A real `native build` application, installed as a pending update and started
+// through the compiled verifying launcher, confirms its own health (#249): the
+// generated template calls reportHealthy() after its first native render, the
+// launcher commits the confirmation, and SIGTERM still reaches the application
+// through the launcher for a clean exit.
+const updateSkip =
+  hostSkip ??
+  (process.platform !== 'linux'
+    ? 'Linux only'
+    : Bun.which('Xvfb') === null
+      ? 'Xvfb is required'
+      : Bun.revision !== toolchain.bun.revision
+        ? 'the pinned Bun AOT compiler is required'
+        : undefined)
+test.if(!updateSkip)(
+  skipped(
+    'a native build application confirms its pending update through the verifying launcher',
+    updateSkip
+  ),
+  async () => {
+    const work = mkdtempSync(join(directory, 'update-'))
+    // Projects are created inside the checkout; its ignored cache holds this one.
+    mkdirSync(join(root, '.bun-native'), { recursive: true })
+    const project = mkdtempSync(join(root, '.bun-native', 'update-app-'))
+    rmSync(project, { recursive: true })
+    const build = join(work, 'build')
+    try {
+      await createProject(root, project, 'solid', 'typescript')
+      await buildProject(
+        await readProject(root, project),
+        await prebuiltHost(host!),
+        build,
+        'release'
+      )
+    } finally {
+      rmSync(project, { recursive: true, force: true })
+    }
+    const update = (...args: string[]) => {
+      const result = Bun.spawnSync(
+        [process.execPath, join(root, 'scripts/release-update.ts'), ...args],
+        { cwd: root, stdout: 'pipe', stderr: 'pipe', timeout: 120_000 }
+      )
+      if (result.exitCode !== 0)
+        throw new Error(`release-update ${args[0]} failed: ${result.stderr.toString()}`)
+      return result.stdout.toString()
+    }
+    const installRoot = join(work, 'install')
+    const product = 'dev.bun-native.template'
+    // The health check needs a confirmed release to fall back to; both releases
+    // carry the same build, so the one the launcher starts is this application.
+    const install = (sequence: number, health: string[]) => {
+      const manifest = join(work, `update-${sequence}.json`)
+      update(
+        'manifest',
+        build,
+        '--product',
+        product,
+        '--version',
+        `1.0.${sequence}`,
+        '--sequence',
+        String(sequence),
+        '--unsigned-experimental',
+        '--out',
+        manifest
+      )
+      return update(
+        'install',
+        manifest,
+        '--root',
+        installRoot,
+        '--payload',
+        build,
+        '--unsigned-experimental',
+        ...health
+      )
+    }
+    install(1, [])
+    expect(install(2, ['--health-limit', '2'])).toContain(
+      'WARNING: installed an UNSIGNED EXPERIMENTAL update'
+    )
+    const state = () =>
+      JSON.parse(readFileSync(join(installRoot, 'state.json'), 'utf8')) as { health: unknown }
+    expect(state().health).toEqual({ status: 'pending', attempts: 0, limit: 2 })
+    const launcher = join(work, 'launcher')
+    update('launcher', '--out', launcher)
+    update(
+      'integrate',
+      '--root',
+      installRoot,
+      '--name',
+      'Template',
+      '--applications',
+      join(work, 'menu'),
+      '--verified-launcher',
+      launcher
+    )
+
+    const display = Bun.spawn(
+      ['Xvfb', '-displayfd', '1', '-screen', '0', '1280x800x24', '-nolisten', 'tcp'],
+      { stdout: 'pipe', stderr: 'ignore' }
+    )
+    try {
+      const reader = display.stdout.getReader()
+      let number = ''
+      while (!number.includes('\n')) {
+        const { value, done } = await reader.read()
+        if (done) throw new Error('Xvfb exited before reporting its display')
+        number += new TextDecoder().decode(value)
+      }
+      reader.releaseLock()
+      const env = environment({ DISPLAY: `:${number.trim()}`, GPUI_X11_SCALE_FACTOR: '1' }, [
+        'BUN_NATIVE_HOST',
+        'WAYLAND_DISPLAY',
+        'WAYLAND_SOCKET',
+      ])
+      const icds = existsSync('/usr/share/vulkan/icd.d')
+        ? readdirSync('/usr/share/vulkan/icd.d').filter((name) => /^lvp_icd.*\.json$/.test(name))
+        : []
+      if (icds.length === 1) env['VK_DRIVER_FILES'] = join('/usr/share/vulkan/icd.d', icds[0]!)
+      const app = Bun.spawn([join(installRoot, 'bin', product)], {
+        cwd: work,
+        env,
+        stdout: 'pipe',
+        stderr: 'pipe',
+      })
+      const deadline = performance.now() + 60_000
+      while (state().health !== null) {
+        if (app.exitCode !== null || performance.now() > deadline) {
+          app.kill('SIGKILL')
+          throw new Error(
+            `The application did not confirm its update (exit ${app.exitCode}): ${await new Response(app.stderr).text()}`
+          )
+        }
+        await Bun.sleep(100)
+      }
+      app.kill('SIGTERM')
+      expect(await app.exited).toBe(0)
+      expect(readdirSync(join(installRoot, 'health'))).toEqual([])
+    } finally {
+      display.kill('SIGKILL')
+      await display.exited
+    }
   },
   300_000
 )

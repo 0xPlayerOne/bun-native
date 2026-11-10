@@ -857,9 +857,9 @@ jobs:
           grep -q '"offline":true' "$NATIVE_EVIDENCE/boundary-offline.json"
           grep -q '"display":true' "$NATIVE_EVIDENCE/boundary-online.json"
           grep -q '"display":true' "$NATIVE_EVIDENCE/boundary-offline.json"
-      - name: Release host with no display, a real GPUI startup panic and offline inspected AOT
+      - name: Release host with no display, a real GPUI startup panic, offline inspected AOT and a self-confirmed installed update
         if: matrix.shard == 1
-        timeout-minutes: 5
+        timeout-minutes: 7
         env:
           BUN_NATIVE_HOST: ${{ github.workspace }}/target/release/bun-native-host
         run: |
