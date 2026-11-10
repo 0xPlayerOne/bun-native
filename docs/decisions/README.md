@@ -38,8 +38,8 @@ The implementation agent may accept an ADR autonomously within the owner's exper
 Two records share number 0013. [Release readiness](0013-release-readiness.md)
 landed first, in #483, and [owned OS file dialogs](0013-native-file-dialogs.md)
 followed in #481. The files keep their names, so existing links stay valid.
-Cite either record by its file name, not by "ADR 0013" alone. The highest current number is 0020, with 0016 unused; the next new record
-is 0021.
+Cite either record by its file name, not by "ADR 0013" alone. The highest
+number is now 0020, with 0016 unused; the next new record is 0021.
 
 ## Current decisions
 
