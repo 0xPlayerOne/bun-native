@@ -1,0 +1,421 @@
+diff --git a/native/gpui-host/src/view.rs b/native/gpui-host/src/view.rs
+index 8934d90..0f9cffb 100644
+--- a/native/gpui-host/src/view.rs
++++ b/native/gpui-host/src/view.rs
+@@ -342,7 +342,6 @@ impl NativeView {
+         {
+             base = layout.children(base, node.children(), 0, self.scrolls.get(&node_id));
+         }
+-        pointer.target(&mut base, node_id);
+         let mut base = base.id(node_id.get());
+         style::element(base.style(), node.element(), node_id == tree.root_id());
+         let drop_scope = drop_scope.enter(node_id);
+@@ -350,24 +349,30 @@ impl NativeView {
+             base = drop_target(base, chain, &self.drops);
+         }
+         let hidden = accessibility::beneath_modal(tree, node_id, self.overlays.active_modal());
+-        let base = accessibility::container(base, node.element(), hidden);
+-        match node.element() {
++        let mut base = accessibility::container(base, node.element(), hidden);
++        let clip = Clip::of(base.style());
++        let element = match node.element() {
+             NativeElement::Box { .. } => self
+                 .container(tree, node_id, base, layout, pointer, &drop_scope, cx)
+                 .into_any_element(),
+             NativeElement::Overlay {
+                 surface: OverlaySurface::Window,
+                 ..
+-            } if self.popups.active() => self
+-                .popup_anchor(node_id)
+-                .unwrap_or_else(|| div().into_any_element()),
++            } if self.popups.active() => {
++                // The popup window draws this element; its anchor is no target.
++                return self
++                    .popup_anchor(node_id)
++                    .unwrap_or_else(|| div().into_any_element());
++            }
+             NativeElement::Overlay { anchor, .. } => {
+                 // Occlusion keeps pointer input from reaching anything beneath
+                 // the layer; a window layer is itself the modal backdrop.
+                 let content = self
+                     .container(tree, node_id, base, layout, pointer, &drop_scope, cx)
+                     .occlude();
+-                self.overlay_layer(node_id, *anchor, content, self.viewport)
++                return self.overlay_layer(node_id, *anchor, content, self.viewport, |layer| {
++                    pointer.target_layer(layer, node_id, clip)
++                });
+             }
+             NativeElement::Split {
+                 min_size,
+@@ -428,7 +433,8 @@ impl NativeView {
+                         .clone(),
+                 )
+                 .into_any_element(),
+-        }
++        };
++        pointer.target(element, node_id, clip)
+     }
+ }
+ 
+@@ -516,7 +522,7 @@ impl Render for NativeView {
+                 frame
+             }
+         });
+-        let pointer = PointerFrame::default();
++        let pointer = PointerFrame::new(state.tree.nodes().count());
+         let pressed = self.pressed.clone();
+         let body = self.render_node(
+             &state.tree,
+@@ -710,7 +716,7 @@ mod popups;
+ mod split;
+ 
+ use index::NodeIndex;
+-use interactions::{PointerFrame, PressedButtons};
++use interactions::{Clip, PointerFrame, PressedButtons};
+ use keyboard::{MenuMove, TypeAhead};
+ use overlays::{OBSERVER_PRIORITY, Overlays};
+ use popups::Popups;
+diff --git a/native/gpui-host/src/view/interactions.rs b/native/gpui-host/src/view/interactions.rs
+index 9637db9..b4639f8 100644
+--- a/native/gpui-host/src/view/interactions.rs
++++ b/native/gpui-host/src/view/interactions.rs
+@@ -3,10 +3,16 @@
+ use super::NativeView;
+ use bun_native_protocol::{Event, KeyModifiers, NodeId, PointerButton};
+ use gpui::{
+-    Context, DispatchPhase, Div, Focusable, InteractiveElement, Keystroke, Modifiers, MouseButton,
+-    MouseDownEvent, MouseUpEvent, NavigationDirection, Pixels, Point, WeakEntity, Window,
++    AnyElement, App, Bounds, ContentMask, Context, DispatchPhase, Element, ElementId, Focusable,
++    GlobalElementId, HitboxBehavior, HitboxId, InspectorElementId, IntoElement, Keystroke,
++    LayoutId, Modifiers, MouseButton, MouseDownEvent, MouseUpEvent, NavigationDirection, Overflow,
++    Pixels, Point, Refineable, Style, StyleRefinement, WeakEntity, Window,
++};
++use std::{
++    cell::{Cell, RefCell},
++    panic::Location,
++    rc::Rc,
+ };
+-use std::{cell::Cell, rc::Rc};
+ 
+ fn modifiers(value: Modifiers) -> KeyModifiers {
+     KeyModifiers {
+@@ -59,20 +65,73 @@ impl PressedButtons {
+     }
+ }
+ 
+-/// GPUI runs capture in native paint order. Each hovered model element updates
+-/// this candidate, leaving the deepest visible native hit for the final observer.
+-/// The final capture observer consumes it before normal focus/edit/click actions.
+-#[derive(Default)]
+-pub(super) struct PointerFrame(Rc<Cell<Option<NodeId>>>);
++/// One frame's pointer targets in native paint order, as (hitbox, node).
++///
++/// Each model element owns a GPUI hitbox with the bounds and clipping its own
++/// listeners used to have. The window capture observer resolves the deepest
++/// visible native hit, the last painted hovered entry, before default actions.
++/// That is the node the per-element capture listeners used to leave behind,
++/// without boxing two listeners per node on every frame (#297).
++#[derive(Clone, Default)]
++pub(super) struct PointerFrame(Rc<RefCell<Vec<(HitboxId, NodeId)>>>);
+ 
+ impl PointerFrame {
+-    /// Registers in place: `InteractiveElement` builders move the >1 KB `Div`.
+-    pub(super) fn target(&self, element: &mut Div, node_id: NodeId) {
+-        let down = self.0.clone();
+-        let up = self.0.clone();
+-        let interactivity = element.interactivity();
+-        interactivity.capture_any_mouse_down(move |_, _, _| down.set(Some(node_id)));
+-        interactivity.capture_any_mouse_up(move |_, _, _| up.set(Some(node_id)));
++    /// `nodes` sizes the frame's target list once, instead of growing it.
++    pub(super) fn new(nodes: usize) -> Self {
++        Self(Rc::new(RefCell::new(Vec::with_capacity(nodes))))
++    }
++
++    /// Makes `element`, which is `node_id`'s model element, a pointer target.
++    /// `clip` comes from the element's own style: an overflow-clipped
++    /// element's hitbox excludes a visible border, as GPUI's own hitbox does.
++    pub(super) fn target(
++        &self,
++        element: impl IntoElement,
++        node_id: NodeId,
++        clip: Clip,
++    ) -> AnyElement {
++        self.region(element, node_id, clip, HitboxOrder::BeforeChildren)
++    }
++
++    /// Like [`Self::target`] for an occluding overlay layer. Its own GPUI
++    /// hitbox blocks everything inserted before it, so the target hitbox goes
++    /// after the layer's content, where nothing in the layer blocks it.
++    pub(super) fn target_layer(
++        &self,
++        element: impl IntoElement,
++        node_id: NodeId,
++        clip: Clip,
++    ) -> AnyElement {
++        self.region(element, node_id, clip, HitboxOrder::AfterChildren)
++    }
++
++    fn region(
++        &self,
++        element: impl IntoElement,
++        node_id: NodeId,
++        clip: Clip,
++        order: HitboxOrder,
++    ) -> AnyElement {
++        PointerTarget {
++            child: element.into_any_element(),
++            node_id,
++            clip,
++            order,
++            frame: self.clone(),
++        }
++        .into_any_element()
++    }
++
++    /// The deepest hovered target: the last painted entry whose hitbox GPUI's
++    /// hit test reports as hovered, exactly the condition each per-element
++    /// capture listener checked.
++    fn hit(&self, window: &Window) -> Option<NodeId> {
++        self.0
++            .borrow()
++            .iter()
++            .rev()
++            .find(|(hitbox, _)| hitbox.is_hovered(window))
++            .map(|(_, node_id)| *node_id)
+     }
+ 
+     /// `origin` is this window's content origin in the owning native window's
+@@ -84,7 +143,7 @@ impl PointerFrame {
+         origin: Point<Pixels>,
+         pressed: &PressedButtons,
+     ) {
+-        let down = self.0.clone();
++        let down = self.clone();
+         let down_view = view.clone();
+         let down_pressed = pressed.clone();
+         window.on_mouse_event(move |event: &MouseDownEvent, phase, window, cx| {
+@@ -92,7 +151,7 @@ impl PointerFrame {
+                 down_pressed.press(event.button);
+             }
+             if phase == DispatchPhase::Capture
+-                && let Some(node_id) = down.take()
++                && let Some(node_id) = down.hit(window)
+                 && !cx.has_active_drag()
+                 && in_viewport(event.position, window)
+             {
+@@ -108,12 +167,12 @@ impl PointerFrame {
+                 });
+             }
+         });
+-        let up = self.0.clone();
++        let up = self.clone();
+         let up_view = view.clone();
+         let up_pressed = pressed.clone();
+         window.on_mouse_event(move |event: &MouseUpEvent, phase, window, cx| {
+             if phase == DispatchPhase::Capture
+-                && let Some(node_id) = up.take()
++                && let Some(node_id) = up.hit(window)
+                 && up_pressed.release(event.button)
+                 // An external file drop arrives as a synthesized button
+                 // release; it is a drop, never a pointer release.
+@@ -434,3 +493,125 @@ mod tests {
+         }
+     }
+ }
++
++#[derive(Clone, Copy)]
++enum HitboxOrder {
++    BeforeChildren,
++    AfterChildren,
++}
++
++/// The parts of an element's style that clip its own GPUI hitbox: overflow,
++/// and a visible border inside an overflow clip. `None` when nothing clips.
++pub(super) struct Clip(Option<Style>);
++
++impl Clip {
++    pub(super) fn of(style: &StyleRefinement) -> Self {
++        let overflow = Point::<Overflow>::default().refined(style.overflow.clone());
++        if overflow.x == Overflow::Visible && overflow.y == Overflow::Visible {
++            return Self(None);
++        }
++        let mut clip = Style {
++            overflow,
++            border_color: style.border_color,
++            ..Style::default()
++        };
++        clip.border_widths.refine(&style.border_widths);
++        Self(Some(clip))
++    }
++
++    fn mask(&self, bounds: Bounds<Pixels>, window: &Window) -> Option<ContentMask<Pixels>> {
++        self.0
++            .as_ref()
++            .and_then(|style| style.overflow_mask(bounds, window.rem_size()))
++    }
++}
++
++/// A transparent wrapper that gives one model element its pointer hitbox. It
++/// shares the element's layout node, so its bounds are the element's bounds.
++struct PointerTarget {
++    child: AnyElement,
++    node_id: NodeId,
++    clip: Clip,
++    order: HitboxOrder,
++    frame: PointerFrame,
++}
++
++impl PointerTarget {
++    fn insert(&self, bounds: Bounds<Pixels>, window: &mut Window) -> HitboxId {
++        let mask = self.clip.mask(bounds, window);
++        window
++            .with_content_mask(mask, |window| {
++                window.insert_hitbox(bounds, HitboxBehavior::Normal)
++            })
++            .id
++    }
++}
++
++impl IntoElement for PointerTarget {
++    type Element = Self;
++
++    fn into_element(self) -> Self {
++        self
++    }
++}
++
++impl Element for PointerTarget {
++    type RequestLayoutState = ();
++    type PrepaintState = HitboxId;
++
++    fn id(&self) -> Option<ElementId> {
++        None
++    }
++
++    fn source_location(&self) -> Option<&'static Location<'static>> {
++        None
++    }
++
++    fn request_layout(
++        &mut self,
++        _: Option<&GlobalElementId>,
++        _: Option<&InspectorElementId>,
++        window: &mut Window,
++        cx: &mut App,
++    ) -> (LayoutId, ()) {
++        (self.child.request_layout(window, cx), ())
++    }
++
++    fn prepaint(
++        &mut self,
++        _: Option<&GlobalElementId>,
++        _: Option<&InspectorElementId>,
++        bounds: Bounds<Pixels>,
++        _: &mut (),
++        window: &mut Window,
++        cx: &mut App,
++    ) -> HitboxId {
++        match self.order {
++            HitboxOrder::BeforeChildren => {
++                let hitbox = self.insert(bounds, window);
++                self.child.prepaint(window, cx);
++                hitbox
++            }
++            HitboxOrder::AfterChildren => {
++                self.child.prepaint(window, cx);
++                self.insert(bounds, window)
++            }
++        }
++    }
++
++    fn paint(
++        &mut self,
++        _: Option<&GlobalElementId>,
++        _: Option<&InspectorElementId>,
++        _: Bounds<Pixels>,
++        _: &mut (),
++        hitbox: &mut HitboxId,
++        window: &mut Window,
++        cx: &mut App,
++    ) {
++        // Registered where the element's own capture listeners were: in paint
++        // order, ahead of its children.
++        self.frame.0.borrow_mut().push((*hitbox, self.node_id));
++        self.child.paint(window, cx);
++    }
++}
+diff --git a/native/gpui-host/src/view/overlays.rs b/native/gpui-host/src/view/overlays.rs
+index 1fea53b..1dc3934 100644
+--- a/native/gpui-host/src/view/overlays.rs
++++ b/native/gpui-host/src/view/overlays.rs
+@@ -240,6 +240,7 @@ impl NativeView {
+         anchor: OverlayAnchor,
+         content: Stateful<Div>,
+         viewport: Size<Pixels>,
++        target: impl FnOnce(Stateful<Div>) -> AnyElement,
+     ) -> AnyElement {
+         let priority = self
+             .overlays
+@@ -255,7 +256,7 @@ impl NativeView {
+                     deferred(
+                         anchored()
+                             .position(gpui::point(px(0.), px(0.)))
+-                            .child(content.w(viewport.width).h(viewport.height)),
++                            .child(target(content.w(viewport.width).h(viewport.height))),
+                     )
+                     .with_priority(priority),
+                 )
+@@ -265,8 +266,12 @@ impl NativeView {
+                 .top_full()
+                 .left_0()
+                 .child(
+-                    deferred(anchored().snap_to_window_with_margin(px(8.)).child(content))
+-                        .with_priority(priority),
++                    deferred(
++                        anchored()
++                            .snap_to_window_with_margin(px(8.))
++                            .child(target(content)),
++                    )
++                    .with_priority(priority),
+                 )
+                 .into_any_element(),
+         }
+diff --git a/native/gpui-host/src/view/popups.rs b/native/gpui-host/src/view/popups.rs
+index 3dc7f36..04d8620 100644
+--- a/native/gpui-host/src/view/popups.rs
++++ b/native/gpui-host/src/view/popups.rs
+@@ -8,7 +8,7 @@
+ //! node in screen coordinates, flipped above it when only that fits, and
+ //! shifted onto the X screen. Keyboard focus never moves to a popup.
+ 
+-use super::{DropScope, NativeView, PointerFrame, PressedButtons};
++use super::{Clip, DropScope, NativeView, PointerFrame, PressedButtons};
+ use crate::style;
+ use bun_native_protocol::{
+     DismissReason, Element as NativeElement, Event, NodeId, OverlaySurface, Tree,
+@@ -360,17 +360,19 @@ impl NativeView {
+         else {
+             return None;
+         };
+-        let mut base = div();
+-        pointer.target(&mut base, node_id);
+-        let mut base = super::accessibility::container(base.id(node_id.get()), element, false);
++        let mut base = super::accessibility::container(div().id(node_id.get()), element, false);
+         style::element(base.style(), element, false);
++        let clip = Clip::of(base.style());
+         // External drags target the parent window; a popup surface holds no
+         // drop target of its own.
+         let drop_scope = DropScope::new(Default::default());
+         Some(
+-            self.container(tree, node_id, base, None, pointer, &drop_scope, cx)
+-                .size_full()
+-                .into_any_element(),
++            pointer.target(
++                self.container(tree, node_id, base, None, pointer, &drop_scope, cx)
++                    .size_full(),
++                node_id,
++                clip,
++            ),
+         )
+     }
+ }
