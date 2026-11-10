@@ -237,16 +237,14 @@ are different fixtures, so no equal-workload performance comparison is made.
 | In-app confirmation panel                        | Native flow: modal overlay, autofocus, Tab trap, Escape/backdrop keep, focus return           | Native flow: inline panel, confirm/keep                 |
 | Keyboard-only dialog flow and programmatic focus | Native flow: Tab/Return/Escape, focus moved to the composer after clearing                    | Not exercised                                           |
 | macOS hosted development and AOT                 | Native flow (same scenario)                                                                   | Native flow (same scenario)                             |
-| Windows hosted development and AOT               | Native flow (same scenario)                                                                   | Not yet run on Windows                                  |
+| Windows hosted development and AOT               | Native flow (same scenario)                                                                   | Native flow (same scenario)                             |
 | Long-session ownership soak (60 rounds, dev+AOT) | Native Linux: plans, stale callbacks, remounts, clear overlay; exact per-round baseline       | Native Linux: replies, stale callbacks, remounts, clear |
 | Screenshots                                      | scrolled, dark, resized, edited, filtered, after, plan-streaming, plan-complete, plan-stopped | Per-scenario captures in its native evidence            |
 
 Unsupported or unqualified for both: OS menus and alerts (#239), accessibility
 and screen readers, IME (#241), virtualization and long-session memory (#257),
 physical input devices and non-hosted display configurations (hosted runners use
-injected OS events at scale 1), and matched comparative performance (#244). The
-Windows run covers the React workspace only; the Solid workspace has not yet run
-there. React-specific limits from the [behavior matrix](../../docs/react-behavior.md)
+injected OS events at scale 1), and matched comparative performance (#244). React-specific limits from the [behavior matrix](../../docs/react-behavior.md)
 also apply: suspended/hidden subtrees, hydration, portals and view-transition
 animations are outside the adapter contract.
 
