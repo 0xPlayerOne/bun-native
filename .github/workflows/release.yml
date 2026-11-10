@@ -1,7 +1,11 @@
 name: Code Foundry Release
 
 on:
-  push:
+  # Release only after the exact main commit's own Validation (which includes
+  # every CodeQL analysis) has completed successfully (#614).
+  workflow_run:
+    workflows: [Bun Native Validation]
+    types: [completed]
     branches: [main]
   workflow_dispatch:
     inputs:
@@ -20,11 +24,59 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  qualified:
+    name: Qualified main head
+    if: vars.CI_BILLING_PAUSED == 'false' || (github.event_name == 'workflow_dispatch' && inputs['release-while-paused'] == true)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      actions: read
+      contents: read
+    outputs:
+      release: ${{ steps.check.outputs.release }}
+    steps:
+      - name: Require the current main head's own successful Validation
+        id: check
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EVENT_NAME: ${{ github.event_name }}
+          RUN_EVENT: ${{ github.event.workflow_run.event }}
+          RUN_CONCLUSION: ${{ github.event.workflow_run.conclusion }}
+          RUN_SHA: ${{ github.event.workflow_run.head_sha }}
+        run: |
+          set -euo pipefail
+          main_sha=$(gh api "repos/$GITHUB_REPOSITORY/commits/main" --jq .sha)
+          if [ "$EVENT_NAME" = workflow_run ]; then
+            if [ "$RUN_EVENT" != push ] || [ "$RUN_CONCLUSION" != success ]; then
+              echo "Validation for $RUN_SHA was a $RUN_EVENT run that concluded $RUN_CONCLUSION; not releasing."
+              echo release=false >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+            target="$RUN_SHA"
+          else
+            target="$main_sha"
+          fi
+          if [ "$target" != "$main_sha" ]; then
+            # A newer main commit owns the next release once its own Validation passes.
+            echo "Validated $target is no longer the main head ($main_sha); not releasing."
+            echo release=false >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          # Fail closed: the newest completed push Validation of this exact commit must be a success.
+          conclusion=$(gh api "repos/$GITHUB_REPOSITORY/actions/workflows/bun-native.yml/runs?head_sha=$target&event=push&status=completed&per_page=1" --jq '.workflow_runs[0].conclusion // "missing"')
+          if [ "$conclusion" != success ]; then
+            echo "::error::Main $target has no successful push Validation ($conclusion); refusing to release."
+            exit 1
+          fi
+          echo "Releasing from $target after its own successful Validation and CodeQL."
+          echo release=true >> "$GITHUB_OUTPUT"
+
   release:
     name: Release
+    needs: qualified
     # Release Please manages version metadata. A version release is not native
     # window, packaging, signing or Bun AOT acceptance; those have separate gates.
-    if: vars.CI_BILLING_PAUSED == 'false'
+    if: needs.qualified.outputs.release == 'true'
     uses: 0xPlayerOne/code-foundry/.github/workflows/release.yml@a8fcac90f8c96e1f294aecc7f3a2e874803b9c2b
     with:
       billing-pause-bypass: ${{ github.event_name == 'workflow_dispatch' && inputs['release-while-paused'] == true }}
