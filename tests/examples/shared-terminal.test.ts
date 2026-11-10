@@ -5,6 +5,7 @@ import {
   MAX_TERMINAL_COLUMNS,
   MAX_TERMINAL_LINES,
   TerminalSession,
+  workspaceShell,
 } from '../../examples/shared/terminal.ts'
 
 type Listener = (event: ProcessEvent) => void | Promise<void>
@@ -194,4 +195,16 @@ describe('workspace terminal session (fake owned process)', () => {
     expect(child!.released).toBe(1)
     expect(terminal.current.status).toBe('released')
   })
+})
+
+test('the workspace shell is one fixed executable with an explicit environment', () => {
+  const shell = workspaceShell()
+  if (process.platform === 'win32') {
+    expect(shell.executable.toLowerCase()).toEndWith('\\system32\\cmd.exe')
+    expect(Object.keys(shell.env).sort()).toEqual(['COMSPEC', 'PATH', 'SystemRoot'])
+  } else {
+    expect(shell.executable).toBe('/bin/sh')
+    expect(shell.env).toMatchObject({ TERM: 'dumb', PS1: '$ ' })
+    expect(Object.keys(shell.env).sort()).toEqual(['HOME', 'PATH', 'PS1', 'TERM'])
+  }
 })
