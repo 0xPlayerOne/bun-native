@@ -452,7 +452,7 @@ def qualify(framework, output, host, bun):
                         stderr=subprocess.PIPE,
                         start_new_session=True,
                     )
-                    audit = PROCESS.ProcessAudit(app, host, bun)
+                    audit = PROCESS.ProcessAudit(app, host, bun, GENERATIONS)
                     stdout = PROCESS.Capture(
                         app.stdout,
                         output / "stdout.log",
