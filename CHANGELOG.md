@@ -1,5 +1,24 @@
 # Changelog
 
+## [0.30.0](https://github.com/0xPlayerOne/bun-native/compare/v0.29.0...v0.30.0) (2026-11-10)
+
+
+### Features
+
+* **accessibility:** assistive-technology requests, character bounds and modal hiding ([#241](https://github.com/0xPlayerOne/bun-native/issues/241)) ([#595](https://github.com/0xPlayerOne/bun-native/issues/595)) ([2d7f647](https://github.com/0xPlayerOne/bun-native/commit/2d7f647cece444ca5ed832414737f45012bc7c00))
+* verified update launcher and keyed-signing CLI; drag close test ([#600](https://github.com/0xPlayerOne/bun-native/issues/600)) ([cfc413a](https://github.com/0xPlayerOne/bun-native/commit/cfc413ad3034684f60eee1f632049b2fe9b113db)), closes [#249](https://github.com/0xPlayerOne/bun-native/issues/249)
+
+
+### Performance
+
+* **ci:** compile only each Linux shard's AOT entries and rebalance shards ([#605](https://github.com/0xPlayerOne/bun-native/issues/605)) ([5bb3b46](https://github.com/0xPlayerOne/bun-native/commit/5bb3b461e1147941fc2ab873f195fcac301161b9))
+* **ci:** shard Native Linux, fold duplicate jobs, skip GPUI suites on docs-only PRs ([#601](https://github.com/0xPlayerOne/bun-native/issues/601)) ([a46d55a](https://github.com/0xPlayerOne/bun-native/commit/a46d55a2678db2ccec33bdea5a6d6bd542b75fc5))
+
+
+### Tests
+
+* **wayland:** IME composition and editing through the compositor ([#241](https://github.com/0xPlayerOne/bun-native/issues/241)) ([#603](https://github.com/0xPlayerOne/bun-native/issues/603)) ([40fd380](https://github.com/0xPlayerOne/bun-native/commit/40fd380d4b48658351509ebf11ab34070d0fb5c1))
+
 ## [0.29.0](https://github.com/0xPlayerOne/bun-native/compare/v0.28.0...v0.29.0) (2026-11-10)
 
 
