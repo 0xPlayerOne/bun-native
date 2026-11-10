@@ -30,6 +30,7 @@ bun-native-windows-services = { path = "../windows-services" }
 # the keys randomized per process at runtime.
 ahash = { version = "=0.8.12", default-features = false, features = ["runtime-rng"] }
 raw-window-handle = "=0.6.2"
+bun-native-posix-services = { path = "../posix-services" }
 pty-process = "=0.5.4"
 rustix = { version = "=1.1.6", features = ["event", "fs", "net", "process", "termios"] }
 x11rb = "=0.13.2"

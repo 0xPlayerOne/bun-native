@@ -169,7 +169,16 @@ export interface ServiceCapabilities {
     | Readonly<{
         availability: 'available'
         /** Launch-policy executables by ID; nothing else can be started. */
-        executables: Readonly<Record<string, Readonly<{ executable: string }>>>
+        executables: Readonly<
+          Record<
+            string,
+            Readonly<{
+              executable: string
+              /** Limits every child of this entry runs under, when the launch policy set any. */
+              limits?: Readonly<{ cpuSeconds?: number; memoryBytes?: number; openFiles?: number }>
+            }>
+          >
+        >
         scope: 'owned_window'
         /** POSIX process groups and PTYs, or Windows job objects and ConPTY. */
         backend: ProcessBackend
@@ -330,7 +339,22 @@ export function serviceCapabilities(
             Object.fromEntries(
               policy.processes.map((entry) => [
                 entry.id,
-                Object.freeze({ executable: entry.executable }),
+                Object.freeze({
+                  executable: entry.executable,
+                  ...(entry.limits && {
+                    limits: Object.freeze({
+                      ...(entry.limits.cpu_seconds !== undefined && {
+                        cpuSeconds: entry.limits.cpu_seconds,
+                      }),
+                      ...(entry.limits.memory_bytes !== undefined && {
+                        memoryBytes: entry.limits.memory_bytes,
+                      }),
+                      ...(entry.limits.open_files !== undefined && {
+                        openFiles: entry.limits.open_files,
+                      }),
+                    }),
+                  }),
+                }),
               ])
             )
           ),

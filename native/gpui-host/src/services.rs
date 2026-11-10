@@ -3,7 +3,7 @@
 use crate::{channel::EventSink, state::SharedWindowState};
 use bun_native_protocol::{
     DisplayBounds, DisplaySnapshot, ErrorCode, Event, FileAccess, FilesystemRoot,
-    ProcessExecutable, ServicePolicy, WindowId, validate_filesystem_roots,
+    ProcessExecutable, ProcessLimits, ServicePolicy, WindowId, validate_filesystem_roots,
     validate_process_executables,
 };
 use gpui::{AnyWindowHandle, App, Bounds, Pixels, Subscription, Window};
@@ -82,6 +82,9 @@ pub(crate) const DRAG_DROP_ARGUMENT: &str = "--bun-native-allow-drag-drop";
 pub(crate) const FILESYSTEM_ROOT_ARGUMENT: &str = "--bun-native-filesystem-root=";
 /// `--bun-native-process=<id>:<absolute executable path>`.
 pub(crate) const PROCESS_ARGUMENT: &str = "--bun-native-process=";
+/// `--bun-native-process-limits=<id>:cpu_seconds=N,memory_bytes=N,open_files=N`,
+/// after that executable's own argument.
+pub(crate) const PROCESS_LIMITS_ARGUMENT: &str = "--bun-native-process-limits=";
 
 /// Whether a validated absolute launch path is in this platform's form: a
 /// Windows host opens only drive paths, a POSIX host only `/` paths.
@@ -100,6 +103,7 @@ fn process_executable(argument: &str) -> Result<ProcessExecutable, &'static str>
     let entry = ProcessExecutable {
         id: id.into(),
         executable: executable.into(),
+        limits: None,
     };
     entry.validate()?;
     if !native_path(&entry.executable) {
@@ -171,6 +175,21 @@ pub(crate) fn policy(
         {
             policy.processes.push(process_executable(entry)?);
             validate_process_executables(&policy.processes)?;
+            continue;
+        }
+        if let Some(text) = argument
+            .to_str()
+            .and_then(|value| value.strip_prefix(PROCESS_LIMITS_ARGUMENT))
+        {
+            const UNGRANTED: &str = "process limits must follow their granted executable, once";
+            let (id, limits) = text.split_once(':').ok_or(UNGRANTED)?;
+            let entry = policy
+                .processes
+                .iter_mut()
+                .find(|entry| entry.id == id)
+                .filter(|entry| entry.limits.is_none())
+                .ok_or(UNGRANTED)?;
+            entry.limits = Some(ProcessLimits::from_argument(limits)?);
             continue;
         }
         let permission = if argument == DISPLAY_PERMISSION_ARGUMENT {
@@ -512,10 +531,12 @@ mod tests {
                 ProcessExecutable {
                     id: "shell".into(),
                     executable: shell.into(),
+                    limits: None,
                 },
                 ProcessExecutable {
                     id: "tool".into(),
                     executable: tool.into(),
+                    limits: None,
                 },
             ]
         );
@@ -542,5 +563,51 @@ mod tests {
             .map(|index| OsString::from(format!("--bun-native-process=p{index}:{shell}")))
             .collect();
         assert!(policy(many).is_err());
+        let limited = policy(
+            [
+                format!("--bun-native-process=shell:{shell}"),
+                "--bun-native-process-limits=shell:cpu_seconds=2,open_files=16".into(),
+            ]
+            .map(OsString::from),
+        )
+        .unwrap()
+        .processes;
+        assert_eq!(
+            limited[0].limits,
+            Some(ProcessLimits {
+                cpu_seconds: Some(2),
+                memory_bytes: None,
+                open_files: Some(16),
+            })
+        );
+        for arguments in [
+            // Before its executable, for another ID, twice, or malformed.
+            vec![
+                "--bun-native-process-limits=shell:cpu_seconds=2".into(),
+                format!("--bun-native-process=shell:{shell}"),
+            ],
+            vec![
+                format!("--bun-native-process=shell:{shell}"),
+                "--bun-native-process-limits=tool:cpu_seconds=2".into(),
+            ],
+            vec![
+                format!("--bun-native-process=shell:{shell}"),
+                "--bun-native-process-limits=shell:cpu_seconds=2".into(),
+                "--bun-native-process-limits=shell:open_files=8".into(),
+            ],
+            vec![
+                format!("--bun-native-process=shell:{shell}"),
+                "--bun-native-process-limits=shell:cpu_seconds=0".into(),
+            ],
+            vec![
+                format!("--bun-native-process=shell:{shell}"),
+                "--bun-native-process-limits=shell".into(),
+            ],
+        ] {
+            assert!(
+                policy(arguments.iter().map(OsString::from)).is_err(),
+                "{arguments:?}"
+            );
+        }
     }
 }

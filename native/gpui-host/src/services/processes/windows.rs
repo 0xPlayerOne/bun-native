@@ -42,7 +42,7 @@ use crate::services::files::working_directory;
 use async_channel::Sender;
 use bun_native_protocol::{
     ErrorCode, MAX_FILE_CHUNK_BYTES, MAX_PROCESS_OUTPUT_CREDIT, ProcessExit, ProcessId,
-    ProcessSignal, ProcessStream, TerminalSize,
+    ProcessLimits, ProcessSignal, ProcessStream, TerminalSize,
 };
 use bun_native_windows_services::command_line;
 use bun_native_windows_services::fs;
@@ -209,6 +209,18 @@ pub(super) fn signal(
         .map_err(|_| (ErrorCode::NativeFailure, "cannot signal the process"))
 }
 
+/// A job object limits CPU time and committed memory per process; Windows
+/// has no per-process open-handle limit, so that limit is refused.
+pub(super) fn supported_limits(limits: ProcessLimits) -> Result<(), Failure> {
+    if limits.open_files.is_some() {
+        return Err((
+            ErrorCode::ServiceUnavailable,
+            "Windows cannot enforce a process open-files limit",
+        ));
+    }
+    Ok(())
+}
+
 fn exit_of(code: u32) -> ProcessExit {
     match code ^ SIGNALLED {
         signal @ (9 | 15) => ProcessExit {
@@ -303,12 +315,19 @@ impl Job {
             .iter()
             .map(|(name, value)| (name.as_str(), value.as_str()))
             .collect();
-        let job = Arc::new(native::Job::new().map_err(|_| {
-            (
-                ErrorCode::NativeFailure,
-                "cannot create a process job object",
-            )
-        })?);
+        let limits = self.limits.unwrap_or_default();
+        let job = Arc::new(
+            native::Job::new(native::JobLimits {
+                cpu_seconds: limits.cpu_seconds,
+                memory_bytes: limits.memory_bytes,
+            })
+            .map_err(|_| {
+                (
+                    ErrorCode::NativeFailure,
+                    "cannot create a process job object",
+                )
+            })?,
+        );
         let command = |stdio| Command {
             application: &application,
             command_line: &line,
@@ -588,6 +607,7 @@ mod tests {
         let job = Job {
             process: ProcessId::try_from(1).unwrap(),
             executable,
+            limits: None,
             launch: ProcessLaunch {
                 executable: "shell".into(),
                 args: vec!["/d".into(), "/s".into(), "/c".into(), script.into()],
