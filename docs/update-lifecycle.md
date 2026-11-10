@@ -49,7 +49,7 @@ Revocation is therefore permanent. A revoked key cannot sign its way back in, an
 
 **Retained releases.** `rollback(root, { keys })` and `launch(root, { keys })` refuse a release that is unsigned, was signed by a revoked key, or has a sequence below `minimumSequence`. A key that was dropped without being revoked is retired, not distrusted, so its releases stay usable. Without `keys`, `rollback` behaves as before.
 
-Known limits: one signature authorizes a rotation, so a stolen current key can rotate until it is revoked by a set that the installation has already accepted. There are no thresholds, expiry times or transparency logs. No CLI command exposes keyed signing or rotation yet.
+Known limits: one signature authorizes a rotation, so a stolen current key can rotate until it is revoked by a set that the installation has already accepted. There are no thresholds, expiry times or transparency logs. The CLI exposes keyed signing (`keygen`, `key-set`, `sign --keyed`), rotation (`rotate`, or `install --rotation`) and keyed installs (`install --key-set`).
 
 ## Launcher contract
 
@@ -61,7 +61,16 @@ Known limits: one signature authorizes a rotation, so a stolen current key can r
 4. It re-hashes every file of the current release against the digests recorded at install time, using the same `verifyRelease` as `rollback`. A missing or modified file fails as `integrity`.
 5. It reads the release's build `manifest.json`, rechecks its digest and takes `application.file`. That file must be recorded as executable with the same SHA-256, and on POSIX must have its execute bit. Otherwise it fails as `integrity`.
 
-It returns the absolute `executable`, the release `directory`, the `data` directory to pass as `BUN_NATIVE_DATA_DIR`, the release record, the health status and, when this launch rolled back, the failed release. The guarantee holds at verification time. A same-user process that changes files between `launch` and `exec` is outside the threat model, and every file is hashed on each start. The generated shell and `cmd` launchers in [updates](updates.md) still follow the `current` pointer without verification. Wiring them, or the AOT application, to this contract is not done yet.
+It returns the absolute `executable`, the release `directory`, the `data` directory to pass as `BUN_NATIVE_DATA_DIR`, the release record, the health status and, when this launch rolled back, the failed release. The guarantee holds at verification time. A same-user process that changes files between `launch` and `exec` is outside the threat model, and every file is hashed on each start. The generated shell and `cmd` launchers in [updates](updates.md) still follow the `current` pointer without verification.
+
+**Verified launcher.** `release-update.ts launch --root R [-- args]` runs this contract and then starts the application. `release-update.ts launcher --out PATH` compiles the same code (`scripts/native/verified-launcher.ts`) with `bun build --compile` into a standalone executable for the build machine's platform. `integrate --verified-launcher PATH` installs it as `bin/<product>` (`bin/<product>.exe` on Windows) in place of the pointer script. The menu entries start it, and the macOS `.app` wrapper delegates to it, because the launcher derives the installation root from its own location. On every start the launcher does the following:
+
+1. It resolves the release with `launch`. That counts a pending start, or rolls back an unconfirmed release and says so on stderr.
+2. It applies the key set persisted by the last accepted rotation, or the `--key-set` bootstrap set from the CLI.
+3. It starts the application with `BUN_NATIVE_DATA_DIR`, `BUN_NATIVE_INSTALL_ROOT` and `BUN_NATIVE_RELEASE`, the manifest SHA-256 that `confirm` and `report-unhealthy` take.
+4. It forwards `SIGTERM` and `SIGHUP`, and exits with the application's code, or 128 plus the signal number.
+
+A refusal exits 1 without starting anything. Wiring the AOT application itself to call `confirmHealthy` is not done. An application, or a supervisor script, confirms through `release-update.ts confirm`.
 
 ## Health-checked activation and automatic rollback
 
@@ -108,5 +117,15 @@ While a release is pending, `install` refuses another update as `state`, so an u
 - confirmation, stale confirmations, explicit failure, manual rollback while pending and refused reinstalls of a failed sequence
 - a modified fallback failing closed
 - the `SIGKILL` crash matrix above, which is skipped on Windows
+
+`bun test tests/tooling/update-cli.test.ts` drives the same paths through the CLI with a real executable as the application (a copy of the running Bun):
+
+- keygen, key sets and keyed signatures
+- a rotation shipped with an update
+- a health-limited install and the verified launch, with the environment and exit code checked
+- the automatic rollback after an unconfirmed start
+- a revocation that refuses the retained release
+- confirm and report-unhealthy
+- the compiled launcher installed by `integrate`, which starts the release and refuses a modified one
 
 Not verified: real `native build` output, a running GPUI application calling `confirmHealthy`, macOS or Windows, and replacement of running Windows executables.

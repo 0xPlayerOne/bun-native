@@ -422,10 +422,20 @@ async function qualification() {
     mark = log.length
     await xdnd.enter(130, 150)
     await until('drag entry', () => log.length > mark)
+    // Close revokes the target before it returns. A leave the platform
+    // delivered before the close (AppKit can send draggingExited as the
+    // pointer settles) is a legitimate event; nothing may follow the close.
+    const closedAt = log.length
     await left.close()
     assert.equal(left.active, false)
     await xdnd.drop()
-    assert.deepEqual(await since(mark), [{ target: 'left', type: 'drag_entered' }])
+    const delivered = await since(mark)
+    assert.deepEqual(delivered.slice(0, 1), [{ target: 'left', type: 'drag_entered' }])
+    assert.deepEqual(
+      delivered.slice(1, closedAt - mark),
+      closedAt - mark > 1 ? [{ target: 'left', type: 'drag_left' }] : []
+    )
+    assert.deepEqual(delivered.slice(closedAt - mark), [])
     await left.close() // Idempotent.
 
     // Removing a target's node mid-drag revokes it; the drop falls to its parent.
