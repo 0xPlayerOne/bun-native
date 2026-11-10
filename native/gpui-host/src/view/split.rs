@@ -67,6 +67,8 @@ enum Step {
     },
     Minimum,
     Maximum,
+    /// An assistive technology's requested ratio, on either axis.
+    To(f64),
 }
 
 struct SplitState {
@@ -209,6 +211,8 @@ fn stepped(
         Step::By { delta, .. } => ((ratio + delta) * 10_000.).round() / 10_000.,
         Step::Minimum => low,
         Step::Maximum => high,
+        Step::To(target) if target.is_finite() => target,
+        Step::To(_) => return Some(ratio),
     };
     Some(target.clamp(low, high))
 }
@@ -223,6 +227,53 @@ fn bind<A: gpui::Action>(
 ) -> Stateful<Div> {
     divider
         .on_action(cx.listener(move |view, _: &A, _, cx| view.step_divider(node_id, step, row, cx)))
+}
+
+/// Assistive-technology requests on a divider: AccessKit Increment and
+/// Decrement are one arrow step along the split's own axis, and SetValue takes
+/// a percentage like the exposed value. Each is reported as a keyboard resize,
+/// because it is a discrete, focus-independent step rather than a drag.
+fn assistive(
+    divider: Stateful<Div>,
+    node_id: NodeId,
+    row: bool,
+    cx: &mut Context<NativeView>,
+) -> Stateful<Div> {
+    let view = cx.entity();
+    let request = move |step: fn(Option<&accesskit::ActionData>, bool) -> Option<Step>| {
+        let view = view.clone();
+        move |data: Option<&accesskit::ActionData>, _: &mut Window, cx: &mut App| {
+            if let Some(step) = step(data, row) {
+                view.update(cx, |view, cx| view.step_divider(node_id, step, row, cx));
+            }
+        }
+    };
+    divider
+        .on_a11y_action(
+            accesskit::Action::Increment,
+            request(|_, row| {
+                Some(Step::By {
+                    row,
+                    delta: KEYBOARD_STEP,
+                })
+            }),
+        )
+        .on_a11y_action(
+            accesskit::Action::Decrement,
+            request(|_, row| {
+                Some(Step::By {
+                    row,
+                    delta: -KEYBOARD_STEP,
+                })
+            }),
+        )
+        .on_a11y_action(
+            accesskit::Action::SetValue,
+            request(|data, _| match data {
+                Some(accesskit::ActionData::NumericValue(value)) => Some(Step::To(value / 100.)),
+                _ => None,
+            }),
+        )
 }
 
 fn pixels(value: Pixels) -> f64 {
@@ -335,6 +386,10 @@ impl NativeView {
         if let Some(label) = node.element().accessible_label() {
             divider = divider.aria_label(label.to_owned());
         }
+        let hidden =
+            super::accessibility::beneath_modal(tree, node_id, self.overlays.active_modal());
+        let divider = super::accessibility::states(divider, false, hidden);
+        let divider = assistive(divider, node_id, row, cx);
         let step = |delta: f64, axis: bool| Step::By { row: axis, delta };
         let divider = bind::<DividerLeft>(divider, node_id, step(-KEYBOARD_STEP, true), row, cx);
         let divider = bind::<DividerRight>(divider, node_id, step(KEYBOARD_STEP, true), row, cx);
@@ -542,5 +597,27 @@ mod tests {
         // Before the first layout only the 0-1 range applies.
         assert_eq!(stepped(0.5, Step::Minimum, false, None, 100.), Some(0.));
         assert_eq!(stepped(0.995, right, true, None, 0.), Some(1.));
+    }
+
+    #[test]
+    fn assistive_values_apply_on_either_axis_within_the_limits() {
+        assert_eq!(stepped(0.5, Step::To(0.3), true, Some(400.), 0.), Some(0.3));
+        assert_eq!(
+            stepped(0.5, Step::To(0.3), false, Some(400.), 0.),
+            Some(0.3)
+        );
+        assert_eq!(
+            stepped(0.5, Step::To(0.1), true, Some(400.), 100.),
+            Some(0.25)
+        );
+        assert_eq!(
+            stepped(0.5, Step::To(2.), true, Some(400.), 100.),
+            Some(0.75)
+        );
+        // A non-finite request leaves the ratio unchanged.
+        assert_eq!(
+            stepped(0.4, Step::To(f64::NAN), true, Some(400.), 0.),
+            Some(0.4)
+        );
     }
 }

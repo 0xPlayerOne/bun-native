@@ -114,6 +114,46 @@ impl InputPaint {
     }
 }
 
+impl InputPaint {
+    /// What a later paint must match for this paint's exposed geometry.
+    pub(super) fn geometry_key(&self, scale: f32) -> super::accessible::GeometryKey {
+        super::accessible::GeometryKey {
+            text: self.line.text.clone(),
+            viewport: self.viewport,
+            scale,
+        }
+    }
+
+    /// Character bounds for accessibility, only when this paint shows `content`.
+    pub(super) fn accessible_geometry(
+        &self,
+        content: &str,
+        lengths: &[u8],
+        scale: f32,
+    ) -> Option<super::accessible::RunGeometry> {
+        (self.line.text.as_ref() == content).then(|| {
+            let glyphs = self
+                .line
+                .runs
+                .iter()
+                .flat_map(|run| &run.glyphs)
+                .map(|glyph| super::accessible::PaintedGlyph {
+                    x: glyph.position.x,
+                    index: glyph.index,
+                })
+                .collect();
+            super::accessible::run_geometry(
+                lengths,
+                self.viewport,
+                scale,
+                glyphs,
+                self.line.width,
+                |index| self.line.x_for_index(index),
+            )
+        })
+    }
+}
+
 impl PaintedLine for InputPaint {
     fn text(&self) -> &str {
         &self.line.text

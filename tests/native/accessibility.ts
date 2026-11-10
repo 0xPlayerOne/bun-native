@@ -82,6 +82,9 @@ type Accessible = {
   states: string[]
   depth: number
   text?: string
+  caret?: number
+  selections?: number[][]
+  extents?: number[][]
   value?: { current: number; minimum: number; maximum: number }
 }
 
@@ -180,6 +183,10 @@ try {
   for (const [node, name] of names) watchFocus(node, name)
   const resizes: SplitResizeEvent[] = []
   onSplitResize(owned, nodes.split, (event) => void resizes.push(event))
+  const searchValues: string[] = []
+  owned.onInput(nodes.search, (event) => void searchValues.push(event.value))
+  let actionClicks = 0
+  owned.onClick(nodes.action, () => void (actionClicks += 1))
   const keyTargets: string[] = []
   owned.on(nodes.split, 'key_down', (event) => {
     if (event.node === nodes.split) keyTargets.push(event.key)
@@ -290,6 +297,77 @@ try {
   const roles = [...new Set(initial.map((node) => node.role))].sort()
   assert.deepEqual(roles, ['entry', 'label', 'panel', 'push-button', 'separator'])
   record('initialTree', { roles, nodes: initial.length })
+
+  // Character bounds come from the painted glyphs: each character of the
+  // entry has a box, left to right, inside the entry.
+  const boxes = entry.extents ?? []
+  assert.equal(boxes.length, 'typed'.length)
+  for (const [index, box] of boxes.entries()) {
+    assert(box[2]! > 0 && box[3]! > 0, 'a painted character has a non-empty box')
+    if (index > 0) assert(box[0]! >= boxes[index - 1]![0]! + boxes[index - 1]![2]! - 1)
+  }
+  record('characterBounds', boxes)
+
+  // Requests from an assistive technology, through AT-SPI: caret and
+  // selection moves reach the host model (later OS typing lands there), a
+  // button's action clicks it, grab_focus focuses, and the divider's Value
+  // interface sets its ratio.
+  const act = (role: string, name: string, ...request: string[]) =>
+    run([atspiPython, '-I', probe, 'act', TITLE, role, name, ...request])
+  const entryText = (tree: Accessible[]) => tree.find((node) => node.role === 'entry')
+  await act('entry', 'typed', 'caret', '2')
+  await poll('caret set', (tree) => entryText(tree)?.caret === 2)
+  await press('X')
+  await waitFor(
+    () => searchValues.at(-1) === 'tyXped',
+    'typing at the AT caret',
+    5_000,
+    () => searchValues.join()
+  )
+  await act('entry', 'tyXped', 'select', '0', '2')
+  const selected = await poll(
+    'selection set',
+    (tree) => JSON.stringify(entryText(tree)?.selections) === '[[0,2]]'
+  )
+  await press('Z')
+  await waitFor(() => searchValues.at(-1) === 'ZXped', 'typing over the AT selection')
+  focusTrace.length = 0
+  await act('push-button', 'Leading action', 'click')
+  await waitFor(
+    () => actionClicks === 1,
+    'AT click',
+    5_000,
+    () => focusTrace.join()
+  )
+  await act('entry', 'ZXped', 'focus')
+  await waitFor(
+    () => focusTrace.at(-1) === 'search',
+    'AT focus',
+    5_000,
+    () => focusTrace.join()
+  )
+  const resizedFrom = resizes.length
+  await act('separator', 'Sidebar', 'value', '30')
+  await waitFor(() => resizes.length === resizedFrom + 1, 'AT divider value')
+  near(resizes.at(-1)!.ratio, 0.3, 'AT-set ratio', 1e-9)
+  assert.equal(resizes.at(-1)!.source, 'keyboard', 'an AT step is a discrete keyboard resize')
+  await poll(
+    'divider value set',
+    (tree) => Math.abs((separator(tree)?.value?.current ?? -1) - 30) < 1e-6
+  )
+  await act('separator', 'Sidebar', 'value', '1')
+  await waitFor(() => resizes.length === resizedFrom + 2, 'AT divider value clamped')
+  near(resizes.at(-1)!.ratio, MIN_PANE / PANES, 'AT value clamps to min_size', 1e-9)
+  await act('separator', 'Sidebar', 'value', '40')
+  await waitFor(() => resizes.length === resizedFrom + 3, 'AT divider value restored')
+  near(resizes.at(-1)!.ratio, 0.4, 'restored ratio', 1e-9)
+  record('assistiveActions', {
+    values: searchValues.slice(),
+    selection: entryText(selected)?.selections,
+    clicks: actionClicks,
+    focus: focusTrace.slice(),
+    ratios: resizes.slice(resizedFrom).map(({ ratio, source }) => ({ ratio, source })),
+  })
 
   // Tab order places the divider between its panes: Shift+Tab from the input.
   focusTrace.length = 0
@@ -421,6 +499,11 @@ try {
     ['label:Discard changes?', 'push-button:Confirm', 'push-button:Cancel'],
     'dialog content is nested under the dialog'
   )
+  // Content beneath the modal layer leaves the accessibility tree, as
+  // aria-modal content does; the dialog subtree is all that remains.
+  const beneath = opened.filter((node) => node.depth <= dialogNode.depth && node !== dialogNode)
+  assert.deepEqual(beneath, [], 'nothing beneath the modal dialog is exposed')
+  assert.equal(opened.length, inside.length + 1, 'only the dialog and its content')
   focusTrace.length = 0
   for (let index = 0; index < 3; index += 1) await press('Tab')
   await waitFor(() => focusTrace.filter((name) => !name.startsWith('-')).length === 3, 'modal Tab')
@@ -432,6 +515,11 @@ try {
   await waitFor(() => dialog === undefined && focusTrace.at(-1) === 'open', 'dialog closed')
   const closed = await poll('closed', (tree) => !tree.some((node) => node.role === 'dialog'))
   assert(find(closed, 'push-button', 'Open dialog')?.states.includes('focused'))
+  assert.deepEqual(
+    [...new Set(closed.map((node) => node.role))].sort(),
+    roles,
+    'the content beneath returns when the dialog closes'
+  )
   record('modalDialog', { focusAfterClose: focusTrace.at(-1) })
 
   writeFileSync(join(output, 'atspi-trees.json'), JSON.stringify(dumps, null, 2) + '\n')

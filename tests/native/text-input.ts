@@ -162,6 +162,165 @@ try {
   const ids = (await run(['xdotool', 'search', '--sync', '--name', '^' + TITLE + '$'])).split('\n')
   assert.equal(ids.length, 1, 'exactly one owned window')
   const xid = ids[0]!
+
+  type Entry = { role: string; text?: string; extents?: number[][] }
+  /**
+   * Bidirectional display oracle: the AT-SPI character extents of the focused
+   * entry come from the host's painted glyphs. Latin characters advance to
+   * the right, the Hebrew letters after them run right to left in logical
+   * order, and every box covers dark glyph ink in a capture of the window.
+   */
+  const rtlLayout = async (text: string) => {
+    let entry: Entry | undefined
+    const until = performance.now() + 5_000
+    while (!entry?.extents?.every((box) => box[2]! >= 0)) {
+      const tree = JSON.parse(await run([atspiPython!, '-I', probe, 'dump', TITLE])) as {
+        roles: Entry[]
+      }
+      entry = tree.roles.find((node) => node.role === 'entry' && node.text === text)
+      if (performance.now() > until)
+        throw new Error('no painted extents for ' + text + ': ' + JSON.stringify(entry))
+      await Bun.sleep(50)
+    }
+    const boxes = entry!.extents!
+    const characters = [...text]
+    assert.equal(boxes.length, characters.length)
+    const hebrew = characters.findIndex((character) => /[\u0590-\u05ff]/.test(character))
+    for (let index = 1; index < hebrew; index += 1)
+      assert(boxes[index]![0]! >= boxes[index - 1]![0]! + boxes[index - 1]![2]! - 1, 'LTR order')
+    for (let index = hebrew + 1; index < characters.length; index += 1)
+      assert(
+        boxes[index]![0]! + boxes[index]![2]! <= boxes[index - 1]![0]! + 1,
+        'each later Hebrew letter is painted left of the one before it'
+      )
+    const space = boxes[hebrew - 1]!
+    assert(
+      boxes.slice(hebrew).every((box) => box[0]! >= space[0]! + space[2]! - 1),
+      'the Hebrew run is painted after the Latin run'
+    )
+    const capture = join(output, 'rtl-layout.png')
+    await run(['import', '-window', xid, capture])
+    const ink = await Promise.all(
+      boxes
+        .slice(hebrew)
+        .map(async ([x, y, w, h]) =>
+          Number(
+            await run([
+              'convert',
+              capture,
+              '-crop',
+              `${w}x${h}+${x}+${y}`,
+              '-colorspace',
+              'Gray',
+              '-format',
+              '%[fx:minima]',
+              'info:',
+            ])
+          )
+        )
+    )
+    assert(
+      ink.every((darkest) => darkest < 0.5),
+      'every Hebrew box covers glyph ink: ' + ink.join()
+    )
+    return { boxes, ink }
+  }
+
+  /** Painted extents of the entries showing `values`, once every box is painted. */
+  const paintedEntries = async (values: string[]) => {
+    const until = performance.now() + 5_000
+    for (;;) {
+      const tree = JSON.parse(await run([atspiPython!, '-I', probe, 'dump', TITLE])) as {
+        roles: Entry[]
+      }
+      const entries = values.map((value) =>
+        tree.roles.find((node) => node.role === 'entry' && node.text === value)
+      )
+      if (entries.every((entry) => entry?.extents?.every((box) => box[2]! >= 0)))
+        return entries.map((entry) => entry!.extents!)
+      if (performance.now() > until)
+        throw new Error('no painted extents for ' + values.join() + ': ' + JSON.stringify(entries))
+      await Bun.sleep(50)
+    }
+  }
+  /** Per-column darkest gray (0..255) of one capture region. */
+  const columns = async (capture: string, x: number, y: number, w: number, h: number) =>
+    (
+      await run([
+        'convert',
+        capture,
+        '-crop',
+        `${w}x${h}+${x}+${y}`,
+        '+repage',
+        '-colorspace',
+        'Gray',
+        '-morphology',
+        'Erode',
+        `Rectangle:1x${h * 2 + 1}`,
+        '-crop',
+        `${w}x1+0+0`,
+        '+repage',
+        '-depth',
+        '8',
+        'txt:-',
+      ])
+    )
+      .split('\n')
+      .slice(1)
+      .map((line) => Number(/\((\d+)/.exec(line)?.[1]))
+      .filter((gray, _, all) => {
+        assert(all.length === w && Number.isFinite(gray), 'one gray value per column')
+        return true
+      })
+  const arabicJoining = async (separated: string) => {
+    const [joined, apart] = await paintedEntries([ARABIC, separated])
+    const span = (boxes: number[][]) => {
+      const drawn = boxes.filter((box) => box[2]! > 0)
+      const left = Math.min(...drawn.map((box) => box[0]!))
+      return [left, Math.max(...drawn.map((box) => box[0]! + box[2]!)) - left] as const
+    }
+    const [joinedLeft, joinedWidth] = span(joined!)
+    const [, apartWidth] = span(apart!)
+    assert(
+      joinedWidth < apartWidth * 0.85,
+      `joined forms are narrower than isolated ones: ${joinedWidth} vs ${apartWidth}`
+    )
+    // Logical order seen, lam, alef, meem; right to left on screen.
+    const [seen, lam] = joined!
+    assert(seen![0]! > lam![0]!, 'seen is painted right of lam')
+    const capture = join(output, 'arabic-joining.png')
+    await run(['import', '-window', xid, capture])
+    const blank = 250
+    const joinedColumns = await columns(
+      capture,
+      lam![0]!,
+      seen![1]!,
+      seen![0]! + seen![2]! - lam![0]!,
+      seen![3]!
+    )
+    // The boundary between the two joined glyphs, plus or minus 2 px.
+    const boundary = seen![0]! - lam![0]!
+    const near = joinedColumns.slice(Math.max(0, boundary - 2), boundary + 3)
+    assert(
+      near.every((gray) => gray < blank),
+      'ink connects seen and lam across their boundary: ' + near.join()
+    )
+    // The separated word: seen is the first character, lam the third (after ZWNJ).
+    const apartSeen = apart![0]!
+    const apartLam = apart![2]!
+    const apartColumns = await columns(
+      capture,
+      apartLam[0]!,
+      apartSeen[1]!,
+      apartSeen[0]! + apartSeen[2]! - apartLam[0]!,
+      apartSeen[3]!
+    )
+    assert(
+      apartColumns.some((gray) => gray >= blank),
+      'isolated seen and lam are separated by a blank column: ' + apartColumns.join()
+    )
+    return { joinedLeft, joinedWidth, apartWidth, boundaryInk: near }
+  }
   await run(['xdotool', 'windowactivate', '--sync', xid])
   // The first enabled input owns initial focus once the window is active.
   await waitFor(() => focusTrace.includes('edit'), 'initial input focus')
@@ -208,6 +367,7 @@ try {
     () => JSON.stringify(values.edit.slice(typedFrom))
   )
   assert.equal(values.edit.length - typedFrom, [...HEBREW].length)
+  if (atspiEnabled) record('rtlLayout', await rtlLayout('Ca ' + HEBREW))
   // Backspace removes the logically previous (visually leftmost) letter.
   await press('BackSpace')
   await waitFor(() => lastEdit() === 'Ca ' + HEBREW.slice(0, -1), 'RTL backspace')
@@ -344,6 +504,18 @@ try {
       nodes: tree.roles.length,
       entries: entries.map(({ text, caret, states }) => ({ text, caret, states })),
     })
+
+    // Arabic joining: the same four letters painted joined, and painted with
+    // ZERO WIDTH NON-JOINER between them, which forces isolated forms. Joined
+    // contextual forms and the lam-alef ligature make the word narrower; the
+    // joined seen-lam pair has glyph ink across its boundary, the separated
+    // one a blank column there.
+    const separated = [...ARABIC].join('\u200c')
+    await owned.batch((batch) => {
+      batch.set(edit, { kind: 'input', value: ARABIC }, owned.input(edit).revision)
+      batch.set(nodes.paste, { kind: 'input', value: separated }, owned.input(nodes.paste).revision)
+    })
+    record('arabicJoining', await arabicJoining(separated))
   } else {
     record('accessibility', { status: 'not-run', reason: 'BUN_NATIVE_ATSPI_PYTHON not set' })
   }

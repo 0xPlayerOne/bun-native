@@ -476,6 +476,42 @@ jobs:
               Write-Output "::warning::macOS $mode menu bar contents and selections are unverified: $($report.oracle)"
             }
           }
+      - name: macOS and Windows development and AOT accessibility through AX and UI Automation (#241)
+        if: ${{ !cancelled() && steps.native-build.outcome == 'success' }}
+        timeout-minutes: 8
+        run: |
+          if ($IsMacOS) {
+            $oracle = Join-Path $env:NATIVE_EVIDENCE 'macos-accessibility-oracle'
+            xcrun clang -fobjc-arc -Wall -Wextra -Werror -framework AppKit -framework ApplicationServices `
+              tests/native/macos-accessibility-oracle.m -o $oracle
+            if ($LASTEXITCODE -ne 0) { throw 'The independent Accessibility client did not compile' }
+          } else {
+            $oracle = (Resolve-Path 'tests/native/windows-accessibility-oracle.ps1').Path
+          }
+          $env:BUN_NATIVE_A11Y_ORACLE = $oracle
+          $package = Join-Path $env:NATIVE_EVIDENCE 'accessibility-platform-package'
+          bun experiments/aot-gpui/build-window.ts --entry accessibility-platform `
+            --source $env:GITHUB_WORKSPACE --host $env:BUN_NATIVE_HOST `
+            --host-profile release --outdir $package
+          if ($LASTEXITCODE -ne 0) { throw 'The accessibility AOT compiler or inspection failed' }
+          $manifest = Get-Content -Raw (Join-Path $package 'manifest.json') | ConvertFrom-Json
+          foreach ($mode in @('development', 'aot')) {
+            $evidence = Join-Path $env:NATIVE_EVIDENCE "accessibility-platform-$mode"
+            New-Item -ItemType Directory $evidence | Out-Null
+            $env:BUN_NATIVE_A11Y_EVIDENCE = $evidence
+            $env:BUN_NATIVE_A11Y_MODE = $mode
+            if ($mode -eq 'development') {
+              bun tests/native/accessibility-platform.ts 2>&1 | Tee-Object -FilePath (Join-Path $evidence 'run.log')
+            } else {
+              & (Join-Path $package $manifest.application.file) 2>&1 |
+                Tee-Object -FilePath (Join-Path $evidence 'run.log')
+            }
+            if ($LASTEXITCODE -ne 0) { throw "${{ runner.os }} $mode accessibility qualification failed" }
+            $report = Get-Content -Raw (Join-Path $evidence 'result.json') | ConvertFrom-Json
+            if ($report.status -ne 'passed' -or $report.mode -ne $mode) {
+              throw "${{ runner.os }} $mode accessibility evidence does not record a pass"
+            }
+          }
       - name: Display snapshot, work area, identity and display-change qualification (#299)
         if: ${{ !cancelled() && steps.native-build.outcome == 'success' }}
         timeout-minutes: 8
@@ -719,6 +755,8 @@ jobs:
             !${{ runner.temp }}/bun-native-platform-evidence/filesystem-grants-package/filesystem-grants.exe
             !${{ runner.temp }}/bun-native-platform-evidence/display-platform-package/display-platform
             !${{ runner.temp }}/bun-native-platform-evidence/display-platform-package/display-platform.exe
+            !${{ runner.temp }}/bun-native-platform-evidence/accessibility-platform-package/accessibility-platform
+            !${{ runner.temp }}/bun-native-platform-evidence/accessibility-platform-package/accessibility-platform.exe
             !${{ runner.temp }}/bun-native-platform-evidence/drag-drop-package/drag-drop
             !${{ runner.temp }}/bun-native-platform-evidence/drag-drop-package/drag-drop.exe
             !${{ runner.temp }}/bun-native-platform-evidence/solid-drag-drop-package/solid-drag-drop

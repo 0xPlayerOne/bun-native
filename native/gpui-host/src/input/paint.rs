@@ -207,7 +207,9 @@ impl Element for TextElement {
             window.content_mask().bounds
         });
 
-        self.input.update(cx, |input, _cx| {
+        let a11y_active = window.is_a11y_active();
+        let scale = window.scale_factor();
+        let stale = self.input.update(cx, |input, _| {
             input.last_paint = Some(InputPaint {
                 line,
                 viewport: prepaint.viewport,
@@ -219,6 +221,18 @@ impl Element for TextElement {
                     cursor_byte: prepaint.cursor_byte,
                 },
             });
+            // Accessibility geometry is read from the previous paint during
+            // render; when this paint moved it, one more frame exposes it.
+            a11y_active
+                && input.a11y_painted
+                    != input
+                        .last_paint
+                        .as_ref()
+                        .map(|paint| paint.geometry_key(scale))
         });
+        if stale {
+            // A notification during paint is not a new frame; ask for one.
+            window.on_next_frame(|window, _| window.refresh());
+        }
     }
 }

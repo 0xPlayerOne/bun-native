@@ -259,6 +259,7 @@ impl NativeView {
             }
         }
         self.reconcile_overlays(focused_before, window, cx);
+        self.sync_input_accessibility(cx);
         self.reconcile_popups(cx);
         if window.focused(cx).is_none() {
             window.focus(&self.root_focus, cx);
@@ -348,7 +349,8 @@ impl NativeView {
         if let Some(chain) = drop_scope.target() {
             base = drop_target(base, chain, &self.drops);
         }
-        let base = accessibility::container(base, node.element());
+        let hidden = accessibility::beneath_modal(tree, node_id, self.overlays.active_modal());
+        let base = accessibility::container(base, node.element(), hidden);
         match node.element() {
             NativeElement::Box { .. } => self
                 .container(tree, node_id, base, layout, pointer, &drop_scope, cx)
@@ -382,22 +384,21 @@ impl NativeView {
                 &drop_scope,
                 cx,
             ),
-            NativeElement::Text { .. } => base
+            NativeElement::Text { .. } => accessibility::states(
                 // AccessKit names labels from their value.
-                .role(Role::Label)
-                .aria_value(self.label(node_id))
-                .child(self.label(node_id))
-                .into_any_element(),
+                base.role(Role::Label).aria_value(self.label(node_id)),
+                false,
+                hidden,
+            )
+            .child(self.label(node_id))
+            .into_any_element(),
             NativeElement::Button { disabled, .. } => {
-                let mut button = base
-                    .role(Role::Button)
-                    .aria_label(self.label(node_id))
-                    .child(self.label(node_id));
-                if *disabled {
-                    button = button.a11y_synthetic_children(|builder| {
-                        builder.parent_node().set_disabled();
-                    });
-                }
+                let mut button = accessibility::states(
+                    base.role(Role::Button).aria_label(self.label(node_id)),
+                    *disabled,
+                    hidden,
+                )
+                .child(self.label(node_id));
                 if !disabled {
                     let focus = self
                         .buttons
