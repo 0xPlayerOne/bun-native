@@ -1,14 +1,14 @@
 # Framework audit and optimization record (#260)
 
-This record closes the repository-wide audit in
-[#260](https://github.com/0xPlayerOne/bun-native/issues/260). It links each problem
-that was removed or measured, and it names the backlog that remains and why. It
-summarizes evidence recorded elsewhere and makes no new performance claim.
+This record tracks completed audit and optimization evidence for
+[#260](https://github.com/0xPlayerOne/bun-native/issues/260). It links problems
+removed or measured and the remaining backlog. The broader audit remains open
+until its acceptance criteria are met; this record makes no new performance claim.
 
 ## Hygiene
 
-These checks run in CI on every pull request, so hygiene is enforced continuously
-and not checked once:
+Ready-PR validation runs these checks, rather than relying on a one-time audit.
+Draft validation stops before the implementation and CodeQL checks execute:
 
 | Check                                     | What it rejects                                                        |
 | ----------------------------------------- | ---------------------------------------------------------------------- |
