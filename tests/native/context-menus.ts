@@ -119,7 +119,17 @@ try {
   // 1. The OS shows the given items with their state; pressing one answers it.
   {
     const pending = window.showContextMenu(items, at)
-    const shown = await ui('find', 'Copy')
+    pending.catch(() => {})
+    const shown = await ui('find', 'Copy').catch(async (error: unknown) => {
+      const settled = await Promise.race([
+        pending.then(
+          (result) => `resolved ${JSON.stringify(result)}`,
+          (rejection: unknown) => `rejected ${String(rejection)}`
+        ),
+        Bun.sleep(0).then(() => 'still pending'),
+      ])
+      throw new Error(`${String(error)} (the menu promise is ${settled})`)
+    })
     for (const label of ['Copy', 'Paste', 'Share', 'Word Wrap', 'Delete'])
       assert.ok(shown.includes(label), `${label} missing from ${shown}`)
     record('shownItems', JSON.parse(shown))

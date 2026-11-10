@@ -107,13 +107,52 @@ static id search(AXUIElementRef element, NSString *title, int depth) {
     return nil;
 }
 
+// The AXMenu above the application's focused element: a tracking menu
+// focuses its highlighted item.
+static id focused_menu(AXUIElementRef application, NSString *title) {
+    id element = attribute(application, kAXFocusedUIElementAttribute);
+    for (int depth = 0; element && depth < 6; depth++) {
+        AXUIElementRef node = (__bridge AXUIElementRef)element;
+        if (has_role(node, kAXMenuRole) && entry(node, title)) return element;
+        element = attribute(node, kAXParentAttribute);
+    }
+    return nil;
+}
+
 static id find_menu(pid_t pid, NSString *title) {
     AXUIElementRef application = AXUIElementCreateApplication(pid);
     if (!application) fail(@"No accessibility element for the process");
     AXUIElementSetMessagingTimeout(application, 2.0);
     id menu = search(application, title, 0);
+    if (!menu) menu = focused_menu(application, title);
     CFRelease(application);
     return menu;
+}
+
+// Diagnostics: the process's accessibility tree as role:title, three deep.
+static void tree(AXUIElementRef element, int depth, NSMutableArray *into) {
+    if (depth > 3) return;
+    for (id child in children(element)) {
+        AXUIElementRef node = (__bridge AXUIElementRef)child;
+        [into addObject:[NSString stringWithFormat:@"%d:%@:%@", depth, text(node, kAXRoleAttribute),
+                                                   text(node, kAXTitleAttribute)]];
+        tree(node, depth + 1, into);
+    }
+}
+
+static NSString *describe_process(pid_t pid) {
+    AXUIElementRef application = AXUIElementCreateApplication(pid);
+    if (!application) return @"no application element";
+    AXUIElementSetMessagingTimeout(application, 2.0);
+    NSMutableArray *lines = [NSMutableArray array];
+    tree(application, 0, lines);
+    id focused = attribute(application, kAXFocusedUIElementAttribute);
+    if (focused)
+        [lines addObject:[NSString stringWithFormat:@"focused:%@:%@",
+                                                    text((__bridge AXUIElementRef)focused, kAXRoleAttribute),
+                                                    text((__bridge AXUIElementRef)focused, kAXTitleAttribute)]];
+    CFRelease(application);
+    return [lines componentsJoinedByString:@" | "];
 }
 
 static id wait_for_menu(pid_t pid, NSString *title) {
@@ -121,7 +160,8 @@ static id wait_for_menu(pid_t pid, NSString *title) {
     id menu;
     while (!(menu = find_menu(pid, title))) {
         if (NSProcessInfo.processInfo.systemUptime >= deadline)
-            fail([NSString stringWithFormat:@"No open menu has an entry %@", title]);
+            fail([NSString stringWithFormat:@"No open menu has an entry %@; tree: %@", title,
+                                            describe_process(pid)]);
         [NSThread sleepForTimeInterval:0.025];
     }
     return menu;

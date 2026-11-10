@@ -21,9 +21,12 @@ Add-Type -AssemblyName UIAutomationClient, UIAutomationTypes
 Add-Type -Namespace Win32 -Name Native -MemberDefinition @'
 [System.Runtime.InteropServices.DllImport("user32.dll")]
 public static extern bool PostMessageW(System.IntPtr window, uint message, System.IntPtr wparam, System.IntPtr lparam);
+[System.Runtime.InteropServices.DllImport("user32.dll", CharSet = System.Runtime.InteropServices.CharSet.Unicode)]
+public static extern System.IntPtr FindWindowExW(System.IntPtr parent, System.IntPtr after, string className, string windowName);
+[System.Runtime.InteropServices.DllImport("user32.dll")]
+public static extern bool IsWindowVisible(System.IntPtr window);
 '@
 
-$Root = [System.Windows.Automation.AutomationElement]::RootElement
 $Scope = [System.Windows.Automation.TreeScope]
 
 # A menu item's name is its label; a shortcut hint after a tab is the
@@ -37,10 +40,19 @@ function Items($menu) {
   @($menu.FindAll($Scope::Descendants, $condition))
 }
 
+# A pop-up menu is owned by the window it opened over, and UI Automation
+# lists an owned window under its owner, not under the desktop, so the menu
+# windows are found by class and opened from their handles.
 function Menus {
-  $condition = New-Object System.Windows.Automation.PropertyCondition(
-    [System.Windows.Automation.AutomationElement]::ClassNameProperty, '#32768')
-  @($Root.FindAll($Scope::Children, $condition))
+  $menus = @()
+  $handle = [System.IntPtr]::Zero
+  while ($true) {
+    $handle = [Win32.Native]::FindWindowExW([System.IntPtr]::Zero, $handle, '#32768', $null)
+    if ($handle -eq [System.IntPtr]::Zero) { break }
+    if (-not [Win32.Native]::IsWindowVisible($handle)) { continue }
+    try { $menus += [System.Windows.Automation.AutomationElement]::FromHandle($handle) } catch {}
+  }
+  $menus
 }
 
 function Find-Menu([string]$label) {
