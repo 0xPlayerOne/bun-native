@@ -22,6 +22,7 @@ export type RoutedEvent = Exclude<
       | 'display_changed'
       | 'file_dialog_completed'
       | 'message_dialog_completed'
+      | 'context_menu_completed'
       | 'drop_target_drag'
       | 'drop_received'
       | 'drop_rejected'

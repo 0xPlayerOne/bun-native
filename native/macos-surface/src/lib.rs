@@ -1,8 +1,10 @@
 //! Private borrowed macOS surface access, without timers, input posting or device selection,
-//! and the window-owned alert sheets of OS message dialogs ([`alert`]).
+//! the window-owned alert sheets of OS message dialogs ([`alert`]) and OS context
+//! menus ([`context_menu`]).
 #![cfg(target_os = "macos")]
 
 pub mod alert;
+pub mod context_menu;
 
 use objc2::MainThreadMarker;
 use objc2::rc::Retained;

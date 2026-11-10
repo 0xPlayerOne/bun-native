@@ -167,6 +167,7 @@ export function checkErrors(error: unknown): string | undefined {
       | 'processes'
       | 'file_dialogs'
       | 'message_dialogs'
+      | 'context_menus'
       | 'drag_drop'
       | 'app_menu' = error.service
     return service + error.code

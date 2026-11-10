@@ -60,6 +60,7 @@ export {
   MAX_APP_MENU_LABEL_BYTES,
   MAX_APP_MENUS,
   parseAppMenus,
+  parseContextMenuItems,
   type AppMenu,
   type AppMenuEntry,
   type MenuShortcut,

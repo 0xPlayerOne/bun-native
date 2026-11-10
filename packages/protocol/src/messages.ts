@@ -1,4 +1,10 @@
-import { parseAppMenuItemId, parseAppMenus, type AppMenu } from './app-menu.ts'
+import {
+  parseAppMenuItemId,
+  parseAppMenus,
+  parseContextMenuItems,
+  type AppMenu,
+  type AppMenuEntry,
+} from './app-menu.ts'
 import {
   parseFileDialogOptions,
   parseFileDialogResult,
@@ -278,6 +284,17 @@ export type Command =
       window_id: number
       dialog_id: number
     }
+  /** Shows an OS context menu at a logical point of the window's content. */
+  | {
+      id: number
+      type: 'show_context_menu'
+      window_id: number
+      menu_id: number
+      x: number
+      y: number
+      items: AppMenuEntry[]
+    }
+  | { id: number; type: 'close_context_menu'; window_id: number; menu_id: number }
   | {
       id: number
       type: 'register_drop_target'
@@ -350,6 +367,7 @@ const CAPABILITIES = [
   'input_states_v1',
   'app_menu_v1',
   'task_dialogs_v1',
+  'context_menus_v1',
   'split_resize_v1',
   'accessibility_v1',
 ] as const
@@ -544,6 +562,16 @@ export type NativeEvent =
       window_id: number
       dialog_id: number
       result: MessageDialogResult
+    }
+  | { type: 'context_menu_opened'; id: number; window_id: number; menu_id: number }
+  | { type: 'context_menu_closed'; id: number; window_id: number; menu_id: number }
+  /** `item_id` is absent when the menu was dismissed. */
+  | {
+      type: 'context_menu_completed'
+      sequence: number
+      window_id: number
+      menu_id: number
+      item_id?: string
     }
   | { type: 'drop_target_registered'; id: number; window_id: number; target_id: number }
   | { type: 'drop_target_unregistered'; id: number; window_id: number; target_id: number }
@@ -854,6 +882,25 @@ export function parseCommand(value: unknown): Command {
         type: 'close_message_dialog',
         window_id: id(message['window_id']),
         dialog_id: id(message['dialog_id']),
+      }
+    case 'show_context_menu':
+      keys(message, ['id', 'type', 'window_id', 'menu_id', 'x', 'y', 'items'])
+      return {
+        id: request,
+        type: 'show_context_menu',
+        window_id: id(message['window_id']),
+        menu_id: id(message['menu_id']),
+        x: number(message['x'], 'context menu x', 0, 1_048_576),
+        y: number(message['y'], 'context menu y', 0, 1_048_576),
+        items: parseContextMenuItems(message['items']),
+      }
+    case 'close_context_menu':
+      keys(message, ['id', 'type', 'window_id', 'menu_id'])
+      return {
+        id: request,
+        type: 'close_context_menu',
+        window_id: id(message['window_id']),
+        menu_id: id(message['menu_id']),
       }
     case 'register_drop_target':
       keys(message, ['id', 'type', 'window_id', 'target_id', 'node_id'])
@@ -1170,6 +1217,26 @@ export function parseEvent(value: unknown): NativeEvent {
         dialog_id: id(message['dialog_id']),
         result: parseMessageDialogResult(message['result']),
       }
+    case 'context_menu_opened':
+    case 'context_menu_closed':
+      keys(message, ['type', 'id', 'window_id', 'menu_id'])
+      return {
+        type: message['type'],
+        id: id(message['id']),
+        window_id: id(message['window_id']),
+        menu_id: id(message['menu_id']),
+      }
+    case 'context_menu_completed': {
+      keys(message, ['type', 'sequence', 'window_id', 'menu_id', 'item_id'])
+      const event: Extract<NativeEvent, { type: 'context_menu_completed' }> = {
+        type: 'context_menu_completed',
+        sequence: id(message['sequence']),
+        window_id: id(message['window_id']),
+        menu_id: id(message['menu_id']),
+      }
+      if ('item_id' in message) event.item_id = parseAppMenuItemId(message['item_id'])
+      return event
+    }
     case 'drop_target_registered':
     case 'drop_target_unregistered':
       keys(message, ['type', 'id', 'window_id', 'target_id'])

@@ -32,6 +32,7 @@ export type {
   MenuShortcutOptions,
   NativeMenuBar,
 } from './app-menu.ts'
+export type { ContextMenuPosition } from './context-menus.ts'
 export type { DropTargetEvent, NativeDropTarget, NativeDroppedItem } from './drops.ts'
 export type {
   FileGrantOptions,

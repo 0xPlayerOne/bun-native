@@ -17,6 +17,7 @@ type ServiceName =
   | 'processes'
   | 'file_dialogs'
   | 'message_dialogs'
+  | 'context_menus'
   | 'drag_drop'
   | 'app_menu'
 
@@ -87,7 +88,7 @@ export interface ServiceCapabilities {
   /**
    * The application menu bar: a native NSMenu bar on macOS. GPUI's Linux and
    * Windows backends only store menus, so they report it unavailable. OS
-   * context menus are not implemented.
+   * context menus are a separate service (`contextMenus`).
    */
   readonly appMenu:
     | Readonly<{
@@ -95,6 +96,17 @@ export interface ServiceCapabilities {
         permission: 'allow' | 'deny'
         scope: 'application'
         backend: 'appkit'
+      }>
+    | Readonly<{ availability: 'unavailable'; reason: 'unsupported_platform' }>
+  /**
+   * `window.showContextMenu`: an OS context menu at a point of the window, an
+   * `NSMenu` on macOS and a Win32 popup menu on Windows. It needs no grant.
+   */
+  readonly contextMenus:
+    | Readonly<{
+        availability: 'available'
+        scope: 'owned_window'
+        backend: 'appkit' | 'win32'
       }>
     | Readonly<{ availability: 'unavailable'; reason: 'unsupported_platform' }>
   /** OS file open/save/folder dialogs. Selected paths are data, not filesystem grants. */
@@ -240,6 +252,14 @@ export function serviceCapabilities(
           permission: policy.global_shortcuts ? 'allow' : 'deny',
           scope: 'owned_window',
           backend: 'x11',
+        })
+      : Object.freeze({ availability: 'unavailable', reason: 'unsupported_platform' }),
+    contextMenus: capabilities.includes('context_menus_v1')
+      ? Object.freeze({
+          availability: 'available',
+          scope: 'owned_window',
+          // The host runs beside the core, so its platform names the backend.
+          backend: process.platform === 'darwin' ? 'appkit' : 'win32',
         })
       : Object.freeze({ availability: 'unavailable', reason: 'unsupported_platform' }),
     appMenu: capabilities.includes('app_menu_v1')

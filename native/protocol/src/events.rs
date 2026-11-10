@@ -268,6 +268,31 @@ pub enum Event {
         dialog_id: DialogId,
         result: crate::MessageDialogResult,
     },
+    /// The OS context menu is shown for this owned window.
+    ContextMenuOpened {
+        id: RequestId,
+        window_id: WindowId,
+        menu_id: crate::ContextMenuId,
+    },
+    /// The application closed its context menu; no completion follows.
+    ContextMenuClosed {
+        id: RequestId,
+        window_id: WindowId,
+        menu_id: crate::ContextMenuId,
+    },
+    /// The user ended a live context menu: `item_id` names the chosen item,
+    /// absent when the menu was dismissed.
+    ContextMenuCompleted {
+        sequence: EventSequence,
+        window_id: WindowId,
+        menu_id: crate::ContextMenuId,
+        #[serde(
+            default,
+            skip_serializing_if = "Option::is_none",
+            deserialize_with = "non_null_string"
+        )]
+        item_id: Option<String>,
+    },
     Click {
         sequence: EventSequence,
         window_id: WindowId,
@@ -549,6 +574,10 @@ impl Event {
             Self::FileDialogCompleted { result, .. } => result.validate()?,
             Self::MessageDialogCompleted { result, .. } => result.validate()?,
             Self::AppMenuItem { item_id, .. } => crate::validate_app_menu_item_id(item_id)?,
+            Self::ContextMenuCompleted {
+                item_id: Some(item_id),
+                ..
+            } => crate::validate_app_menu_item_id(item_id)?,
             Self::KeyDown { key, key_char, .. } | Self::KeyUp { key, key_char, .. } => {
                 validate_text(key)?;
                 if key.is_empty() || key.len() > MAX_KEY_BYTES {

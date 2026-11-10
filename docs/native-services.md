@@ -1161,6 +1161,50 @@ runner does not trust the oracle for Accessibility the report is
 Mac run, keyboard-driven selection or VoiceOver check has been made. See
 [ADR 0015](decisions/0015-application-menu-bar.md).
 
+## OS context menus
+
+```ts
+if (app.serviceCapabilities.contextMenus.availability === "available") {
+  const chosen = await window.showContextMenu(
+    [
+      { kind: "item", id: "edit.copy", label: "Copy", shortcut: { key: "c", platform: true } },
+      { kind: "separator" },
+      { kind: "submenu", label: "Share", items: [{ kind: "item", id: "share.mail", label: "Mail" }] },
+      { kind: "item", id: "view.wrap", label: "Word Wrap", checked: true },
+    ],
+    { x: event.x, y: event.y }, // logical pixels of the window's content
+    { signal }, // optional: abort closes the menu
+  );
+  if (chosen === "edit.copy") copy();
+}
+```
+
+`showContextMenu` opens the platform's own pop-up menu at a point of the
+window and resolves the chosen item's `id`, or `null` when the user
+dismissed it. It needs no grant: the menu is user-initiated UI on the
+application's own window. The host advertises the optional
+`context_menus_v1` capability on macOS (`NSMenu`, `backend: 'appkit'`) and
+Windows (`TrackPopupMenuEx`, `backend: 'win32'`); on Linux
+`serviceCapabilities.contextMenus` reports `unsupported_platform` and the
+call rejects with `UnsupportedFeatureError` before any request.
+
+Items use the [menu bar](#application-menu-bar) model and limits, with ids
+unique within the menu. Shortcuts are shown beside the item (as a key
+equivalent on macOS, a right-aligned hint such as `Ctrl+C` on Windows) and
+bind nothing. Only one menu is live per application; a second call while one
+is open rejects with `NativeServiceError` `limit_exceeded`. An abort closes
+the menu and rejects with `cancelled`; closing the owner window rejects with
+`NativeStateError` `invalid_handle`; shutdown closes it. A menu that was
+closed never reports a late choice.
+
+The macOS and Windows jobs of the
+[native platforms workflow](../.github/workflows/native-platforms.yml) run
+[`tests/native/context-menus.ts`](../tests/native/context-menus.ts) against
+independent accessibility oracles that read the open menu and press its
+items: the shown items, a top-level and a nested choice, Escape, abort, owner
+close and shutdown. This is hosted-CI evidence only. See
+[ADR 0020](decisions/0020-os-context-menus.md).
+
 ## Service and platform matrix
 
 All services listed here share the core's policy boundary. The unavailable rows
@@ -1173,7 +1217,8 @@ already exists. The linked follow-ups belong to
 | Window/display    | Existing owned open/close; permission-gated `displaySnapshot` | Core/Solid/React dev+AOT verified with release host; X11 semantics fixture dev+AOT verified locally | Snapshot dev+AOT verified on headless sway (scale 1 and 2)         | Service execution unverified                                    | Service execution unverified                                 | X11 semantics qualified; change events, work area, identity and mixed DPI unavailable on X11. Other platforms and placement remain. [#299](https://github.com/0xPlayerOne/bun-native/issues/299).                                                                                        |
 | Clipboard text    | `readClipboardText` / `writeClipboardText`; separate grants   | X11 dev+AOT verified with release host                                                              | Unavailable (`unsupported_platform`)                               | Unavailable                                                     | Unavailable                                                  | Additional platforms/formats and extended lifecycle coverage. [#300](https://github.com/0xPlayerOne/bun-native/issues/300).                                                                                                                                                              |
 | Global shortcuts  | `registerGlobalShortcut`; `globalShortcuts` grant             | X11 dev+AOT verified with release host                                                              | Unavailable (`unsupported_platform`)                               | Unavailable                                                     | Unavailable                                                  | macOS/Windows backends, Wayland portal design and keyboard-map change tracking. [#301](https://github.com/0xPlayerOne/bun-native/issues/301).                                                                                                                                            |
-| Application menu  | `setMenuBar` / `clearMenuBar`; `appMenu` grant                | Unavailable (GPUI stores menus only)                                                                | Unavailable (GPUI stores menus only)                               | AppKit `NSMenu` bar; hosted CI only (AX oracle)                 | Unavailable                                                  | Context and Dock menus, dynamic validation, Linux/Windows menu bars drawn by the application. [#239](https://github.com/0xPlayerOne/bun-native/issues/239).                                                                                                                              |
+| Application menu  | `setMenuBar` / `clearMenuBar`; `appMenu` grant                | Unavailable (GPUI stores menus only)                                                                | Unavailable (GPUI stores menus only)                               | AppKit `NSMenu` bar; hosted CI only (AX oracle)                 | Unavailable                                                  | Dock menus, dynamic validation, Linux/Windows menu bars drawn by the application. [#239](https://github.com/0xPlayerOne/bun-native/issues/239).                                                                                                                                          |
+| Context menus     | `window.showContextMenu`; no grant                            | Unavailable                                                                                         | Unavailable                                                        | AppKit `NSMenu` pop-up; hosted CI only (AX oracle)              | `TrackPopupMenuEx`; hosted CI only (UIA oracle)              | Dock menu, dynamic validation, icons, element-relative positioning. [#239](https://github.com/0xPlayerOne/bun-native/issues/239).                                                                                                                                                        |
 | File dialogs      | `showOpenDialog` / `showSaveDialog`; `fileDialogs` grant      | xdg-desktop-portal (GTK) dev+AOT verified                                                           | Portal (GTK) opens unparented; abort and compositor close verified | Unavailable                                                     | Unavailable                                                  | macOS/Windows panels, Wayland parenting, sandboxed document-portal paths and explicit file-grant conversion. [#239](https://github.com/0xPlayerOne/bun-native/issues/239).                                                                                                               |
 | Message dialogs   | `showMessageDialog` / `showConfirmDialog`; no grant           | Modal overlay dev+AOT verified locally                                                              | Modal overlay (same core code); unqualified on Wayland             | Modal overlay, or opt-in `NSAlert` sheet (hosted CI, AX oracle) | Modal overlay, or opt-in task dialog (hosted CI, UIA oracle) | Opt-in `taskDialogs` backends: `NSAlert` sheets (macOS) and task dialogs (Windows), hosted evidence only. [#239](https://github.com/0xPlayerOne/bun-native/issues/239).                                                                                                                  |
 | Notifications     | `postNotification`; `notifications` grant                     | Freedesktop D-Bus (dunst) dev+AOT verified                                                          | Freedesktop (dunst) post and withdraw verified                     | Unavailable                                                     | Unavailable                                                  | macOS/Windows backends, additional notification servers, named actions and replacement. [#302](https://github.com/0xPlayerOne/bun-native/issues/302).                                                                                                                                    |

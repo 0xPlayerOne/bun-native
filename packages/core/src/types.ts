@@ -22,7 +22,8 @@ import type {
   NativeGlobalShortcut,
 } from './shortcuts.ts'
 import type { NativeNotification, NotificationEvent, NotificationOptions } from './notifications.ts'
-import type { AppMenuItemEvent, MenuOptions, NativeMenuBar } from './app-menu.ts'
+import type { AppMenuItemEvent, MenuEntryOptions, MenuOptions, NativeMenuBar } from './app-menu.ts'
+import type { ContextMenuPosition } from './context-menus.ts'
 import type { FileGrantOptions, NativeFileGrant } from './files.ts'
 import type { NativeProcess, ProcessEvent, ProcessOptions } from './processes.ts'
 import type {
@@ -296,6 +297,21 @@ export interface NativeWindow {
     options: ConfirmDialogOptions,
     request?: ServiceRequestOptions
   ): Promise<boolean>
+  /**
+   * Show an OS context menu at a point of this window's content (logical
+   * pixels, as pointer events report them) and resolve with the chosen item's
+   * `id`, or `null` when the user dismisses it. Items use the menu-bar entry
+   * shape. Requires the optional `context_menus_v1` capability (macOS and
+   * Windows); otherwise it throws `UnsupportedFeatureError`. One menu is open
+   * per application at a time (`limit_exceeded`). Aborting the signal rejects
+   * with `cancelled`; closing the window or shutting down rejects with
+   * `invalid_handle`.
+   */
+  showContextMenu(
+    items: readonly MenuEntryOptions[],
+    position: ContextMenuPosition,
+    request?: ServiceRequestOptions
+  ): Promise<string | null>
   /**
    * Make a committed node an owned drop target for external file drags.
    * Requires the immutable dragDrop launch grant. Dropped items arrive as

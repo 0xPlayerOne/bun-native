@@ -61,6 +61,8 @@ export type WindowCommand = WithoutId<
         | 'close_file_dialog'
         | 'show_message_dialog'
         | 'close_message_dialog'
+        | 'show_context_menu'
+        | 'close_context_menu'
         | 'register_drop_target'
         | 'unregister_drop_target'
         | 'resolve_dropped_item'
@@ -96,6 +98,8 @@ export type HostResponse = Extract<
       | 'file_dialog_closed'
       | 'message_dialog_opened'
       | 'message_dialog_closed'
+      | 'context_menu_opened'
+      | 'context_menu_closed'
       | 'drop_target_registered'
       | 'drop_target_unregistered'
       | 'dropped_item_resolved'
@@ -461,6 +465,12 @@ export class NativeHost implements AsyncIterable<HostEvent> {
     command: Extract<WindowCommand, { type: 'close_message_dialog' }>
   ): Promise<Extract<HostResponse, { type: 'message_dialog_closed' }>>
   send(
+    command: Extract<WindowCommand, { type: 'show_context_menu' }>
+  ): Promise<Extract<HostResponse, { type: 'context_menu_opened' }>>
+  send(
+    command: Extract<WindowCommand, { type: 'close_context_menu' }>
+  ): Promise<Extract<HostResponse, { type: 'context_menu_closed' }>>
+  send(
     command: Extract<WindowCommand, { type: 'register_drop_target' }>
   ): Promise<Extract<HostResponse, { type: 'drop_target_registered' }>>
   send(
@@ -761,6 +771,8 @@ export class NativeHost implements AsyncIterable<HostEvent> {
       event.type === 'file_dialog_closed' ||
       event.type === 'message_dialog_opened' ||
       event.type === 'message_dialog_closed' ||
+      event.type === 'context_menu_opened' ||
+      event.type === 'context_menu_closed' ||
       event.type === 'drop_target_registered' ||
       event.type === 'drop_target_unregistered' ||
       event.type === 'dropped_item_resolved' ||
@@ -886,6 +898,16 @@ export class NativeHost implements AsyncIterable<HostEvent> {
           response.type === 'message_dialog_closed' &&
           response.window_id === command.window_id &&
           response.dialog_id === command.dialog_id
+        )
+      case 'show_context_menu':
+      case 'close_context_menu':
+        return (
+          response.type ===
+            (command.type === 'show_context_menu'
+              ? 'context_menu_opened'
+              : 'context_menu_closed') &&
+          response.window_id === command.window_id &&
+          response.menu_id === command.menu_id
         )
       case 'register_drop_target':
       case 'unregister_drop_target':

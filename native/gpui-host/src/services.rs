@@ -18,6 +18,13 @@ pub(crate) mod clipboard;
 #[cfg(not(target_os = "linux"))]
 #[path = "services/clipboard_unavailable.rs"]
 pub(crate) mod clipboard;
+#[cfg(any(windows, target_os = "macos", test))]
+pub(crate) mod context_menu_model;
+#[cfg(any(windows, target_os = "macos"))]
+pub(crate) mod context_menus;
+#[cfg(not(any(windows, target_os = "macos")))]
+#[path = "services/context_menus_unavailable.rs"]
+pub(crate) mod context_menus;
 pub(crate) mod drops;
 #[cfg(target_os = "linux")]
 pub(crate) mod file_dialogs;
