@@ -5,7 +5,7 @@ import compilerConfig from '../../tsconfig.json'
 import { seedConsumerLock } from './package-lock.ts'
 import { consumerArchiveLock, readPackageSet, type ReadPackageSet } from './package-set.ts'
 
-export const packageSetPath = 'vendor/bun-native/manifest.json'
+const packageSetPath = 'vendor/bun-native/manifest.json'
 
 export function standaloneFiles(
   set: ReadPackageSet,
