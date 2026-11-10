@@ -431,6 +431,19 @@ def main():
             ),
             "actual renderer metadata",
         )
+        # AppKit can still settle the frame (by a point at backing scale 2)
+        # after the first paint; take the input baseline from two matching
+        # observations so the helper's geometry check compares a stable window.
+        previous = {}
+
+        def settled():
+            nonlocal previous
+            current = mac_input.observe(title)
+            stable = current and current["window"] == previous.get("window")
+            previous = current or {}
+            return current if stable else None
+
+        wait_for(settled, "settled owned native window")
         mac_input.activate()
         capture(commands.window, "before.png")
         report[args.scenario + "Observations"] = SCENARIOS[args.scenario].run(
