@@ -1,4 +1,4 @@
-// Shared fixture for the development reload tests. The 101-remount scenarios
+// Shared fixture for the development reload tests. The remount scenarios
 // live in their own files so --parallel can run them beside the other reload
 // tests; every file still owns its temporary root and peer lifetime log.
 import { afterAll, beforeAll, expect, test } from 'bun:test'
@@ -78,9 +78,15 @@ export function isAlive(pid: number): boolean {
   }
 }
 
-/** Register the 101-remount scenario for one framework. */
+// Ten generations prove the controller joins every previous app before the
+// next one starts. The 101-remount soak is the native e2e
+// (tests/native/cli-watch.py in native-linux.yml), which drives the same
+// DevSession through the real CLI, GPUI host and XTest input.
+const REMOUNTS = 10
+
+/** Register the headless remount scenario for one framework. */
 export function remountTest(framework: 'solid' | 'react'): void {
-  test(`joins 101 ${framework} remounts with zero owners before every replacement`, async () => {
+  test(`joins ${REMOUNTS} ${framework} remounts with zero owners before every replacement`, async () => {
     const path = await createProject(
       repository,
       join(directory, framework),
@@ -95,7 +101,7 @@ export function remountTest(framework: 'solid' | 'react'): void {
     let previous: number | undefined
     const timings: number[] = []
     try {
-      for (let index = 0; index <= 101; index++) {
+      for (let index = 0; index <= REMOUNTS; index++) {
         writeFileSync(
           project.entry,
           original.replace(
@@ -119,14 +125,14 @@ export function remountTest(framework: 'solid' | 'react'): void {
     }
     expect(isAlive(previous!)).toBe(false)
     expect(existsSync(session.temporaryDirectory)).toBe(false)
-    assertJoined(lifetimes().slice(start), 102)
-    expect(timings.length).toBe(101)
+    assertJoined(lifetimes().slice(start), REMOUNTS + 1)
+    expect(timings.length).toBe(REMOUNTS)
     timings.sort((a, b) => a - b)
     console.log(
       JSON.stringify({
         framework,
         scope: 'headless acknowledgement, not native paint',
-        remounts: 101,
+        remounts: REMOUNTS,
         medianMs: timings[Math.floor(timings.length / 2)],
         p95Ms: timings[Math.floor(timings.length * 0.95)],
         samplesMs: timings,
