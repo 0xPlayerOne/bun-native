@@ -1,5 +1,6 @@
 import { describe, expect, test } from 'bun:test'
 import {
+  completedCount,
   createWorkspace,
   MAX_TASKS,
   MAX_TITLE_LENGTH,
@@ -163,5 +164,66 @@ describe('React workspace task workflows', () => {
     expect(fired).toBe(1)
     expect(elapsed).toBeGreaterThanOrEqual(PLAN_INTERVAL_MS - 1)
     expect(cancelledFired).toBe(0)
+  })
+})
+
+describe('React workspace in-app clear confirmation', () => {
+  test('only an open confirmation clears, and dismissing keeps every task', () => {
+    let state = createWorkspace()
+    expect(completedCount(state)).toBe(1)
+    expect(workspaceReducer(state, { type: 'clear-confirm' })).toBe(state)
+    expect(workspaceReducer(state, { type: 'clear-dismiss' })).toBe(state)
+    state = workspaceReducer(state, { type: 'clear-request' })
+    expect(state.confirmingClear).toBe(true)
+    expect(workspaceReducer(state, { type: 'clear-request' })).toBe(state)
+    state = workspaceReducer(state, { type: 'clear-dismiss' })
+    expect(state.confirmingClear).toBe(false)
+    expect(state.tasks).toHaveLength(12)
+  })
+
+  test('nothing to clear opens nothing', () => {
+    let state = workspaceReducer(createWorkspace(), { type: 'toggle', id: 1 })
+    expect(completedCount(state)).toBe(0)
+    expect(workspaceReducer(state, { type: 'clear-request' })).toBe(state)
+    state = workspaceReducer(state, { type: 'toggle', id: 4 })
+    expect(workspaceReducer(state, { type: 'clear-request' }).confirmingClear).toBe(true)
+  })
+
+  test('clearing keeps a surviving selection and its plan, ids and order', () => {
+    let state = createWorkspace()
+    state = workspaceReducer(state, { type: 'toggle', id: 3 })
+    state = workspaceReducer(state, { type: 'plan-start' })
+    state = workspaceReducer(state, { type: 'plan-step', id: 1 })
+    state = workspaceReducer(state, { type: 'clear-request' })
+    state = workspaceReducer(state, { type: 'clear-confirm' })
+    expect(state.tasks.map((task) => task.id)).toEqual([2, 4, 5, 6, 7, 8, 9, 10, 11, 12])
+    expect(state.selectedId).toBe(2)
+    expect(state.plan).toEqual({ id: 1, taskId: 2, steps: [PLAN_STEPS[0]], status: 'streaming' })
+    expect(state.confirmingClear).toBe(false)
+    expect(state.nextId).toBe(13)
+    // A second confirmation queued behind the first is inert.
+    expect(workspaceReducer(state, { type: 'clear-confirm' })).toBe(state)
+  })
+
+  test('clearing the selected task drops its plan and selects the first remaining task', () => {
+    let state = createWorkspace()
+    state = workspaceReducer(state, { type: 'toggle', id: 2 })
+    state = workspaceReducer(state, { type: 'plan-start' })
+    state = workspaceReducer(state, { type: 'clear-request' })
+    state = workspaceReducer(state, { type: 'clear-confirm' })
+    expect(state.selectedId).toBe(3)
+    expect(state.plan).toBeNull()
+    expect(selectedPlan(state)).toBeNull()
+  })
+
+  test('clearing every task leaves an empty, unselected workspace', () => {
+    let state = createWorkspace()
+    for (const task of state.tasks)
+      if (!task.completed) state = workspaceReducer(state, { type: 'toggle', id: task.id })
+    state = workspaceReducer(state, { type: 'clear-request' })
+    state = workspaceReducer(state, { type: 'clear-confirm' })
+    expect(state.tasks).toEqual([])
+    expect(state.selectedId).toBeNull()
+    expect(workspaceReducer(state, { type: 'clear-request' })).toBe(state)
   })
 })

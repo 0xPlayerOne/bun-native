@@ -48,6 +48,8 @@ export interface WorkspaceState {
   readonly nextId: number
   readonly plan: Plan | null
   readonly nextPlanId: number
+  /** The in-app "clear completed tasks" confirmation is open. */
+  readonly confirmingClear: boolean
 }
 
 export type WorkspaceAction =
@@ -62,6 +64,9 @@ export type WorkspaceAction =
   | { type: 'plan-start' }
   | { type: 'plan-step'; id: number }
   | { type: 'plan-stop' }
+  | { type: 'clear-request' }
+  | { type: 'clear-dismiss' }
+  | { type: 'clear-confirm' }
 
 export function taskTitle(value: string): string | undefined {
   const title = value.trim()
@@ -92,7 +97,12 @@ export function createWorkspace(): WorkspaceState {
     nextId: titles.length + 1,
     plan: null,
     nextPlanId: 1,
+    confirmingClear: false,
   }
+}
+
+export function completedCount(state: WorkspaceState): number {
+  return state.tasks.reduce((count, task) => count + (task.completed ? 1 : 0), 0)
 }
 
 /** The plan belonging to the selected task, if any. */
@@ -196,5 +206,25 @@ export function workspaceReducer(state: WorkspaceState, action: WorkspaceAction)
     }
     case 'plan-stop':
       return state.plan?.status === 'streaming' ? { ...state, plan: stopPlan(state.plan) } : state
+    case 'clear-request':
+      return state.confirmingClear || completedCount(state) === 0
+        ? state
+        : { ...state, confirmingClear: true }
+    case 'clear-dismiss':
+      return state.confirmingClear ? { ...state, confirmingClear: false } : state
+    case 'clear-confirm': {
+      // Only an open confirmation can clear, so a queued second press is inert.
+      if (!state.confirmingClear) return state
+      const tasks = state.tasks.filter((task) => !task.completed)
+      const kept = tasks.some((task) => task.id === state.selectedId)
+      const next = withSelection(state, kept ? state.selectedId : (tasks[0]?.id ?? null))
+      return {
+        ...next,
+        tasks,
+        confirmingClear: false,
+        // A cleared task's plan has no remaining owner.
+        plan: tasks.some((task) => task.id === next.plan?.taskId) ? next.plan : null,
+      }
+    }
   }
 }
