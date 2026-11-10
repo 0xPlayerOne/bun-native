@@ -67,7 +67,16 @@ export function peRegions(bytes: Uint8Array): { regions: Region[]; pdbPath: stri
   const optionalSize = r.u16(coff + 16)
   const optional = coff + 20
   const magic = r.u16(optional)
-  if (sectionCount === null || optionalSize === null || (magic !== 0x10b && magic !== 0x20b))
+  // Require the fixed optional-header fields before interpreting any
+  // directories: a short header can otherwise expose section-table bytes.
+  const dataDirectoriesOffset = magic === 0x20b ? 112 : 96
+  if (
+    sectionCount === null ||
+    optionalSize === null ||
+    (magic !== 0x10b && magic !== 0x20b) ||
+    optionalSize < dataDirectoriesOffset ||
+    !r.fits(optional, optionalSize)
+  )
     return null
   const regions: Region[] = [
     { name: 'COFF TimeDateStamp', start: coff + 4, end: coff + 8 },
@@ -76,56 +85,132 @@ export function peRegions(bytes: Uint8Array): { regions: Region[]; pdbPath: stri
   const sections: {
     name: string
     rva: number
-    virtualSize: number
     raw: number
     rawSize: number
   }[] = []
   const table = optional + optionalSize
+  // All declared section headers must be file-backed. A truncated table can
+  // otherwise produce a partial RVA map and a fictitious oversized header region.
+  if (!r.fits(table, sectionCount * 40)) return null
   for (let i = 0; i < sectionCount; i++) {
     const at = table + i * 40
-    if (!r.fits(at, 40)) break
     const name = new TextDecoder().decode(bytes.subarray(at, at + 8)).replace(/\0+$/, '')
     sections.push({
       name,
-      virtualSize: r.u32(at + 8) as number,
       rva: r.u32(at + 12) as number,
       rawSize: r.u32(at + 16) as number,
       raw: r.u32(at + 20) as number,
     })
   }
-  const fileOffset = (rva: number) => {
-    for (const s of sections)
-      if (rva >= s.rva && rva < s.rva + Math.max(s.virtualSize, s.rawSize))
-        return s.raw + rva - s.rva
+  // Malformed section raw pointers may alias the DOS/PE headers or extend
+  // beyond the file. Only complete, non-header raw ranges can own bytes or
+  // translate debug-directory RVAs into file offsets.
+  const sectionTableEnd = table + sectionCount * 40
+  // SizeOfHeaders includes file-aligned padding after the section table. A
+  // section starting in that padding aliases header bytes even when it starts
+  // beyond the final 40-byte section descriptor.
+  const declaredHeaders = r.u32(optional + 60) ?? 0
+  if (declaredHeaders > 0 && (declaredHeaders < sectionTableEnd || !r.fits(0, declaredHeaders)))
+    return null
+  const headerEnd = Math.max(sectionTableEnd, declaredHeaders)
+  const completeSections = sections.filter(
+    (s) => s.rawSize > 0 && s.raw >= headerEnd && r.fits(s.raw, s.rawSize)
+  )
+  // Overlapping raw bytes or file-backed RVAs make a section owner ambiguous.
+  // Do not assign such bytes a section name or infer a debug payload identity.
+  const overlaps = (a: number, aSize: number, b: number, bSize: number) =>
+    a < b + bSize && b < a + aSize
+  const fileBackedSections = completeSections.filter(
+    (section, index) =>
+      !completeSections.some(
+        (other, otherIndex) =>
+          index !== otherIndex &&
+          (overlaps(section.raw, section.rawSize, other.raw, other.rawSize) ||
+            overlaps(section.rva, section.rawSize, other.rva, other.rawSize))
+      )
+  )
+  const fileOffset = (rva: number, size: number) => {
+    // Header RVAs map directly to file offsets. Accept a complete debug table
+    // in declared padding after the section descriptors, but never reinterpret
+    // the PE metadata itself or read across the declared header boundary.
+    if (rva >= sectionTableEnd && rva < headerEnd && rva + size <= headerEnd && r.fits(rva, size))
+      return rva
+    for (const s of fileBackedSections) {
+      const offset = rva - s.rva
+      // VirtualSize may include zero-filled memory beyond the file's raw
+      // section bytes. A debug directory must also fit in one raw section:
+      // accepting only its first byte could read the next on-disk section.
+      if (
+        offset >= 0 &&
+        offset < s.rawSize &&
+        offset + size <= s.rawSize &&
+        r.fits(s.raw + offset, size)
+      )
+        return s.raw + offset
+    }
     return null
   }
   let pdbPath: string | null = null
-  const directories = optional + (magic === 0x20b ? 112 : 96)
-  const debugRva = r.u32(directories + 6 * 8)
-  const debugSize = r.u32(directories + 6 * 8 + 4) ?? 0
-  const debug = debugRva ? fileOffset(debugRva) : null
+  let conflictingPdbPaths = false
+  // NumberOfRvaAndSizes, and the declared optional-header byte range,
+  // must both include entry 6 before it can name a debug directory.
+  const directoryCount = r.u32(optional + dataDirectoriesOffset - 4)
+  const debugOffset = dataDirectoriesOffset + 6 * 8
+  const hasDebugDirectory =
+    directoryCount !== null && directoryCount > 6 && optionalSize >= debugOffset + 8
+  const debugRva = hasDebugDirectory ? r.u32(optional + debugOffset) : null
+  const debugSize = hasDebugDirectory ? (r.u32(optional + debugOffset + 4) ?? 0) : 0
+  // The debug directory consists of whole 28-byte IMAGE_DEBUG_DIRECTORY entries.
+  // A trailing partial entry makes its record count ambiguous; do not infer PDB identity.
+  const debug = debugRva && debugSize % 28 === 0 ? fileOffset(debugRva, debugSize) : null
   for (let i = 0; debug !== null && i < Math.floor(debugSize / 28); i++) {
     const entry = debug + i * 28
     if (!r.fits(entry, 28)) break
+    // Characteristics is reserved and must be zero in IMAGE_DEBUG_DIRECTORY.
+    // A malformed entry cannot substantiate a CodeView or REPRO payload.
+    if (r.u32(entry) !== 0) continue
     const type = r.u32(entry + 12) as number
     const size = r.u32(entry + 16) as number
     const data = r.u32(entry + 24) as number
     regions.push({ name: `debug directory TimeDateStamp`, start: entry + 4, end: entry + 8 })
-    if (type === 2 && r.u32(data) === 0x53445352) {
+    // Debug payload pointers are raw file offsets, not validated by the
+    // debug directory table's RVA bounds. Never name partial CodeView data.
+    if (type === 2 && size >= 24 && r.fits(data, size) && r.u32(data) === 0x53445352) {
       regions.push({ name: 'CodeView GUID', start: data + 4, end: data + 20 })
       regions.push({ name: 'CodeView age', start: data + 20, end: data + 24 })
-      const end = Math.min(data + size, bytes.length)
-      regions.push({ name: 'CodeView PDB path', start: data + 24, end })
+      const end = data + size
       const path = bytes.subarray(data + 24, end)
       const nul = path.indexOf(0)
-      pdbPath = new TextDecoder().decode(nul < 0 ? path : path.subarray(0, nul))
-    } else if (type === 16) {
+      // RSDS filenames are NUL-terminated. Do not invent a PDB identity
+      // from a record whose declared data ends before its path terminator.
+      // The valid GUID and age fields remain independently attributable.
+      if (nul >= 0) {
+        regions.push({ name: 'CodeView PDB path', start: data + 24, end: data + 24 + nul + 1 })
+        const candidatePath = new TextDecoder().decode(path.subarray(0, nul))
+        if (!conflictingPdbPaths && pdbPath !== null && pdbPath !== candidatePath) {
+          // Several complete RSDS records disagree. Do not claim that
+          // the last record defines one unambiguous PDB identity.
+          conflictingPdbPaths = true
+          pdbPath = null
+        } else if (!conflictingPdbPaths) pdbPath = candidatePath
+      }
+    } else if (type === 16 && data > 0 && size > 0 && r.fits(data, size)) {
       regions.push({ name: 'REPRO hash', start: data, end: data + size })
     }
   }
-  for (const s of sections)
+  for (const s of fileBackedSections)
     regions.push({ name: `section ${s.name}`, start: s.raw, end: s.raw + s.rawSize })
-  regions.push({ name: 'headers', start: 0, end: sections[0]?.raw ?? table + sectionCount * 40 })
+  // A zero-filled section such as .bss can be declared first with no raw
+  // bytes and PointerToRawData=0. Bound headers by the first file-backed
+  // section, not the first section-table entry.
+  let firstRaw: number | null = null
+  for (const s of fileBackedSections)
+    firstRaw = firstRaw === null ? s.raw : Math.min(firstRaw, s.raw)
+  regions.push({
+    name: 'headers',
+    start: 0,
+    end: firstRaw ?? headerEnd,
+  })
   return { regions, pdbPath }
 }
 
@@ -160,6 +245,15 @@ export function explainDifference(a: Uint8Array, b: Uint8Array): Difference {
   }
 }
 
+// Binary-sourced section labels and PDB paths are untrusted Markdown content.
+function escapeMarkdownDiagnostic(value: string): string {
+  return value
+    .replaceAll('\\', '\\\\')
+    .replaceAll('|', '\\|')
+    .replaceAll('\r', '\\r')
+    .replaceAll('\n', '\\n')
+}
+
 export function renderDifference(os: string, difference: Difference): string[] {
   const lines = [
     '',
@@ -168,11 +262,16 @@ export function renderDifference(os: string, difference: Difference): string[] {
     '| Region | Bytes | Ranges |',
     '| ------ | ----: | -----: |',
     ...difference.regions.map(
-      (region) => `| ${region.name} | ${region.bytes} | ${region.ranges} |`
+      (region) =>
+        `| ${escapeMarkdownDiagnostic(region.name)} | ${region.bytes} | ${region.ranges} |`
     ),
   ]
-  if (difference.pdbPaths.some((path) => path !== null))
-    lines.push('', `PDB paths: ${difference.pdbPaths.map((path) => path ?? '(none)').join(' | ')}`)
+  if (difference.pdbPaths.some((path) => path !== null)) {
+    const paths = difference.pdbPaths.map((path) =>
+      path === null ? '(none)' : escapeMarkdownDiagnostic(path)
+    )
+    lines.push('', `PDB paths: ${paths.join(' | ')}`)
+  }
   const shown = difference.ranges.slice(0, 20)
   lines.push(
     '',
