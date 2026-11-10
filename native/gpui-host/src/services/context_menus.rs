@@ -372,18 +372,17 @@ impl ContextMenus {
 
     /// Owner close revokes delivery now and ends the menu.
     pub(crate) fn close_window(&self, window: WindowId, _cx: &mut App) {
-        if let Some(live) = self
-            .0
-            .live
-            .borrow_mut()
-            .as_mut()
-            .filter(|live| live.window == window)
-        {
-            // A pending close request is answered when the menu ends.
-            if !matches!(live.state, State::Closing(Some(_))) {
-                live.state = State::Closing(None);
-            }
-            platform::close(&live.closer);
+        let mut slot = self.0.live.borrow_mut();
+        let Some(live) = slot.as_mut().filter(|live| live.window == window) else {
+            return;
+        };
+        platform::close(&live.closer);
+        // A pending close request is answered when the menu ends. Otherwise
+        // nothing more is reported, so the slot frees now: AppKit can take a
+        // while to leave tracking, and a menu on another window must not be
+        // refused meanwhile.
+        if !matches!(live.state, State::Closing(Some(_))) {
+            *slot = None;
         }
     }
 
