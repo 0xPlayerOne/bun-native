@@ -334,6 +334,10 @@ export class NativeHost implements AsyncIterable<HostEvent> {
       stdin: 'pipe',
       stdout: 'pipe',
       stderr: 'pipe',
+      // A terminal's Ctrl-C signals its whole foreground process group. The
+      // application owns the host's lifetime and ends it through `shutdown`
+      // (or closed stdin), so the host runs in its own session on POSIX.
+      detached: process.platform !== 'win32',
     })
     this.stdout = this.process.stdout.getReader()
     this.stderr = this.process.stderr.getReader()
