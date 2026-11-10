@@ -11,7 +11,7 @@ import {
   type WorkspaceOwnership,
   type WorkspaceState,
 } from './model.ts'
-import { MAX_COMMAND_LENGTH, type TerminalSession, type TerminalState } from './terminal.ts'
+import { MAX_COMMAND_LENGTH, type TerminalSession, type TerminalState } from '../shared/terminal.ts'
 
 const palettes = {
   dark: {

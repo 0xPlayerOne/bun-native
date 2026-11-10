@@ -1,27 +1,17 @@
 import { createApplication } from '@bun-native/core'
 import { render, type RenderRoot } from '@bun-native/solid'
-import { join, resolve } from 'node:path'
+import { resolve } from 'node:path'
 import { Workspace } from './app.tsx'
 import type { WorkspaceOwnership } from './model.ts'
-import { TerminalSession } from './terminal.ts'
+import { TerminalSession, workspaceShell } from '../shared/terminal.ts'
 
 const executable = process.env['BUN_NATIVE_HOST']
 if (!executable) throw new Error('Set BUN_NATIVE_HOST to an existing prebuilt native host')
-const windows = process.platform === 'win32'
-const systemRoot = process.env['SystemRoot'] ?? 'C:\\Windows'
 // The only executable this app may start. Nothing in the UI can name another.
-const shell = windows ? join(systemRoot, 'System32', 'cmd.exe') : '/bin/sh'
-const shellEnv: Record<string, string> = windows
-  ? { SystemRoot: systemRoot, PATH: process.env['PATH'] ?? '', COMSPEC: shell }
-  : {
-      PATH: process.env['PATH'] ?? '/usr/bin:/bin',
-      HOME: process.env['HOME'] ?? '/',
-      TERM: 'dumb',
-      PS1: '$ ',
-    }
+const shell = workspaceShell()
 const app = await createApplication({
   executable: resolve(executable),
-  permissions: { processes: [{ id: 'shell', executable: shell }] },
+  permissions: { processes: [{ id: 'shell', executable: shell.executable }] },
 })
 let root: RenderRoot | undefined
 let ownership: WorkspaceOwnership | undefined
@@ -33,7 +23,7 @@ try {
     height: 760,
   })
   const session = new TerminalSession((listener) =>
-    window.spawnProcess('shell', { env: shellEnv, terminal: { columns: 80, rows: 24 } }, listener)
+    window.spawnProcess('shell', { env: shell.env, terminal: { columns: 80, rows: 24 } }, listener)
   )
   terminal = session
   void session.start()

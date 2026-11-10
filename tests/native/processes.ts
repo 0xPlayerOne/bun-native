@@ -32,7 +32,7 @@ import {
 } from 'node:fs'
 import { release, tmpdir } from 'node:os'
 import { isAbsolute, join } from 'node:path'
-import { TerminalSession, type TerminalState } from '../../examples/solid-workspace/terminal.ts'
+import { TerminalSession, type TerminalState } from '../../examples/shared/terminal.ts'
 
 const output = process.env['BUN_NATIVE_PROCESS_EVIDENCE']
 const executable = process.env['BUN_NATIVE_HOST']

@@ -12,6 +12,7 @@ selected task. The plan streams one step every 300 ms, can be stopped, and stops
 when the selection changes. Plan text is fixed local data: no model, backend or
 network is contacted. The list and detail pane use native vertical
 scroll containers. Initial tasks make the list scroll at the default window size.
+The interactive example also runs a real shell at the top of the details pane, using the same `TerminalSession` as the Solid workspace (`examples/shared/terminal.ts`): `/bin/sh` on macOS and Linux, `cmd.exe` on Windows, started through the owned [process service](../../docs/native-services.md) on an 80×24 pseudo-terminal. It is the only executable in the app's launch policy and receives an explicit environment. The panel shows plain-text scrollback, sends one command per Enter, types Ctrl-C for **Interrupt** and can restart the shell. The native qualification fixtures mount `Workspace` without a terminal. `tests/react/workspace-terminal.test.tsx` drives the panel through the public React adapter, and `tests/native/processes.ts` drives the session against a real shell on Linux, macOS and Windows.
 Closing the window disposes the renderer before shutting down the application.
 
 ## Run in development
@@ -225,21 +226,22 @@ Both apps run on the same core, renderer primitives and GPUI host, and use the
 same development/AOT helper, owned X11 driver and native evidence records. They
 are different fixtures, so no equal-workload performance comparison is made.
 
-| Behavior                                         | React task workspace                                                                          | Solid conversation workspace                            |
-| ------------------------------------------------ | --------------------------------------------------------------------------------------------- | ------------------------------------------------------- |
-| Text entry, native focus, latest input revisions | Native flow (add, rename, search)                                                             | Native flow (per-conversation drafts)                   |
-| Keyed list add/edit/delete, filtering            | Native flow                                                                                   | Native flow (history, new/close conversation)           |
-| Native scroll, theme, resize                     | Native flow, dark input pixels sampled                                                        | Native flow, dark composer pixels sampled               |
-| Bounded local streaming with keyed row retention | Native flow: 8-step plan, effect-owned timer                                                  | Native flow: 8-update reply, model-owned timer          |
-| Stop and cancellation on selection change        | Native flow                                                                                   | Native flow                                             |
-| OS close with pending work, zero timers after    | Native flow, plus no timer fires after disposal                                               | Native flow                                             |
-| Confirmation before a destructive action         | Native flow: modal confirm dialog (Escape keeps the task, Delete removes it)                  | Clear-history confirmation panel (in-app)               |
-| In-app confirmation panel                        | Native flow: modal overlay, autofocus, Tab trap, Escape/backdrop keep, focus return           | Native flow: inline panel, confirm/keep                 |
-| Keyboard-only dialog flow and programmatic focus | Native flow: Tab/Return/Escape, focus moved to the composer after clearing                    | Not exercised                                           |
-| macOS hosted development and AOT                 | Native flow (same scenario)                                                                   | Native flow (same scenario)                             |
-| Windows hosted development and AOT               | Native flow (same scenario)                                                                   | Native flow (same scenario)                             |
-| Long-session ownership soak (60 rounds, dev+AOT) | Native Linux: plans, stale callbacks, remounts, clear overlay; exact per-round baseline       | Native Linux: replies, stale callbacks, remounts, clear |
-| Screenshots                                      | scrolled, dark, resized, edited, filtered, after, plan-streaming, plan-complete, plan-stopped | Per-scenario captures in its native evidence            |
+| Behavior                                          | React task workspace                                                                          | Solid conversation workspace                            |
+| ------------------------------------------------- | --------------------------------------------------------------------------------------------- | ------------------------------------------------------- |
+| Text entry, native focus, latest input revisions  | Native flow (add, rename, search)                                                             | Native flow (per-conversation drafts)                   |
+| Keyed list add/edit/delete, filtering             | Native flow                                                                                   | Native flow (history, new/close conversation)           |
+| Native scroll, theme, resize                      | Native flow, dark input pixels sampled                                                        | Native flow, dark composer pixels sampled               |
+| Bounded local streaming with keyed row retention  | Native flow: 8-step plan, effect-owned timer                                                  | Native flow: 8-update reply, model-owned timer          |
+| Stop and cancellation on selection change         | Native flow                                                                                   | Native flow                                             |
+| OS close with pending work, zero timers after     | Native flow, plus no timer fires after disposal                                               | Native flow                                             |
+| Confirmation before a destructive action          | Native flow: modal confirm dialog (Escape keeps the task, Delete removes it)                  | Clear-history confirmation panel (in-app)               |
+| In-app confirmation panel                         | Native flow: modal overlay, autofocus, Tab trap, Escape/backdrop keep, focus return           | Native flow: inline panel, confirm/keep                 |
+| Keyboard-only dialog flow and programmatic focus  | Native flow: Tab/Return/Escape, focus moved to the composer after clearing                    | Not exercised                                           |
+| macOS hosted development and AOT                  | Native flow (same scenario)                                                                   | Native flow (same scenario)                             |
+| Windows hosted development and AOT                | Native flow (same scenario)                                                                   | Native flow (same scenario)                             |
+| Long-session ownership soak (60 rounds, dev+AOT)  | Native Linux: plans, stale callbacks, remounts, clear overlay; exact per-round baseline       | Native Linux: replies, stale callbacks, remounts, clear |
+| Owned shell on a pseudo-terminal (shared session) | Adapter test: command, Interrupt, Restart, unsubscribe on unmount                             | Adapter-free session tests; real shell in `processes`   |
+| Screenshots                                       | scrolled, dark, resized, edited, filtered, after, plan-streaming, plan-complete, plan-stopped | Per-scenario captures in its native evidence            |
 
 Unsupported or unqualified for both: OS menus and alerts (#239), accessibility
 and screen readers, IME (#241), virtualization and long-session memory (#257),

@@ -30,6 +30,7 @@ export {
   type NativeHostExitDiagnostic,
   type NativeHostExitReason,
 } from './exit-diagnostic.ts'
+export { installedRelease, reportHealthy, type InstalledRelease } from './installation.ts'
 
 type WithoutId<T> = T extends { id: number } ? Omit<T, 'id'> : never
 export type WindowCommand = WithoutId<

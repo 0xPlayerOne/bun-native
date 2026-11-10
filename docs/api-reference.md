@@ -108,6 +108,14 @@ Every service is denied unless the application grants it, and a host that lacks 
 | `AppMenuItemEvent`      | type | A menu item activation.                                                                                                            | [Application menu bar](native-services.md#application-menu-bar)                     |
 | `NativeMenuBar`         | type | The installed menu bar.                                                                                                            | [Application menu bar](native-services.md#application-menu-bar)                     |
 
+### Installed releases
+
+| Export             | Kind     | Purpose                                                                                                      | Details                                                                          |
+| ------------------ | -------- | ------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------- |
+| `installedRelease` | function | The data directory, installation root and release of an app started by the verifying launcher, or undefined. | [Update lifecycle](update-lifecycle.md#verified-launcher-and-application-health) |
+| `InstalledRelease` | type     | What `installedRelease` returns.                                                                             | [Update lifecycle](update-lifecycle.md#verified-launcher-and-application-health) |
+| `reportHealthy`    | function | Reports a passed health check so the launcher confirms a pending update instead of rolling it back.          | [Update lifecycle](update-lifecycle.md#verified-launcher-and-application-health) |
+
 ### Errors
 
 | Export                     | Kind  | Purpose                                                                                                       | Details                                                                             |

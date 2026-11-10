@@ -620,6 +620,7 @@ export async function uninstall(
     await sweep(directory, null)
     await rm(join(directory, keysFile), { force: true })
     await rm(join(directory, 'bin'), { recursive: true, force: true })
+    await rm(join(directory, 'health'), { recursive: true, force: true })
     for (const name of ['versions', 'staging']) await rm(join(directory, name), { recursive: true })
     if (options.purgeData) await rm(join(directory, 'data'), { recursive: true, force: true })
     return paths

@@ -60,7 +60,11 @@ async function event(window_id: number, tree: PeerTree, spec: Spec) {
     : [...tree.nodes].find(([, node]) =>
         spec.type === 'input'
           ? node.element.kind === 'input' && node.element.placeholder === spec.target
-          : node.element.kind === 'button' && node.element.text === spec.target
+          : (node.element.kind === 'button' && node.element.text === spec.target) ||
+            // A key press may also target an input by its placeholder.
+            (spec.type === 'key_down' &&
+              node.element.kind === 'input' &&
+              node.element.placeholder === spec.target)
       )
   if (!target) throw new Error('Unknown fixture event target')
   const modifiers = {

@@ -18,7 +18,7 @@ function template(framework: Framework, language: Language): string {
   const typed = language === 'typescript'
   const solid = framework === 'solid'
   const title = `Bun Native ${solid ? 'Solid' : 'React'}`
-  return `${solid ? '' : '/** @jsxImportSource @bun-native/react */\n'}import { createApplication } from '@bun-native/core'
+  return `${solid ? '' : '/** @jsxImportSource @bun-native/react */\n'}import { createApplication, reportHealthy } from '@bun-native/core'
 import { render${typed ? ', type JSX' : ''} } from '@bun-native/${framework}'
 import { ${solid ? 'createSignal' : 'useState'} } from '${solid ? 'solid-js' : 'react'}'
 
@@ -67,6 +67,8 @@ try {
   })
   view = render(${solid ? 'App' : '<App />'}, window)
   await view.ready
+  // Confirms a pending update when the installed app was started by the verifying launcher.
+  await reportHealthy()
   process.send?.({ type: 'bun-native:ready' })
   await Promise.race([window.closed, view.closed, stopped.promise])
 } finally {
