@@ -30,11 +30,14 @@ if (
     'OS context menus need a Windows or macOS desktop, evidence directory, host and oracle'
   )
 
-// The host appends its menu steps here (diagnostics only).
-const tracePath = join(output!, 'host-trace.log')
-process.env['BUN_NATIVE_CONTEXT_MENU_TRACE'] = tracePath
+// The workflow names a file where the host appends its menu steps
+// (diagnostics only). Bun.spawn does not see later process.env changes, so
+// it is set before this process starts.
+const tracePath = process.env['BUN_NATIVE_CONTEXT_MENU_TRACE']
 const hostTrace = () =>
-  existsSync(tracePath) ? readFileSync(tracePath, 'utf8').trim().split('\n').join(' / ') : 'none'
+  tracePath && existsSync(tracePath)
+    ? readFileSync(tracePath, 'utf8').trim().split('\n').join(' / ')
+    : 'none'
 
 const started = performance.now()
 const outcomes: Record<string, unknown> = {}
