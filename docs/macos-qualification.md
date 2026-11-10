@@ -129,17 +129,20 @@ real download.
 
 ## Workspace references (#250, #248)
 
-Not run. Both workspaces end their scenario with real keys, wheel motion, resize
-and an OS close, and the macOS helper can post only a click, Tab and text. The
-session also had no posting permission. Needed: macOS equivalents of the Linux
-workspace scenarios, run on hosted macOS or on a Mac that has granted event
-posting to the controlling process.
+Not run in this physical session, which could not post events. Since
+[#582](https://github.com/0xPlayerOne/bun-native/pull/582) the hosted `macos-15`
+job runs both workspace references with the unchanged Linux scenarios (keys,
+text, wheel, resize and OS close) in development and AOT
+([Validation 42746456002](https://github.com/0xPlayerOne/bun-native/actions/runs/42746456002)).
+That run is hosted, not physical; a physical run needs event posting granted to
+the controlling process ([runbook](real-machine-validation.md#macos-workspace-references-248-250)).
 
 ## Remaining
 
 - Windows for every item above (no device was available).
 - Click-variant fault containment, workspace scenarios and GPUI input on this Mac
-  need CoreGraphics event-posting permission for the controlling process.
+  need CoreGraphics event-posting permission for the controlling process
+  (workspaces run on hosted macOS since #582).
 - Developer ID signing, notarization, installer formats and a Finder or
   Gatekeeper run on a real download (#249).
 - Two hosted macOS builds of one commit to settle cross-runner hashes (#223).
