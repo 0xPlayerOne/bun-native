@@ -1,4 +1,5 @@
 import type { NativeProcess, ProcessEvent } from '@bun-native/core'
+import { join } from 'node:path'
 
 /** Lines kept in the terminal's scrollback; older lines are dropped. */
 export const MAX_TERMINAL_LINES = 200
@@ -22,6 +23,30 @@ export interface TerminalState {
   readonly partial: string
   /** Exit code or signal name once the shell has exited, or the start error. */
   readonly detail: string
+}
+
+/**
+ * The one shell the workspace examples may start, with an explicit environment:
+ * `/bin/sh` on macOS and Linux, `cmd.exe` on Windows.
+ */
+export function workspaceShell(): { executable: string; env: Record<string, string> } {
+  if (process.platform === 'win32') {
+    const systemRoot = process.env['SystemRoot'] ?? 'C:\\Windows'
+    const executable = join(systemRoot, 'System32', 'cmd.exe')
+    return {
+      executable,
+      env: { SystemRoot: systemRoot, PATH: process.env['PATH'] ?? '', COMSPEC: executable },
+    }
+  }
+  return {
+    executable: '/bin/sh',
+    env: {
+      PATH: process.env['PATH'] ?? '/usr/bin:/bin',
+      HOME: process.env['HOME'] ?? '/',
+      TERM: 'dumb',
+      PS1: '$ ',
+    },
+  }
 }
 
 export type TerminalSpawn = (

@@ -9,6 +9,7 @@ export { defaultTheme, defineTheme } from './theme.ts'
 export type { ResolvedStyle, Theme, ThemedStyle, ThemeTokens } from './theme.ts'
 export { onDismiss, type DismissEvent } from './overlays.ts'
 export { onSplitResize } from './splits.ts'
+export { installedRelease, reportHealthy, type InstalledRelease } from '@bun-native/runtime'
 export type {
   DisplayChangeEvent,
   NativeDisplaySnapshot,
