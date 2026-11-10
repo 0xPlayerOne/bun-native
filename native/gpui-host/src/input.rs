@@ -1,5 +1,6 @@
 // Adapted from Zed GPUI examples/input.rs, revision ba63a022c9a22ca66d68ef2a8f0bb9b5b0a9984d.
 // Copyright the Zed contributors. Licensed under Apache-2.0; see LICENSE-APACHE and NOTICE.
+mod accessible;
 mod binding;
 mod editing;
 mod hit_test;
@@ -52,6 +53,10 @@ pub(crate) struct TextInput {
     last_paint: Option<InputPaint>,
     is_selecting: bool,
     policy: EditPolicy,
+    /// The paint whose geometry the latest render exposed to accessibility.
+    a11y_painted: Option<accessible::GeometryKey>,
+    /// Beneath an open modal layer: kept out of the accessibility tree.
+    a11y_hidden: bool,
 }
 
 /// Builds the edited value in one exact allocation. Chained `+` regrows the
@@ -273,6 +278,68 @@ impl TextInput {
             last_paint: None,
             is_selecting: false,
             policy,
+            a11y_painted: None,
+            a11y_hidden: false,
+        }
+    }
+
+    /// Keep this input out of the accessibility tree while a modal layer
+    /// that does not contain it is open.
+    pub(crate) fn set_accessibility_hidden(&mut self, hidden: bool, cx: &mut Context<Self>) {
+        if self.a11y_hidden != hidden {
+            self.a11y_hidden = hidden;
+            cx.notify();
+        }
+    }
+
+    /// Replace a UTF-8 range for an assistive technology, through the same
+    /// policy, budget and binding checks as typing.
+    fn replace_for_assistive_technology(
+        &mut self,
+        range: Range<usize>,
+        text: &str,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        self.marked_range = None;
+        let range = self.range_to_utf16(&range);
+        self.replace_text_in_range(Some(range), &offsets::single_line_paste(text), window, cx);
+    }
+
+    /// AccessKit text actions on this input: move the caret or selection,
+    /// set the whole value, or replace the selection.
+    fn assistive_action(
+        &mut self,
+        data: Option<&accesskit::ActionData>,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        match data {
+            Some(accesskit::ActionData::SetTextSelection(request)) => {
+                if !self.policy.interactive() {
+                    return;
+                }
+                self.selection = accessible::requested_selection(&self.content, request);
+                self.selection_changed(window, cx);
+            }
+            Some(accesskit::ActionData::Value(value)) => {
+                let range = self.selection.range.clone();
+                self.replace_for_assistive_technology(range, value, window, cx);
+            }
+            _ => {}
+        }
+    }
+
+    /// `SetValue` replaces everything; `ReplaceSelectedText` the selection.
+    fn assistive_set_value(
+        &mut self,
+        data: Option<&accesskit::ActionData>,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        if let Some(accesskit::ActionData::Value(value)) = data {
+            let all = 0..self.content.len();
+            self.replace_for_assistive_technology(all, value, window, cx);
         }
     }
 
@@ -500,40 +567,26 @@ impl EntityInputHandler for TextInput {
 impl Render for TextInput {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let policy = self.policy;
-        // AccessKit exposes the value, caret and selection through one text run
-        // whose characters are grapheme clusters, matching native caret motion.
+        let hidden = self.a11y_hidden;
+        // AccessKit exposes the value, caret, selection and character bounds
+        // through one text run whose characters are grapheme clusters,
+        // matching native caret motion.
+        let scale = window.scale_factor();
+        self.a11y_painted = None;
         let text = window.is_a11y_active().then(|| {
-            let lengths = editing::accessible_characters(&self.content);
-            let index = |offset| editing::accessible_index(&lengths, offset);
-            let (anchor, focus) = if self.selection.reversed {
-                (self.selection.range.end, self.selection.range.start)
-            } else {
-                (self.selection.range.start, self.selection.range.end)
-            };
-            let (anchor, focus) = (index(anchor), index(focus));
-            (self.content.clone(), lengths, anchor, focus)
+            let paint = self.last_paint.as_ref();
+            self.a11y_painted = paint.map(|paint| paint.geometry_key(scale));
+            accessible::AccessibleText::new(&self.content, &self.selection, |lengths| {
+                paint.and_then(|paint| paint.accessible_geometry(&self.content, lengths, scale))
+            })
         });
         let field = div()
             .id("native-text-input")
             .role(Role::TextInput)
             .aria_placeholder(self.placeholder.clone())
             .a11y_synthetic_children(move |builder| {
-                if let Some((value, lengths, anchor, focus)) = text {
-                    let run_id = builder.synthetic_node_id(0);
-                    let mut run = accesskit::Node::new(Role::TextRun);
-                    run.set_value(value.to_string());
-                    run.set_character_lengths(lengths);
-                    builder.push_child(run_id, run);
-                    let position = |character_index| accesskit::TextPosition {
-                        node: run_id,
-                        character_index,
-                    };
-                    builder
-                        .parent_node()
-                        .set_text_selection(accesskit::TextSelection {
-                            anchor: position(anchor),
-                            focus: position(focus),
-                        });
+                if let Some(text) = text {
+                    text.write(builder);
                 }
                 let node = builder.parent_node();
                 if policy.disabled {
@@ -541,6 +594,9 @@ impl Render for TextInput {
                 }
                 if policy.read_only {
                     node.set_read_only();
+                }
+                if hidden {
+                    node.set_hidden();
                 }
             })
             .flex()
@@ -556,6 +612,29 @@ impl Render for TextInput {
             // Without tracked focus, GPUI keeps it out of Tab order and pointer focus.
             return field;
         }
+        let input = cx.entity();
+        let field = field.on_a11y_action(accesskit::Action::SetTextSelection, {
+            let input = input.clone();
+            move |data, window, cx| {
+                input.update(cx, |input, cx| input.assistive_action(data, window, cx))
+            }
+        });
+        // A read-only input offers no edit actions, so platforms report it as
+        // not settable; the edit path would reject them anyway.
+        let field = if policy.editable() {
+            field
+                .on_a11y_action(accesskit::Action::ReplaceSelectedText, {
+                    let input = input.clone();
+                    move |data, window, cx| {
+                        input.update(cx, |input, cx| input.assistive_action(data, window, cx))
+                    }
+                })
+                .on_a11y_action(accesskit::Action::SetValue, move |data, window, cx| {
+                    input.update(cx, |input, cx| input.assistive_set_value(data, window, cx))
+                })
+        } else {
+            field
+        };
         field
             .key_context("TextInput")
             .track_focus(&self.focus_handle(cx))

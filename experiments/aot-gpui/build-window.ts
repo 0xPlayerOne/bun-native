@@ -63,6 +63,7 @@ const entries = {
   'text-input': 'tests/native/text-input.ts',
   ime: 'tests/native/ime.ts',
   accessibility: 'tests/native/accessibility.ts',
+  'accessibility-platform': 'tests/native/accessibility-platform.ts',
   'solid-services': 'tests/native/solid-services.tsx',
   'react-services': 'tests/native/react-services.tsx',
   'platform-smoke': 'tests/native/platform-smoke.ts',

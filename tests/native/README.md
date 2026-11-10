@@ -37,8 +37,15 @@ inputs, Tab order, scale factor 1 or 2 and an AT-SPI tree read. See
 `tests/native/accessibility.ts` is self-driving: an independent AT-SPI client
 asserts the role, name, state and value of every element kind, a modal dialog
 and the split divider, while real Tab, arrow, Home/End and pointer input move
-the divider and its `split_resize` events. See
+the divider and its `split_resize` events. It also sends AT-SPI caret,
+selection, click, focus and value requests and checks character bounds and the
+tree beneath a modal dialog. See
 [native text](../../docs/native-text.md#accessibility-roles-accessibility_v1).
+
+`tests/native/accessibility-platform.ts` is the macOS and Windows counterpart:
+an independent AX (`macos-accessibility-oracle.m`) or UI Automation
+(`windows-accessibility-oracle.ps1`) client reads the same element kinds and
+makes every change through assistive-technology requests only.
 
 The input driver verifies that the target window belongs to the launched
 application, focuses it, injects XTest input and requires matching Bun events and

@@ -16,7 +16,7 @@ import {
 } from '@bun-native/core'
 import assert from 'node:assert/strict'
 import { mkdirSync, readFileSync, statSync, writeFileSync } from 'node:fs'
-import { isAbsolute, join } from 'node:path'
+import { isAbsolute, join, resolve } from 'node:path'
 
 const output = process.env['BUN_NATIVE_WAYLAND_EVIDENCE']
 const mode = process.env['BUN_NATIVE_WAYLAND_MODE']
@@ -42,6 +42,13 @@ const evidenceLog = process.env['BUN_NATIVE_EVIDENCE_LOG'] ?? ''
 const nonce = process.env['BUN_NATIVE_EVIDENCE_NONCE'] ?? ''
 if (!isAbsolute(evidenceLog) || !/^[0-9a-f]{32}$/.test(nonce))
   throw new Error('An absolute native evidence log and a 32-hex-digit nonce are required')
+
+// The independent AT-SPI client (tests/native/atspi-probe.py) is a separate
+// system Python with PyGObject; it reads the tree over the session bus.
+const atspiPython = process.env['BUN_NATIVE_ATSPI_PYTHON'] ?? ''
+if (!isAbsolute(atspiPython)) throw new Error('Set BUN_NATIVE_ATSPI_PYTHON to a Python with gi')
+// Resolved from the checkout, not import.meta, so the AOT executable finds it too.
+const probe = resolve('tests/native/atspi-probe.py')
 
 const TITLE = 'Bun Native Wayland'
 const DIALOG = 'Bun Native Wayland dialog'
@@ -502,6 +509,76 @@ async function qualify(app: NativeApplication) {
     keyboardActivation: true,
   })
 
+  // 3b. Accessibility on Wayland: the same AccessKit tree reaches an
+  // independent AT-SPI client over the session bus, character bounds come
+  // from the painted glyphs at the output scale, and AT requests (caret,
+  // focus, click) reach the host, confirmed by compositor typing.
+  type Accessible = {
+    role: string
+    name: string
+    states: string[]
+    text?: string
+    caret?: number
+    extents?: number[][]
+  }
+  const atspi = async (...args: string[]) => run([atspiPython, '-I', probe, ...args])
+  const accessible = async (check: (tree: Accessible[]) => boolean, label: string) => {
+    const until = performance.now() + 5_000
+    for (;;) {
+      const tree = (JSON.parse(await atspi('dump', TITLE)) as { roles: Accessible[] }).roles
+      if (check(tree)) return tree
+      if (performance.now() > until)
+        throw new Error('Timed out waiting for AT-SPI ' + label + ': ' + JSON.stringify(tree))
+      await Bun.sleep(50)
+    }
+  }
+  const entryOf = (tree: Accessible[]) => tree.find((node) => node.role === 'entry')
+  const tree = await accessible(
+    (nodes) =>
+      entryOf(nodes)?.text === text &&
+      entryOf(nodes)!.extents?.every((box) => box[2]! >= 0) === true,
+    'the typed entry with painted extents'
+  )
+  assert.ok(
+    tree.some((node) => node.role === 'push-button' && node.name === 'Press'),
+    'the button is exposed by name'
+  )
+  assert.ok(tree.some((node) => node.role === 'label' && node.name.startsWith('Clicks: ')))
+  const entry = entryOf(tree)!
+  assert.ok(entry.states.includes('editable') && entry.states.includes('focusable'))
+  const boxes = entry.extents!
+  assert.equal(boxes.length, [...text].length)
+  for (let index = 1; index < boxes.length; index += 1)
+    assert.ok(boxes[index]![0]! >= boxes[index - 1]![0]!, 'left-to-right character boxes')
+  // Box heights follow the output scale: a 36 px input holds the line.
+  const lineHeight = boxes[0]![3]!
+  const outputScale = Number(process.env['BUN_NATIVE_TEST_SCALE_FACTOR'] ?? '1')
+  assert.ok(
+    lineHeight >= 20 * outputScale && lineHeight <= 36 * outputScale,
+    'character boxes are in physical pixels at the output scale'
+  )
+  await atspi('act', TITLE, 'entry', text, 'caret', '0')
+  await accessible((nodes) => entryOf(nodes)?.caret === 0, 'the AT caret')
+  await atspi('act', TITLE, 'entry', text, 'focus')
+  await accessible(
+    (nodes) => entryOf(nodes)?.states.includes('focused') === true,
+    'AT focus on the entry'
+  )
+  await type('X')
+  await waitFor(() => window.input(ui.field).value === 'X' + text, 'typing at the AT caret')
+  const clicksBefore = clicks
+  await atspi('act', TITLE, 'push-button', 'Press', 'click')
+  await waitFor(() => clicks === clicksBefore + 1, 'the AT click')
+  record('accessibility', {
+    client: 'AT-SPI (atspi-probe.py) over the session bus',
+    roles: [...new Set(tree.map((node) => node.role))].sort(),
+    lineHeight,
+    outputScale,
+    firstBox: boxes[0],
+    value: window.input(ui.field).value,
+    clicks,
+  })
+
   // 4. Pixels read back through the compositor match the painted tree.
   origin = (await mapped(TITLE)).rect
   const swatch = bounds(typed, (node) => node.style?.background === SWATCH)
@@ -600,6 +677,8 @@ const keyboard = Bun.spawn(['wtype', '-s', '3600000'], { stdout: 'ignore', stder
   assert.deepEqual([outputs[0]!.rect.x, outputs[0]!.rect.y], [0, 0])
   layout = { width: outputs[0]!.rect.width, height: outputs[0]!.rect.height }
 }
+// Enable the session accessibility bus before launch, as a screen reader would.
+await run([atspiPython, '-I', probe, 'enable'])
 const app = await createApplication({
   executable,
   permissions: {

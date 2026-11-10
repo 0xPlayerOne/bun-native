@@ -362,7 +362,7 @@ impl NativeView {
         };
         let mut base = div();
         pointer.target(&mut base, node_id);
-        let mut base = super::accessibility::container(base.id(node_id.get()), element);
+        let mut base = super::accessibility::container(base.id(node_id.get()), element, false);
         style::element(base.style(), element, false);
         // External drags target the parent window; a popup surface holds no
         // drop target of its own.
