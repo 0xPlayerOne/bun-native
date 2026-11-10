@@ -4,6 +4,7 @@ use crate::{
     services,
     services::app_menu::AppMenus,
     services::clipboard::{Clipboard, Operation as ClipboardOperation},
+    services::context_menus::ContextMenus,
     services::drops::Drops,
     services::file_dialogs::FileDialogs,
     services::files::Files,
@@ -15,10 +16,10 @@ use crate::{
     view::NativeView,
 };
 use bun_native_protocol::{
-    Capability, Command, DialogId, DropId, DropTargetId, ErrorCode, Event, FileAccess,
-    FileDialogOptions, FileGrantId, FileOperation, Limits, MAX_WINDOWS, MessageDialogOptions,
-    NodeId, NotificationId, Operation, PROTOCOL_VERSION, ProcessId, ProcessLaunch, RequestId,
-    ServicePolicy, ShortcutId, ShortcutModifiers, Tree, WindowId,
+    AppMenuEntry, Capability, Command, ContextMenuId, DialogId, DropId, DropTargetId, ErrorCode,
+    Event, FileAccess, FileDialogOptions, FileGrantId, FileOperation, Limits, MAX_WINDOWS,
+    MessageDialogOptions, NodeId, NotificationId, Operation, PROTOCOL_VERSION, ProcessId,
+    ProcessLaunch, RequestId, ServicePolicy, ShortcutId, ShortcutModifiers, Tree, WindowId,
 };
 use gpui::{
     App, Bounds, TitlebarOptions, WindowBounds, WindowHandle, WindowOptions, prelude::*, px, size,
@@ -60,6 +61,7 @@ pub(crate) struct Session {
     processes: Processes,
     file_dialogs: FileDialogs,
     task_dialogs: TaskDialogs,
+    context_menus: ContextMenus,
     drops: Drops,
     app_menu: AppMenus,
 }
@@ -81,6 +83,7 @@ impl Session {
         let processes = Processes::new(events.clone(), policy.processes.clone(), cx);
         let file_dialogs = FileDialogs::new(events.clone(), cx);
         let task_dialogs = TaskDialogs::new(events.clone(), cx);
+        let context_menus = ContextMenus::new(events.clone(), cx);
         let drops = Drops::new(events.clone(), cx);
         let app_menu = AppMenus::new(events.clone(), cx);
         cx.on_window_closed({
@@ -95,6 +98,7 @@ impl Session {
             let processes = processes.clone();
             let file_dialogs = file_dialogs.clone();
             let task_dialogs = task_dialogs.clone();
+            let context_menus = context_menus.clone();
             let drops = drops.clone();
             move |cx, closed| {
                 let id = windows
@@ -118,6 +122,7 @@ impl Session {
                     processes.close_window(window_id, cx);
                     file_dialogs.close_window(window_id, cx);
                     task_dialogs.close_window(window_id, cx);
+                    context_menus.close_window(window_id, cx);
                     // GPUI's drag outlives a window closed under it. End it
                     // in a live window so its stale data is never dropped.
                     let dragging = cx.has_active_drag();
@@ -156,6 +161,7 @@ impl Session {
             processes,
             file_dialogs,
             task_dialogs,
+            context_menus,
             drops,
             app_menu,
         }
@@ -255,6 +261,9 @@ impl Session {
                 }
                 if self.task_dialogs.available() {
                     capabilities.push(Capability::TaskDialogsV1);
+                }
+                if self.context_menus.available() {
+                    capabilities.push(Capability::ContextMenusV1);
                 }
                 capabilities.push(Capability::SplitResizeV1);
                 capabilities.push(Capability::AccessibilityV1);
@@ -457,6 +466,21 @@ impl Session {
             } => {
                 if let Err((code, message)) = self.task_dialogs.close(id, window_id, dialog_id, cx)
                 {
+                    self.error(id, code, message, cx);
+                }
+            }
+            Command::ShowContextMenu {
+                window_id,
+                menu_id,
+                x,
+                y,
+                items,
+                ..
+            } => self.show_context_menu((id, window_id, menu_id), (x, y), &items, cx),
+            Command::CloseContextMenu {
+                window_id, menu_id, ..
+            } => {
+                if let Err((code, message)) = self.context_menus.close(id, window_id, menu_id, cx) {
                     self.error(id, code, message, cx);
                 }
             }
@@ -745,8 +769,9 @@ impl Session {
             return;
         };
         state.borrow_mut().active = false;
-        // End an OS dialog owned by this window before the window goes away.
+        // End an OS dialog or menu owned by this window before it goes away.
         self.task_dialogs.close_window(window_id, cx);
+        self.context_menus.close_window(window_id, cx);
         if handle
             .update(cx, |_, window, _| window.remove_window())
             .is_ok()
@@ -763,6 +788,7 @@ impl Session {
             self.processes.close_window(window_id, cx);
             self.file_dialogs.close_window(window_id, cx);
             self.task_dialogs.close_window(window_id, cx);
+            self.context_menus.close_window(window_id, cx);
             // The closed-window hook also ends a drag GPUI still holds.
             self.drops.close_window(window_id, false);
             self.events.send(Event::Ack { id }, cx);
@@ -1053,6 +1079,32 @@ impl Session {
         }
     }
 
+    fn show_context_menu(
+        &self,
+        request: (RequestId, WindowId, ContextMenuId),
+        position: (f64, f64),
+        items: &[AppMenuEntry],
+        cx: &mut App,
+    ) {
+        let (id, window_id, _) = request;
+        services::context_menus::trace("command received");
+        let Some((handle, _)) = self.window(id, window_id, cx) else {
+            return;
+        };
+        let Ok(owner) = handle.update(cx, |_, window, _| ContextMenus::owner(window)) else {
+            self.error(
+                id,
+                ErrorCode::InvalidHandle,
+                "native window is no longer available",
+                cx,
+            );
+            return;
+        };
+        if let Err((code, message)) = self.context_menus.show(request, position, items, owner, cx) {
+            self.error(id, code, message, cx);
+        }
+    }
+
     fn register_drop_target(
         &self,
         id: RequestId,
@@ -1192,6 +1244,7 @@ impl Session {
             self.processes.stop(cx),
             self.file_dialogs.stop(cx),
             self.task_dialogs.stop(cx),
+            self.context_menus.stop(cx),
         ]
         .into_iter()
         .flatten()

@@ -46,9 +46,16 @@ import {
   menuBarRequest,
   MenuBarRegistration,
   type AppMenuItemEvent,
+  type MenuEntryOptions,
   type MenuOptions,
   type NativeMenuBar,
 } from './app-menu.ts'
+import {
+  contextMenuRequest,
+  ContextMenuRequest,
+  itemIds,
+  type ContextMenuPosition,
+} from './context-menus.ts'
 import {
   DropTargetRegistration,
   type DropTargetEvent,
@@ -134,6 +141,8 @@ class Application implements NativeApplication {
   private nextProcess = 1
   readonly dialogs = new Map<number, FileDialogRequest>()
   private nextDialog = 1
+  readonly contextMenus = new Map<number, ContextMenuRequest>()
+  private nextContextMenu = 1
   private nextMessageDialog = 1
   readonly dropTargets = new Map<number, DropTargetRegistration>()
   private nextDropTarget = 1
@@ -227,6 +236,12 @@ class Application implements NativeApplication {
     if (!Number.isSafeInteger(this.nextDialog))
       throw new NativeStateError('limit_exceeded', 'File dialog identity space exhausted')
     return this.nextDialog++
+  }
+
+  allocateContextMenu(): number {
+    if (!Number.isSafeInteger(this.nextContextMenu))
+      throw new NativeStateError('limit_exceeded', 'Context menu identity space exhausted')
+    return this.nextContextMenu++
   }
 
   isAllocatedDialog(id: number): boolean {
@@ -1718,6 +1733,105 @@ class Window implements NativeWindow {
     }
   }
 
+  async showContextMenu(
+    items: readonly MenuEntryOptions[],
+    position: ContextMenuPosition,
+    request: ServiceRequestOptions = {}
+  ): Promise<string | null> {
+    const wire = contextMenuRequest(items, position)
+    if (!this.application.capabilities.includes('context_menus_v1'))
+      throw new UnsupportedFeatureError('context_menu')
+    const signal = serviceSignal(request)
+    this.assertActive()
+    checkServiceCancellation(signal, 'context_menus')
+    const menu = await this.application.service(async () => {
+      this.assertActive()
+      checkServiceCancellation(signal, 'context_menus')
+      for (const other of this.application.contextMenus.values())
+        if (other.live)
+          throw new NativeServiceError(
+            'context_menus',
+            'limit_exceeded',
+            'Another context menu is already open'
+          )
+      const menu = new ContextMenuRequest(
+        this.application.allocateContextMenu(),
+        this.id,
+        itemIds(wire.items)
+      )
+      this.application.contextMenus.set(menu.id, menu)
+      try {
+        await this.application.host.send({
+          type: 'show_context_menu',
+          window_id: this.id,
+          menu_id: menu.id,
+          ...wire,
+        })
+        this.assertActive()
+        return menu
+      } catch (error) {
+        menu.fail(error instanceof Error ? error : new Error(String(error)))
+        this.application.contextMenus.delete(menu.id)
+        if (error instanceof ProtocolError) throw error
+        this.assertActive()
+        if (
+          error instanceof NativeCommandError &&
+          (DIALOG_ERRORS as readonly string[]).includes(error.code)
+        )
+          throw new NativeServiceError(
+            'context_menus',
+            error.code as NativeServiceError['code'],
+            error.message
+          )
+        throw error
+      }
+    })
+    // An abort while the host was showing it closes the now-live menu.
+    const cancel = () => this.closeContextMenu(menu)
+    if (signal?.aborted) cancel()
+    else signal?.addEventListener('abort', cancel, { once: true })
+    try {
+      return await menu.result
+    } finally {
+      signal?.removeEventListener('abort', cancel)
+    }
+  }
+
+  private closeContextMenu(menu: ContextMenuRequest): void {
+    if (!menu.live) return
+    menu.fail(
+      new NativeServiceError('context_menus', 'cancelled', 'The context menu was cancelled')
+    )
+    this.application.contextMenus.delete(menu.id)
+    // Window close and application shutdown close it natively.
+    if (!this.active || !this.application.running) return
+    void this.application
+      .track(
+        this.application.host
+          .send({ type: 'close_context_menu', window_id: this.id, menu_id: menu.id })
+          .then(
+            () => {},
+            (error: unknown) => {
+              // The user can end it, or the owner close, while this is in flight.
+              if (error instanceof NativeCommandError && error.code === 'invalid_handle') return
+              if (!this.application.running) return
+              throw error
+            }
+          )
+      )
+      .catch(() => {})
+  }
+
+  receiveContextMenu(event: Extract<WindowEvent, { type: 'context_menu_completed' }>): void {
+    if (!this.active) return
+    const menu = this.application.contextMenus.get(event.menu_id)
+    if (!menu) return // Cancelled: the host may already have queued a result.
+    if (menu.windowId !== this.id)
+      throw new ProtocolError('Native event names a context menu outside its owner')
+    this.application.contextMenus.delete(menu.id)
+    menu.complete(event.item_id)
+  }
+
   async showMessageDialog(
     options: MessageDialogOptions,
     request: ServiceRequestOptions = {}
@@ -1736,7 +1850,7 @@ class Window implements NativeWindow {
   /** The OS backend, only when the host offers it and the application granted it. */
   private nativeMessageDialogs(): NativeMessageDialogBackend | undefined {
     const capability = this.application.serviceCapabilities.messageDialogs
-    if (capability.availability !== 'available' || capability.backend !== 'task_dialog')
+    if (capability.availability !== 'available' || capability.backend === 'modal_overlay')
       return undefined
     return {
       allocate: () => this.application.allocateMessageDialog(),
@@ -1923,6 +2037,11 @@ class Window implements NativeWindow {
         dialog.fail(new NativeStateError('invalid_handle', 'File dialog owner window was closed'))
         this.application.dialogs.delete(dialog.id)
       }
+    for (const menu of this.application.contextMenus.values())
+      if (menu.windowId === this.id) {
+        menu.fail(new NativeStateError('invalid_handle', 'Context menu owner window was closed'))
+        this.application.contextMenus.delete(menu.id)
+      }
     this.messages.revoke()
     this.application.windows.delete(this.id)
     this.resolveClosed()
@@ -1955,6 +2074,10 @@ class Window implements NativeWindow {
     }
     if (event.type === 'file_dialog_completed') {
       this.receiveFileDialog(event)
+      return
+    }
+    if (event.type === 'context_menu_completed') {
+      this.receiveContextMenu(event)
       return
     }
     if (event.type === 'message_dialog_completed') {

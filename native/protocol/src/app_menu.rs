@@ -192,6 +192,21 @@ fn entries<'a>(
     Ok(())
 }
 
+/// A context menu: the same entries as a menu bar's menu, at most 128 at every
+/// depth, unique item ids and shortcuts, and submenus nested at most two
+/// levels below the menu itself.
+pub fn validate_context_menu(items: &[AppMenuEntry]) -> Result<(), &'static str> {
+    entries(
+        items,
+        1,
+        &mut Census {
+            entries: 0,
+            ids: Vec::new(),
+            shortcuts: Vec::new(),
+        },
+    )
+}
+
 /// An empty bar is valid: it removes the application's menus.
 pub fn validate_app_menus(menus: &[AppMenu]) -> Result<(), &'static str> {
     if menus.len() > MAX_APP_MENUS {

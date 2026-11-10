@@ -6,12 +6,34 @@ license = "MIT"
 publish = false
 
 [target.'cfg(target_os = "macos")'.dependencies]
+block2 = "=0.6.2"
 objc2 = "=0.6.5"
+objc2-core-foundation = { version = "=0.3.2", default-features = false, features = [
+  "std",
+  "CFRunLoop",
+] }
+objc2-foundation = { version = "=0.3.2", default-features = false, features = [
+  "std",
+  "block2",
+  "NSGeometry",
+  "NSRunLoop",
+  "NSString",
+] }
 objc2-metal = { version = "=0.3.2", default-features = false, features = ["std", "MTLDevice"] }
 objc2-app-kit = { version = "=0.3.2", default-features = false, features = [
   "std",
+  "block2",
+  "NSAlert",
+  "NSApplication",
+  "NSButton",
+  "NSControl",
+  "NSCell",
+  "NSEvent",
+  "NSMenu",
+  "NSMenuItem",
   "NSResponder",
   "NSView",
+  "NSWindow",
   "objc2-quartz-core",
 ] }
 objc2-quartz-core = { version = "=0.3.2", default-features = false, features = [

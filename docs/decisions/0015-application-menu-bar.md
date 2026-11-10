@@ -2,7 +2,8 @@
 
 Status: accepted; macOS implementation exercised only in hosted CI
 (`.github/workflows/native-platforms.yml`), not on a local Mac. Linux and
-Windows report the service unavailable. OS context menus remain unimplemented.
+Windows report the service unavailable. OS context menus are a separate
+service ([ADR 0020](0020-os-context-menus.md)).
 
 Date: 2026-11-06.
 
@@ -120,7 +121,7 @@ Dock keeps GPUI's existing behavior and is not changed here.
   binding must be added through the same functions.
 - Linux and Windows have no menu bar. An in-window overlay menu remains the
   portable choice there.
-- Not implemented: OS context menus, the Dock menu, dynamic item validation,
+- Not implemented here: the Dock menu, dynamic item validation,
   menu roles beyond what AppKit infers, mnemonics and accessibility labels
   beyond the item titles.
 
