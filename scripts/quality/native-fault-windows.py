@@ -33,9 +33,10 @@ from pathlib import Path
 LOGGER = logging.getLogger(__name__)
 ROOT = Path(__file__).resolve().parents[2]
 TITLE = "Bun Native native fault"
-# Must match tests/native/fault.ts. Distinct from every code the host or the
-# Windows loader reports on its own.
-FAULT_EXIT_CODE = 0x0BAD
+# Must match tests/native/fault.ts. Distinct from every code the host reports
+# on its own (1, 2, 101). Below 256 because Bun reports only the low eight
+# bits of a Windows exit code (0x0BAD arrived as 173 in run 42789580107).
+FAULT_EXIT_CODE = 0xAD
 PROCESS_TERMINATE = 0x0001
 PROCESS_SUSPEND_RESUME = 0x0800
 PROCESS_QUERY_LIMITED_INFORMATION = 0x1000

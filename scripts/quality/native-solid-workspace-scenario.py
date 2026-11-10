@@ -9,6 +9,12 @@ SPEC = importlib.util.spec_from_file_location(
 PAINT = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(PAINT)
 
+# Short wheel bursts that follow a still-growing history to its end, and how
+# long each waits for a frame there. The last keeps the former 10 s wait.
+FOLLOW_UP_BURSTS = 8
+FOLLOW_UP_NOTCHES = "3"
+FOLLOW_UP_SETTLE_SECONDS = 0.4
+
 INITIAL_TITLES = [
     "Project brief",
     "Native interactions",
@@ -184,10 +190,13 @@ def run(
             x, y = geometry_tools.pointer_point(
                 viewport, viewport, current["layout"]["viewport"]
             )
-            # The revealed reply may still be streaming, so the history can
-            # grow after a burst lands at its end. Each burst must reach the
-            # end it observes; a bounded number of bursts follows the growth.
-            for burst in range(4):
+            # The revealed reply may still be streaming (a chunk every 250 ms),
+            # so the history can grow after a burst lands at its end: hosted
+            # macOS run 42787338710 reached the end at tree revision 16, then
+            # chunk 22 grew it while the 30-notch burst was still returning.
+            # Short follow-up bursts keep up with the growth while the reply
+            # streams; the same strict end check decides.
+            for burst in range(FOLLOW_UP_BURSTS + 1):
                 action(
                     "mousemove",
                     "--window",
@@ -196,18 +205,22 @@ def run(
                     y,
                     "click",
                     "--repeat",
-                    "30",
+                    "30" if burst == 0 else FOLLOW_UP_NOTCHES,
                     "--delay",
                     "10",
                     "5",
                 )
                 try:
                     current = wait_for(
-                        at_end, "latest native message scroll endpoint", 3
+                        at_end,
+                        "latest native message scroll endpoint",
+                        10 if burst == FOLLOW_UP_BURSTS else FOLLOW_UP_SETTLE_SECONDS,
                     )
                     break
                 except RuntimeError as error:
-                    if burst == 3 or not str(error).startswith("Timed out"):
+                    if burst == FOLLOW_UP_BURSTS or not str(error).startswith(
+                        "Timed out"
+                    ):
                         raise
         bounds = geometry(row_id, current)
         if (

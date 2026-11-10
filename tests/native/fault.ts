@@ -23,7 +23,7 @@ if (
 )
   throw new Error('Explicit native diagnostics directory, host and scenario are required')
 // native-fault-windows.py terminates the suspended host with this code.
-const WINDOWS_FAULT_EXIT_CODE = 0x0bad
+const WINDOWS_FAULT_EXIT_CODE = 0xad
 const started = performance.now()
 function record(type: string, fields: Record<string, unknown> = {}): void {
   appendFileSync(
