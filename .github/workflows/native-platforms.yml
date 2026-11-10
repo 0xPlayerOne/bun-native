@@ -387,22 +387,25 @@ jobs:
           $env:BUN_NATIVE_CONTEXT_MENU_ORACLE = $oracle
           bun tests/native/context-menus.ts 2>&1 | Tee-Object -FilePath (Join-Path $evidence 'run.log')
           if ($LASTEXITCODE -ne 0) { throw 'macOS OS context menus were not verified' }
-      - name: Development and AOT macOS native fault containment
-        if: ${{ matrix.shard == 2 && (runner.os == 'macOS' && !cancelled() && steps.native-build.outcome == 'success') }}
+      - name: Development and AOT native fault containment
+        if: ${{ matrix.shard == 2 && (runner.os != 'Linux' && !cancelled() && steps.native-build.outcome == 'success') }}
         timeout-minutes: 5
         run: |
-          # Real OS click parks a public callback; the owned host is SIGSTOPped,
-          # two batches queue behind it, then it is SIGKILLed (#247).
+          # Real OS click parks a public callback; the owned host is stopped
+          # (SIGSTOP / NtSuspendProcess), two batches queue behind it, then it
+          # is killed (SIGKILL / TerminateProcess) (#247).
           $package = Join-Path $env:NATIVE_EVIDENCE 'fault-package'
           bun experiments/aot-gpui/build-window.ts --entry fault `
             --source $env:GITHUB_WORKSPACE --host $env:BUN_NATIVE_HOST `
             --host-profile release --outdir $package
-          if ($LASTEXITCODE -ne 0) { throw 'The macOS fault AOT compiler or inspection failed' }
+          if ($LASTEXITCODE -ne 0) { throw 'The ${{ runner.os }} fault AOT compiler or inspection failed' }
+          $manifest = Get-Content -Raw (Join-Path $package 'manifest.json') | ConvertFrom-Json
+          $driver = if ($IsWindows) { 'scripts/quality/native-fault-windows.py' } else { 'scripts/quality/native-fault-macos.py' }
           foreach ($mode in @('development', 'aot')) {
-            [string[]]$command = if ($mode -eq 'aot') { @((Join-Path $package 'fault')) } else { @('bun', 'tests/native/fault.ts') }
-            & '${{ matrix.python }}' scripts/quality/native-fault-macos.py `
+            [string[]]$command = if ($mode -eq 'aot') { @((Join-Path $package $manifest.application.file)) } else { @('bun', 'tests/native/fault.ts') }
+            & '${{ matrix.python }}' $driver `
               --output (Join-Path $env:NATIVE_EVIDENCE "fault-$mode") --mode $mode -- @command
-            if ($LASTEXITCODE -ne 0) { throw "macOS native fault containment was not verified in $mode" }
+            if ($LASTEXITCODE -ne 0) { throw "${{ runner.os }} native fault containment was not verified in $mode" }
           }
       - name: Development and AOT owned processes
         if: ${{ matrix.shard == 2 && (runner.os != 'Linux' && !cancelled() && steps.native-build.outcome == 'success') }}
