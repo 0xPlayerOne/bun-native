@@ -49,7 +49,6 @@ function unguardedJobs(workflow: string, exempt: readonly string[] = []): string
 
 const readyOnlyWorkflows = [
   '.github/workflows/bun-native.yml',
-  '.github/workflows/codeql.yml',
   '.github/workflows/opencode-security.yml',
   '.github/workflows/benchmark-comparison.yml',
   '.github/workflows/native-bridge-pairs.yml',

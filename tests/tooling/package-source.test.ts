@@ -85,7 +85,7 @@ describe('package export/import materialization (source reads only)', () => {
     expect(manifests['@bun-native/cli']!.dependencies).toEqual({
       '@babel/core': '7.29.7',
       'babel-preset-solid': '1.9.16',
-      oxlint: '1.90.0',
+      oxlint: '1.92.0',
     })
     const consumers = await consumerDefinitions(repository, manifests)
     for (const framework of ['solid', 'react'] as const) {

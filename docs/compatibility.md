@@ -38,7 +38,7 @@ names, or when two sources for one pin disagree.
 | `babel-preset-solid` | `1.9.16`                                   | root [`package.json`][root-manifest]; Babel 8 stays excluded under [#316][i316]                                      |
 | `@babel/core`        | `7.29.7`                                   | root [`package.json`][root-manifest]                                                                                 |
 | `react`              | `19.3.1`                                   | [`@bun-native/react`][react-pin] and root `package.json`                                                             |
-| `oxlint`             | `1.90.0`                                   | root [`package.json`][root-manifest] `devDependencies`, the packaged CLI dependency and standalone consumer projects |
+| `oxlint`             | `1.92.0`                                   | root [`package.json`][root-manifest] `devDependencies`, the packaged CLI dependency and standalone consumer projects |
 | `react-reconciler`   | `0.34.0`                                   | [`@bun-native/react`][react-pin]                                                                                     |
 | `native protocol`    | `11`                                       | [`PROTOCOL_VERSION`][protocol-ts] in TypeScript and [Rust][protocol-rs], which must match                            |
 

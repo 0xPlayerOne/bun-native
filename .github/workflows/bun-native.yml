@@ -301,10 +301,35 @@ jobs:
     if: vars.CI_BILLING_PAUSED == 'false' && (github.event_name != 'pull_request' || github.event.pull_request.draft == false)
     uses: ./.github/workflows/security.yml
 
+  codeql:
+    # CodeQL runs inside Validation so the required Validation / Gate check
+    # cannot pass (and auto-merge or a release cannot fire) before every
+    # analyzer finishes on this exact head (#607, #614).
+    name: CodeQL
+    if: vars.CI_BILLING_PAUSED == 'false' && (github.event_name != 'pull_request' || github.event.pull_request.draft == false)
+    permissions:
+      actions: read
+      contents: read
+      packages: read
+      security-events: write
+    uses: 0xPlayerOne/code-foundry/.github/workflows/codeql.yml@a8fcac90f8c96e1f294aecc7f3a2e874803b9c2b
+    with:
+      runtime-repository: 0xPlayerOne/code-foundry
+      runtime-ref: a8fcac90f8c96e1f294aecc7f3a2e874803b9c2b
+      runner: ubuntu-latest
+      rust-shards: '["all"]'
+      rust-threads: '1'
+      rust-max-parallel: 1
+      # All four languages are analyzed on every run. Code Foundry's planner
+      # would otherwise mark unchanged languages "Not applicable", which
+      # reports success without an analysis.
+      plan: >-
+        {"enabled":"true","rust_build_mode":"none","matrix":"[{\"display\":\"Actions\",\"language\":\"actions\",\"category\":\"/language:actions\",\"build_mode\":\"none\",\"changed\":true},{\"display\":\"TypeScript\",\"language\":\"javascript-typescript\",\"category\":\"/language:javascript-typescript\",\"build_mode\":\"none\",\"changed\":true},{\"display\":\"Python\",\"language\":\"python\",\"category\":\"/language:python\",\"build_mode\":\"none\",\"changed\":true},{\"display\":\"Rust\",\"language\":\"rust\",\"category\":\"/language:rust\",\"build_mode\":\"none\",\"changed\":true,\"shard\":\"all\"}]"}
+
   gate:
     # This exact check context is required by the existing protected-main ruleset.
     name: Validation / Gate
-    needs: [changes, source, protocol, native, native-platforms, security]
+    needs: [changes, source, protocol, native, native-platforms, security, codeql]
     # Never skip: GitHub counts a skipped required check as passing, so a
     # draft-stage run would let auto-merge fire the moment a PR is marked
     # ready, before the ready-stage implementation jobs exist. A draft run
@@ -312,6 +337,9 @@ jobs:
     if: always()
     runs-on: ubuntu-24.04
     timeout-minutes: 2
+    permissions:
+      actions: read
+      contents: read
     steps:
       - name: Refuse draft-stage validation
         if: github.event_name == 'pull_request' && github.event.pull_request.draft
@@ -325,5 +353,28 @@ jobs:
         run: |
           # Only a docs-only pull request may skip the two GPUI suites; any other skip fails.
           node -e 'const jobs=JSON.parse(process.env.RESULTS); const docsOnly=process.env.DOCS_ONLY==="true"; const skippable=new Set(["native","native-platforms"]); const failed=Object.entries(jobs).filter(([name,job])=>job.result!=="success"&&!(docsOnly&&skippable.has(name)&&job.result==="skipped")); if(failed.length){console.error(failed);process.exit(1)} if(docsOnly) console.log("Docs-only pull request: GPUI suites skipped.")'
+      - name: Require a real CodeQL analysis for every language
+        if: github.event_name != 'pull_request' || github.event.pull_request.draft == false
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          # A successful "Not applicable" row is not an analysis: require the
+          # analyzer step itself to have succeeded in this run attempt.
+          gh api "repos/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID/attempts/$GITHUB_RUN_ATTEMPT/jobs?per_page=100" > "$RUNNER_TEMP/jobs.json"
+          for spec in 'Actions:Analyze' 'TypeScript:Analyze' 'Python:Analyze' 'Rust:Analyze Rust'; do
+            language="${spec%%:*}"
+            step="${spec#*:}"
+            if ! jq -e --arg language "$language" --arg step "$step" '
+              [.jobs[]
+                | select(.name | endswith("CodeQL / Analyze (" + $language + ")"))
+                | select(.status == "completed" and .conclusion == "success")
+                | select(any(.steps[]?; .name == $step and .conclusion == "success"))
+              ] | length == 1
+            ' "$RUNNER_TEMP/jobs.json" > /dev/null; then
+              echo "::error::No successful CodeQL $language analysis in this run attempt"
+              exit 1
+            fi
+          done
       - name: Describe coverage precisely
-        run: echo 'Passed source and checked-JavaScript contracts, portable protocol checks, AOT/native interoperability, dependency audits, and the release-host Linux native suite. Linux requires development/AOT public API and JavaScript input, stale-input rejection, listener lifecycle, native fault containment, dispatch fairness, event throughput, bridge acknowledgement diagnostics and repeated startup/RSS baselines. Linux input uses XTest and actual GPUI paint evidence on a software GPU. macOS and Windows require actual GPUI release builds, development/AOT native paint traversal, owned visible windows, pointer and Tab/text input, joined lifecycle cleanup, and a deliberately invalid paint negative control. Screenshots, physical input, display presentation, OS close-button behavior and IME remain separate evidence.' >> "$GITHUB_STEP_SUMMARY"
+        run: echo 'Passed four-language CodeQL analysis, source and checked-JavaScript contracts, portable protocol checks, AOT/native interoperability, dependency audits, and the release-host Linux native suite. Linux requires development/AOT public API and JavaScript input, stale-input rejection, listener lifecycle, native fault containment, dispatch fairness, event throughput, bridge acknowledgement diagnostics and repeated startup/RSS baselines. Linux input uses XTest and actual GPUI paint evidence on a software GPU. macOS and Windows require actual GPUI release builds, development/AOT native paint traversal, owned visible windows, pointer and Tab/text input, joined lifecycle cleanup, and a deliberately invalid paint negative control. Screenshots, physical input, display presentation, OS close-button behavior and IME remain separate evidence.' >> "$GITHUB_STEP_SUMMARY"

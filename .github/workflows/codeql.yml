@@ -1,11 +1,10 @@
 name: CodeQL
 
+# Pull requests and main pushes run CodeQL inside Bun Native Validation, where
+# the required Validation / Gate waits for every analyzer (#607). This
+# workflow only keeps the weekly scan and manual dispatch, so no head is
+# analyzed twice.
 on:
-  push:
-    branches: [main]
-  pull_request:
-    branches: [main]
-    types: [opened, reopened, ready_for_review, synchronize]
   workflow_dispatch:
   schedule:
     - cron: '41 6 * * 1'
@@ -13,14 +12,13 @@ on:
 permissions: {}
 
 concurrency:
-  # Keep skipped draft events from cancelling an active ready-for-review scan.
-  group: bun-native-codeql-${{ github.event_name }}-${{ github.event.pull_request.number || github.ref }}${{ github.event_name == 'pull_request' && (github.event.pull_request.draft && '-draft' || '-ready') || '' }}
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+  group: bun-native-codeql-${{ github.ref }}
+  cancel-in-progress: false
 
 jobs:
   codeql:
     name: CodeQL
-    if: vars.CI_BILLING_PAUSED == 'false' && (github.event_name != 'pull_request' || github.event.pull_request.draft == false)
+    if: vars.CI_BILLING_PAUSED == 'false'
     permissions:
       actions: read
       contents: read
