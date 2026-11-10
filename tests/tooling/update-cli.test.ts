@@ -63,6 +63,14 @@ const report = [
    process.exitCode = Number(process.argv.at(-1)) || 0`,
 ]
 
+// The application reports a passed health check through @bun-native/core.
+const reportHealth = [
+  '-e',
+  `const core = require(${JSON.stringify(join(repository, 'packages/runtime/src/installation.ts'))});
+   const pending = core.installedRelease().healthPending;
+   core.reportHealthy().then((reported) => console.log(JSON.stringify({ pending, reported })))`,
+]
+
 test('keyed signing, rotation, health-checked install and verified launch through the CLI', async () => {
   const work = await temporary()
   const root = join(work, 'install')
@@ -207,6 +215,13 @@ test('keyed signing, rotation, health-checked install and verified launch throug
   expect(cli('confirm', '--root', root, '--release', 'f'.repeat(64)).err).toContain(
     'is not the current release'
   )
+  // The application reports its own health; the launcher confirms the pending release.
+  const healthy = cli('launch', '--root', root, '--', ...reportHealth)
+  expect(healthy).toMatchObject({ code: 0, err: '' })
+  expect(JSON.parse(healthy.out)).toEqual({ pending: true, reported: true })
+  expect(await readdir(join(root, 'health'))).toEqual([])
+  const again = cli('launch', '--root', root, '--', ...reportHealth)
+  expect(JSON.parse(again.out)).toEqual({ pending: false, reported: false })
   ok('confirm', '--root', root, '--release', current.release)
   expect(
     cli('report-unhealthy', '--root', root, '--release', current.release, '--key-set', keysV3).err
