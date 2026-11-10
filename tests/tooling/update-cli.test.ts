@@ -401,3 +401,79 @@ test('a self-contained bundle installs, integrates and starts without Bun or the
   expect(compiled.exitCode).toBe(1)
   expect(compiled.stderr.toString()).toContain('needs the Bun Native repository')
 }, 180_000)
+
+test('a concurrent start of the same pending release cannot erase another launch report', async () => {
+  const work = await temporary()
+  const root = join(work, 'install')
+  for (const [label, sequence, health] of [
+    ['first', '1', []],
+    ['second', '2', ['--health-limit', '3']],
+  ] as const) {
+    const payload = await executableBuild(label)
+    const manifest = join(work, `${label}.json`)
+    ok(
+      'manifest',
+      payload,
+      '--product',
+      'dev.bun-native.cli',
+      '--version',
+      `1.0.${sequence}`,
+      '--sequence',
+      sequence,
+      '--unsigned-experimental',
+      '--out',
+      manifest
+    )
+    ok(
+      'install',
+      manifest,
+      '--root',
+      root,
+      '--payload',
+      payload,
+      '--unsigned-experimental',
+      ...health
+    )
+  }
+  // Launch A reports health at once, then keeps running until the test lets it exit.
+  const go = join(work, 'go')
+  const reportThenWait = [
+    '-e',
+    `const core = require(${JSON.stringify(join(repository, 'packages/runtime/src/installation.ts'))});
+     const { existsSync } = require('node:fs');
+     core.reportHealthy().then(() => {
+       const wait = setInterval(() => { if (existsSync(${JSON.stringify(go)})) clearInterval(wait) }, 20);
+     })`,
+  ]
+  const first = Bun.spawn(
+    [
+      process.execPath,
+      join(repository, 'scripts/release-update.ts'),
+      'launch',
+      '--root',
+      root,
+      '--',
+      ...reportThenWait,
+    ],
+    { stdout: 'pipe', stderr: 'pipe' }
+  )
+  const mailbox = join(root, 'health')
+  const reported = async () => {
+    for (const name of existsSync(mailbox) ? await readdir(mailbox) : [])
+      if ((await readFile(join(mailbox, name), 'utf8')).length) return name
+    return undefined
+  }
+  const deadline = Date.now() + 30_000
+  while (!(await reported()) && first.exitCode === null && Date.now() < deadline) await Bun.sleep(5)
+  // Launch B of the same pending release starts and exits without reporting.
+  const second = cli('launch', '--root', root, '--', ...report, '0')
+  expect(second).toMatchObject({ code: 0, err: '' })
+  expect(JSON.parse(second.out).label).toBe('second')
+  await writeFile(go, '')
+  expect(await first.exited).toBe(0)
+  expect(await new Response(first.stderr).text()).toBe('')
+  // A's report confirmed the release, and no launch left a mailbox behind.
+  const after = cli('launch', '--root', root, '--', ...reportHealth)
+  expect(JSON.parse(after.out)).toEqual({ pending: false, reported: false })
+  expect(await readdir(mailbox)).toEqual([])
+}, 120_000)

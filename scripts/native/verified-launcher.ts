@@ -1,3 +1,4 @@
+import { randomBytes } from 'node:crypto'
 import { mkdir, readFile, rm } from 'node:fs/promises'
 import { constants } from 'node:os'
 import { dirname, join, resolve } from 'node:path'
@@ -32,11 +33,13 @@ export async function runVerified(
       `Rolled back release ${resolved.rolledBack.version} (${resolved.rolledBack.reason}); starting ${resolved.release.version}`
     )
   const release = resolved.release.manifestSha256
-  const health = resolved.health.status === 'pending' ? join(base, 'health', release) : undefined
-  if (health) {
-    await mkdir(dirname(health), { recursive: true })
-    await rm(health, { force: true })
-  }
+  // Each launch owns a fresh mailbox, so a concurrent start of the same release can never
+  // erase another launch's report.
+  const health =
+    resolved.health.status === 'pending'
+      ? join(base, 'health', `${release}.${randomBytes(8).toString('hex')}`)
+      : undefined
+  if (health) await mkdir(dirname(health), { recursive: true })
   const { BUN_NATIVE_HEALTH_FILE: _inherited, ...environment } = process.env
   const child = Bun.spawn([resolved.executable, ...args], {
     stdio: ['inherit', 'inherit', 'inherit'],
@@ -78,6 +81,7 @@ export async function runVerified(
     const code = await child.exited
     clearInterval(poll)
     await confirm()
+    if (health) await rm(health, { force: true })
     const signal = child.signalCode as NodeJS.Signals | null
     return signal ? 128 + (constants.signals[signal] ?? 0) : code
   } finally {
