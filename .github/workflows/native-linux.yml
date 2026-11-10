@@ -250,11 +250,21 @@ jobs:
             dbus-run-session -- bash scripts/quality/native-linux-session.sh \
             "$NATIVE_EVIDENCE/events-development" event-throughput bun tests/native/event-throughput.ts
       - name: Compile and inspect the actual AOT entries
+        env:
+          SHARD: ${{ matrix.shard }}
         run: |
+          # Each shard compiles only the entries its own steps run; shard 3's steps
+          # compile their fixtures inline. A new entry defaults to shard 2.
+          shard1=' native-window input-race bridge javascript core-lifecycle event-throughput fault scheduling layout interactions '
           # shellcheck disable=SC2016 # the xargs child shell expands its own variables
           for entry in native-window input-race bridge javascript core-lifecycle event-throughput fault scheduling layout interactions services display-semantics clipboard global-shortcuts notifications overlays message-dialogs popups wayland filesystem-grants text-input accessibility ime processes file-dialogs drag-drop solid-drag-drop react-drag-drop solid-services react-services solid solid-input-intent solid-interactions react react-interactions react-behavior react-workload react-workspace react-workspace-flow; do
+            case "$SHARD" in
+              1) [[ $shard1 == *" $entry "* ]] || continue ;;
+              2) [[ $shard1 != *" $entry "* ]] || continue ;;
+              *) continue ;;
+            esac
             echo "$entry"
-          done | xargs -P "$(nproc)" -n 1 bash -c '
+          done | xargs -r -P 2 -n 1 bash -c '
             set -euo pipefail
             entry=$1
             outdir="$NATIVE_EVIDENCE/$entry-package"
@@ -981,7 +991,7 @@ jobs:
             python3 scripts/quality/native-react-workspace-soak.py "$evidence/soak-result.json"
           done
       - name: Generated Solid and React templates in development and inspected AOT
-        if: ${{ matrix.shard == 1 && (!cancelled() && steps.native-build.outcome == 'success') }}
+        if: ${{ matrix.shard == 3 && (!cancelled() && steps.native-build.outcome == 'success') }}
         timeout-minutes: 6
         run: |
           packages="$NATIVE_EVIDENCE/cli-templates"
@@ -1022,7 +1032,7 @@ jobs:
           exit "$watch_status"
       - name: Prepare four installed external Solid and React consumers
         id: standalone-prepare
-        if: ${{ matrix.shard == 1 && (!cancelled() && steps.native-build.outcome == 'success') }}
+        if: ${{ matrix.shard == 3 && (!cancelled() && steps.native-build.outcome == 'success') }}
         timeout-minutes: 10
         run: |
           python3 tests/native/cli-standalone.py prepare \
@@ -1032,11 +1042,11 @@ jobs:
             --host-sha256-file "$NATIVE_EVIDENCE/binary-sha256.txt" \
             --source-commit "$(git rev-parse HEAD)" --source-tree "$(git rev-parse 'HEAD^{tree}')"
       - name: Installed external consumers in development and inspected AOT
-        if: ${{ matrix.shard == 1 && (!cancelled() && steps.standalone-prepare.outcome == 'success') }}
+        if: ${{ matrix.shard == 3 && (!cancelled() && steps.standalone-prepare.outcome == 'success') }}
         timeout-minutes: 6
         run: python3 tests/native/cli-standalone.py run --output "$NATIVE_EVIDENCE/cli-standalone"
       - name: Finalize owned standalone consumer cleanup
-        if: ${{ matrix.shard == 1 && (always() && contains(fromJSON('["success","failure","cancelled"]'), steps.standalone-prepare.outcome)) }}
+        if: ${{ matrix.shard == 3 && (always() && contains(fromJSON('["success","failure","cancelled"]'), steps.standalone-prepare.outcome)) }}
         timeout-minutes: 1
         run: python3 tests/native/cli-standalone.py cleanup --output "$NATIVE_EVIDENCE/cli-standalone"
       - name: Shared input viewport pixels through Solid and React in development and AOT
