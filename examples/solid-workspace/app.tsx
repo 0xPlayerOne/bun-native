@@ -11,6 +11,7 @@ import {
   type WorkspaceOwnership,
   type WorkspaceState,
 } from './model.ts'
+import { MAX_COMMAND_LENGTH, type TerminalSession, type TerminalState } from './terminal.ts'
 
 const palettes = {
   dark: {
@@ -218,6 +219,104 @@ function ConversationPane(props: {
   )
 }
 
+/** A live shell on an owned pseudo-terminal, shown as plain text. */
+function TerminalPanel(props: { session: TerminalSession; palette: () => Palette }): JSX.Element {
+  const [terminal, setTerminal] = createSignal<TerminalState>(props.session.current)
+  onCleanup(props.session.subscribe(setTerminal))
+  const [command, setCommand] = createSignal<InputState>({ value: '', revision: 0 })
+  let field: SolidNode | undefined
+  const running = () => terminal().status === 'running'
+
+  function run() {
+    if (!field) return
+    const observed = inputState(field)
+    const line = observed.value
+    if (!running() || line.length > MAX_COMMAND_LENGTH) return
+    setCommand({ value: '', revision: observed.revision })
+    void props.session.run(line)
+  }
+
+  const status = () => {
+    const state = terminal()
+    switch (state.status) {
+      case 'running':
+        return 'Shell running on a pseudo-terminal'
+      case 'starting':
+        return 'Starting shell…'
+      case 'exited':
+        return 'Shell ended (' + state.detail + ')'
+      case 'failed':
+        return 'Shell failed to start: ' + state.detail
+      default:
+        return 'No shell running'
+    }
+  }
+
+  return (
+    <box style={{ direction: 'column', gap: 8, flex_shrink: 0 }}>
+      <text style={{ color: props.palette().text, font_size: 18 }}>Terminal</text>
+      <text style={{ color: props.palette().muted, font_size: 12 }}>{status()}</text>
+      <box
+        style={{
+          direction: 'column',
+          padding: 8,
+          height: 220,
+          flex_shrink: 0,
+          overflow: 'scroll_y',
+          scroll_anchor: 'end',
+          background: props.palette().background,
+        }}
+      >
+        <For each={terminal().lines}>
+          {(line) => (
+            <text style={{ color: props.palette().text, font_size: 13, width: 'fill' }}>
+              {line.text || ' '}
+            </text>
+          )}
+        </For>
+        <text style={{ color: props.palette().text, font_size: 13, width: 'fill' }}>
+          {terminal().partial || ' '}
+        </text>
+      </box>
+      <input
+        ref={(node) => {
+          field = node
+        }}
+        value={command()}
+        placeholder="Type a command and press Enter"
+        disabled={!running()}
+        style={{
+          height: 36,
+          width: 'fill',
+          color: props.palette().text,
+          background: props.palette().background,
+        }}
+        onInput={setCommand}
+        onKeyDown={(event) => {
+          if (event.key === 'enter') run()
+        }}
+      />
+      <box style={{ direction: 'row', gap: 8, height: 34 }}>
+        <button
+          text="Interrupt"
+          disabled={!running()}
+          style={{
+            width: 100,
+            color: running() ? props.palette().text : props.palette().muted,
+            background: props.palette().accent,
+          }}
+          onClick={() => void props.session.interrupt()}
+        />
+        <button
+          text="Restart shell"
+          style={{ width: 120, color: props.palette().text, background: props.palette().accent }}
+          onClick={() => void props.session.restart()}
+        />
+      </box>
+    </box>
+  )
+}
+
 /** Shared unchanged by the interactive example and native qualification entry. */
 export function Workspace(
   props: {
@@ -227,6 +326,8 @@ export function Workspace(
     schedule?: ReplyScheduler
     /** Qualification only: drive the same component's actions without OS input. */
     onController?: (controller: WorkspaceController) => void
+    /** A live shell for the details pane. Without one, the pane says no shell runs. */
+    terminal?: TerminalSession
   } = {}
 ): JSX.Element {
   const controller = new WorkspaceController((next) => setState(next), props.schedule)
@@ -325,7 +426,7 @@ export function Workspace(
           <box
             style={{
               direction: 'column',
-              width: 212,
+              width: props.terminal ? 380 : 212,
               flex_shrink: 0,
               padding: 14,
               gap: 12,
@@ -338,10 +439,20 @@ export function Workspace(
               Replies stream from a local deterministic source. Cancel or switch conversations to
               stop pending work.
             </text>
-            <text style={{ color: palette().text, font_size: 18 }}>Terminal / PTY</text>
-            <text style={{ color: palette().muted }}>
-              Unsupported in this reference app. No shell process is running.
-            </text>
+            <Show
+              when={props.terminal}
+              keyed
+              fallback={
+                <>
+                  <text style={{ color: palette().text, font_size: 18 }}>Terminal / PTY</text>
+                  <text style={{ color: palette().muted }}>
+                    Unsupported in this reference app. No shell process is running.
+                  </text>
+                </>
+              }
+            >
+              {(session: TerminalSession) => <TerminalPanel session={session} palette={palette} />}
+            </Show>
             <text style={{ color: palette().text, font_size: 18 }}>Try the native UI</text>
             <text style={{ color: palette().muted }}>
               Click the composer to focus, press Enter to send, scroll history, resize the window,

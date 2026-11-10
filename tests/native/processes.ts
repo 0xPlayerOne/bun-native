@@ -32,6 +32,7 @@ import {
 } from 'node:fs'
 import { release, tmpdir } from 'node:os'
 import { isAbsolute, join } from 'node:path'
+import { TerminalSession, type TerminalState } from '../../examples/solid-workspace/terminal.ts'
 
 const output = process.env['BUN_NATIVE_PROCESS_EVIDENCE']
 const executable = process.env['BUN_NATIVE_HOST']
@@ -380,6 +381,71 @@ async function terminal(window: NativeWindow) {
 }
 
 /**
+ * The Solid workspace's terminal session over a real interactive shell on a
+ * pseudo-terminal: a command's output arrives as a clean line, an interrupt
+ * stops a foreground command (POSIX) without ending the shell, `exit` reports
+ * its status, and a released session refuses to start again.
+ */
+async function shellSession(window: NativeWindow) {
+  const session = new TerminalSession((listener) =>
+    window.spawnProcess(
+      'shell',
+      {
+        ...(windows ? { args: ['/d', '/q'] } : {}),
+        env: windows ? PATH : { ...PATH, TERM: 'dumb', PS1: '$ ' },
+        terminal: { columns: 80, rows: 24 },
+      },
+      listener
+    )
+  )
+  const until = (done: (state: TerminalState) => boolean, timeoutMs = 10_000) =>
+    new Promise<void>((resolve, reject) => {
+      if (done(session.current)) return resolve()
+      const timer = setTimeout(() => {
+        stop()
+        reject(new Error('Terminal session timed out: ' + JSON.stringify(session.current)))
+      }, timeoutMs)
+      const stop = session.subscribe((state) => {
+        if (!done(state)) return
+        clearTimeout(timer)
+        stop()
+        resolve()
+      })
+    })
+  const line = (text: string) => (state: TerminalState) =>
+    state.lines.some((item) => item.text.trim() === text)
+  // Like a person, type only at a prompt: input typed earlier is echoed
+  // before the prompt and the command's output then shares its line.
+  const prompted = (state: TerminalState) => state.partial.trimEnd().endsWith(windows ? '>' : '$')
+  const type = async (command: string) => {
+    await until(prompted)
+    assert.equal(await session.run(command), true)
+  }
+  await session.start()
+  assert.equal(session.current.status, 'running')
+  await type(windows ? 'echo bn-term-ok' : 'echo bn-$((6*7))')
+  await until(line(windows ? 'bn-term-ok' : 'bn-42'))
+  if (!windows) {
+    await type('sleep 30')
+    await Bun.sleep(300)
+    assert.equal(await session.interrupt(), true)
+    await type('echo after-interrupt')
+    await until(line('after-interrupt'), 5_000)
+    assert.equal(session.current.status, 'running')
+  }
+  await type('exit 4')
+  await until((state) => state.status === 'exited')
+  assert.equal(session.current.detail, 'exit 4')
+  await session.release()
+  await assert.rejects(session.start(), /released/)
+  record('workspaceTerminalSession', {
+    lines: session.current.lines.length,
+    exit: session.current.detail,
+    interrupted: !windows,
+  })
+}
+
+/**
  * Windows: interrupt types ^C into a pipe child's hidden console and ends a
  * waiting program well before its own 30 s; hangup has no equivalent and is
  * refused; terminate ends the whole job, descendants included.
@@ -647,6 +713,7 @@ try {
   await withApp(async (_app, window) => {
     await pipes(window)
     await terminal(window)
+    await shellSession(window)
     await signals(window)
     await credit(window)
   })

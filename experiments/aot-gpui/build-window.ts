@@ -287,7 +287,9 @@ async function sourceHashes() {
   ) {
     sources.add('examples/solid-workspace/app.tsx')
     sources.add('examples/solid-workspace/model.ts')
+    sources.add('examples/solid-workspace/terminal.ts')
   }
+  if (entry === 'processes') sources.add('examples/solid-workspace/terminal.ts')
   if (entry === 'adea-components')
     for (const path of [
       'examples/adea-components/app.tsx',
