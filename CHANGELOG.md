@@ -1,5 +1,25 @@
 # Changelog
 
+## [0.29.0](https://github.com/0xPlayerOne/bun-native/compare/v0.28.0...v0.29.0) (2026-11-10)
+
+
+### Features
+
+* **react-workspace:** in-app clear confirmation, keyboard focus and Windows run ([#591](https://github.com/0xPlayerOne/bun-native/issues/591)) ([be0562e](https://github.com/0xPlayerOne/bun-native/commit/be0562ea202ddff7f8088372ae23fc7c252fec1c))
+* **solid-workspace:** run a real shell in the workspace terminal pane ([#589](https://github.com/0xPlayerOne/bun-native/issues/589)) ([5543675](https://github.com/0xPlayerOne/bun-native/commit/5543675e2a40bcb11f4e79104c82cc230c9b9707))
+
+
+### Documentation
+
+* public API reference and version/support policy ([#598](https://github.com/0xPlayerOne/bun-native/issues/598)) ([40ada93](https://github.com/0xPlayerOne/bun-native/commit/40ada93c8174dfe62b7b77edad73a411fdb2c0ee))
+* Solid and React walkthroughs and a 0.27.2 compatibility matrix ([#590](https://github.com/0xPlayerOne/bun-native/issues/590)) ([d82f103](https://github.com/0xPlayerOne/bun-native/commit/d82f103273dbc33c0e8870c1bc9f1f62c0d893d7))
+
+
+### Tests
+
+* **processes:** wait for the acknowledgement failure before shutdown ([#594](https://github.com/0xPlayerOne/bun-native/issues/594)) ([de6425e](https://github.com/0xPlayerOne/bun-native/commit/de6425ef727e720f1f1aa1ddb3cc3b85e39d17be))
+* **workspaces:** React long-session soak and the Solid workspace on Windows ([#593](https://github.com/0xPlayerOne/bun-native/issues/593)) ([b974d67](https://github.com/0xPlayerOne/bun-native/commit/b974d673acb021f0dff6d9eccfe3e8ea215db770)), closes [#248](https://github.com/0xPlayerOne/bun-native/issues/248)
+
 ## [0.28.0](https://github.com/0xPlayerOne/bun-native/compare/v0.27.2...v0.28.0) (2026-11-10)
 
 
