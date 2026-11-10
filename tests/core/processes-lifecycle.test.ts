@@ -230,6 +230,10 @@ describe('owned process lifecycle edges (headless subprocess)', () => {
       )
         await Bun.sleep(5)
       expect(peerRequests(directory, 'acknowledge_process_output').length).toBeGreaterThan(0)
+      // The peer logs the request before it answers. A shutdown started before
+      // the failure arrives would stop the application first, so wait for the
+      // failure to end the application on its own.
+      await app.closed.catch(() => {})
       const error = await failure(app.shutdown())
       expect(error).toBeInstanceOf(NativeCommandError)
       expect((error as NativeCommandError).code).toBe('native_failure')
