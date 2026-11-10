@@ -128,4 +128,4 @@ Use the pinned Bun from [`toolchain.json`](../toolchain.json). The Linux native
 fault rows run with the `Development and AOT native failure…` step of
 `native-linux.yml`; the boundary and offline rows run with its
 `Development release-host boundary rejection…` step, and the no-display, startup-panic
-and offline AOT rows with `Release host with no display, a real GPUI startup panic and offline inspected AOT`.
+and offline AOT rows with `Release host with no display, a real GPUI startup panic, offline inspected AOT and a self-confirmed installed update`.
