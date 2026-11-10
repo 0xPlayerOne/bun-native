@@ -1,5 +1,23 @@
 # Changelog
 
+## [0.32.0](https://github.com/0xPlayerOne/bun-native/compare/v0.31.1...v0.32.0) (2026-11-10)
+
+
+### Features
+
+* **menus, dialogs:** macOS NSAlert sheets and OS context menus on macOS and Windows ([#239](https://github.com/0xPlayerOne/bun-native/issues/239)) ([#592](https://github.com/0xPlayerOne/bun-native/issues/592)) ([7da818c](https://github.com/0xPlayerOne/bun-native/commit/7da818c55f72e309f852a95cc73d670e332605b7))
+* **processes:** per-executable limits; Windows fault containment and a self-confirming installed update ([#618](https://github.com/0xPlayerOne/bun-native/issues/618)) ([2de2d2a](https://github.com/0xPlayerOne/bun-native/commit/2de2d2af8b322f2ab674ad4653aaeb5efa0c8a5e))
+
+
+### Bug Fixes
+
+* **ci:** CodeQL inside Validation, release after main's own Validation, oxlint 1.92 pins ([#616](https://github.com/0xPlayerOne/bun-native/issues/616)) ([da18b29](https://github.com/0xPlayerOne/bun-native/commit/da18b29f5cf443278d2eac828d924c3b6e22ebb9))
+
+
+### Maintenance
+
+* **deps:** bump taiki-e/install-action ([#612](https://github.com/0xPlayerOne/bun-native/issues/612)) ([2f76e68](https://github.com/0xPlayerOne/bun-native/commit/2f76e68e623846b25394c8dd7645c489512f3051))
+
 ## [0.31.1](https://github.com/0xPlayerOne/bun-native/compare/v0.31.0...v0.31.1) (2026-11-10)
 
 
