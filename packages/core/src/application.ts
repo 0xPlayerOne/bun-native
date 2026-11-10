@@ -1736,7 +1736,7 @@ class Window implements NativeWindow {
   /** The OS backend, only when the host offers it and the application granted it. */
   private nativeMessageDialogs(): NativeMessageDialogBackend | undefined {
     const capability = this.application.serviceCapabilities.messageDialogs
-    if (capability.availability !== 'available' || capability.backend !== 'task_dialog')
+    if (capability.availability !== 'available' || capability.backend === 'modal_overlay')
       return undefined
     return {
       allocate: () => this.application.allocateMessageDialog(),

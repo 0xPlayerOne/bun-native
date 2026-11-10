@@ -128,7 +128,7 @@ export interface ServicePermissions {
   readonly fileDialogs?: 'allow' | 'deny'
   /** The application menu bar (macOS). Selections are reported as item IDs. */
   readonly appMenu?: 'allow' | 'deny'
-  /** OS message dialogs (Windows task dialogs) instead of the in-window overlay. */
+  /** OS message dialogs (Windows task dialogs, macOS alert sheets) instead of the in-window overlay. */
   readonly taskDialogs?: 'allow' | 'deny'
 }
 

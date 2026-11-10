@@ -1,9 +1,11 @@
 /**
- * Real Windows task dialog qualification against the native host. The host
- * shows the dialog through `TaskDialogIndirect` on its own thread; an
- * independent UI Automation oracle (windows-dialog-oracle.ps1, never GPUI)
- * reads the dialog's text and buttons and presses them, so a chosen button
- * is a real accessibility invoke, not a synthesized host event.
+ * Real OS message dialog qualification against the native host. On Windows
+ * the host shows the dialog through `TaskDialogIndirect` on its own thread
+ * and an independent UI Automation oracle (windows-dialog-oracle.ps1) reads
+ * and presses it. On macOS the host attaches an `NSAlert` sheet to the owner
+ * window and an independent Accessibility oracle (macos-alert-oracle.m)
+ * reads and presses it and types real keys. Neither oracle loads GPUI, so a
+ * chosen button is a real accessibility invoke, not a synthesized host event.
  */
 import {
   createApplication,
@@ -16,11 +18,14 @@ import assert from 'node:assert/strict'
 import { statSync, writeFileSync } from 'node:fs'
 import { isAbsolute, join } from 'node:path'
 
+const macOS = process.platform === 'darwin'
 const output = process.env['BUN_NATIVE_TASK_DIALOG_EVIDENCE']
 const host = process.env['BUN_NATIVE_HOST']
-const oracle = process.env['BUN_NATIVE_WINDOWS_DIALOG_ORACLE']
+const oracle = macOS
+  ? process.env['BUN_NATIVE_MACOS_ALERT_ORACLE']
+  : process.env['BUN_NATIVE_WINDOWS_DIALOG_ORACLE']
 if (
-  process.platform !== 'win32' ||
+  (process.platform !== 'win32' && !macOS) ||
   !output ||
   !isAbsolute(output) ||
   !statSync(output).isDirectory() ||
@@ -30,8 +35,9 @@ if (
   !isAbsolute(oracle)
 )
   throw new Error(
-    'Windows task dialogs need a Windows desktop, evidence directory, host and oracle'
+    'OS message dialogs need a Windows or macOS desktop, evidence directory, host and oracle'
   )
+const backend = macOS ? 'alert_sheet' : 'task_dialog'
 
 const started = performance.now()
 const outcomes: Record<string, unknown> = {}
@@ -40,7 +46,47 @@ const record = (name: string, value: unknown) => {
   console.log(JSON.stringify({ outcome: name, atMs: Math.round(performance.now() - started) }))
 }
 
+async function run(command: string[]): Promise<{ code: number; stdout: string; stderr: string }> {
+  const child = Bun.spawn(command, { stdout: 'pipe', stderr: 'pipe' })
+  const [stdout, stderr, code] = await Promise.all([
+    new Response(child.stdout).text(),
+    new Response(child.stderr).text(),
+    child.exited,
+  ])
+  return { code, stdout: stdout.trim(), stderr: stderr.trim() }
+}
+
+/** The host is this process's direct child; its executable is the host path. */
+let hostPid: number | undefined
+async function pid(): Promise<number> {
+  if (hostPid !== undefined) return hostPid
+  const children = (await run(['pgrep', '-P', String(process.pid)])).stdout
+    .split('\n')
+    .filter(Boolean)
+  for (const child of children) {
+    const command = (await run(['ps', '-o', 'comm=', '-p', child])).stdout
+    if (command === host || command.endsWith('/bun-native-host')) return (hostPid = Number(child))
+  }
+  throw new Error('The native host process was not found among ' + children.join(', '))
+}
+
+/** macOS: the same four commands through the Accessibility oracle. */
+async function macUi(command: string, title: string, name: string): Promise<string> {
+  const target = String(await pid())
+  const argv =
+    command === 'invoke'
+      ? ['invoke', target, title, name]
+      : command === 'escape' || command === 'return'
+        ? ['key', target, title, command]
+        : [command, target, title]
+  const result = await run([oracle!, ...argv])
+  if (result.code !== 0)
+    throw new Error(`oracle ${command} exited ${result.code}: ${result.stderr}`)
+  return result.stdout
+}
+
 async function ui(command: string, title: string, name = ''): Promise<string> {
+  if (macOS) return macUi(command, title, name)
   const child = Bun.spawn(
     [
       'powershell.exe',
@@ -77,9 +123,9 @@ async function scenarios(app: NativeApplication, window: NativeWindow) {
   assert.deepEqual(app.serviceCapabilities.messageDialogs, {
     availability: 'available',
     scope: 'owned_window',
-    backend: 'task_dialog',
+    backend,
   })
-  record('backendIsTaskDialog', true)
+  record('backend', backend)
 
   // 1. The custom text and buttons are what the OS shows; pressing one answers.
   {
@@ -139,9 +185,34 @@ async function scenarios(app: NativeApplication, window: NativeWindow) {
     })
     await ui('find', title)
     const how = await ui('escape', title)
-    assert.deepEqual(await pending, { kind: 'dismissed' })
+    if (macOS) {
+      // A sheet has no close box and Escape belongs to no button here.
+      await Bun.sleep(300)
+      await ui('find', title)
+      await ui('invoke', title, 'OK')
+      assert.deepEqual(await pending, { kind: 'button', id: 'ok' })
+      record('escapeWithoutCancelButtonIgnored', how)
+    } else {
+      assert.deepEqual(await pending, { kind: 'dismissed' })
+      record('escapeDismisses', how)
+    }
     await ui('absent', title)
-    record('escapeDismisses', how)
+  }
+  if (macOS) {
+    // Return presses the default button, wherever AppKit placed it.
+    const title = 'Alert sheet return'
+    const pending = window.showMessageDialog({
+      title,
+      message: 'Press Return.',
+      buttons,
+      defaultButton: 'discard',
+      cancelButton: 'cancel',
+    })
+    await ui('find', title)
+    const how = await ui('return', title)
+    assert.deepEqual(await pending, { kind: 'button', id: 'discard' })
+    await ui('absent', title)
+    record('returnIsDefaultButton', how)
   }
   {
     const title = 'Task dialog ignores escape'
@@ -249,7 +320,11 @@ try {
 } finally {
   writeFileSync(
     join(output!, 'task-dialogs.json'),
-    JSON.stringify({ platform: process.platform, outcomes, failed: failure !== undefined }, null, 2)
+    JSON.stringify(
+      { platform: process.platform, backend, outcomes, failed: failure !== undefined },
+      null,
+      2
+    )
   )
   if (failure !== undefined) await app.shutdown().catch(() => {})
 }

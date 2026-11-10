@@ -167,10 +167,11 @@ the negotiated permission and `owned_window` scope. The application menu bar
 is a separate grant-gated service (`app.setMenuBar`, macOS only; see the
 [application menu bar](../../docs/native-services.md#application-menu-bar)).
 `window.showMessageDialog` and `window.showConfirmDialog` draw a modal overlay
-in the window and need no grant; on Windows, `permissions: { taskDialogs:
-'allow' }` shows an OS task dialog instead. See
+in the window and need no grant; on Windows and macOS, `permissions: {
+taskDialogs: 'allow' }` shows an OS dialog instead (a task dialog, or an
+`NSAlert` sheet on the window). See
 [message and confirm dialogs](../../docs/native-services.md#message-and-confirm-dialogs)
-and [OS task dialogs](../../docs/native-services.md#os-task-dialogs-windows).
+and [OS message dialogs](../../docs/native-services.md#os-message-dialogs-windows-task-dialogs-macos-alert-sheets).
 Clipboard, global shortcut, application menu, file dialog, notification,
 drag/drop, filesystem-grant and PTY/process entries report `available` only
 when the host negotiates their capability, and `unavailable` /

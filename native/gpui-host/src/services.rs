@@ -44,11 +44,14 @@ pub(crate) mod shortcuts;
 #[cfg(not(target_os = "linux"))]
 #[path = "services/shortcuts_unavailable.rs"]
 pub(crate) mod shortcuts;
-#[cfg(any(windows, test))]
+#[cfg(any(windows, target_os = "macos", test))]
 pub(crate) mod task_dialog_model;
 #[cfg(windows)]
 pub(crate) mod task_dialogs;
-#[cfg(not(windows))]
+#[cfg(target_os = "macos")]
+#[path = "services/task_dialogs_macos.rs"]
+pub(crate) mod task_dialogs;
+#[cfg(not(any(windows, target_os = "macos")))]
 #[path = "services/task_dialogs_unavailable.rs"]
 pub(crate) mod task_dialogs;
 #[cfg(target_os = "linux")]

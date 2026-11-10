@@ -46,7 +46,8 @@ overlay. `serviceCapabilities.messageDialogs.backend` becomes `'task_dialog'`
 when the OS backend is in use. The grant exists because an OS-chrome dialog
 carries system authority an in-window layer does not (it can be mistaken for
 a system prompt), matching the file-dialog and application-menu precedents.
-Linux and macOS hosts do not advertise the capability.
+Linux hosts do not advertise the capability; macOS hosts do since
+[ADR 0019](0019-macos-alert-sheets.md).
 
 **Worker thread, owner window.** The host shows each dialog from a dedicated
 thread with the owner window's `HWND` as `hwndParent`. The OS disables the
@@ -85,7 +86,8 @@ and reports a stuck dialog instead of waiting forever.
 - Native dialogs block the owner window at the OS level and play system
   sounds; they do not honor the default theme and ignore button `kind`.
 - A dialog whose owner is minimized or hidden is still shown by the OS.
-- Only Windows is covered; `NSAlert` stays a possible later value.
+- macOS uses the same capability and grant with `NSAlert` sheets
+  ([ADR 0019](0019-macos-alert-sheets.md)).
 
 ## Verification
 

@@ -330,6 +330,22 @@ jobs:
           $env:BUN_NATIVE_WINDOWS_DIALOG_ORACLE = (Resolve-Path 'tests/native/windows-dialog-oracle.ps1').Path
           bun tests/native/task-dialogs.ts 2>&1 | Tee-Object -FilePath (Join-Path $evidence 'run.log')
           if ($LASTEXITCODE -ne 0) { throw 'Windows OS message dialogs were not verified' }
+      - name: macOS OS message dialogs through NSAlert sheets (#239)
+        if: ${{ runner.os == 'macOS' && !cancelled() && steps.native-build.outcome == 'success' }}
+        timeout-minutes: 6
+        run: |
+          $oracle = Join-Path $env:NATIVE_EVIDENCE 'macos-alert-oracle'
+          xcrun clang -fobjc-arc -Wall -Wextra -Werror -framework AppKit -framework ApplicationServices `
+            tests/native/macos-alert-oracle.m -o $oracle
+          if ($LASTEXITCODE -ne 0) { throw 'The independent Accessibility alert oracle did not compile' }
+          $trust = & $oracle trusted | ConvertFrom-Json
+          if (-not $trust.trusted) { throw 'The runner does not trust the alert oracle for Accessibility' }
+          $evidence = Join-Path $env:NATIVE_EVIDENCE 'alert-sheets'
+          New-Item -ItemType Directory $evidence | Out-Null
+          $env:BUN_NATIVE_TASK_DIALOG_EVIDENCE = $evidence
+          $env:BUN_NATIVE_MACOS_ALERT_ORACLE = $oracle
+          bun tests/native/task-dialogs.ts 2>&1 | Tee-Object -FilePath (Join-Path $evidence 'run.log')
+          if ($LASTEXITCODE -ne 0) { throw 'macOS OS message dialogs were not verified' }
       - name: Development and AOT macOS native fault containment
         if: ${{ runner.os == 'macOS' && !cancelled() && steps.native-build.outcome == 'success' }}
         timeout-minutes: 5
