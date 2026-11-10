@@ -414,19 +414,26 @@ async function shellSession(window: NativeWindow) {
     })
   const line = (text: string) => (state: TerminalState) =>
     state.lines.some((item) => item.text.trim() === text)
+  // Like a person, type only at a prompt: input typed earlier is echoed
+  // before the prompt and the command's output then shares its line.
+  const prompted = (state: TerminalState) => state.partial.trimEnd().endsWith(windows ? '>' : '$')
+  const type = async (command: string) => {
+    await until(prompted)
+    assert.equal(await session.run(command), true)
+  }
   await session.start()
   assert.equal(session.current.status, 'running')
-  assert.equal(await session.run(windows ? 'echo bn-term-ok' : 'echo bn-$((6*7))'), true)
+  await type(windows ? 'echo bn-term-ok' : 'echo bn-$((6*7))')
   await until(line(windows ? 'bn-term-ok' : 'bn-42'))
   if (!windows) {
-    assert.equal(await session.run('sleep 30'), true)
+    await type('sleep 30')
     await Bun.sleep(300)
     assert.equal(await session.interrupt(), true)
-    assert.equal(await session.run('echo after-interrupt'), true)
+    await type('echo after-interrupt')
     await until(line('after-interrupt'), 5_000)
     assert.equal(session.current.status, 'running')
   }
-  assert.equal(await session.run('exit 4'), true)
+  await type('exit 4')
   await until((state) => state.status === 'exited')
   assert.equal(session.current.detail, 'exit 4')
   await session.release()
