@@ -8,6 +8,8 @@ type Failure = (ErrorCode, &'static str);
 
 pub(crate) type Owner = ();
 
+pub(crate) fn trace(_step: &str) {}
+
 #[derive(Clone)]
 pub(crate) struct ContextMenus;
 

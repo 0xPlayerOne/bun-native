@@ -127,12 +127,13 @@ try {
     const pending = window.showContextMenu(items, at)
     pending.catch(() => {})
     const shown = await ui('find', 'Copy').catch(async (error: unknown) => {
+      // Past the request timeout, so an unanswered request has rejected.
       const settled = await Promise.race([
         pending.then(
           (result) => `resolved ${JSON.stringify(result)}`,
           (rejection: unknown) => `rejected ${String(rejection)}`
         ),
-        Bun.sleep(0).then(() => 'still pending'),
+        Bun.sleep(6_000).then(() => 'still pending after 6s'),
       ])
       throw new Error(
         `${String(error)} (the menu promise is ${settled}; host trace: ${hostTrace()})`

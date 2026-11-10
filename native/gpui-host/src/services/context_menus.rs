@@ -227,6 +227,7 @@ impl ContextMenus {
         cx: &mut App,
     ) -> Result<(), Failure> {
         let (id, window, menu) = request;
+        trace("show entered");
         if menu.get() <= self.0.last_menu.get() {
             return Err((
                 ErrorCode::InvalidHandle,

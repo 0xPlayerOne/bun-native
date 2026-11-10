@@ -1087,6 +1087,7 @@ impl Session {
         cx: &mut App,
     ) {
         let (id, window_id, _) = request;
+        services::context_menus::trace("command received");
         let Some((handle, _)) = self.window(id, window_id, cx) else {
             return;
         };
