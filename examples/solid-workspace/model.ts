@@ -74,7 +74,7 @@ export function initialWorkspace(): WorkspaceState {
     ],
     [
       'Can the terminal run commands?',
-      'No. PTY and shell execution are unsupported in this reference workspace.',
+      'The example runs an owned shell in the details pane; fixtures run none.',
     ],
     [
       'What should I try next?',

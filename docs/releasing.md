@@ -2,7 +2,7 @@
 
 **Status:** Distribution is a design target; there are no qualified Bun Native installers or signed production artifacts yet. [BN6 #223](https://github.com/0xPlayerOne/bun-native/issues/223) owns real packaging, signing, updates and rollback. An experimental [verified update and rollback tool](updates.md) exists for build outputs (#249); platform installers, OS code signing and notarization remain unimplemented.
 
-**Note (2026-11-05):** the `Code Foundry Release` workflow ([`release.yml`](../.github/workflows/release.yml)) runs Release Please on `main` and sets the workspace version (currently `0.19.0`). That version release is not an application artifact. It does not qualify native windows, packaging, signing or Bun AOT. `bun scripts/package-native.ts` produces framework package sets for [standalone projects](standalone-projects.md), not signed application installers. [`release-integrity.yml`](../.github/workflows/release-integrity.yml) only checks published immutable releases. It runs on publication only when the `REQUIRE_IMMUTABLE_RELEASES` repository variable is `true` (set once an administrator enables immutable releases), or by manual dispatch for a given tag.
+**Note (2026-11-10):** the `Code Foundry Release` workflow ([`release.yml`](../.github/workflows/release.yml)) runs Release Please on `main` and sets the workspace version (0.27.2 at the time of writing; the root `package.json` is authoritative). That version release is not an application artifact. It does not qualify native windows, packaging, signing or Bun AOT. `bun scripts/package-native.ts` produces framework package sets for [standalone projects](standalone-projects.md), not signed application installers. [`release-integrity.yml`](../.github/workflows/release-integrity.yml) only checks published immutable releases. It runs on publication only when the `REQUIRE_IMMUTABLE_RELEASES` repository variable is `true` (set once an administrator enables immutable releases), or by manual dispatch for a given tag.
 
 ## Target artifacts
 
@@ -22,6 +22,18 @@ A compiled JIT bundle, build-only probe or WebView app cannot be advertised as a
 3. Produce installer/package and integrity-checked update channel; define version compatibility, rollback, interrupted install and user-state preservation (#249).
 4. Exercise native capability denial, malformed events, crash reports without secrets, signed update trust and clean/offline launch (#247).
 5. Publish supported/unsupported matrix and measured evidence; verify accessibility, text input and platform-specific behavior before a public quality claim (#245).
+
+## Version and support policy
+
+This policy applies to the experimental developer preview described in [ADR 0013](decisions/0013-release-readiness.md).
+
+- **Versions.** The workspace version follows Release Please on `main` with [`release-please-config.json`](../release-please-config.json). Before 1.0, `bump-minor-pre-major` is set, so a breaking change raises the minor version. The [changelog](../CHANGELOG.md) lists each release's changes.
+- **No API stability before 1.0.** Any release may change the public API in [`api-reference.md`](api-reference.md), the native protocol or the CLI. Release Please lists commits marked as breaking (`feat!:` or a `BREAKING CHANGE` footer) in the changelog.
+- **One supported line.** Only the latest release on `main` is maintained; fixes land forward, not on earlier versions. The [compatibility matrix](compatibility.md) states which release its rows describe.
+- **Exact pins.** Each release pins one Bun revision, one GPUI revision, Solid, React and one native protocol version; they are exact selections, not ranges ([exact pins](compatibility.md#exact-pins)).
+- **Host and packages move together.** A prebuilt host must come from the same source as the packages that launch it. A different protocol version fails at launch with a protocol error; see [upgrade an app](getting-started.md#upgrade-an-app).
+- **Prebuilt host artifacts.** CI keeps unsigned `unsigned-native-host.tar.gz` archives with SHA-256 files for 14 days in each run of the [Native Linux](../.github/workflows/native-linux.yml) and [Native Platforms](../.github/workflows/native-platforms.yml) workflows. They are evidence for that run, not published releases: a version release attaches no host, and running an archive on another machine is not exercised by CI. See [supply a native host](getting-started.md#2-supply-a-native-host).
+- **Support claims need evidence.** A platform, service or framework capability is supported only when the compatibility matrix links native evidence for it; compile success alone is not support.
 
 ## Experimental signing policy
 
