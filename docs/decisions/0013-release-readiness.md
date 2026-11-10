@@ -129,6 +129,53 @@ The support decision is bounded by the CI runs and evidence records linked
 above. This ADR adds no native measurement. Its pin check runs with every
 `bun test tests` invocation, including Source quality.
 
+## Revision for 0.27.2 (2026-11-10)
+
+Re-evaluated against main
+[`e456a6d`](https://github.com/0xPlayerOne/bun-native/tree/e456a6d2f65f8771b663a7fb8f3a6026ce0a9a54)
+(release 0.27.2) and the [changes in 0.27.2](../compatibility.md#changes-in-0272).
+**The decision is unchanged:** Bun Native remains an experimental developer
+preview built from a checkout or local package archives, with unsigned
+artifacts. The supported preview scope above is unchanged; nothing below moves
+into it.
+
+What changed since `38634595`:
+
+- **Required gate.** [#456](https://github.com/0xPlayerOne/bun-native/pull/456)
+  merged: a draft run now fails `Validation / Gate` instead of skipping it, so
+  that blocking risk is closed. A merged change is evidence only for the
+  ready-stage run on its exact head.
+- **OS-close stall.** [#358](https://github.com/0xPlayerOne/bun-native/issues/358)
+  is closed; see the issue for its recorded attribution.
+- **macOS ARM64** moves further within _observed, not supported_. Hosted
+  `macos-15` now runs the Solid and React workspace references with keys, text,
+  wheel, resize and OS close in development and AOT
+  ([#582](https://github.com/0xPlayerOne/bun-native/pull/582),
+  [Validation 42746456002](https://github.com/0xPlayerOne/bun-native/actions/runs/42746456002)),
+  and a physical M2 Max ran the clean-clone Solid and React quick-start in
+  development and AOT ([getting started](../getting-started.md#macos-arm64-physical-mac)).
+  It stays unsupported: services are unverified there, the physical run sent
+  no input, and nothing is signed or notarized.
+- **Linux Wayland** moves from unsupported to _observed, not supported_: one
+  core case on headless sway ([ADR 0017](0017-wayland.md)).
+- **Services.** Filesystem grants ([#304](https://github.com/0xPlayerOne/bun-native/issues/304)
+  closed), processes, file dialogs, drag and drop, core message dialogs, the
+  macOS menu bar and Windows task dialogs are merged. Only their Linux X11
+  cases are native evidence; macOS and Windows steps are unverified per
+  [capabilities by platform](../native-platforms.md#advertised-capabilities-by-platform).
+- **IME.** One IBus Hangul composition over XIM passes on Linux X11
+  ([#545](https://github.com/0xPlayerOne/bun-native/pull/545)). No macOS or
+  Windows IME and no assistive-technology run exist, so
+  [#241](https://github.com/0xPlayerOne/bun-native/issues/241) still blocks.
+
+Still blocking a wider release: [#296](https://github.com/0xPlayerOne/bun-native/issues/296)
+first-window deadline, [#287](https://github.com/0xPlayerOne/bun-native/issues/287)
+retention under default JIT tiers, [#241](https://github.com/0xPlayerOne/bun-native/issues/241)
+text input and accessibility, and signing, installers and update trust
+([#223](https://github.com/0xPlayerOne/bun-native/issues/223),
+[#247](https://github.com/0xPlayerOne/bun-native/issues/247),
+[#249](https://github.com/0xPlayerOne/bun-native/issues/249)).
+
 ## Risks, unsupported cases and follow-up
 
 Revisit this decision when any blocking risk closes with linked evidence, when

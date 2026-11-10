@@ -110,3 +110,14 @@ test('disagreeing repository sources fail instead of choosing one', () => {
   expect(() => agreed('x', ['1', '2'])).toThrow('repository sources disagree on x')
   expect(() => agreed('x', [undefined])).toThrow('repository sources disagree on x')
 })
+
+test('the matrix and the getting-started guide name one released version', () => {
+  const documented = /^\*\*Version:\*\* Bun Native \*\*(\d+\.\d+\.\d+)\*\*/m.exec(
+    read('docs/compatibility.md')
+  )?.[1]
+  expect(documented).toBeDefined()
+  // Only a released version has a fixed source to describe.
+  expect(read('CHANGELOG.md')).toContain(`## [${documented}](`)
+  expect(read('docs/getting-started.md')).toContain(`describes Bun Native ${documented};`)
+  expect(read('docs/compatibility.md')).toContain(`## Changes in ${documented}\n`)
+})

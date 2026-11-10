@@ -79,9 +79,14 @@ describe('checkout application CLI (real bundler and compiler; no native renderi
             )
           ).toBe(true)
           expect(map.sources.some((path) => path.includes('react-dom'))).toBe(false)
-          expect(readFileSync(join(projectPath, 'README.md'), 'utf8')).toContain(
-            'hot reload is not implemented'
-          )
+          const readme = readFileSync(join(projectPath, 'README.md'), 'utf8')
+          expect(readme).toContain('hot reload is not implemented')
+          expect(readme).toContain(`@bun-native/${framework}`)
+          expect(readme).not.toContain(`@bun-native/${framework === 'solid' ? 'react' : 'solid'}`)
+          // The generated guide link resolves to this checkout's getting-started page.
+          const guide = /\[getting-started guide\]\(([^)]+)\)/.exec(readme)?.[1]
+          expect(guide).toBeDefined()
+          expect(existsSync(join(projectPath, guide!))).toBe(true)
         })
       }, 20_000)
     }
