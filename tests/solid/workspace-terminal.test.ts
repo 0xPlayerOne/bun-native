@@ -5,7 +5,7 @@ import {
   MAX_TERMINAL_COLUMNS,
   MAX_TERMINAL_LINES,
   TerminalSession,
-} from '../../examples/solid-workspace/terminal.ts'
+} from '../../examples/shared/terminal.ts'
 
 type Listener = (event: ProcessEvent) => void | Promise<void>
 

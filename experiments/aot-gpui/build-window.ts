@@ -290,9 +290,9 @@ async function sourceHashes() {
   ) {
     sources.add('examples/solid-workspace/app.tsx')
     sources.add('examples/solid-workspace/model.ts')
-    sources.add('examples/solid-workspace/terminal.ts')
+    sources.add('examples/shared/terminal.ts')
   }
-  if (entry === 'processes') sources.add('examples/solid-workspace/terminal.ts')
+  if (entry === 'processes') sources.add('examples/shared/terminal.ts')
   if (entry === 'adea-components')
     for (const path of [
       'examples/adea-components/app.tsx',
@@ -310,6 +310,7 @@ async function sourceHashes() {
     entry === 'react-workspace-soak'
   ) {
     sources.add('examples/react-workspace/app.tsx')
+    sources.add('examples/shared/terminal.ts')
     sources.add('examples/react-workspace/model.ts')
   }
   if (entry === 'clipboard') sources.add('native/gpui-host/examples/clipboard-peer.rs')

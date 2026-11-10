@@ -20,6 +20,7 @@ import {
   type WorkspaceAction,
   type WorkspaceState,
 } from './model.ts'
+import { MAX_COMMAND_LENGTH, type TerminalSession, type TerminalState } from '../shared/terminal.ts'
 
 const palettes = {
   light: {
@@ -247,6 +248,102 @@ function TaskDetails({
   )
 }
 
+function terminalStatus(state: TerminalState): string {
+  switch (state.status) {
+    case 'running':
+      return 'Shell running on a pseudo-terminal'
+    case 'starting':
+      return 'Starting shell…'
+    case 'exited':
+      return 'Shell ended (' + state.detail + ')'
+    case 'failed':
+      return 'Shell failed to start: ' + state.detail
+    default:
+      return 'No shell running'
+  }
+}
+
+/** The same owned shell session as the Solid workspace, rendered by React. */
+function TerminalPanel({
+  session,
+  palette,
+}: {
+  session: TerminalSession
+  palette: Palette
+}): JSX.Element {
+  const [terminal, setTerminal] = useState<TerminalState>(session.current)
+  useEffect(() => {
+    setTerminal(session.current)
+    return session.subscribe(setTerminal)
+  }, [session])
+  const [command, setCommand] = useState<InputState>({ value: '', revision: 0 })
+  const field = useRef<NativeRef>(null)
+  const running = terminal.status === 'running'
+
+  function run() {
+    if (!field.current) return
+    const observed = inputState(field.current)
+    if (!running || observed.value.length > MAX_COMMAND_LENGTH) return
+    setCommand({ value: '', revision: observed.revision })
+    void session.run(observed.value)
+  }
+
+  return (
+    <box style={{ direction: 'column', gap: 8, padding: 20, flex_shrink: 0 }}>
+      <text style={{ color: palette.text, font_size: 18 }}>Terminal</text>
+      <text style={{ color: palette.muted, font_size: 12 }}>{terminalStatus(terminal)}</text>
+      <box
+        style={{
+          direction: 'column',
+          padding: 8,
+          height: 220,
+          flex_shrink: 0,
+          overflow: 'scroll_y',
+          scroll_anchor: 'end',
+          background: palette.background,
+        }}
+      >
+        {terminal.lines.map((line) => (
+          <text key={line.id} style={{ color: palette.text, font_size: 13, width: 'fill' }}>
+            {line.text || ' '}
+          </text>
+        ))}
+        <text style={{ color: palette.text, font_size: 13, width: 'fill' }}>
+          {terminal.partial || ' '}
+        </text>
+      </box>
+      <input
+        ref={field}
+        value={command}
+        placeholder="Type a command and press Enter"
+        disabled={!running}
+        style={{ height: 36, width: 'fill', color: palette.text, background: palette.background }}
+        onInput={setCommand}
+        onKeyDown={(event) => {
+          if (event.key === 'enter') run()
+        }}
+      />
+      <box style={{ direction: 'row', gap: 8, height: 34 }}>
+        <button
+          text="Interrupt"
+          disabled={!running}
+          style={{
+            width: 100,
+            color: running ? palette.text : palette.muted,
+            background: palette.accent,
+          }}
+          onClick={() => void session.interrupt()}
+        />
+        <button
+          text="Restart shell"
+          style={{ width: 120, color: palette.text, background: palette.accent }}
+          onClick={() => void session.restart()}
+        />
+      </box>
+    </box>
+  )
+}
+
 /**
  * The same component runs in development, AOT, and the public-adapter contract
  * tests. `schedule` defaults to a real timer; tests may observe its ownership.
@@ -256,6 +353,7 @@ export function Workspace({
   schedule = schedulePlanStep,
   confirm,
   onDispatch,
+  terminal,
 }: {
   onChange?: (state: WorkspaceState) => void
   /**
@@ -266,6 +364,8 @@ export function Workspace({
   schedule?: PlanScheduler
   /** When given, deleting a task asks first. Without it the delete is immediate. */
   confirm?: ConfirmAction | undefined
+  /** A live shell for the details pane. Without one, the pane shows only the task. */
+  terminal?: TerminalSession | undefined
 }): JSX.Element {
   const [state, dispatch] = useReducer(workspaceReducer, undefined, createWorkspace)
   const [draft, setDraft] = useState<InputState>({ value: '', revision: 0 })
@@ -454,12 +554,13 @@ export function Workspace({
         <box
           style={{
             direction: 'column',
-            width: 300,
+            width: terminal ? 380 : 300,
             flex_shrink: 0,
             overflow: 'scroll_y',
             background: palette.panel,
           }}
         >
+          {terminal ? <TerminalPanel session={terminal} palette={palette} /> : null}
           {selected ? (
             <TaskDetails
               key={selected.id}
