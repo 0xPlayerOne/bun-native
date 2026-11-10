@@ -26,6 +26,7 @@ function pe(options: { stamp: number; guid: number; path: string; code: number }
   view.setUint16(coff + 16, optionalSize, true)
   const optional = coff + 20
   view.setUint16(optional, 0x20b, true)
+  view.setUint32(optional + 108, 16, true)
   view.setUint32(optional + 64, options.stamp ^ 0xffff, true)
   const table = optional + optionalSize
   const section = (index: number, name: string, rva: number, raw: number, size: number) => {
@@ -77,6 +78,37 @@ describe('differing ranges', () => {
 })
 
 describe('PE regions', () => {
+  test('maps complete debug directories in declared header padding only', () => {
+    const bytes = pe({ stamp: 1, guid: 1, path: 'host.pdb', code: 1 })
+    const view = new DataView(bytes.buffer)
+    const optional = 0x80 + 4 + 20
+    const debugRva = optional + 112 + 6 * 8
+
+    // The section descriptors end at 0x1d8. A 28-byte CodeView directory
+    // fits entirely in the declared 0x1d8..0x200 header padding.
+    view.setUint32(optional + 60, 0x200, true)
+    bytes.copyWithin(0x1e0, 0x400, 0x400 + 28)
+    view.setUint32(debugRva, 0x1e0, true)
+    view.setUint32(debugRva + 4, 28, true)
+    const inHeaders = peRegions(bytes)
+    expect(inHeaders?.pdbPath).toBe('host.pdb')
+    expect(
+      inHeaders?.regions.filter((region) => region.name === 'debug directory TimeDateStamp')
+    ).toEqual([{ name: 'debug directory TimeDateStamp', start: 0x1e4, end: 0x1e8 }])
+
+    // Do not interpret section descriptors or an incomplete table crossing
+    // the declared header boundary as valid header-resident debug records.
+    view.setUint32(debugRva, 0x1d0, true)
+    expect(peRegions(bytes)?.pdbPath).toBeNull()
+    view.setUint32(debugRva, 0x1f0, true)
+    expect(peRegions(bytes)?.pdbPath).toBeNull()
+
+    // Existing section-backed debug directories must retain their identity.
+    view.setUint32(debugRva, 0x2000, true)
+    view.setUint32(debugRva + 4, 56, true)
+    expect(peRegions(bytes)?.pdbPath).toBe('host.pdb')
+  })
+
   test('rejects files that are not PE images', () => {
     expect(peRegions(new Uint8Array(16))).toBeNull()
     const noSignature = pe({ stamp: 1, guid: 1, path: 'x.pdb', code: 1 })
@@ -85,6 +117,438 @@ describe('PE regions', () => {
     const badMagic = pe({ stamp: 1, guid: 1, path: 'x.pdb', code: 1 })
     new DataView(badMagic.buffer).setUint16(0x80 + 24, 0x999, true)
     expect(peRegions(badMagic)).toBeNull()
+  })
+
+  test('does not invent debug metadata from undeclared or out-of-bounds optional directories', () => {
+    const bytes = pe({ stamp: 1, guid: 1, path: 'host.pdb', code: 1 })
+    const view = new DataView(bytes.buffer)
+    const coff = 0x80 + 4
+    const optional = coff + 20
+    const directoryCount = optional + 108
+    const timestamps = () =>
+      peRegions(bytes)?.regions.filter((region) => region.name === 'debug directory TimeDateStamp')
+
+    // The bytes may be present, but NumberOfRvaAndSizes does not declare
+    // the debug directory unless it includes entry 6.
+    view.setUint32(directoryCount, 0, true)
+    expect(peRegions(bytes)?.pdbPath).toBeNull()
+    expect(timestamps()).toEqual([])
+    view.setUint32(directoryCount, 6, true)
+    expect(peRegions(bytes)?.pdbPath).toBeNull()
+    expect(timestamps()).toEqual([])
+    view.setUint32(directoryCount, 7, true)
+    expect(peRegions(bytes)?.pdbPath).toBe('host.pdb')
+
+    // The directory count alone is insufficient if SizeOfOptionalHeader
+    // ends before entry 6. Poison the first section name with bytes that
+    // would otherwise be read as a valid debug RVA/size pair.
+    view.setUint32(directoryCount, 16, true)
+    const table = optional + 240
+    const shortTable = optional + 160
+    bytes.copyWithin(shortTable, table, table + 80)
+    bytes.set([0, 0x20, 0, 0, 56, 0, 0, 0], shortTable)
+    view.setUint16(coff + 16, 160, true)
+    expect(peRegions(bytes)?.pdbPath).toBeNull()
+    expect(timestamps()).toEqual([])
+
+    // A header lacking even the fixed optional fields is not a PE image
+    // whose debug metadata can be analyzed.
+    view.setUint16(coff + 16, 16, true)
+    expect(peRegions(bytes)).toBeNull()
+  })
+
+  test('rejects truncated or inflated COFF section tables', () => {
+    const complete = pe({ stamp: 1, guid: 1, path: 'host.pdb', code: 1 })
+    expect(peRegions(complete)?.pdbPath).toBe('host.pdb')
+
+    // The COFF header declares two 40-byte section headers; only one remains.
+    // A partial table is not a valid map for diagnosing the PE image.
+    const sectionTable = 0x80 + 4 + 20 + 240
+    expect(peRegions(complete.subarray(0, sectionTable + 40))).toBeNull()
+
+    // Previously an exaggerated section count generated a fictitious header
+    // region spanning millions of bytes beyond the actual file.
+    const inflated = complete.slice()
+    new DataView(inflated.buffer).setUint16(0x80 + 4 + 2, 0xffff, true)
+    expect(peRegions(inflated)).toBeNull()
+  })
+
+  test('does not map a virtual-only debug RVA into unrelated raw section bytes', () => {
+    const bytes = pe({ stamp: 1, guid: 1, path: 'host.pdb', code: 1 })
+    const view = new DataView(bytes.buffer)
+    const coff = 0x80 + 4
+    const optional = coff + 20
+    const table = optional + 240
+    // .text maps 0x200 raw bytes but reserves 0x500 virtual bytes. RVA 0x1300
+    // is inside its zero-filled tail; raw + 0x300 points into .rdata on disk.
+    view.setUint32(table + 8, 0x500, true)
+    view.setUint32(optional + 112 + 6 * 8, 0x1300, true)
+    const parsed = peRegions(bytes)
+    expect(parsed).not.toBeNull()
+    expect(parsed?.pdbPath).toBeNull()
+    expect(parsed?.regions.filter((region) => region.name === 'debug directory TimeDateStamp')).toEqual([])
+  })
+
+  test('does not read a debug directory across raw section boundaries', () => {
+    const bytes = pe({ stamp: 1, guid: 1, path: 'host.pdb', code: 1 })
+    const view = new DataView(bytes.buffer)
+    const debugRva = 0x80 + 4 + 20 + 112 + 6 * 8
+    // Only 16 bytes of .text remain at RVA 0x11f0. The 56-byte directory
+    // would otherwise read unrelated on-disk .rdata bytes after that boundary.
+    view.setUint32(debugRva, 0x11f0, true)
+    const crossing = peRegions(bytes)
+    expect(crossing).not.toBeNull()
+    expect(crossing?.pdbPath).toBeNull()
+    expect(
+      crossing?.regions.filter((region) => region.name === 'debug directory TimeDateStamp')
+    ).toEqual([])
+
+    // A full 56-byte table ending exactly at the raw boundary remains mapped.
+    view.setUint32(debugRva, 0x11c8, true)
+    const within = peRegions(bytes)
+    expect(
+      within?.regions.filter((region) => region.name === 'debug directory TimeDateStamp')
+    ).toHaveLength(2)
+  })
+
+  test('does not classify incomplete CodeView or REPRO payloads as file-backed bytes', () => {
+    const bytes = pe({ stamp: 1, guid: 1, path: 'host.pdb', code: 1 })
+    const view = new DataView(bytes.buffer)
+    const entry = 0x400
+    const codeview = 0x480
+
+    // The fixed 24-byte RSDS header must fit inside the declared SizeOfData.
+    view.setUint32(entry + 16, 4, true)
+    expect(peRegions(bytes)?.pdbPath).toBeNull()
+    expect(peRegions(bytes)?.regions.some((region) => region.name === 'CodeView GUID')).toBe(false)
+
+    // A signature four bytes before EOF is not a complete CodeView record.
+    view.setUint32(entry + 16, 28, true)
+    view.setUint32(entry + 24, bytes.length - 4, true)
+    view.setUint32(bytes.length - 4, 0x53445352, true)
+    const truncated = peRegions(bytes)
+    expect(truncated?.pdbPath).toBeNull()
+    expect(truncated?.regions.some((region) => region.name === 'CodeView GUID')).toBe(false)
+
+    // An in-bounds signature cannot authenticate a declared payload beyond EOF.
+    view.setUint32(entry + 16, 0x200, true)
+    view.setUint32(entry + 24, codeview, true)
+    expect(peRegions(bytes)?.pdbPath).toBeNull()
+
+    // Restore the complete CodeView record; reject only the truncated REPRO
+    // record instead of inventing a hash region outside the file.
+    view.setUint32(entry + 16, 24 + 'host.pdb'.length + 1, true)
+    view.setUint32(entry + 28 + 24, bytes.length - 2, true)
+    const repro = peRegions(bytes)
+    expect(repro?.pdbPath).toBe('host.pdb')
+    expect(repro?.regions.some((region) => region.name === 'REPRO hash')).toBe(false)
+
+    // A zero PointerToRawData cannot identify a hash in the DOS header.
+    view.setUint32(entry + 28 + 24, 0, true)
+    expect(peRegions(bytes)?.regions.some((region) => region.name === 'REPRO hash')).toBe(false)
+  })
+
+  test('rejects partial trailing IMAGE_DEBUG_DIRECTORY entries', () => {
+    const bytes = pe({ stamp: 1, guid: 1, path: 'host.pdb', code: 1 })
+    const view = new DataView(bytes.buffer)
+    const sizeAt = 0x80 + 4 + 20 + 112 + 6 * 8 + 4
+    const timestamps = () =>
+      peRegions(bytes)?.regions.filter((region) => region.name === 'debug directory TimeDateStamp')
+
+    expect(peRegions(bytes)?.pdbPath).toBe('host.pdb')
+    expect(timestamps()).toHaveLength(2)
+
+    // With an incomplete trailing record, the declared array is malformed.
+    // Do not silently floor its size and authenticate the earlier CodeView.
+    view.setUint32(sizeAt, 57, true)
+    expect(peRegions(bytes)?.pdbPath).toBeNull()
+    expect(timestamps()).toEqual([])
+
+    view.setUint32(sizeAt, 29, true)
+    expect(peRegions(bytes)?.pdbPath).toBeNull()
+    expect(timestamps()).toEqual([])
+
+    // Whole-record arrays remain valid, including a single CodeView entry.
+    view.setUint32(sizeAt, 28, true)
+    expect(peRegions(bytes)?.pdbPath).toBe('host.pdb')
+    expect(timestamps()).toHaveLength(1)
+
+    view.setUint32(sizeAt, 56, true)
+    expect(peRegions(bytes)?.pdbPath).toBe('host.pdb')
+    expect(timestamps()).toHaveLength(2)
+  })
+
+  test('ignores debug records with nonzero reserved Characteristics', () => {
+    const bytes = pe({ stamp: 1, guid: 1, path: 'host.pdb', code: 1 })
+    const view = new DataView(bytes.buffer)
+    expect(peRegions(bytes)?.pdbPath).toBe('host.pdb')
+
+    // The first entry is corrupted. Its fully in-bounds RSDS bytes must not
+    // establish a PDB identity, while the valid REPRO sibling remains usable.
+    view.setUint32(0x400, 1, true)
+    const corrupted = peRegions(bytes)
+    expect(corrupted?.pdbPath).toBeNull()
+    expect(corrupted?.regions.some((region) => region.name === 'CodeView GUID')).toBe(false)
+    expect(
+      corrupted?.regions.filter((region) => region.name === 'debug directory TimeDateStamp')
+    ).toHaveLength(1)
+    expect(corrupted?.regions.some((region) => region.name === 'REPRO hash')).toBe(true)
+
+    view.setUint32(0x400, 0, true)
+    expect(peRegions(bytes)?.pdbPath).toBe('host.pdb')
+  })
+
+  test('does not invent a PDB path when an RSDS record lacks its terminator', () => {
+    const bytes = pe({ stamp: 1, guid: 1, path: 'host.pdb', code: 1 })
+    const view = new DataView(bytes.buffer)
+    const terminator = 0x480 + 24 + 'host.pdb'.length
+    expect(peRegions(bytes)?.pdbPath).toBe('host.pdb')
+
+    // A fully file-backed RSDS header and GUID are not enough: the declared
+    // path bytes must contain the mandatory NUL terminator.
+    bytes[terminator] = 0x58
+    const unterminated = peRegions(bytes)
+    expect(unterminated?.pdbPath).toBeNull()
+    expect(unterminated?.regions.some((region) => region.name === 'CodeView GUID')).toBe(true)
+    expect(unterminated?.regions.some((region) => region.name === 'CodeView PDB path')).toBe(
+      false
+    )
+
+    // NUL plus additional declared padding remains a valid PDB path.
+    bytes[terminator] = 0
+    view.setUint32(0x400 + 16, 24 + 'host.pdb'.length + 1 + 3, true)
+    expect(peRegions(bytes)?.pdbPath).toBe('host.pdb')
+  })
+
+  test('does not call bytes after the PDB terminator a PDB path difference', () => {
+    const a = pe({ stamp: 1, guid: 1, path: 'host.pdb', code: 1 })
+    const b = a.slice()
+    const declared = 24 + 'host.pdb'.length + 1 + 3
+    new DataView(a.buffer).setUint32(0x400 + 16, declared, true)
+    new DataView(b.buffer).setUint32(0x400 + 16, declared, true)
+    const pathStart = 0x480 + 24
+    const padding = pathStart + 'host.pdb'.length + 1
+
+    // Different CodeView padding does not change either NUL-terminated identity.
+    b[padding] = 0x58
+    const difference = explainDifference(a, b)
+    expect(difference.pdbPaths).toEqual(['host.pdb', 'host.pdb'])
+    expect(difference.regions).toEqual([{ name: 'section .rdata', bytes: 1, ranges: 1 }])
+
+    // Changes inside the actual filename still belong to the PDB-path region.
+    const changedPath = a.slice()
+    changedPath[pathStart] = 'H'.charCodeAt(0)
+    expect(explainDifference(a, changedPath).regions).toEqual([
+      { name: 'CodeView PDB path', bytes: 1, ranges: 1 },
+    ])
+  })
+
+  test('does not select an arbitrary PDB path from conflicting CodeView records', () => {
+    const bytes = pe({ stamp: 1, guid: 1, path: 'first.pdb', code: 1 })
+    const view = new DataView(bytes.buffer)
+    const second = 0x400 + 28
+    const writeCodeView = (entry: number, pointer: number, filename: string) => {
+      const path = new TextEncoder().encode(filename)
+      view.setUint32(entry + 12, 2, true)
+      view.setUint32(entry + 16, 24 + path.length + 1, true)
+      view.setUint32(entry + 24, pointer, true)
+      view.setUint32(pointer, 0x53445352, true)
+      view.setUint32(pointer + 20, 1, true)
+      bytes.set(path, pointer + 24)
+      bytes[pointer + 24 + path.length] = 0
+    }
+
+    // Several complete CodeView entries with the same path are consistent.
+    writeCodeView(second, 0x540, 'first.pdb')
+    expect(peRegions(bytes)?.pdbPath).toBe('first.pdb')
+
+    // A different valid second path makes the image ambiguous: last-wins
+    // would otherwise report 'second.pdb' as its only PDB identity.
+    writeCodeView(second, 0x540, 'second.pdb')
+    expect(peRegions(bytes)?.pdbPath).toBeNull()
+
+    // Later entries must not restore a single path after a contradiction.
+    const optional = 0x80 + 4 + 20
+    view.setUint32(optional + 112 + 6 * 8 + 4, 84, true)
+    writeCodeView(0x400 + 56, 0x580, 'first.pdb')
+    const parsed = peRegions(bytes)
+    expect(parsed?.pdbPath).toBeNull()
+    expect(parsed?.regions.filter((region) => region.name === 'CodeView PDB path')).toHaveLength(3)
+  })
+
+  test('does not map header-aliasing or truncated raw sections as PE data', () => {
+    const make = () => pe({ stamp: 1, guid: 1, path: 'host.pdb', code: 1 })
+    const table = 0x80 + 4 + 20 + 240
+    const debugSize = 0x80 + 4 + 20 + 112 + 6 * 8 + 4
+
+    // A corrupt .rdata raw pointer of zero aliases the DOS header. The
+    // apparent CodeView record at that offset must not fabricate a PDB path
+    // or claim DOS-header differences as .rdata section data.
+    const alias = make()
+    const aliasView = new DataView(alias.buffer)
+    aliasView.setUint32(table + 40 + 20, 0, true)
+    aliasView.setUint32(debugSize, 28, true)
+    aliasView.setUint32(12, 2, true)
+    aliasView.setUint32(16, 24 + 'host.pdb'.length + 1, true)
+    aliasView.setUint32(24, 0x480, true)
+    const parsedAlias = peRegions(alias)
+    expect(parsedAlias?.pdbPath).toBeNull()
+    expect(
+      parsedAlias?.regions.filter((region) => region.name === 'debug directory TimeDateStamp')
+    ).toEqual([])
+    expect(parsedAlias?.regions.some((region) => region.name === 'section .rdata')).toBe(false)
+    const changedHeader = alias.slice()
+    changedHeader[0x41] = 0x58
+    expect(explainDifference(alias, changedHeader).regions).toEqual([
+      { name: 'headers', bytes: 1, ranges: 1 },
+    ])
+
+    // A section whose declared raw extent goes past EOF is not file-backed,
+    // even if the bytes at the beginning of the incomplete range resemble
+    // a fully in-bounds debug directory and independent CodeView record.
+    const truncated = make()
+    const truncatedView = new DataView(truncated.buffer)
+    truncatedView.setUint32(table + 40 + 20, 0x580, true)
+    truncatedView.setUint32(debugSize, 28, true)
+    truncatedView.setUint32(0x580 + 12, 2, true)
+    truncatedView.setUint32(0x580 + 16, 24 + 'host.pdb'.length + 1, true)
+    truncatedView.setUint32(0x580 + 24, 0x480, true)
+    const parsedTruncated = peRegions(truncated)
+    expect(parsedTruncated?.pdbPath).toBeNull()
+    expect(parsedTruncated?.regions.some((region) => region.name === 'section .rdata')).toBe(false)
+
+    // A complete, normally mapped .rdata section retains its PDB identity.
+    expect(peRegions(make())?.pdbPath).toBe('host.pdb')
+  })
+
+  test('refuses overlapping raw or RVA section aliases in PE diagnostic attribution', () => {
+    const make = () => pe({ stamp: 1, guid: 1, path: 'host.pdb', code: 1 })
+    const table = 0x80 + 4 + 20 + 240
+    const sections = (bytes: Uint8Array) =>
+      peRegions(bytes)?.regions.filter((region) => region.name.startsWith('section '))
+
+    // Both file-backed sections claim the same raw bytes. The old parser
+    // reported a PDB path from .rdata and attributed its bytes to .text.
+    const rawAlias = make()
+    new DataView(rawAlias.buffer).setUint32(table + 20, 0x400, true)
+    expect(peRegions(rawAlias)?.pdbPath).toBeNull()
+    expect(sections(rawAlias)).toEqual([])
+    const modified = rawAlias.slice()
+    modified[0x410] = (modified[0x410] ?? 0) ^ 1
+    expect(explainDifference(rawAlias, modified).regions).toEqual([
+      { name: 'unmapped', bytes: 1, ranges: 1 },
+    ])
+
+    // Even a partial raw overlap has no unique section owner.
+    const partial = make()
+    new DataView(partial.buffer).setUint32(table + 20, 0x300, true)
+    expect(sections(partial)).toEqual([])
+
+    // Two different raw locations claiming the same RVA are equally
+    // ambiguous when translating a debug-directory RVA.
+    const rvaAlias = make()
+    new DataView(rvaAlias.buffer).setUint32(table + 12, 0x2000, true)
+    expect(peRegions(rvaAlias)?.pdbPath).toBeNull()
+    expect(sections(rvaAlias)).toEqual([])
+
+    // Properly disjoint, adjacent sections still retain all metadata.
+    const valid = make()
+    expect(peRegions(valid)?.pdbPath).toBe('host.pdb')
+    expect(sections(valid)?.map((region) => region.name)).toEqual([
+      'section .text',
+      'section .rdata',
+    ])
+  })
+
+  test('respects declared file-aligned PE headers before assigning raw section ownership', () => {
+    const bytes = pe({ stamp: 1, guid: 1, path: 'host.pdb', code: 1 })
+    const view = new DataView(bytes.buffer)
+    const optional = 0x80 + 4 + 20
+    const table = optional + 240
+
+    // SizeOfHeaders includes aligned padding beyond the section descriptors.
+    // A malformed raw pointer in that padding must not claim header bytes.
+    view.setUint32(optional + 60, 0x200, true)
+    const valid = peRegions(bytes)
+    expect(valid?.pdbPath).toBe('host.pdb')
+    expect(valid?.regions.some((region) => region.name === 'section .text')).toBe(true)
+    expect(valid?.regions.find((region) => region.name === 'headers')?.end).toBe(0x200)
+
+    view.setUint32(table + 20, 0x1e0, true)
+    const alias = peRegions(bytes)
+    expect(alias?.regions.some((region) => region.name === 'section .text')).toBe(false)
+    expect(alias?.pdbPath).toBe('host.pdb')
+    const changedHeader = bytes.slice()
+    changedHeader[0x1f0] = 0x58
+    expect(explainDifference(bytes, changedHeader).regions).toEqual([
+      { name: 'headers', bytes: 1, ranges: 1 },
+    ])
+
+    // A declared header extent must contain the complete section table and
+    // fit inside the file. Zero still means undeclared for minimal PE fixtures.
+    view.setUint32(table + 20, 0x200, true)
+    view.setUint32(optional + 60, 0x180, true)
+    expect(peRegions(bytes)).toBeNull()
+    view.setUint32(optional + 60, 0x2000, true)
+    expect(peRegions(bytes)).toBeNull()
+    view.setUint32(optional + 60, 0, true)
+    expect(peRegions(bytes)?.regions.some((region) => region.name === 'section .text')).toBe(true)
+  })
+
+  test('uses the earliest file-backed section rather than an uninitialized section for headers', () => {
+    const a = pe({ stamp: 1, guid: 1, path: 'host.pdb', code: 1 })
+    const view = new DataView(a.buffer)
+    const table = 0x80 + 4 + 20 + 240
+
+    // A valid zero-filled .bss can precede the first section with raw data.
+    // PointerToRawData=0 is not the end of the DOS/PE headers.
+    a.fill(0, table, table + 8)
+    a.set(new TextEncoder().encode('.bss'), table)
+    view.setUint32(table + 16, 0, true)
+    view.setUint32(table + 20, 0, true)
+    expect(peRegions(a)?.pdbPath).toBe('host.pdb')
+    expect(peRegions(a)?.regions.find((region) => region.name === 'headers')).toEqual({
+      name: 'headers',
+      start: 0,
+      end: 0x400,
+    })
+    const b = a.slice()
+    b[0x41] = 0x58
+    expect(explainDifference(a, b).regions).toEqual([
+      { name: 'headers', bytes: 1, ranges: 1 },
+    ])
+
+    // With no file-backed section, the complete COFF section table is the
+    // header boundary, never a zero PointerToRawData value.
+    const noRaw = a.slice()
+    const noRawView = new DataView(noRaw.buffer)
+    noRawView.setUint32(table + 40 + 16, 0, true)
+    noRawView.setUint32(table + 40 + 20, 0, true)
+    expect(peRegions(noRaw)?.regions.find((region) => region.name === 'headers')?.end).toBe(
+      table + 80
+    )
+
+    // With no file-backed sections, SizeOfHeaders still owns the aligned
+    // padding after the section table. It must not become unmapped.
+    const padded = noRaw.slice()
+    new DataView(padded.buffer).setUint32(0x80 + 4 + 20 + 60, 0x200, true)
+    expect(peRegions(padded)?.regions.find((region) => region.name === 'headers')?.end).toBe(
+      0x200
+    )
+    const paddedChanged = padded.slice()
+    paddedChanged[0x1f0] = 1
+    expect(explainDifference(padded, paddedChanged).regions).toEqual([
+      { name: 'headers', bytes: 1, ranges: 1 },
+    ])
+
+    // The section-table order does not determine on-disk header extent.
+    const reordered = pe({ stamp: 1, guid: 1, path: 'host.pdb', code: 1 })
+    const reorderedView = new DataView(reordered.buffer)
+    reorderedView.setUint32(table + 20, 0x400, true)
+    reorderedView.setUint32(table + 40 + 20, 0x200, true)
+    expect(peRegions(reordered)?.regions.find((region) => region.name === 'headers')?.end).toBe(
+      0x200
+    )
   })
 
   test('names header, debug directory and section regions and reads the PDB path', () => {
@@ -136,4 +600,25 @@ describe('explaining a difference', () => {
     expect(plain.pdbPaths).toEqual([null, null])
     expect(renderDifference('linux', plain).join('\n')).not.toContain('PDB paths')
   })
+})
+
+test('escapes binary-sourced labels and paths in Markdown diagnostics', () => {
+  const difference = {
+    sizes: [1, 1] as [number, number],
+    differingBytes: 1,
+    ranges: [{ start: 0, end: 1 }],
+    regions: [{ name: 'section .bad|col\ninjected', bytes: 1, ranges: 1 }],
+    pdbPaths: ['C:\\build\\source|other\nbad.pdb', null] as [string | null, string | null],
+  }
+  const lines = renderDifference('windows', difference)
+  expect(lines).toContain(String.raw`| section .bad\|col\ninjected | 1 | 1 |`)
+  expect(lines).toContain(String.raw`PDB paths: C:\\build\\source\|other\nbad.pdb | (none)`)
+  expect(lines).toHaveLength(10)
+  const clean = {
+    ...difference,
+    regions: [{ name: 'section .text', bytes: 1, ranges: 1 }],
+    pdbPaths: ['host.pdb', null] as [string | null, string | null],
+  }
+  expect(renderDifference('windows', clean)).toContain('| section .text | 1 | 1 |')
+  expect(renderDifference('windows', clean)).toContain('PDB paths: host.pdb | (none)')
 })
