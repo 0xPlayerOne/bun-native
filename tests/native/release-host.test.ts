@@ -57,6 +57,45 @@ function fixture(name: string, env: Record<string, string>) {
   return JSON.parse(run.stdout.toString().trim().split('\n').at(-1)!) as Record<string, unknown>
 }
 
+// A private Xvfb display for one case, with Mesa's software Vulkan driver when
+// it is the only one installed (as on the hosted Linux runner).
+async function virtualDisplay(): Promise<{
+  environment: Record<string, string>
+  stop(): Promise<void>
+}> {
+  const server = Bun.spawn(
+    ['Xvfb', '-displayfd', '1', '-screen', '0', '1280x800x24', '-nolisten', 'tcp'],
+    { stdout: 'pipe', stderr: 'ignore' }
+  )
+  const stop = async () => {
+    server.kill('SIGKILL')
+    await server.exited
+  }
+  try {
+    const reader = server.stdout.getReader()
+    let number = ''
+    while (!number.includes('\n')) {
+      const { value, done } = await reader.read()
+      if (done) throw new Error('Xvfb exited before reporting its display')
+      number += new TextDecoder().decode(value)
+    }
+    reader.releaseLock()
+    const environment: Record<string, string> = {
+      DISPLAY: `:${number.trim()}`,
+      GPUI_X11_SCALE_FACTOR: '1',
+    }
+    const icds = existsSync('/usr/share/vulkan/icd.d')
+      ? readdirSync('/usr/share/vulkan/icd.d').filter((name) => /^lvp_icd.*\.json$/.test(name))
+      : []
+    if (icds.length === 1)
+      environment['VK_DRIVER_FILES'] = join('/usr/share/vulkan/icd.d', icds[0]!)
+    return { environment, stop }
+  } catch (error) {
+    await stop()
+    throw error
+  }
+}
+
 type BoundaryReport = {
   status: string
   protocol: number
@@ -130,6 +169,62 @@ test.if(!linuxSkip)(
     })
     expect(String(report['panicLocation'])).toMatch(/gpui_linux\/src\/linux\/platform\.rs:\d+:\d+$/)
     expect(report['elapsedMs'] as number).toBeLessThan(5_000)
+  },
+  90_000
+)
+
+// A real Rust panic after the session is established: the release host reads
+// the test-only BUN_NATIVE_TEST_FAULT=panic-in-batch at startup, opens a real
+// window, then panics inside the GPUI update of its first batch. The pending
+// batch, the window and the application reject with one typed `panic`
+// diagnostic in the `running` phase, located at the injected panic, with every
+// ownership counter back at zero. RUST_BACKTRACE=1 makes the backtrace clip
+// the captured stderr, so the panic report must survive that clipping.
+const sessionPanicSkip = linuxSkip ?? (Bun.which('Xvfb') === null ? 'Xvfb is required' : undefined)
+test.if(!sessionPanicSkip)(
+  skipped(
+    'release host GPUI panic after the session is established is a typed running-phase diagnostic',
+    sessionPanicSkip
+  ),
+  async () => {
+    const display = await virtualDisplay()
+    try {
+      const report = fixture(
+        'session-panic.ts',
+        environment(
+          {
+            ...display.environment,
+            BUN_NATIVE_HOST: host!,
+            BUN_NATIVE_TEST_FAULT: 'panic-in-batch',
+            RUST_BACKTRACE: '1',
+          },
+          ['WAYLAND_DISPLAY', 'WAYLAND_SOCKET']
+        )
+      )
+      expect(report).toMatchObject({
+        reason: 'panic',
+        exitCode: 101,
+        signal: null,
+        phase: 'running',
+        pendingRequests: 1,
+        panicMessage: true,
+        ownership: {
+          windows: 0,
+          nodes: 0,
+          callbacks: 0,
+          queuedTransactions: 0,
+          queuedCallbacks: 0,
+          activeCallbacks: 0,
+          serviceRequests: 0,
+        },
+      })
+      expect(String(report['panicLocation'])).toMatch(
+        /native\/gpui-host\/src\/session\.rs:\d+:\d+$/
+      )
+      expect(report['elapsedMs'] as number).toBeLessThan(5_000)
+    } finally {
+      await display.stop()
+    }
   },
   90_000
 )
@@ -324,28 +419,13 @@ test.if(!updateSkip)(
       launcher
     )
 
-    const display = Bun.spawn(
-      ['Xvfb', '-displayfd', '1', '-screen', '0', '1280x800x24', '-nolisten', 'tcp'],
-      { stdout: 'pipe', stderr: 'ignore' }
-    )
+    const display = await virtualDisplay()
     try {
-      const reader = display.stdout.getReader()
-      let number = ''
-      while (!number.includes('\n')) {
-        const { value, done } = await reader.read()
-        if (done) throw new Error('Xvfb exited before reporting its display')
-        number += new TextDecoder().decode(value)
-      }
-      reader.releaseLock()
-      const env = environment({ DISPLAY: `:${number.trim()}`, GPUI_X11_SCALE_FACTOR: '1' }, [
+      const env = environment(display.environment, [
         'BUN_NATIVE_HOST',
         'WAYLAND_DISPLAY',
         'WAYLAND_SOCKET',
       ])
-      const icds = existsSync('/usr/share/vulkan/icd.d')
-        ? readdirSync('/usr/share/vulkan/icd.d').filter((name) => /^lvp_icd.*\.json$/.test(name))
-        : []
-      if (icds.length === 1) env['VK_DRIVER_FILES'] = join('/usr/share/vulkan/icd.d', icds[0]!)
       const app = Bun.spawn([join(installRoot, 'bin', product)], {
         cwd: work,
         env,
@@ -366,8 +446,7 @@ test.if(!updateSkip)(
       expect(await app.exited).toBe(0)
       expect(readdirSync(join(installRoot, 'health'))).toEqual([])
     } finally {
-      display.kill('SIGKILL')
-      await display.exited
+      await display.stop()
     }
   },
   300_000

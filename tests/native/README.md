@@ -153,8 +153,14 @@ display (a real GPUI panic during startup, reported by the Bun launch as a typed
 redacted), and an inspected AOT build of `boundary.ts` under Xvfb inside
 `unshare --map-root-user --net`. The offline case is skipped where unprivileged
 user namespaces, `xvfb-run`, `dbus-run-session` or the pinned AOT compiler are
-unavailable. A panic after a session is established still needs a test-only
-host fault command.
+unavailable. `session-panic.ts` runs under its own Xvfb with the test-only
+`BUN_NATIVE_TEST_FAULT=panic-in-batch`: the host opens a real window, then
+panics inside the GPUI update of its first batch, and the pending batch, window
+and application reject with one typed `panic` diagnostic in the `running` phase
+located in `session.rs`. `RUST_BACKTRACE=1` makes the backtrace clip the
+captured stderr, so the kept panic report is checked too. The variable is read
+once at host startup; the launching application already controls the host's
+environment, so it grants nothing new.
 
 ```sh
 BUN_NATIVE_HOST="$PWD/target/release/bun-native-host" bun test tests/native/release-host.test.ts
