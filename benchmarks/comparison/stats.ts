@@ -246,7 +246,9 @@ export function assertEquivalentPaint(
     if (!value || typeof value !== 'object') return value
     // The nonce and timestamps differ by construction; the adapter must not.
     const { nonce: _nonce, ...rest } = value as Record<string, unknown>
-    for (const key of Object.keys(rest)) if (/time|_ms$|Ms$/.test(key)) delete rest[key]
+    // Only timing fields vary: a renderer identity such as `runtime` must survive.
+    for (const key of Object.keys(rest))
+      if (key === 'time' || /(?:_ms|Ms)$/.test(key)) delete rest[key]
     return rest
   }
   const [first, ...rest] = calibrations
@@ -260,6 +262,26 @@ export function assertEquivalentPaint(
   }
   if (!Array.isArray(nodes(first!.initial)) || !Array.isArray(nodes(first!.final)))
     throw new Error(`${first!.name} lacks a native paint tree`)
+  // Matching missing or nonce-only renderer records do not establish native
+  // renderer equivalence. Require stable identity at both stages of every run.
+  for (const item of calibrations) {
+    for (const stage of ['initial', 'final'] as const) {
+      const identity = renderer(item[stage])
+      if (
+        !identity ||
+        typeof identity !== 'object' ||
+        Array.isArray(identity) ||
+        Object.keys(identity).length === 0
+      )
+        throw new Error(`${item.name} ${stage} lacks native renderer identity`)
+    }
+  }
+  // Cross-calibration agreement can conceal a renderer switch in every run:
+  // the initial records all match, and the final records all match, but one
+  // window was observed with two distinct native renderer identities.
+  for (const item of calibrations)
+    if (!isDeepStrictEqual(renderer(item.initial), renderer(item.final)))
+      throw new Error(`${item.name} changes native renderer identity between paint stages`)
 }
 
 export type Launch = {

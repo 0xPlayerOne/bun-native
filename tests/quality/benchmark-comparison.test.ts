@@ -262,6 +262,77 @@ test('paint equivalence ignores renderer nonces and timings but needs a native t
   ).toThrow(/lacks a native paint tree/)
 })
 
+test('renderer runtime identity is not discarded as a timing field', () => {
+  const paint = (runtime: string, startedMs: number) => ({
+    renderer: {
+      nonce: crypto.randomUUID(),
+      type: 'renderer',
+      runtime,
+      startedMs,
+      first_frame_ms: startedMs,
+      time: startedMs,
+    },
+    paint: { nodes: [{ node_id: 1, text: 'same' }] },
+  })
+  const first = { name: 'gpui', initial: paint('GPUI', 1), final: paint('GPUI', 2) }
+  const different = {
+    name: 'headless',
+    initial: paint('HEADLESS', 3),
+    final: paint('HEADLESS', 4),
+  }
+  expect(() => assertEquivalentPaint([first, different])).toThrow(/renderer differs/)
+  expect(() =>
+    assertEquivalentPaint([
+      first,
+      { name: 'same', initial: paint('GPUI', 5), final: paint('GPUI', 6) },
+    ])
+  ).not.toThrow()
+})
+
+test('matching absent or volatile-only renderers cannot qualify native paint', () => {
+  const paint = (identity: unknown) => ({
+    renderer: identity,
+    paint: { nodes: [{ node_id: 1, text: 'same' }] },
+  })
+  const calibrations = (identity: unknown) => [
+    { name: 'first', initial: paint(identity), final: paint(identity) },
+    { name: 'second', initial: paint(identity), final: paint(identity) },
+  ]
+  for (const identity of [undefined, {}, { nonce: 'one', time: 1, startedMs: 2 }])
+    expect(() => assertEquivalentPaint(calibrations(identity))).toThrow(
+      /lacks native renderer identity/
+    )
+  expect(() =>
+    assertEquivalentPaint(calibrations({ type: 'renderer', gpu: { adapter: 'llvmpipe' } }))
+  ).not.toThrow()
+})
+
+test('a calibration cannot switch renderer identity between native paint stages', () => {
+  const paint = (device: string, nonce: string, timing: number) => ({
+    renderer: {
+      nonce,
+      type: 'renderer',
+      window_id: 1,
+      gpu: { device_name: device },
+      time: timing,
+    },
+    paint: { nodes: [{ node_id: 1, text: 'same' }] },
+  })
+  // The original per-stage cross-calibration checks accepted both records:
+  // initial matches initial, final matches final, but each switched GPU.
+  const calibrations = (finalDevice: string) =>
+    ['core', 'solid'].map((name, index) => ({
+      name,
+      initial: paint('llvmpipe', `initial-${index}`, 1),
+      final: paint(finalDevice, `final-${index}`, 10),
+    }))
+  expect(() => assertEquivalentPaint(calibrations('other-gpu'))).toThrow(
+    /changes native renderer identity between paint stages/
+  )
+  // Different nonces and timing fields remain explicitly permissible.
+  expect(() => assertEquivalentPaint(calibrations('llvmpipe'))).not.toThrow()
+})
+
 test('summaries keep first launches and failures separate from measured distributions', () => {
   const launches = [
     launch('core', 'aot', 0, report(5)),
