@@ -24,6 +24,8 @@ pub(super) struct PointerTrace {
     last_scroll: (u16, u64),
     watching: bool,
     stalls: u16,
+    #[cfg(target_os = "macos")]
+    recoveries: u16,
 }
 
 impl PointerTrace {
@@ -217,6 +219,32 @@ impl Evidence {
             "stage": "gpui-window-input",
             "window_id": window_id,
             "scroll_index": scroll,
+            "paints": paints,
+        });
+        if let Err(error) = append(&mut log.file, &record) {
+            eprintln!("Bun Native scroll trace unavailable: {error}");
+        }
+    }
+
+    /// The host dirtied the window's backing layer because no paint followed
+    /// a wheel event (see `view::frame_keeper`).
+    #[cfg(target_os = "macos")]
+    pub(crate) fn scroll_frame_recovery(&self, window_id: WindowId, paints: u64) {
+        let Some(log) = &self.0 else { return };
+        let mut log = log.borrow_mut();
+        let nonce = log.nonce.clone();
+        let Some(trace) = log.pointer.as_mut() else {
+            return;
+        };
+        if trace.recoveries == RECORD_LIMIT {
+            return;
+        }
+        trace.recoveries += 1;
+        let record = json!({
+            "nonce": nonce,
+            "type": "scroll_frame_recovery",
+            "stage": "gpui-window-input",
+            "window_id": window_id,
             "paints": paints,
         });
         if let Err(error) = append(&mut log.file, &record) {
