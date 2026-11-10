@@ -20,7 +20,29 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  qualify:
+    name: Exact-main release qualification
+    # This is distinct from PR-head validation. The reusable release workflow
+    # may create a public tag, so it must not start on an unchecked main SHA.
+    if: vars.CI_BILLING_PAUSED == 'false'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    permissions:
+      actions: read
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Verify fail-closed release-gate regressions
+        run: node --test tests/quality/release-qualification.test.mjs
+      - name: Require exact-main Validation/Gate and four actual CodeQL analyses
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: node scripts/quality/release-qualification.mjs
+
   release:
+    needs: qualify
     name: Release
     # Release Please manages version metadata. A version release is not native
     # window, packaging, signing or Bun AOT acceptance; those have separate gates.
