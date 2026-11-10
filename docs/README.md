@@ -26,7 +26,7 @@ Later protocol versions, through the current protocol 11, added default-denied, 
 
 ## Build and operate
 
-6. [Getting started](getting-started.md) — create, check, run and package a Solid/React app in a checkout with a supplied prebuilt host
+6. [Getting started](getting-started.md) — SolidJS and React walkthroughs: create, check, run, debug, upgrade and package an app in a checkout with a supplied prebuilt host
 7. [Development workflow](development.md) — current and intended edit loop; [checkout CLI](developer-tooling.md) — implemented create/check/format/doctor/dev/build commands and limitations; [standalone projects](standalone-projects.md) — `create --packages` projects outside the checkout from local package sets; [reproducible builds](reproducible-builds.md) — which outputs are byte-identical and how that is checked
 8. [Testing and validation](testing.md) — hosted CI, native Linux/macOS/Windows checks and evidence; [native fixtures](../tests/native/README.md); [native platforms](native-platforms.md) — hosted macOS/Windows build, paint and OS-input qualification, the scheduled audit and the per-platform capability table
 9. [Benchmark design](../benchmarks/README.md) — performance fixtures, comparators and raw measurements

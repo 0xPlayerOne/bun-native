@@ -656,6 +656,59 @@ jobs:
             if ($original -ge 0) { & $oracle set $main.number $original | Out-Null }
             Write-Output "modifier flags after the restore: $(& $flags)"
           }
+      - name: Development and AOT Windows React workspace reference (#248)
+        if: ${{ runner.os == 'Windows' && !cancelled() && steps.native-build.outcome == 'success' }}
+        timeout-minutes: 15
+        run: |
+          # The Linux React workspace scenario, unchanged, driven by SendInput,
+          # SetWindowPos and the system Close command on the owned window.
+          if (-not (Get-Command magick -ErrorAction SilentlyContinue) -and -not (Test-Path 'C:\Program Files\ImageMagick-*\magick.exe')) {
+            choco install imagemagick --no-progress -y
+            if ($LASTEXITCODE -ne 0) { throw 'ImageMagick for the workspace pixel checks did not install' }
+          }
+          # The fixture opens a 1000x760 client area, which with its frame does
+          # not fit the hosted 1024x768 display. Use the smallest mode that holds
+          # it for this step only, and restore the registry mode afterwards.
+          $oracle = (Resolve-Path 'tests/native/windows-display-oracle.ps1').Path
+          $display = { pwsh -NoProfile -NonInteractive -File $oracle @args }
+          $primary = (& $display screens | ConvertFrom-Json).screens | Where-Object { $_.primary } | Select-Object -First 1
+          if (!$primary) { throw 'No primary display is available' }
+          $modes = & $display modes -Device $primary.deviceName | ConvertFrom-Json
+          $large = $modes.modes | Where-Object {
+            $_.width -ge 1280 -and $_.height -ge 960 -and `
+            $_.bitsPerPel -eq $modes.current.bitsPerPel -and $_.frequency -eq $modes.current.frequency
+          } | Sort-Object { $_.width * $_.height } | Select-Object -First 1
+          $changed = $false
+          try {
+            if ($modes.current.width -lt 1280 -or $modes.current.height -lt 960) {
+              if (!$large) { throw 'The hosted display offers no mode that holds the workspace fixture' }
+              & $display set -Device $primary.deviceName -Width $large.width -Height $large.height |
+                Tee-Object -FilePath (Join-Path $env:NATIVE_EVIDENCE 'workspace-display-mode.json')
+              if ($LASTEXITCODE -ne 0) { throw 'The workspace display mode was not applied' }
+              $changed = $true
+              Start-Sleep -Seconds 2
+            }
+            $failed = @()
+            foreach ($scenario in @('react-workspace')) {
+              $package = Join-Path $env:NATIVE_EVIDENCE "$scenario-flow-package"
+              bun experiments/aot-gpui/build-window.ts --entry "$scenario-flow" `
+                --source $env:GITHUB_WORKSPACE --host $env:BUN_NATIVE_HOST `
+                --host-profile release --outdir $package
+              if ($LASTEXITCODE -ne 0) { throw "The Windows $scenario AOT compiler or inspection failed" }
+              $manifest = Get-Content -Raw (Join-Path $package 'manifest.json') | ConvertFrom-Json
+              foreach ($mode in @('development', 'aot')) {
+                [string[]]$command = if ($mode -eq 'aot') { @((Join-Path $package $manifest.application.file)) } else { @('bun', (Join-Path $package 'development/application.js')) }
+                & '${{ matrix.python }}' scripts/quality/native-workspace-windows.py `
+                  --scenario $scenario --mode $mode `
+                  --output (Join-Path $env:NATIVE_EVIDENCE "$scenario-windows-$mode") -- @command
+                if ($LASTEXITCODE -ne 0) { $failed += "$scenario $mode (exit $LASTEXITCODE)" }
+              }
+            }
+            # Every case runs so one failure does not hide the others' evidence.
+            if ($failed) { throw "Windows workspace reference not verified: $($failed -join ', ')" }
+          } finally {
+            if ($changed) { & $display restore -Device $primary.deviceName | Out-Null }
+          }
       - name: Retain unsigned native host for reproducibility
         if: ${{ !cancelled() && steps.native-build.outcome == 'success' }}
         run: |
