@@ -184,6 +184,13 @@ pub fn show(
             if state.closed.get() {
                 return done(None);
             }
+            // AppKit shows no pop-up over a window that is not key, as
+            // after another window of the application closed.
+            if let Some(window) = view.window()
+                && !window.isKeyWindow()
+            {
+                window.makeKeyAndOrderFront(None);
+            }
             let bounds = view.bounds();
             // GPUI's view is not flipped: AppKit's origin is its bottom-left.
             let location = NSPoint::new(
