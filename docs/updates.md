@@ -65,7 +65,22 @@ bun scripts/release-update.ts integrate --root ~/Apps/example --name "Example Ap
 bun scripts/release-update.ts uninstall --root ~/Apps/example [--purge-data]
 ```
 
-`manifest`, `sign` and `bundle` never overwrite an existing output. `install` reads the detached signature from `<manifest>.sig` beside the manifest when that file exists. `--payload` is a build directory or an `https://` base URL. `--public-key` can be repeated. `--private-key` must be an absolute path. For unsigned experimental releases, use `--unsigned-experimental` instead of `--signed`, skip `sign`, and pass `--unsigned-experimental` instead of `--public-key` to `install`. Keys are read from caller-supplied files at the time of the command. The tool neither stores nor prints them.
+Keyed signing, rotation, health checks and verified starts ([update lifecycle](update-lifecycle.md)):
+
+```sh
+bun scripts/release-update.ts keygen --private-key /absolute/release-1.pem --public-key release-1.pub.pem
+bun scripts/release-update.ts key-set --product dev.example.app --version 1 --minimum-sequence 1 --public-key release-1.pub.pem --out keys.json
+bun scripts/release-update.ts sign update.json --private-key /absolute/release-1.pem --keyed
+bun scripts/release-update.ts install update.json --root ~/Apps/example --payload dist --key-set keys.json [--rotation keys-2.json] [--health-limit 3]
+bun scripts/release-update.ts rotate keys-2.json --root ~/Apps/example --key-set keys.json
+bun scripts/release-update.ts launch --root ~/Apps/example [--key-set keys.json] -- --application-argument
+bun scripts/release-update.ts confirm --root ~/Apps/example --release MANIFEST_SHA256
+bun scripts/release-update.ts report-unhealthy --root ~/Apps/example --release MANIFEST_SHA256
+bun scripts/release-update.ts launcher --out /absolute/example-launcher
+bun scripts/release-update.ts integrate --root ~/Apps/example --name "Example App" --applications ~/.local/share/applications --verified-launcher /absolute/example-launcher
+```
+
+`manifest`, `keygen`, `key-set`, `sign`, `bundle` and `launcher` never overwrite an existing output. `install` reads the detached signature from `<manifest>.sig` beside the manifest when that file exists. `--payload` is a build directory or an `https://` base URL. `--public-key` can be repeated. `--private-key` must be an absolute path. For unsigned experimental releases, use `--unsigned-experimental` instead of `--signed`, skip `sign`, and pass `--unsigned-experimental` instead of `--public-key` to `install`. Keys are read from caller-supplied files at the time of the command. The tool neither stores nor prints them.
 
 ## Verified behavior
 
@@ -98,6 +113,6 @@ The crash, launcher-execution and symbolic-link tests are skipped on Windows, be
 ## Remaining for #249
 
 - **Signing and notarization:** Apple Developer ID signing and notarization, Windows Authenticode, and Linux package signatures are not configured or verified. Ed25519 manifest signing is the updater's own trust root. It does not replace OS code signing.
-- **Platform installers:** not implemented: native installer formats (`.dmg`, MSI/MSIX, `.deb`/AppImage), a self-contained installer executable (the tools currently need Bun on the target), Windows `.lnk` shortcuts, real `.app` bundles holding the release. Automatic rollback after a failed health check is implemented experimentally; see [update lifecycle](update-lifecycle.md).
+- **Platform installers:** not implemented: native installer formats (`.dmg`, MSI/MSIX, `.deb`/AppImage), a self-contained installer executable (installing still needs Bun on the target; only the verifying launcher is self-contained), Windows `.lnk` shortcuts, real `.app` bundles holding the release. Automatic rollback after a failed health check is implemented experimentally; see [update lifecycle](update-lifecycle.md).
 - **Native evidence:** these checks have not yet been run with real `native build` output on clean macOS and Windows machines, or with a running application. Windows replacement of running executables is not handled.
-- **Key management:** key sets with key ids, rotation signed by a trusted key, permanent revocation and a minimum manifest sequence are implemented experimentally (see [update lifecycle](update-lifecycle.md)); a release workflow that signs with a configured CI secret and a CLI for keyed signing are not.
+- **Key management:** key sets with key ids, rotation signed by a trusted key, permanent revocation and a minimum manifest sequence are implemented experimentally, with CLI commands (see [update lifecycle](update-lifecycle.md)). A release workflow that signs with a configured CI secret is not.

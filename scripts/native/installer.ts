@@ -7,7 +7,8 @@ import { UpdateError, parseUpdateManifest, type UpdateManifest } from './update-
 
 /**
  * Experimental, unsigned per-user desktop integration for an installation root:
- * a launcher that follows the committed `current` pointer, plus a Linux .desktop
+ * a launcher that follows the committed `current` pointer (or a compiled verifying
+ * launcher), plus a Linux .desktop
  * entry, a macOS .app wrapper or a Windows Start-menu command file.
  */
 export type Platform = 'linux' | 'darwin' | 'win32'
@@ -18,6 +19,12 @@ export type Integration = {
   name: string
   /** Where the menu entry goes: XDG applications, ~/Applications or the Start-menu Programs folder. */
   applications: string
+  /**
+   * A verifying launcher executable from `release-update.ts launcher`, built for this
+   * platform. It is installed as `bin/<product>` in place of the pointer script, so every
+   * start re-hashes the current release and advances a pending health check.
+   */
+  verifiedLauncher?: string
 }
 
 const namePattern = /^[A-Za-z0-9][A-Za-z0-9 ._-]{0,63}$/
@@ -128,8 +135,19 @@ export async function integrate(root: string, integration: Integration): Promise
     throw new UpdateError('state', 'Application names use letters, digits, spaces, ., _ and -')
   const applications = plainPath(resolve(integration.applications))
   const windows = integration.platform === 'win32'
-  const launcher = join(directory, 'bin', windows ? `${state.product}.cmd` : state.product)
-  await writeNew(launcher, launcherScript(integration.platform, directory), 0o755)
+  const verified = integration.verifiedLauncher
+  const launcher = join(
+    directory,
+    'bin',
+    windows ? `${state.product}.${verified ? 'exe' : 'cmd'}` : state.product
+  )
+  if (verified) {
+    await mkdir(dirname(launcher), { recursive: true })
+    const temporary = `${launcher}.${randomBytes(6).toString('hex')}.tmp`
+    await copyFile(resolve(verified), temporary)
+    await chmod(temporary, 0o755)
+    await rename(temporary, launcher)
+  } else await writeNew(launcher, launcherScript(integration.platform, directory), 0o755)
   if (!windows) await chmod(launcher, 0o755)
   let entry: string
   if (integration.platform === 'linux') {
@@ -144,9 +162,12 @@ export async function integrate(root: string, integration: Integration): Promise
       join(contents, 'Info.plist'),
       infoPlist(integration.name, state.product, state.current.version, state.product)
     )
+    // The verified launcher finds the root from its own path, so the bundle delegates to it.
     await writeNew(
       join(contents, 'MacOS', state.product),
-      launcherScript('darwin', directory),
+      verified
+        ? `#!/bin/sh\nexec '${plainPath(launcher)}' "$@"\n`
+        : launcherScript('darwin', directory),
       0o755
     )
     await chmod(join(contents, 'MacOS', state.product), 0o755)
