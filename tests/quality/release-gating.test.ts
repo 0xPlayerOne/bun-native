@@ -54,12 +54,24 @@ test('the standalone CodeQL workflow no longer scans pull requests or main pushe
   expect(Object.keys(codeql.on).sort()).toEqual(['schedule', 'workflow_dispatch'])
 })
 
-test('the scheduled audit grants the nested CodeQL and Gate permissions', () => {
+// GitHub rejects a caller whose reusable workflow asks for more than the caller
+// grants, and a rejected scheduled workflow never runs at all (#620).
+test('the scheduled audit grants every permission the nested Validation jobs request', () => {
+  const level = { none: 0, read: 1, write: 2 } as Record<string, number>
   const audit = workflow('native-audit.yml')
-  expect(audit.jobs.validation?.permissions).toMatchObject({
-    actions: 'read',
-    'security-events': 'write',
-  })
+  const granted = audit.jobs.validation?.permissions ?? {}
+  const validation = workflow('bun-native.yml') as Workflow & {
+    permissions?: Record<string, string>
+  }
+  const requested = [validation.permissions ?? {}]
+  for (const job of Object.values(validation.jobs)) requested.push(job.permissions ?? {})
+  const missing: string[] = []
+  for (const permissions of requested)
+    for (const [scope, access] of Object.entries(permissions))
+      if ((level[granted[scope] ?? 'none'] ?? 0) < (level[access] ?? 0))
+        missing.push(`${scope}: ${access}`)
+  expect([...new Set(missing)]).toEqual([])
+  expect(granted).toMatchObject({ actions: 'read', 'security-events': 'write' })
 })
 
 test('stable releases wait for the exact main head to pass its own Validation (#614)', () => {
