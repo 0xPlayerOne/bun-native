@@ -14,8 +14,12 @@ qualifies paint/lifecycle and separately enabled OS input on the recorded target
 the existing full validation graph every **Tuesday at 05:23 UTC**. Manual
 validation uses that same caller and is permitted only on `refs/heads/main`
 when `CI_BILLING_PAUSED` is explicitly `false`. It accepts no source/runtime
-ref or other input, grants only repository-content read permission, and never
-cancels an active audit. Scheduled and permitted manual audits share one concurrency
+ref or other input and never cancels an active audit. It grants exactly the
+read permissions the nested jobs request plus CodeQL's `security-events: write`;
+GitHub rejects a caller that grants less than any nested job requests, and a
+rejected scheduled workflow never runs, which is why the first Tuesday audit
+was missing (#620). `release-gating.test.ts` checks the grant against every
+nested job. Scheduled and permitted manual audits share one concurrency
 group. PR and main-push validation keep their existing triggers and gate.
 
 The caller invokes [`bun-native.yml`](../.github/workflows/bun-native.yml)

@@ -106,6 +106,23 @@ describe('native host exit diagnostics (headless protocol peer)', () => {
     await host.exited
   })
 
+  test('a panic followed by a long backtrace keeps its report ahead of the clipped tail', async () => {
+    const { host, error } = await crashDuringOpen('panic-backtrace')
+    expect(error.diagnostic).toMatchObject({
+      reason: 'panic',
+      exitCode: 101,
+      panicLocation: 'native/gpui-host/src/session.rs:42:9',
+      stderrTruncated: true,
+    })
+    expectRedacted(error)
+    const tail = error.diagnostic.stderrTail.split('\n')
+    expect(tail[0]).toBe("thread 'main' panicked at native/gpui-host/src/session.rs:42:9:")
+    expect(tail[1]).toStartWith('window state corrupted with BUN_NATIVE_TEST_SECRET=[redacted]')
+    expect(tail.at(-1)).toBe('  199: bun_native_host::frame::{closure#199}')
+    expect(await rejectedError(host.shutdown())).toBe(error)
+    expect(await host.exited).toBe(101)
+  })
+
   test('unbounded native output is clipped before it is redacted', async () => {
     const { host, error } = await crashDuringOpen('noisy-exit')
     expect(error.diagnostic).toMatchObject({

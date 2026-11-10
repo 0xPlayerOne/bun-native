@@ -3,6 +3,8 @@ export const MAX_DIAGNOSTIC_TAIL = 2_048
 const MAX_DIAGNOSTIC_LINES = 32
 const MIN_REDACTED_ENV_VALUE = 6
 const REDACTED = '[redacted]'
+const CLIPPED = '…'
+const PANIC_LOCATION = /panicked at ([^\s:]+(?::\d+){2})/
 
 export type NativeHostExitReason = 'panic' | 'signal' | 'exit'
 
@@ -78,6 +80,12 @@ export function exitDiagnostic(input: {
   stderr: string
   /** The captured stderr lost its beginning; its first line may be a fragment. */
   stderrClipped: boolean
+  /**
+   * Complete `panicked at` header and message lines kept while stderr was
+   * captured, so a long backtrace that clips the bounded capture cannot hide
+   * the panic itself.
+   */
+  panicReport?: string | null
   environment: Readonly<Record<string, string | undefined>>
 }): Readonly<NativeHostExitDiagnostic> {
   // A clipped first line can hold the end of a secret that no longer matches
@@ -86,15 +94,27 @@ export function exitDiagnostic(input: {
     ? input.stderr.slice(input.stderr.indexOf('\n') + 1 || input.stderr.length)
     : input.stderr
   const redacted = redactDiagnostic(stderr, input.environment)
-  const panic = /panicked at ([^\s:]+(?::\d+){2})/.exec(redacted)
+  let panic = PANIC_LOCATION.exec(redacted)
+  // The kept report leads the tail only when the captured stderr lost it.
+  const report =
+    !panic && input.panicReport
+      ? redactDiagnostic(input.panicReport, input.environment)
+          .trimEnd()
+          .slice(0, MAX_DIAGNOSTIC_TAIL / 2)
+      : null
+  if (report) panic = PANIC_LOCATION.exec(report)
+  const reportLines = report ? [...report.split('\n'), CLIPPED] : []
   let lines = redacted.trimEnd().split('\n')
-  let truncated = input.stderrClipped || lines.length > MAX_DIAGNOSTIC_LINES
-  lines = lines.slice(-MAX_DIAGNOSTIC_LINES)
+  const room = MAX_DIAGNOSTIC_LINES - reportLines.length
+  let truncated = input.stderrClipped || lines.length > room
+  lines = lines.slice(-room)
   let tail = lines.join('\n')
-  if (tail.length > MAX_DIAGNOSTIC_TAIL) {
-    tail = tail.slice(-MAX_DIAGNOSTIC_TAIL)
+  const tailRoom = MAX_DIAGNOSTIC_TAIL - (report ? report.length + CLIPPED.length + 2 : 0)
+  if (tail.length > tailRoom) {
+    tail = tail.slice(-tailRoom)
     truncated = true
   }
+  if (report) tail = [...reportLines, tail].join('\n')
   return Object.freeze({
     reason: panic ? 'panic' : input.signal ? 'signal' : 'exit',
     exitCode: input.exitCode,
