@@ -11,7 +11,7 @@ Both commands print each step's output followed by `lint: passed` or `lint: fail
 
 ## Which oxlint runs
 
-The CLI always runs its own pinned oxlint under the running Bun (`bun --no-install <oxlint bin>`). It never uses an `oxlint` on `PATH` and never installs anything. The pin is the root `oxlint` devDependency in `package.json`, currently `1.90.0`:
+The CLI always runs its own pinned oxlint under the running Bun (`bun --no-install <oxlint bin>`). It never uses an `oxlint` on `PATH` and never installs anything. The pin is the root `oxlint` devDependency in `package.json`, currently `1.92.0`:
 
 - **Checkout projects** use the checkout's installed `node_modules/oxlint`.
 - **The standalone CLI package** imports `oxlint/package.json`, so the package-set producer records `oxlint` as a dependency of `@bun-native/cli`, using that same pin.

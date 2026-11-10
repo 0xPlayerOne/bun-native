@@ -18,4 +18,10 @@ jobs:
     if: github.ref == 'refs/heads/main' && vars.CI_BILLING_PAUSED == 'false'
     # A local reusable workflow uses this caller's exact protected-main commit.
     # No caller-controlled source or runtime ref is accepted.
+    # The nested CodeQL job uploads results and the Gate reads job outcomes.
+    permissions:
+      actions: read
+      contents: read
+      packages: read
+      security-events: write
     uses: ./.github/workflows/bun-native.yml
