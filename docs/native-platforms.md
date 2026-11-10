@@ -373,17 +373,20 @@ no libinput devices) with one 1280×800 logical output, XWayland disabled and
 `DISPLAY` removed. The application renders on Mesa lavapipe through Vulkan.
 Each check has an oracle independent of the host:
 
-| Check                      | Input or oracle                                                                                                                        |
-| -------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
-| Window opens and paints    | sway IPC `get_tree` maps an `xdg_shell` view of the requested size within 10 s; nonce-tagged paint evidence holds the tree             |
-| Renderer                   | Paint evidence reports llvmpipe, software-emulated; the startup log selects it as a Vulkan adapter                                     |
-| Pointer click              | One persistent `zwlr_virtual_pointer_v1` ([`wayland-input-peer`](../native/gpui-host/examples/wayland-input-peer.rs)) moves and clicks |
-| Keyboard text and Enter    | `zwp_virtual_keyboard_v1` through wtype, with a second idle wtype keeping the seat's keyboard; ASCII and `é`                           |
-| Pixels                     | grim (wlr-screencopy) reads the painted swatch and the native button background                                                        |
-| Display snapshot           | Equals the compositor's output bounds and scale from `get_outputs`                                                                     |
-| Service capability matrix  | See [native services](native-services.md#wayland)                                                                                      |
-| Notification, file dialog  | dunst displays and withdraws; the portal's GTK dialog maps as its own view, closes on abort and on a compositor close                  |
-| Compositor close, shutdown | `[title=…] kill` (xdg_toplevel.close) resolves `window.closed`; all public ownership counts return to zero                             |
+| Check                      | Input or oracle                                                                                                                                   |
+| -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Window opens and paints    | sway IPC `get_tree` maps an `xdg_shell` view of the requested size within 10 s; nonce-tagged paint evidence holds the tree                        |
+| Renderer                   | Paint evidence reports llvmpipe, software-emulated; the startup log selects it as a Vulkan adapter                                                |
+| Pointer click              | One persistent `zwlr_virtual_pointer_v1` ([`wayland-input-peer`](../native/gpui-host/examples/wayland-input-peer.rs)) moves and clicks            |
+| Keyboard text and Enter    | `zwp_virtual_keyboard_v1` through wtype, with a second idle wtype keeping the seat's keyboard; ASCII and `é`                                      |
+| Editing and focus          | Backspace over a combining mark and a ZWJ family, Hebrew in logical order, Tab/Shift+Tab between field and button ([native text](native-text.md)) |
+| IME composition            | The same peer is the seat's `zwp_input_method_v2`: preedit, replacement, commit and cancel reach GPUI's `zwp_text_input_v3`                       |
+| Accessibility              | AT-SPI client over the session bus: entry, button and label roles, character bounds, caret move, focus, press                                     |
+| Pixels                     | grim (wlr-screencopy) reads the painted swatch and the native button background                                                                   |
+| Display snapshot           | Equals the compositor's output bounds and scale from `get_outputs`                                                                                |
+| Service capability matrix  | See [native services](native-services.md#wayland)                                                                                                 |
+| Notification, file dialog  | dunst displays and withdraws; the portal's GTK dialog maps as its own view, closes on abort and on a compositor close                             |
+| Compositor close, shutdown | `[title=…] kill` (xdg_toplevel.close) resolves `window.closed`; all public ownership counts return to zero                                        |
 
 The input devices must outlive each action: with no device, the seat has no
 capabilities, and a per-command tool's first event races the client's
@@ -391,10 +394,11 @@ capabilities, and a per-command tool's first event races the client's
 character). No host defect was found; no host code changed.
 
 Not qualified: GNOME (Mutter) and KDE (KWin), fractional scaling, multiple or
-mixed-DPI outputs, IME (`zwp_text_input_v3`), physical input and GPUs,
+mixed-DPI outputs, a real IME engine and the IME cursor rectangle (sway 1.9
+has no input popups), physical input and GPUs,
 decorations on other compositors, Wayland clipboard, global shortcuts, drag
-and drop and popup windows (unavailable), file dialog parenting and
-accessibility under Wayland.
+and drop and popup windows (unavailable), file dialog parenting, and the
+modal, divider and element-role accessibility rows under Wayland.
 
 ## Pinned native requirements
 

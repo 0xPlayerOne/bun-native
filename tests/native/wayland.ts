@@ -172,6 +172,19 @@ class PointerPeer {
     if (this.commandReplies.length > 6) this.commandReplies.shift()
     if (reply !== 'ok') throw new Error(`Input peer failed on ${command}: ${reply}`)
   }
+  /** A command whose `ok` reply carries fields, returned as a record. */
+  async query(command: string): Promise<Record<string, string>> {
+    this.process.stdin.write(command + '\n')
+    await this.process.stdin.flush()
+    const reply = await this.line()
+    if (!reply.startsWith('ok ')) throw new Error(`Input peer failed on ${command}: ${reply}`)
+    return Object.fromEntries(
+      reply
+        .slice(3)
+        .split(' ')
+        .map((field) => field.split('=') as [string, string])
+    )
+  }
   async close() {
     this.process.stdin.end()
     assert.equal(await this.process.exited, 0)
@@ -577,6 +590,92 @@ async function qualify(app: NativeApplication) {
     firstBox: boxes[0],
     value: window.input(ui.field).value,
     clicks,
+  })
+
+  // 3c. IME composition on Wayland: the peer is the seat's input method
+  // (zwp_input_method_v2), so preedit and commit travel the compositor to
+  // GPUI's zwp_text_input_v3 as from an engine. The preedit is marked text
+  // that every update replaces; a commit ends it; an empty preedit cancels it.
+  // The cursor rectangle GPUI sets is not checked: sway 1.9 has no input
+  // popup surfaces, so it never relays the rectangle to an input method.
+  await window.batch((batch) =>
+    batch.set(ui.field, { kind: 'input', value: 'ab' }, window.input(ui.field).revision)
+  )
+  await waitFor(() => window.input(ui.field).value === 'ab', 'the reset input')
+  origin = (await mapped(TITLE)).rect
+  await clickAt(...center(origin, field), origin)
+  await pointer.send('ime-active')
+  const imeValues: string[] = []
+  const stopIme = window.onInput(ui.field, (event) => void imeValues.push(event.value))
+  const composed = async (preedit: string, expected: string, what: string) => {
+    await pointer.send(
+      `ime-preedit ${Buffer.byteLength(preedit)} ${Buffer.byteLength(preedit)} ${preedit}`
+    )
+    await waitFor(() => window.input(ui.field).value === expected, what)
+  }
+  await composed('ㄱ', 'abㄱ', 'the first preedit')
+  await composed('가', 'ab가', 'the preedit replaced in place')
+  await composed('갈', 'ab갈', 'the preedit grown in place')
+  const preeditState = await pointer.query('ime-state')
+  await pointer.send('ime-commit 갈')
+  await waitFor(() => window.input(ui.field).value === 'ab갈', 'the committed syllable')
+  await Bun.sleep(150)
+  assert.equal(window.input(ui.field).value, 'ab갈', 'the commit holds')
+  await composed('ㅎ', 'ab갈ㅎ', 'a new preedit after the commit')
+  await pointer.send('ime-clear')
+  await waitFor(() => window.input(ui.field).value === 'ab갈', 'the cancelled preedit')
+  await pointer.send('ime-commit 日本')
+  await waitFor(() => window.input(ui.field).value === 'ab갈日本', 'a direct commit')
+  // Ordinary typing still lands after the committed text.
+  await type('!')
+  await waitFor(() => window.input(ui.field).value === 'ab갈日本!', 'typing after the IME')
+  stopIme()
+  assert.equal(preeditState['active'], '1', 'the input method was active while composing')
+  record('imeComposition', {
+    client: 'zwp_input_method_v2 (wayland-input-peer) to GPUI zwp_text_input_v3',
+    values: imeValues,
+    inputMethodDoneEvents: Number(preeditState['serial']),
+  })
+
+  // 3d. Editing through compositor keys: Backspace removes a whole grapheme
+  // (base letter plus combining mark, then a ZWJ family), Hebrew is committed
+  // in logical order, and Tab/Shift+Tab move focus between the field and the
+  // button, shown by Space activating the button and typing landing back in
+  // the field.
+  await window.batch((batch) =>
+    batch.set(ui.field, { kind: 'input', value: '' }, window.input(ui.field).revision)
+  )
+  await waitFor(() => window.input(ui.field).value === '', 'the cleared input')
+  await clickAt(...center(origin, field), origin)
+  const FAMILY = '\u{1f468}\u200d\u{1f469}\u200d\u{1f467}'
+  await type('ae\u0301' + FAMILY)
+  await waitFor(() => window.input(ui.field).value === 'ae\u0301' + FAMILY, 'typed graphemes')
+  await key('BackSpace')
+  await waitFor(() => window.input(ui.field).value === 'ae\u0301', 'Backspace over the family')
+  await key('BackSpace')
+  await waitFor(() => window.input(ui.field).value === 'a', 'Backspace over e and its mark')
+  const HEBREW = '\u05e9\u05dc\u05d5\u05dd'
+  await type(HEBREW)
+  await waitFor(() => window.input(ui.field).value === 'a' + HEBREW, 'Hebrew in logical order')
+  await key('BackSpace')
+  await waitFor(
+    () => window.input(ui.field).value === 'a' + HEBREW.slice(0, -1),
+    'Backspace removes the last logical Hebrew letter'
+  )
+  const clicksBeforeTab = clicks
+  await key('Tab')
+  await key('space')
+  await waitFor(() => clicks === clicksBeforeTab + 1, 'Space on the button Tab focused')
+  await run(['wtype', '-M', 'shift', '-k', 'Tab', '-m', 'shift'])
+  await type('z')
+  await waitFor(
+    () => window.input(ui.field).value === 'a' + HEBREW.slice(0, -1) + 'z',
+    'typing in the field Shift+Tab focused'
+  )
+  record('editing', {
+    value: window.input(ui.field).value,
+    graphemeBackspace: true,
+    tabOrder: ['field', 'button', 'field'],
   })
 
   // 4. Pixels read back through the compositor match the painted tree.
