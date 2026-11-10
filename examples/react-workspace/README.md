@@ -7,7 +7,7 @@ application-specific native widget implementation.
 
 The example supports adding tasks with Enter or a button, completing/reopening
 tasks, filtering and searching, selecting and renaming tasks, deleting tasks,
-switching light/dark colors, and drafting a local eight-step plan for the
+clearing completed tasks after an in-app confirmation, switching light/dark colors, and drafting a local eight-step plan for the
 selected task. The plan streams one step every 300 ms, can be stopped, and stops
 when the selection changes. Plan text is fixed local data: no model, backend or
 network is contacted. The list and detail pane use native vertical
@@ -56,6 +56,13 @@ limited to 120 characters. IDs are stable across filtering and completion.
 Adding a task reveals and selects it. Deleting the selected task selects the
 next adjacent task, or clears selection when the workspace becomes empty.
 
+Clearing completed tasks is a model state too: `clear-request` opens the
+in-app confirmation only when something is completed, `clear-dismiss` closes it,
+and `clear-confirm` acts only while it is open, so a queued second confirmation
+is inert. Clearing keeps surviving IDs, order and selection; if the selected task
+was cleared, the first remaining task is selected and a cleared task's plan is
+dropped.
+
 `app.tsx` keeps native input observations in React state. Add and Save capture
 the input's current revision through the public `inputState` helper before
 replacing text. Keyed detail components reset their input ownership when the
@@ -98,7 +105,12 @@ exact `Workspace` component. Its controller uses actual host-reported geometry
 to click, type, complete and rename a task, search/filter, scroll, change theme,
 resize, delete a task through the modal confirm dialog (Escape keeps it, the
 Delete button removes it), stream a complete plan, stop a second plan, switch tasks during
-a third, and close the OS window while a fourth plan still streams. Native
+a third, clear two completed tasks through the in-app panel and close the OS window while
+a fourth plan still streams. The clear flow is keyboard-checked against the host's
+focus record: the panel focuses Keep tasks, Tab moves to the clear button and wraps
+back, Escape keeps the tasks and returns focus to the opener, Return on the opener
+reopens the panel, Tab and Return confirm, the surviving keyed rows are retained and
+focus lands in the composer. Native
 paints independently verify the complete task list, ordered plan rows, retained
 keyed task and plan rows and the visible plan status; the details pane is
 wheel-scrolled until the last plan row is wholly visible. The fixture observes the
@@ -123,6 +135,46 @@ For AOT, build `--entry react-workspace-flow`, use `--mode aot`, and replace the
 final Bun command with the resulting `react-workspace-flow` executable. The
 driver's mode label does not itself prove AOT; retain the helper's artifact
 inspection and manifest alongside the native results.
+
+The same scenario module runs unchanged on the hosted macOS and Windows runners
+of the Native Platforms job, in development and AOT. On macOS,
+`scripts/quality/native-workspace-macos.py` maps its X11 words to CoreGraphics
+events and Accessibility resize/close. On Windows,
+`scripts/quality/native-workspace-windows.py` maps them to `SendInput` pointer,
+wheel and key events, `SetWindowPos` resize and the system Close command
+(`WM_SYSCOMMAND SC_CLOSE`, what Alt+F4 sends), copies the owned client area from
+the composed desktop for the pixel checks, and refuses input unless the owned
+window is foreground on the interactive desktop. Both runners temporarily switch
+to a larger display mode because the 1000×760 fixture does not fit the hosted
+1024×768 displays, and restore it afterwards:
+
+```powershell
+python scripts/quality/native-workspace-windows.py --scenario react-workspace `
+  --mode development --output C:\absolute\new\evidence -- `
+  bun C:\absolute\react-workspace-flow-package\development\application.js
+```
+
+## Dialogs and focus
+
+The example uses both kinds of confirmation the host offers:
+
+- **Delete task** asks through the window's own `showConfirmDialog`, a modal
+  question the host draws ([ADR 0014](../../docs/decisions/0014-message-dialogs.md)).
+  It focuses the safe "Keep task" choice; Escape keeps the task.
+- **Clear completed (N)** opens the app's own confirmation panel, the
+  counterpart of the Solid workspace's clear-history panel. It is a modal
+  window `overlay` ([native overlays](../../docs/native-overlays.md)), so the
+  host provides the focus behavior instead of the app simulating it: the safe
+  "Keep tasks" button takes focus when it opens, Tab and Shift-Tab stay inside
+  the panel and wrap, Return or Space activates the focused button, and the
+  workspace beneath receives no pointer or wheel input. Escape, a press on the
+  backdrop and Keep tasks close it, and the host returns focus to the control
+  that opened it. Confirming disables that control (nothing is left to clear),
+  so the app moves focus to the "Add a task" composer with `focusNode` once the
+  panel has left the native tree.
+
+Escape with any modifier is not a dismissal. The panel names itself to
+accessibility with `accessibleLabel`; screen-reader qualification remains #241.
 
 ## Current scope
 
@@ -153,15 +205,25 @@ are different fixtures, so no equal-workload performance comparison is made.
 | Stop and cancellation on selection change        | Native flow                                                                                   | Native flow                                    |
 | OS close with pending work, zero timers after    | Native flow, plus no timer fires after disposal                                               | Native flow                                    |
 | Confirmation before a destructive action         | Native flow: modal confirm dialog (Escape keeps the task, Delete removes it)                  | Clear-history confirmation panel (in-app)      |
+| In-app confirmation panel                        | Native flow: modal overlay, autofocus, Tab trap, Escape/backdrop keep, focus return           | Native flow: inline panel, confirm/keep        |
+| Keyboard-only dialog flow and programmatic focus | Native flow: Tab/Return/Escape, focus moved to the composer after clearing                    | Not exercised                                  |
+| macOS hosted development and AOT                 | Native flow (same scenario)                                                                   | Native flow (same scenario)                    |
+| Windows hosted development and AOT               | Native flow (same scenario)                                                                   | Not yet run on Windows                         |
 | Screenshots                                      | scrolled, dark, resized, edited, filtered, after, plan-streaming, plan-complete, plan-stopped | Per-scenario captures in its native evidence   |
 
 Unsupported or unqualified for both: OS menus and alerts (#239), accessibility
 and screen readers, IME (#241), virtualization and long-session memory (#257),
-macOS and Windows workspace interaction, and matched comparative performance
-(#244). React-specific limits from the [behavior matrix](../../docs/react-behavior.md)
+physical input devices and non-hosted display configurations (hosted runners use
+injected OS events at scale 1), and matched comparative performance (#244). The
+Windows run covers the React workspace only; the Solid workspace has not yet run
+there. React-specific limits from the [behavior matrix](../../docs/react-behavior.md)
 also apply: suspended/hidden subtrees, hydration, portals and view-transition
 animations are outside the adapter contract.
 
-The example does not claim completion of those issues or cross-platform native
+The example does not claim completion of those issues or physical-device
 acceptance. Real window/input/scroll/focus/close evidence is required in both
 development and AOT modes on each target platform.
+
+```
+
+```
