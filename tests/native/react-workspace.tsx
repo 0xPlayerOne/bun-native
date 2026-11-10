@@ -121,7 +121,14 @@ try {
   assert.equal(root.diagnostics.listeners, 0)
   assert(signals.size > 0 && [...signals].every((signal) => signal.aborted))
   assert(state, 'The actual React component must publish its state')
-  assert.equal(state.tasks.length, 12)
+  // The scenario reopens task 1, completes tasks 3 and 4 and clears them
+  // through the in-app confirmation, after keeping them once with Escape.
+  assert.deepEqual(
+    state.tasks.map((task) => task.id),
+    [1, 2, 5, 6, 7, 8, 9, 10, 11, 12]
+  )
+  assert(state.tasks.every((task) => !task.completed))
+  assert.equal(state.confirmingClear, false)
   assert.equal(state.selectedId, 1)
   assert.equal(state.nextId, 14)
   assert.equal(state.theme, 'dark')

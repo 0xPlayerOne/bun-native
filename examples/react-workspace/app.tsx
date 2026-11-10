@@ -1,8 +1,9 @@
 /** @jsxImportSource @bun-native/react */
-import type { ConfirmDialogOptions, InputState } from '@bun-native/core'
-import { inputState, type JSX, type NativeRef } from '@bun-native/react'
+import type { ConfirmDialogOptions, InputState, KeyEvent } from '@bun-native/core'
+import { focusNode, inputState, type JSX, type NativeRef } from '@bun-native/react'
 import { useEffect, useReducer, useRef, useState, type Dispatch } from 'react'
 import {
+  completedCount,
   createWorkspace,
   MAX_TASKS,
   MAX_TITLE_LENGTH,
@@ -48,6 +49,85 @@ function planStatus(plan: Plan | null): string {
   const progress = `${plan.steps.length} of ${PLAN_STEPS.length} steps`
   if (plan.status === 'streaming') return `Drafting locally · ${progress}`
   return plan.status === 'complete' ? `Plan ready · ${progress}` : `Plan stopped · ${progress}`
+}
+
+/** An unmodified Escape; with any modifier it is an ordinary key. */
+function isEscape(event: KeyEvent): boolean {
+  const { control, alt, shift, platform, function: fn } = event.modifiers
+  return event.key === 'escape' && !control && !alt && !shift && !platform && !fn
+}
+
+/**
+ * The in-app confirmation for clearing completed tasks. It is the app's own UI,
+ * drawn as a modal window overlay: the host traps Tab inside it, focuses its
+ * first control (the safe "Keep" choice) and returns focus to the control that
+ * opened it when it closes. Escape and a press on the backdrop keep the tasks.
+ */
+function ClearCompletedPanel({
+  count,
+  palette,
+  dispatch,
+  onConfirm,
+}: {
+  count: number
+  palette: Palette
+  dispatch: Dispatch<WorkspaceAction>
+  onConfirm: () => void
+}): JSX.Element {
+  const noun = count === 1 ? 'task' : 'tasks'
+  return (
+    <overlay
+      modal
+      accessibleLabel="Clear completed tasks"
+      style={{ align_items: 'center', justify_content: 'center' }}
+      onKeyDown={(event) => {
+        if (!isEscape(event)) return
+        event.stopPropagation()
+        dispatch({ type: 'clear-dismiss' })
+      }}
+      onPointerDown={(event) => {
+        // A press on the backdrop targets the overlay itself, not a descendant.
+        if (event.phase === 'target') dispatch({ type: 'clear-dismiss' })
+      }}
+    >
+      <box style={{ padding: 2, background: palette.muted }}>
+        <box
+          style={{
+            direction: 'column',
+            gap: 12,
+            padding: 20,
+            width: 380,
+            background: palette.panel,
+          }}
+        >
+          <text style={{ color: palette.text, font_size: 20 }}>Clear completed tasks?</text>
+          <text style={{ color: palette.muted }}>
+            {`Remove ${count} completed ${noun} from this session. This cannot be undone.`}
+          </text>
+          <text style={{ color: palette.muted }}>
+            In-app confirmation · Tab moves between choices · Escape keeps them.
+          </text>
+          <box style={{ direction: 'row', gap: 8, height: 40 }}>
+            <button
+              text="Keep tasks"
+              style={{
+                width: 0,
+                flex_grow: 1,
+                color: palette.text,
+                background: palette.background,
+              }}
+              onClick={() => dispatch({ type: 'clear-dismiss' })}
+            />
+            <button
+              text={`Clear ${count} ${noun}`}
+              style={{ width: 0, flex_grow: 1, color: palette.text, background: palette.accent }}
+              onClick={onConfirm}
+            />
+          </box>
+        </box>
+      </box>
+    </overlay>
+  )
 }
 
 /**
@@ -189,11 +269,21 @@ export function Workspace({
   const palette = palettes[state.theme]
   const visible = visibleTasks(state)
   const selected = state.tasks.find((task) => task.id === state.selectedId)
-  const completed = state.tasks.filter((task) => task.completed).length
+  const completed = completedCount(state)
   const canAdd = state.tasks.length < MAX_TASKS && taskTitle(draft.value) !== undefined
   const plan = selectedPlan(state)
   const streamingPlan = state.plan?.status === 'streaming' ? state.plan : null
   useEffect(() => onChange?.(state), [onChange, state])
+  // Keep, Escape and the backdrop return focus natively to the control that
+  // opened the panel. A confirmed clear disables that control, so focus moves
+  // to the composer once the panel has left the native tree.
+  const refocusComposer = useRef(false)
+  useEffect(() => {
+    if (state.confirmingClear || !refocusComposer.current) return
+    refocusComposer.current = false
+    // The window can close first; there is nothing left to focus then.
+    if (composer.current) void focusNode(composer.current).catch(() => {})
+  }, [state.confirmingClear])
   // At most one timer is live. Every step, stop, selection change or unmount
   // cancels it through this cleanup; the reducer also ignores stale plan IDs.
   useEffect(() => {
@@ -229,6 +319,17 @@ export function Workspace({
     >
       <box style={{ direction: 'row', align_items: 'center', gap: 16, height: 44, flex_shrink: 0 }}>
         <text style={{ font_size: 28, color: palette.text, flex_grow: 1 }}>Project workspace</text>
+        <button
+          text={`Clear completed (${completed})`}
+          disabled={completed === 0}
+          style={{
+            width: 180,
+            height: 40,
+            color: completed ? palette.text : palette.muted,
+            background: palette.panel,
+          }}
+          onClick={() => dispatch({ type: 'clear-request' })}
+        />
         <button
           text={state.theme === 'light' ? 'Use dark theme' : 'Use light theme'}
           style={{ width: 160, height: 40, color: palette.text, background: palette.panel }}
@@ -373,6 +474,17 @@ export function Workspace({
             ? `Use 1–${MAX_TITLE_LENGTH} characters for a task title.`
             : `${visible.length} tasks shown · Select a task to edit its title`}
       </text>
+      {state.confirmingClear ? (
+        <ClearCompletedPanel
+          count={completed}
+          palette={palette}
+          dispatch={dispatch}
+          onConfirm={() => {
+            refocusComposer.current = true
+            dispatch({ type: 'clear-confirm' })
+          }}
+        />
+      ) : null}
     </box>
   )
 }

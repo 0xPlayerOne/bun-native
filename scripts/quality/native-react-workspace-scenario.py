@@ -689,6 +689,101 @@ def run(
         "retained partial plan after switching back",
     )
 
+    # In-app clear confirmation: a modal window overlay drawn by the app, not
+    # the host's confirm dialog. Its keyboard flow is native: the safe choice
+    # takes focus, Tab stays inside it, Escape returns focus to the control
+    # that opened it, and Return activates the focused button.
+    cleared_titles = [
+        title for index, title in enumerate(INITIAL_TITLES) if index not in (2, 3)
+    ]
+    click(rows(settled("task rows before clearing"))[0]["toggle"])
+    wait_frame(lambda current: not rows(current)[0]["completed"], "reopened task")
+    for index in (2, 3):
+        click(rows(settled("task rows before clearing"))[index]["toggle"])
+        wait_frame(
+            lambda current, index=index: rows(current)[index]["completed"],
+            "completed task to clear",
+        )
+    clear_question = "Clear completed tasks?"
+
+    def focused_on(kind, label):
+        return lambda current: (
+            current["layout"]["focused_node_id"]
+            == require(
+                (
+                    item["node_id"]
+                    for item in current["paint"]["nodes"]
+                    if item["element"]["kind"] == kind
+                    and item["element"].get(
+                        "placeholder" if kind == "input" else "text"
+                    )
+                    == label
+                ),
+                f"the {label!r} {kind}",
+            )
+        )
+
+    def clear_panel_open(current):
+        return {clear_question, "Keep tasks", "Clear 2 tasks"} <= dialog_texts(current)
+
+    button("Clear completed (2)")
+    wait_frame(clear_panel_open, "in-app clear confirmation")
+    wait_for(lambda: state() and state()["confirmingClear"], "clear confirmation state")
+    wait_frame(focused_on("button", "Keep tasks"), "modal focus on Keep tasks")
+    capture(window, "clear-confirm.png")
+    action("key", "--clearmodifiers", "Tab")
+    wait_frame(focused_on("button", "Clear 2 tasks"), "Tab to the clear choice")
+    action("key", "--clearmodifiers", "Tab")
+    wait_frame(focused_on("button", "Keep tasks"), "Tab wraps inside the modal")
+    action("key", "--clearmodifiers", "Escape")
+    kept = wait_frame(
+        lambda current: (
+            clear_question not in dialog_texts(current)
+            and focused_on("button", "Clear completed (2)")(current)
+        ),
+        "Escape keeps the tasks and returns focus to the opener",
+    )
+    wait_for(
+        lambda: state() and not state()["confirmingClear"], "dismissed confirmation"
+    )
+    assert [row["title"] for row in rows(kept)] == INITIAL_TITLES
+    assert [row["completed"] for row in rows(kept)][2:4] == [True, True]
+    # Return on the focused opener reopens it; Tab and Return confirm.
+    action("key", "--clearmodifiers", "Return")
+    wait_frame(clear_panel_open, "clear confirmation reopened from the keyboard")
+    wait_frame(focused_on("button", "Keep tasks"), "modal focus on reopening")
+    action("key", "--clearmodifiers", "Tab")
+    wait_frame(focused_on("button", "Clear 2 tasks"), "Tab to the clear choice")
+    action("key", "--clearmodifiers", "Return")
+    cleared = wait_frame(
+        lambda current: (
+            clear_question not in dialog_texts(current)
+            and [row["title"] for row in rows(current)] == cleared_titles
+            and focused_on("input", "Add a task")(current)
+        ),
+        "cleared tasks with focus moved to the composer",
+    )
+    wait_for(
+        lambda: (
+            state()
+            and not state()["confirmingClear"]
+            and state()["selectedId"] == 1
+            and len(state()["tasks"]) == len(cleared_titles)
+        ),
+        "cleared workspace state",
+    )
+    before_clear = {row["title"]: row["row"] for row in rows(kept)}
+    assert {row["title"]: row["row"] for row in rows(cleared)} == {
+        title: before_clear[title] for title in cleared_titles
+    }, "Clearing remounted surviving keyed task rows"
+    assert any(
+        item["element"].get("text") == "Clear completed (0)"
+        and item["element"]["disabled"]
+        for item in cleared["paint"]["nodes"]
+    ), "Nothing is left to clear"
+    capture(window, "cleared.png")
+    observations["cleared"] = cleared
+
     button("Draft a new plan")
     wait_frame(
         lambda current: (
