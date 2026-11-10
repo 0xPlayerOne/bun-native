@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.31.1](https://github.com/0xPlayerOne/bun-native/compare/v0.31.0...v0.31.1) (2026-11-10)
+
+
+### Bug Fixes
+
+* **quality:** fold the eight open [#260](https://github.com/0xPlayerOne/bun-native/issues/260) audit drafts into one batch ([#609](https://github.com/0xPlayerOne/bun-native/issues/609)) ([797ad46](https://github.com/0xPlayerOne/bun-native/commit/797ad4651dd096fbb43132e746ca5f8a3bfeda7b))
+
 ## [0.31.0](https://github.com/0xPlayerOne/bun-native/compare/v0.30.0...v0.31.0) (2026-11-10)
 
 
