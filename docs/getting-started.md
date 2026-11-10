@@ -179,4 +179,4 @@ No local GUI launch was attempted in the Linux record because the verification e
 
 ## Continue developing
 
-Use the [public core API](../packages/core/README.md), [native layout contract](native-layout.md) and [compatibility guide](compatibility.md) when extending an app. Framework contributors should also read the [architecture](architecture.md), [engineering-quality policy](engineering-quality.md), [testing guide](testing.md) and [implementation handoff](bun-native-handoff.md).
+Use the [public API reference](api-reference.md), the [public core API](../packages/core/README.md), [native layout contract](native-layout.md) and [compatibility guide](compatibility.md) when extending an app. Framework contributors should also read the [architecture](architecture.md), [engineering-quality policy](engineering-quality.md), [testing guide](testing.md) and [implementation handoff](bun-native-handoff.md).
