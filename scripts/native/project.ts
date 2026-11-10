@@ -89,6 +89,31 @@ try {
 `
 }
 
+function readme(name: string, framework: Framework, guide: string): string {
+  const solid = framework === 'solid'
+  const rules = solid
+    ? `This app uses the Solid adapter (\`@bun-native/solid\`). Components run once and signals update only the native nodes that read them. Pass the component itself to \`render(App, window)\`. \`solid-js/web\` and DOM components are not available.`
+    : `This app uses the React adapter (\`@bun-native/react\`). Hooks, refs, effect cleanup and error boundaries work as in React. Pass an element to \`render(<App />, window)\`. \`react-dom\` and DOM components are not available.`
+  return `# ${name}
+
+This project uses the surrounding Bun Native checkout and its pinned dependencies.
+Run \`bun install --frozen-lockfile\` in the checkout first; no Rust compiler is needed when you supply a prebuilt host.
+
+- \`bun run check\` checks TypeScript or checked JavaScript.
+- \`bun run format\` applies Bun's built-in formatter; \`bun run format:check\` only reports differences.
+- \`bun run lint\` runs the checkout's pinned oxlint with the checkout's lint rules, or this project's own \`.oxlintrc.json\`.
+- \`bun run dev --host /absolute/path/to/bun-native-host\` bundles and opens the app once. Close the window or press Ctrl-C to end it.
+- Add \`--watch\` to remount after source edits with joined teardown. State resets on every successful edit; state-preserving hot reload is not implemented.
+- \`bun run build --host /absolute/path/to/bun-native-host --host-profile release\` creates an unsigned same-platform AOT app in \`dist\`. The output directory must be empty.
+
+${rules} Build the interface from native elements such as \`box\`, \`text\`, \`button\` and \`input\`; CSS selectors and browser events do not apply.
+
+Keep the template's optional development IPC hooks: they report readiness and clean up the renderer and owned host before a replacement starts. The host is supplied explicitly and never downloaded or rebuilt.
+
+See the checkout's [getting-started guide](${guide}) for the ${solid ? 'SolidJS' : 'React'} walkthrough, debugging and upgrade steps, and \`docs/developer-tooling.md\` for requirements and limitations.
+`
+}
+
 export async function createProject(
   repository: string,
   destination: string,
@@ -125,6 +150,7 @@ export async function createProject(
     const entry = language === 'typescript' ? 'main.tsx' : 'main.jsx'
     const cli = relative(directory, join(root, 'scripts/native.ts')).split(sep).join('/')
     const tsconfig = relative(directory, join(root, 'tsconfig.json')).split(sep).join('/')
+    const guide = relative(directory, join(root, 'docs/getting-started.md')).split(sep).join('/')
     const files: Record<string, string> = {
       'bun-native.json': JSON.stringify({ schemaVersion: 1, framework, entry }, null, 2) + '\n',
       'package.json':
@@ -156,7 +182,7 @@ export async function createProject(
 }
 `,
       '.gitignore': 'dist/\n.bun-native/\n',
-      'README.md': `# ${basename(directory)}\n\nThis project uses the surrounding Bun Native checkout and its pinned dependencies.\nRun \`bun install --frozen-lockfile\` in the checkout first; no Rust compiler is needed when you supply a prebuilt host.\n\n- \`bun run check\` checks TypeScript or checked JavaScript.\n- \`bun run format\` applies Bun's built-in formatter; \`bun run format:check\` only reports differences.\n- \`bun run lint\` runs the checkout's pinned oxlint with the checkout's lint rules, or this project's own \`.oxlintrc.json\`.\n- \`bun run dev --host /absolute/path/to/bun-native-host\` bundles and opens the app once.\n- Add \`--watch\` to remount after source edits with joined teardown. State resets on every successful edit; state-preserving hot reload is not implemented.\n- \`bun run build --host /absolute/path/to/bun-native-host --host-profile release\` creates an unsigned same-platform AOT app in \`dist\`. The output directory must be empty.\n\nKeep the template's optional development IPC hooks: they report readiness and clean up the renderer and owned host before a replacement starts. The host is supplied explicitly and never downloaded or rebuilt. See the checkout's \`docs/developer-tooling.md\` for requirements and limitations.\n`,
+      'README.md': readme(basename(directory), framework, guide),
       [entry]: template(framework, language),
     }
     if (set) {
