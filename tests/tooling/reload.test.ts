@@ -17,7 +17,7 @@ import {
   zeroResources,
 } from './reload-fixture.ts'
 
-// The 101-remount scenarios are in reload-remount-{solid,react}.test.ts.
+// The headless remount scenarios are in reload-remount-{solid,react}.test.ts.
 useReloadFixture()
 
 async function rejected(operation: Promise<unknown>): Promise<Error> {
