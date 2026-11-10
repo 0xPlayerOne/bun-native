@@ -7,6 +7,9 @@
 
 pub mod command_line;
 #[cfg(windows)]
+pub mod context_menu;
+pub mod context_menu_spec;
+#[cfg(windows)]
 pub mod fs;
 pub mod names;
 #[cfg(windows)]

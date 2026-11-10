@@ -60,6 +60,8 @@ number is 0018 and there is no 0016, so the next new record is 0019.
 - [0015 — Application menu bar](0015-application-menu-bar.md)
 - [0017 — Wayland qualification and service backends](0017-wayland.md)
 - [0018 — Windows task dialogs for message and confirm dialogs](0018-windows-task-dialogs.md)
+- [0019 — macOS alert sheets for message and confirm dialogs](0019-macos-alert-sheets.md)
+- [0020 — OS context menus](0020-os-context-menus.md)
 - [Native host protocol 11](../native-abi.md)
 - [Active roadmap](https://github.com/0xPlayerOne/bun-native/issues/1)
 - [Architecture overview](../architecture.md)

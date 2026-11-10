@@ -6,6 +6,8 @@ use gpui::{App, Task, Window};
 
 type Failure = (ErrorCode, &'static str);
 
+pub(crate) type Owner = isize;
+
 #[derive(Clone)]
 pub(crate) struct TaskDialogs;
 
@@ -16,14 +18,14 @@ impl TaskDialogs {
     pub(crate) fn available(&self) -> bool {
         false
     }
-    pub(crate) fn owner(_window: &Window) -> isize {
+    pub(crate) fn owner(_window: &Window) -> Owner {
         0
     }
     pub(crate) fn show(
         &self,
         _request: (RequestId, WindowId, DialogId),
         _options: MessageDialogOptions,
-        _owner: isize,
+        _owner: Owner,
         _cx: &mut App,
     ) -> Result<(), Failure> {
         Err((

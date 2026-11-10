@@ -185,6 +185,14 @@ function entries(value: unknown, depth: number, census: Census): AppMenuEntry[] 
   })
 }
 
+/**
+ * A context menu: the entries of one menu-bar menu, with the same bounds,
+ * unique ids and shortcuts, and submenus nested at most two levels deep.
+ */
+export function parseContextMenuItems(value: unknown): AppMenuEntry[] {
+  return entries(value, 1, { entries: 0, ids: new Set(), shortcuts: new Set() })
+}
+
 /** An empty bar is valid: it removes the application's menus. */
 export function parseAppMenus(value: unknown): AppMenu[] {
   if (!Array.isArray(value) || value.length > MAX_APP_MENUS)

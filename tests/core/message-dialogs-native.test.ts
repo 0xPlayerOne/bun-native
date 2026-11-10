@@ -67,7 +67,8 @@ describe('OS message dialogs (headless real subprocess)', () => {
       expect(app.serviceCapabilities.messageDialogs).toEqual({
         availability: 'available',
         scope: 'owned_window',
-        backend: 'task_dialog',
+        // The host's platform names the OS backend.
+        backend: process.platform === 'darwin' ? 'alert_sheet' : 'task_dialog',
       })
     })
     await withPeer(

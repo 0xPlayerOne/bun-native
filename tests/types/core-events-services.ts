@@ -167,6 +167,7 @@ export function checkErrors(error: unknown): string | undefined {
       | 'processes'
       | 'file_dialogs'
       | 'message_dialogs'
+      | 'context_menus'
       | 'drag_drop'
       | 'app_menu' = error.service
     return service + error.code
@@ -247,7 +248,7 @@ export function checkCapabilities(app: NativeApplication): void {
   }
   const menus: 'available' | 'unavailable' = services.appMenu.availability
   if (services.messageDialogs.availability === 'available') {
-    const backend: 'modal_overlay' | 'task_dialog' = services.messageDialogs.backend
+    const backend: 'modal_overlay' | 'task_dialog' | 'alert_sheet' = services.messageDialogs.backend
     void backend
   } else {
     const reason: 'unsupported_host' = services.messageDialogs.reason

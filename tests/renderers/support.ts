@@ -60,6 +60,7 @@ export function observeWindow(window: NativeWindow) {
     showSaveDialog: window.showSaveDialog.bind(window),
     showMessageDialog: window.showMessageDialog.bind(window),
     showConfirmDialog: window.showConfirmDialog.bind(window),
+    showContextMenu: window.showContextMenu.bind(window),
     registerDropTarget: window.registerDropTarget.bind(window),
     input: window.input.bind(window),
     on(node, type, listener, options) {
@@ -114,6 +115,7 @@ export function scheduledWindow(window: NativeWindow) {
     showSaveDialog: window.showSaveDialog.bind(window),
     showMessageDialog: window.showMessageDialog.bind(window),
     showConfirmDialog: window.showConfirmDialog.bind(window),
+    showContextMenu: window.showContextMenu.bind(window),
     registerDropTarget: window.registerDropTarget.bind(window),
     input: window.input.bind(window),
     on: window.on.bind(window),

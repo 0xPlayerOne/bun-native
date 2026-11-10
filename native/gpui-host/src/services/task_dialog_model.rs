@@ -1,14 +1,18 @@
-//! How a validated message dialog becomes a Windows task dialog and how the
-//! button pressed maps back to a wire result. Pure data, so it is tested on
-//! every platform even though only Windows shows the dialog.
+//! How a validated message dialog becomes a Windows task dialog or a macOS
+//! alert sheet, and how the button pressed maps back to a wire result. Pure
+//! data, so it is tested on every platform even though only Windows and macOS
+//! show the dialog.
 
 use bun_native_protocol::{MessageDialogOptions, MessageDialogResult};
-use bun_native_windows_services::task_dialog_spec::{Pressed, TaskDialogSpec};
+use bun_native_windows_services::task_dialog_spec::Pressed;
+#[cfg(any(windows, test))]
+use bun_native_windows_services::task_dialog_spec::TaskDialogSpec;
 
 /// `title` is the window title, `message` the main instruction and `detail`
 /// the content. The overlay-only button `kind` never reaches the host.
 /// Escape and the close box end the dialog only when the dialog has a cancel
 /// button or is dismissible, exactly as on the overlay.
+#[cfg(any(windows, test))]
 pub(crate) fn spec(options: &MessageDialogOptions) -> TaskDialogSpec {
     TaskDialogSpec {
         title: options.title.clone(),
@@ -26,6 +30,46 @@ pub(crate) fn spec(options: &MessageDialogOptions) -> TaskDialogSpec {
             .unwrap_or(0),
         cancellable: options.cancel_button.is_some() || options.dismissible,
     }
+}
+
+#[cfg(any(target_os = "macos", test))]
+/// A sheet has no title bar, so the title is the alert's bold message text
+/// and the message and detail are its informative text, a blank line apart.
+pub(crate) fn alert_informative(options: &MessageDialogOptions) -> String {
+    match &options.detail {
+        Some(detail) => format!("{}\n\n{detail}", options.message),
+        None => options.message.clone(),
+    }
+}
+
+#[cfg(any(target_os = "macos", test))]
+/// The key that presses each button of a macOS alert, in button order.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum AlertKey {
+    Return,
+    Escape,
+    None,
+}
+
+#[cfg(any(target_os = "macos", test))]
+/// Return presses the default button and Escape the cancel button. An
+/// `NSAlert` button owns one key, so when the cancel button is also the
+/// default it keeps Return and Escape does nothing. A dismissible dialog
+/// without a cancel button has no Escape either: a sheet has no close box.
+pub(crate) fn alert_keys(options: &MessageDialogOptions) -> Vec<AlertKey> {
+    options
+        .buttons
+        .iter()
+        .map(|button| {
+            if button.id == options.default_button {
+                AlertKey::Return
+            } else if options.cancel_button.as_deref() == Some(button.id.as_str()) {
+                AlertKey::Escape
+            } else {
+                AlertKey::None
+            }
+        })
+        .collect()
 }
 
 /// A cancellation is the cancel button, else a dismissal. A dialog that was
@@ -89,6 +133,31 @@ mod tests {
         assert!(!spec(&options(None, false)).cancellable);
         assert!(spec(&options(Some("cancel"), false)).cancellable);
         assert!(spec(&options(None, true)).cancellable);
+    }
+
+    #[test]
+    fn alert_informative_text_is_the_message_then_the_detail() {
+        let mut options = options(None, false);
+        assert_eq!(alert_informative(&options), "Message\n\nDetail");
+        options.detail = None;
+        assert_eq!(alert_informative(&options), "Message");
+    }
+
+    #[test]
+    fn alert_keys_give_return_to_the_default_and_escape_to_the_cancel_button() {
+        assert_eq!(
+            alert_keys(&options(Some("cancel"), true)),
+            [AlertKey::None, AlertKey::Return, AlertKey::Escape]
+        );
+        assert_eq!(
+            alert_keys(&options(None, true)),
+            [AlertKey::None, AlertKey::Return, AlertKey::None]
+        );
+        // The default keeps Return when it is also the cancel button.
+        assert_eq!(
+            alert_keys(&options(Some("discard"), false)),
+            [AlertKey::None, AlertKey::Return, AlertKey::None]
+        );
     }
 
     #[test]

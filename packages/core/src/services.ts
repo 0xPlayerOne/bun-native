@@ -17,6 +17,7 @@ type ServiceName =
   | 'processes'
   | 'file_dialogs'
   | 'message_dialogs'
+  | 'context_menus'
   | 'drag_drop'
   | 'app_menu'
 
@@ -87,7 +88,7 @@ export interface ServiceCapabilities {
   /**
    * The application menu bar: a native NSMenu bar on macOS. GPUI's Linux and
    * Windows backends only store menus, so they report it unavailable. OS
-   * context menus are not implemented.
+   * context menus are a separate service (`contextMenus`).
    */
   readonly appMenu:
     | Readonly<{
@@ -95,6 +96,17 @@ export interface ServiceCapabilities {
         permission: 'allow' | 'deny'
         scope: 'application'
         backend: 'appkit'
+      }>
+    | Readonly<{ availability: 'unavailable'; reason: 'unsupported_platform' }>
+  /**
+   * `window.showContextMenu`: an OS context menu at a point of the window, an
+   * `NSMenu` on macOS and a Win32 popup menu on Windows. It needs no grant.
+   */
+  readonly contextMenus:
+    | Readonly<{
+        availability: 'available'
+        scope: 'owned_window'
+        backend: 'appkit' | 'win32'
       }>
     | Readonly<{ availability: 'unavailable'; reason: 'unsupported_platform' }>
   /** OS file open/save/folder dialogs. Selected paths are data, not filesystem grants. */
@@ -109,14 +121,15 @@ export interface ServiceCapabilities {
   /**
    * `showMessageDialog`/`showConfirmDialog`: an in-window modal overlay drawn
    * by core on every platform and needing no launch grant, or, when the host
-   * advertises `task_dialogs_v1` (Windows) and `permissions.taskDialogs` is
-   * `allow`, an OS task dialog owned by the window.
+   * advertises `task_dialogs_v1` and `permissions.taskDialogs` is `allow`, an
+   * OS dialog owned by the window: a task dialog on Windows, an `NSAlert`
+   * sheet on macOS.
    */
   readonly messageDialogs:
     | Readonly<{
         availability: 'available'
         scope: 'owned_window'
-        backend: 'modal_overlay' | 'task_dialog'
+        backend: 'modal_overlay' | 'task_dialog' | 'alert_sheet'
       }>
     | Readonly<{ availability: 'unavailable'; reason: 'unsupported_host' }>
   readonly notifications:
@@ -172,6 +185,11 @@ type ProcessBackend = 'posix' | 'windows_job'
 function filesystemBackend(): FilesystemBackend {
   if (process.platform === 'darwin') return 'openat_walk'
   return process.platform === 'win32' ? 'ntcreatefile_walk' : 'openat2'
+}
+
+/** The host runs beside the core, so its platform names the OS dialog backend. */
+function osDialogBackend(): 'task_dialog' | 'alert_sheet' {
+  return process.platform === 'darwin' ? 'alert_sheet' : 'task_dialog'
 }
 
 /** The host runs beside the core, so its platform names the drop backend. */
@@ -236,6 +254,14 @@ export function serviceCapabilities(
           backend: 'x11',
         })
       : Object.freeze({ availability: 'unavailable', reason: 'unsupported_platform' }),
+    contextMenus: capabilities.includes('context_menus_v1')
+      ? Object.freeze({
+          availability: 'available',
+          scope: 'owned_window',
+          // The host runs beside the core, so its platform names the backend.
+          backend: process.platform === 'darwin' ? 'appkit' : 'win32',
+        })
+      : Object.freeze({ availability: 'unavailable', reason: 'unsupported_platform' }),
     appMenu: capabilities.includes('app_menu_v1')
       ? Object.freeze({
           availability: 'available',
@@ -261,7 +287,7 @@ export function serviceCapabilities(
             // The OS backend needs both the host capability and the grant.
             backend:
               capabilities.includes('task_dialogs_v1') && policy.task_dialogs
-                ? 'task_dialog'
+                ? osDialogBackend()
                 : 'modal_overlay',
           })
         : Object.freeze({ availability: 'unavailable', reason: 'unsupported_host' }),

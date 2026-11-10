@@ -1,5 +1,10 @@
-//! Private borrowed macOS surface access, without timers, input posting or device selection.
+//! Private borrowed macOS surface access, without timers, input posting or device selection,
+//! the window-owned alert sheets of OS message dialogs ([`alert`]) and OS context
+//! menus ([`context_menu`]).
 #![cfg(target_os = "macos")]
+
+pub mod alert;
+pub mod context_menu;
 
 use objc2::MainThreadMarker;
 use objc2::rc::Retained;
@@ -16,6 +21,8 @@ pub enum SurfaceError {
     MissingLayer,
     NotMetalLayer,
     MissingDevice,
+    MissingWindow,
+    InvalidAlert,
 }
 
 impl fmt::Display for SurfaceError {
@@ -26,6 +33,8 @@ impl fmt::Display for SurfaceError {
             Self::MissingLayer => "native view has no backing layer",
             Self::NotMetalLayer => "native view backing layer is not a CAMetalLayer",
             Self::MissingDevice => "native Metal layer has no assigned device",
+            Self::MissingWindow => "native view is not in a window",
+            Self::InvalidAlert => "alert needs 1 to 4 buttons and at most one button per key",
         })
     }
 }

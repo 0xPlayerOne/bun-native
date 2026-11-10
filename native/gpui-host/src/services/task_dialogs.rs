@@ -25,6 +25,9 @@ use std::time::{Duration, Instant};
 
 type Failure = (ErrorCode, &'static str);
 
+/// The owner window's `HWND`, or 0.
+pub(crate) type Owner = isize;
+
 /// Shutdown waits this long for dialog threads to end, then lets the process
 /// exit without them.
 const DRAIN: Duration = Duration::from_secs(3);
@@ -79,7 +82,7 @@ impl TaskDialogs {
     }
 
     /// The window's `HWND`, or 0 when the window has none.
-    pub(crate) fn owner(window: &Window) -> isize {
+    pub(crate) fn owner(window: &Window) -> Owner {
         use raw_window_handle::{HasWindowHandle, RawWindowHandle};
         match HasWindowHandle::window_handle(window).map(|handle| handle.as_raw()) {
             Ok(RawWindowHandle::Win32(handle)) => handle.hwnd.get(),
@@ -91,7 +94,7 @@ impl TaskDialogs {
         &self,
         request: (RequestId, WindowId, DialogId),
         options: MessageDialogOptions,
-        owner: isize,
+        owner: Owner,
         cx: &mut App,
     ) -> Result<(), Failure> {
         let (id, window, dialog) = request;

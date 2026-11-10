@@ -199,6 +199,11 @@ function entries(value: unknown, depth: number, budget: Budget): AppMenuEntry[] 
   })
 }
 
+/** The entries of one menu in wire shape, not yet validated as a whole. */
+export function menuEntriesRequest(items: readonly MenuEntryOptions[]): AppMenuEntry[] {
+  return entries(items, 1, { entries: 0 })
+}
+
 /** Copies consumer options into the closed wire shape and validates it with the shared parser. */
 export function menuBarRequest(menus: readonly MenuOptions[]): AppMenu[] {
   const budget: Budget = { entries: 0 }

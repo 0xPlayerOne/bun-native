@@ -189,7 +189,7 @@ const BUTTON_COLORS = {
 
 type Outcome = { result: MessageDialogResult } | { error: Error }
 
-/** The OS backend (Windows task dialogs): the window supplies the host calls. */
+/** The OS backend (Windows task dialogs, macOS alert sheets): the window supplies the host calls. */
 export interface NativeMessageDialogBackend {
   allocate(): number
   show(id: number, options: WireMessageDialogOptions): Promise<void>

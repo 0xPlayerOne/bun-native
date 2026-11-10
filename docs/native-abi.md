@@ -29,7 +29,11 @@ application ids, never native action names. OS message dialogs
 `task_dialogs_v1` capability (Windows only), the `show_message_dialog`/
 `close_message_dialog` commands, `message_dialog_opened`/`message_dialog_closed`
 responses and a sequenced `message_dialog_completed` event; the policy's
-`task_dialogs` field is optional and omitted when denied.
+`task_dialogs` field is optional and omitted when denied. OS context menus
+([ADR 0020](decisions/0020-os-context-menus.md)) add the optional
+`context_menus_v1` capability (macOS and Windows), the `show_context_menu`/
+`close_context_menu` commands, `context_menu_opened`/`context_menu_closed`
+responses and a sequenced `context_menu_completed` event; they need no grant.
 The optional
 `overlays_v1` and `scroll_anchor_v1` capabilities add the `overlay` container
 element and the `scroll_anchor` style field defined by the

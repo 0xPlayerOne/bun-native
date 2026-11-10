@@ -72,6 +72,7 @@ identifier!(DialogId);
 identifier!(DropTargetId);
 identifier!(DropId);
 identifier!(AppMenuId);
+identifier!(ContextMenuId);
 
 /// JSON has one number type. Match JavaScript's safe-integer validation even
 /// when a sender spells an integer as `1.0` or `1e0` instead of canonical `1`.
@@ -664,6 +665,21 @@ pub enum Command {
         window_id: WindowId,
         dialog_id: DialogId,
     },
+    /// Show an OS context menu at a logical point of the window's content.
+    /// `menu_id` increases per session; one menu is live at a time.
+    ShowContextMenu {
+        id: RequestId,
+        window_id: WindowId,
+        menu_id: ContextMenuId,
+        x: f64,
+        y: f64,
+        items: Vec<crate::AppMenuEntry>,
+    },
+    CloseContextMenu {
+        id: RequestId,
+        window_id: WindowId,
+        menu_id: ContextMenuId,
+    },
     RegisterDropTarget {
         id: RequestId,
         window_id: WindowId,
@@ -752,8 +768,10 @@ pub enum Capability {
     InputStatesV1,
     /// A native application menu bar (macOS).
     AppMenuV1,
-    /// Owned OS message dialogs (Windows task dialogs).
+    /// Owned OS message dialogs (Windows task dialogs, macOS alert sheets).
     TaskDialogsV1,
+    /// OS context menus at a window point (macOS `NSMenu`, Windows popup menus).
+    ContextMenusV1,
     /// The split divider is a keyboard Tab stop and reports `split_resize`.
     SplitResizeV1,
     /// Every element kind has an accessibility role, and overlays and splits
@@ -887,6 +905,8 @@ impl Command {
             | Self::CloseFileDialog { id, .. }
             | Self::ShowMessageDialog { id, .. }
             | Self::CloseMessageDialog { id, .. }
+            | Self::ShowContextMenu { id, .. }
+            | Self::CloseContextMenu { id, .. }
             | Self::RegisterDropTarget { id, .. }
             | Self::UnregisterDropTarget { id, .. }
             | Self::ResolveDroppedItem { id, .. }
@@ -996,6 +1016,17 @@ impl Command {
             Self::ShowFileDialog { options, .. } => options.validate()?,
             Self::ShowMessageDialog { options, .. } => options.validate()?,
             Self::SetAppMenu { menus, .. } => crate::validate_app_menus(menus)?,
+            Self::ShowContextMenu { x, y, items, .. } => {
+                if [*x, *y].into_iter().any(|coordinate| {
+                    !coordinate.is_finite()
+                        || !(0. ..=crate::MAX_POINTER_COORDINATE).contains(&coordinate)
+                }) {
+                    return Err(
+                        "context menu position must be a finite, nonnegative logical point",
+                    );
+                }
+                crate::validate_context_menu(items)?;
+            }
             Self::ResolveDroppedItem { item, root, .. } => {
                 crate::validate_drop_item_index(*item)?;
                 crate::validate_root_id(root)?;
@@ -1012,6 +1043,7 @@ impl Command {
             | Self::ReleaseProcess { .. }
             | Self::CloseFileDialog { .. }
             | Self::CloseMessageDialog { .. }
+            | Self::CloseContextMenu { .. }
             | Self::RegisterDropTarget { .. }
             | Self::UnregisterDropTarget { .. }
             | Self::Shutdown { .. } => {}
