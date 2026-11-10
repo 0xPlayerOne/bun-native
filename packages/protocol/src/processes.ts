@@ -139,20 +139,21 @@ export function processArguments(value: ProcessExecutable): string[] {
 }
 
 export function processesFromArguments(argv: readonly string[]): ProcessExecutable[] {
-  const entries: ProcessExecutable[] = argv
-    .filter((argument) => argument.startsWith(PROCESS_ARGUMENT))
-    .map((argument) => {
-      const [entry, ...path] = argument.slice(PROCESS_ARGUMENT.length).split(':')
-      return { id: entry!, executable: path.join(':') }
-    })
+  // One pass, as the host parses them: limits name an executable granted by
+  // an earlier argument, at most once.
+  const entries: ProcessExecutable[] = []
   for (const argument of argv) {
-    if (!argument.startsWith(PROCESS_LIMITS_ARGUMENT)) continue
-    const text = argument.slice(PROCESS_LIMITS_ARGUMENT.length)
-    const separator = text.indexOf(':')
-    const entry = entries.find((item) => item.id === text.slice(0, separator))
-    if (separator < 0 || !entry || entry.limits)
-      throw new ProtocolError('Process limits must name one granted executable once')
-    entry.limits = parseProcessLimitsArgument(text.slice(separator + 1))
+    if (argument.startsWith(PROCESS_ARGUMENT)) {
+      const [entry, ...path] = argument.slice(PROCESS_ARGUMENT.length).split(':')
+      entries.push({ id: entry!, executable: path.join(':') })
+    } else if (argument.startsWith(PROCESS_LIMITS_ARGUMENT)) {
+      const text = argument.slice(PROCESS_LIMITS_ARGUMENT.length)
+      const separator = text.indexOf(':')
+      const entry = entries.find((item) => item.id === text.slice(0, separator))
+      if (separator < 0 || !entry || entry.limits)
+        throw new ProtocolError('Process limits must name one granted executable once')
+      entry.limits = parseProcessLimitsArgument(text.slice(separator + 1))
+    }
   }
   return parseProcessExecutables(entries)
 }

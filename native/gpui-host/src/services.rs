@@ -580,6 +580,23 @@ mod tests {
                 open_files: Some(16),
             })
         );
+        // An earlier executable may take its limits after another entry, as in
+        // the TypeScript parser.
+        let interleaved = policy(
+            [
+                format!("--bun-native-process=shell:{shell}"),
+                format!("--bun-native-process=tool:{shell}"),
+                "--bun-native-process-limits=shell:cpu_seconds=2".into(),
+            ]
+            .map(OsString::from),
+        )
+        .unwrap()
+        .processes;
+        assert_eq!(
+            interleaved[0].limits.and_then(|limits| limits.cpu_seconds),
+            Some(2)
+        );
+        assert_eq!(interleaved[1].limits, None);
         for arguments in [
             // Before its executable, for another ID, twice, or malformed.
             vec![

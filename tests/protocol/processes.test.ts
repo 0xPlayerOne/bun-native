@@ -63,6 +63,24 @@ describe('shared owned process wire contract (headless)', () => {
       '--bun-native-process-limits=cpu_seconds=1',
     ])
       expect(() => processesFromArguments([...argv, extra])).toThrow()
+    // As in the host, limits must follow the executable they name.
+    expect(() =>
+      processesFromArguments([
+        '--bun-native-process-limits=shell:cpu_seconds=2',
+        '--bun-native-process=shell:/bin/sh',
+      ])
+    ).toThrow('one granted executable once')
+    // An earlier executable may still take its limits after another entry.
+    expect(
+      processesFromArguments([
+        '--bun-native-process=shell:/bin/sh',
+        '--bun-native-process=tool:/opt/tool',
+        '--bun-native-process-limits=shell:cpu_seconds=2',
+      ])
+    ).toEqual([
+      { id: 'shell', executable: '/bin/sh', limits: { cpu_seconds: 2 } },
+      { id: 'tool', executable: '/opt/tool' },
+    ])
     for (const limits of [{}, { cpu_seconds: 0 }, { threads: 1 }, { memory_bytes: 1.5 }])
       expect(() =>
         processArguments({ id: 'shell', executable: '/bin/sh', limits } as never)
