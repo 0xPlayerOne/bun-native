@@ -179,6 +179,29 @@ export async function integrate(root: string, integration: Integration): Promise
   return [launcher, entry]
 }
 
+function installInstructions(
+  manifest: UpdateManifest,
+  selfContained: { keySet: boolean } | undefined
+): string[] {
+  if (!selfContained)
+    return [
+      'Install: bun scripts/release-update.ts install update.json --payload payload --root INSTALL_DIR (trust options in docs/updates.md)',
+    ]
+  const exe = manifest.target.os === 'win32' ? '.exe' : ''
+  const tool = `${manifest.target.os === 'win32' ? '.\\' : './'}bun-native-update${exe}`
+  const trust =
+    manifest.trust === 'unsigned-experimental'
+      ? '--unsigned-experimental'
+      : selfContained.keySet
+        ? '--key-set keys.json'
+        : '--public-key PUBLISHER_PUBLIC_KEY.pem'
+  return [
+    'Self-contained: the tool and launcher below are standalone executables; Bun is not required.',
+    `Install: ${tool} install update.json --payload payload --root INSTALL_DIR ${trust}`,
+    `Menu entry: ${tool} integrate --root INSTALL_DIR --name "App Name" --applications MENU_DIR --verified-launcher launcher${exe}`,
+  ]
+}
+
 /**
  * Lay out a distributable experimental bundle: the update manifest, its optional
  * detached signature and the build payload. Archive it with the platform tar/zip tool.
@@ -186,7 +209,15 @@ export async function integrate(root: string, integration: Integration): Promise
 export async function createBundle(
   build: string,
   manifestPath: string,
-  outdir: string
+  outdir: string,
+  options: {
+    /**
+     * The caller adds the compiled `bun-native-update` tool and verifying `launcher`
+     * (with `.exe` on Windows) and, when `keySet` is set, the bootstrap `keys.json`.
+     * The README then gives commands that need no Bun on the target.
+     */
+    selfContained?: { keySet: boolean }
+  } = {}
 ): Promise<{ directory: string; manifest: UpdateManifest; signed: boolean }> {
   const bytes = await readFile(manifestPath)
   const manifest = parseUpdateManifest(JSON.parse(bytes.toString('utf8')))
@@ -221,7 +252,7 @@ export async function createBundle(
       manifest.trust === 'ed25519'
         ? 'Update manifest is Ed25519-signed; the OS code signature is NOT present (unsigned experimental package).'
         : 'UNSIGNED EXPERIMENTAL package: neither the update manifest nor the executables are signed.',
-      'Install: bun scripts/release-update.ts install update.json --payload payload --root INSTALL_DIR (trust options in docs/updates.md)',
+      ...installInstructions(manifest, options.selfContained),
       '',
     ].join('\n'),
     { flag: 'wx' }

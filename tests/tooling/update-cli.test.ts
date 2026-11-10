@@ -1,6 +1,6 @@
 import { afterEach, expect, test } from 'bun:test'
 import { existsSync } from 'node:fs'
-import { copyFile, readFile, readdir, realpath, writeFile } from 'node:fs/promises'
+import { copyFile, mkdir, readFile, readdir, realpath, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import toolchain from '../../toolchain.json'
 import { fileDigest } from '../../scripts/native/artifact.ts'
@@ -274,3 +274,115 @@ test('the compiled verifying launcher starts the current release and refuses a m
   expect(refused.exitCode).toBe(1)
   expect(refused.stderr.toString()).toContain('label.txt')
 }, 120_000)
+
+test('a self-contained bundle installs, integrates and starts without Bun or the repository', async () => {
+  const work = await temporary()
+  const [privateKey, publicKey] = [join(work, 'key.pem'), join(work, 'key.pub.pem')]
+  ok('keygen', '--private-key', privateKey, '--public-key', publicKey)
+  const keySet = join(work, 'keys.json')
+  ok(
+    'key-set',
+    '--product',
+    'dev.bun-native.cli',
+    '--version',
+    '1',
+    '--public-key',
+    publicKey,
+    '--out',
+    keySet
+  )
+  const payload = await executableBuild('bundled')
+  const manifest = join(work, 'update.json')
+  ok(
+    'manifest',
+    payload,
+    '--product',
+    'dev.bun-native.cli',
+    '--version',
+    '1.0.0',
+    '--sequence',
+    '1',
+    '--signed',
+    '--out',
+    manifest
+  )
+  ok('sign', manifest, '--private-key', privateKey, '--keyed')
+  const bundles = join(work, 'bundles')
+  await mkdir(bundles)
+  expect(
+    cli('bundle', manifest, '--payload', payload, '--out', bundles, '--key-set', keySet).err
+  ).toContain('--self-contained')
+  ok(
+    'bundle',
+    manifest,
+    '--payload',
+    payload,
+    '--out',
+    bundles,
+    '--self-contained',
+    '--key-set',
+    keySet
+  )
+  const [name] = await readdir(bundles)
+  const bundle = join(bundles, name!)
+  expect((await readdir(bundle)).sort()).toEqual(
+    [
+      'README.txt',
+      `bun-native-update${suffix}`,
+      'keys.json',
+      `launcher${suffix}`,
+      'payload',
+      'update.json',
+      'update.json.sig',
+    ].sort()
+  )
+  expect(await readFile(join(bundle, 'README.txt'), 'utf8')).toContain('--key-set keys.json')
+
+  // Run from inside the bundle with no Bun on PATH, as on a clean machine.
+  const root = join(work, 'install')
+  const tool = join(bundle, `bun-native-update${suffix}`)
+  const env = windows
+    ? { SystemRoot: process.env['SystemRoot'] ?? 'C:\\Windows' }
+    : { PATH: '/usr/bin:/bin' }
+  const run = (...args: string[]) => {
+    const result = Bun.spawnSync([tool, ...args], {
+      cwd: bundle,
+      env,
+      stdout: 'pipe',
+      stderr: 'pipe',
+    })
+    expect({ args, code: result.exitCode, err: result.stderr.toString() }).toMatchObject({
+      code: 0,
+      err: '',
+    })
+    return result.stdout.toString()
+  }
+  run('install', 'update.json', '--payload', 'payload', '--root', root, '--key-set', 'keys.json')
+  const menu = join(work, 'menu')
+  const created = JSON.parse(
+    run(
+      'integrate',
+      '--root',
+      root,
+      '--name',
+      'Bundled App',
+      '--applications',
+      menu,
+      '--verified-launcher',
+      `launcher${suffix}`
+    )
+  ) as { created: string[] }
+  const started = Bun.spawnSync([created.created[0]!, ...report, '3'], {
+    env,
+    stdout: 'pipe',
+    stderr: 'pipe',
+  })
+  expect(started.exitCode).toBe(3)
+  expect(JSON.parse(started.stdout.toString()).label).toBe('bundled')
+  const compiled = Bun.spawnSync([tool, 'launcher', '--out', join(work, 'refused')], {
+    env,
+    stderr: 'pipe',
+  })
+  expect(compiled.exitCode).toBe(1)
+  expect(compiled.stderr.toString()).toContain('needs the Bun Native repository')
+}, 180_000)

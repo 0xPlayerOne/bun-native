@@ -51,6 +51,15 @@ Paths that end up inside shell, `.desktop`, plist or `cmd` text are limited to l
 
 `bundle` creates a new `<product>-<version>-<os>-<architecture>` directory inside an existing output directory and refuses one that already exists. It contains `update.json`, `update.json.sig` when the manifest is signed, `payload/` and a `README.txt` that labels the package unsigned at the OS level. Each payload file is checked against the manifest as it is copied. An `ed25519` manifest without a signature, or an unsigned manifest with one, is rejected. The signature is copied, not verified. Archive the directory with the platform's `tar` or zip tool.
 
+`bundle --self-contained` also compiles the update tool into `bun-native-update` and the verifying launcher into `launcher` (each with `.exe` on Windows). Both are standalone executables for the build machine, so the release target must match it. With `--key-set keys.json`, the bootstrap key set is copied in too. The README then gives commands that need neither Bun nor this repository on the target:
+
+```sh
+./bun-native-update install update.json --payload payload --root ~/Apps/example --key-set keys.json
+./bun-native-update integrate --root ~/Apps/example --name "Example App" --applications ~/.local/share/applications --verified-launcher launcher
+```
+
+A compiled tool cannot build executables itself, so its `launcher` command and `bundle --self-contained` refuse to run.
+
 ## Commands
 
 ```sh
@@ -113,6 +122,6 @@ The crash, launcher-execution and symbolic-link tests are skipped on Windows, be
 ## Remaining for #249
 
 - **Signing and notarization:** Apple Developer ID signing and notarization, Windows Authenticode, and Linux package signatures are not configured or verified. Ed25519 manifest signing is the updater's own trust root. It does not replace OS code signing.
-- **Platform installers:** not implemented: native installer formats (`.dmg`, MSI/MSIX, `.deb`/AppImage), a self-contained installer executable (installing still needs Bun on the target; only the verifying launcher is self-contained), Windows `.lnk` shortcuts, real `.app` bundles holding the release. Automatic rollback after a failed health check is implemented experimentally; see [update lifecycle](update-lifecycle.md).
+- **Platform installers:** not implemented: native installer formats (`.dmg`, MSI/MSIX, `.deb`/AppImage), a single-file installer (a `--self-contained` bundle is a directory of standalone executables plus the payload), Windows `.lnk` shortcuts, real `.app` bundles holding the release. Automatic rollback after a failed health check is implemented experimentally; see [update lifecycle](update-lifecycle.md).
 - **Native evidence:** these checks have not yet been run with real `native build` output on clean macOS and Windows machines, or with a running application. Windows replacement of running executables is not handled.
 - **Key management:** key sets with key ids, rotation signed by a trusted key, permanent revocation and a minimum manifest sequence are implemented experimentally, with CLI commands (see [update lifecycle](update-lifecycle.md)). A release workflow that signs with a configured CI secret is not.

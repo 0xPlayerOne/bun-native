@@ -48,7 +48,7 @@ const usage = `Experimental Bun Native application updates (see docs/updates.md 
   bun scripts/release-update.ts launch --root INSTALL_DIR [--key-set keys.json] [-- APPLICATION_ARGS ...]
   bun scripts/release-update.ts confirm|report-unhealthy --root INSTALL_DIR --release MANIFEST_SHA256 [--key-set keys.json]
   bun scripts/release-update.ts rollback|recover|status --root INSTALL_DIR [--key-set keys.json]
-  bun scripts/release-update.ts bundle update.json --payload BUILD_DIR --out EXISTING_DIR
+  bun scripts/release-update.ts bundle update.json --payload BUILD_DIR --out EXISTING_DIR [--self-contained [--key-set keys.json]]
   bun scripts/release-update.ts launcher --out NEW_EXECUTABLE
   bun scripts/release-update.ts integrate --root INSTALL_DIR --name "App Name" --applications MENU_DIR [--verified-launcher EXECUTABLE]
   bun scripts/release-update.ts uninstall --root INSTALL_DIR [--purge-data]
@@ -63,6 +63,18 @@ const optional = async (path: string) => {
     if ((error as NodeJS.ErrnoException).code === 'ENOENT') return undefined
     throw error
   }
+}
+
+/** Compile one of these scripts into a standalone executable for this machine. */
+function compile(script: string, out: string): void {
+  const entry = join(import.meta.dir, script)
+  // A compiled copy of this tool has no sources or Bun to compile with.
+  if (!existsSync(entry)) throw new Error('Building executables needs the Bun Native repository')
+  const built = Bun.spawnSync(
+    [process.execPath, 'build', '--compile', '--minify', entry, '--outfile', out],
+    { stdout: 'pipe', stderr: 'pipe' }
+  )
+  if (built.exitCode !== 0) throw new Error(`Building ${script} failed\n${built.stderr.toString()}`)
 }
 
 const readKeySetFile = async (path: string) => decodeKeySet(await readFile(path))
@@ -98,6 +110,7 @@ async function main(argv: string[]): Promise<void> {
       applications: { type: 'string' },
       'verified-launcher': { type: 'string' },
       'purge-data': { type: 'boolean' },
+      'self-contained': { type: 'boolean' },
     },
   })
   const [command, input, ...extra] = positionals
@@ -169,20 +182,43 @@ async function main(argv: string[]): Promise<void> {
   }
   if (command === 'bundle') {
     if (!input || !values.payload || !values.out) throw new Error(usage)
-    const { directory, signed } = await createBundle(resolve(values.payload), input, values.out)
-    console.log(`Wrote ${signed ? 'signed-manifest' : 'UNSIGNED EXPERIMENTAL'} bundle ${directory}`)
+    const selfContained = values['self-contained'] === true
+    if (values['key-set'] && !selfContained)
+      throw new Error('--key-set is copied only into a --self-contained bundle\n' + usage)
+    const keySet = values['key-set'] ? await readFile(values['key-set']) : undefined
+    if (keySet) decodeKeySet(keySet)
+    if (selfContained) {
+      const { target } = JSON.parse(await readFile(input, 'utf8')) as {
+        target?: { os?: string; architecture?: string }
+      }
+      // The tools are compiled for this machine, so they must match the release target.
+      if (target?.os !== process.platform || target?.architecture !== process.arch)
+        throw new Error(
+          `A self-contained bundle for ${target?.os}/${target?.architecture} must be built on that platform`
+        )
+    }
+    const { directory, signed } = await createBundle(
+      resolve(values.payload),
+      input,
+      values.out,
+      selfContained ? { selfContained: { keySet: keySet !== undefined } } : {}
+    )
+    if (selfContained) {
+      const exe = process.platform === 'win32' ? '.exe' : ''
+      compile('release-update.ts', join(directory, `bun-native-update${exe}`))
+      compile('native/verified-launcher.ts', join(directory, `launcher${exe}`))
+      if (keySet) await writeFile(join(directory, 'keys.json'), keySet, { flag: 'wx' })
+    }
+    console.log(
+      `Wrote ${signed ? 'signed-manifest' : 'UNSIGNED EXPERIMENTAL'}${selfContained ? ' self-contained' : ''} bundle ${directory}`
+    )
     return
   }
   if (command === 'launcher') {
     if (input || !values.out) throw new Error(usage)
     const out = resolve(values.out)
     if (existsSync(out)) throw new Error(`${out} already exists`)
-    const entry = join(import.meta.dir, 'native/verified-launcher.ts')
-    const built = Bun.spawnSync(
-      [process.execPath, 'build', '--compile', '--minify', entry, '--outfile', out],
-      { stdout: 'pipe', stderr: 'pipe' }
-    )
-    if (built.exitCode !== 0) throw new Error(`Launcher build failed\n${built.stderr.toString()}`)
+    compile('native/verified-launcher.ts', out)
     console.log(`Wrote verifying launcher ${out}`)
     return
   }
