@@ -251,6 +251,7 @@ jobs:
             "$NATIVE_EVIDENCE/events-development" event-throughput bun tests/native/event-throughput.ts
       - name: Compile and inspect the actual AOT entries
         run: |
+          # shellcheck disable=SC2016 # the xargs child shell expands its own variables
           for entry in native-window input-race bridge javascript core-lifecycle event-throughput fault scheduling layout interactions services display-semantics clipboard global-shortcuts notifications overlays message-dialogs popups wayland filesystem-grants text-input accessibility ime processes file-dialogs drag-drop solid-drag-drop react-drag-drop solid-services react-services solid solid-input-intent solid-interactions react react-interactions react-behavior react-workload react-workspace react-workspace-flow; do
             echo "$entry"
           done | xargs -P "$(nproc)" -n 1 bash -c '

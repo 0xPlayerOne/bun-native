@@ -36,6 +36,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           PR: ${{ github.event.pull_request.number }}
         run: |
+          # shellcheck disable=SC2016 # JavaScript template literals, not shell expansions
           node -e '
             const fs = require("node:fs");
             const out = (value) => fs.appendFileSync(process.env.GITHUB_OUTPUT, `docs-only=${value}\n`);
