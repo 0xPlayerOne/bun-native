@@ -1,6 +1,6 @@
 import { afterEach, expect, test } from 'bun:test'
 import { existsSync } from 'node:fs'
-import { copyFile, readFile, readdir, writeFile } from 'node:fs/promises'
+import { copyFile, readFile, readdir, realpath, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import toolchain from '../../toolchain.json'
 import { fileDigest } from '../../scripts/native/artifact.ts'
@@ -256,10 +256,12 @@ test('the compiled verifying launcher starts the current release and refuses a m
     Bun.spawnSync([installedLauncher, ...report, '5'], { stdout: 'pipe', stderr: 'pipe' })
   const started = run()
   expect(started.exitCode).toBe(5)
+  // The launcher finds the root from its resolved executable path (/private/var on macOS).
+  const resolvedRoot = await realpath(root)
   expect(JSON.parse(started.stdout.toString())).toMatchObject({
     label: 'one',
-    data: join(root, 'data'),
-    root,
+    data: join(resolvedRoot, 'data'),
+    root: resolvedRoot,
   })
   if (process.platform === 'darwin') {
     const wrapper = join(menu, 'CLI App.app', 'Contents', 'MacOS', 'dev.bun-native.cli')
