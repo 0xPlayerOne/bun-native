@@ -34,3 +34,48 @@ jobs:
       rust-shards: '["all"]'
       rust-threads: '1'
       rust-max-parallel: 1
+
+      # This repository uses all four languages. A successful "Not applicable"
+      # matrix row does not constitute an actual CodeQL analysis.
+      # The pinned Code Foundry plan executes each analyzer on the PR head.
+      plan: >-
+        {"enabled":"true","rust_build_mode":"none","matrix":[{"display":"Actions","language":"actions","category":"/language:actions","build_mode":"none","changed":true},{"display":"TypeScript","language":"javascript-typescript","category":"/language:javascript-typescript","build_mode":"none","changed":true},{"display":"Python","language":"python","category":"/language:python","build_mode":"none","changed":true},{"display":"Rust","language":"rust","category":"/language:rust","build_mode":"none","changed":true,"shard":"all"}]}
+
+  qualification:
+    name: Qualification
+    needs: [codeql]
+    # Drafts remain blocked by Validation's existing draft Gate. For ready PRs,
+    # fail closed when CodeQL was skipped, cancelled or unsuccessful.
+    if: ${{ always() && github.event_name == 'pull_request' && github.event.pull_request.draft == false }}
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+    steps:
+      - name: Verify real analyses for every required language
+        env:
+          GH_TOKEN: ${{ github.token }}
+          CODEQL_RESULT: ${{ needs.codeql.result }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ "$CODEQL_RESULT" != 'success' ]; then
+            echo "::error::CodeQL reusable workflow did not succeed: $CODEQL_RESULT"
+            exit 1
+          fi
+          # Inspect only this attempt. A successful job running "Not applicable"
+          # instead of Analyze does not count as a genuine CodeQL scan.
+          gh api "repos/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID/attempts/$GITHUB_RUN_ATTEMPT/jobs?per_page=100" > "$RUNNER_TEMP/codeql-jobs.json"
+          for spec in 'Actions:Analyze' 'TypeScript:Analyze' 'Python:Analyze' 'Rust:Analyze Rust'; do
+            language="${spec%%:*}"
+            step="${spec#*:}"
+            if ! jq -e --arg language "$language" --arg step "$step" '
+              [.jobs[]
+                | select(.name == ("CodeQL / Analyze (" + $language + ")"))
+                | select(.status == "completed" and .conclusion == "success")
+                | select(any(.steps[]?; .name == $step and .conclusion == "success"))
+              ] | length == 1
+            ' "$RUNNER_TEMP/codeql-jobs.json"; then
+              echo "::error::No successful real CodeQL $language analysis in this run attempt"
+              exit 1
+            fi
+          done
