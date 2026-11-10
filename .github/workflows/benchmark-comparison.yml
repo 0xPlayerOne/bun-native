@@ -228,3 +228,92 @@ jobs:
           include-hidden-files: true
           if-no-files-found: error
           retention-days: 30
+
+  # The same comparison and direct Rust GPUI baseline on a hosted Apple silicon
+  # VM (#244). XTest click-to-paint is Linux only, so input trials are 0 here.
+  # The hosted VM's paravirtual Metal device is not a physical GPU.
+  macos:
+    name: macOS core/Solid/React and direct Rust GPUI comparison
+    if: vars.CI_BILLING_PAUSED == 'false' && (github.event_name != 'pull_request' || github.event.pull_request.draft == false)
+    runs-on: macos-15
+    timeout-minutes: 60
+    defaults:
+      run:
+        shell: bash
+    env:
+      CARGO_INCREMENTAL: 0
+      PYTHONDONTWRITEBYTECODE: 1
+      TRIALS: ${{ github.event_name == 'workflow_dispatch' && inputs.trials || '5' }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Prepare result directory
+        run: |
+          mkdir "$RUNNER_TEMP/comparison"
+          echo "COMPARISON=$RUNNER_TEMP/comparison" >> "$GITHUB_ENV"
+      - name: Install checksum-pinned Bun compiler
+        run: node scripts/install-bun.mjs --destination "$RUNNER_TEMP/bun-native-bun"
+      - name: Install pinned Rust toolchain
+        run: rustup show active-toolchain
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ~/.bun/install/cache
+            ~/.cargo/registry/index
+            ~/.cargo/registry/cache
+            ~/.cargo/git/db
+          key: gpui-downloads-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('toolchain.json', 'bun.lock', 'rust-toolchain.toml', 'Cargo.lock') }}
+      - run: bun install --frozen-lockfile
+      - name: Build release native host and the direct Rust GPUI baseline
+        run: |
+          { time -p cargo build --locked --release --manifest-path Cargo.toml -p bun-native-host --bin bun-native-host --example workload-baseline; } 2>&1 | tee "$COMPARISON/host-build.log"
+          shasum -a 256 target/release/bun-native-host target/release/examples/workload-baseline > "$COMPARISON/binary-sha256.txt"
+          system_profiler SPDisplaysDataType SPHardwareDataType > "$COMPARISON/hardware.txt" 2>&1 || true
+      - name: Run the equivalent-workload comparison
+        timeout-minutes: 40
+        run: |
+          bun benchmarks/comparison/run.ts \
+            --host "$GITHUB_WORKSPACE/target/release/bun-native-host" --host-profile release \
+            --output "$COMPARISON/run" --trials "$TRIALS" --input-trials 0
+      - name: Run the direct Rust GPUI baseline
+        if: ${{ !cancelled() && hashFiles('target/release/examples/workload-baseline') != '' }}
+        timeout-minutes: 10
+        run: |
+          bun benchmarks/rust-gpui/run.ts \
+            --binary "$GITHUB_WORKSPACE/target/release/examples/workload-baseline" \
+            --output "$COMPARISON/rust-gpui" --trials "$TRIALS"
+      - name: Export the compact record and summary table
+        if: ${{ always() && env.COMPARISON != '' }}
+        run: |
+          if [[ -f "$COMPARISON/run/comparison.json" ]]; then
+            bun benchmarks/comparison/export.ts "$COMPARISON/run" "$COMPARISON/export" | tee "$COMPARISON/summary.md"
+            {
+              echo '## Equivalent-workload comparison (macOS, hosted VM)'
+              echo
+              jq -r '"Status: \(.status); failed launches: \(.failedLaunches // [] | length)"' "$COMPARISON/run/comparison.json"
+              echo
+              cat "$COMPARISON/summary.md"
+            } >> "$GITHUB_STEP_SUMMARY"
+          fi
+          if [[ -f "$COMPARISON/rust-gpui/rust-gpui.json" ]]; then
+            {
+              echo '## Direct Rust GPUI baseline (same runner)'
+              echo
+              echo '| Metric | median | 95% CI |'
+              echo '| --- | --- | --- |'
+              jq -r '.summary.perLaunch | to_entries[] | select(.key | test("spawnTo|processWall|cpu|peakTree")) | "| \(.key) | \(.value.median) | \(.value.medianInterval.low) to \(.value.medianInterval.high) |"' "$COMPARISON/rust-gpui/rust-gpui.json"
+            } >> "$GITHUB_STEP_SUMMARY"
+          fi
+      - name: Retain raw results, including failures
+        if: ${{ always() && env.COMPARISON != '' }}
+        timeout-minutes: 3
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: benchmark-comparison-macos-${{ runner.arch }}
+          path: |
+            ${{ runner.temp }}/comparison/
+            !${{ runner.temp }}/comparison/run/*/application
+          include-hidden-files: true
+          if-no-files-found: error
+          retention-days: 30

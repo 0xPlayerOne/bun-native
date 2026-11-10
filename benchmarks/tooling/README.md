@@ -50,3 +50,32 @@ without per-edit Babel. Its [Linux results](results/solid-transform-linux-x64/RE
 attribute most of Solid's remaining growth under purge 0 to the Babel stage, with
 the live JS heap bounded. They also show that reusing the loaded Babel preset does
 not change RSS, so no transform change is adopted.
+
+## Sustained native watch, 601 edits (November 10)
+
+The controls above exclude the native app and host. [`cli-watch.py --edits 601`](../../tests/native/cli-watch.py)
+runs the real `native dev --watch` loop with real XTest input and complete native paint
+for 601 source edits per framework, six times CI's fixed 101. Each run is one fresh session:
+release host, pinned Bun canary `b1007f117`, Xvfb with lavapipe, shared 4-vCPU Linux 6.18
+container. The [per-generation record](../../docs/evidence/cli-watch-sustained-601-2026-11-10.json)
+keeps controller, application, host and tree RSS and the edit-to-input-confirmed-paint time
+for every generation.
+
+Both frameworks completed all 602 generations. That covers the malformed-edit control,
+joined replacement, zero-owner teardown and final OS close. React passed outright. Solid
+finished every generation and its cleanup, but then failed its final source-identity check,
+because the checkout's HEAD was committed while it ran. Its content was the same as
+`a587381`, the source of the React run. Inner controller `VmRSS` (MiB) and edit timing:
+
+| Framework | First | Sixth medians (100-edit windows)         |  Last |   Max |    Late fit (last 300) | Edit to confirmed paint, first → last sixth |
+| --------- | ----: | ---------------------------------------- | ----: | ----: | ---------------------: | ------------------------------------------: |
+| Solid     |  86.2 | 106.8, 118.5, 114.8, 116.1, 117.1, 121.5 | 120.4 | 126.8 | +20.5 KB/edit, R² 0.31 |                                351 → 335 ms |
+| React     |  51.7 | 63.0, 64.6, 66.4, 66.5, 66.8, 67.5       |  67.4 |  68.0 |  +5.8 KB/edit, R² 0.70 |                                358 → 365 ms |
+
+Most growth happens in the first 100 edits. After that, Solid moves within about
+115–127 MiB, and React keeps a slow, steady rise of about 6 KB per edit, about 3 MiB
+over 500 edits. Edit-to-paint time does not degrade. With the earlier findings (allocator
+purge delay, adopted; collectable Babel garbage, no change justified), no retaining owner
+or architecture change is indicated. Moving compilation into a subprocess would add a
+process start to every edit to save a few MiB per hour of editing. This is a finite run on
+one machine, not a proof that memory stays bounded indefinitely.

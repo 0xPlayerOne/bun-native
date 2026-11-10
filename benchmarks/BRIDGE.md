@@ -278,3 +278,11 @@ scroll-clipping, focus, route-ordering and macOS hit-testing scenarios on both
 ordinary Bun and AOT before it replaces the current path. The acknowledgement
 tail itself is governed by frame cost (layout, text and software paint) and
 scheduling, so a callback change alone cannot be presented as a tail fix.
+
+**Same-semantics replacement, measured November 10.** The registry design above
+was implemented and qualified on the Linux pointer, overlay and popup scenarios,
+then measured against `main` in five alternating pairs. Element construction got
+about 0.26 ms cheaper, but render-to-paint was slower in every pair (10.47 to
+11.89 ms median), so frames got about 10% slower overall. It is not adopted, and
+the per-node capture listeners remain. Patch, raw phase records and a wrapper
+control: [`results/pointer-registry-2026-11-10`](results/pointer-registry-2026-11-10/README.md).

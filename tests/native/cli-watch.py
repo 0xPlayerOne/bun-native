@@ -37,6 +37,16 @@ EDIT_COUNT = 101
 GENERATIONS = EDIT_COUNT + 1
 GENERATION_SECONDS = 20
 SESSION_SECONDS = 360
+
+
+def configure(edits):
+    """Sets the fixed edit count; the session budget scales from 360 s per 101 edits."""
+    global EDIT_COUNT, GENERATIONS, SESSION_SECONDS
+    EDIT_COUNT = edits
+    GENERATIONS = edits + 1
+    SESSION_SECONDS = max(360, -(-360 * edits // 101))
+
+
 RESOURCE_KEYS = (
     "windows",
     "nodes",
@@ -442,7 +452,7 @@ def qualify(framework, output, host, bun):
                         stderr=subprocess.PIPE,
                         start_new_session=True,
                     )
-                    audit = PROCESS.ProcessAudit(app, host, bun)
+                    audit = PROCESS.ProcessAudit(app, host, bun, GENERATIONS)
                     stdout = PROCESS.Capture(
                         app.stdout,
                         output / "stdout.log",
@@ -751,7 +761,16 @@ def main():
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--host", type=Path, required=True)
     parser.add_argument("--bun", type=Path, required=True)
+    parser.add_argument(
+        "--edits",
+        type=int,
+        default=EDIT_COUNT,
+        help="source-edit remounts after the initial generation (sustained memory runs, #372)",
+    )
     args = parser.parse_args()
+    if args.edits < 1:
+        parser.error("--edits must be at least 1")
+    configure(args.edits)
     return qualify(
         args.framework,
         args.output.resolve(),
