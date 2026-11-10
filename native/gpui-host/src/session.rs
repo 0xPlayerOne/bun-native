@@ -64,6 +64,12 @@ pub(crate) struct Session {
     context_menus: ContextMenus,
     drops: Drops,
     app_menu: AppMenus,
+    /// Test-only fault injection (`BUN_NATIVE_TEST_FAULT=panic-in-batch`):
+    /// the first batch panics inside its GPUI window update, so the panic
+    /// path of an established session can be qualified on the real host.
+    /// The launching application already controls the host's environment,
+    /// so this grants it nothing new.
+    panic_in_batch: bool,
 }
 
 impl Session {
@@ -164,6 +170,8 @@ impl Session {
             context_menus,
             drops,
             app_menu,
+            panic_in_batch: std::env::var("BUN_NATIVE_TEST_FAULT").as_deref()
+                == Ok("panic-in-batch"),
         }
     }
 
@@ -696,7 +704,11 @@ impl Session {
             }
         };
         let revision = prepared.tree.revision();
+        let panic_in_batch = self.panic_in_batch;
         let result = handle.update(cx, |view, window, cx| {
+            if panic_in_batch {
+                panic!("Bun Native test fault: injected panic while applying a batch");
+            }
             view.apply(prepared.tree, &prepared.requests, window, cx)
         });
         if result.is_ok() {

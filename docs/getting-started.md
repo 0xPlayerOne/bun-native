@@ -177,6 +177,8 @@ Window presence comes from CGWindowList only: the terminal had no Screen Recordi
 
 No local GUI launch was attempted in the Linux record because the verification environment's process IDs and `/proc` did not share the namespace required by the native ownership checks. The manifests retain `nativeRendering`, `osInput` and `teardown` as `not-run`. This record does not qualify macOS/Windows templates, independent framework installation or signed distribution. Current hosted native evidence is described separately in [developer tooling](developer-tooling.md).
 
+On hosted macOS arm64 and Windows x64, every Validation run repeats steps 3 and 5 for all four templates with the pinned Bun and that run's release host: `create`, `bun run check`, then `build --host-profile release` with compiled-program and JIT-omission inspection ([`native-platforms.yml`](../.github/workflows/native-platforms.yml), via [`cli-templates.py`](../tests/native/cli-templates.py) `prepare`). It keeps provenance and command logs, not the packages. Those runners do not launch the templates' windows; the windowed development and AOT template runs stay on Linux CI and the physical Mac record above.
+
 ## Continue developing
 
 Use the [public API reference](api-reference.md), the [public core API](../packages/core/README.md), [native layout contract](native-layout.md) and [compatibility guide](compatibility.md) when extending an app. Framework contributors should also read the [architecture](architecture.md), [engineering-quality policy](engineering-quality.md), [testing guide](testing.md) and [implementation handoff](bun-native-handoff.md).

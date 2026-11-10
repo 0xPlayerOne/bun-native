@@ -362,6 +362,7 @@ export class NativeHost implements AsyncIterable<HostEvent> {
   private writeTail: Promise<void> = Promise.resolve()
   private stderrTail = ''
   private stderrClipped = false
+  private stderrPanic: string | null = null
   private iteratorTaken = false
   private readonly startupTrace = StartupTrace.fromEnvironment()
 
@@ -694,6 +695,12 @@ export class NativeHost implements AsyncIterable<HostEvent> {
 
   private appendStderr(text: string): void {
     const tail = this.stderrTail + text
+    // Keep the first complete panic header and message line: a long backtrace
+    // can push them out of the bounded tail before the host exits.
+    if (this.stderrPanic === null) {
+      const panic = /(^|\n)([^\n]*panicked at [^\n]*\n[^\n]*)\n/.exec(tail)
+      if (panic && (panic[1] || !this.stderrClipped)) this.stderrPanic = panic[2]!
+    }
     if (tail.length > 4_096) this.stderrClipped = true
     this.stderrTail = tail.slice(-4_096)
   }
@@ -726,6 +733,7 @@ export class NativeHost implements AsyncIterable<HostEvent> {
         pendingRequests: this.pending.size,
         stderr: this.stderrTail,
         stderrClipped: this.stderrClipped,
+        panicReport: this.stderrPanic,
         environment: process.env,
       }),
       status

@@ -122,6 +122,31 @@ describe('exit diagnostic bounds', () => {
     expect(diagnostic.stderrTail).toBe('')
     expect(diagnostic.stderrTruncated).toBe(true)
   })
+
+  test('a panic report kept while capturing leads a clipped backtrace tail', () => {
+    const header = "thread 'main' panicked at native/gpui-host/src/session.rs:710:17:"
+    const frames = Array.from({ length: 60 }, (_, index) => `  ${index}: frame::${index}`)
+    const diagnostic = diagnose(`ure#0}}\n${frames.join('\n')}\n`, {
+      exitCode: 101,
+      stderrClipped: true,
+      panicReport: `${header}\nTOKEN=abc boom`,
+    })
+    expect(diagnostic).toMatchObject({
+      reason: 'panic',
+      panicLocation: 'native/gpui-host/src/session.rs:710:17',
+      stderrTruncated: true,
+    })
+    const tail = diagnostic.stderrTail.split('\n')
+    expect(tail.slice(0, 3)).toEqual([header, 'TOKEN=[redacted] boom', '…'])
+    expect(tail.at(-1)).toBe('  59: frame::59')
+    expect(tail.length).toBeLessThanOrEqual(32)
+    expect(diagnostic.stderrTail.length).toBeLessThanOrEqual(MAX_DIAGNOSTIC_TAIL)
+    expect(diagnostic.stderrTail).not.toContain('ure#0')
+    // A report the tail still holds is not repeated.
+    expect(diagnose(`${header}\nboom\n`, { panicReport: `${header}\nboom` }).stderrTail).toBe(
+      `${header}\nboom`
+    )
+  })
 })
 
 describe('exit diagnostic redaction', () => {
