@@ -1,8 +1,8 @@
 import { describe, expect, test } from 'bun:test'
-import { mkdtempSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from 'node:fs'
+import { linkSync, mkdtempSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
-import { gzipSync } from 'node:zlib'
+import { gunzipSync, gzipSync } from 'node:zlib'
 import {
   environmentLabel,
   exportMetrics,
@@ -51,7 +51,7 @@ function writeExport({
   const inputs = []
   for (const adapter of ['core', 'solid']) {
     for (let trial = 0; trial <= trials; trial++) {
-      const name = `${adapter}-aot-${trial}`
+      const name = trial === 0 ? `${adapter}-aot-first` : `${adapter}-aot-${trial}`
       launches.push({
         name,
         adapter,
@@ -79,6 +79,7 @@ function writeExport({
           name: `${adapter}-aot-input-${trial}`,
           adapter,
           mode: 'aot',
+          trial,
           status: 'passed',
           commandStartToPaintObservedMs: (8 + trial * 0.1) * scale,
         })
@@ -119,6 +120,23 @@ function writeExport({
   writeFileSync(
     join(directory, 'launches.jsonl.gz'),
     gzipSync(rows.map((row) => JSON.stringify(row)).join('\n') + '\n')
+  )
+  // Input-latency exporter preserves each XTest driver's observation.
+  const inputRows = inputs.map((item) => ({
+    name: item.name,
+    report: report(1),
+    driver: {
+      status: 'passed',
+      measurements: {
+        native_paint_file_observation: {
+          command_start_to_paint_observed_ms: item.commandStartToPaintObservedMs,
+        },
+      },
+    },
+  }))
+  writeFileSync(
+    join(directory, 'input-launches.jsonl.gz'),
+    gzipSync(inputRows.map((row) => JSON.stringify(row)).join('\n') + '\n')
   )
   return { directory, comparison }
 }
@@ -187,6 +205,395 @@ describe('benchmark metrics export', () => {
     expect(() => exportMetrics(directory)).toThrow('has no retained child report')
   })
 
+  test('requires the retained child report of every declared successful first launch', () => {
+    const { directory, comparison } = writeExport({ trials: 3 })
+    const record = {
+      ...comparison,
+      launches: comparison.launches.filter((launch) => launch.status === 'passed'),
+      methodology: { adapters: ['core', 'solid'], modes: ['aot'], measuredTrials: 3 },
+    }
+    writeFileSync(join(directory, 'comparison.json'), JSON.stringify(record))
+    const path = join(directory, 'launches.jsonl.gz')
+    const original = gunzipSync(readFileSync(path)).toString('utf8').trimEnd().split('\n')
+    const name = 'core-aot-first'
+    const save = (lines: string[]) => writeFileSync(path, gzipSync(lines.join('\n') + '\n'))
+    expect(() => exportMetrics(directory)).not.toThrow()
+
+    // The exporter retains one row for every launch. Cohort validation alone
+    // previously accepted a completed first launch with no retained evidence.
+    save(original.filter((line) => (JSON.parse(line) as { name: string }).name !== name))
+    expect(() => exportMetrics(directory)).toThrow(
+      'Passed first launch core-aot-first has no retained child report'
+    )
+
+    // A present row with an absent child payload is equally insufficient.
+    save(
+      original.map((line) => {
+        const row = JSON.parse(line) as { name: string; report: unknown }
+        return JSON.stringify(row.name === name ? { ...row, report: null } : row)
+      })
+    )
+    expect(() => exportMetrics(directory)).toThrow(
+      'Passed first launch core-aot-first has no retained child report'
+    )
+
+    save(original)
+    expect(() => exportMetrics(directory)).not.toThrow()
+  })
+
+  test('rejects duplicate launch and retained-report names instead of reusing a sample', () => {
+    const { directory, comparison } = writeExport()
+    comparison.launches.push({ ...comparison.launches[1]! })
+    writeFileSync(join(directory, 'comparison.json'), JSON.stringify(comparison))
+    expect(() => exportMetrics(directory)).toThrow('Duplicate comparison launch core-aot-1')
+
+    const input = writeExport()
+    input.comparison.inputLaunches.push({ ...input.comparison.inputLaunches[0]! })
+    writeFileSync(join(input.directory, 'comparison.json'), JSON.stringify(input.comparison))
+    expect(() => exportMetrics(input.directory)).toThrow(
+      'Duplicate comparison launch core-aot-input-1'
+    )
+
+    const recorded = writeExport()
+    const path = join(recorded.directory, 'launches.jsonl.gz')
+    const lines = gunzipSync(readFileSync(path)).toString('utf8').trimEnd().split('\n')
+    writeFileSync(path, gzipSync([...lines, lines[1]!].join('\n') + '\n'))
+    expect(() => exportMetrics(recorded.directory)).toThrow(
+      'Duplicate retained launch report core-aot-1'
+    )
+  })
+
+  test('refuses incomplete or duplicated recorded trial cohorts despite passed status', () => {
+    const { directory, comparison } = writeExport({ trials: 3 })
+    // The writer's successful controller records only passed processes. Keep
+    // the older mixed-status fixture behavior for the other exporter tests.
+    const record = {
+      ...comparison,
+      launches: comparison.launches.filter((launch) => launch.status === 'passed'),
+      methodology: { adapters: ['core', 'solid'], modes: ['aot'], measuredTrials: 3 },
+    }
+    const save = () => writeFileSync(join(directory, 'comparison.json'), JSON.stringify(record))
+    save()
+    expect(() => exportMetrics(directory)).not.toThrow()
+
+    // Before cohort validation both missing fourth trials and distinct names
+    // claiming the same adapter/mode/trial were accepted as a valid baseline.
+    record.methodology.measuredTrials = 4
+    save()
+    expect(() => exportMetrics(directory)).toThrow('Missing comparison trials: core/aot/4')
+
+    record.methodology.measuredTrials = 3
+    const duplicated = record.launches.find((launch) => launch.name === 'solid-aot-2')!
+    duplicated.trial = 1
+    save()
+    expect(() => exportMetrics(directory)).toThrow('Duplicate comparison trial solid/aot/1')
+
+    duplicated.trial = 2
+    record.methodology.modes.push('development')
+    save()
+    // The development pair has neither its first launch nor its trials; the first launch is checked first.
+    expect(() => exportMetrics(directory)).toThrow(
+      'Missing comparison first launches: core/development, solid/development'
+    )
+
+    // A forged run cannot request billions of expected samples and exhaust
+    // the exporter while building its expected-trial identities.
+    record.methodology.measuredTrials = 1_000_000_000
+    save()
+    expect(() => exportMetrics(directory)).toThrow('lacks a valid trial cohort')
+  })
+
+  test('rejects invented benchmark adapters and modes even with complete sample counts', () => {
+    const { directory, comparison } = writeExport({ trials: 3 })
+    const passed = comparison.launches.filter((launch) => launch.status === 'passed')
+    const record = {
+      ...comparison,
+      launches: passed,
+      inputLaunches: [],
+      methodology: {
+        adapters: ['core', 'solid'],
+        modes: ['aot'],
+        measuredTrials: 3,
+        inputLatency: null,
+      },
+    }
+    const save = () => writeFileSync(join(directory, 'comparison.json'), JSON.stringify(record))
+
+    save()
+    expect(() => exportMetrics(directory)).not.toThrow()
+
+    // The old validator accepted a fictitious adapter so long as its sample
+    // names and measured-trial indices matched its forged methodology.
+    record.methodology.adapters[1] = 'invented'
+    record.launches = passed.map((launch) => ({
+      ...launch,
+      adapter: launch.adapter === 'solid' ? 'invented' : launch.adapter,
+    }))
+    save()
+    expect(() => exportMetrics(directory)).toThrow('lacks a valid trial cohort')
+
+    // A fictitious execution mode was accepted in exactly the same way.
+    record.methodology.adapters[1] = 'solid'
+    record.methodology.modes[0] = 'invented'
+    record.launches = passed.map((launch) => ({ ...launch, mode: 'invented' }))
+    save()
+    expect(() => exportMetrics(directory)).toThrow('lacks a valid trial cohort')
+  })
+
+  test('rejects swapped process names that silently exchange measured trial reports', () => {
+    const { directory, comparison } = writeExport({ trials: 3 })
+    const record = {
+      ...comparison,
+      launches: comparison.launches.filter((launch) => launch.status === 'passed'),
+      methodology: {
+        adapters: ['core', 'solid'],
+        modes: ['aot'],
+        measuredTrials: 3,
+        inputLatency: { trials: 3 },
+      },
+    }
+    const save = () => writeFileSync(join(directory, 'comparison.json'), JSON.stringify(record))
+    const swapNames = (left: { name: string }, right: { name: string }) => {
+      const name = left.name
+      left.name = right.name
+      right.name = name
+    }
+    save()
+    expect(() => exportMetrics(directory)).not.toThrow()
+
+    // Every cohort identity and report name still exists. Before name checks,
+    // two distinct trials could borrow each other's retained report samples.
+    const first = record.launches.find((launch) => launch.name === 'core-aot-1')!
+    const second = record.launches.find((launch) => launch.name === 'core-aot-2')!
+    swapNames(first, second)
+    save()
+    expect(() => exportMetrics(directory)).toThrow(
+      'Comparison trial core/aot/1 has mismatched launch name core-aot-2'
+    )
+    swapNames(first, second)
+
+    // Input measurements must also retain their controller-generated process
+    // identities despite not consuming the retained comparison JSONL reports.
+    const inputFirst = record.inputLaunches.find((launch) => launch.name === 'core-aot-input-1')!
+    const inputSecond = record.inputLaunches.find((launch) => launch.name === 'core-aot-input-2')!
+    swapNames(inputFirst, inputSecond)
+    save()
+    expect(() => exportMetrics(directory)).toThrow(
+      'Input comparison trial core/aot/1 has mismatched launch name core-aot-input-2'
+    )
+    swapNames(inputFirst, inputSecond)
+    save()
+    expect(() => exportMetrics(directory)).not.toThrow()
+  })
+
+  test('requires one successful first-launch warmup for every declared adapter/mode', () => {
+    const { directory, comparison } = writeExport({ trials: 3 })
+    const launches = comparison.launches.filter((launch) => launch.status === 'passed')
+    const record = {
+      ...comparison,
+      launches: launches.map((launch) => ({ ...launch })),
+      methodology: { adapters: ['core', 'solid'], modes: ['aot'], measuredTrials: 3 },
+    }
+    const save = () => writeFileSync(join(directory, 'comparison.json'), JSON.stringify(record))
+    save()
+    expect(() => exportMetrics(directory)).not.toThrow()
+
+    // A forged first-launch identity previously passed cohort validation when
+    // its retained JSONL name was changed consistently. The controller always
+    // names trial-zero processes `<adapter>-<mode>-first`.
+    const firstLaunch = record.launches.find(
+      (launch) => launch.warmup && launch.adapter === 'core'
+    )!
+    const reportsPath = join(directory, 'launches.jsonl.gz')
+    const originalReports = gunzipSync(readFileSync(reportsPath)).toString('utf8')
+    expect(originalReports).toContain('"name":"core-aot-first"')
+    firstLaunch.name = 'core-aot-first-forged'
+    writeFileSync(
+      reportsPath,
+      gzipSync(originalReports.replace('"name":"core-aot-first"', '"name":"core-aot-first-forged"'))
+    )
+    save()
+    expect(() => exportMetrics(directory)).toThrow(
+      'Comparison first launch core/aot has mismatched launch name core-aot-first-forged'
+    )
+    record.launches = launches.map((launch) => ({ ...launch }))
+    writeFileSync(reportsPath, gzipSync(originalReports))
+    save()
+    expect(() => exportMetrics(directory)).not.toThrow()
+
+    // Previously all three malformed records were accepted: only measured
+    // launches were checked, even though trial zero runs each built artifact.
+    record.launches = launches.filter((launch) => !(launch.warmup && launch.adapter === 'core'))
+    save()
+    expect(() => exportMetrics(directory)).toThrow('Missing comparison first launches: core/aot')
+
+    record.launches = launches.map((launch) => ({ ...launch }))
+    const first = record.launches.find((launch) => launch.warmup && launch.adapter === 'core')!
+    first.status = 'failed'
+    save()
+    expect(() => exportMetrics(directory)).toThrow(
+      'Non-passing or invalid comparison first launch core/aot'
+    )
+
+    first.status = 'passed'
+    record.launches.push({ ...first, name: 'core-aot-first-copy' })
+    save()
+    expect(() => exportMetrics(directory)).toThrow('Duplicate comparison first launch core/aot')
+  })
+
+  test('declared input trials retain matching XTest and child evidence', () => {
+    const { directory, comparison } = writeExport({ trials: 3 })
+    writeFileSync(
+      join(directory, 'comparison.json'),
+      JSON.stringify({
+        ...comparison,
+        launches: comparison.launches.filter((launch) => launch.status === 'passed'),
+        methodology: {
+          adapters: ['core', 'solid'],
+          modes: ['aot'],
+          measuredTrials: 3,
+          inputLatency: { trials: 3 },
+        },
+      })
+    )
+    const path = join(directory, 'input-launches.jsonl.gz')
+    const original = gunzipSync(readFileSync(path)).toString('utf8').trimEnd().split('\n')
+    const save = (lines: string[]) => writeFileSync(path, gzipSync(lines.join('\n') + '\n'))
+    const name = 'core-aot-input-1'
+    const change = (replacement: Record<string, unknown>) =>
+      save(
+        original.map((line) => {
+          const row = JSON.parse(line) as { name: string; report: unknown; driver: unknown }
+          return JSON.stringify(row.name === name ? { ...row, ...replacement } : row)
+        })
+      )
+
+    expect(() => exportMetrics(directory)).not.toThrow()
+    save(original.filter((line) => (JSON.parse(line) as { name: string }).name !== name))
+    expect(() => exportMetrics(directory)).toThrow(
+      'Missing retained input launches: core-aot-input-1'
+    )
+    save([...original, original[0]!])
+    expect(() => exportMetrics(directory)).toThrow(
+      'Duplicate retained input launch core-aot-input-1'
+    )
+    change({ report: null })
+    expect(() => exportMetrics(directory)).toThrow('has no retained child report')
+    change({ driver: { status: 'failed' } })
+    expect(() => exportMetrics(directory)).toThrow('has no successful retained XTest driver')
+    change({
+      driver: {
+        status: 'passed',
+        measurements: {
+          native_paint_file_observation: { command_start_to_paint_observed_ms: 0.001 },
+        },
+      },
+    })
+    expect(() => exportMetrics(directory)).toThrow('has mismatched retained XTest latency')
+    save(original)
+    expect(() => exportMetrics(directory)).not.toThrow()
+  })
+
+  test('requires all declared input-latency trials for a passed benchmark baseline', () => {
+    const { directory, comparison } = writeExport({ trials: 3 })
+    const originals = comparison.inputLaunches.map((launch) => ({ ...launch }))
+    const record = {
+      ...comparison,
+      launches: comparison.launches.filter((launch) => launch.status === 'passed'),
+      inputLaunches: originals.map((launch) => ({ ...launch })),
+      methodology: {
+        adapters: ['core', 'solid'],
+        modes: ['aot'],
+        measuredTrials: 3,
+        inputLatency: { trials: 3 },
+      },
+    }
+    const save = () => writeFileSync(join(directory, 'comparison.json'), JSON.stringify(record))
+    save()
+    expect(() => exportMetrics(directory)).not.toThrow()
+
+    // Before this check, dropping an entire passed input sample was accepted.
+    record.inputLaunches.pop()
+    save()
+    expect(() => exportMetrics(directory)).toThrow('Missing input comparison trials: solid/aot/3')
+
+    record.inputLaunches = originals.map((launch) => ({ ...launch }))
+    record.inputLaunches[5]!.trial = 2
+    save()
+    expect(() => exportMetrics(directory)).toThrow('Duplicate input comparison trial solid/aot/2')
+
+    record.inputLaunches = originals.map((launch) => ({ ...launch }))
+    record.inputLaunches[0]!.status = 'failed'
+    save()
+    expect(() => exportMetrics(directory)).toThrow('Non-passing input comparison trial core/aot/1')
+
+    record.inputLaunches = originals.map((launch) => ({ ...launch }))
+    record.methodology.inputLatency.trials = 1_000_000_000
+    save()
+    expect(() => exportMetrics(directory)).toThrow('lacks a valid input trial cohort')
+  })
+
+  test('explicitly disabled input-latency measurement cannot contain input launches', () => {
+    const { directory, comparison } = writeExport({ trials: 3 })
+    const record = {
+      ...comparison,
+      launches: comparison.launches.filter((launch) => launch.status === 'passed'),
+      methodology: {
+        adapters: ['core', 'solid'],
+        modes: ['aot'],
+        measuredTrials: 3,
+        inputLatency: null,
+      },
+    }
+    const save = (value: object) =>
+      writeFileSync(join(directory, 'comparison.json'), JSON.stringify(value))
+
+    // The real controller writes inputLatency: null with zero input launches.
+    // Previously a forged passed export could retain one undeclared input
+    // sample and silently produce an undersampled click-to-paint baseline.
+    record.inputLaunches = record.inputLaunches.slice(0, 1)
+    save(record)
+    expect(() => exportMetrics(directory)).toThrow(
+      'Comparison declares no input-latency trials but contains input launches'
+    )
+    record.inputLaunches = []
+    save(record)
+    expect(() => exportMetrics(directory)).not.toThrow()
+
+    // Older archives without the field stay readable; only an explicit
+    // controller opt-out rules out recorded input launches.
+    save({
+      ...record,
+      inputLaunches: comparison.inputLaunches,
+      methodology: { adapters: ['core', 'solid'], modes: ['aot'], measuredTrials: 3 },
+    })
+    expect(() => exportMetrics(directory)).not.toThrow()
+  })
+
+  test('rejects retained reports not linked to comparison launches', () => {
+    const { directory, comparison } = writeExport()
+    const path = join(directory, 'launches.jsonl.gz')
+    const rows = gunzipSync(readFileSync(path)).toString('utf8').trimEnd().split('\n')
+    const writeExtra = (name: string) =>
+      writeFileSync(
+        path,
+        gzipSync([...rows, JSON.stringify({ name, report: report(1) })].join('\n') + '\n')
+      )
+
+    // A stray report used to be silently ignored when constructing the baseline.
+    writeExtra('orphan-aot-1')
+    expect(() => exportMetrics(directory)).toThrow('Unexpected retained launch report orphan-aot-1')
+
+    // An input trial is already a known identity but is not a child launch report.
+    const inputName = comparison.inputLaunches[0]!.name
+    writeExtra(inputName)
+    expect(() => exportMetrics(directory)).toThrow(`Unexpected retained launch report ${inputName}`)
+
+    // The unchanged exporter output remains valid.
+    writeFileSync(path, gzipSync(rows.join('\n') + '\n'))
+    expect(() => exportMetrics(directory)).not.toThrow()
+  })
+
   test('adds streaming-list soaks as one sample per launch and refuses a failed soak', () => {
     const metrics = fromStreaming([
       streamingResult('Solid', 'aot'),
@@ -203,6 +610,25 @@ describe('benchmark metrics export', () => {
     const path = join(directory, 'stream.json')
     writeFileSync(path, JSON.stringify(streamingResult('Solid', 'aot')))
     expect(Object.keys(exportMetrics(directory, [path]).metrics)).toHaveLength(22)
+  })
+
+  test('refuses duplicate streaming files while retaining distinct launch samples', () => {
+    const { directory } = writeExport()
+    const first = join(directory, 'stream-one.json')
+    const second = join(directory, 'stream-two.json')
+    writeFileSync(first, JSON.stringify(streamingResult('Solid', 'aot')))
+    writeFileSync(second, JSON.stringify(streamingResult('Solid', 'aot', 1.1)))
+    expect(() => exportMetrics(directory, [first, first])).toThrow('Duplicate streaming result')
+    expect(() => exportMetrics(directory, [first, `${directory}/./stream-one.json`])).toThrow(
+      'Duplicate streaming result'
+    )
+    // realpath() alone cannot identify two hard links to one physical result.
+    const hardLink = join(directory, 'stream-hard-link.json')
+    linkSync(first, hardLink)
+    expect(() => exportMetrics(directory, [first, hardLink])).toThrow('Duplicate streaming result')
+    const distinct = exportMetrics(directory, [first, second])
+    const samples = distinct.metrics['streaming solid/aot frameIntervalP95Ms']!.samples
+    expect(samples).toEqual([17, 17 * 1.1])
   })
 
   test('a passed launch with a missing measurement fails closed instead of losing a sample', () => {

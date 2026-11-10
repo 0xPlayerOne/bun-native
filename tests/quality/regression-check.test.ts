@@ -370,6 +370,53 @@ describe('metric regression gate', () => {
     expect(failed(comparison)).toBe(true)
   })
 
+  test('negative samples cannot masquerade as a valid ratio improvement', () => {
+    const baseline = file({ mount: { samples: around(10) } })
+    for (const invalid of [around(-2), [-1, ...around(10).slice(1)]]) {
+      const compared = compare(baseline, file({ mount: { samples: invalid } }))
+      expect(compared.findings[0]).toMatchObject({ status: 'unmeasured', ratio: null })
+      expect(compared.findings[0]?.note).toContain('negative samples')
+      expect(failed(compared)).toBe(true)
+    }
+    // Zero is a valid best-case duration, not a negative performance ratio.
+    const zero = compare(baseline, file({ mount: { samples: Array(12).fill(0) } }))
+    expect(zero.findings[0]).toMatchObject({ status: 'improved', ratio: 0 })
+    expect(failed(zero)).toBe(false)
+  })
+
+  test('rejects negative baseline and higher-direction throughput samples', () => {
+    const validBaseline = file({
+      rate: { direction: 'higher', unit: 'rows/s', samples: around(1_000) },
+    })
+    const invalidBaseline = file({
+      rate: { direction: 'higher', unit: 'rows/s', samples: [-1, ...around(1_000).slice(1)] },
+    })
+    const invalidCurrent = file({
+      rate: { direction: 'higher', unit: 'rows/s', samples: around(-100) },
+    })
+    const invalidLatency = compare(
+      file({ latency: { samples: around(10) } }),
+      file({ latency: { samples: around(-2) } })
+    )
+    // An invalid throughput baseline with a positive median was previously
+    // accepted as unchanged; negative latency passed as an improvement.
+    for (const comparison of [
+      compare(invalidBaseline, validBaseline),
+      compare(validBaseline, invalidCurrent),
+      invalidLatency,
+    ]) {
+      expect(comparison.findings[0]).toMatchObject({ status: 'unmeasured', ratio: null })
+      expect(comparison.findings[0]?.note).toContain('negative samples')
+      expect(failed(comparison)).toBe(true)
+    }
+    const improvement = compare(
+      validBaseline,
+      file({ rate: { direction: 'higher', unit: 'rows/s', samples: around(1_200) } })
+    )
+    expect(improvement.findings[0]?.status).toBe('improved')
+    expect(failed(improvement)).toBe(false)
+  })
+
   test('a baseline with a zero median cannot define a ratio', () => {
     const result = compare(
       file({ rss: { samples: [0, 0, 0] } }),

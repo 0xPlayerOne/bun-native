@@ -24,7 +24,7 @@ on:
     - cron: '47 6 * * 3'
   pull_request:
     branches: [main]
-    types: [ready_for_review, synchronize]
+    types: [opened, reopened, ready_for_review, synchronize]
     paths:
       - .github/workflows/benchmark-comparison.yml
       - benchmarks/comparison/**

@@ -29,6 +29,8 @@ updates:
       bun-dependencies:
         applies-to: version-updates
         patterns: ['*']
+        # Babel's pinned compiler pairing and transitive lockfile need separate validation.
+        exclude-patterns: ['@babel/core']
   - package-ecosystem: cargo
     directory: /
     target-branch: main
@@ -40,6 +42,9 @@ updates:
       cargo-dependencies:
         applies-to: version-updates
         patterns: ['*']
+        # #578 demonstrated duplicate GPUI-bound crate identities and native ABI failures.
+        # Keep these upgrades individually reviewable until a compatible integration lands.
+        exclude-patterns: ['accesskit', 'base64', 'x11rb']
   - package-ecosystem: pip
     directory: /scripts/quality
     target-branch: main

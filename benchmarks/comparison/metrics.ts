@@ -1,5 +1,12 @@
 #!/usr/bin/env bun
-import { existsSync, readFileSync, readdirSync, writeFileSync } from 'node:fs'
+import {
+  existsSync,
+  readFileSync,
+  readdirSync,
+  realpathSync,
+  statSync,
+  writeFileSync,
+} from 'node:fs'
 import { basename, join, resolve } from 'node:path'
 import { gunzipSync } from 'node:zlib'
 import {
@@ -50,7 +57,12 @@ type Comparison = {
   schemaVersion: number
   status: string
   source?: { commit?: string }
-  methodology?: { measuredTrials?: number }
+  methodology?: {
+    measuredTrials?: number
+    adapters?: string[]
+    modes?: string[]
+    inputLatency?: { trials?: number } | null
+  }
   target: {
     os: string
     osRelease: string
@@ -64,6 +76,7 @@ type Comparison = {
     name: string
     adapter: string
     mode: string
+    trial?: number
     status: string
     commandStartToPaintObservedMs: number | null
   }[]
@@ -179,21 +192,243 @@ export function fromStreaming(results: readonly StreamingResult[]): Record<strin
   return metrics
 }
 
+/**
+ * A status of "passed" must describe every timed process the controller
+ * promised to run. Missing entire launches otherwise shrink regression samples
+ * without failing the export, even when all retained reports are well formed.
+ *
+ * Pre-methodology archives remain readable; current controller runs publish
+ * adapters, modes and measuredTrials together.
+ */
+function assertCompleteTrialCohort(comparison: Comparison) {
+  const policy = comparison.methodology
+  if (!policy) return
+  const { adapters, modes, measuredTrials } = policy
+  // These are the controller's only accepted adapter/mode options. Otherwise
+  // invented labels can qualify a forged baseline or expand a huge cross product.
+  const controllerAdapters = new Set(['core', 'solid', 'react'])
+  const controllerModes = new Set(['development', 'aot'])
+  if (
+    !Array.isArray(adapters) ||
+    !adapters.length ||
+    !Array.isArray(modes) ||
+    !modes.length ||
+    adapters.some((adapter) => !controllerAdapters.has(adapter)) ||
+    modes.some((mode) => !controllerModes.has(mode)) ||
+    new Set(adapters).size !== adapters.length ||
+    new Set(modes).size !== modes.length ||
+    typeof measuredTrials !== 'number' ||
+    !Number.isInteger(measuredTrials) ||
+    measuredTrials < 3 ||
+    measuredTrials > 30
+  )
+    throw new Error('Comparison methodology lacks a valid trial cohort')
+
+  // The controller caps --trials at 30. Do not expand an unbounded cohort
+  // from malformed or adversarial retained methodology metadata.
+  const expected = new Set<string>()
+  for (const adapter of adapters)
+    for (const mode of modes)
+      for (let trial = 1; trial <= measuredTrials; trial++)
+        expected.add(`${adapter}/${mode}/${trial}`)
+
+  // Trial zero is the controller's mandatory first launch of every built
+  // adapter/mode pair. A missing or failed warmup makes subsequent measured
+  // samples incomparable to the declared warm-cache methodology.
+  const expectedFirst = new Set<string>()
+  for (const adapter of adapters) for (const mode of modes) expectedFirst.add(`${adapter}/${mode}`)
+  const observedFirst = new Set<string>()
+  const observed = new Set<string>()
+  for (const launch of comparison.launches) {
+    if (launch.warmup) {
+      const identity = `${launch.adapter}/${launch.mode}`
+      if (!expectedFirst.has(identity))
+        throw new Error(`Unexpected comparison first launch ${identity}`)
+      if (observedFirst.has(identity))
+        throw new Error(`Duplicate comparison first launch ${identity}`)
+      if (launch.trial !== 0 || launch.status !== 'passed')
+        throw new Error(`Non-passing or invalid comparison first launch ${identity}`)
+      // Trial zero uses the controller's first-launch process identity, not a measured trial name.
+      if (launch.name !== `${launch.adapter}-${launch.mode}-first`)
+        throw new Error(
+          `Comparison first launch ${identity} has mismatched launch name ${launch.name}`
+        )
+      observedFirst.add(identity)
+      continue
+    }
+    const identity = `${launch.adapter}/${launch.mode}/${launch.trial}`
+    if (!expected.has(identity)) throw new Error(`Unexpected comparison trial ${identity}`)
+    if (observed.has(identity)) throw new Error(`Duplicate comparison trial ${identity}`)
+    // The controller names each process from its recorded cohort identity.
+    // A swapped name otherwise associates another trial's retained report with this sample.
+    if (launch.name !== `${launch.adapter}-${launch.mode}-${launch.trial}`)
+      throw new Error(`Comparison trial ${identity} has mismatched launch name ${launch.name}`)
+    if (launch.status !== 'passed')
+      throw new Error(`Non-passing comparison trial ${identity} in a passed comparison`)
+    observed.add(identity)
+  }
+  const missingFirst = [...expectedFirst].filter((identity) => !observedFirst.has(identity))
+  if (missingFirst.length)
+    throw new Error(`Missing comparison first launches: ${missingFirst.join(', ')}`)
+  const missing = [...expected].filter((identity) => !observed.has(identity))
+  if (missing.length) throw new Error(`Missing comparison trials: ${missing.join(', ')}`)
+
+  // The input-latency cohort is measured separately. A passed comparison
+  // must not drop its click-to-paint trials from the regression baseline.
+  const inputPolicy = policy.inputLatency
+  if (inputPolicy === null) {
+    // The controller records null only when --input-trials=0. Undeclared
+    // input launches must not enter a partial click-to-paint baseline.
+    if (comparison.inputLaunches?.length)
+      throw new Error('Comparison declares no input-latency trials but contains input launches')
+    return
+  }
+  if (inputPolicy === undefined) return // Older archives can omit input-latency metadata.
+  const inputTrials = inputPolicy.trials
+  // The controller caps --input-trials at 30. Reject corrupt declarations
+  // before constructing an unbounded expected-trial set.
+  if (
+    typeof inputTrials !== 'number' ||
+    !Number.isInteger(inputTrials) ||
+    inputTrials < 3 ||
+    inputTrials > 30
+  )
+    throw new Error('Comparison methodology lacks a valid input trial cohort')
+
+  const expectedInput = new Set<string>()
+  for (const adapter of adapters)
+    for (const mode of modes)
+      for (let trial = 1; trial <= inputTrials; trial++)
+        expectedInput.add(`${adapter}/${mode}/${trial}`)
+
+  const observedInput = new Set<string>()
+  for (const launch of comparison.inputLaunches ?? []) {
+    const identity = `${launch.adapter}/${launch.mode}/${launch.trial}`
+    if (!expectedInput.has(identity))
+      throw new Error(`Unexpected input comparison trial ${identity}`)
+    if (observedInput.has(identity)) throw new Error(`Duplicate input comparison trial ${identity}`)
+    if (launch.name !== `${launch.adapter}-${launch.mode}-input-${launch.trial}`)
+      throw new Error(
+        `Input comparison trial ${identity} has mismatched launch name ${launch.name}`
+      )
+    if (launch.status !== 'passed')
+      throw new Error(`Non-passing input comparison trial ${identity} in a passed comparison`)
+    observedInput.add(identity)
+  }
+  const missingInput = [...expectedInput].filter((identity) => !observedInput.has(identity))
+  if (missingInput.length)
+    throw new Error(`Missing input comparison trials: ${missingInput.join(', ')}`)
+}
+
+/** Bind declared input-latency samples to the preserved XTest and child evidence. */
+function assertRetainedInputEvidence(comparison: Comparison, directory: string) {
+  if (!comparison.methodology?.inputLatency) return
+  const launches = comparison.inputLaunches ?? []
+  const path = join(directory, 'input-launches.jsonl.gz')
+  if (!existsSync(path)) throw new Error('Missing retained input-latency evidence')
+  const expected = new Map(launches.map((launch) => [launch.name, launch]))
+  const seen = new Set<string>()
+  for (const row of readJsonl(path)) {
+    const name = row['name']
+    if (typeof name !== 'string' || !expected.has(name))
+      throw new Error(`Unexpected retained input launch ${String(name)}`)
+    if (seen.has(name)) throw new Error(`Duplicate retained input launch ${name}`)
+    const report = row['report']
+    if (!report || typeof report !== 'object' || Array.isArray(report))
+      throw new Error(`Input launch ${name} has no retained child report`)
+    const driver = row['driver']
+    if (
+      !driver ||
+      typeof driver !== 'object' ||
+      Array.isArray(driver) ||
+      !('status' in driver) ||
+      driver.status !== 'passed'
+    )
+      throw new Error(`Input launch ${name} has no successful retained XTest driver`)
+    const measurements = 'measurements' in driver ? driver.measurements : undefined
+    const observation =
+      measurements &&
+      typeof measurements === 'object' &&
+      'native_paint_file_observation' in measurements
+        ? measurements.native_paint_file_observation
+        : undefined
+    const observed =
+      observation &&
+      typeof observation === 'object' &&
+      'command_start_to_paint_observed_ms' in observation
+        ? observation.command_start_to_paint_observed_ms
+        : undefined
+    if (
+      typeof observed !== 'number' ||
+      !Number.isFinite(observed) ||
+      observed < 0 ||
+      observed !== expected.get(name)!.commandStartToPaintObservedMs
+    )
+      throw new Error(`Input launch ${name} has mismatched retained XTest latency`)
+    seen.add(name)
+  }
+  const missing = launches.filter((launch) => !seen.has(launch.name)).map((launch) => launch.name)
+  if (missing.length) throw new Error(`Missing retained input launches: ${missing.join(', ')}`)
+}
+
 export function exportMetrics(directory: string, streaming: readonly string[] = []): MetricsFile {
   const comparison = JSON.parse(
     readFileSync(join(directory, 'comparison.json'), 'utf8')
   ) as Comparison
   if (comparison.status !== 'passed')
     throw new Error(`The comparison status is ${comparison.status}; a failed run is not a baseline`)
-  const reports = new Map(
-    readJsonl(join(directory, 'launches.jsonl.gz')).map((row) => [
-      row['name'] as string,
-      row['report'] as Record<string, unknown> | null,
-    ])
-  )
+  assertCompleteTrialCohort(comparison)
+  // Each recorded process must contribute at most one independent sample.
+  // A repeated identity would otherwise reuse one retained report or overwrite
+  // an earlier JSONL report before the regression gate sees it.
+  const identities = new Set<string>()
+  for (const launch of [...comparison.launches, ...(comparison.inputLaunches ?? [])]) {
+    if (typeof launch.name !== 'string' || !launch.name)
+      throw new Error('Comparison launch lacks a name')
+    if (identities.has(launch.name)) throw new Error(`Duplicate comparison launch ${launch.name}`)
+    identities.add(launch.name)
+  }
+  const expectedReportNames = new Set(comparison.launches.map((launch) => launch.name))
+  const reports = new Map<string, Record<string, unknown> | null>()
+  for (const row of readJsonl(join(directory, 'launches.jsonl.gz'))) {
+    const name = row['name']
+    if (typeof name !== 'string' || !name) throw new Error('Retained launch report lacks a name')
+    // The exporter emits reports only for comparison launches, never input trials.
+    // Unreferenced records cannot silently survive into an accepted baseline.
+    if (!expectedReportNames.has(name)) throw new Error(`Unexpected retained launch report ${name}`)
+    if (reports.has(name)) throw new Error(`Duplicate retained launch report ${name}`)
+    reports.set(name, row['report'] as Record<string, unknown> | null)
+  }
+  // A passed trial-zero warmup must retain its child report as well as its
+  // launch metadata. fromComparison deliberately excludes warmups from metric
+  // distributions, so it cannot detect an absent/corrupt warmup report here.
+  // Require this only for cohort-declaring archives; older archives predate
+  // the mandatory-first-launch methodology contract.
+  if (comparison.methodology) {
+    for (const launch of comparison.launches) {
+      if (!launch.warmup) continue
+      const report = reports.get(launch.name)
+      if (!report || typeof report !== 'object' || Array.isArray(report))
+        throw new Error(`Passed first launch ${launch.name} has no retained child report`)
+    }
+  }
+  assertRetainedInputEvidence(comparison, directory)
   const metrics = fromComparison(comparison, reports)
+  // Paths and hard links to the same physical soak must not become independent launches.
+  const seenStreaming = new Set<string>()
+  const seenStreamingFiles = new Set<string>()
   const streamed = fromStreaming(
-    streaming.map((path) => JSON.parse(readFileSync(path, 'utf8')) as StreamingResult)
+    streaming.map((path) => {
+      const identity = realpathSync(path)
+      const stats = statSync(identity, { bigint: true })
+      // Some filesystems do not expose inode identity; retain the path guard there.
+      const fileId = stats.ino === 0n ? null : `${stats.dev}:${stats.ino}`
+      if (seenStreaming.has(identity) || (fileId !== null && seenStreamingFiles.has(fileId)))
+        throw new Error(`Duplicate streaming result ${identity}`)
+      seenStreaming.add(identity)
+      if (fileId !== null) seenStreamingFiles.add(fileId)
+      return JSON.parse(readFileSync(path, 'utf8')) as StreamingResult
+    })
   )
   for (const [name, metric] of Object.entries(streamed)) {
     if (Object.hasOwn(metrics, name)) throw new Error(`Duplicate metric ${name}`)

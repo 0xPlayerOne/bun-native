@@ -215,6 +215,23 @@ export function compare(
       })
       continue
     }
+    // A multiplicative performance ratio is undefined for signed samples.
+    // Without this guard, negative current latency appears as an "improvement"
+    // against a positive baseline and incorrectly makes the regression gate pass.
+    if (
+      reference.samples.some((sample) => sample < 0) ||
+      now.samples.some((sample) => sample < 0)
+    ) {
+      findings.push({
+        ...empty,
+        status: 'unmeasured',
+        baselineMedian: median(reference.samples),
+        currentMedian: median(now.samples),
+        ratio: null,
+        note: 'negative samples cannot define a multiplicative performance ratio',
+      })
+      continue
+    }
     // Orient every ratio so that above 1 is worse, whatever the metric means.
     const worse = reference.direction === 'lower'
     const interval = worse
