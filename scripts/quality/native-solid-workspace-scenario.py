@@ -9,11 +9,12 @@ SPEC = importlib.util.spec_from_file_location(
 PAINT = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(PAINT)
 
-# Short wheel bursts that follow a still-growing history to its end, and how
-# long each waits for a frame there. The last keeps the former 10 s wait.
-FOLLOW_UP_BURSTS = 8
-FOLLOW_UP_NOTCHES = "3"
-FOLLOW_UP_SETTLE_SECONDS = 0.4
+# Short wheel bursts that reach a possibly still-growing history's end, and how
+# long each waits for a frame there. Sixteen bursts are 48 notches, more than
+# the former single 30; the last keeps the former 10 s wait.
+BURSTS = 16
+BURST_NOTCHES = "3"
+BURST_SETTLE_SECONDS = 0.4
 
 INITIAL_TITLES = [
     "Project brief",
@@ -191,12 +192,13 @@ def run(
                 viewport, viewport, current["layout"]["viewport"]
             )
             # The revealed reply may still be streaming (a chunk every 250 ms),
-            # so the history can grow after a burst lands at its end: hosted
-            # macOS run 42787338710 reached the end at tree revision 16, then
-            # chunk 22 grew it while the 30-notch burst was still returning.
-            # Short follow-up bursts keep up with the growth while the reply
-            # streams; the same strict end check decides.
-            for burst in range(FOLLOW_UP_BURSTS + 1):
+            # so the history can grow after a burst lands at its end. On hosted
+            # macOS one 30-notch burst took longer than the whole reply (about
+            # 55 ms a notch) although the end came at its second notch (runs
+            # 42787338710 and 42791130372). Short bursts, each followed by the
+            # same strict end check, reach the end and follow its growth while
+            # the reply still streams.
+            for burst in range(BURSTS):
                 action(
                     "mousemove",
                     "--window",
@@ -205,7 +207,7 @@ def run(
                     y,
                     "click",
                     "--repeat",
-                    "30" if burst == 0 else FOLLOW_UP_NOTCHES,
+                    BURST_NOTCHES,
                     "--delay",
                     "10",
                     "5",
@@ -214,13 +216,11 @@ def run(
                     current = wait_for(
                         at_end,
                         "latest native message scroll endpoint",
-                        10 if burst == FOLLOW_UP_BURSTS else FOLLOW_UP_SETTLE_SECONDS,
+                        10 if burst == BURSTS - 1 else BURST_SETTLE_SECONDS,
                     )
                     break
                 except RuntimeError as error:
-                    if burst == FOLLOW_UP_BURSTS or not str(error).startswith(
-                        "Timed out"
-                    ):
+                    if burst == BURSTS - 1 or not str(error).startswith("Timed out"):
                         raise
         bounds = geometry(row_id, current)
         if (
