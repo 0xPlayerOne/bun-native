@@ -172,31 +172,43 @@ def run(
                 if row["node_id"] == history
             )
 
+        def at_end():
+            snapshot = frame()
+            if snapshot and geometry_tools.at_scroll_end(history_scroll(snapshot), 1):
+                return snapshot
+            return None
+
         scroll_state = history_scroll(current)
         if scroll_state["maximum"][1] > 0:
             viewport = scroll_state["viewport"]
             x, y = geometry_tools.pointer_point(
                 viewport, viewport, current["layout"]["viewport"]
             )
-            action(
-                "mousemove",
-                "--window",
-                window,
-                x,
-                y,
-                "click",
-                "--repeat",
-                "30",
-                "--delay",
-                "10",
-                "5",
-            )
-            current = wait_frame(
-                "latest native message scroll endpoint",
-                lambda snapshot: geometry_tools.at_scroll_end(
-                    history_scroll(snapshot), 1
-                ),
-            )
+            # The revealed reply may still be streaming, so the history can
+            # grow after a burst lands at its end. Each burst must reach the
+            # end it observes; a bounded number of bursts follows the growth.
+            for burst in range(4):
+                action(
+                    "mousemove",
+                    "--window",
+                    window,
+                    x,
+                    y,
+                    "click",
+                    "--repeat",
+                    "30",
+                    "--delay",
+                    "10",
+                    "5",
+                )
+                try:
+                    current = wait_for(
+                        at_end, "latest native message scroll endpoint", 3
+                    )
+                    break
+                except RuntimeError as error:
+                    if burst == 3 or not str(error).startswith("Timed out"):
+                        raise
         bounds = geometry(row_id, current)
         if (
             geometry_tools.intersects(bounds["bounds"], bounds["ancestor_clip"])
