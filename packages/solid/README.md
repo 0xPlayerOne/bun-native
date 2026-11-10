@@ -38,12 +38,12 @@ The official JSX preset uses `generate: 'universal'` and `moduleName: '@bun-nati
 
 | Import path                     | Exports                                                                                                                                                                                                          |
 | ------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `@bun-native/solid`             | `render`, `inputState`; types `RenderRoot`, `RenderOptions`, `SolidNode`, `JSX`                                                                                                                                  |
+| `@bun-native/solid`             | `render`, `inputState`, `focusNode`, `scrollNodeTo`, `scrollNodeIntoView`, `registerDropTarget`; types `RenderRoot`, `RenderOptions`, `SolidNode`, `JSX`                                                         |
 | `@bun-native/solid`             | `For`, `Show`, `Switch`, `Match`, `Index` and `ErrorBoundary`, re-exported from `solid-js`                                                                                                                       |
 | `@bun-native/solid`             | `effect`, `memo`, `createComponent`, `createElement`, `createTextNode`, `insertNode`, `insert`, `spread`, `setProp`, `mergeProps`, `use`: the helpers emitted by the universal JSX compiler, not application API |
 | `@bun-native/solid/jsx-runtime` | The native `JSX` namespace only (types for `jsxImportSource`); Solid JSX is compiled by the preset, not by runtime JSX functions                                                                                 |
 
-Signals, effects and other primitives are imported from `solid-js` itself.
+Signals, effects and other primitives are imported from `solid-js` itself. The [public API reference](../../docs/api-reference.md#adapter-node-helpers) describes the node helpers, which both adapters share.
 
 From the repository root, with the pinned Bun and an existing native host:
 
