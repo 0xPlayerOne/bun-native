@@ -640,19 +640,19 @@ jobs:
             if ($original -ge 0) { & $oracle set $main.number $original | Out-Null }
             Write-Output "modifier flags after the restore: $(& $flags)"
           }
-      - name: Development and AOT Windows React workspace reference (#248)
+      - name: Development and AOT Windows React and Solid workspace references (#248, #250)
         if: ${{ runner.os == 'Windows' && !cancelled() && steps.native-build.outcome == 'success' }}
         timeout-minutes: 15
         run: |
-          # The Linux React workspace scenario, unchanged, driven by SendInput,
+          # The Linux workspace scenarios, unchanged, driven by SendInput,
           # SetWindowPos and the system Close command on the owned window.
           if (-not (Get-Command magick -ErrorAction SilentlyContinue) -and -not (Test-Path 'C:\Program Files\ImageMagick-*\magick.exe')) {
             choco install imagemagick --no-progress -y
             if ($LASTEXITCODE -ne 0) { throw 'ImageMagick for the workspace pixel checks did not install' }
           }
-          # The fixture opens a 1000x760 client area, which with its frame does
-          # not fit the hosted 1024x768 display. Use the smallest mode that holds
-          # it for this step only, and restore the registry mode afterwards.
+          # The fixtures open 1000x760 and 1120x760 client areas, which with
+          # their frames do not fit the hosted 1024x768 display. Use the smallest
+          # mode that holds them for this step only, then restore the registry mode.
           $oracle = (Resolve-Path 'tests/native/windows-display-oracle.ps1').Path
           $display = { pwsh -NoProfile -NonInteractive -File $oracle @args }
           $primary = (& $display screens | ConvertFrom-Json).screens | Where-Object { $_.primary } | Select-Object -First 1
@@ -673,8 +673,8 @@ jobs:
               Start-Sleep -Seconds 2
             }
             $failed = @()
-            foreach ($scenario in @('react-workspace')) {
-              $package = Join-Path $env:NATIVE_EVIDENCE "$scenario-flow-package"
+            foreach ($scenario in @('react-workspace', 'solid-workspace')) {
+              $package = Join-Path $env:NATIVE_EVIDENCE "$scenario-flow-windows-package"
               bun experiments/aot-gpui/build-window.ts --entry "$scenario-flow" `
                 --source $env:GITHUB_WORKSPACE --host $env:BUN_NATIVE_HOST `
                 --host-profile release --outdir $package
@@ -689,7 +689,7 @@ jobs:
               }
             }
             # Every case runs so one failure does not hide the others' evidence.
-            if ($failed) { throw "Windows workspace reference not verified: $($failed -join ', ')" }
+            if ($failed) { throw "Windows workspace references not verified: $($failed -join ', ')" }
           } finally {
             if ($changed) { & $display restore -Device $primary.deviceName | Out-Null }
           }

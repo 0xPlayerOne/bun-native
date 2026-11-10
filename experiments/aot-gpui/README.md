@@ -111,6 +111,7 @@ The same compiler and inspection pipeline supports these explicit entries:
 | `react`                   | `examples/react-counter/main.tsx`       | `react`                | Existing prebuilt host referenced by absolute path |
 | `react-workspace`         | `examples/react-workspace/main.tsx`     | `react-workspace`      | Existing prebuilt host referenced by absolute path |
 | `react-workspace-flow`    | `tests/native/react-workspace.tsx`      | `react-workspace-flow` | Existing prebuilt host referenced by absolute path |
+| `react-workspace-soak`    | `tests/native/react-workspace-soak.tsx` | `react-workspace-soak` | Existing prebuilt host referenced by absolute path |
 | `react-interactions`      | `tests/native/react-interactions.tsx`   | `react-interactions`   | Existing prebuilt host referenced by absolute path |
 | `react-input-viewport`    | `tests/native/react-input-viewport.tsx` | `react-input-viewport` | Existing prebuilt host referenced by absolute path |
 | `react-streaming-list`    | `tests/native/react-streaming-list.tsx` | `react-streaming-list` | Existing prebuilt host referenced by absolute path |
@@ -224,7 +225,7 @@ launching or compiling them does not satisfy their input, paint or cleanup gates
 
 ## React development and AOT inputs
 
-The React entries (`react`, `react-workspace`, `react-workspace-flow`,
+The React entries (`react`, `react-workspace`, `react-workspace-flow`, `react-workspace-soak`,
 `react-interactions`, `react-input-viewport`, `react-behavior`,
 `react-services`, `react-platform` and `react-workload`) use the pinned Bun bundler to transform their explicit
 React JSX source into `development/application.js`. The helper invokes the built-in
