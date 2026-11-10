@@ -112,6 +112,11 @@ describe('workspace terminal session (fake owned process)', () => {
     await child.output(euro.slice(0, 1))
     await child.output(euro.slice(1))
     expect(texts(terminal)).toEqual(['red', '100%', 'bell', '€'])
+    // A pseudo console moves the cursor to the next row instead of a newline.
+    await child.output('C:\\>echo ok\u001b[3;1Hok\u001b[4')
+    await child.output(';1HC:\\>')
+    expect(texts(terminal).slice(4)).toEqual(['C:\\>echo ok', 'ok'])
+    expect(terminal.current.partial).toBe('C:\\>')
   })
 
   test('bounds scrollback and line width with stable line identity', async () => {

@@ -32,6 +32,10 @@ export type TerminalSpawn = (
 // their effect on neither colour nor cursor, so they are removed.
 // oxlint-disable-next-line no-control-regex
 const ESCAPES = /\u001b(?:\[[0-?]*[ -/]*[@-~]|\][^\u0007\u001b]*(?:\u0007|\u001b\\)|[@-Z\\-_])/g
+// Windows' pseudo console positions the cursor on a new row instead of
+// writing a newline; a plain-text view ends the line there.
+// oxlint-disable-next-line no-control-regex
+const ROW_MOVES = /\u001b\[[0-9;]*[EFHf]/g
 // oxlint-disable-next-line no-control-regex
 const CONTROLS = /[\u0000-\u0007\u000b\u000c\u000e-\u001f\u007f]/g
 
@@ -155,7 +159,7 @@ export class TerminalSession {
 
   private append(chunk: string): void {
     if (!chunk) return
-    const parts = (this.pending + chunk).split('\n')
+    const parts = (this.pending + chunk).replace(ROW_MOVES, '\n').split('\n')
     // A tail without a newline (such as a prompt) is shown but kept raw.
     this.pending = (parts.pop() ?? '').slice(-MAX_TERMINAL_COLUMNS * 4)
     const lines = [...this.state.lines]
