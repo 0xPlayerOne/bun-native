@@ -488,6 +488,7 @@ helper and supply its explicit absolute path:
 
 ```sh
 xcrun clang -fobjc-arc -Wall -Wextra -Werror -framework AppKit -framework CoreGraphics \
+  -framework ApplicationServices \
   scripts/quality/native-platform-macos.m -o /absolute/owned/native-platform-macos
 export BUN_NATIVE_PLATFORM_HELPER=/absolute/owned/native-platform-macos
 ```

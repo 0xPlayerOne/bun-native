@@ -54,7 +54,10 @@ async function crashDuringOpen(mode: string): Promise<{
 }
 
 function expectRedacted(error: NativeHostExitError): void {
-  const serialized = JSON.stringify({ message: error.message, ...error.diagnostic })
+  const serialized = JSON.stringify({
+    message: error.message,
+    ...error.diagnostic,
+  })
   expect(serialized).not.toContain(secret)
   expect(serialized).not.toContain('a1'.repeat(24))
   expect(serialized).not.toContain(process.execPath)
@@ -119,7 +122,10 @@ describe('native host exit diagnostics (headless protocol peer)', () => {
 
   test('an exit during startup rejects launch with a startup-phase diagnostic', async () => {
     const error = await rejectedError(
-      NativeHost.launch({ executable: process.execPath, args: [fixture, 'exit'] })
+      NativeHost.launch({
+        executable: process.execPath,
+        args: [fixture, 'exit'],
+      })
     )
     expect(error).toBeInstanceOf(NativeHostExitError)
     expect((error as NativeHostExitError).diagnostic).toMatchObject({
@@ -131,4 +137,39 @@ describe('native host exit diagnostics (headless protocol peer)', () => {
       panicLocation: null,
     })
   })
+
+  // #584: Ctrl-C signals the terminal's foreground process group; only the
+  // application should receive it, and it shuts the host down.
+  test.skipIf(process.platform === 'win32')(
+    "the host runs outside the application's process group",
+    async () => {
+      const host = await NativeHost.launch({
+        executable: process.execPath,
+        args: [fixture, 'ready'],
+      })
+      try {
+        const group = (pid: number) =>
+          Bun.spawnSync(['ps', '-o', 'pgid=', '-p', String(pid)])
+            .stdout.toString()
+            .trim()
+        const children = Bun.spawnSync([
+          'pgrep',
+          '-P',
+          String(process.pid),
+          '-f',
+          'protocol-peer.ts ready',
+        ])
+          .stdout.toString()
+          .split('\n')
+          .filter(Boolean)
+          .map(Number)
+        const groups = children.map(group).filter(Boolean)
+        expect(groups).toHaveLength(1)
+        expect(groups).not.toContain(group(process.pid))
+      } finally {
+        await host.shutdown()
+      }
+      expect(await host.exited).toBe(0)
+    }
+  )
 })

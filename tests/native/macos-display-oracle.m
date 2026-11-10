@@ -49,7 +49,10 @@ static CGDirectDisplayID parse_display(const char *text) {
 }
 
 static NSArray *desktop_modes(CGDirectDisplayID display) {
-    CFArrayRef all = CGDisplayCopyAllDisplayModes(display, NULL);
+    // Include the HiDPI duplicates: a scaled current mode (such as a 2x
+    // Screen Sharing display) is otherwise missing and cannot be restored.
+    NSDictionary *options = @{(__bridge NSString *)kCGDisplayShowDuplicateLowResolutionModes : @YES};
+    CFArrayRef all = CGDisplayCopyAllDisplayModes(display, (__bridge CFDictionaryRef)options);
     if (!all) fail(@"CoreGraphics returned no display modes");
     NSMutableArray *modes = [NSMutableArray array];
     for (CFIndex index = 0; index < CFArrayGetCount(all); index++) {

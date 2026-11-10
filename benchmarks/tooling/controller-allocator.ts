@@ -31,6 +31,9 @@ type Summary = {
 }
 
 function rss(): number {
+  // Linux reads VmRSS; macOS has no /proc, and Bun's rss there is the Mach task's
+  // resident size, the same quantity.
+  if (process.platform !== 'linux') return process.memoryUsage().rss
   const match = /^VmRSS:\s+(\d+) kB$/m.exec(readFileSync('/proc/self/status', 'utf8'))
   if (!match) throw new Error('Linux /proc/self/status VmRSS is required')
   return Number(match[1]) * 1024
