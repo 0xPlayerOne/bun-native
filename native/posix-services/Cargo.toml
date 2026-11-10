@@ -9,7 +9,7 @@ publish = false
 pty-process = "=0.5.4"
 rustix = { version = "=1.1.6", features = ["process"] }
 
-# Only this private platform boundary permits its two reviewed `pre_exec`
+# Only this private platform boundary permits its four reviewed `pre_exec`
 # calls. The protocol and host keep the workspace-wide unsafe_code = forbid
 # policy; the descriptor handling here is safe code.
 [lints.rust]

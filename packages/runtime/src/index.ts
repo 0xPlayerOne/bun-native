@@ -3,7 +3,7 @@ import {
   fileResultAnswers,
   parseFilesystemRoots,
   parseProcessExecutables,
-  processArgument,
+  processArguments,
   encodeFrame,
   FrameDecoder,
   parseCommand,
@@ -108,6 +108,15 @@ export type HostResponse = Extract<
   }
 >
 
+export interface ProcessLimitPermissions {
+  /** CPU seconds before the child is stopped (SIGXCPU on POSIX). */
+  readonly cpuSeconds?: number
+  /** Address space (Linux) or committed memory (Windows) in bytes. */
+  readonly memoryBytes?: number
+  /** Open descriptors (POSIX only). */
+  readonly openFiles?: number
+}
+
 export interface ServicePermissions {
   /** Default deny. Fixed for the native process lifetime; no wire request can grant it. */
   readonly windowDisplay?: 'allow' | 'deny'
@@ -127,8 +136,16 @@ export interface ServicePermissions {
   /**
    * Executables an owned window may start as child processes, by ID. Each
    * `executable` is an absolute normalized path; nothing else can be started.
+   * Optional `limits` apply to every child started from that entry; a
+   * platform that cannot enforce one refuses the spawn with
+   * `service_unavailable` (macOS has no memory limit, Windows no open-files
+   * limit).
    */
-  readonly processes?: readonly Readonly<{ id: string; executable: string }>[]
+  readonly processes?: readonly Readonly<{
+    id: string
+    executable: string
+    limits?: Readonly<ProcessLimitPermissions>
+  }>[]
   /** OS file open/save/folder dialogs owned by a window. Paths are data, never grants. */
   readonly fileDialogs?: 'allow' | 'deny'
   /** The application menu bar (macOS). Selections are reported as item IDs. */
@@ -206,13 +223,43 @@ function processes(value: object): ServicePolicy['processes'] {
     : []
   try {
     return Object.freeze(
-      parseProcessExecutables(entries).map((entry) => Object.freeze(entry))
+      parseProcessExecutables(wireProcesses(entries)).map((entry) =>
+        Object.freeze(entry.limits ? { ...entry, limits: Object.freeze(entry.limits) } : entry)
+      )
     ) as ServicePolicy['processes']
   } catch (error) {
     throw new TypeError(
-      'processes must list at most 8 unique { id, executable } entries: ' + (error as Error).message
+      'processes must list at most 8 unique { id, executable, limits? } entries: ' +
+        (error as Error).message
     )
   }
+}
+
+const LIMIT_WIRE_NAMES = {
+  cpuSeconds: 'cpu_seconds',
+  memoryBytes: 'memory_bytes',
+  openFiles: 'open_files',
+} as const
+
+/** Public camelCase limits become the wire's snake_case; anything else is left for the parser to reject. */
+function wireProcesses(entries: unknown): unknown {
+  if (!Array.isArray(entries)) return entries
+  return entries.map((entry: unknown) => {
+    if (!entry || typeof entry !== 'object' || !Object.hasOwn(entry, 'limits')) return entry
+    const { limits, ...rest } = entry as { limits: unknown }
+    if (!limits || typeof limits !== 'object' || Array.isArray(limits)) return { ...rest, limits }
+    return {
+      ...rest,
+      limits: Object.fromEntries(
+        Object.entries(limits).map(([name, value]) => [
+          Object.hasOwn(LIMIT_WIRE_NAMES, name)
+            ? LIMIT_WIRE_NAMES[name as keyof typeof LIMIT_WIRE_NAMES]
+            : name,
+          value,
+        ])
+      ),
+    }
+  })
 }
 
 function filesystemRoots(value: object): ServicePolicy['filesystem_roots'] {
@@ -253,7 +300,10 @@ function samePolicy(left: Readonly<ServicePolicy>, right: Readonly<ServicePolicy
     left.processes.every(
       (entry, index) =>
         entry.id === right.processes[index]!.id &&
-        entry.executable === right.processes[index]!.executable
+        entry.executable === right.processes[index]!.executable &&
+        entry.limits?.cpu_seconds === right.processes[index]!.limits?.cpu_seconds &&
+        entry.limits?.memory_bytes === right.processes[index]!.limits?.memory_bytes &&
+        entry.limits?.open_files === right.processes[index]!.limits?.open_files
     )
   )
 }
@@ -331,7 +381,7 @@ export class NativeHost implements AsyncIterable<HostEvent> {
         ...(requestedPolicy.notifications ? ['--bun-native-allow-notifications'] : []),
         ...(requestedPolicy.drag_drop ? ['--bun-native-allow-drag-drop'] : []),
         ...requestedPolicy.filesystem_roots.map(filesystemRootArgument),
-        ...requestedPolicy.processes.map(processArgument),
+        ...requestedPolicy.processes.flatMap(processArguments),
         ...(requestedPolicy.file_dialogs ? ['--bun-native-allow-file-dialogs'] : []),
         ...(requestedPolicy.app_menu ? ['--bun-native-allow-app-menu'] : []),
         ...(requestedPolicy.task_dialogs ? ['--bun-native-allow-task-dialogs'] : []),

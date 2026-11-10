@@ -3,7 +3,7 @@
 
 use super::Failure;
 use crate::services::files::{Directory, directory_beneath, failure as path_failure};
-use bun_native_protocol::ErrorCode;
+use bun_native_protocol::{ErrorCode, ProcessLimits};
 use rustix::event::{EventfdFlags, eventfd};
 use rustix::io::Errno;
 use rustix::process::{Pid, PidfdFlags, WaitId, WaitIdOptions, pidfd_open, waitid};
@@ -106,4 +106,17 @@ pub(super) fn start_in_terminal(
     directory: &OwnedFd,
 ) -> Result<pty_process::blocking::Command, Failure> {
     Ok(command.current_dir(descriptor_path(directory)))
+}
+
+/// Linux enforces every limit: CPU time, address space and open files.
+pub(super) fn supported_limits(_limits: ProcessLimits) -> Result<(), Failure> {
+    Ok(())
+}
+
+pub(super) fn posix_limits(limits: ProcessLimits) -> bun_native_posix_services::Limits {
+    bun_native_posix_services::Limits {
+        cpu_seconds: limits.cpu_seconds,
+        address_space_bytes: limits.memory_bytes,
+        open_files: limits.open_files,
+    }
 }

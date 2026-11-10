@@ -1,0 +1,40 @@
+{
+  "arguments": [
+    {
+      "name": "every limit",
+      "argument": "cpu_seconds=2,memory_bytes=67108864,open_files=16",
+      "limits": { "cpu_seconds": 2, "memory_bytes": 67108864, "open_files": 16 }
+    },
+    { "name": "cpu only", "argument": "cpu_seconds=1", "limits": { "cpu_seconds": 1 } },
+    {
+      "name": "memory only at the minimum",
+      "argument": "memory_bytes=1048576",
+      "limits": { "memory_bytes": 1048576 }
+    },
+    {
+      "name": "open files at the maximum",
+      "argument": "open_files=1048576",
+      "limits": { "open_files": 1048576 }
+    },
+    {
+      "name": "cpu at the maximum",
+      "argument": "cpu_seconds=604800",
+      "limits": { "cpu_seconds": 604800 }
+    },
+    { "name": "empty", "argument": "", "limits": null },
+    { "name": "unknown name", "argument": "threads=4", "limits": null },
+    { "name": "out of order", "argument": "open_files=16,cpu_seconds=2", "limits": null },
+    { "name": "repeated", "argument": "cpu_seconds=1,cpu_seconds=2", "limits": null },
+    { "name": "leading zero", "argument": "cpu_seconds=01", "limits": null },
+    { "name": "sign", "argument": "cpu_seconds=+1", "limits": null },
+    { "name": "missing value", "argument": "cpu_seconds=", "limits": null },
+    { "name": "missing separator", "argument": "cpu_seconds", "limits": null },
+    { "name": "trailing comma", "argument": "cpu_seconds=1,", "limits": null },
+    { "name": "zero cpu", "argument": "cpu_seconds=0", "limits": null },
+    { "name": "cpu over a week", "argument": "cpu_seconds=604801", "limits": null },
+    { "name": "memory under 1 MiB", "argument": "memory_bytes=1048575", "limits": null },
+    { "name": "memory over 2^48", "argument": "memory_bytes=281474976710657", "limits": null },
+    { "name": "two open files", "argument": "open_files=2", "limits": null },
+    { "name": "u64 overflow", "argument": "cpu_seconds=18446744073709551616", "limits": null }
+  ]
+}

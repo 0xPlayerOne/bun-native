@@ -13,12 +13,76 @@ const MAX_PROCESS_ENV_VALUE_BYTES = 4_096
 const MAX_PROCESS_LAUNCH_BYTES = 32_768
 const MAX_TERMINAL_DIMENSION = 1_000
 const PROCESS_ARGUMENT = '--bun-native-process='
+const PROCESS_LIMITS_ARGUMENT = '--bun-native-process-limits='
+const MAX_PROCESS_CPU_SECONDS = 604_800
+const MIN_PROCESS_MEMORY_BYTES = 2 ** 20
+const MAX_PROCESS_MEMORY_BYTES = 2 ** 48
+const MIN_PROCESS_OPEN_FILES = 3
+const MAX_PROCESS_OPEN_FILES = 2 ** 20
 const encoder = new TextEncoder()
 const bytes = (value: string) => encoder.encode(value).byteLength
+
+/**
+ * Resource limits every child started from one executable entry runs under.
+ * A platform that cannot enforce a requested limit refuses the spawn.
+ */
+export interface ProcessLimits {
+  /** CPU time (POSIX `RLIMIT_CPU`, Windows per-process job time). */
+  cpu_seconds?: number
+  /** Memory (Linux `RLIMIT_AS`, Windows per-process job memory). */
+  memory_bytes?: number
+  /** Open descriptors (POSIX `RLIMIT_NOFILE`). */
+  open_files?: number
+}
 
 export interface ProcessExecutable {
   id: string
   executable: string
+  limits?: ProcessLimits
+}
+
+const LIMIT_NAMES = ['cpu_seconds', 'memory_bytes', 'open_files'] as const
+const LIMIT_BOUNDS = {
+  cpu_seconds: [1, MAX_PROCESS_CPU_SECONDS],
+  memory_bytes: [MIN_PROCESS_MEMORY_BYTES, MAX_PROCESS_MEMORY_BYTES],
+  open_files: [MIN_PROCESS_OPEN_FILES, MAX_PROCESS_OPEN_FILES],
+} as const
+
+export function parseProcessLimits(value: unknown): ProcessLimits {
+  const data = object(value)
+  keys(data, [...LIMIT_NAMES])
+  const limits: ProcessLimits = {}
+  for (const name of LIMIT_NAMES)
+    if (name in data) {
+      const [min, max] = LIMIT_BOUNDS[name]
+      limits[name] = integer(data[name], 'process ' + name, min, max)
+    }
+  if (Object.keys(limits).length === 0)
+    throw new ProtocolError('Process limits must set at least one limit')
+  return limits
+}
+
+/** `cpu_seconds=N,memory_bytes=N,open_files=N`, only the set limits, in that order. */
+export function processLimitsArgument(limits: ProcessLimits): string {
+  const parsed = parseProcessLimits(limits)
+  return LIMIT_NAMES.filter((name) => parsed[name] !== undefined)
+    .map((name) => name + '=' + parsed[name])
+    .join(',')
+}
+
+/** Parses `processLimitsArgument`'s form strictly, as the native host does. */
+export function parseProcessLimitsArgument(text: string): ProcessLimits {
+  const data: Record<string, number> = {}
+  let last = -1
+  for (const part of text.split(',')) {
+    const match = /^([a-z_]+)=(0|[1-9][0-9]{0,19})$/.exec(part)
+    const order = LIMIT_NAMES.indexOf(match?.[1] as (typeof LIMIT_NAMES)[number])
+    if (!match || order <= last)
+      throw new ProtocolError('Process limits must be cpu_seconds=N,memory_bytes=N,open_files=N')
+    last = order
+    data[match[1]!] = Number(match[2])
+  }
+  return parseProcessLimits(data)
 }
 
 export interface TerminalSize {
@@ -41,12 +105,14 @@ export type ProcessExit = { code: number } | { signal: number }
 
 function executable(value: unknown): ProcessExecutable {
   const data = object(value)
-  keys(data, ['id', 'executable'])
+  keys(data, ['id', 'executable', 'limits'])
   const path = parseRootPath(data['executable'])
   // `/` and `X:\` are the only normalized paths ending in a separator.
   if (path.endsWith('/') || path.endsWith('\\'))
     throw new ProtocolError('Process executable must name a file')
-  return { id: parseRootId(data['id']), executable: path }
+  const entry: ProcessExecutable = { id: parseRootId(data['id']), executable: path }
+  if ('limits' in data) entry.limits = parseProcessLimits(data['limits'])
+  return entry
 }
 
 export function parseProcessExecutables(value: unknown): ProcessExecutable[] {
@@ -60,21 +126,36 @@ export function parseProcessExecutables(value: unknown): ProcessExecutable[] {
   return entries
 }
 
-/** The reserved native launch argument for one validated executable. */
-export function processArgument(value: ProcessExecutable): string {
+/**
+ * The reserved native launch arguments for one validated executable: the
+ * executable itself, then its limits when it has any.
+ */
+export function processArguments(value: ProcessExecutable): string[] {
   const entry = executable(value)
-  return PROCESS_ARGUMENT + entry.id + ':' + entry.executable
+  const argv = [PROCESS_ARGUMENT + entry.id + ':' + entry.executable]
+  if (entry.limits)
+    argv.push(PROCESS_LIMITS_ARGUMENT + entry.id + ':' + processLimitsArgument(entry.limits))
+  return argv
 }
 
 export function processesFromArguments(argv: readonly string[]): ProcessExecutable[] {
-  return parseProcessExecutables(
-    argv
-      .filter((argument) => argument.startsWith(PROCESS_ARGUMENT))
-      .map((argument) => {
-        const [entry, ...path] = argument.slice(PROCESS_ARGUMENT.length).split(':')
-        return { id: entry, executable: path.join(':') }
-      })
-  )
+  // One pass, as the host parses them: limits name an executable granted by
+  // an earlier argument, at most once.
+  const entries: ProcessExecutable[] = []
+  for (const argument of argv) {
+    if (argument.startsWith(PROCESS_ARGUMENT)) {
+      const [entry, ...path] = argument.slice(PROCESS_ARGUMENT.length).split(':')
+      entries.push({ id: entry!, executable: path.join(':') })
+    } else if (argument.startsWith(PROCESS_LIMITS_ARGUMENT)) {
+      const text = argument.slice(PROCESS_LIMITS_ARGUMENT.length)
+      const separator = text.indexOf(':')
+      const entry = entries.find((item) => item.id === text.slice(0, separator))
+      if (separator < 0 || !entry || entry.limits)
+        throw new ProtocolError('Process limits must name one granted executable once')
+      entry.limits = parseProcessLimitsArgument(text.slice(separator + 1))
+    }
+  }
+  return parseProcessExecutables(entries)
 }
 
 function plain(value: unknown, limit: number, field: string): string {

@@ -24,7 +24,8 @@ use base64::engine::general_purpose::STANDARD;
 use bun_native_protocol::MAX_FILE_CHUNK_BYTES;
 use bun_native_protocol::{
     ErrorCode, Event, MAX_PROCESS_OUTPUT_CREDIT, MAX_PROCESSES, ProcessExecutable, ProcessExit,
-    ProcessId, ProcessLaunch, ProcessSignal, ProcessStream, RequestId, TerminalSize, WindowId,
+    ProcessId, ProcessLaunch, ProcessLimits, ProcessSignal, ProcessStream, RequestId, TerminalSize,
+    WindowId,
 };
 use gpui::{App, BackgroundExecutor, Task};
 #[cfg(unix)]
@@ -175,7 +176,7 @@ impl Processes {
         cx: &mut App,
     ) -> Result<(), Failure> {
         let (id, window, process) = request;
-        let executable = self
+        let granted = self
             .0
             .executables
             .iter()
@@ -183,11 +184,14 @@ impl Processes {
             .ok_or((
                 ErrorCode::PermissionDenied,
                 "this process executable was not granted at native process launch",
-            ))?
-            .executable
-            .clone();
+            ))?;
+        let (executable, limits) = (granted.executable.clone(), granted.limits);
         if !self.available() {
             return Err((ErrorCode::ServiceUnavailable, platform::UNAVAILABLE));
+        }
+        if let Some(limits) = limits {
+            // A limit this platform cannot enforce is refused, never ignored.
+            platform::supported_limits(limits)?;
         }
         if self.0.stopping.get() {
             return Err((ErrorCode::Cancelled, "native processes are shutting down"));
@@ -218,6 +222,7 @@ impl Processes {
         let job = Job {
             process,
             executable,
+            limits,
             launch: spawn.launch,
             directory: spawn.directory,
             terminal,
@@ -631,6 +636,7 @@ fn spawn_failure(error: &std::io::Error) -> Failure {
 struct Job {
     process: ProcessId,
     executable: String,
+    limits: Option<ProcessLimits>,
     launch: ProcessLaunch,
     directory: Option<(Directory, String)>,
     terminal: Option<Terminal>,
@@ -676,6 +682,12 @@ impl Job {
                 if let Some(directory) = &directory {
                     command = platform::start_in_terminal(command, directory)?;
                 }
+                if let Some(limits) = self.limits {
+                    command = bun_native_posix_services::limit_terminal(
+                        command,
+                        platform::posix_limits(limits),
+                    );
+                }
                 let child = command.spawn(pts).map_err(|error| match error {
                     pty_process::Error::Io(error) => spawn_failure(&error),
                     _ => (
@@ -712,6 +724,9 @@ impl Job {
                     .process_group(0);
                 if let Some(directory) = &directory {
                     platform::start_in(&mut command, directory)?;
+                }
+                if let Some(limits) = self.limits {
+                    bun_native_posix_services::limit(&mut command, platform::posix_limits(limits));
                 }
                 let mut child = command.spawn().map_err(|error| spawn_failure(&error))?;
                 let take = |fd: Option<OwnedFd>| {
@@ -1004,6 +1019,7 @@ mod tests {
         let job = Job {
             process: ProcessId::try_from(1).unwrap(),
             executable: "/bin/sh".into(),
+            limits: None,
             launch: ProcessLaunch {
                 executable: "shell".into(),
                 args: vec!["-c".into(), script.into()],
@@ -1342,11 +1358,65 @@ mod tests {
     }
 
     #[test]
+    fn pipe_and_terminal_children_start_under_their_executable_limits() {
+        for terminal in [
+            None,
+            Some(TerminalSize {
+                columns: 80,
+                rows: 24,
+            }),
+        ] {
+            let (sender, messages) = async_channel::bounded(16);
+            let control = Arc::new(Control::new().unwrap());
+            let job = Job {
+                process: ProcessId::try_from(1).unwrap(),
+                executable: "/bin/sh".into(),
+                limits: Some(ProcessLimits {
+                    cpu_seconds: Some(9),
+                    memory_bytes: None,
+                    open_files: Some(24),
+                }),
+                launch: ProcessLaunch {
+                    executable: "shell".into(),
+                    args: vec!["-c".into(), "ulimit -t; ulimit -n".into()],
+                    env: BTreeMap::new(),
+                    cwd: None,
+                    terminal,
+                },
+                directory: None,
+                terminal: terminal.map(|size| open_terminal(size).unwrap()),
+                control: control.clone(),
+                messages: sender,
+            };
+            let thread = std::thread::spawn(move || job.run());
+            let (output, exit) = finish(Started {
+                messages,
+                control,
+                thread,
+            });
+            let kind = if terminal.is_some() {
+                ProcessStream::Terminal
+            } else {
+                ProcessStream::Stdout
+            };
+            assert_eq!(joined(&output, kind).replace("\r\n", "\n"), "9\n24\n");
+            assert_eq!(
+                exit,
+                ProcessExit {
+                    code: Some(0),
+                    signal: None
+                }
+            );
+        }
+    }
+
+    #[test]
     fn a_missing_executable_is_typed_before_any_output() {
         let (sender, messages) = async_channel::bounded(4);
         let job = Job {
             process: ProcessId::try_from(1).unwrap(),
             executable: "/nonexistent/bun-native".into(),
+            limits: None,
             launch: ProcessLaunch {
                 executable: "missing".into(),
                 args: Vec::new(),

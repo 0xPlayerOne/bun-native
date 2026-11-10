@@ -24,7 +24,8 @@ use windows_sys::Win32::System::Console::{
 };
 use windows_sys::Win32::System::JobObjects::{
     CreateJobObjectW, JOB_OBJECT_LIMIT_DIE_ON_UNHANDLED_EXCEPTION,
-    JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE, JOBOBJECT_EXTENDED_LIMIT_INFORMATION,
+    JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE, JOB_OBJECT_LIMIT_PROCESS_MEMORY,
+    JOB_OBJECT_LIMIT_PROCESS_TIME, JOBOBJECT_EXTENDED_LIMIT_INFORMATION,
     JobObjectExtendedLimitInformation, SetInformationJobObject, TerminateJobObject,
 };
 use windows_sys::Win32::System::Threading::{
@@ -59,18 +60,40 @@ fn check(ok: i32) -> io::Result<()> {
     }
 }
 
+/// Per-process limits every process in a job runs under.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct JobLimits {
+    /// User-mode CPU time; the job ends a process that exceeds it.
+    pub cpu_seconds: Option<u64>,
+    /// Committed memory; allocations past it fail.
+    pub memory_bytes: Option<u64>,
+}
+
 /// A job object whose processes are all killed when its last handle closes,
 /// including when the host exits or crashes.
 pub struct Job(OwnedHandle);
 
 impl Job {
-    pub fn new() -> io::Result<Self> {
+    pub fn new(per_process: JobLimits) -> io::Result<Self> {
         // SAFETY: anonymous job with default security.
         let job = handle(unsafe { CreateJobObjectW(std::ptr::null(), std::ptr::null()) })?;
         let mut limits = JOBOBJECT_EXTENDED_LIMIT_INFORMATION::default();
         // A crashing child ends instead of waiting on an error-report dialog.
         limits.BasicLimitInformation.LimitFlags =
             JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE | JOB_OBJECT_LIMIT_DIE_ON_UNHANDLED_EXCEPTION;
+        let invalid = || io::Error::from(io::ErrorKind::InvalidInput);
+        if let Some(seconds) = per_process.cpu_seconds {
+            // In 100-nanosecond units.
+            limits.BasicLimitInformation.PerProcessUserTimeLimit = i64::try_from(seconds)
+                .ok()
+                .and_then(|seconds| seconds.checked_mul(10_000_000))
+                .ok_or_else(invalid)?;
+            limits.BasicLimitInformation.LimitFlags |= JOB_OBJECT_LIMIT_PROCESS_TIME;
+        }
+        if let Some(bytes) = per_process.memory_bytes {
+            limits.ProcessMemoryLimit = usize::try_from(bytes).map_err(|_| invalid())?;
+            limits.BasicLimitInformation.LimitFlags |= JOB_OBJECT_LIMIT_PROCESS_MEMORY;
+        }
         // SAFETY: the struct matches the information class and outlives the call.
         check(unsafe {
             SetInformationJobObject(

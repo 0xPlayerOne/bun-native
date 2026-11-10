@@ -18,6 +18,100 @@ pub const MAX_PROCESS_LAUNCH_BYTES: usize = 32_768;
 /// Output chunks a process may have delivered but not yet acknowledged.
 pub const MAX_PROCESS_OUTPUT_CREDIT: usize = 4;
 pub const MAX_TERMINAL_DIMENSION: u16 = 1_000;
+/// Bounds of the optional per-executable resource limits.
+pub const MAX_PROCESS_CPU_SECONDS: u64 = 604_800;
+pub const MIN_PROCESS_MEMORY_BYTES: u64 = 1 << 20;
+pub const MAX_PROCESS_MEMORY_BYTES: u64 = 1 << 48;
+pub const MIN_PROCESS_OPEN_FILES: u64 = 3;
+pub const MAX_PROCESS_OPEN_FILES: u64 = 1 << 20;
+
+/// Resource limits every child started from one executable entry runs under.
+/// Each is optional; a platform that cannot enforce a requested limit refuses
+/// the spawn instead of ignoring it.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ProcessLimits {
+    /// CPU time in seconds (POSIX `RLIMIT_CPU`, Windows per-process job time).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub cpu_seconds: Option<u64>,
+    /// Memory in bytes (Linux `RLIMIT_AS`, Windows per-process job memory).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub memory_bytes: Option<u64>,
+    /// Open descriptors (POSIX `RLIMIT_NOFILE`).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub open_files: Option<u64>,
+}
+
+impl ProcessLimits {
+    pub fn validate(self) -> Result<(), &'static str> {
+        if self.cpu_seconds.is_none() && self.memory_bytes.is_none() && self.open_files.is_none() {
+            return Err("process limits must set at least one limit");
+        }
+        if self
+            .cpu_seconds
+            .is_some_and(|value| !(1..=MAX_PROCESS_CPU_SECONDS).contains(&value))
+        {
+            return Err("process cpu_seconds must be between 1 and 604800");
+        }
+        if self.memory_bytes.is_some_and(|value| {
+            !(MIN_PROCESS_MEMORY_BYTES..=MAX_PROCESS_MEMORY_BYTES).contains(&value)
+        }) {
+            return Err("process memory_bytes must be between 2^20 and 2^48");
+        }
+        if self.open_files.is_some_and(|value| {
+            !(MIN_PROCESS_OPEN_FILES..=MAX_PROCESS_OPEN_FILES).contains(&value)
+        }) {
+            return Err("process open_files must be between 3 and 2^20");
+        }
+        Ok(())
+    }
+
+    /// The reserved launch-argument form: `cpu_seconds=N,memory_bytes=N,open_files=N`,
+    /// listing only the limits that are set, in that order.
+    pub fn to_argument(self) -> String {
+        [
+            ("cpu_seconds", self.cpu_seconds),
+            ("memory_bytes", self.memory_bytes),
+            ("open_files", self.open_files),
+        ]
+        .into_iter()
+        .filter_map(|(name, value)| value.map(|value| format!("{name}={value}")))
+        .collect::<Vec<_>>()
+        .join(",")
+    }
+
+    /// Parses `to_argument`'s form strictly: known names, each at most once,
+    /// canonical decimal values, in order, then validates the bounds.
+    pub fn from_argument(text: &str) -> Result<Self, &'static str> {
+        const MALFORMED: &str = "process limits must be cpu_seconds=N,memory_bytes=N,open_files=N";
+        let mut limits = Self::default();
+        let mut last = 0;
+        for part in text.split(',') {
+            let (name, value) = part.split_once('=').ok_or(MALFORMED)?;
+            if value.is_empty()
+                || value.len() > 20
+                || !value.bytes().all(|byte| byte.is_ascii_digit())
+                || (value.len() > 1 && value.starts_with('0'))
+            {
+                return Err(MALFORMED);
+            }
+            let value = value.parse::<u64>().map_err(|_| MALFORMED)?;
+            let (order, slot) = match name {
+                "cpu_seconds" => (1, &mut limits.cpu_seconds),
+                "memory_bytes" => (2, &mut limits.memory_bytes),
+                "open_files" => (3, &mut limits.open_files),
+                _ => return Err(MALFORMED),
+            };
+            if order <= last {
+                return Err(MALFORMED);
+            }
+            last = order;
+            *slot = Some(value);
+        }
+        limits.validate()?;
+        Ok(limits)
+    }
+}
 
 /// One executable the trusted application named at native process launch.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -25,6 +119,8 @@ pub const MAX_TERMINAL_DIMENSION: u16 = 1_000;
 pub struct ProcessExecutable {
     pub id: String,
     pub executable: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub limits: Option<ProcessLimits>,
 }
 
 impl ProcessExecutable {
@@ -36,6 +132,9 @@ impl ProcessExecutable {
         // `/` and `X:\` are the only normalized paths ending in a separator.
         if self.executable.ends_with(['/', '\\']) {
             return Err("process executable must name a file");
+        }
+        if let Some(limits) = self.limits {
+            limits.validate()?;
         }
         Ok(())
     }
@@ -196,4 +295,73 @@ pub fn validate_process_output(data: &str) -> Result<(), &'static str> {
         return Err("process output chunks are nonempty");
     }
     validate_chunk(data)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serde::Deserialize;
+
+    #[derive(Deserialize)]
+    struct Case {
+        name: String,
+        argument: String,
+        limits: Option<ProcessLimits>,
+    }
+
+    #[derive(Deserialize)]
+    struct Fixtures {
+        arguments: Vec<Case>,
+    }
+
+    #[test]
+    fn limit_arguments_share_the_checked_typescript_contract() {
+        let fixtures: Fixtures = serde_json::from_str(include_str!(
+            "../../../tests/fixtures/native-process-limits.json"
+        ))
+        .unwrap();
+        for case in fixtures.arguments {
+            let parsed = ProcessLimits::from_argument(&case.argument).ok();
+            assert_eq!(parsed, case.limits, "{}", case.name);
+            if let Some(limits) = parsed {
+                assert_eq!(limits.to_argument(), case.argument, "{}", case.name);
+            }
+        }
+    }
+
+    #[test]
+    fn executable_limits_are_validated_with_the_policy_entry() {
+        let entry = |limits| ProcessExecutable {
+            id: "shell".into(),
+            executable: "/bin/sh".into(),
+            limits,
+        };
+        assert!(entry(None).validate().is_ok());
+        assert!(entry(Some(ProcessLimits {
+            open_files: Some(16),
+            ..ProcessLimits::default()
+        }))
+        .validate()
+        .is_ok());
+        assert!(entry(Some(ProcessLimits::default())).validate().is_err());
+        assert!(entry(Some(ProcessLimits {
+            cpu_seconds: Some(0),
+            ..ProcessLimits::default()
+        }))
+        .validate()
+        .is_err());
+        let wire: ProcessExecutable = serde_json::from_str(
+            r#"{"id":"shell","executable":"/bin/sh","limits":{"cpu_seconds":2}}"#,
+        )
+        .unwrap();
+        assert_eq!(wire.limits.and_then(|limits| limits.cpu_seconds), Some(2));
+        assert!(serde_json::from_str::<ProcessExecutable>(
+            r#"{"id":"shell","executable":"/bin/sh","limits":{"threads":2}}"#
+        )
+        .is_err());
+        assert_eq!(
+            serde_json::to_string(&entry(None)).unwrap(),
+            r#"{"id":"shell","executable":"/bin/sh"}"#
+        );
+    }
 }

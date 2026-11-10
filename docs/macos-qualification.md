@@ -34,7 +34,8 @@ host's PID, start time and executable path before each signal.
 | A real GPUI-internal panic or abort                                        | Not run     | Not run |
 
 `native-platforms.yml` now runs the click variant in both modes on hosted macOS
-(step "Development and AOT macOS native fault containment"), where posting
+(step "Development and AOT native fault containment", which runs
+[`native-fault-windows.py`](../scripts/quality/native-fault-windows.py) on Windows), where posting
 works. [`test_native_platform_fault_macos.py`](../tests/quality/test_native_platform_fault_macos.py)
 covers the driver's process-ownership guards.
 

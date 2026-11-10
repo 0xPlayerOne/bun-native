@@ -4,11 +4,14 @@ import {
   MAX_PROCESSES,
   parseCommand,
   parseEvent,
-  processArgument,
+  parseProcessLimitsArgument,
+  processArguments,
+  processLimitsArgument,
   processesFromArguments,
   PROTOCOL_VERSION,
 } from '@bun-native/protocol'
 import fixtures from '../fixtures/native-processes.json'
+import limitFixtures from '../fixtures/native-process-limits.json'
 
 describe('shared owned process wire contract (headless)', () => {
   test('processes are an optional capability bounded by negotiated limits', () => {
@@ -23,7 +26,7 @@ describe('shared owned process wire contract (headless)', () => {
       { id: 'tool', executable: '/opt/a:b/tool' },
       { id: 'cmd', executable: 'C:\\Windows\\System32\\cmd.exe' },
     ]
-    const argv = ['host', '--other', ...entries.map(processArgument)]
+    const argv = ['host', '--other', ...entries.flatMap(processArguments)]
     expect(argv.slice(2)).toEqual([
       '--bun-native-process=shell:/bin/sh',
       '--bun-native-process=tool:/opt/a:b/tool',
@@ -38,8 +41,60 @@ describe('shared owned process wire contract (headless)', () => {
       { id: 'shell', executable: '/bin/../sh' },
       { id: 'shell', executable: '/bin/sh', extra: true },
     ])
-      expect(() => processArgument(entry as never)).toThrow()
+      expect(() => processArguments(entry as never)).toThrow()
   })
+
+  test('per-executable limits ride their own reserved argument after the executable', () => {
+    const entries = [
+      { id: 'shell', executable: '/bin/sh', limits: { cpu_seconds: 2, open_files: 16 } },
+      { id: 'tool', executable: '/opt/tool' },
+    ]
+    const argv = entries.flatMap(processArguments)
+    expect(argv).toEqual([
+      '--bun-native-process=shell:/bin/sh',
+      '--bun-native-process-limits=shell:cpu_seconds=2,open_files=16',
+      '--bun-native-process=tool:/opt/tool',
+    ])
+    expect(processesFromArguments(argv)).toEqual(entries)
+    // Limits name a granted executable, once.
+    for (const extra of [
+      '--bun-native-process-limits=other:cpu_seconds=1',
+      '--bun-native-process-limits=shell:cpu_seconds=1',
+      '--bun-native-process-limits=cpu_seconds=1',
+    ])
+      expect(() => processesFromArguments([...argv, extra])).toThrow()
+    // As in the host, limits must follow the executable they name.
+    expect(() =>
+      processesFromArguments([
+        '--bun-native-process-limits=shell:cpu_seconds=2',
+        '--bun-native-process=shell:/bin/sh',
+      ])
+    ).toThrow('one granted executable once')
+    // An earlier executable may still take its limits after another entry.
+    expect(
+      processesFromArguments([
+        '--bun-native-process=shell:/bin/sh',
+        '--bun-native-process=tool:/opt/tool',
+        '--bun-native-process-limits=shell:cpu_seconds=2',
+      ])
+    ).toEqual([
+      { id: 'shell', executable: '/bin/sh', limits: { cpu_seconds: 2 } },
+      { id: 'tool', executable: '/opt/tool' },
+    ])
+    for (const limits of [{}, { cpu_seconds: 0 }, { threads: 1 }, { memory_bytes: 1.5 }])
+      expect(() =>
+        processArguments({ id: 'shell', executable: '/bin/sh', limits } as never)
+      ).toThrow()
+  })
+
+  for (const item of limitFixtures.arguments)
+    test(`limit argument: ${item.name}`, () => {
+      if (item.limits === null) expect(() => parseProcessLimitsArgument(item.argument)).toThrow()
+      else {
+        expect(parseProcessLimitsArgument(item.argument)).toEqual(item.limits)
+        expect(processLimitsArgument(item.limits)).toBe(item.argument)
+      }
+    })
 
   for (const [kind, cases, parse] of [
     ['command', fixtures.commands, parseCommand],

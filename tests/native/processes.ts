@@ -708,8 +708,124 @@ async function rawHandles() {
   }
 }
 
+/**
+ * Per-executable resource limits (#599): each supported limit is in force in
+ * a real child and stops it, and a limit the platform cannot enforce is
+ * refused at spawn rather than ignored.
+ */
+async function resourceLimits() {
+  const linux = process.platform === 'linux'
+  const powershell = join(
+    systemRoot ?? '',
+    'System32',
+    'WindowsPowerShell',
+    'v1.0',
+    'powershell.exe'
+  )
+  const limits = windows
+    ? { cpuSeconds: 1, memoryBytes: 512 * 2 ** 20 }
+    : linux
+      ? { cpuSeconds: 1, memoryBytes: 256 * 2 ** 20, openFiles: 16 }
+      : { cpuSeconds: 1, openFiles: 16 }
+  const unsupported = windows
+    ? { openFiles: 16 }
+    : macos
+      ? { memoryBytes: 256 * 2 ** 20 }
+      : undefined
+  const app = await createApplication({
+    executable: host,
+    permissions: {
+      processes: [
+        { id: 'limited', executable: windows ? cmd : '/bin/sh', limits },
+        ...(windows ? [{ id: 'pwsh', executable: powershell, limits }] : []),
+        ...(unsupported
+          ? [{ id: 'unsupported', executable: windows ? cmd : '/bin/sh', limits: unsupported }]
+          : []),
+      ],
+    },
+  })
+  try {
+    const capability = app.serviceCapabilities.ptyProcess
+    assert.equal(capability.availability, 'available')
+    if (capability.availability === 'available')
+      assert.deepEqual(capability.executables['limited'], {
+        executable: windows ? cmd : '/bin/sh',
+        limits,
+      })
+    const window = await app.openWindow({ title: 'Process limits' })
+    const run = async (id: string, args: string[], limitMs = 20_000) => {
+      const seen = watch()
+      const child = await window.spawnProcess(id, { args, env: PATH }, seen.listener)
+      const startedAt = performance.now()
+      await seen.until(() => seen.exit !== undefined, limitMs)
+      await child.release()
+      return { seen, ms: Math.round(performance.now() - startedAt) }
+    }
+    const evidence: Record<string, unknown> = { limits }
+    if (!windows) {
+      // The shell reports the limits it actually runs under.
+      const reported = await run('limited', [
+        '-c',
+        linux ? 'ulimit -t; ulimit -n; ulimit -v' : 'ulimit -t; ulimit -n',
+      ])
+      assert.deepEqual(reported.seen.exit, { code: 0 })
+      assert.equal(reported.seen.streams['stdout'], linux ? '1\n16\n262144\n' : '1\n16\n')
+      evidence['reported'] = reported.seen.streams['stdout']
+      // paste holds every input open at once: 20 inputs need more than 16 descriptors.
+      const files = await run('limited', [
+        '-c',
+        'paste ' + Array.from({ length: 20 }, () => '/dev/null').join(' '),
+      ])
+      assert.deepEqual(files.seen.exit, { code: 1 })
+      assert.match(files.seen.streams['stderr'] ?? '', /Too many open files/)
+      evidence['openFilesExit'] = files.seen.exit
+    } else {
+      // Committed memory past the job limit fails the allocation.
+      const memory = await run('pwsh', [
+        '-NoProfile',
+        '-NonInteractive',
+        '-Command',
+        'try { $a = [byte[]]::new(1GB); $a[0] = 1; exit 0 } catch { exit 3 }',
+      ])
+      assert.deepEqual(memory.seen.exit, { code: 3 })
+      evidence['memoryExit'] = memory.seen.exit
+    }
+    if (linux) {
+      // A 300 MB shell string cannot fit under a 256 MiB address space.
+      const memory = await run('limited', [
+        '-c',
+        'v=$(head -c 300000000 /dev/zero | tr "\\0" x); echo ${#v}',
+      ])
+      assert.notEqual(memory.seen.streams['stdout'], '300000000\n')
+      assert.notDeepEqual(memory.seen.exit, { code: 0 })
+      evidence['memoryExit'] = memory.seen.exit
+    }
+    // A CPU-bound child is stopped at its CPU limit.
+    const cpu = await run(
+      'limited',
+      windows ? script('for /l %i in (0,0,1) do @rem') : ['-c', 'while :; do :; done']
+    )
+    if (windows) assert.notDeepEqual(cpu.seen.exit, { code: 0 })
+    else assert.deepEqual(cpu.seen.exit, { signal: 24 })
+    evidence['cpuExit'] = cpu.seen.exit
+    evidence['cpuStoppedAfterMs'] = cpu.ms
+    if (unsupported) {
+      await assert.rejects(
+        window.spawnProcess('unsupported', { args: script('exit'), env: PATH }, () => {}),
+        rejected('service_unavailable')
+      )
+      evidence['refused'] = { limits: unsupported, code: 'service_unavailable' }
+    }
+    record('resourceLimits', evidence)
+  } finally {
+    await app.shutdown()
+    await app.closed
+  }
+}
+
 try {
   await deniedByDefault()
+  await resourceLimits()
   await withApp(async (_app, window) => {
     await pipes(window)
     await terminal(window)
