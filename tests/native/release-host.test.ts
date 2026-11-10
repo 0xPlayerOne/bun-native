@@ -218,8 +218,10 @@ test.if(!sessionPanicSkip)(
           serviceRequests: 0,
         },
       })
+      // Redaction may replace a path segment equal to an inherited value (on
+      // GitHub Actions, GITHUB_JOB is "native"); over-redaction is allowed.
       expect(String(report['panicLocation'])).toMatch(
-        /native\/gpui-host\/src\/session\.rs:\d+:\d+$/
+        /(?:native|\[redacted\])\/gpui-host\/src\/session\.rs:\d+:\d+$/
       )
       expect(report['elapsedMs'] as number).toBeLessThan(5_000)
     } finally {
