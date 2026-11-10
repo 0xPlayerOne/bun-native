@@ -14,7 +14,7 @@ export const templateLinterConfig = join(import.meta.dir, '../../.oxlintrc.json'
 const generatedOutput = ['dist/**', '.bun-native/**', 'node_modules/**']
 
 /** The CLI's own pinned oxlint, resolved from the CLI location rather than the project. */
-export function linterEntry(): string {
+function linterEntry(): string {
   const manifest = Bun.resolveSync('oxlint/package.json', import.meta.dir)
   return join(dirname(manifest), oxlint.bin.oxlint)
 }

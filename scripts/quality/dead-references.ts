@@ -48,7 +48,7 @@ const outputCommands = new Set(['mkdir', 'tee', 'touch'])
 const portable = (path: string) => path.split(sep).join('/')
 
 /** Replace `${{ ... }}` expressions so text around them never forms a path token. */
-export function stripExpressions(text: string): string {
+function stripExpressions(text: string): string {
   return text.replace(/\$\{\{[\s\S]*?\}\}/g, '\u0000')
 }
 
@@ -134,7 +134,7 @@ function listFiles(directory: string, filter: (name: string) => boolean): string
 }
 
 /** Collect every checked reference with the file (and script) it came from. */
-export function collectReferences(root: string): Reference[] {
+function collectReferences(root: string): Reference[] {
   const references: Reference[] = []
   const add = (source: string, texts: readonly string[]) => {
     for (const text of texts)
