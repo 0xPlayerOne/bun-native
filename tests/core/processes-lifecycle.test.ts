@@ -223,14 +223,12 @@ describe('owned process lifecycle edges (headless subprocess)', () => {
     await withProcesses(async (app, directory) => {
       const window = await app.openWindow({ title: 'Ack failure' })
       await window.spawnProcess('shell', {}, () => {})
-      for (
-        let turn = 0;
-        turn < 400 && !peerRequests(directory, 'acknowledge_process_output').length;
-        turn += 1
-      )
-        await Bun.sleep(5)
+      // Seeing a request recorded by the peer does not mean its reply was
+      // processed. Starting shutdown here transitions the application out
+      // of 'running' and can suppress the later acknowledgement error.
+      // Observe the application's terminal failure before cleanup instead.
+      const error = await failure(app.closed)
       expect(peerRequests(directory, 'acknowledge_process_output').length).toBeGreaterThan(0)
-      const error = await failure(app.shutdown())
       expect(error).toBeInstanceOf(NativeCommandError)
       expect((error as NativeCommandError).code).toBe('native_failure')
     }, 'ack-failure')
