@@ -220,7 +220,7 @@ export interface NativeWindow {
   /**
    * Reports when the window moves to another display or the OS reconfigures its
    * display, with the new snapshot. Requires the windowDisplay launch grant and
-   * `serviceCapabilities.windowDisplay.changes` (macOS and Windows). Returns an
+   * `serviceCapabilities.windowDisplay.changes` (macOS, Windows and Linux Wayland). Returns an
    * idempotent remover; window close and shutdown remove every listener.
    */
   onDisplayChange(listener: (event: DisplayChangeEvent) => void | Promise<void>): () => void

@@ -27,7 +27,7 @@ const tokens = {
   radii: { md: 6 },
   fontSizes: { body: 18, lg: 22 },
 } as const
-export const themes = {
+const themes = {
   light: defineTheme({
     ...tokens,
     colors: {

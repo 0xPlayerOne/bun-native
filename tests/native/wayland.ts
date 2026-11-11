@@ -17,6 +17,7 @@ import {
 import assert from 'node:assert/strict'
 import { mkdirSync, readFileSync, statSync, writeFileSync } from 'node:fs'
 import { isAbsolute, join, resolve } from 'node:path'
+import { waylandOutputUuid } from './display-uuid.ts'
 
 const output = process.env['BUN_NATIVE_WAYLAND_EVIDENCE']
 const mode = process.env['BUN_NATIVE_WAYLAND_MODE']
@@ -338,9 +339,10 @@ async function capabilities(app: NativeApplication, window: NativeWindow) {
     availability: 'available',
     permission: 'allow',
     scope: 'owned_window',
-    // No work area or display identity; changes are qualified on two outputs
-    // in display-wayland.ts (#299).
+    // No work area; identity and changes are qualified on two outputs in
+    // display-wayland.ts (#299).
     details: 'unavailable',
+    identity: 'available',
     changes: 'available',
   })
   for (const capability of [
@@ -709,6 +711,7 @@ async function qualify(app: NativeApplication) {
   assert.deepEqual(snapshot, {
     bounds: active[0]!.rect,
     scaleFactor: active[0]!.scale,
+    displayId: waylandOutputUuid(active[0]!.name),
   })
   const { name, rect, scale } = active[0]!
   record('displaySnapshot', { snapshot, compositor: { name, rect, scale } })

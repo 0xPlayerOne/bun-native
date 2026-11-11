@@ -7,6 +7,7 @@ const windowDisplay = {
   permission: 'allow',
   scope: 'owned_window',
   details: 'unavailable',
+  identity: 'unavailable',
   changes: 'unavailable',
 } as const satisfies ServiceCapabilities['windowDisplay']
 const clipboardText = {

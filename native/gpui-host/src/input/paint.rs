@@ -3,8 +3,8 @@
 use super::viewport::{CARET_WIDTH, TextViewport};
 use super::*;
 use gpui::{
-    ContentMask, ElementId, ElementInputHandler, Entity, GlobalElementId, LayoutId, PaintQuad,
-    ShapedLine, Style, TextRun, UnderlineStyle, fill, point, relative, rgba, size,
+    ContentMask, ElementId, ElementInputHandler, Entity, Font, GlobalElementId, LayoutId,
+    PaintQuad, ShapedLine, Style, TextRun, UnderlineStyle, fill, point, relative, rgba, size,
 };
 
 pub(super) struct TextElement {
@@ -18,6 +18,8 @@ pub(super) struct PrepaintState {
     viewport: TextViewport,
     selected_bytes: [usize; 2],
     cursor_byte: usize,
+    font: Font,
+    font_size: Pixels,
 }
 
 impl IntoElement for TextElement {
@@ -162,6 +164,8 @@ impl Element for TextElement {
             viewport,
             selected_bytes: [selected_range.start, selected_range.end],
             cursor_byte,
+            font: style.font(),
+            font_size,
         }
     }
 
@@ -220,6 +224,8 @@ impl Element for TextElement {
                     selected_bytes: prepaint.selected_bytes,
                     cursor_byte: prepaint.cursor_byte,
                 },
+                font: prepaint.font.clone(),
+                font_size: prepaint.font_size,
             });
             // Accessibility geometry is read from the previous paint during
             // render; when this paint moved it, one more frame exposes it.

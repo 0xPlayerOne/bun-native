@@ -73,7 +73,7 @@ export type InstallationState = {
   failed: FailedRelease | null
 }
 
-export const maximumHealthAttempts = 16
+const maximumHealthAttempts = 16
 
 export type InstallPhase = 'locked' | 'downloaded' | 'staged' | 'promoted' | 'committed'
 

@@ -41,7 +41,7 @@ export const themes = [
   },
 ]
 
-export const logLine = (index: number) =>
+const logLine = (index: number) =>
   'INFO  12:00:' + String(index % 60).padStart(2, '0') + ' request completed in 3 ms\n'
 
 export const now = () => Number(process.hrtime.bigint()) / 1e3

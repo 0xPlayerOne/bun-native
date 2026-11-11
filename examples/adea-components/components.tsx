@@ -50,7 +50,7 @@ const VARIANTS = {
 } as const
 export type ButtonVariant = keyof typeof VARIANTS
 
-export function buttonStyle(
+function buttonStyle(
   theme: AdeaTheme,
   variant: ButtonVariant = 'default',
   size: ControlSize = 'md',

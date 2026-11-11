@@ -34,11 +34,11 @@ type PathStep = {
 const NODE_FIELDS = 7
 const EDGE_FIELDS = 4
 const ROOT_FIELDS = 3
-export const PATH_LIMIT = 4
-export const RETAINER_LIMIT = 32
-export const VISIT_LIMIT = 500_000
+const PATH_LIMIT = 4
+const RETAINER_LIMIT = 32
+const VISIT_LIMIT = 500_000
 /** Bounded upload: a larger compressed snapshot is described, not written. */
-export const SNAPSHOT_BYTES_LIMIT = 48 * 1024 * 1024
+const SNAPSHOT_BYTES_LIMIT = 48 * 1024 * 1024
 /**
  * A WeakRef's only reference is its target, so every edge out of one is weak.
  * A FinalizationRegistry is deliberately absent: it holds each held value (and

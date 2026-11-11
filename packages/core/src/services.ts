@@ -41,10 +41,12 @@ export interface NativeDisplaySnapshot {
    */
   readonly visibleBounds?: Readonly<{ x: number; y: number; width: number; height: number }>
   /**
-   * The platform's display identifier when `windowDisplay.details` is
-   * available and the OS reports one. macOS: the CoreGraphics display UUID.
-   * Windows: derived from the GDI device name (for example `\\.\DISPLAY1`),
-   * so it names an adapter output rather than a physical monitor.
+   * The platform's display identifier when `windowDisplay.identity` is
+   * available and the platform reports one. macOS: the CoreGraphics display
+   * UUID. Windows: derived from the GDI device name (for example
+   * `\\.\DISPLAY1`), so it names an adapter output rather than a physical
+   * monitor. Linux Wayland: derived from the compositor's output name (for
+   * example `DP-1`, `wl_output` version 4), so it names a connector.
    */
   readonly displayId?: string
 }
@@ -63,8 +65,10 @@ export interface ServiceCapabilities {
     availability: 'available'
     permission: 'allow' | 'deny'
     scope: 'owned_window'
-    /** Snapshots include `visibleBounds` and, when the OS reports it, `displayId`. */
+    /** Snapshots include `visibleBounds`, the display's work area. */
     details: 'available' | 'unavailable'
+    /** Snapshots include `displayId` when the platform names the display. */
+    identity: 'available' | 'unavailable'
     /** `onDisplayChange` reports display moves and OS display reconfiguration. */
     changes: 'available' | 'unavailable'
   }>
@@ -244,6 +248,7 @@ export function serviceCapabilities(
       permission: policy.window_display ? 'allow' : 'deny',
       scope: 'owned_window',
       details: capabilities.includes('display_details_v1') ? 'available' : 'unavailable',
+      identity: capabilities.includes('display_identity_v1') ? 'available' : 'unavailable',
       changes: capabilities.includes('display_changes_v1') ? 'available' : 'unavailable',
     }),
     clipboardText: capabilities.includes('clipboard_text_v1')
@@ -365,13 +370,21 @@ export function serviceCapabilities(
   })
 }
 
-/** A frozen public snapshot; details are accepted only from a host that advertised them. */
+/**
+ * A frozen public snapshot; a work area and an identity are accepted only from
+ * a host that advertised them. A host with `display_details_v1` always sends
+ * the work area; an identity is optional even when advertised.
+ */
 export function publicDisplaySnapshot(
   snapshot: DisplaySnapshot,
   capabilities: readonly Capability[]
 ): NativeDisplaySnapshot {
   const details = capabilities.includes('display_details_v1')
-  if (details ? !snapshot.visible_bounds : snapshot.visible_bounds || snapshot.display_uuid)
+  const identity = capabilities.includes('display_identity_v1')
+  if (
+    (details ? !snapshot.visible_bounds : snapshot.visible_bounds) ||
+    (!identity && snapshot.display_uuid)
+  )
     throw new ProtocolError('Native display details do not match the negotiated capabilities')
   return Object.freeze({
     bounds: Object.freeze({ ...snapshot.bounds }),

@@ -23,9 +23,10 @@
 //!   ime-clear           an empty preedit, cancelling the composition
 //!   ime-state           `ok active=<0|1> serial=<done events>`
 //!
-//! Each wait first reads every event the compositor sent before the command,
-//! so it never answers from a stale state, and later commits carry the serial
-//! of the latest `done`: wlroots drops a commit with an older one.
+//! Each wait and each input-method commit first reads every event the
+//! compositor sent before the command, so it never answers from a stale state,
+//! and commits carry the serial of the latest `done`: wlroots drops a commit
+//! with an older one.
 
 #[cfg(target_os = "linux")]
 fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -139,6 +140,17 @@ mod peer {
                         continue;
                     }
                 }
+            }
+            // A client's own text-input commit, such as a new cursor rectangle
+            // after it applied a preedit, makes the compositor send another
+            // `done`. A real input method has read it before it commits again,
+            // so read every event sent so far before an input-method commit.
+            if matches!(
+                words.first(),
+                Some(&("ime-preedit" | "ime-commit" | "ime-clear"))
+            ) && input_method.is_some()
+            {
+                queue.roundtrip(&mut state)?;
             }
             let result: Result<(), String> = match (words.as_slice(), input_method.as_ref()) {
                 ([command @ ("ime-active" | "ime-inactive")], Some(_)) => {

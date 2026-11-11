@@ -6,7 +6,11 @@
 // first element with that AX role whose title, description or string value is
 // <name>: `press` (AXPress), `focus` (AXFocused), `text S` (AXValue string),
 // `number N` (AXValue number), `select LOCATION LENGTH` (AXSelectedTextRange,
-// UTF-16) or `increment` (AXIncrement). It moves no pointer and sends no keys.
+// UTF-16), `increment` (AXIncrement) or `hit` (prints the element the process
+// reports at the centre of the target's frame). `focused <pid>` prints the element that
+// process reports as its AXFocusedUIElement, the attribute VoiceOver follows,
+// with the application's AXFocusedWindow title and whether it is active.
+// It moves no pointer and sends no keys.
 #import <AppKit/AppKit.h>
 #import <ApplicationServices/ApplicationServices.h>
 
@@ -140,7 +144,34 @@ int main(int argc, const char *argv[]) {
             emit(@{@"trusted" : AXIsProcessTrusted() ? @YES : @NO});
             return 0;
         }
-        NSString *usage = @"Usage: trusted | dump <pid> <title> | act <pid> <title> <role> <name> <action> [args]";
+        NSString *usage = @"Usage: trusted | focused <pid> | dump <pid> <title> | act <pid> <title> <role> <name> <action> [args]";
+        if (argc == 3 && strcmp(argv[1], "focused") == 0) {
+            if (!AXIsProcessTrusted()) fail(@"This process is not trusted for Accessibility");
+            pid_t pid = parse_pid(argv[2]);
+            AXUIElementRef application = AXUIElementCreateApplication(pid);
+            if (!application) fail(@"No accessibility element for the process");
+            AXUIElementSetMessagingTimeout(application, 2.0);
+            id window = attribute(application, kAXFocusedWindowAttribute);
+            id element = attribute(application, kAXFocusedUIElementAttribute);
+            NSRunningApplication *running = [NSRunningApplication runningApplicationWithProcessIdentifier:pid];
+            NSMutableDictionary *report = [NSMutableDictionary dictionary];
+            report[@"active"] = @(running.active);
+            report[@"window"] = window ? text((__bridge AXUIElementRef)window, kAXTitleAttribute) : [NSNull null];
+            if (element) {
+                AXUIElementRef focused = (__bridge AXUIElementRef)element;
+                report[@"element"] = @{
+                    @"role" : text(focused, kAXRoleAttribute),
+                    @"title" : text(focused, kAXTitleAttribute),
+                    @"description" : text(focused, kAXDescriptionAttribute),
+                    @"value" : scalar(focused, kAXValueAttribute),
+                };
+            } else {
+                report[@"element"] = [NSNull null];
+            }
+            CFRelease(application);
+            emit(report);
+            return 0;
+        }
         if (argc < 4) fail(usage);
         if (!AXIsProcessTrusted()) fail(@"This process is not trusted for Accessibility");
         AXUIElementRef window = window_titled(parse_pid(argv[2]), utf8(argv[3]));
@@ -164,6 +195,34 @@ int main(int argc, const char *argv[]) {
             }
         }
         if (!target) fail([NSString stringWithFormat:@"No %@ named %@", role, name]);
+        if ([action isEqualToString:@"hit"] && argc == 7) {
+            // The element the application reports at the centre of the target's
+            // frame, the query VoiceOver's mouse and touch exploration use.
+            CGPoint origin = CGPointZero;
+            CGSize size = CGSizeZero;
+            id position = attribute(target, kAXPositionAttribute);
+            id extent = attribute(target, kAXSizeAttribute);
+            if (!position || !extent || !AXValueGetValue((__bridge AXValueRef)position, kAXValueTypeCGPoint, &origin) ||
+                !AXValueGetValue((__bridge AXValueRef)extent, kAXValueTypeCGSize, &size))
+                fail(@"The target has no frame");
+            AXUIElementRef application = AXUIElementCreateApplication(parse_pid(argv[2]));
+            if (!application) fail(@"No accessibility element for the process");
+            AXUIElementSetMessagingTimeout(application, 2.0);
+            float x = (float)(origin.x + size.width / 2), y = (float)(origin.y + size.height / 2);
+            AXUIElementRef hit = NULL;
+            AXError error = AXUIElementCopyElementAtPosition(application, x, y, &hit);
+            CFRelease(application);
+            check(error, @"AXUIElementCopyElementAtPosition");
+            emit(@{
+                @"x" : @(x),
+                @"y" : @(y),
+                @"role" : text(hit, kAXRoleAttribute),
+                @"value" : scalar(hit, kAXValueAttribute),
+            });
+            CFRelease(hit);
+            CFRelease(window);
+            return 0;
+        }
         if ([action isEqualToString:@"press"] && argc == 7) {
             check(AXUIElementPerformAction(target, kAXPressAction), @"AXPress");
         } else if ([action isEqualToString:@"increment"] && argc == 7) {

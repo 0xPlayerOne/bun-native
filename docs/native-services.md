@@ -14,9 +14,11 @@ Linux development/AOT cases with a release-profile host at main
 The [hosted source-bound record](../tests/native/evidence/services-linux-hosted-release.json)
 binds the artifact, compiler manifests, raw results and source hashes. This
 qualifies one isolated scale-1 Xvfb screen; macOS, Windows and physical
-multi-monitor service behavior remain unverified. The display snapshot and its
-change events also run on a headless Wayland compositor with two outputs of
-different scale (see [Wayland display changes](#wayland-display-changes-299)). The earlier
+multi-monitor service behavior remain unverified. The display snapshot, its
+identity and its change events also run on a headless Wayland compositor with
+two outputs of different scale (see [Wayland display changes](#wayland-display-changes-299)),
+and a hosted macOS step adds a CoreGraphics virtual second display of the
+other backing scale (see [macOS virtual second display](#macos-virtual-second-display-299)). The earlier
 [protocol-5 development-host record](../tests/native/evidence/services-linux-development-aot.json)
 remains separate historical evidence. Parser and type checks do not substitute
 for either native run.
@@ -83,17 +85,17 @@ protocol 7 added global shortcuts, 8 notifications, 9 `filesystem_roots`, 10
 `service_policy` with explicit `window_display`, `clipboard_read`,
 `clipboard_write`, `global_shortcuts`, `notifications` and `drag_drop`
 booleans plus the `filesystem_roots` and `processes` lists. Display details,
-display changes and file dialogs are optional capabilities that kept protocol
-11; `file_dialogs` is the only optional policy field. The runtime requires the
+display identity, display changes and file dialogs are optional capabilities
+that kept protocol 11; `file_dialogs` is the only optional policy field. The runtime requires the
 reported policy to match its launch request exactly. Missing capabilities,
 missing policy, conflicting policy or an older protocol fail launch and clean
 up the child. Feature negotiation says what the host implements; permission
 says which implemented service the application elected to expose.
 
 `app.serviceCapabilities` is a frozen record. `windowDisplay` contains
-`{ availability: 'available', permission: 'allow' | 'deny', scope: 'owned_window', details, changes }`,
-where `details` and `changes` are `'available'` only when the host advertises
-`display_details_v1` / `display_changes_v1`.
+`{ availability: 'available', permission: 'allow' | 'deny', scope: 'owned_window', details, identity, changes }`,
+where `details`, `identity` and `changes` are `'available'` only when the host
+advertises `display_details_v1` / `display_identity_v1` / `display_changes_v1`.
 The optional `clipboard_text_v1` feature is advertised only for the implemented
 local Linux X11 backend. Its capability record reports independent `read` and
 `write` permissions, `owned_window` scope and backend `x11`. Other targets and
@@ -127,16 +129,20 @@ interface NativeDisplaySnapshot {
   readonly scaleFactor: number
   // Only when serviceCapabilities.windowDisplay.details is 'available' (macOS, Windows):
   readonly visibleBounds?: Readonly<{ x: number; y: number; width: number; height: number }>
+  // Only when serviceCapabilities.windowDisplay.identity is 'available'
+  // (macOS, Windows, Linux Wayland) and the platform names the display:
   readonly displayId?: string
 }
 ```
 
-`visibleBounds` and `displayId` exist only where the host advertises the
-optional `display_details_v1` capability, and `window.onDisplayChange()` only
-where it advertises `display_changes_v1`; see
-[macOS and Windows display semantics](#macos-and-windows-display-semantics-299).
-Neither changes `PROTOCOL_VERSION`; a host that sends a detail or a change
-without advertising it fails the session as a protocol error.
+`visibleBounds` exists only where the host advertises the optional
+`display_details_v1` capability, `displayId` only where it advertises
+`display_identity_v1`, and `window.onDisplayChange()` only where it advertises
+`display_changes_v1`; see
+[macOS and Windows display semantics](#macos-and-windows-display-semantics-299)
+and [Wayland display changes](#wayland-display-changes-299).
+None changes `PROTOCOL_VERSION`; a host that sends a work area, an identity or
+a change without advertising it fails the session as a protocol error.
 
 Bounds are the GPUI platform display's reported logical pixels; coordinate
 origins depend on its backend. `scaleFactor` is the owning window's current
@@ -154,7 +160,7 @@ physical monitor selected by the window's overlap. Its bounds originate at
 zero and divide X screen pixels by the configured scale. The API does not
 promise refresh rate, raw DPI, display enumeration or automatic window
 placement anywhere, and offers a work area, display identifier and
-display-change events only through the macOS/Windows capabilities below. A
+display-change events only through the optional capabilities below. A
 snapshot is a read at one instant: moving a window afterwards can make it
 stale.
 These semantics follow the pinned
@@ -219,16 +225,18 @@ following remain **unavailable** and are not part of the public result:
 
 ### macOS and Windows display semantics (#299)
 
-On macOS and Windows the host advertises two optional capabilities, behind the
-same `windowDisplay` launch grant. Linux X11 advertises neither, and Linux
-Wayland only `display_changes_v1` ([below](#wayland-display-changes-299));
-`serviceCapabilities.windowDisplay.details` / `.changes` report
+On macOS and Windows the host advertises three optional capabilities, behind
+the same `windowDisplay` launch grant. Linux X11 advertises none, and Linux
+Wayland `display_identity_v1` and `display_changes_v1`
+([below](#wayland-display-changes-299));
+`serviceCapabilities.windowDisplay.details` / `.identity` / `.changes` report
 `'unavailable'` for a capability the host does not advertise:
 
-| Capability           | Public result                                | GPUI source (pinned)                                                                                                                                                                                                                                                                                                          |
-| -------------------- | -------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `display_details_v1` | `visibleBounds` (work area) and `displayId`  | macOS [`visible_bounds`/`uuid`](https://github.com/zed-industries/zed/blob/ba63a022c9a22ca66d68ef2a8f0bb9b5b0a9984d/crates/gpui_macos/src/display.rs#L85-L149), Windows [`rcWork`/`szDevice`](https://github.com/zed-industries/zed/blob/ba63a022c9a22ca66d68ef2a8f0bb9b5b0a9984d/crates/gpui_windows/src/display.rs#L39-L77) |
-| `display_changes_v1` | `window.onDisplayChange(listener) => remove` | [`observe_window_display`](https://github.com/zed-industries/zed/blob/ba63a022c9a22ca66d68ef2a8f0bb9b5b0a9984d/crates/gpui/src/window.rs#L2867-L2918), fed by [App `displays_changed`](https://github.com/zed-industries/zed/blob/ba63a022c9a22ca66d68ef2a8f0bb9b5b0a9984d/crates/gpui/src/app.rs#L1699-L1721)                |
+| Capability            | Public result                                | GPUI source (pinned)                                                                                                                                                                                                                                                                                                                                                                                                                                              |
+| --------------------- | -------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `display_details_v1`  | `visibleBounds` (work area)                  | macOS [`visible_bounds`](https://github.com/zed-industries/zed/blob/ba63a022c9a22ca66d68ef2a8f0bb9b5b0a9984d/crates/gpui_macos/src/display.rs#L127-L150), Windows [`rcWork`](https://github.com/zed-industries/zed/blob/ba63a022c9a22ca66d68ef2a8f0bb9b5b0a9984d/crates/gpui_windows/src/display.rs#L39-L77)                                                                                                                                                      |
+| `display_identity_v1` | `displayId`                                  | macOS [`uuid`](https://github.com/zed-industries/zed/blob/ba63a022c9a22ca66d68ef2a8f0bb9b5b0a9984d/crates/gpui_macos/src/display.rs#L85-L112), Windows [`szDevice`](https://github.com/zed-industries/zed/blob/ba63a022c9a22ca66d68ef2a8f0bb9b5b0a9984d/crates/gpui_windows/src/display.rs#L39-L77), Wayland [`uuid`](https://github.com/zed-industries/zed/blob/ba63a022c9a22ca66d68ef2a8f0bb9b5b0a9984d/crates/gpui_linux/src/linux/wayland/display.rs#L33-L39) |
+| `display_changes_v1`  | `window.onDisplayChange(listener) => remove` | [`observe_window_display`](https://github.com/zed-industries/zed/blob/ba63a022c9a22ca66d68ef2a8f0bb9b5b0a9984d/crates/gpui/src/window.rs#L2867-L2918), fed by [App `displays_changed`](https://github.com/zed-industries/zed/blob/ba63a022c9a22ca66d68ef2a8f0bb9b5b0a9984d/crates/gpui/src/app.rs#L1699-L1721)                                                                                                                                                    |
 
 - **Work area.** macOS: `NSScreen.visibleFrame` relative to the screen's
   top-left, so the menu bar and Dock are excluded. Windows: `rcWork` from
@@ -239,6 +247,7 @@ Wayland only `display_changes_v1` ([below](#wayland-display-changes-299));
   the whole 32-unit `szDevice` buffer), so it identifies an adapter output,
   not a physical monitor, and can follow a different monitor after
   reconfiguration. `displayId` is omitted if the OS returns no identifier.
+  Linux Wayland: [below](#wayland-display-changes-299).
 - **Display changes.** The host observes each owned window, only with the
   launch grant, and sends `display_changed { sequence, window_id, snapshot }`
   when GPUI reports that the window moved to another display or that its
@@ -258,8 +267,9 @@ Wayland only `display_changes_v1` ([below](#wayland-display-changes-299));
   `{ type: 'display_change', sequence, snapshot, signal }`. Its `snapshot`
   has the same shape and capability check as `displaySnapshot()`. A
   `display_changed` from a host that did not advertise the capability, or a
-  snapshot whose details do not match `display_details_v1`, fails the session
-  with `ProtocolError` even when no listener is registered.
+  snapshot whose work area does not match `display_details_v1` or whose
+  identity arrives without `display_identity_v1`, fails the session with
+  `ProtocolError` even when no listener is registered.
 
 [`tests/native/display-platform.ts`](../tests/native/display-platform.ts) runs
 in the **Native Platforms** workflow on the hosted `macos-15` and
@@ -284,9 +294,46 @@ selected by `cfg!` constants rather than separate code, but their native
 behavior is established only by the hosted run's `display-platform.json`
 artifact. If a hosted display offers no other desktop mode or refuses every
 change, the fixture records `displayChange` as unavailable with the mode list
-instead of claiming it. Always unavailable on hosted runners: window migration
-between displays and mixed DPI (one virtual display) and hotplug (no physical
-output).
+instead of claiming it. Window migration between displays, mixed DPI and
+connecting and removing a display are not part of this fixture: the hosted
+Windows runner has one virtual display and no way to add one, and on macOS
+they run in the [virtual second display](#macos-virtual-second-display-299)
+step below.
+
+### macOS virtual second display (#299)
+
+[`tests/native/display-virtual-macos.ts`](../tests/native/display-virtual-macos.ts)
+runs in its own **Native Platforms** step on the hosted `macos-15` runner, in
+development and inspected AOT against the release host. A small helper,
+[`macos-virtual-display.m`](../tests/native/macos-virtual-display.m), creates
+a second display through CoreGraphics' private `CGVirtualDisplay` API (the one
+DeskPad, BetterDisplay and Chromium's `virtual_display_mac_util` use): 1280×800
+points at the backing scale the runner's own display does not have (2 next to
+the hosted 1×), selecting that HiDPI mode for the session if macOS brings the
+display up in its 1× duplicate. It keeps the display connected until the
+fixture closes its stdin, then releases it and waits until CoreGraphics
+reports it offline. The same helper moves an owned window by setting its
+`AXPosition` through the Accessibility API, so the window server, not the
+application, moves it. Every expected value comes from the existing
+NSScreen/CoreGraphics oracle and its `osascript` cross-check; nothing is
+compared with a tolerance beyond the display oracle's.
+
+| Operation                               | Required result                                                                                                                                                      |
+| --------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Connect the virtual display             | NSScreen lists it with its own CoreGraphics UUID and the other scale; the runner display stays main; windows on it report only the main display as the OS reports it |
+| Move one window onto it (`AXPosition`)  | A `display_change` with the virtual display's `displayId`, bounds, work area and scale; the other window keeps the main display                                      |
+| Read both windows                       | Mixed DPI: two snapshots with different `displayId` and `scaleFactor`, each exactly its OS display                                                                   |
+| Move it back                            | A `display_change` back to the main display                                                                                                                          |
+| Release the display with a window on it | macOS relocates the window and it reports the main display; the other window reports nothing else                                                                    |
+| Close, shutdown                         | Close releases the window's listener; shutdown aborts the remaining signal and every ownership counter returns to zero                                               |
+
+**This is unverified locally**: it was written on Linux, where neither the
+helper nor the fixture can run, and CGVirtualDisplay is a private API whose
+behaviour on the hosted macOS VM is established only by that step's
+`display-virtual-macos.json` artifact. If the VM refuses the display, or the
+requested mode, the step fails rather than recording the case as passed. A
+virtual display is not a physical monitor or cable: EDID identity, physical
+hotplug and GPU output changes stay hardware-only.
 
 ### Wayland display changes (#299)
 
@@ -301,10 +348,28 @@ removal and reconfiguration through
 The host therefore advertises `display_changes_v1` when GPUI's compositor is
 Wayland, and `services::display_changes` chooses it at runtime; X11 keeps no
 change capability. `display_details_v1` is not advertised: Wayland gives
-clients no work area, so `visibleBounds` would only repeat `bounds`.
+clients no work area, and the pinned
+[`WaylandDisplay`](https://github.com/zed-industries/zed/blob/ba63a022c9a22ca66d68ef2a8f0bb9b5b0a9984d/crates/gpui_linux/src/linux/wayland/display.rs#L28-L48)
+does not override `visible_bounds`, so `visibleBounds` would only repeat
+`bounds`. `display_identity_v1` is advertised the same way
+(`services::display_identity`): the pinned display's
+[`uuid`](https://github.com/zed-industries/zed/blob/ba63a022c9a22ca66d68ef2a8f0bb9b5b0a9984d/crates/gpui_linux/src/linux/wayland/display.rs#L33-L39) is
+v5(DNS, `wl_output.name`), the compositor's connector name (`DP-1`,
+`HEADLESS-1`) that GPUI binds from
+[wl_output version 4](https://github.com/zed-industries/zed/blob/ba63a022c9a22ca66d68ef2a8f0bb9b5b0a9984d/crates/gpui_linux/src/linux/wayland/client.rs#L956-L969).
+It names a connector, not an EDID monitor: a different monitor on the same
+connector has the same `displayId`, and it is omitted for an output that
+sends no name (wl_output before version 4).
 
 - **Snapshot.** `bounds` is the output's current mode divided by its integer
-  `wl_output.scale`, at the `wl_output.geometry` origin. wlroots sends that
+  `wl_output.scale`, at the `wl_output.geometry` origin. With a fractional
+  output scale wlroots sends `wl_output.scale` as the ceiling, and the
+  [display list](https://github.com/zed-industries/zed/blob/ba63a022c9a22ca66d68ef2a8f0bb9b5b0a9984d/crates/gpui_linux/src/linux/wayland/client.rs#L1247-L1260)
+  that [`Window::display`](https://github.com/zed-industries/zed/blob/ba63a022c9a22ca66d68ef2a8f0bb9b5b0a9984d/crates/gpui/src/window.rs#L3145-L3150) reads
+  divides by that integer: a 1280×800 output at scale 1.5 reports
+  `{0, 0, 640, 400} @1.5`, not its 853×533 logical size. This is the pinned
+  behaviour, qualified as such; the host has no access to the output's mode or
+  integer scale to correct it. wlroots sends the geometry
   origin as `0,0` for every output (observed with `WAYLAND_DEBUG=client`:
   `wl_output@5.geometry(0, 0, …)` for the output sway places at x = 1280), so
   the layout position is not reported. `scaleFactor` is the window's scale
@@ -344,17 +409,20 @@ in the Native Linux job, in development and inspected AOT, on headless sway
 [`native-wayland-session.sh`](../scripts/quality/native-wayland-session.sh)
 with `BUN_NATIVE_WAYLAND_OUTPUTS=2`. Every expected value comes from sway IPC
 (`get_outputs` mode, scale and logical size; `get_tree` for the output a view
-is on), and every change is a real compositor operation:
+is on; v5(DNS, output name) for `displayId`, computed independently in
+[`display-uuid.ts`](../tests/native/display-uuid.ts)), and every change is a
+real compositor operation:
 
 | Operation (swaymsg)                                       | Required result                                                                                                                  |
 | --------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
-| Default launch                                            | `changes: 'available'`, `details: 'unavailable'`; snapshot and `onDisplayChange` reject `permission_denied`                      |
+| Default launch                                            | `changes`, `identity: 'available'`, `details: 'unavailable'`; snapshot and `onDisplayChange` reject `permission_denied`          |
 | Two windows map on HEADLESS-1                             | One initial change each, `{0, 0, 1280, 800} @1`                                                                                  |
 | `move container to output HEADLESS-2`                     | One change, `{0, 0, 1024, 768} @2`; the other window reports nothing                                                             |
 | `move absolute position`, `resize set` within HEADLESS-2  | Nothing                                                                                                                          |
 | Position spanning both outputs, then wholly on HEADLESS-1 | Nothing while spanning (snapshot stays `@2`), then one change back to `{0, 0, 1280, 800} @1`                                     |
 | `output HEADLESS-1 resolution 1600x1000`, then `scale 2`  | One change for each window on it, `{…1600, 1000} @1`, then `{…800, 500} @2`; restoring 1280×800 @1 reports once more             |
 | `output HEADLESS-2 scale 1`, then `scale 2`               | Nothing for windows on HEADLESS-1                                                                                                |
+| `output HEADLESS-1 scale 1.5`, then `scale 1`             | One change for each window on it, `{…640, 400} @1.5` with the same `displayId`, then one back to `{…1280, 800} @1`               |
 | `create_output`; move onto it and back; `output … unplug` | Nothing on connect; one change onto the new output (`{…1920, 1080} @1`) and one back; nothing when that unused output is removed |
 | Window on HEADLESS-2, `output HEADLESS-2 unplug`          | sway moves it to HEADLESS-1; no change; snapshot `service_unavailable`; the other window is unaffected                           |
 | `create_output` (reusing the protocol id), `scale 2`      | Still no change and `service_unavailable`; a window opened afterwards reports its output                                         |
@@ -362,9 +430,11 @@ is on), and every change is a real compositor operation:
 
 Five consecutive local development runs and one inspected AOT run passed with
 a release host built from this change (see the Native Linux artifact
-`display-wayland-*/display-wayland.json` for CI). This qualifies the headless
-wlroots backend only: no physical monitor, DRM hotplug, fractional output
-scale, GNOME/KDE compositor or work area is covered.
+`display-wayland-*/display-wayland.json` for CI). Every snapshot and change in
+it, including the first `enter`, a connected output and a fractional scale,
+also carries the output's `displayId`. This qualifies the headless wlroots
+backend only: no physical monitor, EDID identity, DRM hotplug, GNOME/KDE
+compositor or work area is covered.
 
 Reads share the public application's bounded serialized transaction queue.
 `displaySnapshot({ signal })` accepts a real `AbortSignal`; unknown options or

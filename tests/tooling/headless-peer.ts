@@ -12,7 +12,7 @@ const protocolPeerSource = join(repository, 'tests/core/protocol-peer.ts')
 const compiled = new Map<string, string>()
 
 /** This process's peer root; removed by the test preload after the run. */
-export function headlessPeerRoot(): string {
+function headlessPeerRoot(): string {
   return join(repository, '.bun-native', `headless-peer-${process.pid}`)
 }
 

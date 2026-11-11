@@ -88,7 +88,77 @@ fn painted_unicode() -> InputPaint {
             selected_bytes: [10, 10],
             cursor_byte: 10,
         },
+        font: gpui::font("Fixed advances"),
+        font_size: px(16.),
     }
+}
+
+/// A line of `advances.len()` one-byte glyphs with these advances.
+fn shaped(text: &str, advances: &[f32]) -> ShapedLine {
+    let mut line = ShapedLine::default();
+    line.text = text.to_owned().into();
+    let mut x = 0.;
+    let glyphs = advances
+        .iter()
+        .enumerate()
+        .map(|(index, advance)| {
+            let glyph = ShapedGlyph {
+                id: GlyphId(0),
+                position: point(px(x), px(0.)),
+                index,
+                is_emoji: false,
+            };
+            x += advance;
+            glyph
+        })
+        .collect();
+    *line = Arc::new(LineLayout {
+        width: px(x),
+        len: text.len(),
+        runs: vec![ShapedRun {
+            font_id: FontId(0),
+            glyphs,
+        }],
+        ..LineLayout::default()
+    });
+    line
+}
+
+#[test]
+fn text_changed_after_the_paint_is_placed_where_the_next_paint_will_draw_it() {
+    // The painted text no longer matches: the paint has no geometry for it.
+    let paint = painted_unicode();
+    assert_eq!(paint.bounds_for_range("A🌍e\u{301}BCD", 11..11), None);
+
+    // An input method appended a 20-pixel preedit "D" at the end (byte 10):
+    // the line is now 120 wide and the next paint scrolls 20 further right to
+    // keep the caret (byte 11) visible. The caret rectangle is at the viewport's
+    // right edge, not where the previous paint ended.
+    let longer = shaped(
+        "ABCDEFGHIJK",
+        &[15., 30., 20., 15., 20., 0., 0., 0., 0., 0., 20.],
+    );
+    let caret = paint.projected_bounds_for_range(&longer, 11, 11..11);
+    let next = TextViewport::new(
+        paint.viewport.bounds,
+        px(120.),
+        px(120.),
+        paint.viewport.offset,
+    );
+    assert_eq!(next.offset, px(72.));
+    assert_eq!(caret.left(), next.window_x(px(120.)));
+    assert_eq!(caret.left(), paint.viewport.bounds.right() - CARET_WIDTH);
+    // The preedit's own rectangle spans its 20 pixels left of the caret.
+    let preedit = paint.projected_bounds_for_range(&longer, 11, 10..11);
+    assert_eq!(preedit.size.width, px(20.));
+    assert_eq!(preedit.right(), caret.left());
+    assert_eq!(preedit.top(), paint.viewport.bounds.top());
+    assert_eq!(preedit.bottom(), paint.viewport.bounds.bottom());
+
+    // Text that became shorter scrolls back: an empty field's caret is at the
+    // viewport's left edge.
+    let empty = paint.projected_bounds_for_range(&shaped("", &[]), 0, 0..0);
+    assert_eq!(empty.left(), paint.viewport.bounds.left());
 }
 
 #[test]

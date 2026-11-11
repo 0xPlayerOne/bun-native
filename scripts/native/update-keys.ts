@@ -38,9 +38,9 @@ export type KeySet = {
   revoked: string[]
 }
 
-export const maximumKeySetBytes = 64 * 1024
-export const maximumKeys = 16
-export const maximumRevoked = 256
+const maximumKeySetBytes = 64 * 1024
+const maximumKeys = 16
+const maximumRevoked = 256
 const keyIdPattern = /^[0-9a-f]{16}$/
 const spkiPattern = /^[A-Za-z0-9+/]{59}=$/
 const keyedSignaturePattern = /^([0-9a-f]{16}) ([A-Za-z0-9+/]{86}==)\n?$/

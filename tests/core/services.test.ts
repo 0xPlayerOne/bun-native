@@ -84,6 +84,7 @@ describe('owned desktop service lifecycle (headless subprocess)', () => {
         permission: 'deny',
         scope: 'owned_window',
         details: 'unavailable',
+        identity: 'unavailable',
         changes: 'unavailable',
       })
       for (const [name, value] of Object.entries(app.serviceCapabilities)) {
@@ -290,6 +291,7 @@ describe('display details and owned display changes (headless subprocess)', () =
       async (app) => {
         expect(app.serviceCapabilities.windowDisplay).toMatchObject({
           details: 'unavailable',
+          identity: 'unavailable',
           changes: 'unavailable',
         })
         const window = await app.openWindow({ title: 'No display changes' })
@@ -312,6 +314,7 @@ describe('display details and owned display changes (headless subprocess)', () =
         permission: 'deny',
         scope: 'owned_window',
         details: 'available',
+        identity: 'available',
         changes: 'available',
       })
       const window = await app.openWindow({ title: 'Denied display changes' })
@@ -375,7 +378,37 @@ describe('display details and owned display changes (headless subprocess)', () =
       { windowDisplay: 'allow' }
     ))
 
-  test.each(['details-missing', 'undeclared-change', 'undeclared-details'])(
+  test('an identity-only backend (Linux Wayland) reports an identity without a work area', () =>
+    withService(
+      async (app) => {
+        expect(app.serviceCapabilities.windowDisplay).toEqual({
+          availability: 'available',
+          permission: 'allow',
+          scope: 'owned_window',
+          details: 'unavailable',
+          identity: 'available',
+          changes: 'available',
+        })
+        const window = await app.openWindow({ title: 'Identified display' })
+        const changes: DisplayChangeEvent[] = []
+        window.onDisplayChange((event) => {
+          changes.push(event)
+        })
+        const snapshot = await window.displaySnapshot()
+        expect(snapshot).toEqual({
+          bounds: { x: -1920, y: 0, width: 1920, height: 1080 },
+          scaleFactor: 1.5,
+          displayId: 'b7e1f07c-5b0e-5a8b-9a4c-1f2d3e4f5a6b',
+        })
+        for (let attempt = 0; attempt < 100 && !changes.length; attempt++) await Bun.sleep(5)
+        expect(changes).toHaveLength(1)
+        expect(changes[0]!.snapshot).toEqual(snapshot)
+      },
+      'identity',
+      { windowDisplay: 'allow' }
+    ))
+
+  test.each(['details-missing', 'undeclared-change', 'undeclared-details', 'undeclared-identity'])(
     'details and changes must match the negotiated capabilities: %s',
     (mode) =>
       withService(

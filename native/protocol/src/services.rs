@@ -145,8 +145,8 @@ pub struct DisplaySnapshot {
     )]
     pub visible_bounds: Option<DisplayBounds>,
     /// The platform's display identifier as a lowercase hyphenated UUID.
-    /// Sent only by a host that advertises `display_details_v1`, and only when
-    /// the OS reports one.
+    /// Sent only by a host that advertises `display_identity_v1`, and only when
+    /// the platform reports one.
     #[serde(
         default,
         skip_serializing_if = "Option::is_none",

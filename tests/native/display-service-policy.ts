@@ -9,8 +9,9 @@ export function assertDisplayServicePolicy(
     availability: 'available',
     permission: 'allow',
     scope: 'owned_window',
-    // This fixture runs on Linux X11, which reports neither (#299).
+    // This fixture runs on Linux X11, which reports none of these (#299).
     details: 'unavailable',
+    identity: 'unavailable',
     changes: 'unavailable',
   })
   assert.deepEqual(

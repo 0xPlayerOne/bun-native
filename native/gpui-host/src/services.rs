@@ -65,9 +65,18 @@ pub(crate) mod task_dialogs;
 #[cfg(target_os = "linux")]
 pub(crate) mod x11;
 
-/// GPUI's macOS and Windows displays report a work area and an OS display
-/// identifier; the pinned X11 and Wayland displays report no work area.
+/// GPUI's macOS and Windows displays report a work area; the pinned X11 and
+/// Wayland displays report none (`PlatformDisplay::visible_bounds` defaults to
+/// `bounds`).
 pub(crate) const DISPLAY_DETAILS: bool = cfg!(any(target_os = "macos", target_os = "windows"));
+
+/// Whether snapshots name their display. GPUI's macOS display UUID comes from
+/// CoreGraphics, the Windows one from the GDI device name, and the pinned
+/// Wayland one is a v5 UUID of the `wl_output.name` (wl_output v4) connector
+/// name. The pinned X11 display's UUID is all zeros, so X11 names nothing.
+pub(crate) fn display_identity(cx: &App) -> bool {
+    cfg!(any(target_os = "macos", target_os = "windows")) || wayland(cx)
+}
 
 /// Whether owned windows report display changes. GPUI's macOS and Windows
 /// windows notify display observers when the window changes display or the OS
@@ -248,10 +257,12 @@ pub(crate) fn display_snapshot(
     let snapshot = DisplaySnapshot {
         bounds: logical(display.bounds()),
         scale_factor: f64::from(window.scale_factor()),
-        // The X11 display has no work area (it repeats `bounds`) and an
-        // all-zero UUID, so only macOS and Windows report these details.
+        // The X11 and Wayland displays have no work area (it repeats
+        // `bounds`), so only macOS and Windows report one.
         visible_bounds: DISPLAY_DETAILS.then(|| logical(display.visible_bounds())),
-        display_uuid: DISPLAY_DETAILS
+        // A Wayland output without a `wl_output.name` (before wl_output v4)
+        // has no UUID, and so no identity.
+        display_uuid: display_identity(cx)
             .then(|| display.uuid().ok().map(|uuid| uuid.to_string()))
             .flatten(),
     };

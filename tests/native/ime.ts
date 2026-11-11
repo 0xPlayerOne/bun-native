@@ -6,15 +6,25 @@
  * (X server, XIM, IBus engine, GPUI's input handler, public Bun input events).
  * The host is launched through `env` with XMODIFIERS because the host never
  * sees `process.env` edits made inside Bun.
+ *
+ * The independent panel tests/native/ibus-panel-probe.py takes the IBus panel
+ * role (ibus-ui-gtk3's on a desktop) and reports what the daemon relays to it:
+ * the caret rectangle the host gives XIM, against which a desktop panel places
+ * its candidate window, and the engine's candidate list. The Hangul engine's
+ * Hanja conversion is a real CJK candidate selection: the list is opened on a
+ * composing syllable, the highlight is moved, and the selected Hanja replaces
+ * the syllable.
  */
 import { createApplication } from '@bun-native/core'
 import assert from 'node:assert/strict'
 import { statSync, writeFileSync } from 'node:fs'
-import { isAbsolute, join } from 'node:path'
+import { isAbsolute, join, resolve } from 'node:path'
 
 const output = process.env['BUN_NATIVE_TEXT_EVIDENCE']
 const executable = process.env['BUN_NATIVE_HOST']
 const mode = process.env['BUN_NATIVE_TEXT_MODE']
+// A system Python with PyGObject and the IBus typelib for the panel probe.
+const ibusPython = process.env['BUN_NATIVE_IBUS_PYTHON']
 if (
   !output ||
   !isAbsolute(output) ||
@@ -22,11 +32,17 @@ if (
   !executable ||
   !isAbsolute(executable) ||
   (mode !== 'development' && mode !== 'aot') ||
+  !ibusPython ||
+  !isAbsolute(ibusPython) ||
   !process.env['DISPLAY'] ||
   process.env['WAYLAND_DISPLAY']
 )
-  throw new Error('An isolated X11 display, evidence directory, host and mode are required')
+  throw new Error(
+    'An isolated X11 display, evidence directory, host, mode and IBus Python are required'
+  )
 const host = executable
+// Resolved from the checkout, not import.meta, so the AOT executable finds it too.
+const panelProbe = resolve('tests/native/ibus-panel-probe.py')
 const started = performance.now()
 const outcomes: Record<string, unknown> = {}
 const record = (name: string, value: unknown) => {
@@ -65,6 +81,14 @@ const daemon = Bun.spawn(['ibus-daemon', '--xim', '--panel', 'disable', '--repla
   stdout: 'ignore',
   stderr: 'pipe',
 })
+type PanelEvent =
+  | { event: 'ready' }
+  | { event: 'focus_in'; context: string }
+  | { event: 'cursor'; x: number; y: number; w: number; h: number }
+  | { event: 'lookup'; visible: boolean; candidates: string[]; cursor: number; page_size: number }
+  | { event: 'hide_lookup' }
+const panelEvents: PanelEvent[] = []
+let panel: ReturnType<typeof Bun.spawn<'ignore', 'pipe', 'pipe'>> | undefined
 let app: Awaited<ReturnType<typeof createApplication>> | undefined
 try {
   await waitFor(
@@ -73,6 +97,26 @@ try {
   )
   await run(['ibus', 'engine', 'hangul'])
   record('engine', await run(['ibus', 'engine']))
+
+  const probe = Bun.spawn([ibusPython, '-I', panelProbe], {
+    stdin: 'ignore',
+    stdout: 'pipe',
+    stderr: 'pipe',
+  })
+  panel = probe
+  void (async () => {
+    const decoder = new TextDecoder()
+    let pending = ''
+    for await (const chunk of probe.stdout) {
+      pending += decoder.decode(chunk, { stream: true })
+      let newline: number
+      while ((newline = pending.indexOf('\n')) >= 0) {
+        panelEvents.push(JSON.parse(pending.slice(0, newline)) as PanelEvent)
+        pending = pending.slice(newline + 1)
+      }
+    }
+  })()
+  await waitFor(() => panelEvents.some((event) => event.event === 'ready'), 'the IBus panel probe')
 
   app = await createApplication({
     executable: '/usr/bin/env',
@@ -118,11 +162,96 @@ try {
   await step('k', '가 가', 'second syllable')
   assert.equal(window.input(input).value, '가 가')
   record('composition', values.slice())
+
+  // The caret position the host gives XIM (GPUI sends the bottom-right corner
+  // of the caret's range as the spot location), which the daemon translates to
+  // screen pixels and relays to the panel. A desktop panel places the
+  // candidate window there. Without a spot the daemon falls back to the
+  // window's bottom-left corner.
+  const info = await run(['xwininfo', '-id', ids[0]!])
+  const field = (name: string) => Number(new RegExp(`${name}:\\s+(-?\\d+)`).exec(info)?.[1])
+  const client = {
+    x: field('Absolute upper-left X'),
+    y: field('Absolute upper-left Y'),
+    width: field('Width'),
+    height: field('Height'),
+  }
+  // The input: inside the 12-pixel padding, 40 pixels tall, as wide as the
+  // window allows.
+  const box = { left: 12, top: 12, right: client.width - 12, bottom: 52 }
+  const spots = () =>
+    panelEvents
+      .filter(
+        (event): event is Extract<PanelEvent, { event: 'cursor' }> => event.event === 'cursor'
+      )
+      .map((event) => ({ x: event.x - client.x, y: event.y - client.y }))
+  const onInput = (spot: { x: number; y: number }) =>
+    spot.x > box.left && spot.x <= box.right && spot.y > box.top && spot.y <= box.bottom
+  await waitFor(() => spots().some(onInput), 'a caret position on the input relayed to the panel')
+  const caret = spots().at(-1)!
+  assert(onInput(caret), `the latest caret position is on the input: ${JSON.stringify(spots())}`)
+  // The caret follows the composition: after "가 가" it is right of where the
+  // first preedit put it.
+  const first = spots().find(onInput)!
+  assert(caret.x > first.x, `the caret moved with the text: ${JSON.stringify(spots())}`)
+  record('caretPosition', { window: client, input: box, spots: spots() })
+
+  // Hanja conversion (the engine's Hanja key, F9): the composing 가 opens a
+  // candidate list in the panel; Down moves the highlight; Return selects.
+  const lookups = () =>
+    panelEvents.filter(
+      (event): event is Extract<PanelEvent, { event: 'lookup' }> => event.event === 'lookup'
+    )
+  const opened = lookups().length
+  await press('F9')
+  await waitFor(
+    () =>
+      lookups()
+        .slice(opened)
+        .some((event) => event.visible && event.candidates.length > 1),
+    'the Hanja candidate list in the panel'
+  )
+  const list = lookups()
+    .slice(opened)
+    .find((event) => event.visible)!
+  assert(
+    list.candidates.every((candidate) => /\p{Script=Han}/u.test(candidate)),
+    `Hanja candidates for 가: ${JSON.stringify(list.candidates)}`
+  )
+  assert.equal(list.cursor, 0, 'the first candidate is highlighted')
+  // Opening the list is not an edit.
+  assert.equal(last(), '가 가', 'the composing syllable stays while the list is open')
+  const moved = lookups().length
+  await press('Down')
+  await waitFor(
+    () =>
+      lookups()
+        .slice(moved)
+        .some((event) => event.visible && event.cursor === 1),
+    'the highlight on the second candidate'
+  )
+  const chosen = list.candidates[1]!
+  await step('Return', '가 ' + chosen, 'the selected Hanja replaces the composing syllable')
+  await waitFor(
+    () => panelEvents.slice(moved).some((event) => event.event === 'hide_lookup'),
+    'the candidate list to close'
+  )
+  assert.equal(window.input(input).value, '가 ' + chosen)
+  // The commit ended the composition: the next key starts a new syllable.
+  await step('r', '가 ' + chosen + 'ㄱ', 'composition resumes after the selection')
+  record('hanjaCandidates', {
+    candidates: list.candidates,
+    pageSize: list.page_size,
+    selected: chosen,
+    values: values.slice(),
+  })
   await window.close()
 } finally {
   await app?.shutdown()
   await app?.closed
+  panel?.kill()
   daemon.kill()
+  writeFileSync(join(output, 'panel-events.json'), JSON.stringify(panelEvents, null, 2) + '\n')
 }
 writeFileSync(
   join(output, 'result.json'),
