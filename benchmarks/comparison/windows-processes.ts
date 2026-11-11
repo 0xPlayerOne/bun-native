@@ -112,7 +112,8 @@ export class ProcessTreeSampler {
   }
 
   /**
-   * Adds new descendants from one snapshot, then sums current working sets.
+   * Adds new descendants from one snapshot, then sums the current working
+   * sets of every member observed so far.
    * Toolhelp keeps a parent's numeric ID after that parent exits, so a child
    * of an older process that once had a reused ID could look like ours. Only
    * a process created no earlier than the root is accepted, and a rejected
@@ -120,7 +121,10 @@ export class ProcessTreeSampler {
    */
   sample(): TreeSample {
     const entries = this.api.entries()
-    const tree = new Set([this.root])
+    // Every member observed earlier stays in the tree even when its parent has
+    // exited and left Toolhelp: an open handle keeps Windows from reusing that
+    // member's ID, and an exited member simply contributes no working set.
+    const tree = new Set(this.members.keys())
     const rejected = new Set<number>()
     for (let grew = true; grew;) {
       grew = false

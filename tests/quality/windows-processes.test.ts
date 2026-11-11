@@ -166,6 +166,23 @@ describe('ProcessTreeSampler', () => {
     sampler.close()
   })
 
+  test('a live grandchild still counts after its parent exits', () => {
+    const host = { pid: 11, parent: 10, creation: 1_100n, user: 0n, kernel: 0n, workingSet: 200 }
+    const helper = { pid: 12, parent: 11, creation: 1_200n, user: 0n, kernel: 0n, workingSet: 70 }
+    const processes: Fake[] = [{ ...root }, host, helper]
+    const { api } = fakeApi(processes)
+    const sampler = new ProcessTreeSampler(api, 10)
+    expect(sampler.sample()).toEqual({ application: 50, descendants: 270, total: 320 })
+    // The host exits and leaves Toolhelp; the helper it spawned stays alive.
+    Object.assign(host, { exited: true })
+    expect(sampler.sample()).toEqual({ application: 50, descendants: 70, total: 120 })
+    // A child the orphaned helper spawns later is still reached through it.
+    processes.push({ pid: 13, parent: 12, creation: 1_300n, user: 0n, kernel: 0n, workingSet: 5 })
+    expect(sampler.sample()).toEqual({ application: 50, descendants: 75, total: 125 })
+    expect(sampler.observed).toBe(4)
+    sampler.close()
+  })
+
   test('an unreadable member makes CPU time unknown rather than partial', () => {
     const host = { pid: 11, parent: 10, creation: 1_100n, user: 1n, kernel: 1n, workingSet: 200 }
     const { api, handles } = fakeApi([root, host])
