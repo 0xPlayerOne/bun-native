@@ -247,7 +247,9 @@ def watch(seconds: float) -> None:
     for name in WATCHED:
         listener.register(name)
     # Stop when the driver closes stdin or the bound passes.
-    GLib.io_add_watch(sys.stdin, GLib.IO_HUP | GLib.IO_IN, lambda *_: loop.quit() or False)
+    GLib.io_add_watch(
+        sys.stdin, GLib.IO_HUP | GLib.IO_IN, lambda *_: loop.quit() or False
+    )
     GLib.timeout_add(int(seconds * 1000), loop.quit)
     print(json.dumps({"ready": True}), flush=True)
     loop.run()
