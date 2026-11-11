@@ -18,6 +18,7 @@ const names = [
   'BUN_NATIVE_SOAK_SAMPLE_SECONDS',
   'BUN_NATIVE_SOAK_PACE_MS',
   'BUN_NATIVE_SOAK_OS_INPUT',
+  'BUN_NATIVE_SOAK_HEAP_CENSUS',
 ] as const
 const saved = Object.fromEntries(names.map((name) => [name, process.env[name]]))
 
@@ -38,12 +39,14 @@ test('the soaks keep their fixed plan unless a session budget is set', () => {
     sampleSeconds: 30,
     paceMs: 0,
     osInput: false,
+    census: false,
   })
   // The headless peer has no native host to observe for a session.
   expect(() => sessionConfig(false)).toThrow('real native host')
   process.env['BUN_NATIVE_SOAK_PACE_MS'] = '250'
   process.env['BUN_NATIVE_SOAK_SAMPLE_SECONDS'] = '10'
-  expect(sessionConfig(true)).toMatchObject({ sampleSeconds: 10, paceMs: 250 })
+  process.env['BUN_NATIVE_SOAK_HEAP_CENSUS'] = '1'
+  expect(sessionConfig(true)).toMatchObject({ sampleSeconds: 10, paceMs: 250, census: true })
 })
 
 test('session settings outside their bounds are rejected', () => {

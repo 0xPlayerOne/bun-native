@@ -19,6 +19,7 @@ import {
   ownedHost,
   processSample,
   sessionConfig,
+  writeStringCensus,
   SessionRecorder,
   waitUntil,
 } from './workspace-session.ts'
@@ -117,7 +118,9 @@ async function sample(round: number) {
     rootListeners: root!.diagnostics.listeners,
     application: app.diagnostics,
     localWork: controller?.ownership,
+    ...(session?.census ? { objectTypeCounts: statistics.objectTypeCounts } : {}),
   })
+  if (session?.census) writeStringCensus(directory!, round)
   // A long session keeps its samples on disk, not in the heap it samples.
   if (session) lastRound = round
   else samples.push(row)
