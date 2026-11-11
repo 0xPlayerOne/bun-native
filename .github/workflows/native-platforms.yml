@@ -617,6 +617,24 @@ jobs:
           $env:BUN_NATIVE_FILE_PANEL_ORACLE = $oracle
           bun tests/native/file-dialogs-macos.ts 2>&1 | Tee-Object -FilePath (Join-Path $evidence 'run.log')
           if ($LASTEXITCODE -ne 0) { throw 'macOS file dialogs were not verified' }
+      - name: macOS popup windows as owned child panels (WindowServer and Accessibility oracle)
+        if: ${{ matrix.shard == 2 && runner.os == 'macOS' && !cancelled() && steps.native-build.outcome == 'success' }}
+        timeout-minutes: 6
+        run: |
+          $oracle = Join-Path $env:NATIVE_EVIDENCE 'macos-popup-oracle'
+          xcrun clang -fobjc-arc -Wall -Wextra -Werror -framework AppKit -framework CoreGraphics -framework ApplicationServices `
+            tests/native/macos-popup-oracle.m -o $oracle
+          if ($LASTEXITCODE -ne 0) { throw 'The independent popup window oracle did not compile' }
+          $trust = & $oracle trusted | ConvertFrom-Json
+          if (-not $trust.trusted) { throw 'The runner does not trust the popup oracle for Accessibility' }
+          $evidence = Join-Path $env:NATIVE_EVIDENCE 'popups-macos'
+          New-Item -ItemType Directory $evidence | Out-Null
+          $env:BUN_NATIVE_POPUP_EVIDENCE = $evidence
+          $env:BUN_NATIVE_POPUP_ORACLE = $oracle
+          $env:BUN_NATIVE_EVIDENCE_LOG = Join-Path $evidence 'native-evidence.jsonl'
+          $env:BUN_NATIVE_EVIDENCE_NONCE = -join ((1..16) | ForEach-Object { '{0:x2}' -f (Get-Random -Maximum 256) })
+          bun tests/native/popups-macos.ts 2>&1 | Tee-Object -FilePath (Join-Path $evidence 'run.log')
+          if ($LASTEXITCODE -ne 0) { throw 'macOS popup windows were not verified' }
       - name: Development and AOT native fault containment
         if: ${{ matrix.shard == 2 && (runner.os != 'Linux' && !cancelled() && steps.native-build.outcome == 'success') }}
         timeout-minutes: 5

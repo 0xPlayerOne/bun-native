@@ -3,11 +3,11 @@
 //! menus ([`context_menu`]), plain text on the general pasteboard
 //! ([`pasteboard`]), OS-wide Carbon hot keys ([`hot_keys`]), window-owned
 //! open and save panel sheets ([`file_panel`]), user notifications
-//! ([`notifications`]), and the two pieces that let assistive technology
-//! follow keyboard focus into a GPUI window's AccessKit tree: routing AppKit's
-//! focus and hit-test queries to the adapter ([`focus_route`]) and the repeated
-//! key-window notification that keeps the adapter's focus state current
-//! ([`key_status`]).
+//! ([`notifications`]), placement of owned popup panels ([`popup`]), and the
+//! two pieces that let assistive technology follow keyboard focus into a GPUI
+//! window's AccessKit tree: routing AppKit's focus and hit-test queries to the
+//! adapter ([`focus_route`]) and the repeated key-window notification that
+//! keeps the adapter's focus state current ([`key_status`]).
 #![cfg(target_os = "macos")]
 
 pub mod alert;
@@ -18,6 +18,7 @@ pub mod hot_keys;
 pub mod key_status;
 pub mod notifications;
 pub mod pasteboard;
+pub mod popup;
 
 use objc2::MainThreadMarker;
 use objc2::rc::Retained;

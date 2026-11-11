@@ -42,6 +42,7 @@ const advertised: Record<'linux' | 'macos' | 'windows', Capability[]> = {
     'processes_v1',
     'drag_drop_files_v1',
     'app_menu_v1',
+    'popup_windows_v1',
     'clipboard_text_v1',
     'global_shortcuts_v1',
     'file_dialogs_v1',
