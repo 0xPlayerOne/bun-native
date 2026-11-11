@@ -364,8 +364,17 @@ export async function qualifyLayoutStyle(
     for (;;) {
       const result = await capture(name, [[4, 4], ...points])
       if (result.pixels[0] === surface) return { size: result.size, pixels: result.pixels.slice(1) }
-      if (performance.now() > until)
-        throw new Error(name + ' never displayed its surface: ' + result.pixels[0]!.toString(16))
+      if (performance.now() > until) {
+        let detail = ''
+        if (macWindow) {
+          const file = join(output!, `${adapter}-${name}.png`)
+          const stale = await macWindow.staleCapture(file, [[4, 4]])
+          detail = ` (window ${stale.window[0]}, display ${stale.display[0]})`
+        }
+        throw new Error(
+          name + ' never displayed its surface: ' + result.pixels[0]!.toString(16) + detail
+        )
+      }
       await Bun.sleep(50)
     }
   }

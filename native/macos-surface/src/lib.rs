@@ -19,6 +19,7 @@ pub mod key_status;
 pub mod notifications;
 pub mod pasteboard;
 pub mod popup;
+pub mod presentation;
 
 use objc2::MainThreadMarker;
 use objc2::rc::Retained;

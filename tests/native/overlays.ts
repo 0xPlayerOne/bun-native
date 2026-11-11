@@ -194,6 +194,11 @@ async function displayed(name: string, [x, y]: [number, number], expected: numbe
     await Bun.sleep(50)
     value = await screenshot(name, [Math.floor(x), Math.floor(y)])
   }
+  if (value !== expected && macWindow) {
+    const point: [number, number] = [Math.floor(x), Math.floor(y)]
+    const stale = await macWindow.staleCapture(join(output!, name + '.png'), [point])
+    console.log(JSON.stringify({ staleCapture: name, expected: expected.toString(16), ...stale }))
+  }
   return value
 }
 

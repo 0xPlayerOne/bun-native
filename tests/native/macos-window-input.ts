@@ -281,6 +281,46 @@ export class MacWindow {
 
   /** Capture the owned window and read displayed viewport pixels. */
   async capture(file: string): Promise<Capture> {
+    return this.#capture(file, (id) => ['-o', `-l${id}`])
+  }
+
+  /**
+   * The same viewport pixels from the display itself: a `screencapture -R`
+   * of the window's observed Quartz frame, which reads the composited screen
+   * rather than the window's own surface. Diagnostic only; the helper has
+   * just raised the owned window, and its frame is a global top-left rect.
+   */
+  async captureDisplay(file: string): Promise<Capture> {
+    return this.#capture(file, (_, frame) => [`-R${frame.map(Math.round).join(',')}`])
+  }
+
+  /**
+   * After a window capture kept showing a frame other than the expected one,
+   * read `points` from the window surface and then from the display, saving
+   * both captures beside `file`. Equal values mean the display itself shows
+   * that frame (GPUI's presentation); differing values mean the window
+   * capture lags what is on screen. The values are reported, never asserted.
+   */
+  async staleCapture(file: string, points: Point[]) {
+    // A failed diagnostic read is reported in place of its values, so it never
+    // replaces the caller's own failure.
+    const read = async (capture: Promise<Capture>) => {
+      try {
+        const shot = await capture
+        return points.map((point) => shot.pixel(point).toString(16))
+      } catch (error) {
+        return points.map(() => 'unavailable: ' + (error as Error).message)
+      }
+    }
+    const window = await read(this.capture(file.replace(/\.png$/, '-stale-window.png')))
+    const display = await read(this.captureDisplay(file.replace(/\.png$/, '-stale-display.png')))
+    return { window, display }
+  }
+
+  async #capture(
+    file: string,
+    source: (id: number, frame: [number, number, number, number]) => string[]
+  ): Promise<Capture> {
     const state = (await this.#input('observe')) as State
     if (state.window.id !== this.#state.window.id)
       throw new Error('The owned window changed before capture')
@@ -288,11 +328,14 @@ export class MacWindow {
     const work = mkdtempSync(join(tmpdir(), 'bun-native-capture-'))
     try {
       const raw = join(work, 'window.png')
-      const capture = Bun.spawnSync(['screencapture', '-x', '-o', `-l${state.window.id}`, raw], {
-        stdout: 'pipe',
-        stderr: 'pipe',
-        timeout: 10_000,
-      })
+      const capture = Bun.spawnSync(
+        ['screencapture', '-x', ...source(state.window.id, frame), raw],
+        {
+          stdout: 'pipe',
+          stderr: 'pipe',
+          timeout: 10_000,
+        }
+      )
       if (capture.exitCode !== 0)
         throw new Error(`screencapture failed (${capture.exitCode}): ${capture.stderr}`)
       const bytes = readFileSync(raw)

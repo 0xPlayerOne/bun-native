@@ -840,13 +840,21 @@ jobs:
               $env:BUN_NATIVE_LAYOUT_MODE = $mode
               $env:BUN_NATIVE_EVIDENCE_LOG = Join-Path $evidence 'native-evidence.jsonl'
               $env:BUN_NATIVE_EVIDENCE_NONCE = python3 -c 'import secrets; print(secrets.token_hex(16))'
+              # Record the Metal renderer's dropped frames and each paint's
+              # presentation path beside the layout records, as for overlays.
+              $env:BUN_NATIVE_STARTUP_LOG = '1'
+              $env:BUN_NATIVE_STARTUP_TRACE = '1'
               if ($command.Count -gt 1) {
                 & $command[0] $command[1..($command.Count - 1)] 2>&1 |
                   Tee-Object -FilePath (Join-Path $evidence 'run.log')
               } else {
                 & $command[0] 2>&1 | Tee-Object -FilePath (Join-Path $evidence 'run.log')
               }
-              if ($LASTEXITCODE -ne 0) { throw "macOS $entry $mode layout and style were not verified" }
+              $layoutExit = $LASTEXITCODE
+              Remove-Item Env:BUN_NATIVE_STARTUP_LOG, Env:BUN_NATIVE_STARTUP_TRACE
+              Select-String -Path $env:BUN_NATIVE_EVIDENCE_LOG -SimpleMatch '"gpui_apple::metal_renderer"' |
+                ForEach-Object { Write-Host "Metal renderer ($entry $mode): $($_.Line)" }
+              if ($layoutExit -ne 0) { throw "macOS $entry $mode layout and style were not verified" }
               $reports += @(Get-ChildItem -LiteralPath $evidence -Filter 'layout-style-*.json' | ForEach-Object FullName)
             }
           }
