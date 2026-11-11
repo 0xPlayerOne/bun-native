@@ -20,11 +20,6 @@ on:
       streaming-trials:
         description: Streaming-list soaks per framework and mode (1 to 10)
         default: '3'
-      first-checkpoint:
-        description: Diagnostic for #629. 'skip' omits the first WeakRef observation, whose deref() may keep targets alive; the asserted second checkpoint is unchanged
-        type: choice
-        options: [deref, skip]
-        default: deref
   schedule:
     - cron: '47 6 * * 3'
   pull_request:
@@ -64,7 +59,6 @@ jobs:
       PYTHONDONTWRITEBYTECODE: 1
       # Dispatch inputs reach the shell only through the environment.
       TRIALS: ${{ github.event_name == 'workflow_dispatch' && inputs.trials || '5' }}
-      BUN_NATIVE_FIRST_CHECKPOINT: ${{ github.event_name == 'workflow_dispatch' && inputs['first-checkpoint'] || 'deref' }}
       INPUT_TRIALS: ${{ github.event_name == 'workflow_dispatch' && inputs['input-trials'] || '5' }}
       COLD_CACHE: ${{ github.event_name == 'workflow_dispatch' && inputs['cold-cache'] || 'false' }}
       STREAMING_TRIALS: ${{ github.event_name == 'workflow_dispatch' && inputs['streaming-trials'] || '3' }}
@@ -250,7 +244,6 @@ jobs:
       CARGO_INCREMENTAL: 0
       PYTHONDONTWRITEBYTECODE: 1
       TRIALS: ${{ github.event_name == 'workflow_dispatch' && inputs.trials || '5' }}
-      BUN_NATIVE_FIRST_CHECKPOINT: ${{ github.event_name == 'workflow_dispatch' && inputs['first-checkpoint'] || 'deref' }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -341,7 +334,6 @@ jobs:
       CARGO_INCREMENTAL: 0
       PYTHONDONTWRITEBYTECODE: 1
       TRIALS: ${{ github.event_name == 'workflow_dispatch' && inputs.trials || '5' }}
-      BUN_NATIVE_FIRST_CHECKPOINT: ${{ github.event_name == 'workflow_dispatch' && inputs['first-checkpoint'] || 'deref' }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
