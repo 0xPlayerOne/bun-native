@@ -20,6 +20,11 @@ on:
       streaming-trials:
         description: Streaming-list soaks per framework and mode (1 to 10)
         default: '3'
+      concurrent-jit:
+        description: Diagnostic for #629. 'off' sets BUN_JSC_useConcurrentJIT=0 for every launch; assertions are unchanged
+        type: choice
+        options: ['on', 'off']
+        default: 'on'
   schedule:
     - cron: '47 6 * * 3'
   pull_request:
@@ -70,6 +75,9 @@ jobs:
         run: |
           mkdir "$RUNNER_TEMP/comparison"
           echo "COMPARISON=$RUNNER_TEMP/comparison" >> "$GITHUB_ENV"
+      - name: Disable the concurrent JIT for this diagnostic dispatch (#629)
+        if: github.event_name == 'workflow_dispatch' && inputs['concurrent-jit'] == 'off'
+        run: echo 'BUN_JSC_useConcurrentJIT=0' >> "$GITHUB_ENV"
       - name: Install checksum-pinned Bun compiler
         run: node scripts/install-bun.mjs --destination "$RUNNER_TEMP/bun-native-bun"
       - name: Install pinned Rust toolchain and isolated X11 prerequisites
@@ -252,6 +260,9 @@ jobs:
         run: |
           mkdir "$RUNNER_TEMP/comparison"
           echo "COMPARISON=$RUNNER_TEMP/comparison" >> "$GITHUB_ENV"
+      - name: Disable the concurrent JIT for this diagnostic dispatch (#629)
+        if: github.event_name == 'workflow_dispatch' && inputs['concurrent-jit'] == 'off'
+        run: echo 'BUN_JSC_useConcurrentJIT=0' >> "$GITHUB_ENV"
       - name: Install checksum-pinned Bun compiler
         run: node scripts/install-bun.mjs --destination "$RUNNER_TEMP/bun-native-bun"
       - name: Install pinned Rust toolchain
@@ -343,6 +354,9 @@ jobs:
           $comparison = Join-Path $env:RUNNER_TEMP 'comparison'
           New-Item -ItemType Directory $comparison | Out-Null
           "COMPARISON=$comparison" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+      - name: Disable the concurrent JIT for this diagnostic dispatch (#629)
+        if: github.event_name == 'workflow_dispatch' && inputs['concurrent-jit'] == 'off'
+        run: "'BUN_JSC_useConcurrentJIT=0' | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8"
       - name: Install checksum-pinned Bun compiler
         run: node scripts/install-bun.mjs --destination (Join-Path $env:RUNNER_TEMP 'bun-native-bun')
       - name: Install pinned Rust toolchain
