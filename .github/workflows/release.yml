@@ -89,9 +89,11 @@ jobs:
       attestations: read
       contents: read
     steps:
+      # The verifier comes from the default branch, never from the workflow_run
+      # commit: the qualified commit is only data here (its run id and digest),
+      # so no code from a triggering run executes with this job's token.
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          ref: ${{ needs.qualified.outputs.commit }}
           persist-credentials: false
       - name: Install checksum-pinned Bun compiler
         run: node scripts/install-bun.mjs --destination "$RUNNER_TEMP/bun-native-bun"

@@ -10,7 +10,7 @@ type Job = {
   uses?: string
   permissions?: Record<string, string>
   with?: Record<string, unknown>
-  steps?: { name?: string; run?: string }[]
+  steps?: { name?: string; run?: string; uses?: string; with?: Record<string, unknown> }[]
 }
 type Workflow = { on: Record<string, unknown>; jobs: Record<string, Job> }
 
@@ -156,5 +156,9 @@ test('a release refuses a main head whose Linux host archive lacks verified prov
   expect(script).toContain('--name linux-host-provenance-X64')
   expect(script).toContain('bun scripts/quality/linux-provenance.ts verify')
   expect(script).toContain('--source-ref refs/heads/main --source-digest "$COMMIT"')
+  // The verifier is default-branch code; the workflow_run commit is never checked out.
+  const checkouts = (job?.steps ?? []).filter((step) => step.uses?.startsWith('actions/checkout@'))
+  expect(checkouts).toHaveLength(1)
+  expect(checkouts[0]?.with?.ref).toBeUndefined()
   expect(release.jobs.release?.needs).toContain('linux-provenance')
 })
