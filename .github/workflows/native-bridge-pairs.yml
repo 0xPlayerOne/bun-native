@@ -64,8 +64,13 @@ jobs:
           path: .bun-native/performance-sources/events
           persist-credentials: false
       - name: Install exact Rust and native prerequisites
+        # Ubuntu mirror stalls must not consume the entire historical comparison job.
+        # Keep the original package set and measurements unchanged.
+        timeout-minutes: 25
         run: |
           rustup show active-toolchain
+          printf '%s\n' 'Acquire::Retries "5";' 'Acquire::http::Timeout "30";' 'Acquire::https::Timeout "30";' \
+            | sudo tee /etc/apt/apt.conf.d/80-bounded-fetch > /dev/null
           sudo apt-get update
           sudo apt-get install --no-install-recommends -y \
             pkg-config libfontconfig-dev libglib2.0-dev libssl-dev libwayland-dev \
