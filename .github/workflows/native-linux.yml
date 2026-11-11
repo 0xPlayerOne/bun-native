@@ -64,6 +64,8 @@ jobs:
           printf '%s\n' "${packages[@]}" > "$RUNNER_TEMP/native-apt-packages"
           # Outside the runner home so apt's sandboxed _apt user can download into it.
           sudo install -d -o "$(id -u)" -g "$(id -g)" -m 0755 /var/cache/native-apt-archives
+          printf '%s\n' 'Acquire::Retries "5";' 'Acquire::http::Timeout "30";' 'Acquire::https::Timeout "30";' \
+            | sudo tee /etc/apt/apt.conf.d/80-bounded-fetch > /dev/null
           sudo apt-get update
           apt-get install --print-uris -qq --no-install-recommends -y \
             -o Acquire::ForceHash=SHA256 "${packages[@]}" > "$RUNNER_TEMP/native-apt-uris"
@@ -88,7 +90,11 @@ jobs:
         with:
           path: /var/cache/native-apt-archives
           key: ${{ steps.apt-archives.outputs.key }}
+      # apt retries each fetch with backoff and gives up on a dead mirror after
+      # 30 s; the step limit sits above the slowest recorded throttled download
+      # (20m42s) so a mirror outage cannot consume the whole job (job 130605231985).
       - name: Install native build and isolated X11 prerequisites
+        timeout-minutes: 25
         run: |
           mapfile -t packages < "$RUNNER_TEMP/native-apt-packages"
           lock="$RUNNER_TEMP/native-apt-archives.lock"

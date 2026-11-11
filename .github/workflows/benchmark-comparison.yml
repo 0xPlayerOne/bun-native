@@ -80,9 +80,15 @@ jobs:
         run: echo 'BUN_JSC_useConcurrentJIT=0' >> "$GITHUB_ENV"
       - name: Install checksum-pinned Bun compiler
         run: node scripts/install-bun.mjs --destination "$RUNNER_TEMP/bun-native-bun"
+      # apt retries each fetch with backoff and gives up on a dead mirror after
+      # 30 s; the step limit sits above the slowest recorded throttled download
+      # (20m42s) so a mirror outage cannot consume the whole job (job 130605231985).
       - name: Install pinned Rust toolchain and isolated X11 prerequisites
+        timeout-minutes: 25
         run: |
           rustup show active-toolchain
+          printf '%s\n' 'Acquire::Retries "5";' 'Acquire::http::Timeout "30";' 'Acquire::https::Timeout "30";' \
+            | sudo tee /etc/apt/apt.conf.d/80-bounded-fetch > /dev/null
           sudo apt-get update
           sudo apt-get install --no-install-recommends -y \
             pkg-config libfontconfig-dev libglib2.0-dev libssl-dev libwayland-dev \
