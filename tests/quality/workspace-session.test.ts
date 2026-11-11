@@ -1,9 +1,16 @@
 import { afterEach, expect, test } from 'bun:test'
+import { mkdtempSync, rmSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 import {
   distribution,
   LatencyHistogram,
+  ownedHost,
+  processSample,
   psCpuSeconds,
   sessionConfig,
+  SessionRecorder,
+  waitUntil,
 } from '../native/workspace-session.ts'
 
 const names = [
@@ -82,4 +89,84 @@ test('the whole-session latency histogram keeps fixed memory and bucket-edge tai
     max: 2500,
     slowerThan1sCount: 1,
   })
+})
+
+test('OS input needs a private Linux X11 display', () => {
+  for (const name of names) delete process.env[name]
+  const display = process.env['DISPLAY']
+  try {
+    process.env['BUN_NATIVE_SOAK_SECONDS'] = '60'
+    process.env['BUN_NATIVE_SOAK_OS_INPUT'] = '1'
+    delete process.env['DISPLAY']
+    if (process.platform === 'linux')
+      expect(() => sessionConfig(true)).toThrow('private Linux X11 display')
+    process.env['DISPLAY'] = ':99'
+    if (process.platform === 'linux') expect(sessionConfig(true)?.osInput).toBe(true)
+  } finally {
+    if (display === undefined) delete process.env['DISPLAY']
+    else process.env['DISPLAY'] = display
+  }
+})
+
+test.if(process.platform === 'linux')(
+  "the owned host is found among this process's children",
+  () => {
+    const child = Bun.spawn(['sleep', '30'])
+    try {
+      const sleep = Bun.which('sleep')!
+      const deadline = Date.now() + 5_000
+      let found: number | undefined
+      while (found === undefined && Date.now() < deadline) found = ownedHost(sleep)
+      expect(found).toBe(child.pid)
+      expect(ownedHost(process.execPath)).toBeUndefined()
+
+      const sample = processSample(child.pid)!
+      expect(sample.rssKiB).toBeGreaterThan(0)
+      expect(sample.hwmKiB).toBeGreaterThanOrEqual(sample.rssKiB)
+      expect(sample.threads).toBeGreaterThanOrEqual(1)
+      expect(sample.fds).toBeGreaterThanOrEqual(1)
+      expect(sample.cpuTicks).toBeGreaterThanOrEqual(0)
+    } finally {
+      child.kill()
+    }
+    expect(processSample(undefined)).toBeNull()
+    expect(processSample(2 ** 30)).toBeNull()
+  }
+)
+
+test('the recorder writes interval samples and rounds outside the heap', () => {
+  const directory = mkdtempSync(join(tmpdir(), 'workspace-session-'))
+  try {
+    const recorder = new SessionRecorder(directory)
+    recorder.ack(1)
+    recorder.ack(3)
+    recorder.input(20)
+    recorder.round(1500)
+    const first = recorder.record({ round: 1 })
+    expect(first).toMatchObject({
+      round: 1,
+      ackMs: { count: 2, p50: 3, max: 3 },
+      inputToStateMs: { count: 1, p50: 20 },
+    })
+    expect(first['loadAverage']).toHaveLength(3)
+    // Each interval starts empty; the whole-session histograms keep counting.
+    expect(recorder.record({ round: 2 })).toMatchObject({ ackMs: { count: 0 } })
+    recorder.round(1400)
+    expect(recorder.readSamples().map((row) => row['round'])).toEqual([1, 2])
+    expect(recorder.readRounds()).toEqual([1500, 1400])
+    expect(recorder.ackTotal.summary()).toMatchObject({ count: 2 })
+    expect(recorder.inputTotal.summary()).toMatchObject({ count: 1 })
+    expect(new SessionRecorder(undefined).record({}).ackMs).toEqual({ count: 0 })
+  } finally {
+    rmSync(directory, { recursive: true, force: true })
+  }
+})
+
+test('waitUntil polls until the predicate holds and names what timed out', async () => {
+  let calls = 0
+  await waitUntil(() => ++calls > 3, 'three polls')
+  expect(calls).toBe(4)
+  await expect(waitUntil(() => false, 'nothing', 10)).rejects.toThrow(
+    'Timed out waiting for nothing'
+  )
 })

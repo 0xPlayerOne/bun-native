@@ -20,8 +20,8 @@ import {
   type WorkspaceAction,
   type WorkspaceState,
 } from '../../examples/react-workspace/model.ts'
+import { openOsInput } from './workspace-os-input.ts'
 import {
-  openOsInput,
   ownedHost,
   processSample,
   sessionConfig,

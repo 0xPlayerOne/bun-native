@@ -14,8 +14,8 @@ import {
   type WorkspaceOwnership,
   type WorkspaceState,
 } from '../../examples/solid-workspace/model.ts'
+import { openOsInput } from './workspace-os-input.ts'
 import {
-  openOsInput,
   ownedHost,
   processSample,
   sessionConfig,
