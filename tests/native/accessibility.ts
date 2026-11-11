@@ -157,9 +157,12 @@ const flag = (value: unknown) => value === true || value === 1
 /**
  * One AXUIElement dump entry in the Linux probe's shape. Names are the AX
  * title, then description, then a label's value; states come from AXFocused,
- * AXEnabled, a settable AXFocused (AccessKit's focusable), AXOrientation,
- * AXModal and a settable entry value; UTF-16 selection [start, length]
- * becomes the AT-SPI caret or selection.
+ * AXEnabled, AXOrientation and AXModal; UTF-16 selection [start, length]
+ * becomes the AT-SPI caret or selection. AppKit reports AXFocused and AXValue
+ * settable on every AccessKit element, whatever AccessKit's
+ * isAccessibilitySelectorAllowed: answers (hosted run 43110442504: a button's
+ * AXValue and a disabled field's AXFocused were both settable), so neither
+ * becomes `focusable` or `editable`; macOS judges those by their effect.
  */
 function fromAx(entry: Record<string, unknown>): Accessible {
   const native = String(entry['role'])
@@ -167,12 +170,10 @@ function fromAx(entry: Record<string, unknown>): Accessible {
   const value = entry['value']
   const states: string[] = []
   if (flag(entry['focused'])) states.push('focused')
-  if (flag(entry['focusSettable'])) states.push('focusable')
   if (flag(entry['enabled'])) states.push('enabled')
   if (entry['orientation'] === 'AXVerticalOrientation') states.push('vertical')
   if (entry['orientation'] === 'AXHorizontalOrientation') states.push('horizontal')
   if (flag(entry['modal'])) states.push('modal')
-  if (role === 'entry' && flag(entry['valueSettable'])) states.push('editable')
   const result: Accessible = {
     role,
     name:
@@ -448,7 +449,8 @@ try {
   assert.deepEqual(scrolled.slice(0, 3), ['Item 1', 'Item 2', 'Item 3'], 'list items inside it')
   const divider = separator(initial)
   assert(divider, 'the divider is a separator named by accessible_label')
-  assert(divider.states.includes('focusable') && !divider.states.includes('focused'))
+  assert(!divider.states.includes('focused'))
+  if (!mac) assert(divider.states.includes('focusable'))
   assert(divider.states.includes('vertical'), 'a row split has a vertical divider')
   near(divider.value?.current, 40, 'divider value is the ratio in percent')
   if (!mac) {
@@ -468,15 +470,21 @@ try {
   near(divider.value?.minimum, (MIN_PANE / PANES) * 100, 'divider minimum from min_size')
   near(divider.value?.maximum, (1 - MIN_PANE / PANES) * 100, 'divider maximum from min_size')
   const action = find(initial, 'push-button', 'Leading action')
-  assert(action?.states.includes('focusable') && action.states.includes('enabled'))
+  assert(action, 'the leading button is exposed by name')
+  assert(action.states.includes('enabled'))
+  if (!mac) assert(action.states.includes('focusable'))
   const disabled = find(initial, 'push-button', 'Disabled action')
   assert(disabled, 'the disabled button is exposed by name')
   // AccessKit 0.24's AT-SPI adapter reports `enabled`/`sensitive` for every
-  // button; a disabled one is distinguishable only as not focusable.
-  assert(!disabled.states.includes('focusable'), 'a disabled button is not focusable')
+  // button; a disabled one is distinguishable only as not focusable. On macOS
+  // AXEnabled says it, and focusability is judged below by AX focus requests.
+  if (mac) assert(!disabled.states.includes('enabled'), 'a disabled button is not AXEnabled')
+  else assert(!disabled.states.includes('focusable'), 'a disabled button is not focusable')
   const entry = initial.find((node) => node.role === 'entry')
   assert.equal(entry?.text, 'typed')
-  assert(entry.states.includes('focused') && entry.states.includes('editable'))
+  assert(entry.states.includes('focused'))
+  // macOS proves editability by typing at the AT caret below.
+  if (!mac) assert(entry.states.includes('editable'))
   assert(find(initial, 'push-button', 'Open dialog'))
   assert(!initial.some((node) => node.role === 'dialog'), 'no dialog before it opens')
   assert(
@@ -553,6 +561,29 @@ try {
     5_000,
     () => focusTrace.join()
   )
+  if (mac) {
+    // AccessKit's setAccessibilityFocused: performs Focus only on a focusable
+    // node (accesskit_macos 0.26.3 src/node.rs:638-650), so the AX request is
+    // the macOS form of the focusable state: it moves focus to an enabled
+    // button and leaves focus where it is for a disabled one. The enabled
+    // request runs second, so a late effect of the first would show in the
+    // exact trace.
+    const before = focusTrace.length
+    const refused = JSON.parse(await act('push-button', 'Disabled action', 'request-focus')) as {
+      error: number
+    }
+    await Bun.sleep(500)
+    assert.deepEqual(focusTrace.slice(before), [], 'AX focus on a disabled button moves no focus')
+    await act('push-button', 'Leading action', 'focus')
+    await waitFor(() => focusTrace.at(-1) === 'action', 'AX focus on an enabled button')
+    await act('entry', 'ZXped', 'focus')
+    await waitFor(() => focusTrace.at(-1) === 'search', 'AX focus back on the input')
+    assert.deepEqual(focusTrace.slice(before), ['-search', 'action', '-action', 'search'])
+    record('axFocusability', {
+      disabledRequestError: refused.error,
+      trace: focusTrace.slice(before),
+    })
+  }
   const resizedFrom = resizes.length
   await act('separator', 'Sidebar', 'value', '30')
   await waitFor(() => resizes.length === resizedFrom + 1, 'AT divider value')

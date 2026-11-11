@@ -6,8 +6,8 @@
  * OS input is CoreGraphics key events through the bounded SDK helper
  * (tests/native/macos-window-input.ts). Independent oracles: the general
  * pasteboard read with `pbpaste` (copy and cut) and the AXUIElement client
- * (tests/native/macos-accessibility-oracle.m) for the enabled, focusable and
- * focused states. Effects are read from public Bun focus and input events.
+ * (tests/native/macos-accessibility-oracle.m) for the enabled and focused
+ * states and AX focus requests. Effects are read from public Bun focus and input events.
  */
 import { createApplication, type NativeNode, type NativeWindow } from '@bun-native/core'
 import assert from 'node:assert/strict'
@@ -162,8 +162,10 @@ try {
   await waitFor(() => focusTrace.includes('edit'), 'initial input focus')
   record('initialFocus', focusTrace.slice())
 
-  // Accessibility states: AccessKit reports a disabled field as not enabled
-  // and not focusable; the read-only field stays enabled and focusable.
+  // Accessibility states: AccessKit reports a disabled field as not enabled;
+  // the read-only field stays enabled. AppKit reports AXFocused settable on
+  // every AccessKit element (hosted run 43110442504 dumped it settable on the
+  // disabled field), so focusability is judged by an AX focus request below.
   let initial: AxEntry[] = []
   const until = performance.now() + 10_000
   for (;;) {
@@ -176,22 +178,42 @@ try {
   const readOnlyField = field(initial, READ_ONLY)
   const disabledField = field(initial, 'Disabled field')
   assert.equal(flag(readOnlyField['enabled']), true, 'a read-only field is enabled')
-  assert.equal(flag(readOnlyField['focusSettable']), true, 'a read-only field is focusable')
   assert.equal(flag(disabledField['enabled']), false, 'a disabled field is not enabled')
-  assert.equal(flag(disabledField['focusSettable']), false, 'a disabled field is not focusable')
   const editable = initial.filter((entry) => entry.value === '')
   assert.equal(editable.length, 2, 'two ordinary editable fields')
-  assert(editable.every((entry) => flag(entry['enabled']) && flag(entry['valueSettable'])))
+  assert(editable.every((entry) => flag(entry['enabled'])))
   assert.equal(
     initial.filter((entry) => flag(entry['focused'])).length,
     1,
     'exactly one focused field'
   )
+
+  // AccessKit's setAccessibilityFocused: performs Focus only on a focusable
+  // node (accesskit_macos 0.26.3 src/node.rs:638-650): an AX focus request
+  // leaves focus where it is for the disabled field and moves it to the
+  // read-only one. The read-only request runs second, so a late effect of the
+  // first would show in the exact trace.
+  const act = (value: string, verb: string) =>
+    run([client, 'act', String(pid), TITLE, 'AXTextField', value, verb])
+  focusTrace.length = 0
+  const refused = JSON.parse(await act('Disabled field', 'request-focus')) as { error: number }
+  await Bun.sleep(500)
+  assert.deepEqual(focusTrace.slice(), [], 'AX focus on a disabled field moves no focus')
+  await act(READ_ONLY, 'focus')
+  await waitFor(() => focusTrace.at(-1) === 'readonly', 'AX focus on the read-only field')
+  await press('shift+Tab')
+  await waitFor(() => focusTrace.at(-1) === 'edit', 'Shift+Tab back to the first field')
+  assert.deepEqual(focusTrace.slice(), ['-edit', 'readonly', '-readonly', 'edit'])
   record('accessibilityStates', {
-    readOnly: { enabled: readOnlyField['enabled'], focusable: readOnlyField['focusSettable'] },
-    // AccessKit 0.26's macOS adapter reports AXValue settable on read-only fields (#241, U).
-    readOnlyValueSettable: readOnlyField['valueSettable'],
-    disabled: { enabled: disabledField['enabled'], focusable: disabledField['focusSettable'] },
+    readOnly: { enabled: readOnlyField['enabled'], axFocus: 'moved' },
+    disabled: { enabled: disabledField['enabled'], axFocus: 'unchanged', error: refused.error },
+    // Recorded only: AppKit reports both settable on every AccessKit element.
+    settable: Object.fromEntries(
+      initial.map((entry) => [
+        String(entry.value),
+        { focus: entry['focusSettable'], value: entry['valueSettable'] },
+      ])
+    ),
   })
 
   // Keyboard-only focus order skips the disabled input and wraps both ways.

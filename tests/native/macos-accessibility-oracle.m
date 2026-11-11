@@ -2,12 +2,16 @@
 // It never links GPUI. `trusted` reports whether this process may use the
 // Accessibility API. `dump <pid> <title>` prints the accessible subtree of that
 // process's window, in pre-order, as VoiceOver reads it through AppKit: each
-// element's role, names, value and range, enabled, focused and focusable
-// (AXFocused settable) states, orientation, modal state, selection and, for a
-// text field, every character's AXBoundsForRange frame.
+// element's role, names, value and range, enabled and focused states, whether
+// AXFocused and AXValue report settable, orientation, modal state, selection
+// and, for a text field, every character's AXBoundsForRange frame. AppKit
+// reports both settable on every AccessKit element (hosted run 43110442504
+// dumped a button with a settable AXValue and a disabled field with a settable
+// AXFocused), so neither is a focusable or editable state.
 // `act <pid> <title> <role> <name> <action> [args]` performs one request on the
 // first element with that AX role whose title, description or string value is
-// <name>: `press` (AXPress), `focus` (AXFocused), `text S` (AXValue string),
+// <name>: `press` (AXPress), `focus` (AXFocused), `request-focus` (AXFocused,
+// printing the AXError rather than failing on it), `text S` (AXValue string),
 // `number N` (AXValue number), `select LOCATION LENGTH` (AXSelectedTextRange,
 // UTF-16), `increment` (AXIncrement) or `hit` (prints the element the process
 // reports at the centre of the target's frame). `focused <pid>` prints the element that
@@ -148,7 +152,7 @@ static void walk(AXUIElementRef element, int depth, NSMutableArray *entries, NSM
             @"enabled" : scalar(element, kAXEnabledAttribute),
             @"focused" : scalar(element, kAXFocusedAttribute),
             @"valueSettable" : @(settable(element, kAXValueAttribute)),
-            // AccessKit allows setting AXFocused exactly on focusable nodes.
+            // Recorded only: AppKit reports it settable on every AccessKit node.
             @"focusSettable" : @(settable(element, kAXFocusedAttribute)),
             @"orientation" : scalar(element, kAXOrientationAttribute),
             @"modal" : scalar(element, kAXModalAttribute),
@@ -262,6 +266,13 @@ int main(int argc, const char *argv[]) {
             check(AXUIElementPerformAction(target, kAXIncrementAction), @"AXIncrement");
         } else if ([action isEqualToString:@"focus"] && argc == 7) {
             check(AXUIElementSetAttributeValue(target, kAXFocusedAttribute, kCFBooleanTrue), @"AXFocused");
+        } else if ([action isEqualToString:@"request-focus"] && argc == 7) {
+            // The same request, reporting AppKit's answer instead of failing on
+            // it: the caller judges the effect from the host's own focus events.
+            AXError error = AXUIElementSetAttributeValue(target, kAXFocusedAttribute, kCFBooleanTrue);
+            CFRelease(window);
+            emit(@{@"role" : role, @"name" : name, @"action" : action, @"error" : @((int)error)});
+            return 0;
         } else if ([action isEqualToString:@"text"] && argc == 8) {
             check(AXUIElementSetAttributeValue(target, kAXValueAttribute, (__bridge CFStringRef)utf8(argv[7])),
                   @"AXValue text");
