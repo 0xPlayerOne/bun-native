@@ -32,6 +32,7 @@ on:
     types: [opened, reopened, ready_for_review, synchronize]
     paths:
       - .github/workflows/benchmark-comparison.yml
+      - .github/actions/linux-native-prerequisites/**
       - benchmarks/comparison/**
       - benchmarks/rust-gpui/**
       - native/gpui-host/examples/workload-baseline.rs
@@ -83,18 +84,13 @@ jobs:
       # apt retries each fetch with backoff and gives up on a dead mirror after
       # 30 s; the step limit sits above the slowest recorded throttled download
       # (20m42s) so a mirror outage cannot consume the whole job (job 130605231985).
-      - name: Install pinned Rust toolchain and isolated X11 prerequisites
+      - name: Install pinned Rust toolchain
+        run: rustup show active-toolchain
+      # The same index-verified archive set (and cache key) as Native Linux, so a
+      # mirror outage does not fail the comparison once Native Linux has cached it.
+      - name: Install native build and isolated X11 prerequisites
         timeout-minutes: 25
-        run: |
-          rustup show active-toolchain
-          printf '%s\n' 'Acquire::Retries "5";' 'Acquire::http::Timeout "30";' 'Acquire::https::Timeout "30";' \
-            | sudo tee /etc/apt/apt.conf.d/80-bounded-fetch > /dev/null
-          sudo apt-get update
-          sudo apt-get install --no-install-recommends -y \
-            pkg-config libfontconfig-dev libglib2.0-dev libssl-dev libwayland-dev \
-            libx11-xcb-dev libxkbcommon-x11-dev libvulkan1 libzstd-dev \
-            mesa-vulkan-drivers xvfb xauth x11-utils openbox xdotool imagemagick \
-            dbus-x11 fonts-dejavu-core
+        uses: ./.github/actions/linux-native-prerequisites
       - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: |
