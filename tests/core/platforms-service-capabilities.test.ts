@@ -43,6 +43,7 @@ const advertised: Record<'linux' | 'macos' | 'windows', Capability[]> = {
     'drag_drop_files_v1',
     'app_menu_v1',
     'clipboard_text_v1',
+    'global_shortcuts_v1',
   ],
   windows: [
     ...everywhere,
@@ -90,6 +91,7 @@ const filesBackend =
 const processBackend = process.platform === 'win32' ? 'windows_job' : 'posix'
 const macOS = process.platform === 'darwin'
 const clipboardBackend = macOS ? 'appkit' : 'x11'
+const shortcutsBackend = macOS ? 'carbon' : 'x11'
 
 function availability(record: Readonly<Record<string, unknown>>): unknown {
   return record['availability']
@@ -113,7 +115,10 @@ describe('public service records for each platform advertisement', () => {
       scope: 'owned_window',
       backend: clipboardBackend,
     })
-    expect(services.globalShortcuts).toMatchObject({ permission: 'allow', backend: 'x11' })
+    expect(services.globalShortcuts).toMatchObject({
+      permission: 'allow',
+      backend: shortcutsBackend,
+    })
     expect(services.notifications).toMatchObject({ permission: 'allow', backend: 'freedesktop' })
     expect(services.fileDialogs).toMatchObject({
       permission: 'allow',
@@ -160,7 +165,7 @@ describe('public service records for each platform advertisement', () => {
     })
   })
 
-  test('macOS adds display details and changes and keeps grants, processes, drops and clipboard text', () => {
+  test('macOS adds display details and changes and keeps grants, processes, drops, clipboard text and shortcuts', () => {
     const services = serviceCapabilities(allowed, advertised.macos)
     expect(services.windowDisplay).toMatchObject({
       details: 'available',
@@ -176,7 +181,13 @@ describe('public service records for each platform advertisement', () => {
       scope: 'owned_window',
       backend: clipboardBackend,
     })
-    for (const record of [services.globalShortcuts, services.notifications, services.fileDialogs])
+    expect(services.globalShortcuts).toEqual({
+      availability: 'available',
+      permission: 'allow',
+      scope: 'owned_window',
+      backend: shortcutsBackend,
+    })
+    for (const record of [services.notifications, services.fileDialogs])
       expect<unknown>(record).toEqual(unsupported)
   })
 

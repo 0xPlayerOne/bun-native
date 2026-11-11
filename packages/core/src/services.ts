@@ -87,7 +87,8 @@ export interface ServiceCapabilities {
         availability: 'available'
         permission: 'allow' | 'deny'
         scope: 'owned_window'
-        backend: 'x11'
+        /** X11 passive key grabs on Linux; exclusive Carbon hot keys on macOS. */
+        backend: 'x11' | 'carbon'
       }>
     | Readonly<{ availability: 'unavailable'; reason: 'unsupported_platform' }>
   /**
@@ -266,7 +267,7 @@ export function serviceCapabilities(
           availability: 'available',
           permission: policy.global_shortcuts ? 'allow' : 'deny',
           scope: 'owned_window',
-          backend: 'x11',
+          backend: process.platform === 'darwin' ? 'carbon' : 'x11',
         })
       : Object.freeze({ availability: 'unavailable', reason: 'unsupported_platform' }),
     contextMenus: capabilities.includes('context_menus_v1')

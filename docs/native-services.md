@@ -566,8 +566,8 @@ read fails explicitly; it does not return a possibly mixed snapshot.
 
 `window.registerGlobalShortcut(options, listener)` registers an owned OS-wide
 combination under the separate `globalShortcuts` grant. The optional
-`global_shortcuts_v1` feature is advertised only for a local Linux X11 session.
-The worker holds passive grabs on the root window through its own X
+`global_shortcuts_v1` feature is advertised for a local Linux X11 session and on
+macOS ([below](#macos-carbon-hot-keys)). On X11 the worker holds passive grabs on the root window through its own X
 connection, resolving keycodes and the Alt, Super and Num Lock bits from the
 server's live keyboard and modifier maps. Each combination is grabbed with
 every Caps Lock/Num Lock state, so lock state never changes the shortcut.
@@ -597,8 +597,39 @@ focused, no activation for the unmodified key, Num Lock independence, a real
 ([`shortcut-peer`](../native/gpui-host/examples/shortcut-peer.rs)), `conflict`
 for both a foreign and an in-session holder, and an independent client
 successfully grabbing the same combination after unregistration, owner close
-and shutdown. macOS, Windows, Wayland and remote X11 remain unavailable. See
+and shutdown. Windows, Wayland and remote X11 remain unavailable. See
 [ADR 0008](decisions/0008-native-global-shortcuts.md).
+
+### macOS Carbon hot keys
+
+On macOS each registration is a Carbon `RegisterEventHotKey` with
+`kEventHotKeyExclusive`, made on GPUI's main thread; the record reports backend
+`carbon`. It needs no Accessibility or Input Monitoring permission and sees
+only its own combinations. `platform` is Command and `alt` is Option. A letter
+or digit names the main-block key that types it, unshifted, in the current
+keyboard layout (`UCKeyTranslate`); keypad keys are never chosen, and a layout
+without such a key is `service_unavailable`. `f1`-`f12` are fixed key codes. A
+combination another process holds exclusively is refused with
+`eventHotKeyExistsErr`, reported as `conflict`. Registration and unregistration
+are synchronous Event Manager calls, so a registered response means the OS holds
+the combination and an unregistered response means it released it. The main run
+loop dispatches presses to one handler that only queues the registration's
+number; the registry decides delivery, so a press for a released registration is
+never published. Owner close and shutdown unregister at once. The layout is read
+at registration: a later layout change does not move an existing registration.
+
+The hosted macOS step runs
+[`global-shortcuts-macos.ts`](../tests/native/global-shortcuts-macos.ts) in
+development mode with an independent oracle,
+[`macos-hot-key-oracle.m`](../tests/native/macos-hot-key-oracle.m), that does
+not link GPUI. It requires default denial with the combination still free at
+the Event Manager, delivery of a combination posted through
+`CGEventPost(kCGHIDEventTap)` while Finder is frontmost, the oracle's own
+exclusive registration refused while the host holds the combination, `conflict`
+for both an in-session duplicate and a combination the oracle holds, and the
+combination free again after unregistration, owner close and shutdown. It is
+pending its first hosted run; there is no AOT macOS run, and its key codes
+assume the runner's U.S. layout.
 
 ## Notifications
 
@@ -1414,7 +1445,7 @@ already exists. The linked follow-ups belong to
 | ----------------- | ------------------------------------------------------------- | --------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------ | ---------------------------------------------------------------------------------------- | ------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Window/display    | Existing owned open/close; permission-gated `displaySnapshot` | Core/Solid/React dev+AOT verified with release host; X11 semantics fixture dev+AOT verified locally | Snapshot dev+AOT verified on headless sway (scale 1 and 2)         | Service execution unverified                                                             | Service execution unverified                                 | X11 semantics qualified; change events, work area, identity and mixed DPI unavailable on X11. Other platforms and placement remain. [#299](https://github.com/0xPlayerOne/bun-native/issues/299).                                                                                        |
 | Clipboard text    | `readClipboardText` / `writeClipboardText`; separate grants   | X11 dev+AOT verified with release host                                                              | Unavailable (`unsupported_platform`)                               | `NSPasteboard` plain text; hosted CI dev only (pbcopy/pbpaste oracle), pending first run | Unavailable                                                  | Additional platforms/formats and extended lifecycle coverage. [#300](https://github.com/0xPlayerOne/bun-native/issues/300).                                                                                                                                                              |
-| Global shortcuts  | `registerGlobalShortcut`; `globalShortcuts` grant             | X11 dev+AOT verified with release host                                                              | Unavailable (`unsupported_platform`)                               | Unavailable                                                                              | Unavailable                                                  | macOS/Windows backends, Wayland portal design and keyboard-map change tracking. [#301](https://github.com/0xPlayerOne/bun-native/issues/301).                                                                                                                                            |
+| Global shortcuts  | `registerGlobalShortcut`; `globalShortcuts` grant             | X11 dev+AOT verified with release host                                                              | Unavailable (`unsupported_platform`)                               | Carbon hot keys; hosted CI dev only (Event Manager oracle), pending first run            | Unavailable                                                  | macOS/Windows backends, Wayland portal design and keyboard-map change tracking. [#301](https://github.com/0xPlayerOne/bun-native/issues/301).                                                                                                                                            |
 | Application menu  | `setMenuBar` / `clearMenuBar`; `appMenu` grant                | Unavailable (GPUI stores menus only)                                                                | Unavailable (GPUI stores menus only)                               | AppKit `NSMenu` bar; hosted CI only (AX oracle)                                          | Unavailable                                                  | Dock menus, dynamic validation, Linux/Windows menu bars drawn by the application. [#239](https://github.com/0xPlayerOne/bun-native/issues/239).                                                                                                                                          |
 | Context menus     | `window.showContextMenu`; no grant                            | Unavailable                                                                                         | Unavailable                                                        | AppKit `NSMenu` pop-up; hosted CI only (AX oracle)                                       | `TrackPopupMenuEx`; hosted CI only (UIA oracle)              | Dock menu, dynamic validation, icons, element-relative positioning. [#239](https://github.com/0xPlayerOne/bun-native/issues/239).                                                                                                                                                        |
 | File dialogs      | `showOpenDialog` / `showSaveDialog`; `fileDialogs` grant      | xdg-desktop-portal (GTK) dev+AOT verified                                                           | Portal (GTK) opens unparented; abort and compositor close verified | Unavailable                                                                              | Unavailable                                                  | macOS/Windows panels, Wayland parenting, sandboxed document-portal paths and explicit file-grant conversion. [#239](https://github.com/0xPlayerOne/bun-native/issues/239).                                                                                                               |

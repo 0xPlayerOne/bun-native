@@ -585,6 +585,22 @@ jobs:
           $env:BUN_NATIVE_CLIPBOARD_EVIDENCE = $evidence
           bun tests/native/clipboard-macos.ts 2>&1 | Tee-Object -FilePath (Join-Path $evidence 'run.log')
           if ($LASTEXITCODE -ne 0) { throw 'macOS pasteboard clipboard text was not verified' }
+      - name: macOS global shortcuts through Carbon hot keys (independent Event Manager oracle)
+        if: ${{ matrix.shard == 2 && runner.os == 'macOS' && !cancelled() && steps.native-build.outcome == 'success' }}
+        timeout-minutes: 4
+        run: |
+          $oracle = Join-Path $env:NATIVE_EVIDENCE 'macos-hot-key-oracle'
+          xcrun clang -fobjc-arc -Wall -Wextra -Werror -framework AppKit -framework ApplicationServices -framework Carbon `
+            tests/native/macos-hot-key-oracle.m -o $oracle
+          if ($LASTEXITCODE -ne 0) { throw 'The independent hot key oracle did not compile' }
+          $trust = & $oracle trusted | ConvertFrom-Json
+          if (-not $trust.trusted) { throw 'The runner does not let the hot key oracle post events' }
+          $evidence = Join-Path $env:NATIVE_EVIDENCE 'global-shortcuts-macos'
+          New-Item -ItemType Directory $evidence | Out-Null
+          $env:BUN_NATIVE_SHORTCUT_EVIDENCE = $evidence
+          $env:BUN_NATIVE_HOT_KEY_ORACLE = $oracle
+          bun tests/native/global-shortcuts-macos.ts 2>&1 | Tee-Object -FilePath (Join-Path $evidence 'run.log')
+          if ($LASTEXITCODE -ne 0) { throw 'macOS global shortcuts were not verified' }
       - name: Development and AOT native fault containment
         if: ${{ matrix.shard == 2 && (runner.os != 'Linux' && !cancelled() && steps.native-build.outcome == 'success') }}
         timeout-minutes: 5

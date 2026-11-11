@@ -52,7 +52,10 @@ pub(crate) mod processes;
 pub(crate) mod processes;
 #[cfg(target_os = "linux")]
 pub(crate) mod shortcuts;
-#[cfg(not(target_os = "linux"))]
+#[cfg(target_os = "macos")]
+#[path = "services/shortcuts_macos.rs"]
+pub(crate) mod shortcuts;
+#[cfg(not(any(target_os = "linux", target_os = "macos")))]
 #[path = "services/shortcuts_unavailable.rs"]
 pub(crate) mod shortcuts;
 #[cfg(any(windows, target_os = "macos", test))]
