@@ -632,6 +632,21 @@ impl Session {
                 );
                 self.last_window_id = window_id.get();
                 self.last_node_id = root_id.get();
+                // The pinned GPUI's AccessKit adapter subclasses the window's
+                // content view, but AppKit asks the first responder (GPUI's view,
+                // a subview of it) for the focused element, and the adapter
+                // starts out believing the window is unfocused although GPUI
+                // already made it key (#241); see bun_native_macos_surface.
+                #[cfg(target_os = "macos")]
+                let _ = handle.update(cx, |_, window, _| {
+                    let native = raw_window_handle::HasWindowHandle::window_handle(window)
+                        .expect("an owned macOS GPUI window exposes its native view");
+                    if let Err(error) = bun_native_macos_surface::focus_route::route(native) {
+                        eprintln!("Bun Native accessibility focus routing unavailable: {error}");
+                    }
+                    bun_native_macos_surface::key_status::track(native)
+                        .expect("GPUI opens its windows on the AppKit owner thread");
+                });
                 cx.activate(true);
                 self.evidence.startup("activation_returned", id, window_id);
                 self.events.send(

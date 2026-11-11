@@ -1,10 +1,16 @@
 //! Private borrowed macOS surface access, without timers, input posting or device selection,
 //! the window-owned alert sheets of OS message dialogs ([`alert`]) and OS context
-//! menus ([`context_menu`]).
+//! menus ([`context_menu`]), and the two pieces that let assistive technology
+//! follow keyboard focus into a GPUI window's AccessKit tree: routing AppKit's
+//! focus and hit-test queries to the adapter ([`focus_route`]) and the repeated
+//! key-window notification that keeps the adapter's focus state current
+//! ([`key_status`]).
 #![cfg(target_os = "macos")]
 
 pub mod alert;
 pub mod context_menu;
+pub mod focus_route;
+pub mod key_status;
 
 use objc2::MainThreadMarker;
 use objc2::rc::Retained;
@@ -23,6 +29,7 @@ pub enum SurfaceError {
     MissingDevice,
     MissingWindow,
     InvalidAlert,
+    MissingAccessibility,
 }
 
 impl fmt::Display for SurfaceError {
@@ -35,6 +42,9 @@ impl fmt::Display for SurfaceError {
             Self::MissingDevice => "native Metal layer has no assigned device",
             Self::MissingWindow => "native view is not in a window",
             Self::InvalidAlert => "alert needs 1 to 4 buttons and at most one button per key",
+            Self::MissingAccessibility => {
+                "native view or window class already defines the accessibility focus methods"
+            }
         })
     }
 }
