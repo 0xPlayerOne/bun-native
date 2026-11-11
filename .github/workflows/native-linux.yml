@@ -17,6 +17,12 @@ jobs:
     if: vars.CI_BILLING_PAUSED == 'false' && (github.event_name != 'pull_request' || github.event.pull_request.draft == false)
     runs-on: ubuntu-24.04
     timeout-minutes: 60
+    # id-token and attestations sign the host archive's keyless build provenance
+    # on main pushes only (#249); every caller must grant both.
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
     # The X11/Wayland suites were one serial ~18 min job. Each shard builds the
     # same reproducible release host from the shared dependency cache and runs
     # its own suites (`if: matrix.shard == N`); balance by step time when adding
@@ -1144,6 +1150,7 @@ jobs:
           bun tests/native/layout-style-compare.ts "${reports[@]}" |
             tee "$NATIVE_EVIDENCE/diagnostics-layout-style-comparison/report.json"
       - name: Retain unsigned native host for reproducibility
+        id: host-archive
         if: ${{ matrix.shard == 1 && (!cancelled() && steps.native-build.outcome == 'success') }}
         run: |
           sha256sum --check "$NATIVE_EVIDENCE/binary-sha256.txt"
@@ -1160,6 +1167,39 @@ jobs:
           bun scripts/native/host-archive.ts --output "$copy/repacked.tar.gz" "$copy/bun-native-host"
           cmp "$archive" "$copy/repacked.tar.gz"
           sha256sum "$archive" > "$archive.sha256"
+      # Keyless Sigstore build provenance for the Linux host archive (#249, #223).
+      # The job's GitHub OIDC token gets a short-lived Fulcio certificate naming
+      # this workflow, ref and commit; the signature is logged in Rekor. No key or
+      # secret exists. Main pushes only: pull-request builds are not release candidates.
+      - name: Attest the Linux host archive's build provenance (#249)
+        id: host-provenance
+        if: ${{ matrix.shard == 1 && github.event_name == 'push' && github.ref == 'refs/heads/main' && steps.host-archive.outcome == 'success' }}
+        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        with:
+          subject-path: ${{ runner.temp }}/native-evidence/unsigned-native-host.tar.gz
+          create-storage-record: false
+      - name: Verify the Linux host archive's provenance as a consumer would (#249)
+        if: ${{ steps.host-provenance.outcome == 'success' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BUNDLE: ${{ steps.host-provenance.outputs.bundle-path }}
+        run: |
+          set -o pipefail
+          mkdir "$RUNNER_TEMP/host-provenance"
+          cp "$NATIVE_EVIDENCE/unsigned-native-host.tar.gz" "$NATIVE_EVIDENCE/unsigned-native-host.tar.gz.sha256" "$RUNNER_TEMP/host-provenance/"
+          cp "$BUNDLE" "$RUNNER_TEMP/host-provenance/unsigned-native-host.sigstore.json"
+          bun scripts/quality/linux-provenance.ts verify "$RUNNER_TEMP/host-provenance/unsigned-native-host.tar.gz" \
+            --repo "$GITHUB_REPOSITORY" --signer-workflow .github/workflows/native-linux.yml \
+            --source-ref "$GITHUB_REF" --source-digest "$GITHUB_SHA" |
+            tee "$RUNNER_TEMP/host-provenance/verification.json"
+      - name: Retain the attested Linux host archive for the release (#249)
+        if: ${{ steps.host-provenance.outcome == 'success' }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: linux-host-provenance-${{ runner.arch }}
+          path: ${{ runner.temp }}/host-provenance/
+          if-no-files-found: error
+          retention-days: 30
       - name: Retain native evidence even after failure
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: ${{ !cancelled() }}
