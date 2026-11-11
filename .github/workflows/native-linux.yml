@@ -280,11 +280,13 @@ jobs:
               test -s "$evidence/result.json"
             done
           done
-      - name: Development and AOT X11 input method composition through IBus Hangul
+      - name: Development and AOT X11 input method composition, caret position and Hanja candidates through IBus Hangul
         if: matrix.shard == 2
         timeout-minutes: 4
         env:
           BUN_NATIVE_HOST: ${{ github.workspace }}/target/release/bun-native-host
+          # The system Python carries PyGObject and the IBus typelib (gir1.2-ibus-1.0, an ibus dependency).
+          BUN_NATIVE_IBUS_PYTHON: /usr/bin/python3
         run: |
           for mode in development aot; do
             command=(bun tests/native/ime.ts)
