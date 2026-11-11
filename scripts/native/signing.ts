@@ -224,8 +224,11 @@ export function verifySignature(
   const check = [options.signtool ?? 'signtool', 'verify', '/pa', '/v', path]
   const verified = runner(check)
   if (verified.exitCode !== 0) fail(check, verified, 'Signature verification')
-  const details = parseSigntoolVerify(verified.stdout)
-  if (details.authority.length === 0) throw new Error(`${path} names no signing certificate`)
+  // signtool's verbose chain can reach either stream; parse both and keep them on failure.
+  const output = `${verified.stdout}\n${verified.stderr}`
+  const details = parseSigntoolVerify(output)
+  if (details.authority.length === 0)
+    throw new Error(`${path} names no signing certificate\n${output.trim()}`)
   if (options.requireTimestamp && !details.timestamp)
     throw new Error(`${path} has no RFC 3161 timestamp`)
   return { file: path, kind: 'windows-authenticode', ...details }

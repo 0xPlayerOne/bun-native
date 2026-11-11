@@ -11,6 +11,7 @@ import {
   nativeKind,
   parseCodesignDisplay,
   parseSigntoolVerify,
+  verifySignature,
   retry,
   signBuild,
   signBundle,
@@ -406,6 +407,24 @@ describe('parsing tool output', () => {
       timestamp: 'Wed Nov 11 10:00:00 2026',
     })
     expect(parseSigntoolVerify('SignTool Error: No signature found.')).toEqual({ authority: [] })
+  })
+
+  test('a signtool verification without a chain fails with the raw output', () => {
+    expect(() =>
+      verifySignature('win32', 'C:\\work\\a.exe', () => ({
+        exitCode: 0,
+        stdout: 'Successfully verified: C:\\work\\a.exe',
+        stderr: 'odd',
+      }))
+    ).toThrow(/names no signing certificate\nSuccessfully verified: C:\\work\\a\.exe\nodd/)
+    const split = signtoolVerify.split('Signing Certificate Chain:')
+    expect(
+      verifySignature('win32', 'C:\\work\\a.exe', () => ({
+        exitCode: 0,
+        stdout: split[0]!,
+        stderr: `Signing Certificate Chain:${split[1]}`,
+      })).authority[0]
+    ).toBe('Example Publisher')
   })
 })
 
