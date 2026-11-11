@@ -382,9 +382,15 @@ export async function runWorkload(adapter: 'solid' | 'core' | 'react', mount: Mo
       }
       await Bun.sleep(1)
       Bun.gc(true)
-      const firstReachable = probes.flatMap((probe, index) =>
-        probe.deref() === undefined ? [] : [index]
-      )
+      // deref() keeps a live target until the host clears kept objects, so the
+      // first observation can itself retain what the asserted second
+      // checkpoint measures (#629). A manual dispatch can omit it to test that.
+      const firstCheckpoint =
+        process.env['BUN_NATIVE_FIRST_CHECKPOINT'] === 'skip' ? 'skip' : 'deref'
+      const firstReachable =
+        firstCheckpoint === 'skip'
+          ? null
+          : probes.flatMap((probe, index) => (probe.deref() === undefined ? [] : [index]))
       // Exactly one JS/core queue fence after acknowledged disposal. It sends no
       // native command and is outside timed samples; never repeat until zero.
       await window.batch(() => undefined)
@@ -399,6 +405,7 @@ export async function runWorkload(adapter: 'solid' | 'core' | 'react', mount: Mo
           ? ['container handle', 'label handle', 'listener']
           : ['render root', 'content node', 'listener']
       result['retentionObservation'] = {
+        firstCheckpoint,
         firstReachable,
         stillReachable,
         probesPerMount: 3,
