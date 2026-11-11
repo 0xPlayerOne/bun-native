@@ -49,12 +49,17 @@ runs:
         cat "$lock"
         printf 'key=native-apt-%s-%s-%s\n' "$RUNNER_OS" "$RUNNER_ARCH" \
           "$(sha256sum "$lock" | cut -d' ' -f1)" >> "$GITHUB_OUTPUT"
+    # When the resolved set changes (a new runner image or index), the newest
+    # earlier set is restored instead: archives whose bytes still match the new
+    # index hashes are reused, so only changed packages need the mirror (jobs
+    # 130651851023 and 130651957456 downloaded all 179 during a mirror outage).
     - name: Restore exact prerequisite archives
       id: apt-cache
       uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
       with:
         path: /var/cache/native-apt-archives
         key: ${{ steps.apt-archives.outputs.key }}
+        restore-keys: native-apt-${{ runner.os }}-${{ runner.arch }}-
     - name: Install native build and isolated X11 prerequisites
       shell: bash
       run: |
@@ -63,6 +68,11 @@ runs:
         cached=/var/cache/native-apt-archives
         mkdir -p "$cached"
         reused=0
+        # Drop restored archives that the current resolution does not name.
+        for file in "$cached"/*.deb; do
+          [[ -e $file ]] || continue
+          grep -qF "  ${file##*/}" "$lock" || rm -f "$file"
+        done
         while read -r hash name; do
           [[ -f $cached/$name ]] || continue
           if [[ $(sha256sum "$cached/$name" | cut -d' ' -f1) == "$hash" ]]; then
