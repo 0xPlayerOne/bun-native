@@ -790,13 +790,21 @@ jobs:
             $env:BUN_NATIVE_OVERLAY_MODE = $mode
             $env:BUN_NATIVE_EVIDENCE_LOG = Join-Path $evidence 'native-evidence.jsonl'
             $env:BUN_NATIVE_EVIDENCE_NONCE = python3 -c 'import secrets; print(secrets.token_hex(16))'
+            # Record the Metal renderer's dropped-frame errors beside the
+            # layout records, to tell an unpainted frame from a dropped one.
+            $env:BUN_NATIVE_STARTUP_LOG = '1'
+            $env:BUN_NATIVE_STARTUP_TRACE = '1'
             if ($mode -eq 'development') {
               bun tests/native/overlays.ts 2>&1 | Tee-Object -FilePath (Join-Path $evidence 'run.log')
             } else {
               & (Join-Path $package $manifest.application.file) 2>&1 |
                 Tee-Object -FilePath (Join-Path $evidence 'run.log')
             }
-            if ($LASTEXITCODE -ne 0) { throw "macOS $mode overlays were not verified" }
+            $overlaysExit = $LASTEXITCODE
+            Remove-Item Env:BUN_NATIVE_STARTUP_LOG, Env:BUN_NATIVE_STARTUP_TRACE
+            Select-String -Path $env:BUN_NATIVE_EVIDENCE_LOG -SimpleMatch '"gpui_apple::metal_renderer"' |
+              ForEach-Object { Write-Host "Metal renderer ($mode): $($_.Line)" }
+            if ($overlaysExit -ne 0) { throw "macOS $mode overlays were not verified" }
             $report = Get-Content -Raw (Join-Path $evidence 'overlays.json') | ConvertFrom-Json
             if ($report.platform -ne 'darwin' -or $report.mode -ne $mode) {
               throw "macOS $mode overlay evidence does not name its platform and mode"
