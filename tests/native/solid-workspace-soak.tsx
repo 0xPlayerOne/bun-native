@@ -16,12 +16,12 @@ import {
 } from '../../examples/solid-workspace/model.ts'
 import {
   distribution,
+  openOsInput,
   ownedHost,
   processSample,
   sessionConfig,
   SessionRecorder,
   waitUntil,
-  X11Input,
 } from './workspace-session.ts'
 
 /**
@@ -150,7 +150,8 @@ try {
   await root.ready
   await root.flush()
   hostPid = native ? ownedHost(executable) : undefined
-  if (native && platform() === 'linux') assert(hostPid, 'The owned native host must be observable')
+  if (native && (platform() === 'linux' || platform() === 'darwin'))
+    assert(hostPid, 'The owned native host must be observable')
   const workspace = controller!
   assert(workspace, 'The component must expose its controller to this fixture')
   const initial = workspace.state
@@ -160,7 +161,9 @@ try {
     application: app.diagnostics,
   }
 
-  const input = session?.osInput ? await X11Input.open(TITLE, hostPid!) : undefined
+  const input = session?.osInput
+    ? await openOsInput(TITLE, hostPid!, executable, [1120, 760])
+    : undefined
 
   async function act(action: () => void) {
     const begun = performance.now()
@@ -352,7 +355,8 @@ try {
   if (hostPid !== undefined) {
     let exited = false
     try {
-      readFileSync(`/proc/${hostPid}/status`)
+      if (platform() === 'darwin') process.kill(hostPid, 0)
+      else readFileSync(`/proc/${hostPid}/status`)
     } catch {
       exited = true
     }

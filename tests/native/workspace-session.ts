@@ -1,6 +1,6 @@
-import { appendFileSync, readdirSync, readFileSync, realpathSync } from 'node:fs'
+import { appendFileSync, existsSync, readdirSync, readFileSync, realpathSync } from 'node:fs'
 import { loadavg, platform } from 'node:os'
-import { join } from 'node:path'
+import { isAbsolute, join } from 'node:path'
 
 /**
  * Opt-in long-session mode shared by the Solid and React workspace soaks
@@ -12,9 +12,12 @@ import { join } from 'node:path'
  *   after each interval (default 30).
  * - BUN_NATIVE_SOAK_PACE_MS: wall time before each streamed update, so a run
  *   can follow the app's real reply/plan interval (default 0).
- * - BUN_NATIVE_SOAK_OS_INPUT=1 (Linux X11 only): each round types one prompt
- *   or task title into the focused composer with xdotool and submits it with
- *   Return, and sends wheel notches over the window.
+ * - BUN_NATIVE_SOAK_OS_INPUT=1: each round types one prompt or task title
+ *   into the focused composer and submits it with Return, and sends wheel
+ *   notches over a scroll container. Linux uses XTest (xdotool) on a private
+ *   X11 display; macOS uses the bounded CoreGraphics helper named by
+ *   BUN_NATIVE_PLATFORM_HELPER (scripts/quality/native-platform-macos.m),
+ *   which verifies the owned window and foreground before every post.
  *
  * Samples are appended to samples.jsonl as they are taken, so a failed run
  * keeps every sample it reached.
@@ -40,8 +43,12 @@ export function sessionConfig(native: boolean): SessionConfig | undefined {
   if (seconds === 0) return undefined
   if (!native) throw new Error('The long-session mode needs the real native host')
   const osInput = process.env['BUN_NATIVE_SOAK_OS_INPUT'] === '1'
-  if (osInput && (platform() !== 'linux' || !process.env['DISPLAY']))
-    throw new Error('Long-session OS input needs a private Linux X11 display')
+  if (osInput && platform() === 'darwin') {
+    const helper = process.env['BUN_NATIVE_PLATFORM_HELPER']
+    if (!helper || !isAbsolute(helper) || !existsSync(helper))
+      throw new Error('macOS long-session input needs an absolute BUN_NATIVE_PLATFORM_HELPER')
+  } else if (osInput && (platform() !== 'linux' || !process.env['DISPLAY']))
+    throw new Error('Long-session OS input needs a private Linux X11 display or macOS')
   return {
     seconds,
     sampleSeconds: integer('BUN_NATIVE_SOAK_SAMPLE_SECONDS', 30, 1, 600),
@@ -52,8 +59,18 @@ export function sessionConfig(native: boolean): SessionConfig | undefined {
 
 /** Find the owned native host among this process's children by executable. */
 export function ownedHost(executable: string): number | undefined {
-  if (platform() !== 'linux') return undefined
   const expected = realpathSync(executable)
+  if (platform() === 'darwin') {
+    const children = Bun.spawnSync(['pgrep', '-P', String(process.pid)], { stdout: 'pipe' })
+    for (const child of children.stdout.toString().split(/\s+/).filter(Boolean)) {
+      const command = Bun.spawnSync(['ps', '-o', 'comm=', '-p', child], { stdout: 'pipe' })
+      try {
+        if (realpathSync(command.stdout.toString().trim()) === expected) return Number(child)
+      } catch {}
+    }
+    return undefined
+  }
+  if (platform() !== 'linux') return undefined
   for (const task of readdirSync(`/proc/${process.pid}/task`)) {
     let children: string
     try {
@@ -72,16 +89,56 @@ export function ownedHost(executable: string): number | undefined {
 
 export interface ProcessSample {
   readonly rssKiB: number
-  readonly hwmKiB: number
+  /** Peak RSS; Linux only (null on macOS). */
+  readonly hwmKiB: number | null
   readonly threads: number
   readonly fds: number
-  /** utime + stime in clock ticks. */
+  /** User plus system CPU time in 1/100 s (Linux USER_HZ clock ticks). */
   readonly cpuTicks: number
 }
 
-/** /proc observations of one live process; null when it is not observable. */
+/** Seconds from a macOS `ps -o time=` field, printed as [[dd-]hh:]mm:ss.cc. */
+export function psCpuSeconds(time: string): number {
+  const parts = time.trim().replace('-', ':').split(':')
+  if (parts.length < 2 || parts.length > 4 || parts.some((part) => !/^\d+(\.\d+)?$/.test(part)))
+    throw new Error(`Unexpected ps CPU time: ${time}`)
+  const scales = [1, 60, 3600, 86_400]
+  return parts.reduce(
+    (total, part, index) => total + Number(part) * scales[parts.length - 1 - index]!,
+    0
+  )
+}
+
+function macProcessSample(pid: number): ProcessSample | null {
+  const text = (command: string[]) =>
+    Bun.spawnSync(command, { stdout: 'pipe', stderr: 'pipe' }).stdout.toString()
+  const [rss, time] = text(['ps', '-o', 'rss=,time=', '-p', String(pid)])
+    .trim()
+    .split(/\s+/)
+  if (!rss || !time) return null
+  const seconds = psCpuSeconds(time)
+  // ps -M prints a header and one line per thread.
+  const threads =
+    text(['ps', '-M', '-p', String(pid)])
+      .trim()
+      .split('\n').length - 1
+  const fds = text(['lsof', '-n', '-P', '-p', String(pid), '-F', 'f'])
+    .split('\n')
+    .filter((line) => /^f\d+$/.test(line)).length
+  return {
+    rssKiB: Number(rss),
+    hwmKiB: null,
+    threads,
+    fds,
+    cpuTicks: Math.round(seconds * 100),
+  }
+}
+
+/** /proc (Linux) or ps/lsof (macOS) observations; null when not observable. */
 export function processSample(pid: number | undefined): ProcessSample | null {
-  if (pid === undefined || platform() !== 'linux') return null
+  if (pid === undefined) return null
+  if (platform() === 'darwin') return macProcessSample(pid)
+  if (platform() !== 'linux') return null
   try {
     const status = readFileSync(`/proc/${pid}/status`, 'utf8')
     const field = (name: string) => Number(new RegExp(`^${name}:\\s+(\\d+)`, 'm').exec(status)![1])
@@ -165,11 +222,32 @@ function run(command: string[], timeoutMs = 10_000): string {
   return result.stdout.toString().trim()
 }
 
+export interface OsInput {
+  activate(): void
+  type(text: string): void
+  key(name: 'Return'): void
+  /** Wheel notches at a window-relative point: button 5 scrolls down, 4 up. */
+  wheel(x: number, y: number, button: 4 | 5, notches: number): void
+  readonly counts: { typedCharacters: number; keys: number; wheelNotches: number }
+}
+
+/** The platform's real OS input to the owned host window. */
+export async function openOsInput(
+  title: string,
+  hostPid: number,
+  host: string,
+  viewport: readonly [number, number]
+): Promise<OsInput> {
+  return platform() === 'darwin'
+    ? await MacInput.open(title, host, viewport)
+    : await X11Input.open(title, hostPid)
+}
+
 /**
  * Real X11 keyboard and wheel input to the owned host window through XTest
  * (xdotool), refusing any window another process owns.
  */
-export class X11Input {
+class X11Input implements OsInput {
   readonly window: string
   typedCharacters = 0
   keys = 0
@@ -215,7 +293,7 @@ export class X11Input {
     this.typedCharacters += text.length
   }
 
-  key(name: string) {
+  key(name: 'Return') {
     this.requireFocus()
     run(['xdotool', 'key', '--clearmodifiers', name])
     this.keys++
@@ -256,5 +334,124 @@ export async function waitUntil(predicate: () => boolean, description: string, t
   while (!predicate()) {
     if (performance.now() > until) throw new Error(`Timed out waiting for ${description}`)
     await Bun.sleep(2)
+  }
+}
+
+/**
+ * CoreGraphics key and wheel events through the bounded macOS helper, which
+ * re-observes the owned application, host and window, brings the host to the
+ * foreground and refuses held modifiers before every post. The X11 wheel
+ * buttons map to three-line wheel events, as in native-workspace-macos.py.
+ */
+class MacInput implements OsInput {
+  readonly #helper: string
+  readonly #host: string
+  readonly #title: string
+  readonly #viewport: readonly [number, number]
+  #state: Record<string, unknown>
+  typedCharacters = 0
+  keys = 0
+  wheelNotches = 0
+
+  private constructor(
+    helper: string,
+    host: string,
+    title: string,
+    viewport: readonly [number, number],
+    state: Record<string, unknown>
+  ) {
+    this.#helper = helper
+    this.#host = host
+    this.#title = title
+    this.#viewport = viewport
+    this.#state = state
+  }
+
+  static #call(helper: string, request: Record<string, unknown>, timeoutMs: number) {
+    const result = Bun.spawnSync([helper, JSON.stringify(request)], {
+      stdout: 'pipe',
+      stderr: 'pipe',
+      timeout: timeoutMs,
+    })
+    let value: { status?: string; error?: string } & Record<string, unknown>
+    try {
+      value = JSON.parse(result.stdout.toString())
+    } catch {
+      throw new Error(`The macOS input helper returned no JSON (exit ${result.exitCode})`)
+    }
+    if (value.status === 'unsupported')
+      throw new Error(`macOS OS input is unavailable: ${value.error}`)
+    if (result.exitCode !== 0 || (value.status !== 'ready' && value.status !== 'not-ready'))
+      throw new Error(`The macOS input helper failed: ${value.error ?? result.exitCode}`)
+    return value
+  }
+
+  static async open(title: string, host: string, viewport: readonly [number, number]) {
+    const helper = process.env['BUN_NATIVE_PLATFORM_HELPER']!
+    const request = { action: 'observe', app_pid: process.pid, host: realpathSync(host), title }
+    const until = performance.now() + 10_000
+    while (performance.now() < until) {
+      const state = MacInput.#call(helper, request, 5_000)
+      if (state.status === 'ready') {
+        const input = new MacInput(helper, request.host, title, viewport, state)
+        input.activate()
+        return input
+      }
+      await Bun.sleep(50)
+    }
+    throw new Error(`No onscreen macOS window titled ${title} owned by this application`)
+  }
+
+  #input(action: string, extra: Record<string, unknown>, timeoutMs = 5_000) {
+    MacInput.#call(
+      this.#helper,
+      {
+        action,
+        app_pid: process.pid,
+        host: this.#host,
+        title: this.#title,
+        expected: this.#state,
+        ...extra,
+      },
+      timeoutMs
+    )
+  }
+
+  activate() {
+    this.#input('activate', {})
+  }
+
+  type(text: string) {
+    this.#input('type', { text, delayMs: 5 }, 5_000 + text.length * 20)
+    this.typedCharacters += text.length
+  }
+
+  key(name: 'Return') {
+    this.#input('key', { key: name, modifiers: [] })
+    this.keys++
+  }
+
+  wheel(x: number, y: number, button: 4 | 5, notches: number) {
+    this.#input(
+      'scroll',
+      {
+        x,
+        y,
+        viewport: [...this.#viewport],
+        lines: button === 4 ? 3 : -3,
+        repeat: notches,
+        delayMs: 10,
+      },
+      5_000 + notches * 20
+    )
+    this.wheelNotches += notches
+  }
+
+  get counts() {
+    return {
+      typedCharacters: this.typedCharacters,
+      keys: this.keys,
+      wheelNotches: this.wheelNotches,
+    }
   }
 }

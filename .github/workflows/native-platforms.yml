@@ -1008,12 +1008,14 @@ jobs:
             }
           }
           if ($failures.Count -gt 0) { throw ($failures -join '; ') }
-      - name: Development and AOT macOS Solid and React workspace references (#248, #250)
+      - name: Development and AOT macOS Solid and React workspace references and long sessions (#248, #250)
         if: ${{ matrix.shard == 1 && (runner.os == 'macOS' && !cancelled() && steps.native-build.outcome == 'success') }}
-        timeout-minutes: 12
+        timeout-minutes: 25
         run: |
           # The Linux workspace scenarios, unchanged, driven by CoreGraphics
-          # pointer, wheel and key events and Accessibility resize/close.
+          # pointer, wheel and key events and Accessibility resize/close. Then
+          # a bounded long session of each workspace soak fixture on the same
+          # hosted macOS VM (not a physical Mac).
           if (-not (Get-Command magick -ErrorAction SilentlyContinue) -and -not (Get-Command convert -ErrorAction SilentlyContinue)) {
             brew install imagemagick
             if ($LASTEXITCODE -ne 0) { throw 'ImageMagick for the workspace pixel checks did not install' }
@@ -1056,6 +1058,42 @@ jobs:
                   --scenario $scenario --mode $mode `
                   --output (Join-Path $env:NATIVE_EVIDENCE "$scenario-macos-$mode") -- @command
                 if ($LASTEXITCODE -ne 0) { $failed += "$scenario $mode (exit $LASTEXITCODE)" }
+              }
+            }
+            # The fixed soak round repeated for 120 s per framework and mode,
+            # with one CoreGraphics-typed entry, Return and 24 wheel notches per
+            # round through the bounded helper, sampled every 10 s.
+            foreach ($framework in @('solid', 'react')) {
+              $package = Join-Path $env:NATIVE_EVIDENCE "$framework-workspace-soak-package"
+              bun experiments/aot-gpui/build-window.ts --entry "$framework-workspace-soak" `
+                --source $env:GITHUB_WORKSPACE --host $env:BUN_NATIVE_HOST `
+                --host-profile release --outdir $package
+              if ($LASTEXITCODE -ne 0) { throw "The macOS $framework soak AOT compiler or inspection failed" }
+              foreach ($mode in @('development', 'aot')) {
+                [string[]]$command = if ($mode -eq 'aot') { @((Join-Path $package "$framework-workspace-soak")) } else { @('bun', (Join-Path $package 'development/application.js')) }
+                $evidence = Join-Path $env:NATIVE_EVIDENCE "$framework-workspace-session-macos-$mode"
+                New-Item -ItemType Directory -Path $evidence | Out-Null
+                $env:BUN_NATIVE_DIAGNOSTICS_DIR = $evidence
+                $env:BUN_NATIVE_SOAK_SECONDS = '120'
+                $env:BUN_NATIVE_SOAK_SAMPLE_SECONDS = '10'
+                $env:BUN_NATIVE_SOAK_OS_INPUT = '1'
+                $env:BUN_NATIVE_PHASE_TRACE = Join-Path $evidence 'phases.json'
+                try {
+                  & $command[0] @($command | Select-Object -Skip 1) *> (Join-Path $evidence 'fixture.log')
+                  $exit = $LASTEXITCODE
+                } finally {
+                  Remove-Item Env:BUN_NATIVE_DIAGNOSTICS_DIR, Env:BUN_NATIVE_SOAK_SECONDS, Env:BUN_NATIVE_SOAK_SAMPLE_SECONDS, Env:BUN_NATIVE_SOAK_OS_INPUT, Env:BUN_NATIVE_PHASE_TRACE
+                }
+                if ($exit -ne 0) {
+                  Get-Content (Join-Path $evidence 'fixture.log') -Tail 40
+                  $failed += "$framework long session $mode (exit $exit)"
+                  continue
+                }
+                & '${{ matrix.python }}' "scripts/quality/native-$framework-workspace-soak.py" `
+                  (Join-Path $evidence 'soak-result.json') --long-session 120 `
+                  --phases (Join-Path $evidence 'phases.json') |
+                  Tee-Object -FilePath (Join-Path $evidence 'summary.json')
+                if ($LASTEXITCODE -ne 0) { $failed += "$framework long session $mode check" }
               }
             }
             # Every case runs so one failure does not hide the others' evidence.

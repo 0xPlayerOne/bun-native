@@ -10,8 +10,6 @@ summary describes the recorded samples; it is not a leak-freedom proof.
 import itertools
 import json
 
-PROCESS_KEYS = ("rssKiB", "hwmKiB", "threads", "fds", "cpuTicks")
-
 
 def require(condition, message):
     if not condition:
@@ -54,8 +52,13 @@ def check_session(report, minimum_seconds, input_key):
                 isinstance(observed, dict)
                 and all(
                     isinstance(observed.get(key), int) and observed[key] > 0
-                    for key in PROCESS_KEYS
-                    if key != "cpuTicks"
+                    for key in ("rssKiB", "threads", "fds")
+                )
+                and isinstance(observed.get("cpuTicks"), int)
+                and (
+                    observed.get("hwmKiB") is None
+                    if report["system"]["platform"] == "darwin"
+                    else isinstance(observed.get("hwmKiB"), int)
                 ),
                 f"Every sample must observe the {name} process",
             )

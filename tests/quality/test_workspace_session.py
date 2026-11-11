@@ -168,6 +168,24 @@ class LongSessionTest(unittest.TestCase):
             with self.assertRaises((AssertionError, KeyError, TypeError)):
                 SOLID.check(value, 30)
 
+    def test_macos_sessions_have_no_peak_rss_and_fixed_mode_stays_linux(self):
+        value = solid_report()
+        value["system"]["platform"] = "darwin"
+        for sample in value["samples"]:
+            sample["host"]["hwmKiB"] = sample["app"]["hwmKiB"] = None
+        self.assertEqual(SOLID.check(value, 30)["rounds"], ROUNDS)
+        linux_without_peak = solid_report()
+        linux_without_peak["samples"][1]["host"]["hwmKiB"] = None
+        with self.assertRaises(AssertionError):
+            SOLID.check(linux_without_peak, 30)
+        value["samples"][1]["host"]["hwmKiB"] = 5
+        with self.assertRaises(AssertionError):
+            SOLID.check(value, 30)
+        windows = solid_report()
+        windows["system"]["platform"] = "win32"
+        with self.assertRaises(AssertionError):
+            SOLID.check(windows, 30)
+
     def test_a_session_without_os_input_needs_no_input_counts(self):
         value = solid_report()
         value["session"]["osInput"] = None

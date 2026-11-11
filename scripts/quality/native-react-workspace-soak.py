@@ -69,8 +69,12 @@ def check(report, minimum_seconds=None):
         raise AssertionError(f"Final public resources must be zero: {final}")
     if final["pendingTimers"] != 0:
         raise AssertionError(f"Final local work must be released: {final}")
-    if report["system"]["platform"] != "linux":
-        raise AssertionError("This check covers the Linux native host only")
+    # The long-session mode also samples the macOS host (ps and lsof).
+    platforms = ("linux",) if minimum_seconds is None else ("linux", "darwin")
+    if report["system"]["platform"] not in platforms:
+        raise AssertionError(
+            f"This check covers the {' and '.join(platforms)} native host"
+        )
     durations = report["roundDurationsMs"]
     if len(durations) != rounds or min(durations) <= 0:
         raise AssertionError("Every round must record a positive duration")
