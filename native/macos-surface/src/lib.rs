@@ -1,10 +1,12 @@
 //! Private borrowed macOS surface access, without timers, input posting or device selection,
 //! the window-owned alert sheets of OS message dialogs ([`alert`]) and OS context
-//! menus ([`context_menu`]).
+//! menus ([`context_menu`]), and the repeated key-window notification that keeps
+//! AccessKit's keyboard-focus state current ([`key_status`]).
 #![cfg(target_os = "macos")]
 
 pub mod alert;
 pub mod context_menu;
+pub mod key_status;
 
 use objc2::MainThreadMarker;
 use objc2::rc::Retained;
