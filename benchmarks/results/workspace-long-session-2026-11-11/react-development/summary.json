@@ -1,0 +1,126 @@
+{
+  "plans": 25520,
+  "seconds": 1800,
+  "paceMs": 0,
+  "elapsedMs": 1800317,
+  "rounds": 3190,
+  "actions": 271150,
+  "commits": 261581,
+  "samples": 61,
+  "roundMs": {
+    "median": 560.2,
+    "max": 979.07
+  },
+  "ackMs": {
+    "count": 264770,
+    "p50": 0.36,
+    "p95": 13.8,
+    "p99": 18.74,
+    "max": 46.137,
+    "slowerThan1sCount": 0
+  },
+  "inputToStateMs": {
+    "count": 6380,
+    "p50": 45.76,
+    "p95": 71.47,
+    "p99": 79.6,
+    "max": 146.27,
+    "slowerThan1sCount": 0
+  },
+  "osInput": {
+    "typedTasks": 3190,
+    "typedCharacters": 46743,
+    "keys": 3190,
+    "wheelNotches": 76560
+  },
+  "series": {
+    "hostRssKiB": {
+      "first": 150852,
+      "settledFirst": 153112,
+      "last": 153452,
+      "min": 150852,
+      "max": 153452,
+      "settledSlopePerHour": 366.461
+    },
+    "appRssKiB": {
+      "first": 39724,
+      "settledFirst": 77904,
+      "last": 75136,
+      "min": 39724,
+      "max": 78416,
+      "settledSlopePerHour": 5206.477
+    },
+    "heapSize": {
+      "first": 4340625,
+      "settledFirst": 8469201,
+      "last": 8515773,
+      "min": 4340625,
+      "max": 8544090,
+      "settledSlopePerHour": 58123.116
+    },
+    "objectCount": {
+      "first": 17198,
+      "settledFirst": 19288,
+      "last": 19384,
+      "min": 17198,
+      "max": 19384,
+      "settledSlopePerHour": 39.859
+    },
+    "hostFds": {
+      "first": 24,
+      "settledFirst": 24,
+      "last": 24,
+      "min": 24,
+      "max": 24,
+      "settledSlopePerHour": 0.0
+    },
+    "appFds": {
+      "first": 12,
+      "settledFirst": 12,
+      "last": 12,
+      "min": 12,
+      "max": 12,
+      "settledSlopePerHour": 0.0
+    },
+    "hostThreads": {
+      "first": 36,
+      "settledFirst": 36,
+      "last": 36,
+      "min": 36,
+      "max": 36,
+      "settledSlopePerHour": 0.0
+    },
+    "appThreads": {
+      "first": 12,
+      "settledFirst": 12,
+      "last": 11,
+      "min": 11,
+      "max": 14,
+      "settledSlopePerHour": -2.09
+    }
+  },
+  "loadAverage1m": {
+    "min": 2.83,
+    "max": 7.26
+  },
+  "hostFrames": {
+    "renders": 137852,
+    "recordedFrames": 16384,
+    "droppedFrames": 121468,
+    "coveredSeconds": 224.1,
+    "renderMs": {
+      "count": 16384,
+      "p50": 0.111,
+      "p95": 0.22,
+      "p99": 0.339,
+      "max": 4.123
+    },
+    "renderToPaintMs": {
+      "count": 16384,
+      "p50": 0.818,
+      "p95": 1.399,
+      "p99": 2.304,
+      "max": 7.456
+    }
+  }
+}
