@@ -1,7 +1,10 @@
 // Independent Accessibility client for the macOS accessibility fixture (#241).
 // It never links GPUI. `trusted` reports whether this process may use the
 // Accessibility API. `dump <pid> <title>` prints the accessible subtree of that
-// process's window, in pre-order, as VoiceOver reads it through AppKit.
+// process's window, in pre-order, as VoiceOver reads it through AppKit: each
+// element's role, names, value and range, enabled, focused and focusable
+// (AXFocused settable) states, orientation, modal state, selection and, for a
+// text field, every character's AXBoundsForRange frame.
 // `act <pid> <title> <role> <name> <action> [args]` performs one request on the
 // first element with that AX role whose title, description or string value is
 // <name>: `press` (AXPress), `focus` (AXFocused), `text S` (AXValue string),
@@ -83,6 +86,31 @@ static id selected_range(AXUIElementRef element) {
     return ok ? @[ @(range.location), @(range.length) ] : [NSNull null];
 }
 
+// Each UTF-16 unit's screen frame in a text field, from AXBoundsForRange (the
+// query VoiceOver uses to highlight characters); null when any is unavailable.
+static id extents(AXUIElementRef element) {
+    if (![text(element, kAXRoleAttribute) isEqualToString:(__bridge NSString *)kAXTextFieldRole]) return [NSNull null];
+    id value = attribute(element, kAXValueAttribute);
+    if (![value isKindOfClass:[NSString class]] || [value length] > 64) return [NSNull null];
+    NSMutableArray *boxes = [NSMutableArray array];
+    for (NSUInteger index = 0; index < [value length]; index++) {
+        CFRange range = {(CFIndex)index, 1};
+        AXValueRef parameter = AXValueCreate((AXValueType)kAXValueCFRangeType, &range);
+        if (!parameter) return [NSNull null];
+        CFTypeRef bounds = NULL;
+        AXError error = AXUIElementCopyParameterizedAttributeValue(
+            element, kAXBoundsForRangeParameterizedAttribute, parameter, &bounds);
+        CFRelease(parameter);
+        CGRect rect = CGRectNull;
+        BOOL ok = error == kAXErrorSuccess && bounds && CFGetTypeID(bounds) == AXValueGetTypeID() &&
+                  AXValueGetValue((AXValueRef)bounds, kAXValueTypeCGRect, &rect);
+        if (bounds) CFRelease(bounds);
+        if (!ok) return [NSNull null];
+        [boxes addObject:@[ @(rect.origin.x), @(rect.origin.y), @(rect.size.width), @(rect.size.height) ]];
+    }
+    return boxes;
+}
+
 static NSArray *actions(AXUIElementRef element) {
     CFArrayRef names = NULL;
     if (AXUIElementCopyActionNames(element, &names) != kAXErrorSuccess || !names) return @[];
@@ -120,6 +148,11 @@ static void walk(AXUIElementRef element, int depth, NSMutableArray *entries, NSM
             @"enabled" : scalar(element, kAXEnabledAttribute),
             @"focused" : scalar(element, kAXFocusedAttribute),
             @"valueSettable" : @(settable(element, kAXValueAttribute)),
+            // AccessKit allows setting AXFocused exactly on focusable nodes.
+            @"focusSettable" : @(settable(element, kAXFocusedAttribute)),
+            @"orientation" : scalar(element, kAXOrientationAttribute),
+            @"modal" : scalar(element, kAXModalAttribute),
+            @"extents" : extents(element),
             @"selection" : selected_range(element),
             @"actions" : actions(element),
             @"depth" : @(depth),
