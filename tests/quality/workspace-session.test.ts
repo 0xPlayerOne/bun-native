@@ -1,5 +1,5 @@
 import { afterEach, expect, test } from 'bun:test'
-import { mkdtempSync, rmSync } from 'node:fs'
+import { mkdtempSync, readFileSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import {
@@ -11,6 +11,7 @@ import {
   sessionConfig,
   SessionRecorder,
   waitUntil,
+  writeStringCensus,
 } from '../native/workspace-session.ts'
 
 const names = [
@@ -172,4 +173,22 @@ test('waitUntil polls until the predicate holds and names what timed out', async
   await expect(waitUntil(() => false, 'nothing', 10)).rejects.toThrow(
     'Timed out waiting for nothing'
   )
+})
+
+test('the string census counts live strings by their text', () => {
+  const directory = mkdtempSync(join(tmpdir(), 'workspace-census-'))
+  // Number strings are flat (not ropes), the kind the census attributes;
+  // held live across the snapshot so each must be counted.
+  const held = Array.from({ length: 3 }, (_, index) => String(918_273_645_000 + index))
+  try {
+    writeStringCensus(directory, 7)
+    const counts = JSON.parse(readFileSync(join(directory, 'strings-7.json'), 'utf8')) as Record<
+      string,
+      number
+    >
+    for (const text of held) expect(counts[text]).toBeGreaterThanOrEqual(1)
+    expect(Object.values(counts).every((count) => Number.isInteger(count) && count > 0)).toBe(true)
+  } finally {
+    rmSync(directory, { recursive: true, force: true })
+  }
 })
