@@ -47,7 +47,10 @@ pub(crate) mod files;
 pub(crate) mod files;
 #[cfg(target_os = "linux")]
 pub(crate) mod notifications;
-#[cfg(not(target_os = "linux"))]
+#[cfg(target_os = "macos")]
+#[path = "services/notifications_macos.rs"]
+pub(crate) mod notifications;
+#[cfg(not(any(target_os = "linux", target_os = "macos")))]
 #[path = "services/notifications_unavailable.rs"]
 pub(crate) mod notifications;
 #[cfg(any(target_os = "linux", target_os = "macos", windows))]

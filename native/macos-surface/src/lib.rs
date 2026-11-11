@@ -2,7 +2,8 @@
 //! the window-owned alert sheets of OS message dialogs ([`alert`]) and OS context
 //! menus ([`context_menu`]), plain text on the general pasteboard
 //! ([`pasteboard`]), OS-wide Carbon hot keys ([`hot_keys`]), window-owned
-//! open and save panel sheets ([`file_panel`]), and the two pieces that let assistive technology
+//! open and save panel sheets ([`file_panel`]), user notifications
+//! ([`notifications`]), and the two pieces that let assistive technology
 //! follow keyboard focus into a GPUI window's AccessKit tree: routing AppKit's
 //! focus and hit-test queries to the adapter ([`focus_route`]) and the repeated
 //! key-window notification that keeps the adapter's focus state current
@@ -15,6 +16,7 @@ pub mod file_panel;
 pub mod focus_route;
 pub mod hot_keys;
 pub mod key_status;
+pub mod notifications;
 pub mod pasteboard;
 
 use objc2::MainThreadMarker;
@@ -37,6 +39,7 @@ pub enum SurfaceError {
     MissingAccessibility,
     PasteboardRefused,
     InvalidPanel,
+    NotBundled,
 }
 
 impl fmt::Display for SurfaceError {
@@ -54,6 +57,7 @@ impl fmt::Display for SurfaceError {
             }
             Self::PasteboardRefused => "the pasteboard refused the plain-text write",
             Self::InvalidPanel => "a file panel filter names no content type",
+            Self::NotBundled => "user notifications require an application bundle",
         })
     }
 }

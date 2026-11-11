@@ -83,4 +83,18 @@ naming an unallocated notification is a protocol violation.
 - Servers differ in when they close an activated notification. dunst 1.9 keeps
   it until its timeout, so the qualification records whichever closure reason
   the server reports.
-- macOS and Windows report `{ availability: 'unavailable', reason: 'unsupported_platform' }`.
+- Windows reports `{ availability: 'unavailable', reason: 'unsupported_platform' }`,
+  and so does macOS outside an application bundle (see the addendum).
+
+## macOS addendum (2026-11-11)
+
+macOS advertises `notifications_v1` with backend `user_notifications` only when
+the host runs from an `.app` bundle with an identifier, because
+`UNUserNotificationCenter` aborts any other process. Each post asks for alert
+authorization first, so the first post of a bundle waits for the user's answer
+to the OS prompt and a refusal is `permission_denied`. There is no expiry
+report and no named action; activation and user dismissal arrive through the
+center's delegate and are matched by request identifier in the UI-thread
+registry, so the ownership rules above are unchanged. The hosted macOS check is
+described in [native services](../native-services.md#macos-user-notifications);
+the prompt, delivery and activation are not automated.

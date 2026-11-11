@@ -673,9 +673,48 @@ an isolated bus without a server, a displayed notification, activation through
 the server's own action (`dunstctl action`), a user dismissal (`dunstctl
 close`), forged `ActionInvoked`/`NotificationClosed` signals from an
 independent bus client ignored, and the server's displayed count returning to
-zero after withdrawal, owner close and shutdown. macOS and Windows remain
-unavailable, and other notification servers are not qualified. See
+zero after withdrawal, owner close and shutdown. Windows remains unavailable,
+and other notification servers are not qualified. See
 [ADR 0009](decisions/0009-native-notifications.md).
+
+### macOS user notifications
+
+On macOS the host posts through `UNUserNotificationCenter` with backend
+`user_notifications`. That framework serves only an application bundle: for a
+bare executable it raises an exception that ends the process. The host therefore
+advertises `notifications_v1` only when its own main bundle has an identifier
+and is an `.app`, and never touches the framework otherwise; a bare host reports
+`unsupported_platform` and rejects a post with `service_unavailable`. The
+current packaging runs the host outside the application bundle, so packaged
+applications do not get notifications on macOS yet.
+
+Every post first asks for alert authorization. The first request for a bundle
+shows the OS permission prompt and the post stays pending until the user
+answers; a denied answer rejects with `permission_denied` ("the user has not
+allowed notifications for this application"), which callers can tell from the
+launch-policy denial by its message. Notifications use one category with no
+actions and a dismissal callback, so `activatable` is always true, clicking
+reports the default action as `notification_activated`, and a user dismissal
+ends the handle with reason `dismissed`. Expiry is not reported by the OS.
+Request identifiers name the host process and notification, and the UI-thread
+registry decides delivery, so a response for a withdrawn notification is never
+published. Withdrawal, owner close and shutdown remove the registration and the
+pending and delivered request at once; the center's removal calls do not report
+back, so there is nothing to wait for. A post that completes after its owner was
+revoked is withdrawn then.
+
+The hosted macOS step runs
+[`notifications-macos.ts`](../tests/native/notifications-macos.ts) in
+development mode twice over: against the bare release host, which must report
+`unsupported_platform` and reject a granted post with `service_unavailable`
+without aborting, and against the same executable copied into an ad-hoc-signed
+`.app` bundle, which must advertise the service, deny an ungranted post with
+the launch-policy message, and end a granted post in exactly one of three
+recorded ways: posted and withdrawn, denied by the OS, or still awaiting the
+unanswered permission prompt and rejected with `invalid_handle` on owner close.
+Nothing answers the prompt on a hosted runner, and no independent process can
+read another application's delivered notifications, so delivery, activation and
+user dismissal are not observed. It is pending its first hosted run.
 
 ## Filesystem grants
 
@@ -1483,7 +1522,7 @@ already exists. The linked follow-ups belong to
 | Context menus     | `window.showContextMenu`; no grant                            | Unavailable                                                                                         | Unavailable                                                        | AppKit `NSMenu` pop-up; hosted CI only (AX oracle)                                       | `TrackPopupMenuEx`; hosted CI only (UIA oracle)              | Dock menu, dynamic validation, icons, element-relative positioning. [#239](https://github.com/0xPlayerOne/bun-native/issues/239).                                                                                                                                                        |
 | File dialogs      | `showOpenDialog` / `showSaveDialog`; `fileDialogs` grant      | xdg-desktop-portal (GTK) dev+AOT verified                                                           | Portal (GTK) opens unparented; abort and compositor close verified | Open/save panel sheets; hosted CI dev only (AX oracle), pending first run                | Unavailable                                                  | macOS/Windows panels, Wayland parenting, sandboxed document-portal paths and explicit file-grant conversion. [#239](https://github.com/0xPlayerOne/bun-native/issues/239).                                                                                                               |
 | Message dialogs   | `showMessageDialog` / `showConfirmDialog`; no grant           | Modal overlay dev+AOT verified locally                                                              | Modal overlay (same core code); unqualified on Wayland             | Modal overlay, or opt-in `NSAlert` sheet (hosted CI, AX oracle)                          | Modal overlay, or opt-in task dialog (hosted CI, UIA oracle) | Opt-in `taskDialogs` backends: `NSAlert` sheets (macOS) and task dialogs (Windows), hosted evidence only. [#239](https://github.com/0xPlayerOne/bun-native/issues/239).                                                                                                                  |
-| Notifications     | `postNotification`; `notifications` grant                     | Freedesktop D-Bus (dunst) dev+AOT verified                                                          | Freedesktop (dunst) post and withdraw verified                     | Unavailable                                                                              | Unavailable                                                  | macOS/Windows backends, additional notification servers, named actions and replacement. [#302](https://github.com/0xPlayerOne/bun-native/issues/302).                                                                                                                                    |
+| Notifications     | `postNotification`; `notifications` grant                     | Freedesktop D-Bus (dunst) dev+AOT verified                                                          | Freedesktop (dunst) post and withdraw verified                     | UNUserNotificationCenter from an `.app` only; hosted CI dev, pending first run           | Unavailable                                                  | Windows backend, macOS delivery and activation evidence, additional notification servers, named actions and replacement. [#302](https://github.com/0xPlayerOne/bun-native/issues/302).                                                                                                   |
 | Drag/drop         | `registerDropTarget`; `dragDrop` grant                        | XDND dev+AOT verified locally (core/Solid/React)                                                    | Unavailable (`unsupported_platform`)                               | AppKit; hosted CI only (NSDraggingSession source)                                        | OLE; hosted CI only (DoDragDrop source)                      | Other payload kinds and file promises, refusal (GPUI always accepts), Wayland, physical devices and real file managers, Windows resolution in the Solid/React fixtures (core resolves drive roots on hosted windows-2022). [#303](https://github.com/0xPlayerOne/bun-native/issues/303). |
 | Filesystem grants | `openFileGrant`; `filesystemRoots` launch roots               | openat2 dev+AOT verified locally                                                                    | Advertised; display-independent, not run on Wayland                | `openat` walk; CI-only                                                                   | `NtCreateFile` walk; CI-only                                 | OS file selection and dropped files as explicit user grants. [#304](https://github.com/0xPlayerOne/bun-native/issues/304).                                                                                                                                                               |
 | PTY/process       | `spawnProcess`; `processes` launch executables                | Pipes and PTY dev+AOT verified locally                                                              | Advertised; display-independent, not run on Wayland                | Dev+AOT in CI only; `cwd` through `fchdir`                                               | Job object and ConPTY; CI-only                               | Descendants that leave the group (POSIX), `hangup` on Windows, resource limits. [#305](https://github.com/0xPlayerOne/bun-native/issues/305).                                                                                                                                            |

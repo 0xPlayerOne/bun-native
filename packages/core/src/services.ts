@@ -144,7 +144,12 @@ export interface ServiceCapabilities {
         availability: 'available'
         permission: 'allow' | 'deny'
         scope: 'owned_window'
-        backend: 'freedesktop'
+        /**
+         * The freedesktop.org notification service on Linux;
+         * `UNUserNotificationCenter` on macOS, offered only when the host runs
+         * from an application bundle.
+         */
+        backend: 'freedesktop' | 'user_notifications'
       }>
     | Readonly<{ availability: 'unavailable'; reason: 'unsupported_platform' }>
   readonly dragDrop:
@@ -313,7 +318,7 @@ export function serviceCapabilities(
           availability: 'available',
           permission: policy.notifications ? 'allow' : 'deny',
           scope: 'owned_window',
-          backend: 'freedesktop',
+          backend: process.platform === 'darwin' ? 'user_notifications' : 'freedesktop',
         })
       : Object.freeze({ availability: 'unavailable', reason: 'unsupported_platform' }),
     dragDrop: capabilities.includes('drag_drop_files_v1')

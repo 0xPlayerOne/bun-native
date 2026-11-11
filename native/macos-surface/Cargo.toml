@@ -16,10 +16,13 @@ objc2-foundation = { version = "=0.3.2", default-features = false, features = [
   "std",
   "block2",
   "NSArray",
+  "NSBundle",
+  "NSError",
   "NSGeometry",
   "NSNotification",
   "NSOperation",
   "NSRunLoop",
+  "NSSet",
   "NSString",
   "NSURL",
 ] }
@@ -57,6 +60,20 @@ objc2-quartz-core = { version = "=0.3.2", default-features = false, features = [
 objc2-uniform-type-identifiers = { version = "=0.3.2", default-features = false, features = [
   "std",
   "UTType",
+] }
+# Already locked through GPUI's macOS backend: plain-text notifications
+# through UNUserNotificationCenter.
+objc2-user-notifications = { version = "=0.3.2", default-features = false, features = [
+  "std",
+  "block2",
+  "UNNotification",
+  "UNNotificationAction",
+  "UNNotificationCategory",
+  "UNNotificationContent",
+  "UNNotificationRequest",
+  "UNNotificationResponse",
+  "UNNotificationTrigger",
+  "UNUserNotificationCenter",
 ] }
 raw-window-handle = "=0.6.2"
 

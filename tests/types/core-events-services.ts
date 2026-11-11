@@ -243,7 +243,7 @@ export function checkCapabilities(app: NativeApplication): void {
     void reason
   }
   if (services.notifications.availability === 'available') {
-    const backend: 'freedesktop' = services.notifications.backend
+    const backend: 'freedesktop' | 'user_notifications' = services.notifications.backend
     void backend
   }
   const menus: 'available' | 'unavailable' = services.appMenu.availability

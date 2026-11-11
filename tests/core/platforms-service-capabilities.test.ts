@@ -45,6 +45,8 @@ const advertised: Record<'linux' | 'macos' | 'windows', Capability[]> = {
     'clipboard_text_v1',
     'global_shortcuts_v1',
     'file_dialogs_v1',
+    // Only a host running from an application bundle advertises this.
+    'notifications_v1',
   ],
   windows: [
     ...everywhere,
@@ -94,6 +96,7 @@ const macOS = process.platform === 'darwin'
 const clipboardBackend = macOS ? 'appkit' : 'x11'
 const shortcutsBackend = macOS ? 'carbon' : 'x11'
 const fileDialogsBackend = macOS ? 'appkit' : 'xdg_desktop_portal'
+const notificationsBackend = macOS ? 'user_notifications' : 'freedesktop'
 
 function availability(record: Readonly<Record<string, unknown>>): unknown {
   return record['availability']
@@ -121,7 +124,10 @@ describe('public service records for each platform advertisement', () => {
       permission: 'allow',
       backend: shortcutsBackend,
     })
-    expect(services.notifications).toMatchObject({ permission: 'allow', backend: 'freedesktop' })
+    expect(services.notifications).toMatchObject({
+      permission: 'allow',
+      backend: notificationsBackend,
+    })
     expect(services.fileDialogs).toMatchObject({
       permission: 'allow',
       backend: fileDialogsBackend,
@@ -167,7 +173,7 @@ describe('public service records for each platform advertisement', () => {
     })
   })
 
-  test('macOS adds display details and changes and keeps grants, processes, drops, clipboard, shortcuts and file dialogs', () => {
+  test('macOS adds display details and changes and keeps grants, processes, drops, clipboard, shortcuts, file dialogs and notifications', () => {
     const services = serviceCapabilities(allowed, advertised.macos)
     expect(services.windowDisplay).toMatchObject({
       details: 'available',
@@ -195,7 +201,17 @@ describe('public service records for each platform advertisement', () => {
       scope: 'owned_window',
       backend: fileDialogsBackend,
     })
-    expect<unknown>(services.notifications).toEqual(unsupported)
+    expect(services.notifications).toEqual({
+      availability: 'available',
+      permission: 'allow',
+      scope: 'owned_window',
+      backend: notificationsBackend,
+    })
+  })
+
+  test('a macOS host outside an application bundle offers no notifications', () => {
+    const bare = advertised.macos.filter((capability) => capability !== 'notifications_v1')
+    expect<unknown>(serviceCapabilities(allowed, bare).notifications).toEqual(unsupported)
   })
 
   test('Windows offers display details and changes, grants, processes and file drops', () => {

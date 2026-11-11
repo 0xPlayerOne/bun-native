@@ -1256,6 +1256,37 @@ jobs:
             }
           }
           if ($failures.Count -gt 0) { throw ($failures -join '; ') }
+      # Last of the shard's macOS steps: an unanswered OS notification prompt
+      # can stay on screen after the host exits.
+      - name: macOS user notifications from a bare and an app-bundled host
+        if: ${{ matrix.shard == 2 && runner.os == 'macOS' && !cancelled() && steps.native-build.outcome == 'success' }}
+        timeout-minutes: 4
+        run: |
+          # UNUserNotificationCenter serves only an application bundle, so the
+          # same release executable also runs from an ad-hoc-signed .app.
+          $bundle = Join-Path $env:RUNNER_TEMP 'BunNativeNotifications.app'
+          $contents = Join-Path $bundle 'Contents'
+          New-Item -ItemType Directory (Join-Path $contents 'MacOS') | Out-Null
+          Copy-Item -LiteralPath $env:BUN_NATIVE_HOST -Destination (Join-Path $contents 'MacOS/bun-native-host')
+          @'
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0"><dict>
+          <key>CFBundleIdentifier</key><string>dev.bunnative.ci.notifications</string>
+          <key>CFBundleExecutable</key><string>bun-native-host</string>
+          <key>CFBundleName</key><string>Bun Native Notifications</string>
+          <key>CFBundlePackageType</key><string>APPL</string>
+          <key>CFBundleShortVersionString</key><string>1.0</string>
+          </dict></plist>
+          '@ | Out-File -FilePath (Join-Path $contents 'Info.plist') -Encoding utf8NoBOM
+          codesign --force --sign - $bundle
+          if ($LASTEXITCODE -ne 0) { throw 'The notification test bundle could not be signed' }
+          $evidence = Join-Path $env:NATIVE_EVIDENCE 'notifications-macos'
+          New-Item -ItemType Directory $evidence | Out-Null
+          $env:BUN_NATIVE_NOTIFICATION_EVIDENCE = $evidence
+          $env:BUN_NATIVE_BUNDLED_HOST = Join-Path $contents 'MacOS/bun-native-host'
+          bun tests/native/notifications-macos.ts 2>&1 | Tee-Object -FilePath (Join-Path $evidence 'run.log')
+          if ($LASTEXITCODE -ne 0) { throw 'macOS user notifications were not verified' }
       # M2: one source-bound record of every macOS feature this shard ran, read
       # from the gating steps' own reports and bound to this checkout, its AOT
       # packages and the release host. Missing or failed evidence fails here.

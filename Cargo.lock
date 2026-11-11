@@ -652,6 +652,7 @@ dependencies = [
  "objc2-metal 0.3.2",
  "objc2-quartz-core 0.3.2",
  "objc2-uniform-type-identifiers",
+ "objc2-user-notifications",
  "raw-window-handle",
 ]
 
