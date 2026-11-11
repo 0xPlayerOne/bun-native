@@ -334,9 +334,9 @@ jobs:
               test -s "$evidence/result.json"
             done
           done
-      - name: Development and AOT Orca screen-reader speech through speech-dispatcher (#241)
+      - name: Development and AOT Orca screen-reader speech through speech-dispatcher on X11 and Wayland (#241)
         if: matrix.shard == 2
-        timeout-minutes: 5
+        timeout-minutes: 6
         env:
           BUN_NATIVE_HOST: ${{ github.workspace }}/target/release/bun-native-host
           # The system Python carries PyGObject; it also runs Orca.
@@ -344,7 +344,8 @@ jobs:
         run: |
           # Real Orca 46 in the isolated session speaks through a private
           # speech-dispatcher whose sd_generic module writes each utterance to
-          # a file; XTEST keys move focus, edit text and open a modal dialog.
+          # a file; XTEST keys (X11) or wtype keys on headless sway (Wayland)
+          # move focus, edit text, open a modal dialog and move a divider.
           for mode in development aot; do
             command=(bun tests/native/screen-reader.ts)
             if [[ "$mode" == aot ]]; then
@@ -356,6 +357,12 @@ jobs:
               xvfb-run --auto-servernum --server-args='-screen 0 1280x1024x24 -nolisten tcp' \
               dbus-run-session -- bash scripts/quality/native-linux-session.sh \
               "$evidence-session" -- "${command[@]}" 2>&1 | tee "$evidence/run.log"
+            test -s "$evidence/result.json"
+            evidence="$NATIVE_EVIDENCE/screen-reader-wayland-$mode"
+            mkdir "$evidence"
+            BUN_NATIVE_SR_EVIDENCE="$evidence" BUN_NATIVE_SR_MODE="$mode" \
+              dbus-run-session -- bash scripts/quality/native-wayland-session.sh \
+              "$evidence-session" "${command[@]}" 2>&1 | tee "$evidence/run.log"
             test -s "$evidence/result.json"
           done
       - name: Development and AOT freedesktop notifications
@@ -1275,6 +1282,8 @@ jobs:
             ${{ runner.temp }}/native-evidence/*-workspace-terminal-*/
             ${{ runner.temp }}/native-evidence/screen-reader-development/
             ${{ runner.temp }}/native-evidence/screen-reader-aot/
+            ${{ runner.temp }}/native-evidence/screen-reader-wayland-development/
+            ${{ runner.temp }}/native-evidence/screen-reader-wayland-aot/
             ${{ runner.temp }}/native-evidence/screen-reader-*-session/
             ${{ runner.temp }}/native-evidence/notifications-*/
             ${{ runner.temp }}/native-evidence/filesystem-grants-*/
@@ -1348,7 +1357,7 @@ jobs:
             echo 'One Wayland step runs on a headless sway (wlroots) compositor with XWayland disabled and no DISPLAY, in development and inspected AOT at scale 1 and development at output scale 2: the window maps as an xdg-shell view and paints within 10 s on lavapipe Vulkan, a persistent virtual pointer click and virtual-keyboard text reach the app, grim pixels match the painted tree, the display snapshot matches the compositor output, X11-only clipboard/shortcut/drag-drop/popup capabilities are absent and their requests rejected, a dunst notification and an unparented portal file dialog work, the compositor closes the window and shutdown is clean. This does not qualify GNOME/KDE, fractional scaling, IME or physical input/GPU.'
             echo 'A second Wayland step runs headless sway with two outputs (1280x800 at scale 1, 2048x1536 at scale 2) in development and inspected AOT: moving a window between outputs reports one display change with the new output size and scale, moving within an output or spanning both reports nothing, reconfiguring the window output (mode, integer and fractional scale) reports to every window on it, every snapshot names its output (displayId = v5 of the sway output name), a connected output is reported only once a window moves onto it, unplugging another output reports nothing, and unplugging the window own output makes its snapshot fail closed. Expected values come from sway IPC. This does not qualify physical monitors, EDID identity, other compositors, a work area or macOS/Windows migration.'
             echo 'The Solid and React workspaces run with their real /bin/sh on an owned 80x24 pseudo-terminal in development and inspected AOT: an XTest click focuses the terminal command input at the bounds the host painted it at, typed keys reach the native input, Return runs a command whose output differs from its text, the output returns through the PTY into the terminal session and the host paints it (paint evidence plus text-coloured window pixels inside its painted bounds), the Interrupt button stops a foreground job with Ctrl-C through the PTY, and openbox Alt+F4 closes the window with every owner released. This does not qualify a full terminal emulator (escape sequences are stripped), Wayland, or macOS/Windows terminals.'
-            echo 'Real Orca 46 runs in the isolated X11 session in development and inspected AOT, speaking through a private speech-dispatcher whose only output module writes each utterance to a file. XTEST Tab, Shift+Tab, typing, caret keys, a selection deletion and Space must produce matching Bun focus/input events and the exact Orca phrases (role, name, read-only state, typed value, characters at the caret, selection and deletion, the modal dialog and its first control, and every control again after the dialog closes). This does not qualify Orca braille, other screen readers, Wayland or physical input.'
+            echo 'Real Orca 46 runs in the isolated X11 session in development and inspected AOT, speaking through a private speech-dispatcher whose only output module writes each utterance to a file. XTEST Tab, Shift+Tab, typing, caret keys, a selection deletion and Space must produce matching Bun focus/input events and the exact Orca phrases (role, name, read-only state, typed value, characters at the caret, selection and deletion, the modal dialog and its first control, every control again after the dialog closes, and a focused split divider re-announced on each keyboard move). The same fixture runs Orca against the native Wayland host on headless sway with wtype keys and asserts every focus, role, name, dialog and divider phrase; key echo, caret characters and Orca commands are not spoken there because no key reaches Orca. This does not qualify Orca braille, other screen readers, the spoken divider value or physical input.'
             echo 'Solid runs the exact source-fingerprinted generated module in development and through inspected Bun AOT against the same release GPUI host. Twelve scenarios require keyed identity, every native edit, delayed revision-aware replacement, shared keyboard/pointer/focus phases, caret and selection behavior, complete native paint, OS close and owner cleanup. These correctness cases do not close the separate retained-object investigation or establish matched framework performance.'
             echo 'Bridge acknowledgement timings run with instrumentation disabled; they are not display-presentation timings. The startup/RSS baseline retains one warm-up and five measured fresh-process trials per mode, alternating order, with a two-second idle interval and uncontrolled OS caches.'
             echo 'Separate Heaptrack runs profile only the real native host during the 1,000-cycle lifecycle in both modes. Full compressed allocation traces, tool/host/source hashes and bounded callsite reports are retained; profiler timing/RSS is not mixed into the baseline, and outstanding-at-exit allocations are not automatically leaks.'

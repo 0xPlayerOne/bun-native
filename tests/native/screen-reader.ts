@@ -26,7 +26,7 @@
  * phrases; macOS and Windows assert the control name and role word and record
  * every phrase verbatim.
  */
-import { createApplication, type NativeNode } from '@bun-native/core'
+import { createApplication, onSplitResize, type NativeNode } from '@bun-native/core'
 import assert from 'node:assert/strict'
 import {
   existsSync,
@@ -46,6 +46,9 @@ const executable = process.env['BUN_NATIVE_HOST']
 const mode = process.env['BUN_NATIVE_SR_MODE']
 const platform = process.platform
 const linux = platform === 'linux'
+// Linux on Wayland: the owned headless sway session
+// (scripts/quality/native-wayland-session.sh); keys come from wtype.
+const wayland = linux && Boolean(process.env['WAYLAND_DISPLAY'])
 const mac = platform === 'darwin'
 // Linux: a system Python with PyGObject that runs Orca. macOS: the compiled
 // macos-input-oracle. Windows: the absolute path of windows-input-oracle.ps1.
@@ -62,7 +65,8 @@ if (
   (mode !== 'development' && mode !== 'aot') ||
   !driver ||
   !isAbsolute(driver) ||
-  (linux && (!process.env['DISPLAY'] || process.env['WAYLAND_DISPLAY'])) ||
+  (linux &&
+    (wayland ? !process.env['SWAYSOCK'] || process.env['DISPLAY'] : !process.env['DISPLAY'])) ||
   (platform === 'win32' && (!nvda || !isAbsolute(nvda))) ||
   (platform === 'darwin' && (!axOracle || !isAbsolute(axOracle)))
 )
@@ -141,6 +145,8 @@ class Orca implements Reader {
   #capture = join(evidence, 'spoken.txt')
   #speechd: ReturnType<typeof Bun.spawn> | undefined
   #orca: ReturnType<typeof Bun.spawn> | undefined
+  #xvfb: ReturnType<typeof Bun.spawn> | undefined
+  #keyboard: ReturnType<typeof Bun.spawn> | undefined
 
   async start() {
     // The socket path lives under a short temporary directory: the evidence
@@ -226,6 +232,40 @@ class Orca implements Reader {
         console.log(JSON.stringify({ portal: destination, error: error.message }))
       )
     const version = await run([driver!, '/usr/bin/orca', '--version'])
+    // Orca 46.1 reads the keymap of an X display while it loads its settings
+    // (orca/orca_modifier_manager.py, refresh_orca_modifiers: `xkbcomp
+    // $DISPLAY`) and exits without one. GNOME and KDE Wayland sessions give it
+    // XWayland's; on the X-less sway session Orca alone gets a private Xvfb.
+    // The host has no DISPLAY and stays a native Wayland client.
+    const orcaDisplay: Record<string, string> = {}
+    if (wayland) {
+      // A virtual keyboard that lasts the whole run gives the seat its
+      // keyboard capability before the window exists, so the compositor can
+      // give the window keyboard focus (as tests/native/wayland.ts does).
+      this.#keyboard = Bun.spawn(['wtype', '-s', '3600000'], {
+        stdin: 'ignore',
+        stdout: 'ignore',
+        stderr: 'inherit',
+      })
+      await waitFor(async () => {
+        const seats = JSON.parse(await run(['swaymsg', '-t', 'get_seats', '--raw'])) as {
+          capabilities: number
+        }[]
+        return seats.length === 1 && (seats[0]!.capabilities & 2) === 2
+      }, 'a seat with a lasting keyboard')
+      const xvfb = Bun.spawn(['Xvfb', '-displayfd', '1', '-nolisten', 'tcp'], {
+        stdin: 'ignore',
+        stdout: 'pipe',
+        stderr: Bun.file(join(evidence, 'orca-xvfb.log')),
+      })
+      this.#xvfb = xvfb
+      const reader = xvfb.stdout.getReader()
+      const { value } = await reader.read()
+      reader.releaseLock()
+      const number = new TextDecoder().decode(value).trim()
+      assert.match(number, /^\d+$/, 'the private Xvfb display number')
+      orcaDisplay['DISPLAY'] = ':' + number
+    }
     const home = join(evidence, 'orca-home')
     this.#orca = Bun.spawn(
       [
@@ -242,6 +282,7 @@ class Orca implements Reader {
         stderr: Bun.file(join(evidence, 'orca-stderr.log')),
         env: {
           ...process.env,
+          ...orcaDisplay,
           SPEECHD_ADDRESS: 'unix_socket:' + socket,
           XDG_CONFIG_HOME: join(home, 'config'),
           XDG_DATA_HOME: join(home, 'data'),
@@ -261,6 +302,14 @@ class Orca implements Reader {
   }
 
   async attach() {
+    if (wayland) {
+      const criteria = `[title="^${TITLE}$"]`
+      await waitFor(
+        async () => (await run(['swaymsg', criteria, 'focus']).catch(() => '')) !== '',
+        'the mapped Wayland view'
+      )
+      return
+    }
     const ids = (await run(['xdotool', 'search', '--sync', '--name', '^' + TITLE + '$'])).split(
       '\n'
     )
@@ -283,6 +332,19 @@ class Orca implements Reader {
       // Orca's desktop-layout "Where Am I" command.
       'where-am-i': ['key', '--clearmodifiers', 'KP_Enter'],
     }
+    if (wayland) {
+      const [, ...xdotool] = keys[key]
+      const name = xdotool.at(-1)!
+      const [modifier, keysym] = name.includes('+') ? name.split('+') : [undefined, name]
+      const wtype =
+        key === 'x'
+          ? ['x']
+          : modifier
+            ? ['-M', modifier, '-k', keysym!, '-m', modifier]
+            : ['-k', keysym!]
+      await run(['wtype', ...wtype])
+      return
+    }
     await run(['xdotool', ...keys[key]])
   }
 
@@ -292,7 +354,7 @@ class Orca implements Reader {
   }
 
   async stop() {
-    for (const child of [this.#orca, this.#speechd]) {
+    for (const child of [this.#orca, this.#speechd, this.#xvfb, this.#keyboard]) {
       if (!child) continue
       child.kill('SIGTERM')
       const exited = await Promise.race([child.exited, Bun.sleep(5_000).then(() => undefined)])
@@ -493,6 +555,18 @@ const ROLE = {
   entry: mac ? ['edit text', 'text field'] : ['edit'],
 }
 
+// Orca 46's phrases for the divider (Linux only). Orca re-announces the
+// focused separator on every value change but its separator format
+// (orca/formatting.py, Atspi.Role.SEPARATOR: 'focused': 'roleName +
+// availability') has no value, so the number itself is never spoken; the
+// AT-SPI value events and values are asserted in accessibility.ts.
+const SPLIT_SPEECH = {
+  search: { exact: ['entry t.'] },
+  focus: { exact: ['vertical splitter Sidebar.'] },
+  change: { exact: ['vertical splitter'] },
+  whereAmI: { exact: ['vertical splitter Sidebar.'] },
+} satisfies Record<string, Expectation>
+
 const reader: Reader = linux ? new Orca() : mac ? new VoiceOver() : new Nvda()
 let readerInfo: Record<string, unknown> = {}
 const steps: Array<{
@@ -518,6 +592,7 @@ const focusTrace = () => focusNodes.map((node) => names.get(node) ?? 'other')
 const app = await (async () => {
   readerInfo = await reader.start()
   record('reader', readerInfo)
+  if (linux) record('session', wayland ? 'wayland (headless sway)' : 'x11 (Xvfb + openbox)')
   return createApplication({ executable: host })
 })()
 assert(app.capabilities.includes('accessibility_v1' as never), 'accessibility_v1')
@@ -686,6 +761,14 @@ try {
     return phrases
   }
   const per = (exact: string[], other: Expectation): Expectation => (linux ? { exact } : other)
+  // Phrases Orca derives from the key it saw. On sway nothing reports keys to
+  // Orca: with WAYLAND_DISPLAY set, libatspi gives Orca its legacy device,
+  // which hears only keys an application forwards to the AT-SPI registry's
+  // DeviceEventController, and AccessKit forwards none (Orca's debug log has
+  // no KEYBOARD EVENT on Wayland). Key echo and the character at a moved caret
+  // are therefore not spoken there, and Orca's own commands (Where Am I) never
+  // reach it; the keys still reach the host and are checked through Bun.
+  const keyed = (expected: Expectation): Expectation => (wayland ? null : expected)
 
   // The window and the input that owns initial focus. Before the host routed
   // AppKit's focused-element query from GPUI's first-responder view to the
@@ -730,7 +813,7 @@ try {
   // Editing: typed text reaches Bun, and the screen reader reads the new value,
   // characters at the moved caret, a selection and its deletion.
   await step('End', 'end', null, null)
-  await step('Type x', 'x', null, per(['x'], null))
+  await step('Type x', 'x', null, keyed(per(['x'], null)))
   await waitFor(
     () => searchValues.at(-1) === 'typedx',
     'typed input value',
@@ -740,16 +823,16 @@ try {
   // Orca's and NVDA's "where am I" commands read the focused control again,
   // now with the value the application changed. VoiceOver has no
   // AppleScript or single-key equivalent driven here.
-  if (!mac)
+  if (!mac && !wayland)
     await step(
       'Where am I',
       'where-am-i',
       null,
       per(['entry typedx.'], { name: 'typedx', role: ROLE.entry })
     )
-  await step('Left', 'left', null, per(['x'], null))
-  await step('Home', 'home', null, per(['t'], null))
-  await step('Right', 'right', null, per(['y'], null))
+  await step('Left', 'left', null, keyed(per(['x'], null)))
+  await step('Home', 'home', null, keyed(per(['t'], null)))
+  await step('Right', 'right', null, keyed(per(['y'], null)))
   await step('Shift+End', 'shift+end', null, per(['ypedx', 'selected'], null))
   await step('Backspace', 'backspace', null, per(['Selection deleted.'], null))
   await waitFor(
@@ -803,6 +886,41 @@ try {
     per(['Leading action push button.'], { name: 'Leading action', role: ROLE.button })
   )
 
+  // Linux: a value change on the focused control. A split appended after
+  // every other control puts its divider last in Tab order; Orca reads the
+  // divider on focus and each new value as Right and End move it.
+  if (linux) {
+    const split = await window.batch((batch) => {
+      const split = batch.create({
+        kind: 'split',
+        ratio: 0.4,
+        min_size: 50,
+        accessible_label: 'Sidebar',
+        style: { width: 400, height: 40, flex_shrink: 0 },
+      })
+      batch.append(window.root, split)
+      batch.append(split, batch.create({ kind: 'box', style: { width: 'fill' } }))
+      batch.append(split, batch.create({ kind: 'box', style: { width: 'fill' } }))
+      return split
+    })
+    watch(split, 'divider')
+    const resizes: number[] = []
+    onSplitResize(window, split, (event) => void resizes.push(event.ratio))
+    await step('Shift+Tab to the input', 'shift+tab', 'search', SPLIT_SPEECH.search)
+    await step('Shift+Tab wraps to the divider', 'shift+tab', 'divider', SPLIT_SPEECH.focus)
+    await step('Right moves the divider', 'right', null, SPLIT_SPEECH.change)
+    await waitFor(() => resizes.length === 1, 'the Right resize')
+    await step('End moves the divider to its limit', 'end', null, SPLIT_SPEECH.change)
+    await waitFor(() => resizes.length === 2, 'the End resize')
+    if (!wayland) await step('Where am I on the divider', 'where-am-i', null, SPLIT_SPEECH.whereAmI)
+    record('dividerValues', resizes.slice())
+    const expected = [0.41, 1 - 50 / (400 - 6)]
+    assert(
+      resizes.length === 2 && resizes.every((ratio, i) => Math.abs(ratio - expected[i]!) < 1e-9),
+      `one split_resize per key: ${resizes.join()}`
+    )
+  }
+
   const spoken = reader.utterances()
   assert(
     !spoken.some((phrase) => phrase.includes('Disabled action')),
@@ -834,6 +952,7 @@ const result = {
   status: 'passed',
   scenario: 'screen-reader',
   platform,
+  ...(linux ? { session: wayland ? 'wayland' : 'x11' } : {}),
   reader: reader.name,
   readerInfo,
   mode,

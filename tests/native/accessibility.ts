@@ -110,6 +110,8 @@ type Accessible = {
 }
 
 const TITLE = 'Bun Native accessibility qualification'
+// The host's fixed popup window title (native/gpui-host/src/view/popups.rs).
+const POPUP_TITLE = 'Bun Native popup'
 const WIDTH = 640
 const HEIGHT = 480
 // Fixed geometry: the split starts below the heading and the scroll view.
@@ -201,7 +203,14 @@ if (mac) {
   assert.equal(trust.trusted, true, 'the runner trusts the AX oracle for Accessibility')
 } else await run([atspiPython!, '-I', probe, 'enable'])
 const app = await createApplication({ executable: host })
-for (const capability of ['split_v1', 'overlays_v1', 'split_resize_v1', 'accessibility_v1'])
+for (const capability of [
+  'split_v1',
+  'overlays_v1',
+  'split_resize_v1',
+  'accessibility_v1',
+  // The popup window section runs on Linux only.
+  ...(mac ? [] : ['popup_windows_v1']),
+])
   assert(app.capabilities.includes(capability as never), capability)
 
 let window: NativeWindow | undefined
@@ -256,7 +265,7 @@ try {
       owned.root,
       batch.create({ kind: 'button', text: 'Open dialog', style: { height: 40 } })
     )
-    return { split, action, search, open }
+    return { split, leading, action, search, open }
   })
   const focusTrace: string[] = []
   const names = new Map<NativeNode, string>([
@@ -337,9 +346,9 @@ try {
     else await run(['xdotool', 'key', '--clearmodifiers', ...keys])
   }
   const dumps: Record<string, unknown> = {}
-  const dump = async (name: string) => {
+  const dump = async (name: string, title = TITLE) => {
     if (mac) {
-      const raw = JSON.parse(await run([axOracle!, 'dump', String(pid), TITLE])) as Array<
+      const raw = JSON.parse(await run([axOracle!, 'dump', String(pid), title])) as Array<
         Record<string, unknown>
       >
       dumps[name] = raw
@@ -348,21 +357,66 @@ try {
       assert.deepEqual(unknown, [], 'every GPUI content node has a mapped AX role')
       return raw.filter((entry) => !frame(entry)).map(fromAx)
     }
-    const tree = JSON.parse(await run([atspiPython!, '-I', probe, 'dump', TITLE])) as {
+    const tree = JSON.parse(await run([atspiPython!, '-I', probe, 'dump', title])) as {
       roles: Accessible[]
     }
     dumps[name] = tree.roles
     return tree.roles
   }
   /** Poll the AT-SPI tree until the condition holds; AccessKit updates after a frame. */
-  const poll = async (name: string, check: (tree: Accessible[]) => boolean) => {
+  const poll = async (name: string, check: (tree: Accessible[]) => boolean, title = TITLE) => {
     const until = performance.now() + 5_000
     for (;;) {
-      const tree = await dump(name)
+      const tree = await dump(name, title)
       if (check(tree)) return tree
       if (performance.now() > until)
         throw new Error('Timed out waiting for AT-SPI ' + name + ': ' + JSON.stringify(tree))
       await Bun.sleep(50)
+    }
+  }
+  type AtspiEvent = {
+    type: string
+    source: { role?: string; name?: string; defunct?: boolean }
+    detail1: number
+    detail2: number
+    data: unknown
+    current?: number
+  }
+  /** Start the independent AT-SPI event listener; `stop` returns every event it saw. */
+  const watchEvents = async () => {
+    const child = Bun.spawn([atspiPython!, '-I', probe, 'watch', '120'], {
+      stdin: 'pipe',
+      stdout: 'pipe',
+      stderr: 'pipe',
+    })
+    const events: AtspiEvent[] = []
+    let ready = false
+    const reading = (async () => {
+      let buffered = ''
+      const decoder = new TextDecoder()
+      for await (const chunk of child.stdout) {
+        buffered += decoder.decode(chunk, { stream: true })
+        let newline = buffered.indexOf('\n')
+        while (newline >= 0) {
+          const line = JSON.parse(buffered.slice(0, newline)) as AtspiEvent | { ready: true }
+          buffered = buffered.slice(newline + 1)
+          if ('ready' in line) ready = true
+          else events.push(line)
+          newline = buffered.indexOf('\n')
+        }
+      }
+    })()
+    await waitFor(() => ready, 'the AT-SPI event listener', 10_000)
+    return {
+      events,
+      stop: async () => {
+        // Let events from the last change arrive before closing.
+        await Bun.sleep(300)
+        void child.stdin.end()
+        await child.exited
+        await reading
+        return events
+      },
     }
   }
   const find = (tree: Accessible[], role: string, name: string) =>
@@ -442,9 +496,11 @@ try {
   // selection moves reach the host model (later OS typing lands there), a
   // button's action clicks it, grab_focus focuses, and the divider's Value
   // interface sets its ratio.
+  const actIn = (title: string, role: string, name: string, ...request: string[]) =>
+    run([atspiPython!, '-I', probe, 'act', title, role, name, ...request])
   /** One AT request; macOS names the AX attribute or action that carries it. */
   const act = (role: string, name: string, ...request: string[]) => {
-    if (!mac) return run([atspiPython!, '-I', probe, 'act', TITLE, role, name, ...request])
+    if (!mac) return actIn(TITLE, role, name, ...request)
     const native = Object.entries(MAC_ROLES).find(([, mapped]) => mapped === role)![0]
     const [verb, ...args] = request
     const translated =
@@ -574,6 +630,9 @@ try {
     )
     return tree
   }
+  // What a screen reader is told as values and dialogs change: an
+  // independent AT-SPI listener records every event from here on.
+  const watcher = mac ? undefined : await watchEvents()
   await expectResize(['Right'], 0.41, 'Right step')
   await expectResize(['shift+Right'], 0.51, 'Shift+Right step')
   await expectResize(['Left'], 0.5, 'Left step')
@@ -688,6 +747,108 @@ try {
     'the content beneath returns when the dialog closes'
   )
   record('modalDialog', { focusAfterClose: focusTrace.at(-1) })
+
+  // Linux only: this section reads AT-SPI events and the popup window's own
+  // AT-SPI tree.
+  if (watcher) {
+    // Value changes: each keyboard step and the drag announced the divider's
+    // new value; the dialog's appearance was announced as a new dialog child
+    // and its first control's focus. (Orca's speech for both is in
+    // screen-reader.ts.)
+    const announced = await watcher.stop()
+    const fromHost = announced.filter((event) => !event.source.defunct)
+    const values = fromHost
+      .filter(
+        (event) =>
+          event.type === 'object:property-change:accessible-value' &&
+          event.source.role === 'separator' &&
+          event.source.name === 'Sidebar'
+      )
+      .map((event) => Math.round(Number(event.current) * 1000) / 1000)
+    const expectedValues = [41, 51, 50, (MIN_PANE / PANES) * 100, (1 - MIN_PANE / PANES) * 100].map(
+      (value) => Math.round(value * 1000) / 1000
+    )
+    assert.deepEqual(
+      values.slice(0, expectedValues.length),
+      expectedValues,
+      'one value-change event per keyboard step, carrying the new value'
+    )
+    assert(
+      values
+        .slice(expectedValues.length)
+        .some((value) => Math.abs(value - dragged.ratio * 100) < 0.01),
+      'the drag announced its final value'
+    )
+    const dialogAdded = fromHost.find(
+      (event) =>
+        event.type.startsWith('object:children-changed:add') &&
+        typeof event.data === 'object' &&
+        event.data !== null &&
+        (event.data as { role?: string }).role === 'dialog' &&
+        (event.data as { name?: string }).name === 'Confirm dialog'
+    )
+    assert(dialogAdded, 'the dialog was announced as a new child')
+    const confirmFocused = fromHost.findIndex(
+      (event) =>
+        event.type === 'object:state-changed:focused' &&
+        event.detail1 === 1 &&
+        event.source.role === 'push-button' &&
+        event.source.name === 'Confirm'
+    )
+    assert(confirmFocused > fromHost.indexOf(dialogAdded), "then its first control's focus")
+    record('announcements', { values, dialog: dialogAdded, events: announced.length })
+
+    // A popup window overlay (popup_windows_v1) is its own OS window with its
+    // own accessible tree: a dialog named by accessible_label holding the
+    // overlay's content, none of which appears in the parent window's tree. An
+    // AT click on its button reaches Bun as a click.
+    let popupClicks = 0
+    const popup = await owned.batch((batch) => {
+      const layer = batch.create({
+        kind: 'overlay',
+        anchor: 'parent',
+        surface: 'window',
+        accessible_label: 'Suggestions',
+        style: { width: 220, height: 96, padding: 8, gap: 4, background: 0xf4e3c1 },
+      })
+      const copy = batch.create({ kind: 'button', text: 'Copy suggestion' })
+      batch.append(nodes.leading, layer)
+      batch.append(layer, batch.create({ kind: 'text', text: 'Two suggestions' }))
+      batch.append(layer, copy)
+      return { layer, copy }
+    })
+    owned.onClick(popup.copy, () => void (popupClicks += 1))
+    const popupTree = await poll(
+      'popup window',
+      (tree) => find(tree, 'push-button', 'Copy suggestion') !== undefined,
+      POPUP_TITLE
+    )
+    const popupDialog = find(popupTree, 'dialog', 'Suggestions')
+    assert(popupDialog, 'the popup surface is a dialog named by accessible_label')
+    assert(!popupDialog.states.includes('modal'), 'a popup overlay is never modal')
+    const popupInside = popupTree
+      .slice(popupTree.indexOf(popupDialog) + 1)
+      .filter((node) => node.depth > popupDialog.depth)
+      .map((node) => node.role + ':' + node.name)
+    assert.deepEqual(
+      popupInside,
+      ['label:Two suggestions', 'push-button:Copy suggestion'],
+      'the popup content is nested under its dialog'
+    )
+    assert(
+      popupTree.every((node) => node === popupDialog || node.depth > popupDialog.depth),
+      'nothing else is in the popup window tree'
+    )
+    const parentTree = await dump('parent with popup')
+    assert(
+      !parentTree.some((node) => node.name === 'Suggestions' || node.name === 'Copy suggestion'),
+      "the popup's nodes are not in the parent window's tree"
+    )
+    await actIn(POPUP_TITLE, 'push-button', 'Copy suggestion', 'click')
+    await waitFor(() => popupClicks === 1, 'AT click in the popup window')
+    await owned.batch((batch) => batch.remove(popup.layer))
+    record('popupWindow', { dialog: popupDialog, inside: popupInside, clicks: popupClicks })
+  }
 
   writeFileSync(
     join(output, mac ? 'ax-trees.json' : 'atspi-trees.json'),
