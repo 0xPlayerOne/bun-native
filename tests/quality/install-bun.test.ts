@@ -458,12 +458,16 @@ test('the historical bridge-pairs pin is the exact npm build of the BN1 Bun revi
 })
 
 test('--manifest installs and verifies against the named pin instead of the repository pin', async () => {
-  const manifest = resolve(import.meta.dir, '../../benchmarks/bridge-pairs-toolchain.json')
-  const historical = bridgePairsToolchain.bun.cliRevision
-  const accepted = await runInstallerAgainstExistingFixture(
-    () => ['--manifest', manifest],
-    historical
-  )
+  // The checked-in pin is linux-x64 only (the workflow's runner). Key the same
+  // pin under this test's target so the option is exercised on every OS.
+  const { bun } = bridgePairsToolchain
+  const historical = bun.cliRevision
+  const accepted = await runInstallerAgainstExistingFixture((directory) => {
+    const manifest = join(directory, 'historical-toolchain.json')
+    const packages = { [`${process.platform}-${process.arch}`]: bun.packages['linux-x64'] }
+    writeFileSync(manifest, JSON.stringify({ ...bridgePairsToolchain, bun: { ...bun, packages } }))
+    return ['--manifest', manifest]
+  }, historical)
   expect(accepted.error).toBeUndefined()
   expect(accepted.stderr).toBe('')
   expect(accepted.status).toBe(0)
