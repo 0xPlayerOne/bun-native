@@ -761,6 +761,154 @@ jobs:
               throw "${{ runner.os }} $mode accessibility evidence does not record a pass"
             }
           }
+      # M1 (#222, #241): advertised macOS capabilities exercised on macOS by the
+      # Linux fixtures' own macOS branches, with a real native window, real
+      # CoreGraphics input (BUN_NATIVE_PLATFORM_HELPER) and independent macOS
+      # oracles (AXUIElement, screencapture pixels, pbpaste).
+      - name: macOS development and AOT overlays, modal focus, keyboard menus and scrolling (#222)
+        if: ${{ matrix.shard == 2 && (runner.os == 'macOS' && !cancelled() && steps.native-build.outcome == 'success') }}
+        timeout-minutes: 6
+        run: |
+          $package = Join-Path $env:NATIVE_EVIDENCE 'overlays-package'
+          bun experiments/aot-gpui/build-window.ts --entry overlays `
+            --source $env:GITHUB_WORKSPACE --host $env:BUN_NATIVE_HOST `
+            --host-profile release --outdir $package
+          if ($LASTEXITCODE -ne 0) { throw 'The overlay AOT compiler or inspection failed' }
+          $manifest = Get-Content -Raw (Join-Path $package 'manifest.json') | ConvertFrom-Json
+          if ($manifest.application.inspection.hasCompiledProgram -ne $true -or `
+              $manifest.application.runtimeFeatures.jit -eq 'present') {
+            throw 'The overlay fixture lacks genuine compiled-program/JIT-removal evidence'
+          }
+          foreach ($mode in @('development', 'aot')) {
+            $evidence = Join-Path $env:NATIVE_EVIDENCE "overlays-$mode"
+            New-Item -ItemType Directory $evidence | Out-Null
+            $env:BUN_NATIVE_OVERLAY_EVIDENCE = $evidence
+            $env:BUN_NATIVE_OVERLAY_MODE = $mode
+            $env:BUN_NATIVE_EVIDENCE_LOG = Join-Path $evidence 'native-evidence.jsonl'
+            $env:BUN_NATIVE_EVIDENCE_NONCE = python3 -c 'import secrets; print(secrets.token_hex(16))'
+            if ($mode -eq 'development') {
+              bun tests/native/overlays.ts 2>&1 | Tee-Object -FilePath (Join-Path $evidence 'run.log')
+            } else {
+              & (Join-Path $package $manifest.application.file) 2>&1 |
+                Tee-Object -FilePath (Join-Path $evidence 'run.log')
+            }
+            if ($LASTEXITCODE -ne 0) { throw "macOS $mode overlays were not verified" }
+            $report = Get-Content -Raw (Join-Path $evidence 'overlays.json') | ConvertFrom-Json
+            if ($report.platform -ne 'darwin' -or $report.mode -ne $mode) {
+              throw "macOS $mode overlay evidence does not name its platform and mode"
+            }
+          }
+      - name: macOS shared layout, split panes and theme tokens through core, Solid and React in development and AOT (#222)
+        if: ${{ matrix.shard == 2 && (runner.os == 'macOS' && !cancelled() && steps.native-build.outcome == 'success') }}
+        timeout-minutes: 10
+        run: |
+          $reports = @()
+          foreach ($entry in @('layout-style', 'solid-layout-style', 'react-layout-style')) {
+            $package = Join-Path $env:NATIVE_EVIDENCE "$entry-package"
+            bun experiments/aot-gpui/build-window.ts --entry $entry `
+              --source $env:GITHUB_WORKSPACE --host $env:BUN_NATIVE_HOST `
+              --host-profile release --outdir $package
+            if ($LASTEXITCODE -ne 0) { throw "The $entry AOT compiler or inspection failed" }
+            $manifest = Get-Content -Raw (Join-Path $package 'manifest.json') | ConvertFrom-Json
+            if ($manifest.application.inspection.hasCompiledProgram -ne $true -or `
+                $manifest.application.runtimeFeatures.jit -eq 'present') {
+              throw "The $entry fixture lacks genuine compiled-program/JIT-removal evidence"
+            }
+            foreach ($mode in @('development', 'aot')) {
+              [string[]]$command = if ($mode -eq 'aot') {
+                @((Join-Path $package $manifest.application.file))
+              } elseif ($entry -eq 'layout-style') {
+                @('bun', 'tests/native/layout-style.ts')
+              } else {
+                @('bun', (Join-Path $package 'development/application.js'))
+              }
+              $evidence = Join-Path $env:NATIVE_EVIDENCE "layout-$mode-$entry"
+              New-Item -ItemType Directory $evidence | Out-Null
+              $env:BUN_NATIVE_LAYOUT_EVIDENCE = $evidence
+              $env:BUN_NATIVE_LAYOUT_MODE = $mode
+              $env:BUN_NATIVE_EVIDENCE_LOG = Join-Path $evidence 'native-evidence.jsonl'
+              $env:BUN_NATIVE_EVIDENCE_NONCE = python3 -c 'import secrets; print(secrets.token_hex(16))'
+              if ($command.Count -gt 1) {
+                & $command[0] $command[1..($command.Count - 1)] 2>&1 |
+                  Tee-Object -FilePath (Join-Path $evidence 'run.log')
+              } else {
+                & $command[0] 2>&1 | Tee-Object -FilePath (Join-Path $evidence 'run.log')
+              }
+              if ($LASTEXITCODE -ne 0) { throw "macOS $entry $mode layout and style were not verified" }
+              $reports += @(Get-ChildItem -LiteralPath $evidence -Filter 'layout-style-*.json' | ForEach-Object FullName)
+            }
+          }
+          if ($reports.Count -ne 6) { throw "Expected six layout-style reports, found $($reports.Count)" }
+          # Every adapter and mode must commit one element tree and paint it at one geometry.
+          $comparison = Join-Path $env:NATIVE_EVIDENCE 'layout-style-comparison'
+          New-Item -ItemType Directory $comparison | Out-Null
+          bun tests/native/layout-style-compare.ts @reports |
+            Tee-Object -FilePath (Join-Path $comparison 'report.json')
+          if ($LASTEXITCODE -ne 0) { throw 'macOS adapters or modes committed different layout trees or geometry' }
+      - name: macOS development and AOT accessibility roles, keyboard and pointer split divider (#241)
+        if: ${{ matrix.shard == 2 && (runner.os == 'macOS' && !cancelled() && steps.native-build.outcome == 'success') }}
+        timeout-minutes: 6
+        run: |
+          $oracle = Join-Path $env:NATIVE_EVIDENCE 'macos-accessibility-roles-oracle'
+          xcrun clang -fobjc-arc -Wall -Wextra -Werror -framework AppKit -framework ApplicationServices `
+            tests/native/macos-accessibility-oracle.m -o $oracle
+          if ($LASTEXITCODE -ne 0) { throw 'The independent Accessibility client did not compile' }
+          $env:BUN_NATIVE_A11Y_ORACLE = $oracle
+          $package = Join-Path $env:NATIVE_EVIDENCE 'accessibility-package'
+          bun experiments/aot-gpui/build-window.ts --entry accessibility `
+            --source $env:GITHUB_WORKSPACE --host $env:BUN_NATIVE_HOST `
+            --host-profile release --outdir $package
+          if ($LASTEXITCODE -ne 0) { throw 'The accessibility-role AOT compiler or inspection failed' }
+          $manifest = Get-Content -Raw (Join-Path $package 'manifest.json') | ConvertFrom-Json
+          foreach ($mode in @('development', 'aot')) {
+            $evidence = Join-Path $env:NATIVE_EVIDENCE "accessibility-$mode"
+            New-Item -ItemType Directory $evidence | Out-Null
+            $env:BUN_NATIVE_A11Y_EVIDENCE = $evidence
+            $env:BUN_NATIVE_A11Y_MODE = $mode
+            if ($mode -eq 'development') {
+              bun tests/native/accessibility.ts 2>&1 | Tee-Object -FilePath (Join-Path $evidence 'run.log')
+            } else {
+              & (Join-Path $package $manifest.application.file) 2>&1 |
+                Tee-Object -FilePath (Join-Path $evidence 'run.log')
+            }
+            if ($LASTEXITCODE -ne 0) { throw "macOS $mode accessibility roles and split divider failed" }
+            $report = Get-Content -Raw (Join-Path $evidence 'result.json') | ConvertFrom-Json
+            if ($report.status -ne 'passed' -or $report.platform -ne 'darwin' -or $report.mode -ne $mode) {
+              throw "macOS $mode accessibility-role evidence does not record a pass"
+            }
+          }
+      - name: macOS development and AOT read-only and disabled inputs (#241)
+        if: ${{ matrix.shard == 2 && (runner.os == 'macOS' && !cancelled() && steps.native-build.outcome == 'success') }}
+        timeout-minutes: 6
+        run: |
+          $oracle = Join-Path $env:NATIVE_EVIDENCE 'macos-input-states-oracle'
+          xcrun clang -fobjc-arc -Wall -Wextra -Werror -framework AppKit -framework ApplicationServices `
+            tests/native/macos-accessibility-oracle.m -o $oracle
+          if ($LASTEXITCODE -ne 0) { throw 'The independent Accessibility client did not compile' }
+          $env:BUN_NATIVE_A11Y_ORACLE = $oracle
+          $package = Join-Path $env:NATIVE_EVIDENCE 'input-states-platform-package'
+          bun experiments/aot-gpui/build-window.ts --entry input-states-platform `
+            --source $env:GITHUB_WORKSPACE --host $env:BUN_NATIVE_HOST `
+            --host-profile release --outdir $package
+          if ($LASTEXITCODE -ne 0) { throw 'The input-state AOT compiler or inspection failed' }
+          $manifest = Get-Content -Raw (Join-Path $package 'manifest.json') | ConvertFrom-Json
+          foreach ($mode in @('development', 'aot')) {
+            $evidence = Join-Path $env:NATIVE_EVIDENCE "input-states-platform-$mode"
+            New-Item -ItemType Directory $evidence | Out-Null
+            $env:BUN_NATIVE_INPUT_STATES_EVIDENCE = $evidence
+            $env:BUN_NATIVE_INPUT_STATES_MODE = $mode
+            if ($mode -eq 'development') {
+              bun tests/native/input-states-platform.ts 2>&1 | Tee-Object -FilePath (Join-Path $evidence 'run.log')
+            } else {
+              & (Join-Path $package $manifest.application.file) 2>&1 |
+                Tee-Object -FilePath (Join-Path $evidence 'run.log')
+            }
+            if ($LASTEXITCODE -ne 0) { throw "macOS $mode read-only and disabled inputs failed" }
+            $report = Get-Content -Raw (Join-Path $evidence 'result.json') | ConvertFrom-Json
+            if ($report.status -ne 'passed' -or $report.platform -ne 'darwin' -or $report.mode -ne $mode) {
+              throw "macOS $mode input-state evidence does not record a pass"
+            }
+          }
       # A real screen reader and a real OS input method (#241). macOS gates: both
       # passed on hosted macOS after the focus routing fix (runs 43087027363 and
       # 43093920340). Windows stays experimental until it passes there (#629);
@@ -1288,5 +1436,11 @@ jobs:
             !${{ runner.temp }}/bun-native-platform-evidence/solid-drag-drop-package/solid-drag-drop.exe
             !${{ runner.temp }}/bun-native-platform-evidence/react-drag-drop-package/react-drag-drop
             !${{ runner.temp }}/bun-native-platform-evidence/react-drag-drop-package/react-drag-drop.exe
+            !${{ runner.temp }}/bun-native-platform-evidence/overlays-package/overlays
+            !${{ runner.temp }}/bun-native-platform-evidence/layout-style-package/layout-style
+            !${{ runner.temp }}/bun-native-platform-evidence/solid-layout-style-package/solid-layout-style
+            !${{ runner.temp }}/bun-native-platform-evidence/react-layout-style-package/react-layout-style
+            !${{ runner.temp }}/bun-native-platform-evidence/accessibility-package/accessibility
+            !${{ runner.temp }}/bun-native-platform-evidence/input-states-platform-package/input-states-platform
           if-no-files-found: error
           retention-days: 14

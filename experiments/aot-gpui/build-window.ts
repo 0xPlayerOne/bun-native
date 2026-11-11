@@ -66,6 +66,7 @@ const entries = {
   ime: 'tests/native/ime.ts',
   accessibility: 'tests/native/accessibility.ts',
   'accessibility-platform': 'tests/native/accessibility-platform.ts',
+  'input-states-platform': 'tests/native/input-states-platform.ts',
   'screen-reader': 'tests/native/screen-reader.ts',
   'ime-platform': 'tests/native/ime-platform.ts',
   'solid-services': 'tests/native/solid-services.tsx',
@@ -171,6 +172,7 @@ if (
     entry === 'text-input' ||
     entry === 'ime' ||
     entry === 'accessibility' ||
+    entry === 'input-states-platform' ||
     entry === 'screen-reader' ||
     entry === 'ime-platform' ||
     entry === 'platform-smoke' ||
@@ -261,6 +263,22 @@ async function sourceHashes() {
       sources.add(path)
   if (entry === 'layout-style' || entry === 'solid-layout-style' || entry === 'react-layout-style')
     sources.add('tests/native/layout-style-scene.ts')
+  // The macOS branches drive the window through these and the SDK helper.
+  if (
+    entry === 'layout-style' ||
+    entry === 'solid-layout-style' ||
+    entry === 'react-layout-style' ||
+    entry === 'overlays' ||
+    entry === 'accessibility' ||
+    entry === 'input-states-platform'
+  )
+    for (const path of [
+      'tests/native/macos-window-input.ts',
+      'tests/native/png.ts',
+      'scripts/quality/native-platform-macos.m',
+      'tests/native/macos-accessibility-oracle.m',
+    ])
+      sources.add(path)
   if (solidEntry) {
     for (const path of [
       'packages/solid/package.json',

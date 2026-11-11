@@ -1,11 +1,18 @@
 /**
- * Real X11 accessibility-role and keyboard split-divider qualification.
+ * Real accessibility-role and keyboard split-divider qualification.
  *
- * Runs inside an isolated Xvfb + openbox + DBus session at scale 1. OS input
+ * Linux: inside an isolated Xvfb + openbox + DBus session at scale 1. OS input
  * comes from XTEST (xdotool). Roles, names, states and values are read by an
  * independent AT-SPI client (tests/native/atspi-probe.py) over the session
  * accessibility bus; focus and resize events come from public Bun APIs; the
  * divider focus ring is read from a capture of the displayed window.
+ *
+ * macOS: the same scene and steps in the hosted runner's GUI session. OS input
+ * is CoreGraphics key and pointer events through the bounded SDK helper
+ * (tests/native/macos-window-input.ts); the tree is read and requested through
+ * the independent AXUIElement client (tests/native/macos-accessibility-oracle.m)
+ * and normalized to the AT-SPI vocabulary below; the focus ring is read from a
+ * `screencapture` of the owned window.
  */
 import {
   createApplication,
@@ -17,12 +24,16 @@ import {
 import assert from 'node:assert/strict'
 import { statSync, writeFileSync } from 'node:fs'
 import { isAbsolute, join, resolve } from 'node:path'
+import { hostPid, MacWindow } from './macos-window-input.ts'
 
 const output = process.env['BUN_NATIVE_A11Y_EVIDENCE']
 const executable = process.env['BUN_NATIVE_HOST']
 const mode = process.env['BUN_NATIVE_A11Y_MODE']
 // The independent AT-SPI client is a separate system Python with PyGObject.
 const atspiPython = process.env['BUN_NATIVE_ATSPI_PYTHON']
+const mac = process.platform === 'darwin'
+// macOS: the compiled AXUIElement client and the bounded CoreGraphics helper.
+const axOracle = process.env['BUN_NATIVE_A11Y_ORACLE']
 if (
   !output ||
   !isAbsolute(output) ||
@@ -30,13 +41,17 @@ if (
   !executable ||
   !isAbsolute(executable) ||
   (mode !== 'development' && mode !== 'aot') ||
-  !atspiPython ||
-  process.env['GPUI_X11_SCALE_FACTOR'] !== '1' ||
-  !process.env['DISPLAY'] ||
-  process.env['WAYLAND_DISPLAY']
+  (mac
+    ? !axOracle || !isAbsolute(axOracle) || !process.env['BUN_NATIVE_PLATFORM_HELPER']
+    : !atspiPython ||
+      process.env['GPUI_X11_SCALE_FACTOR'] !== '1' ||
+      !process.env['DISPLAY'] ||
+      process.env['WAYLAND_DISPLAY'])
 )
   throw new Error(
-    'An isolated X11 display at scale 1, evidence directory, host, mode and AT-SPI Python are required'
+    mac
+      ? 'macOS needs an evidence directory, host, mode, the AX oracle and the OS input helper'
+      : 'An isolated X11 display at scale 1, evidence directory, host, mode and AT-SPI Python are required'
   )
 const host = executable
 // Resolved from the checkout, not import.meta, so the AOT executable finds it too.
@@ -106,12 +121,85 @@ const near = (actual: number | undefined, expected: number, label: string, toler
     `${label}: ${actual} is not ${expected}`
   )
 
-await run([atspiPython, '-I', probe, 'enable'])
+/** AppKit roles as the AT-SPI roles AccessKit gives the same nodes on Linux. */
+const MAC_ROLES: Record<string, string> = {
+  AXStaticText: 'label',
+  AXButton: 'push-button',
+  AXTextField: 'entry',
+  AXSplitter: 'separator',
+  // AccessKit's ScrollView (and only that container here) is AXUnknown.
+  AXUnknown: 'panel',
+  // AccessKit exposes a Dialog as AXWindow with the AXDialog subrole.
+  AXWindow: 'dialog',
+}
+// The NSWindow's own title-bar buttons, outside the GPUI content.
+const WINDOW_BUTTONS = new Set([
+  'AXCloseButton',
+  'AXMinimizeButton',
+  'AXZoomButton',
+  'AXFullScreenButton',
+])
+const flag = (value: unknown) => value === true || value === 1
+/**
+ * One AXUIElement dump entry in the Linux probe's shape. Names are the AX
+ * title, then description, then a label's value; states come from AXFocused,
+ * AXEnabled, a settable AXFocused (AccessKit's focusable), AXOrientation,
+ * AXModal and a settable entry value; UTF-16 selection [start, length]
+ * becomes the AT-SPI caret or selection.
+ */
+function fromAx(entry: Record<string, unknown>): Accessible {
+  const native = String(entry['role'])
+  const role = MAC_ROLES[native] ?? native
+  const value = entry['value']
+  const states: string[] = []
+  if (flag(entry['focused'])) states.push('focused')
+  if (flag(entry['focusSettable'])) states.push('focusable')
+  if (flag(entry['enabled'])) states.push('enabled')
+  if (entry['orientation'] === 'AXVerticalOrientation') states.push('vertical')
+  if (entry['orientation'] === 'AXHorizontalOrientation') states.push('horizontal')
+  if (flag(entry['modal'])) states.push('modal')
+  if (role === 'entry' && flag(entry['valueSettable'])) states.push('editable')
+  const result: Accessible = {
+    role,
+    name:
+      String(entry['title'] ?? '') ||
+      String(entry['description'] ?? '') ||
+      (role === 'label' && typeof value === 'string' ? value : ''),
+    states: states.sort(),
+    depth: Number(entry['depth']),
+  }
+  if (role === 'entry') {
+    result.text = typeof value === 'string' ? value : ''
+    const selection = entry['selection'] as [number, number] | null
+    if (selection) {
+      result.caret = selection[0] + selection[1]
+      result.selections = selection[1] > 0 ? [[selection[0], selection[0] + selection[1]]] : []
+    }
+    const extents = entry['extents'] as number[][] | null
+    if (extents) result.extents = extents
+  }
+  if (role === 'separator' && typeof value === 'number')
+    result.value = {
+      current: value,
+      minimum: Number(entry['minimum']),
+      maximum: Number(entry['maximum']),
+    }
+  return result
+}
+/** Entries outside the GPUI content: title-bar buttons and AccessKit's root group. */
+const frame = (entry: Record<string, unknown>) =>
+  WINDOW_BUTTONS.has(String(entry['subrole'])) || entry['role'] === 'AXGroup'
+
+if (mac) {
+  const trust = JSON.parse(await run([axOracle!, 'trusted'])) as { trusted: boolean }
+  assert.equal(trust.trusted, true, 'the runner trusts the AX oracle for Accessibility')
+} else await run([atspiPython!, '-I', probe, 'enable'])
 const app = await createApplication({ executable: host })
 for (const capability of ['split_v1', 'overlays_v1', 'split_resize_v1', 'accessibility_v1'])
   assert(app.capabilities.includes(capability as never), capability)
 
 let window: NativeWindow | undefined
+let macWindow: MacWindow | undefined
 try {
   window = await app.openWindow({ title: TITLE, width: WIDTH, height: HEIGHT })
   const owned = window
@@ -225,14 +313,36 @@ try {
     )
   })
 
-  const ids = (await run(['xdotool', 'search', '--sync', '--name', '^' + TITLE + '$'])).split('\n')
-  assert.equal(ids.length, 1, 'exactly one owned window')
-  const xid = ids[0]!
-  await run(['xdotool', 'windowactivate', '--sync', xid])
-  const press = (...keys: string[]) => run(['xdotool', 'key', '--clearmodifiers', ...keys])
-  const dumps: Record<string, Accessible[]> = {}
+  let xid = ''
+  let pid = 0
+  if (mac) {
+    pid = await hostPid(host)
+    macWindow = await MacWindow.open(TITLE, host, () => [WIDTH, HEIGHT])
+  } else {
+    const ids = (await run(['xdotool', 'search', '--sync', '--name', '^' + TITLE + '$'])).split(
+      '\n'
+    )
+    assert.equal(ids.length, 1, 'exactly one owned window')
+    xid = ids[0]!
+    await run(['xdotool', 'windowactivate', '--sync', xid])
+  }
+  const press = async (...keys: string[]) => {
+    if (macWindow) await macWindow.press(...keys)
+    else await run(['xdotool', 'key', '--clearmodifiers', ...keys])
+  }
+  const dumps: Record<string, unknown> = {}
   const dump = async (name: string) => {
-    const tree = JSON.parse(await run([atspiPython, '-I', probe, 'dump', TITLE])) as {
+    if (mac) {
+      const raw = JSON.parse(await run([axOracle!, 'dump', String(pid), TITLE])) as Array<
+        Record<string, unknown>
+      >
+      dumps[name] = raw
+      // Every entry is either window frame or a node with a known role.
+      const unknown = raw.filter((entry) => !frame(entry) && !MAC_ROLES[String(entry['role'])])
+      assert.deepEqual(unknown, [], 'every GPUI content node has a mapped AX role')
+      return raw.filter((entry) => !frame(entry)).map(fromAx)
+    }
+    const tree = JSON.parse(await run([atspiPython!, '-I', probe, 'dump', TITLE])) as {
       roles: Accessible[]
     }
     dumps[name] = tree.roles
@@ -312,8 +422,23 @@ try {
   // selection moves reach the host model (later OS typing lands there), a
   // button's action clicks it, grab_focus focuses, and the divider's Value
   // interface sets its ratio.
-  const act = (role: string, name: string, ...request: string[]) =>
-    run([atspiPython, '-I', probe, 'act', TITLE, role, name, ...request])
+  /** One AT request; macOS names the AX attribute or action that carries it. */
+  const act = (role: string, name: string, ...request: string[]) => {
+    if (!mac) return run([atspiPython!, '-I', probe, 'act', TITLE, role, name, ...request])
+    const native = Object.entries(MAC_ROLES).find(([, mapped]) => mapped === role)![0]
+    const [verb, ...args] = request
+    const translated =
+      verb === 'caret'
+        ? ['select', args[0]!, '0']
+        : verb === 'select'
+          ? ['select', args[0]!, String(Number(args[1]) - Number(args[0]))]
+          : verb === 'click'
+            ? ['press']
+            : verb === 'value'
+              ? ['number', ...args]
+              : [verb!, ...args]
+    return run([axOracle!, 'act', String(pid), TITLE, native, name, ...translated])
+  }
   const entryText = (tree: Accessible[]) => tree.find((node) => node.role === 'entry')
   await act('entry', 'typed', 'caret', '2')
   await poll('caret set', (tree) => entryText(tree)?.caret === 2)
@@ -395,8 +520,10 @@ try {
   const ratioX = (ratio: number) => ratio * PANES + DIVIDER / 2
   const capture = join(output, 'divider-focused.png')
   await Bun.sleep(100)
-  await run(['import', '-window', xid, capture])
+  const shot = macWindow ? await macWindow.capture(capture) : undefined
+  if (!shot) await run(['import', '-window', xid, capture])
   const pixel = async (x: number, y: number) => {
+    if (shot) return shot.pixel([x, y])
     const text = await run([
       'convert',
       capture,
@@ -452,15 +579,26 @@ try {
   focusTrace.length = 0
   const dragFrom = resizes.length
   const fromX = ratioX(1 - MIN_PANE / PANES)
-  await run(['xdotool', 'mousemove', '--window', xid, String(Math.round(fromX)), String(SPLIT_Y)])
-  await run(['xdotool', 'mousedown', '1'])
-  for (const x of [450, 400, 350, ratioX(0.5)]) {
-    await run(['xdotool', 'mousemove', '--window', xid, String(Math.round(x)), String(SPLIT_Y)])
-    await Bun.sleep(30)
+  if (macWindow) {
+    // One helper drag: press, moves, then 400 ms held before the release.
+    let whileHeld: number | undefined
+    await macWindow.drag(
+      [fromX, 450, 400, 350, ratioX(0.5)].map((x) => [Math.round(x), SPLIT_Y] as const),
+      400,
+      () => void setTimeout(() => (whileHeld = resizes.length), 200)
+    )
+    assert.equal(whileHeld, dragFrom, 'no report while the button is held')
+  } else {
+    await run(['xdotool', 'mousemove', '--window', xid, String(Math.round(fromX)), String(SPLIT_Y)])
+    await run(['xdotool', 'mousedown', '1'])
+    for (const x of [450, 400, 350, ratioX(0.5)]) {
+      await run(['xdotool', 'mousemove', '--window', xid, String(Math.round(x)), String(SPLIT_Y)])
+      await Bun.sleep(30)
+    }
+    await Bun.sleep(200)
+    assert.equal(resizes.length, dragFrom, 'no report while the button is held')
+    await run(['xdotool', 'mouseup', '1'])
   }
-  await Bun.sleep(200)
-  assert.equal(resizes.length, dragFrom, 'no report while the button is held')
-  await run(['xdotool', 'mouseup', '1'])
   await waitFor(() => resizes.length === dragFrom + 1, 'pointer resize after release')
   const dragged = resizes.at(-1)!
   assert.equal(dragged.source, 'pointer')
@@ -522,7 +660,10 @@ try {
   )
   record('modalDialog', { focusAfterClose: focusTrace.at(-1) })
 
-  writeFileSync(join(output, 'atspi-trees.json'), JSON.stringify(dumps, null, 2) + '\n')
+  writeFileSync(
+    join(output, mac ? 'ax-trees.json' : 'atspi-trees.json'),
+    JSON.stringify(dumps, null, 2) + '\n'
+  )
   await owned.close()
 } finally {
   await app.shutdown()
@@ -532,6 +673,11 @@ assert(Object.values(app.diagnostics).every((count) => count === 0))
 const result = {
   status: 'passed',
   scenario: 'accessibility',
+  platform: process.platform,
+  client: mac
+    ? 'AXUIElement (macos-accessibility-oracle.m); CoreGraphics input (native-platform-macos.m)'
+    : 'AT-SPI (atspi-probe.py); XTEST input (xdotool)',
+  ...(macWindow ? { osInput: macWindow.log } : {}),
   mode,
   elapsedMs: Math.round(performance.now() - started),
   outcomes,

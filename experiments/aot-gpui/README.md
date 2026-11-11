@@ -96,6 +96,7 @@ The same compiler and inspection pipeline supports these explicit entries:
 | `ime`                     | `tests/native/ime.ts`                    | `ime`                    | Existing prebuilt host referenced by absolute path |
 | `accessibility`           | `tests/native/accessibility.ts`          | `accessibility`          | Existing prebuilt host referenced by absolute path |
 | `accessibility-platform`  | `tests/native/accessibility-platform.ts` | `accessibility-platform` | Existing prebuilt host referenced by absolute path |
+| `input-states-platform`   | `tests/native/input-states-platform.ts`  | `input-states-platform`  | Existing prebuilt host referenced by absolute path |
 | `screen-reader`           | `tests/native/screen-reader.ts`          | `screen-reader`          | Existing prebuilt host referenced by absolute path |
 | `ime-platform`            | `tests/native/ime-platform.ts`           | `ime-platform`           | Existing prebuilt host referenced by absolute path |
 | `solid-services`          | `tests/native/solid-services.tsx`        | `solid-services`         | Existing prebuilt host referenced by absolute path |
