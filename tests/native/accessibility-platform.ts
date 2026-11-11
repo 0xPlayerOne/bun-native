@@ -320,31 +320,6 @@ try {
   }
   const find = (tree: Node[], role: string, name: string) =>
     tree.find((node) => node.role === role && (node.name === name || node.value === name))
-  /**
-   * macOS: poll the application's AXFocusedUIElement, the attribute VoiceOver
-   * follows, until it is the text field with this value in this window.
-   */
-  const focusedField = async (label: string, window: string, value: string) => {
-    const until = performance.now() + 10_000
-    for (;;) {
-      const result = await run([client, 'focused', String(pid)])
-      assert.equal(result.code, 0, `${label}: ${result.stderr}`)
-      const focused = JSON.parse(result.stdout) as {
-        active: boolean
-        window: string | null
-        element: { role: string; value: unknown } | null
-      }
-      if (
-        focused.window === window &&
-        focused.element?.role === 'AXTextField' &&
-        focused.element.value === value
-      )
-        return focused
-      if (performance.now() > until)
-        throw new Error(`Timed out waiting for ${label}: ${JSON.stringify(focused)}`)
-      await Bun.sleep(100)
-    }
-  }
 
   // Every element kind's platform node, before any request.
   const initial = await poll(
@@ -370,9 +345,6 @@ try {
   near(divider.minimum, (MIN_PANE / PANES) * 100, 'divider minimum from min_size')
   near(divider.maximum, (1 - MIN_PANE / PANES) * 100, 'divider maximum from min_size')
   assert(!initial.some((node) => node.role === 'dialog'), 'no dialog before it opens')
-  if (mac) {
-    record('initialFocusedElement', await focusedField('initial focused element', TITLE, 'typed'))
-  }
   record('initialTree', {
     roles: [...new Set(initial.map((node) => node.role))].sort(),
     nodes: initial.length,
@@ -495,28 +467,6 @@ try {
     dialogNode: dialogNode ? { role: dialogNode.role, raw: dialogNode.raw } : null,
     exposed: opened.map(({ role, name }) => role + ':' + name),
   })
-
-  // macOS: a second window opened while the application is already active
-  // becomes key while GPUI constructs it, before GPUI creates the window's
-  // AccessKit adapter, which starts out believing the window is unfocused.
-  // The host repeats the key notification once the adapter exists
-  // (native/macos-surface/src/key_status.rs); without that, the application
-  // reports no focused element and VoiceOver follows no focus in the window.
-  if (mac) {
-    const SECOND = TITLE + ' second window'
-    const second = await app.openWindow({ title: SECOND, width: 360, height: 160 })
-    await second.batch((batch) => {
-      batch.set(second.root, { kind: 'box', style: { direction: 'column', background: 0xffffff } })
-      batch.append(
-        second.root,
-        batch.create({ kind: 'input', value: 'second', style: { height: 40 } })
-      )
-    })
-    const focused = await focusedField('second window focused element', SECOND, 'second')
-    assert.equal(focused.active, true, 'the application is active')
-    record('secondWindowFocusedElement', focused)
-    await second.close()
-  }
 
   await window.close()
 } finally {

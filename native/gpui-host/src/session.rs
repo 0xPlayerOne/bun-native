@@ -629,16 +629,6 @@ impl Session {
                 );
                 self.last_window_id = window_id.get();
                 self.last_node_id = root_id.get();
-                // GPUI creates the AccessKit adapter after the window may
-                // already have become key, and the adapter then believes the
-                // window is unfocused (#241); see bun_native_macos_surface::key_status.
-                #[cfg(target_os = "macos")]
-                let _ = handle.update(cx, |_, window, _| {
-                    let native = raw_window_handle::HasWindowHandle::window_handle(window)
-                        .expect("an owned macOS GPUI window exposes its native view");
-                    bun_native_macos_surface::key_status::track(native)
-                        .expect("GPUI opens its windows on the AppKit owner thread");
-                });
                 cx.activate(true);
                 self.evidence.startup("activation_returned", id, window_id);
                 self.events.send(
