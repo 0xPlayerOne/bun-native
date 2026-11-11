@@ -870,7 +870,40 @@ async function accessibilityRows(app: NativeApplication) {
     states: string[]
     depth: number
     value?: { current: number; minimum: number; maximum: number }
+    attributes?: { setsize?: string; posinset?: string }
   }
+  type AtspiEvent = {
+    type: string
+    source: { role?: string; name?: string; defunct?: boolean }
+    data: unknown
+    current?: number
+  }
+  // An independent AT-SPI event listener for the whole section: value
+  // changes, the dialog's appearance and live announcements, as a screen
+  // reader receives them on Wayland.
+  const watcher = Bun.spawn([atspiPython, '-I', probe, 'watch', '120'], {
+    stdin: 'pipe',
+    stdout: 'pipe',
+    stderr: 'inherit',
+  })
+  const events: AtspiEvent[] = []
+  let watching = false
+  const reading = (async () => {
+    let buffered = ''
+    const decoder = new TextDecoder()
+    for await (const chunk of watcher.stdout) {
+      buffered += decoder.decode(chunk, { stream: true })
+      let newline = buffered.indexOf('\n')
+      while (newline >= 0) {
+        const line = JSON.parse(buffered.slice(0, newline)) as AtspiEvent | { ready: true }
+        buffered = buffered.slice(newline + 1)
+        if ('ready' in line) watching = true
+        else events.push(line)
+        newline = buffered.indexOf('\n')
+      }
+    }
+  })()
+  await waitFor(() => watching, 'the AT-SPI event listener')
   const dump = async (check: (tree: Accessible[]) => boolean, label: string) => {
     const until = performance.now() + 5_000
     for (;;) {
@@ -970,7 +1003,90 @@ async function accessibilityRows(app: NativeApplication) {
     'the closed dialog'
   )
   assert.deepEqual([...new Set(closed.map((node) => node.role))].sort(), roles)
+
+  // accessibility_lists_v1: a windowed list's set size, positions and
+  // selection, and a live text node announced when it appears and changes.
+  const listed = await window.batch((batch) => {
+    const list = batch.create({
+      kind: 'box',
+      accessible_role: 'list',
+      accessible_label: 'Messages',
+      accessible_set_size: 10_000,
+      style: { direction: 'row', gap: 4, height: 30, flex_shrink: 0 },
+    })
+    batch.append(window.root, list)
+    for (const position of [4_998, 4_999, 5_000]) {
+      const item = batch.create({
+        kind: 'box',
+        accessible_role: 'list_item',
+        accessible_position: position,
+        accessible_selected: position === 4_999,
+      })
+      batch.append(list, item)
+      batch.append(item, batch.create({ kind: 'text', text: 'Message ' + position }))
+    }
+    const status = batch.create({ kind: 'text', text: 'Idle', accessible_live: 'polite' })
+    batch.append(window.root, status)
+    return { status }
+  })
+  const listTree = await dump(
+    (tree) => tree.filter((node) => node.role === 'list-item').length === 3,
+    'the list'
+  )
+  const list = find(listTree, 'list', 'Messages')!
+  const items = listTree
+    .filter((node) => node.role === 'list-item' && node.depth === list.depth + 1)
+    .map((node) => ({
+      position: Number(node.attributes?.posinset),
+      setSize: Number(node.attributes?.setsize),
+      selected: node.states.includes('selected'),
+    }))
+  assert.deepEqual(items, [
+    { position: 4_998, setSize: 10_000, selected: false },
+    { position: 4_999, setSize: 10_000, selected: true },
+    { position: 5_000, setSize: 10_000, selected: false },
+  ])
+  for (const text of ['Streaming one', 'Streaming one two']) {
+    await window.batch((batch) =>
+      batch.set(listed.status, { kind: 'text', text, accessible_live: 'polite' })
+    )
+    await dump((tree) => find(tree, 'label', text) !== undefined, 'live ' + text)
+  }
+  await Bun.sleep(300)
+  void watcher.stdin.end()
+  await watcher.exited
+  await reading
+  const live = events.filter((event) => !event.source.defunct)
+  const values = live
+    .filter(
+      (event) =>
+        event.type === 'object:property-change:accessible-value' &&
+        event.source.role === 'separator'
+    )
+    .map((event) => Math.round(Number(event.current) * 1000) / 1000)
+  const expectedValues = [41, 83.165, 16.835]
+  assert.deepEqual(
+    values,
+    expectedValues,
+    'each keyboard step and the AT request announced the new divider value'
+  )
+  assert.ok(
+    live.some(
+      (event) =>
+        event.type.startsWith('object:children-changed:add') &&
+        (event.data as { role?: string } | null)?.role === 'dialog' &&
+        (event.data as { name?: string } | null)?.name === 'Confirm dialog'
+    ),
+    'the dialog was announced as a new child'
+  )
+  const announcements = live
+    .filter((event) => event.type === 'object:announcement')
+    .map((event) => event.data)
+  assert.deepEqual(announcements, ['Idle', 'Streaming one', 'Streaming one two'])
   record('accessibilityRows', {
+    list: items,
+    values,
+    announcements,
     roles,
     divider: divider.value,
     ratios: resizes.map(({ ratio, source }) => ({ ratio, source })),
