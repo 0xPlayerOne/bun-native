@@ -753,9 +753,9 @@ pub enum Capability {
     ProcessesV1,
     SplitV1,
     StyleDecorationV1,
-    /// Snapshots carry the work area and platform display UUID (macOS, Windows).
+    /// Snapshots carry the display's work area (macOS, Windows).
     DisplayDetailsV1,
-    /// Owned windows report `display_changed` (macOS, Windows).
+    /// Owned windows report `display_changed` (macOS, Windows, Linux Wayland).
     DisplayChangesV1,
     FileDialogsV1,
     OverlaysV1,
@@ -777,6 +777,9 @@ pub enum Capability {
     /// Every element kind has an accessibility role, and overlays and splits
     /// accept an `accessible_label`.
     AccessibilityV1,
+    /// Snapshots carry the platform display UUID when the backend names the
+    /// display (macOS, Windows, Linux Wayland).
+    DisplayIdentityV1,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]

@@ -20,10 +20,13 @@ jobs:
     # No caller-controlled source or runtime ref is accepted.
     # The caller must grant everything a nested job requests, or GitHub
     # rejects the workflow and the schedule never fires (#620): the changes
-    # job reads pull requests, CodeQL uploads results, the Gate reads jobs.
+    # job reads pull requests, CodeQL uploads results, the Gate reads jobs, and
+    # Native Linux requests (but on a schedule never uses) attestation signing.
     permissions:
       actions: read
+      attestations: write
       contents: read
+      id-token: write
       packages: read
       pull-requests: read
       security-events: write

@@ -32,7 +32,7 @@ This policy applies to the experimental developer preview described in [ADR 0013
 - **One supported line.** Only the latest release on `main` is maintained; fixes land forward, not on earlier versions. The [compatibility matrix](compatibility.md) states which release its rows describe.
 - **Exact pins.** Each release pins one Bun revision, one GPUI revision, Solid, React and one native protocol version; they are exact selections, not ranges ([exact pins](compatibility.md#exact-pins)).
 - **Host and packages move together.** A prebuilt host must come from the same source as the packages that launch it. A different protocol version fails at launch with a protocol error; see [upgrade an app](getting-started.md#upgrade-an-app).
-- **Prebuilt host artifacts.** CI keeps unsigned `unsigned-native-host.tar.gz` archives with SHA-256 files for 14 days in each run of the [Native Linux](../.github/workflows/native-linux.yml) and [Native Platforms](../.github/workflows/native-platforms.yml) workflows. They are evidence for that run, not published releases: a version release attaches no host, and running an archive on another machine is not exercised by CI. See [supply a native host](getting-started.md#2-supply-a-native-host).
+- **Prebuilt host artifacts.** CI keeps unsigned `unsigned-native-host.tar.gz` archives with SHA-256 files for 14 days in each run of the [Native Linux](../.github/workflows/native-linux.yml) and [Native Platforms](../.github/workflows/native-platforms.yml) workflows. They are evidence for that run, not published releases: a version release attaches no host, and running an archive on another machine is not exercised by CI. The Linux archive from a `main` push also carries [keyless build provenance](#linux-keyless-build-provenance). See [supply a native host](getting-started.md#2-supply-a-native-host).
 - **Support claims need evidence.** A platform, service or framework capability is supported only when the compatibility matrix links native evidence for it; compile success alone is not support.
 
 ## Experimental signing policy
@@ -62,7 +62,7 @@ bun scripts/release-package.ts notarize installers/dev.example.app-1.2.0-darwin-
 - **`installer`** writes `<bundle>.dmg` (macOS, `hdiutil`, HFS+ and UDZO), `<bundle>.zip` (Windows) or `<bundle>.tar.gz` (Linux or macOS). Each holds the bundle unchanged (update manifest and signature, payload, compiled updater, verifying launcher and key set) plus an install script: `install.sh` (`[INSTALL_DIR] [MENU_DIR]`, defaulting to `~/Library/Application Support/<product>` and `~/Applications` on macOS, and the XDG data directory on Linux) or `install.ps1` (`-Root`, `-Menu`, defaulting to `%LOCALAPPDATA%\Programs\<product>` and the Start menu). The script runs the bundled `install` and `integrate --verified-launcher`, so an installer uses exactly the update manifest and launcher contract in [updates](updates.md). With an identity, the disk image and `install.ps1` are signed too. ZIP and tar.gz bytes are reproducible for equal input (fixed times, sorted members); disk images and signatures are not. A signed manifest needs `keys.json` in the bundle.
 - **`notarize IMAGE.dmg`** submits with `xcrun notarytool submit --wait`, fetches the log and fails if the result is not `Accepted`, then runs `xcrun stapler staple` and `stapler validate`, and requires `spctl --assess --type open --context context:primary-signature` to report `source=Notarized Developer ID`. It reads an App Store Connect API key (`APPLE_NOTARY_KEY_ID`, `APPLE_NOTARY_ISSUER_ID`, `APPLE_NOTARY_PRIVATE_KEY`) or an Apple ID (`APPLE_ID`, `APPLE_TEAM_ID`, `APPLE_APP_SPECIFIC_PASSWORD`). With neither it prints `Notarization skipped:` and the reason, and exits 0. Half of either set is an error.
 - **`verify PATH ...`** checks every native executable under each path with the same verification and prints the records.
-- **Linux** has no OS code signature here. The Ed25519 update manifest is the trust root, and the installer is a tar.gz.
+- **Linux** has no OS code signature here. The Ed25519 update manifest is the trust root, and the installer is a tar.gz. The Linux host archive that CI builds on `main` carries a keyless [Sigstore build provenance attestation](#linux-keyless-build-provenance) instead; it needs no paid certificate or stored key.
 
 [`scripts/signing/macos-identity.sh`](../scripts/signing/macos-identity.sh) and [`scripts/signing/windows-identity.ps1`](../scripts/signing/windows-identity.ps1) provision the identity. With the release secrets below they import the real certificate. Without them they create a throwaway self-signed code-signing certificate valid for two days: on macOS in a temporary keychain (untrusted, which `codesign` accepts), on Windows in `CurrentUser\My` with that one certificate trusted in the runner's `LocalMachine\Root` and `TrustedPublisher` stores so that `signtool verify /pa` can build its chain. Cleanup deletes the keychain or removes the certificate from every store.
 
@@ -81,6 +81,41 @@ The records are in the job artifact under `signed-template/`. The Linux path of 
 A passing run with the throwaway identity shows the mechanics: that the hardened runtime and entitlements still let the AOT application render and confirm its health, that Authenticode signatures and timestamps verify, and that installation keeps the signatures. It cannot show Gatekeeper acceptance, notarization or SmartScreen reputation; those need the release identities.
 
 **Results.** On Linux x64 (pinned Bun, 2026-11-11) the unit tests passed and the same packaging sequence ran with the generated Solid template and the release host: tar.gz installer, install script, pending update and a health confirmation through the installed verifying launcher under Xvfb (no OS signature on Linux). The macOS and Windows steps above, the ad-hoc `codesign` test and the Windows `install.ps1` run have **not run yet**; they first run in hosted CI after this change is pushed.
+
+## Linux keyless build provenance
+
+Linux has no OS code-signing authority, so the Linux artifact is signed with [Sigstore](https://www.sigstore.dev/) keyless signing through GitHub's OIDC token (#249, #223). No private key, certificate or repository secret exists, so nothing here is owner-only.
+
+**What is signed.** On every push to `main`, shard 1 of [Native Linux](../.github/workflows/native-linux.yml) builds the release `bun-native-host`, packs the byte-stable `unsigned-native-host.tar.gz` ([reproducible builds](reproducible-builds.md)) and runs [`actions/attest-build-provenance`](https://github.com/actions/attest-build-provenance) (v4.2.2, pinned by commit) on that archive. The job's OIDC token obtains a short-lived Fulcio certificate that names the signing workflow (`.github/workflows/native-linux.yml@refs/heads/main`), the repository, the commit and the hosted runner. The SLSA v1 provenance statement over the archive's SHA-256 is signed with it, logged in the public Rekor transparency log and stored in the repository's attestations. Pull-request and scheduled builds are not attested. The archive name keeps `unsigned`: it holds no OS code signature, and the attestation travels beside it, not inside it.
+
+**What is verified.** The same job then runs [`scripts/quality/linux-provenance.ts`](../scripts/quality/linux-provenance.ts), which calls `gh attestation verify` with the signer workflow, `--source-ref`, `--source-digest`, `--predicate-type https://slsa.dev/provenance/v1` and `--deny-self-hosted-runners`, and then rechecks the verified statement itself: a subject with the archive's SHA-256, the SLSA v1 predicate, the `native-linux.yml` signer, the repository, `refs/heads/main`, the exact commit and `github-hosted`. It uploads the archive, its `.sha256`, the Sigstore bundle (`unsigned-native-host.sigstore.json`) and the verification record as the `linux-host-provenance-X64` artifact (30 days). The [release workflow](../.github/workflows/release.yml) has a `Verify Linux host provenance` job that downloads that artifact from the exact Validation run it releases from, checks the digest and repeats the verification; **Release Please does not run unless it passes**. [`linux-provenance.test.ts`](../tests/quality/linux-provenance.test.ts) covers the command and every refusal (other bytes, signer, repository, ref, commit, runner and predicate) with a stand-in `gh`; [`release-gating.test.ts`](../tests/quality/release-gating.test.ts) pins the workflow wiring and that every caller of Native Linux grants `id-token: write` and `attestations: write`.
+
+**Verify a downloaded archive yourself** (GitHub CLI 2.49 or later, signed in; the attestation is looked up by the archive's SHA-256):
+
+```sh
+gh attestation verify unsigned-native-host.tar.gz --repo 0xPlayerOne/bun-native \
+  --signer-workflow 0xPlayerOne/bun-native/.github/workflows/native-linux.yml \
+  --source-ref refs/heads/main --deny-self-hosted-runners
+# or check the bundle from the artifact instead of the attestations API:
+gh attestation verify unsigned-native-host.tar.gz --repo 0xPlayerOne/bun-native \
+  --bundle unsigned-native-host.sigstore.json
+```
+
+Or, with the repository checked out, `bun scripts/quality/linux-provenance.ts verify /absolute/unsigned-native-host.tar.gz --repo 0xPlayerOne/bun-native --signer-workflow .github/workflows/native-linux.yml --source-ref refs/heads/main --source-digest COMMIT`.
+
+**What it proves and what it does not.** A passing verification shows that these exact archive bytes were produced by `native-linux.yml` on a GitHub-hosted runner from the named `main` commit of this repository. It does not show that the host is free of defects, it is not an OS code signature (no Linux desktop checks one), and it does not cover the application's AOT executable or a `.tar.gz` installer from `release-package.ts installer`; those are built by the application's own release, which can attest them the same way. A version release still attaches no host (see [Version and support policy](#version-and-support-policy)).
+
+**Results.** The unit and workflow-wiring tests pass on Linux x64 with pinned Bun (2026-11-11). The attestation and the two verifications have **not run yet**: they first run on the first `main` push after this change.
+
+### What remains owner-only
+
+These need credentials that only the repository owner can obtain; the repository already consumes them when present ([owner steps](#configuring-release-identities-owner-steps)):
+
+- **macOS Developer ID signing and notarization**: an Apple Developer Program membership, a Developer ID Application certificate and App Store Connect (or Apple ID) notarization credentials. Until they exist, CI signs with a throwaway identity and macOS builds are ad-hoc or throwaway signed; Gatekeeper and notarization are unverified.
+- **Windows Authenticode**: an OV/EV certificate, Azure Trusted Signing account or hardware token. Windows release readiness also waits on [#629](https://github.com/0xPlayerOne/bun-native/issues/629).
+- **The Ed25519 update-manifest release key** for a real application channel: a key the application owner generates and keeps; the repository has no release signing key and no CI secret for one.
+
+Linux provenance needs none of these.
 
 ## Configuring release identities (owner steps)
 

@@ -6,8 +6,10 @@
  * Every expected value comes from the compositor's own IPC (swaymsg
  * get_outputs / get_tree), and every change is a real compositor operation:
  * `move container to output`, `move absolute position`, `output … resolution`,
- * `output … scale`, `create_output` and `output … unplug`. No X server is
- * reachable, so GPUI must use its Wayland backend.
+ * `output … scale` (integer and fractional), `create_output` and
+ * `output … unplug`. Each output's expected identity is v5(DNS, its sway
+ * output name), computed here. No X server is reachable, so GPUI must use its
+ * Wayland backend.
  */
 import {
   createApplication,
@@ -21,6 +23,7 @@ import {
 import assert from 'node:assert/strict'
 import { statSync, writeFileSync } from 'node:fs'
 import { isAbsolute, join } from 'node:path'
+import { waylandOutputUuid } from './display-uuid.ts'
 
 const output = process.env['BUN_NATIVE_DISPLAY_EVIDENCE']
 const host = process.env['BUN_NATIVE_HOST']
@@ -154,21 +157,41 @@ const swaymsg = (title: string, ...action: string[]) =>
 
 /**
  * What the pinned GPUI Wayland backend must report for a window on `entry`:
- * the output's current mode divided by its integer scale, at the origin of
- * the output's `wl_output.geometry`, which wlroots always sends as 0,0 (the
- * output's layout position is only in xdg-output and sway's rect).
+ * the output's current mode divided by its integer `wl_output.scale`, at the
+ * origin of the output's `wl_output.geometry`, which wlroots always sends as
+ * 0,0 (the output's layout position is only in xdg-output and sway's rect).
+ * The scale factor is the window's `wp_fractional_scale_v1` scale, which
+ * follows the output's. The identity is v5(DNS, the output's name).
+ *
+ * For a fractional output scale wlroots sends `wl_output.scale` as its
+ * ceiling, and GPUI's display list divides the mode by that integer
+ * (gpui_linux/src/linux/wayland/client.rs:1256 at the pinned revision), so
+ * the bounds are not the output's logical size: 1280x800 at scale 1.5 reports
+ * 640x400, where sway's logical rect is 853x533. That is the pinned
+ * behaviour, recorded here as such rather than corrected.
  */
 function expected(entry: Output): NativeDisplaySnapshot {
-  assert.equal(entry.mode.width / entry.scale, entry.rect.width, `${entry.name}: logical width`)
-  assert.equal(entry.mode.height / entry.scale, entry.rect.height, `${entry.name}: logical height`)
+  assert(
+    Math.abs(entry.mode.width / entry.scale - entry.rect.width) < 1 &&
+      Math.abs(entry.mode.height / entry.scale - entry.rect.height) < 1,
+    `${entry.name}: sway's logical size is the mode divided by the scale`
+  )
+  const outputScale = Math.ceil(entry.scale)
   return {
-    bounds: { x: 0, y: 0, width: entry.rect.width, height: entry.rect.height },
+    bounds: {
+      x: 0,
+      y: 0,
+      width: entry.mode.width / outputScale,
+      height: entry.mode.height / outputScale,
+    },
     scaleFactor: entry.scale,
+    displayId: waylandOutputUuid(entry.name),
   }
 }
 function same(snapshot: NativeDisplaySnapshot, want: NativeDisplaySnapshot): boolean {
   return (
     snapshot.scaleFactor === want.scaleFactor &&
+    snapshot.displayId === want.displayId &&
     (['x', 'y', 'width', 'height'] as const).every(
       (key) => Math.abs(snapshot.bounds[key] - want.bounds[key]) <= 1e-3
     )
@@ -176,7 +199,7 @@ function same(snapshot: NativeDisplaySnapshot, want: NativeDisplaySnapshot): boo
 }
 function assertSnapshot(snapshot: NativeDisplaySnapshot, want: NativeDisplaySnapshot, at: string) {
   assert(Object.isFrozen(snapshot) && Object.isFrozen(snapshot.bounds), `${at}: frozen`)
-  assert.deepEqual(Object.keys(snapshot).sort(), ['bounds', 'scaleFactor'], at)
+  assert.deepEqual(Object.keys(snapshot).sort(), ['bounds', 'displayId', 'scaleFactor'], at)
   assert(same(snapshot, want), `${at}: ${JSON.stringify(snapshot)} != ${JSON.stringify(want)}`)
 }
 
@@ -254,9 +277,10 @@ const [one, two] = [await outputNamed(first), await outputNamed(second)]
 assert.equal(one.scale, 1)
 assert.equal(two.scale, 2)
 assert.notDeepEqual(expected(one), expected(two))
+assert.notEqual(expected(one).displayId, expected(two).displayId, 'outputs have distinct names')
 record('outputs', { source: 'swaymsg -t get_outputs', outputs: initialOutputs })
 
-// 1. Denial: the change capability is advertised, the grant is not.
+// 1. Denial: the change and identity capabilities are advertised, the grant is not.
 {
   const denied = await createApplication({ executable })
   try {
@@ -265,6 +289,7 @@ record('outputs', { source: 'swaymsg -t get_outputs', outputs: initialOutputs })
       permission: 'deny',
       scope: 'owned_window',
       details: 'unavailable',
+      identity: 'available',
       changes: 'available',
     })
     const window = await denied.openWindow({ title: 'Display Wayland denied' })
@@ -286,6 +311,7 @@ const app = await createApplication({ executable, permissions: { windowDisplay: 
 let survivorSignal: AbortSignal | undefined
 try {
   assert(app.capabilities.includes('display_changes_v1'))
+  assert(app.capabilities.includes('display_identity_v1'))
   assert(!app.capabilities.includes('display_details_v1'))
 
   // 2. A window's snapshot is the output sway maps it on. With two outputs the
@@ -403,9 +429,35 @@ try {
     ],
     'another output reconfigured'
   )
+
+  // A fractional output scale reaches the window through
+  // wp_fractional_scale_v1: one change to @1.5 and one back. The bounds are
+  // the mode divided by wl_output.scale, its ceiling 2 (640x400, not the
+  // 853x533 logical size; see expected()). The identity stays the output's.
+  ;[fromA, fromB] = [a.events.length, b.events.length]
+  await run(['swaymsg', 'output', first, 'scale', '1.5'])
+  const fractional = await waitFor('the first output at scale 1.5', async () => {
+    const entry = await outputNamed(first)
+    return entry.scale === 1.5 ? entry : undefined
+  })
+  const fractionalEvent = await changed(a, fromA, expected(fractional), 'fractional scale')
+  await changed(b, fromB, expected(fractional), 'fractional scale, second window')
+  assert.equal(fractionalEvent.snapshot.displayId, expected(one).displayId, 'same output identity')
+  ;[fromA, fromB] = [a.events.length, b.events.length]
+  await run(['swaymsg', 'output', first, 'scale', '1'])
+  await waitFor('the first output back at scale 1', async () =>
+    (await outputNamed(first)).scale === 1 ? true : undefined
+  )
+  await changed(a, fromA, expected(one), 'fractional scale restored')
+  await changed(b, fromB, expected(one), 'fractional scale restored, second window')
   record('reconfiguration', {
     modeChange: expected(resized),
     scaleChange: { final: scaleEvent.snapshot, reportedSteps: scaleSteps },
+    fractionalScale: {
+      compositor: fractional,
+      reported: fractionalEvent.snapshot,
+      logicalSize: { width: fractional.rect.width, height: fractional.rect.height },
+    },
     restored: expected(one),
     otherOutput: 'no change',
   })
@@ -429,6 +481,10 @@ try {
   await swaymsg(a.title, 'move', 'container', 'to', 'output', added.name)
   await placedOn(a.title, added.name)
   const onAdded = await changed(a, fromA, expected(added), 'move to the connected output')
+  assert(
+    ![expected(one).displayId, expected(two).displayId].includes(onAdded.snapshot.displayId),
+    'a connected output has its own identity'
+  )
   fromA = a.events.length
   await swaymsg(a.title, 'move', 'container', 'to', 'output', first)
   await placedOn(a.title, first)
@@ -549,14 +605,17 @@ writeFileSync(
       compositor: JSON.parse(await run(['swaymsg', '-t', 'get_version', '--raw'])),
       display: 'headless sway, two outputs (1280x800 scale 1; 2048x1536 scale 2)',
       operations:
-        'swaymsg move container to output, move absolute position, resize set, output resolution/scale, create_output, output unplug',
+        'swaymsg move container to output, move absolute position, resize set, output resolution/scale (2 and 1.5), create_output, output unplug',
+      identity: 'displayId = v5(DNS, sway output name), the wl_output v4 name',
       outcomes,
       unavailable: {
         workArea: 'Wayland gives clients no work area; display_details_v1 is not advertised',
-        displayIdentity: 'not exposed without display_details_v1',
         layoutOrigin:
           'bounds start at wl_output.geometry, which wlroots sends as 0,0; the layout position is not reported',
-        fractionalScale: 'not exercised: both outputs use integer scales',
+        fractionalScaleBounds:
+          'at a fractional output scale the bounds are the mode divided by the integer wl_output.scale (its ceiling), not the logical size: the pinned GPUI Wayland display list uses the integer scale (gpui_linux/src/linux/wayland/client.rs:1256)',
+        physicalMonitorIdentity:
+          'the identity names the compositor connector (wl_output.name), not an EDID monitor',
         ownOutputUnplug:
           'the pinned GPUI keeps the removed output; the host fails closed with service_unavailable',
       },

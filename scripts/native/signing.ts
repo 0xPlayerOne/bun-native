@@ -97,7 +97,7 @@ const expectedKind: Record<SigningIdentity['platform'], NativeKind> = {
 }
 
 /** Every native executable below `directory`, as sorted portable relative paths. */
-export async function nativeExecutables(
+async function nativeExecutables(
   directory: string,
   exclude: (path: string) => boolean = () => false
 ): Promise<{ path: string; kind: NativeKind }[]> {

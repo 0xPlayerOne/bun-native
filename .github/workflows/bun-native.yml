@@ -288,6 +288,11 @@ jobs:
     name: Native Linux
     needs: changes
     if: vars.CI_BILLING_PAUSED == 'false' && (github.event_name != 'pull_request' || github.event.pull_request.draft == false) && needs.changes.outputs.docs-only != 'true'
+    # native-linux.yml signs the Linux host archive's keyless provenance on main pushes (#249).
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
     uses: ./.github/workflows/native-linux.yml
 
   native-platforms:

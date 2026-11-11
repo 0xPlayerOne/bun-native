@@ -47,6 +47,7 @@ const entries = {
   'display-semantics': 'tests/native/display-semantics.ts',
   'display-platform': 'tests/native/display-platform.ts',
   'display-wayland': 'tests/native/display-wayland.ts',
+  'display-virtual-macos': 'tests/native/display-virtual-macos.ts',
   clipboard: 'tests/native/clipboard.ts',
   'global-shortcuts': 'tests/native/global-shortcuts.ts',
   notifications: 'tests/native/notifications.ts',
@@ -154,6 +155,7 @@ if (
     entry === 'display-semantics' ||
     entry === 'display-platform' ||
     entry === 'display-wayland' ||
+    entry === 'display-virtual-macos' ||
     entry === 'clipboard' ||
     entry === 'global-shortcuts' ||
     entry === 'notifications' ||
@@ -288,6 +290,10 @@ async function sourceHashes() {
     sources.add('tests/native/services-adapter.ts')
   if (entry === 'services' || entry === 'solid-services' || entry === 'react-services')
     sources.add('tests/native/display-service-policy.ts')
+  if (entry === 'display-platform' || entry === 'display-wayland' || entry === 'wayland')
+    sources.add('tests/native/display-uuid.ts')
+  if (entry === 'display-platform' || entry === 'display-virtual-macos')
+    sources.add('tests/native/display-os.ts')
   for (const path of workloadSources.keys()) sources.add(path)
   if (entry === 'solid-workspace-soak' || entry === 'react-workspace-soak')
     sources.add('tests/native/workspace-session.ts')

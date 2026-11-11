@@ -779,6 +779,15 @@ jobs:
               tests/native/macos-input-oracle.m -o $driver
             if ($LASTEXITCODE -ne 0) { throw 'The macOS input controller did not compile' }
             $env:BUN_NATIVE_SR_INPUT = $driver
+            # The independent AX client reads the host's AXFocusedUIElement at
+            # every focus step, separating host exposure from VoiceOver speech.
+            $axOracle = Join-Path $env:NATIVE_EVIDENCE 'macos-accessibility-oracle'
+            if (-not (Test-Path $axOracle)) {
+              xcrun clang -fobjc-arc -Wall -Wextra -Werror -framework AppKit -framework ApplicationServices `
+                tests/native/macos-accessibility-oracle.m -o $axOracle
+              if ($LASTEXITCODE -ne 0) { throw 'The independent Accessibility client did not compile' }
+            }
+            $env:BUN_NATIVE_A11Y_ORACLE = $axOracle
           } else {
             # NV Access's signed NVDA 2024.4.2 launcher, pinned by SHA-256. Its
             # NSIS payload holds the complete program directory, which runs
@@ -938,6 +947,52 @@ jobs:
             if ($LASTEXITCODE -ne 0) { throw "Display qualification failed in $mode" }
             if (!(Test-Path -LiteralPath (Join-Path $evidence 'display-platform.json') -PathType Leaf)) {
               throw "Display qualification wrote no $mode evidence"
+            }
+          }
+      # A second display from CoreGraphics' CGVirtualDisplay at the other backing
+      # scale (#299): window migration, mixed DPI, and connecting and removing a
+      # display are window-server operations on the hosted runner.
+      - name: macOS virtual second display, migration, mixed DPI and removal (#299)
+        if: ${{ matrix.shard == 2 && (runner.os == 'macOS' && !cancelled() && steps.native-build.outcome == 'success') }}
+        timeout-minutes: 8
+        run: |
+          $oracle = Join-Path $env:NATIVE_EVIDENCE 'macos-virtual-display-oracle'
+          xcrun clang -fobjc-arc -Wall -Wextra -Werror -framework AppKit -framework CoreGraphics `
+            -framework ApplicationServices tests/native/macos-display-oracle.m -o $oracle
+          if ($LASTEXITCODE -ne 0) { throw 'The independent AppKit/CoreGraphics display oracle did not compile' }
+          $helper = Join-Path $env:NATIVE_EVIDENCE 'macos-virtual-display'
+          xcrun clang -fobjc-arc -Wall -Wextra -Werror -framework AppKit -framework CoreGraphics `
+            -framework ApplicationServices tests/native/macos-virtual-display.m -o $helper
+          if ($LASTEXITCODE -ne 0) { throw 'The CGVirtualDisplay helper did not compile' }
+          $trust = & $helper trusted | ConvertFrom-Json
+          if (-not $trust.trusted) { throw 'The runner does not trust the virtual display helper for Accessibility' }
+          $env:BUN_NATIVE_MACOS_DISPLAY_HELPER = $oracle
+          $env:BUN_NATIVE_MACOS_VIRTUAL_DISPLAY = $helper
+          $package = Join-Path $env:NATIVE_EVIDENCE 'display-virtual-macos-package'
+          bun experiments/aot-gpui/build-window.ts --entry display-virtual-macos `
+            --source $env:GITHUB_WORKSPACE --host $env:BUN_NATIVE_HOST `
+            --host-profile release --outdir $package
+          if ($LASTEXITCODE -ne 0) { throw 'The virtual display fixture AOT compiler or inspection failed' }
+          $manifest = Get-Content -Raw (Join-Path $package 'manifest.json') | ConvertFrom-Json
+          if ($manifest.application.inspection.hasCompiledProgram -ne $true -or `
+              !$manifest.application.runtimeFeatures -or `
+              $manifest.application.runtimeFeatures.jit -eq 'present') {
+            throw 'The virtual display fixture lacks genuine compiled-program/JIT-removal evidence'
+          }
+          foreach ($mode in @('development', 'aot')) {
+            $evidence = Join-Path $env:NATIVE_EVIDENCE "display-virtual-macos-$mode"
+            New-Item -ItemType Directory $evidence | Out-Null
+            $env:BUN_NATIVE_DISPLAY_EVIDENCE = $evidence
+            $env:BUN_NATIVE_DISPLAY_MODE = $mode
+            if ($mode -eq 'development') {
+              bun tests/native/display-virtual-macos.ts 2>&1 | Tee-Object -FilePath (Join-Path $evidence 'run.log')
+            } else {
+              & (Join-Path $package $manifest.application.file) 2>&1 |
+                Tee-Object -FilePath (Join-Path $evidence 'run.log')
+            }
+            if ($LASTEXITCODE -ne 0) { throw "Virtual display qualification failed in $mode" }
+            if (!(Test-Path -LiteralPath (Join-Path $evidence 'display-virtual-macos.json') -PathType Leaf)) {
+              throw "Virtual display qualification wrote no $mode evidence"
             }
           }
       - name: Build the independent OS drag source
@@ -1219,6 +1274,7 @@ jobs:
             !${{ runner.temp }}/bun-native-platform-evidence/filesystem-grants-package/filesystem-grants.exe
             !${{ runner.temp }}/bun-native-platform-evidence/display-platform-package/display-platform
             !${{ runner.temp }}/bun-native-platform-evidence/display-platform-package/display-platform.exe
+            !${{ runner.temp }}/bun-native-platform-evidence/display-virtual-macos-package/display-virtual-macos
             !${{ runner.temp }}/bun-native-platform-evidence/accessibility-platform-package/accessibility-platform
             !${{ runner.temp }}/bun-native-platform-evidence/accessibility-platform-package/accessibility-platform.exe
             !${{ runner.temp }}/bun-native-platform-evidence/screen-reader-package/screen-reader

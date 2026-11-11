@@ -1,7 +1,7 @@
 //! Coordinates from one actual input paint, shared by drawing and native input.
 
 use super::hit_test::{PaintedLine, painted_index};
-use gpui::{Bounds, Pixels, Point, ShapedLine, point, px};
+use gpui::{Bounds, Font, Pixels, Point, ShapedLine, point, px};
 use std::ops::Range;
 
 pub(super) const CARET_WIDTH: Pixels = gpui::px(2.);
@@ -65,6 +65,10 @@ pub(super) struct InputPaint {
     pub(super) line: ShapedLine,
     pub(super) viewport: TextViewport,
     pub(super) decorations: PaintedInputDecorations,
+    /// The font and size the line was shaped with, so text that changed after
+    /// this paint can be laid out the way the next paint will lay it out.
+    pub(super) font: Font,
+    pub(super) font_size: Pixels,
 }
 
 #[derive(Clone, PartialEq)]
@@ -111,6 +115,31 @@ impl InputPaint {
             self.line.x_for_index(range.start),
             self.line.x_for_index(range.end),
         ))
+    }
+
+    /// Range geometry for text that changed after this paint, given `line`,
+    /// that text shaped with this paint's font, and the caret's byte offset in
+    /// it: the next paint's viewport (the same bounds, scrolled from this
+    /// paint's offset to keep the caret visible) translates it.
+    ///
+    /// An input method asks for the caret rectangle right after it replaced
+    /// the preedit, before the next frame paints it (X11 XIM and Wayland text
+    /// input read it while handling the preedit). This paint's own geometry is
+    /// for the old text, and no geometry at all would leave the candidate
+    /// window at the window's corner.
+    pub(super) fn projected_bounds_for_range(
+        &self,
+        line: &ShapedLine,
+        cursor: usize,
+        range: Range<usize>,
+    ) -> Bounds<Pixels> {
+        let viewport = TextViewport::new(
+            self.viewport.bounds,
+            line.width(),
+            line.x_for_index(cursor),
+            self.viewport.offset,
+        );
+        viewport.range_bounds(line.x_for_index(range.start), line.x_for_index(range.end))
     }
 }
 

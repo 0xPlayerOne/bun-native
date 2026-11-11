@@ -136,7 +136,7 @@ describe('capability names agree across languages and documentation', () => {
     expect(everywhere.sort()).toEqual([...always].sort())
   })
 
-  test('display details follow the macOS/Windows selection; changes add the Wayland compositor', () => {
+  test('display details follow the macOS/Windows selection; identity and changes add the Wayland compositor', () => {
     const services = read('native/gpui-host/src/services.rs')
     const session = read('native/gpui-host/src/session.rs')
     const rows = new Map(documentedPlatforms().map((row) => [row.capability, row]))
@@ -155,6 +155,13 @@ describe('capability names agree across languages and documentation', () => {
     expect(services).toContain('cfg!(target_os = "linux") && cx.compositor_name() == "Wayland"')
     expect(session).toContain('if services::display_changes(cx) {')
     expect(rows.get('display_changes_v1')).toMatchObject({
+      linux: 'GPUI compositor is Wayland (not X11)',
+      macos: 'Always',
+      windows: 'Always',
+    })
+    expect(services).toContain('pub(crate) fn display_identity(cx: &App) -> bool {')
+    expect(session).toContain('if services::display_identity(cx) {')
+    expect(rows.get('display_identity_v1')).toMatchObject({
       linux: 'GPUI compositor is Wayland (not X11)',
       macos: 'Always',
       windows: 'Always',

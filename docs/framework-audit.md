@@ -1,7 +1,8 @@
 # Framework audit and optimization record (#260)
 
-This record closes the repository-wide audit in
-[#260](https://github.com/0xPlayerOne/bun-native/issues/260). It links each problem
+This record tracks the repository-wide audit in
+[#260](https://github.com/0xPlayerOne/bun-native/issues/260), which stays open
+until its acceptance criteria and dependencies are met. It links each problem
 that was removed or measured, and it names the backlog that remains and why. It
 summarizes evidence recorded elsewhere and makes no new performance claim.
 
@@ -19,12 +20,64 @@ and not checked once:
 | `oxlint --deny-warnings`, `bun --check`   | lint and type errors in packages, scripts, tests, examples, benchmarks |
 | `cargo clippy -D warnings`, `ruff`        | Rust and Python warnings                                               |
 
-The one-time dead-code pass (knip 5.66, each result checked by hand, #623) found
+The first dead-code pass (knip 5.66, each result checked by hand, #623) found
 six unused script exports and removed them. Everything else it reported is a direct
-entry point, a test import or a tool config. There is no retired CEF or Bunly
-code path left: the only references are disclaimers that the packages use no
-WebView or CEF (`packages/core/README.md`, `packages/react/README.md`) and
-historical audit records.
+entry point, a test import or a tool config.
+
+### Second pass (November 11, base `2e2334a`)
+
+`check:health` covers only the six packages, so this pass ran the tools over the
+scripts, tests, benchmarks, examples and experiments as well. Each result was
+checked by hand.
+
+- **knip 5.66** with every `scripts/`, `tests/`, `benchmarks/`, `examples/` and
+  `experiments/` file as an entry and `--include-entry-exports` (a temporary
+  config, not committed). It reported 17 exported values that nothing imports
+  and that are used only inside their own module. They are now module locals:
+  `maximumHealthAttempts` (`scripts/native/installation.ts`), `installerFormats`
+  (`installer-image.ts`), `nativeExecutables` (`signing.ts`),
+  `maximumKeySetBytes`, `maximumKeys` and `maximumRevoked` (`update-keys.ts`),
+  `logLine` (`benchmarks/adapters/workspace.ts`), `fromComparison`
+  (`benchmarks/comparison/metrics.ts`), `PATH_LIMIT`, `RETAINER_LIMIT`,
+  `VISIT_LIMIT` and `SNAPSHOT_BYTES_LIMIT` (`benchmarks/solid/retention-evidence.ts`),
+  `REPLY` and `buttonStyle` (`examples/adea-components`), `headlessPeerRoot`
+  (`tests/tooling/headless-peer.ts`), `themes` (`tests/native/layout-style-scene.ts`)
+  and `INITIAL_VALUE` (`tests/native/renderer-input-viewport.ts`). No behavior
+  changed. Kept on purpose: `lockControlArguments` (a test imports it
+  dynamically), `mergeMessages` and `withOlderPage` in
+  `examples/adea-components/retained/transcript-history.ts` (retained upstream
+  source checked against its Adea blob), the package `index.ts` re-exports and
+  Solid compiler helpers (public API), exported types that appear in exported
+  signatures, the `tests/types/*` compile fixtures (checked by `bun --check`),
+  `tests/native/javascript.js` (run by Native Linux) and `code-foundry` (used by
+  `foundry:doctor`).
+- **Unused dependencies:** knip found none in the six package manifests and only
+  the `code-foundry` false positive at the root. `cargo-machete` 0.9.2 found no
+  unused dependency in the five workspace crates.
+- **Orphan files:** every file under `scripts/`, `benchmarks/`, `experiments/`
+  and `tests/` (except test files) is named by some other tracked file, except
+  type-check fixtures and Electrobun's own `electrobun.config.ts`.
+- **Duplicate code:** jscpd 4.0.5 (12 lines and 80 tokens minimum) found **no**
+  clone in the TypeScript of `packages/*/src`, so the Solid and React adapters
+  share no copied code. In `native/gpui-host/src` and `native/protocol/src` it
+  found 19 Rust clones (370 lines, 1.3%): 9 in protocol test files and 10 in the
+  host. The largest host ones are the D-Bus connection plumbing that
+  `services/file_dialogs.rs` and `services/notifications.rs` each own (`spawn`,
+  `link`, shutdown accounting; about 80 lines over four clones), the Linux and
+  macOS dialog paths in `task_dialogs.rs`/`task_dialogs_macos.rs`, and the
+  request scaffolding in `shortcuts.rs`/`clipboard.rs`. They are kept for now:
+  each service owns a different inner type and listener, so sharing them needs a
+  small generic service core, and that is a host change to validate with the
+  Linux native suite, not a deletion. It is backlog below.
+- **CEF and Bunly references:** no code path remains. `docs/development.md`
+  still said CI "must replace" the old M1–M6 CEF workflows; it now says they were
+  removed under #251. Left as they are: the disclaimers that the packages use no
+  WebView or CEF (`packages/core/README.md`, `packages/react/README.md`), the
+  Electrobun WebView benchmark baseline (#244), historical records
+  (`bun-native-handoff.md`, ADR 0001, BN0 audit), the `LICENSE` copyright line
+  "Bunly contributors" (a legal notice for the owner to change) and the
+  first-session steps in `AGENTS.md` that point at the closed #251 and #225
+  (agent instructions, also the owner's to change).
 
 ## Profiling and optimization
 
@@ -57,15 +110,40 @@ measured before a decision.
 
 These are tracked honestly as open and are not CI work:
 
-| Limit                                          | Why it is open                                          | Issue      |
-| ---------------------------------------------- | ------------------------------------------------------- | ---------- |
-| OS code signing and notarization               | no Apple Developer ID or Windows certificate            | #249, #223 |
-| Screen readers and OS IME composition          | needs VoiceOver/NVDA/Orca and real input methods        | #241, #222 |
-| Multi-monitor, hotplug and mixed DPI           | CI runners have one virtual screen                      | #299       |
-| Babel 8                                        | no Solid preset release supports it yet                 | #316       |
-| Hosted first-window deadline                   | has not recurred; the startup trace is ready if it does | #296       |
-| Physical GPU, Windows and real-Mac performance | hosted runners use software or paravirtual GPUs         | #244       |
-| Release-readiness decision                     | depends on the rows above                               | #245       |
+| Limit                                          | Why it is open                                                                                                                                                        | Issue      |
+| ---------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------- |
+| macOS and Windows code signing, notarization   | owner-only: Apple Developer ID and Windows certificate                                                                                                                | #249, #223 |
+| Linux host archive provenance                  | keyless Sigstore attestation wired; first `main` run pending ([releasing](releasing.md#linux-keyless-build-provenance))                                               | #249, #223 |
+| Screen readers and OS IME composition          | needs VoiceOver/NVDA/Orca and real input methods                                                                                                                      | #241, #222 |
+| Physical multi-monitor hardware                | headless sway outputs, two Xvfb screens and a macOS virtual display cover the semantics in CI; EDID monitors, cables, GPU outputs and Windows mixed DPI need hardware | #299       |
+| Babel 8                                        | no Solid preset release supports it yet                                                                                                                               | #316       |
+| Hosted first-window deadline                   | not recurred since November 6 ([below](#first-window-deadline-296))                                                                                                   | #296       |
+| Shared Linux D-Bus service core (Rust clones)  | refactor, not deletion; needs the Linux native suite                                                                                                                  | #260       |
+| Windows disposal retention                     | Windows support waits on it                                                                                                                                           | #629       |
+| Physical GPU, Windows and real-Mac performance | hosted runners use software or paravirtual GPUs                                                                                                                       | #244       |
+| Release-readiness decision                     | per-platform draft in [ADR 0021](decisions/0021-platform-release-readiness.md) (proposed)                                                                             | #245       |
+
+## First-window deadline (#296)
+
+Checked on 2026-11-11 with read-only `gh api` calls:
+
+- Every failed push Validation on `main` since November 6 (runs 42215872209,
+  42293211745, 42750220152, 42754811240, 42772679992, 42774689778 and
+  42786819888, plus the cancelled scheduled audit 42929826979) failed somewhere
+  else: a Wayland compositor click on headless sway, a headless Windows `hello`
+  timeout (already recorded on #296 as unrelated) with macOS drag and drop, a
+  macOS protocol contract, macOS drag and drop, macOS workspace scroll endpoints
+  (twice) and macOS AOT accessibility. None logged `Native open request N timed
+  out`.
+- The 60 most recent failed Validation runs on any branch (November 9 15:25 UTC
+  to November 11) have 24 failed Native Linux, Native macOS/Windows or Protocol
+  jobs; none of their logs contains an open-request timeout.
+- The latest `main` Validation, 42922483983 (`5638bbd`), passed all three Native
+  Linux shards.
+
+So it has **not recurred** since the November 5 reproductions recorded on the
+issue. No code was changed for it; the bounded startup trace stays in place for
+the next occurrence.
 
 ## For a fresh agent
 

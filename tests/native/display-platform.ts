@@ -6,7 +6,8 @@
  * effective DPI through PowerShell on Windows. A display change is a real OS
  * display-mode change made by that oracle and always restored. Hosted runners
  * have one virtual display, so window migration, hotplug and mixed DPI are
- * recorded as unavailable rather than simulated.
+ * recorded as unavailable here; on macOS display-virtual-macos.ts adds a
+ * second display for them.
  */
 import {
   createApplication,
@@ -17,9 +18,18 @@ import {
   type NativeDisplaySnapshot,
 } from '@bun-native/core'
 import assert from 'node:assert/strict'
-import { createHash } from 'node:crypto'
 import { statSync, writeFileSync } from 'node:fs'
 import { isAbsolute, join } from 'node:path'
+import {
+  assertRect,
+  close,
+  macScreens as readMacScreens,
+  run,
+  type ExpectedDisplay,
+  type Rect,
+  settledDisplays,
+} from './display-os.ts'
+import { windowsDeviceUuid } from './display-uuid.ts'
 
 const output = process.env['BUN_NATIVE_DISPLAY_EVIDENCE']
 const host = process.env['BUN_NATIVE_HOST']
@@ -56,150 +66,9 @@ const record = (name: string, value: unknown) => {
   )
 }
 
-async function run(command: string[]): Promise<string> {
-  const child = Bun.spawn(command, {
-    stdin: 'ignore',
-    stdout: 'pipe',
-    stderr: 'pipe',
-  })
-  const [stdout, stderr, code] = await Promise.all([
-    new Response(child.stdout).text(),
-    new Response(child.stderr).text(),
-    child.exited,
-  ])
-  if (code !== 0) throw new Error(`${command[0]} ${command[1]} exited ${code}: ${stderr.trim()}`)
-  return stdout.trim()
-}
-
-type Rect = { x: number; y: number; width: number; height: number }
-/** A display as GPUI's backend must report it, derived only from OS values. */
-interface ExpectedDisplay {
-  id: string
-  bounds: Rect
-  visibleBounds: Rect
-  scale: number
-  primary: boolean
-  /** Opaque handle the oracle uses to change this display's mode. */
-  device: string
-}
-
-const close = (a: number, b: number) => Math.abs(a - b) <= 1e-2
-function assertRect(actual: Rect | undefined, expected: Rect, context: string) {
-  assert(actual, `${context}: missing`)
-  for (const key of ['x', 'y', 'width', 'height'] as const)
-    assert(
-      close(actual[key], expected[key]),
-      `${context}: ${key} ${actual[key]} != ${expected[key]}`
-    )
-}
-
-/** RFC 4122 version 5 (SHA-1) UUID, computed here independently of GPUI. */
-function uuidV5(namespace: string, name: Uint8Array): string {
-  const hash = createHash('sha1')
-    .update(Buffer.from(namespace.replaceAll('-', ''), 'hex'))
-    .update(name)
-    .digest()
-  hash[6] = (hash[6]! & 0x0f) | 0x50
-  hash[8] = (hash[8]! & 0x3f) | 0x80
-  const hex = hash.subarray(0, 16).toString('hex')
-  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`
-}
-
-/**
- * GPUI's Windows display UUID is v5(DNS, big-endian UTF-16 bytes of the whole
- * 32-unit `szDevice` buffer from GetMonitorInfoW, NUL padding included). It
- * therefore names a GDI device such as `\\.\DISPLAY1`, not a physical monitor.
- */
-function windowsDeviceUuid(deviceName: string): string {
-  assert(deviceName.length < 32, 'GDI device names fit in szDevice')
-  const bytes = new Uint8Array(64)
-  for (let index = 0; index < deviceName.length; index++) {
-    const unit = deviceName.charCodeAt(index)
-    bytes[index * 2] = unit >> 8
-    bytes[index * 2 + 1] = unit & 0xff
-  }
-  return uuidV5('6ba7b810-9dad-11d1-80b4-00c04fd430c8', bytes)
-}
-
 const raw: Record<string, unknown[]> = {}
 function keep(name: string, value: unknown) {
   ;(raw[name] ??= []).push(value)
-}
-
-async function macScreens(): Promise<ExpectedDisplay[]> {
-  type Screen = {
-    number: number
-    uuid: string | null
-    frame: Rect
-    visibleFrame: Rect
-    backingScaleFactor: number
-    cgBounds: Rect
-    main: boolean
-  }
-  const screens = JSON.parse(await run([macHelper!, 'screens'])) as Screen[]
-  keep('nsscreenHelper', screens)
-  // A second, interpreted NSScreen read through osascript must agree.
-  const jxa = JSON.parse(
-    await run([
-      'osascript',
-      '-l',
-      'JavaScript',
-      '-e',
-      `ObjC.import('AppKit');
-const screens = $.NSScreen.screens;
-const out = [];
-for (let i = 0; i < screens.count; i++) {
-  const s = screens.objectAtIndex(i);
-  const f = s.frame;
-  const v = s.visibleFrame;
-  out.push({
-    number: s.deviceDescription.objectForKey($('NSScreenNumber')).unsignedIntValue,
-    frame: { x: f.origin.x, y: f.origin.y, width: f.size.width, height: f.size.height },
-    visibleFrame: { x: v.origin.x, y: v.origin.y, width: v.size.width, height: v.size.height },
-    backingScaleFactor: s.backingScaleFactor,
-  });
-}
-JSON.stringify(out);`,
-    ])
-  ) as Pick<Screen, 'number' | 'frame' | 'visibleFrame' | 'backingScaleFactor'>[]
-  keep('nsscreenOsascript', jxa)
-  assert.equal(jxa.length, screens.length, 'osascript and AppKit see the same screens')
-  for (const [index, screen] of screens.entries()) {
-    const other = jxa[index]!
-    assert.equal(other.number, screen.number)
-    assert.equal(other.backingScaleFactor, screen.backingScaleFactor)
-    assertRect(other.frame, screen.frame, 'osascript frame')
-    assertRect(other.visibleFrame, screen.visibleFrame, 'osascript visibleFrame')
-    // NSScreen points and CoreGraphics display bounds describe the same size.
-    assert(close(screen.cgBounds.width, screen.frame.width))
-    assert(close(screen.cgBounds.height, screen.frame.height))
-  }
-  keep('systemProfiler', JSON.parse(await run(['system_profiler', '-json', 'SPDisplaysDataType'])))
-  return screens.map((screen) => {
-    assert(screen.uuid, `display ${screen.number} has a CoreGraphics UUID`)
-    const frame = screen.frame
-    const visible = screen.visibleFrame
-    return {
-      id: screen.uuid.toLowerCase(),
-      device: String(screen.number),
-      primary: screen.main,
-      scale: screen.backingScaleFactor,
-      // GPUI's macOS display reports the CoreGraphics size at the origin.
-      bounds: {
-        x: 0,
-        y: 0,
-        width: screen.cgBounds.width,
-        height: screen.cgBounds.height,
-      },
-      // AppKit is bottom-left; the work area is reported top-left within the screen.
-      visibleBounds: {
-        x: visible.x - frame.x,
-        y: frame.y + frame.height - (visible.y + visible.height),
-        width: visible.width,
-        height: visible.height,
-      },
-    }
-  })
 }
 
 async function windowsScreens(): Promise<ExpectedDisplay[]> {
@@ -239,45 +108,9 @@ async function windowsScreens(): Promise<ExpectedDisplay[]> {
   })
 }
 
-const screens = () => (platform === 'darwin' ? macScreens() : windowsScreens())
+const screens = () => (platform === 'darwin' ? readMacScreens(macHelper!, keep) : windowsScreens())
 
-/**
- * The OS displays once they stop changing. macOS relayouts the Dock (and so
- * the work area) for a few seconds after a display mode change, so a read made
- * right after a change, or after an earlier run's change, races that relayout.
- * Two reads 400 ms apart must agree; the read is never relaxed beyond that.
- *
- * The 15 s bounds how long the reads may keep disagreeing, not how long one
- * read may take: the first Windows oracle read starts PowerShell and loads
- * Windows Forms, which took the whole window on a loaded hosted runner (hosted
- * run 42212362205: one read, 22 s after launch, then "did not settle" with a
- * single state that no second read had contradicted). A state read before the
- * deadline is therefore always compared with one more read, however long each
- * takes.
- */
-async function settledScreens(): Promise<ExpectedDisplay[]> {
-  const deadline = performance.now() + 15_000
-  let previous: string | undefined
-  let latest: ExpectedDisplay[] | undefined
-  let failure: unknown
-  let overdue = 0
-  while (performance.now() < deadline || (previous !== undefined && overdue++ < 1)) {
-    try {
-      latest = await screens()
-      failure = undefined
-      const text = JSON.stringify(latest)
-      if (text === previous) return latest
-      previous = text
-    } catch (error) {
-      // The two independent oracle reads disagreed mid-relayout.
-      failure = error
-      previous = undefined
-    }
-    await Bun.sleep(400)
-  }
-  if (failure !== undefined) throw failure
-  throw new Error('the OS display state did not settle within 15 s: ' + JSON.stringify(latest))
-}
+const settledScreens = () => settledDisplays(screens)
 
 /**
  * Both windows' snapshots, compared exactly with the OS state they were read
@@ -451,12 +284,17 @@ const backend = platform === 'darwin' ? 'macOS AppKit/CoreGraphics' : 'Windows W
 const initialDisplays = await settledScreens()
 assert(initialDisplays.length >= 1, 'the OS reports at least one display')
 record('osDisplays', { backend, displays: initialDisplays })
+// macOS adds a CGVirtualDisplay for these in display-virtual-macos.ts.
+const elsewhere = platform === 'darwin' ? '; macOS runs it in display-virtual-macos.ts' : ''
 if (initialDisplays.length === 1) {
   unavailable['windowMigration'] =
-    'the hosted runner has one display, so no window can move to another display'
-  unavailable['mixedDpi'] = 'the hosted runner has one display and therefore one scale factor'
+    'the hosted runner has one display, so no window can move to another display' + elsewhere
+  unavailable['mixedDpi'] =
+    'the hosted runner has one display and therefore one scale factor' + elsewhere
 }
-unavailable['hotplug'] = 'hosted runner displays are virtual; none can be connected or removed'
+unavailable['hotplug'] =
+  'this fixture connects and removes no display' +
+  (platform === 'darwin' ? elsewhere : '; the hosted Windows runner cannot add one')
 
 // 1. Denial: the capability is advertised, the grant is not.
 {
@@ -467,6 +305,7 @@ unavailable['hotplug'] = 'hosted runner displays are virtual; none can be connec
       permission: 'deny',
       scope: 'owned_window',
       details: 'available',
+      identity: 'available',
       changes: 'available',
     })
     const window = await open(denied, 'Display platform denied')
@@ -494,6 +333,7 @@ const app = await createApplication({
 try {
   assert.deepEqual(app.capabilities.includes('display_details_v1'), true)
   assert.deepEqual(app.capabilities.includes('display_changes_v1'), true)
+  assert.deepEqual(app.capabilities.includes('display_identity_v1'), true)
 
   // 2. Snapshot = the window's OS display: bounds, work area, scale and identity.
   const first = await open(app, 'Display platform first')
