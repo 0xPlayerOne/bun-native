@@ -11,8 +11,8 @@ use bun_native_protocol::{
     ScrollAnchor, Tree, ViewRequest, WindowId,
 };
 use gpui::{
-    AnyElement, AnyWindowHandle, App, Context, Div, Entity, ExternalPaths, FocusHandle, Focusable,
-    KeyBinding, MouseButton, Pixels, Role, ScrollHandle, SharedString, Size, Stateful,
+    AnyElement, AnyWindowHandle, App, Context, Div, ElementId, Entity, ExternalPaths, FocusHandle,
+    Focusable, KeyBinding, MouseButton, Pixels, Role, ScrollHandle, SharedString, Size, Stateful,
     Subscription, WeakEntity, Window, actions, canvas, deferred, div, point, prelude::*, px, rgb,
 };
 use std::cell::RefCell;
@@ -557,67 +557,67 @@ impl Render for NativeView {
                 None,
             );
         }
-        base.size_full()
-            .relative()
-            .overflow_hidden()
-            .bg(rgb(0xffffff))
-            .text_color(rgb(0x17212b))
-            .text_size(px(18.))
-            .key_context("NativeWindow")
-            .track_focus(&self.root_focus)
-            .capture_key_up(cx.listener(|view, event: &gpui::KeyUpEvent, window, cx| {
-                view.key(&event.keystroke, false, window, cx)
-            }))
-            .on_action(
-                cx.listener(|view, _: &FocusNext, window, cx| view.focus_step(true, window, cx)),
-            )
-            .on_action(
-                cx.listener(|view, _: &FocusPrevious, window, cx| {
-                    view.focus_step(false, window, cx)
-                }),
-            )
-            .on_action(cx.listener(|view, _: &MenuNext, window, cx| {
-                view.menu_action(MenuMove::Next, window, cx)
-            }))
-            .on_action(cx.listener(|view, _: &MenuPrevious, window, cx| {
-                view.menu_action(MenuMove::Previous, window, cx)
-            }))
-            .on_action(cx.listener(|view, _: &MenuFirst, window, cx| {
-                view.menu_action(MenuMove::First, window, cx)
-            }))
-            .on_action(cx.listener(|view, _: &MenuLast, window, cx| {
-                view.menu_action(MenuMove::Last, window, cx)
-            }))
-            .children(pointer_trace)
-            .child(body)
-            .child(
-                self.observer(
-                    canvas(
-                        |_, _, _| (),
-                        move |_, (), window, cx| {
-                            // Registered after native children: capture has already
-                            // selected the deepest GPUI hit before default actions.
-                            pointer.observe(window, &view, point(px(0.), px(0.)), &pressed);
-                            if let Some(frame) = phase_frame {
-                                crate::phases::painted(frame);
-                            }
-                            #[cfg(target_os = "macos")]
-                            frame_keeper.painted(window_id, &evidence, window);
-                            let state = paint_state.borrow();
-                            evidence.frame(window_id, &state.tree, render_started);
-                            evidence.painted(
-                                window_id,
-                                &state.tree,
-                                layout.as_ref().map(|layout| layout.snapshot(window, cx)),
-                            );
-                        },
-                    )
-                    .absolute()
-                    .top_0()
-                    .left_0()
-                    .size(px(1.)),
-                ),
-            )
+        base.id(ElementId::NamedInteger(
+            "accessibility-exposure".into(),
+            self.overlays.exposure(),
+        ))
+        .size_full()
+        .relative()
+        .overflow_hidden()
+        .bg(rgb(0xffffff))
+        .text_color(rgb(0x17212b))
+        .text_size(px(18.))
+        .key_context("NativeWindow")
+        .track_focus(&self.root_focus)
+        .capture_key_up(cx.listener(|view, event: &gpui::KeyUpEvent, window, cx| {
+            view.key(&event.keystroke, false, window, cx)
+        }))
+        .on_action(cx.listener(|view, _: &FocusNext, window, cx| view.focus_step(true, window, cx)))
+        .on_action(
+            cx.listener(|view, _: &FocusPrevious, window, cx| view.focus_step(false, window, cx)),
+        )
+        .on_action(cx.listener(|view, _: &MenuNext, window, cx| {
+            view.menu_action(MenuMove::Next, window, cx)
+        }))
+        .on_action(cx.listener(|view, _: &MenuPrevious, window, cx| {
+            view.menu_action(MenuMove::Previous, window, cx)
+        }))
+        .on_action(cx.listener(|view, _: &MenuFirst, window, cx| {
+            view.menu_action(MenuMove::First, window, cx)
+        }))
+        .on_action(cx.listener(|view, _: &MenuLast, window, cx| {
+            view.menu_action(MenuMove::Last, window, cx)
+        }))
+        .children(pointer_trace)
+        .child(body)
+        .child(
+            self.observer(
+                canvas(
+                    |_, _, _| (),
+                    move |_, (), window, cx| {
+                        // Registered after native children: capture has already
+                        // selected the deepest GPUI hit before default actions.
+                        pointer.observe(window, &view, point(px(0.), px(0.)), &pressed);
+                        if let Some(frame) = phase_frame {
+                            crate::phases::painted(frame);
+                        }
+                        #[cfg(target_os = "macos")]
+                        frame_keeper.painted(window_id, &evidence, window);
+                        let state = paint_state.borrow();
+                        evidence.frame(window_id, &state.tree, render_started);
+                        evidence.painted(
+                            window_id,
+                            &state.tree,
+                            layout.as_ref().map(|layout| layout.snapshot(window, cx)),
+                        );
+                    },
+                )
+                .absolute()
+                .top_0()
+                .left_0()
+                .size(px(1.)),
+            ),
+        )
     }
 }
 
