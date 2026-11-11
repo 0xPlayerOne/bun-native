@@ -858,7 +858,9 @@ jobs:
               koreanImeTip = $tip
               koreanLayout = $layout
               capability = "$($capability.State)"
-              languages = @(Get-WinUserLanguageList | ForEach-Object { $_.LanguageTag })
+              # The International module's cmdlets fail to marshal under PowerShell 7
+              # ("Invalid managed/unmanaged type combination"); ask Windows PowerShell.
+              languages = @(powershell.exe -NoProfile -NonInteractive -Command '(Get-WinUserLanguageList).LanguageTag')
             } | ConvertTo-Json | Out-File (Join-Path $env:NATIVE_EVIDENCE 'windows-ime-before.json')
             if (-not ($tip -and $layout)) {
               Add-WindowsCapability -Online -Name 'Language.Basic~~~ko-KR~0.0.1.0' |

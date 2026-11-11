@@ -56,13 +56,19 @@ public static class BunNativeInput {
     return input;
   }
 
+  // PowerShell turns $null into "" for a string argument, and FindWindowW then
+  // looks for a window class named "". Pass the null class from C# instead.
+  public static IntPtr FindTopLevel(string title) {
+    return FindWindowW(null, title);
+  }
+
   public static uint Send(INPUT[] inputs) {
     return SendInput((uint)inputs.Length, inputs, Marshal.SizeOf(typeof(INPUT)));
   }
 }
 '@
 
-$window = [BunNativeInput]::FindWindowW($null, $Title)
+$window = [BunNativeInput]::FindTopLevel($Title)
 if ($window -eq [IntPtr]::Zero) { throw "No top-level window titled $Title" }
 $process = [uint32]0
 $thread = [BunNativeInput]::GetWindowThreadProcessId($window, [ref]$process)

@@ -20,3 +20,15 @@ test('NVDA IO-level speech records become phrases in order', () => {
     "edit read only Fixed it's",
   ])
 })
+
+test('strings inside command reprs are not spoken text', () => {
+  // Recorded by NVDA 2024.4.2 on windows-2022 (Native Platforms run 42936020446).
+  const log = [
+    "Speaking [LangChangeCommand ('en'), 'Bun Native screen reader qualification', 'window', CancellableSpeech (still valid)]",
+    "Speaking [LangChangeCommand ('en'), 'C:\\\\ProgramData\\\\GitHub\\\\HostedComputeAgent\\\\hosted-compute-agent', 'terminal', CancellableSpeech (still valid), 'blank']",
+  ].join('\r\n')
+  expect(nvdaSpeech(log)).toEqual([
+    'Bun Native screen reader qualification window',
+    'C:\\ProgramData\\GitHub\\HostedComputeAgent\\hosted-compute-agent terminal blank',
+  ])
+})

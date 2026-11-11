@@ -614,12 +614,22 @@ try {
   }
   const per = (exact: string[], other: Expectation): Expectation => (linux ? { exact } : other)
 
-  // The window and the input that owns initial focus.
+  // The window and the input that owns initial focus. VoiceOver on macOS 15
+  // reads the window and puts its own cursor on the first element, the text,
+  // not on the focused input (observed on the hosted image, Native Platforms
+  // run 42936020446); the input's name and role are asserted when Tab returns
+  // to it below.
   await step(
     'window activated',
     null,
     'search',
-    per(['entry typed.'], { name: 'typed', role: ROLE.entry })
+    mac
+      ? {
+          exact: [
+            'application Bun Native screen reader qualification window Screen reader qualification',
+          ],
+        }
+      : per(['entry typed.'], { name: 'typed', role: ROLE.entry })
   )
   // Keyboard-only Tab order; the disabled button is skipped and never spoken.
   await step(

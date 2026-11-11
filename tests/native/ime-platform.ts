@@ -93,6 +93,22 @@ async function hostPid(): Promise<string> {
 }
 
 let previousSource: string | undefined
+if (mac) {
+  // Select the Korean input mode before the host starts. Selected from this
+  // background helper while the host was already frontmost, the source was
+  // reported selected but the host's text input context kept typing Latin
+  // letters (hosted macOS 15, Native Platforms run 42936020446: 'r' arrived as
+  // "r"). A context created after the switch starts in the selected source.
+  const available = JSON.parse(await run(oracle(['sources', 'com.apple.inputmethod.Korean'])))
+  record('koreanSources', available)
+  const selected = JSON.parse(await run(oracle(['select', KOREAN_SOURCE]))) as {
+    previous: { id: string }
+    selected: { id: string }
+  }
+  previousSource = selected.previous.id
+  record('inputSource', selected)
+  assert.equal(selected.selected.id, KOREAN_SOURCE)
+}
 const app = await createApplication({ executable: host })
 try {
   const window = await app.openWindow({ title: TITLE, width: 420, height: 160 })
@@ -113,17 +129,10 @@ try {
     run(oracle(mac ? ['key', pid, key] : ['key', TITLE, '-Argument', key]))
   if (mac) {
     await run(oracle(['activate', pid]))
-    const available = JSON.parse(await run(oracle(['sources', 'com.apple.inputmethod.Korean'])))
-    record('koreanSources', available)
-    const selected = JSON.parse(await run(oracle(['select', KOREAN_SOURCE]))) as {
-      previous: { id: string }
-      selected: { id: string }
-    }
-    previousSource = selected.previous.id
-    record('inputSource', selected)
-    assert.equal(selected.selected.id, KOREAN_SOURCE)
-    // The selection applies to the frontmost application; make sure it is ours.
-    await run(oracle(['activate', pid]))
+    // A fresh process reads the system's current source with the host in front.
+    const current = JSON.parse(await run(oracle(['current']))) as { id: string }
+    record('inputSourceWithHostFrontmost', current)
+    assert.equal(current.id, KOREAN_SOURCE, 'the Korean input mode is still selected')
   } else {
     await run(oracle(['foreground', TITLE]))
     let state = JSON.parse(await run(oracle(['ime', TITLE, '-Argument', KOREAN_LAYOUT]))) as {
