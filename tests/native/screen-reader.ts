@@ -478,7 +478,11 @@ async function hostPid(): Promise<number> {
  * phrases, in order; macOS and Windows expect a phrase that contains the
  * name and one of the role words.
  */
-type Expectation = { exact: string[] } | { name: string; role: string[] } | null
+type Expectation =
+  | { exact: string[] }
+  | { oneOf: string[] }
+  | { name: string; role: string[] }
+  | null
 
 // VoiceOver's and NVDA's role words for AccessKit's Button and TextInput.
 const ROLE = {
@@ -488,7 +492,16 @@ const ROLE = {
 
 const reader: Reader = linux ? new Orca() : mac ? new VoiceOver() : new Nvda()
 let readerInfo: Record<string, unknown> = {}
-const steps: Array<{ step: string; key: Key | null; focus: string | null; phrases: string[] }> = []
+const steps: Array<{
+  step: string
+  key: Key | null
+  focus: string | null
+  phrases: string[]
+  missing?: Expectation
+}> = []
+// A step whose expected phrase never came is recorded and the scenario goes on,
+// so one run shows every step a screen reader misses; the run still fails.
+const missed: Array<{ step: string; expected: Expectation; phrases: string[] }> = []
 const searchValues: string[] = []
 const focusNodes: NativeNode[] = []
 const names = new Map<NativeNode, string>()
@@ -570,6 +583,8 @@ try {
       for (const phrase of phrases) if (phrase === expected.exact[index]) index += 1
       return index === expected.exact.length
     }
+    // One of several exact phrases, each recorded from a hosted run.
+    if ('oneOf' in expected) return phrases.some((phrase) => expected.oneOf.includes(phrase))
     return phrases.some((phrase) => {
       const lower = phrase.toLowerCase()
       return (
@@ -600,16 +615,25 @@ try {
         10_000,
         () => focusTrace().join()
       )
+    let spoken = true
     await waitFor(
       () => matches(reader.utterances().slice(from), expected),
       `${label}: ${reader.name} speech ${JSON.stringify(expected)}`,
       15_000,
       () => JSON.stringify(reader.utterances().slice(from))
-    )
+    ).catch((error: unknown) => {
+      if (!(error instanceof Error) || !error.message.startsWith('Timed out')) throw error
+      console.error(error.message)
+      spoken = false
+    })
     await Bun.sleep(settle)
     const phrases = reader.utterances().slice(from)
-    steps.push({ step: label, key, focus, phrases })
-    console.log(JSON.stringify({ step: label, phrases }))
+    if (spoken) steps.push({ step: label, key, focus, phrases })
+    else {
+      steps.push({ step: label, key, focus, phrases, missing: expected })
+      missed.push({ step: label, expected, phrases })
+    }
+    console.log(JSON.stringify({ step: label, phrases, spoken }))
     return phrases
   }
   const per = (exact: string[], other: Expectation): Expectation => (linux ? { exact } : other)
@@ -617,16 +641,17 @@ try {
   // The window and the input that owns initial focus. VoiceOver on macOS 15
   // reads the window and puts its own cursor on the first element, the text,
   // not on the focused input (observed on the hosted image, Native Platforms
-  // run 42936020446); the input's name and role are asserted when Tab returns
-  // to it below.
+  // runs 42936020446 and 42938725505, the second with " has keyboard focus"
+  // appended); the input's name and role are asserted when Tab returns to it.
   await step(
     'window activated',
     null,
     'search',
     mac
       ? {
-          exact: [
+          oneOf: [
             'application Bun Native screen reader qualification window Screen reader qualification',
+            'application Bun Native screen reader qualification window Screen reader qualification has keyboard focus',
           ],
         }
       : per(['entry typed.'], { name: 'typed', role: ROLE.entry })
@@ -740,11 +765,16 @@ try {
   record('steps', steps)
   record('values', searchValues.slice())
   record('focus', focusTrace())
+  assert.deepEqual(missed, [], `${reader.name} said every expected phrase`)
   await window.close()
 } finally {
   writeFileSync(
     join(evidence, 'utterances.json'),
-    JSON.stringify({ reader: reader.name, utterances: reader.utterances(), steps }, null, 2) + '\n'
+    JSON.stringify(
+      { reader: reader.name, utterances: reader.utterances(), steps, missed },
+      null,
+      2
+    ) + '\n'
   )
   await app.shutdown()
   await app.closed

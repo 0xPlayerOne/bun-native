@@ -155,7 +155,15 @@ try {
   const last = () => values.at(-1)
   const step = async (key: string, expected: string, description: string) => {
     await press(key)
-    await waitFor(() => last() === expected, `${description} (observed ${JSON.stringify(values)})`)
+    await waitFor(() => last() === expected, description).catch(async (error: unknown) => {
+      // The window thread's layout, open status and conversion mode at the
+      // failure, which IMM reported as Korean, open and Hangul before the first
+      // key in Native Platforms run 42938725505 while `r` still arrived as "r".
+      if (!mac) record('imeStateAtFailure', JSON.parse(await run(oracle(['imestate', TITLE]))))
+      throw new Error(
+        `${error instanceof Error ? error.message : String(error)} (observed ${JSON.stringify(values)})`
+      )
+    })
     // The input method may clear and reinsert its marked text; require it to hold.
     await Bun.sleep(150)
     assert.equal(last(), expected, description)
