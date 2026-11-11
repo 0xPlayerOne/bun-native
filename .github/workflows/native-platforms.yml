@@ -2,6 +2,29 @@ name: Native Platforms
 
 on:
   workflow_call:
+    # Release signing identities (#249; docs/releasing.md). Every one is optional: without
+    # them the template is signed with a throwaway identity and notarization is skipped.
+    secrets:
+      APPLE_DEVELOPER_ID_P12_BASE64:
+        required: false
+      APPLE_DEVELOPER_ID_P12_PASSWORD:
+        required: false
+      APPLE_NOTARY_KEY_ID:
+        required: false
+      APPLE_NOTARY_ISSUER_ID:
+        required: false
+      APPLE_NOTARY_PRIVATE_KEY:
+        required: false
+      APPLE_ID:
+        required: false
+      APPLE_TEAM_ID:
+        required: false
+      APPLE_APP_SPECIFIC_PASSWORD:
+        required: false
+      WINDOWS_CODESIGN_PFX_BASE64:
+        required: false
+      WINDOWS_CODESIGN_PFX_PASSWORD:
+        required: false
   workflow_dispatch:
 
 permissions:
@@ -175,6 +198,7 @@ jobs:
           cargo test --locked --release -p bun-native-host
           if ($LASTEXITCODE -ne 0) { throw 'Native host tests failed' }
       - name: Generated Solid and React templates through create, check and inspected AOT build (#254)
+        id: cli-templates
         if: ${{ matrix.shard == 1 && (!cancelled() && steps.native-build.outcome == 'success') }}
         timeout-minutes: 8
         run: |
@@ -205,6 +229,117 @@ jobs:
             target/release/deps
             target/release/.fingerprint
           key: native-release-target-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('rust-toolchain.toml', 'Cargo.lock', 'Cargo.toml', 'native/vendor/**') }}
+      # OS code signing and installers (#249): the generated Solid template above is signed,
+      # bundled with its update manifest and installed from its installer image. Pull
+      # requests always use a throwaway self-signed identity; other runs use the release
+      # identity when its secrets are configured (docs/releasing.md).
+      - name: Provision a code-signing identity, throwaway unless release secrets exist (#249)
+        id: signing-identity
+        if: ${{ matrix.shard == 1 && (!cancelled() && steps.cli-templates.outcome == 'success') }}
+        timeout-minutes: 3
+        env:
+          APPLE_DEVELOPER_ID_P12_BASE64: ${{ github.event_name != 'pull_request' && secrets.APPLE_DEVELOPER_ID_P12_BASE64 || '' }}
+          APPLE_DEVELOPER_ID_P12_PASSWORD: ${{ github.event_name != 'pull_request' && secrets.APPLE_DEVELOPER_ID_P12_PASSWORD || '' }}
+          WINDOWS_CODESIGN_PFX_BASE64: ${{ github.event_name != 'pull_request' && secrets.WINDOWS_CODESIGN_PFX_BASE64 || '' }}
+          WINDOWS_CODESIGN_PFX_PASSWORD: ${{ github.event_name != 'pull_request' && secrets.WINDOWS_CODESIGN_PFX_PASSWORD || '' }}
+        run: |
+          $work = Join-Path $env:RUNNER_TEMP 'signing-identity'
+          if ($IsMacOS) {
+            bash scripts/signing/macos-identity.sh provision $work
+            if ($LASTEXITCODE -ne 0) { throw 'No macOS code-signing identity was provisioned' }
+          } else {
+            & ./scripts/signing/windows-identity.ps1 -Mode provision -Work $work
+          }
+      - name: Sign, bundle and package the template AOT application (#249)
+        id: signed-template
+        if: ${{ matrix.shard == 1 && (!cancelled() && steps.signing-identity.outcome == 'success') }}
+        timeout-minutes: 12
+        run: |
+          $work = Join-Path $env:RUNNER_TEMP 'signed-template'
+          $evidence = Join-Path $env:NATIVE_EVIDENCE 'signed-template'
+          $bundles = Join-Path $work 'bundles'
+          $installers = Join-Path $work 'installers'
+          New-Item -ItemType Directory $work, $evidence, $bundles, $installers, (Join-Path $work 'second') | Out-Null
+          function Invoke-Logged([string]$Log) {
+            # Runs the remaining arguments and keeps their output as evidence.
+            $command = $args[0]
+            $arguments = @($args | Select-Object -Skip 1)
+            & $command @arguments | Tee-Object -FilePath (Join-Path $evidence $Log)
+            if ($LASTEXITCODE -ne 0) { throw "$command $($arguments -join ' ') failed ($LASTEXITCODE)" }
+          }
+          $build = Join-Path $work 'build'
+          Copy-Item -Recurse (Join-Path $env:RUNNER_TEMP 'cli-templates/solid-typescript/package') $build
+          [string[]]$signing = @('--identity', $env:SIGNING_IDENTITY)
+          if ($IsMacOS) { $signing += @('--keychain', $env:SIGNING_KEYCHAIN) }
+          # Executables are signed before the update manifest hashes them.
+          Invoke-Logged sign-build.json bun scripts/release-package.ts sign $build @signing
+          $product = 'dev.bun-native.template'
+          $key = Join-Path $work 'release.pem'
+          $public = Join-Path $work 'release.pub.pem'
+          $keys = Join-Path $work 'keys.json'
+          $first = Join-Path $work 'update.json'
+          $second = Join-Path $work 'second/update.json'
+          Invoke-Logged keygen.log bun scripts/release-update.ts keygen --private-key $key --public-key $public
+          Invoke-Logged key-set.log bun scripts/release-update.ts key-set --product $product --version 1 --minimum-sequence 1 --public-key $public --out $keys
+          # A second manifest of the same payload with a higher sequence is the pending update the smoke installs.
+          Invoke-Logged manifest-1.log bun scripts/release-update.ts manifest $build --product $product --version 1.0.1 --sequence 1 --signed --out $first
+          Invoke-Logged manifest-2.log bun scripts/release-update.ts manifest $build --product $product --version 1.0.2 --sequence 2 --signed --out $second
+          Invoke-Logged sign-update-1.log bun scripts/release-update.ts sign $first --private-key $key --keyed
+          Invoke-Logged sign-update-2.log bun scripts/release-update.ts sign $second --private-key $key --keyed
+          Invoke-Logged bundle.log bun scripts/release-update.ts bundle $first --payload $build --out $bundles --self-contained --key-set $keys
+          $bundle = @(Get-ChildItem -Directory -LiteralPath $bundles)[0].FullName
+          Invoke-Logged sign-bundle.json bun scripts/release-package.ts sign $bundle @signing
+          $format = if ($IsMacOS) { 'dmg' } else { 'zip' }
+          Invoke-Logged installer.json bun scripts/release-package.ts installer $bundle --format $format --name 'Bun Native Template' --out $installers @signing
+          $installer = @(Get-ChildItem -File -LiteralPath $installers)[0].FullName
+          Copy-Item -LiteralPath $first (Join-Path $evidence 'update-1.json')
+          Copy-Item -LiteralPath $second (Join-Path $evidence 'update-2.json')
+          "SIGNED_INSTALLER=$installer" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+          "SIGNED_SECOND_UPDATE=$second" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+      - name: Notarize and staple the template disk image when Apple credentials exist (#249)
+        if: ${{ matrix.shard == 1 && runner.os == 'macOS' && (!cancelled() && steps.signed-template.outcome == 'success') }}
+        timeout-minutes: 50
+        env:
+          APPLE_NOTARY_KEY_ID: ${{ github.event_name != 'pull_request' && secrets.APPLE_NOTARY_KEY_ID || '' }}
+          APPLE_NOTARY_ISSUER_ID: ${{ github.event_name != 'pull_request' && secrets.APPLE_NOTARY_ISSUER_ID || '' }}
+          APPLE_NOTARY_PRIVATE_KEY: ${{ github.event_name != 'pull_request' && secrets.APPLE_NOTARY_PRIVATE_KEY || '' }}
+          APPLE_ID: ${{ github.event_name != 'pull_request' && secrets.APPLE_ID || '' }}
+          APPLE_TEAM_ID: ${{ github.event_name != 'pull_request' && secrets.APPLE_TEAM_ID || '' }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ github.event_name != 'pull_request' && secrets.APPLE_APP_SPECIFIC_PASSWORD || '' }}
+        run: |
+          $record = Join-Path $env:NATIVE_EVIDENCE 'signed-template/notarization.log'
+          if ($env:SIGNING_KIND -ne 'release') {
+            $reason = 'the image is signed with the throwaway self-signed identity, and Apple notarizes only Developer ID signatures'
+            Write-Output "::notice title=Notarization skipped::$reason"
+            "Notarization skipped: $reason" | Out-File -FilePath $record
+            exit 0
+          }
+          bun scripts/release-package.ts notarize $env:SIGNED_INSTALLER | Tee-Object -FilePath $record
+          if ($LASTEXITCODE -ne 0) { throw 'Notarization, stapling or the Gatekeeper assessment failed' }
+          if (Select-String -Quiet -Pattern '^Notarization skipped' -LiteralPath $record) {
+            Write-Output "::notice title=Notarization skipped::$(Get-Content -LiteralPath $record -TotalCount 1)"
+          }
+      - name: Install the signed template from its installer and confirm its health (#249)
+        if: ${{ matrix.shard == 1 && (!cancelled() && steps.signed-template.outcome == 'success') }}
+        timeout-minutes: 8
+        run: |
+          # Verifies every executable's signature in the image and after installation, runs
+          # the image's install script, then starts a pending update through the installed,
+          # signed verifying launcher until the application confirms its own health.
+          bun scripts/quality/signed-installer-smoke.ts `
+            --installer $env:SIGNED_INSTALLER --second-update $env:SIGNED_SECOND_UPDATE `
+            --work (Join-Path $env:RUNNER_TEMP 'signed-template-smoke') `
+            --evidence (Join-Path $env:NATIVE_EVIDENCE 'signed-template/install-smoke.json') --expect-signed
+          if ($LASTEXITCODE -ne 0) { throw 'The signed installer did not install or start the application' }
+      - name: Remove the code-signing identity (#249)
+        if: ${{ always() && matrix.shard == 1 && steps.signing-identity.outcome != 'skipped' }}
+        run: |
+          $work = Join-Path $env:RUNNER_TEMP 'signing-identity'
+          if ($IsMacOS) {
+            bash scripts/signing/macos-identity.sh cleanup $work
+          } else {
+            & ./scripts/signing/windows-identity.ps1 -Mode cleanup -Work $work
+          }
       - name: Verify native macOS layer invalidation and assigned Metal identity
         if: ${{ matrix.shard == 2 && (runner.os == 'macOS') }}
         timeout-minutes: 3

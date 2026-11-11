@@ -63,7 +63,7 @@ CARGO_ENCODED_RUSTFLAGS="--remap-path-prefix=${CARGO_HOME:-$HOME/.cargo}=/cargo"
 - **Windows host:** two independent hosted `windows-2022` builds are identical since `/Brepro` (above). A local Windows build with a different Visual Studio or Windows SDK has not been compared.
 - **AOT executables:** Linux x64 and, since 2026-11-06, macOS arm64 (`build-reproducibility.test.ts` passes there; the ad-hoc Mach-O signature is deterministic). Windows has not been compared.
 - **Diagnostics** (`build-metrics.json`, compiler logs, package-set `logs/`) are never reproducible, and no hash or claim depends on them.
-- **Signing** would add non-reproducible signatures. Compare the unsigned payload.
+- **Signing** adds non-reproducible signatures and timestamps. `release-package.ts sign` keeps each executable's unsigned size and SHA-256 under `verification.signing.files[].unsigned` in `manifest.json` and moves the signed executables and `manifest.json` from `reproducibility.deterministic` to `reproducibility.signed`. Compare the unsigned digests. Installer `.zip` and `.tar.gz` archives are byte-reproducible for equal bundles (`installer-image.test.ts`); disk images are not.
 
 ## Checking a build yourself
 
