@@ -201,9 +201,15 @@ function fromAx(entry: Record<string, unknown>): Accessible {
     }
   return result
 }
-/** Entries outside the GPUI content: title-bar buttons and AccessKit's root group. */
+/**
+ * Entries outside the GPUI content: title-bar buttons, the title bar's own
+ * title text (a window child, a sibling of the content, carrying the window
+ * title; hosted run 43116232661) and AccessKit's root group.
+ */
 const frame = (entry: Record<string, unknown>) =>
-  WINDOW_BUTTONS.has(String(entry['subrole'])) || entry['role'] === 'AXGroup'
+  WINDOW_BUTTONS.has(String(entry['subrole'])) ||
+  entry['role'] === 'AXGroup' ||
+  (entry['role'] === 'AXStaticText' && entry['depth'] === 1 && entry['value'] === TITLE)
 
 if (mac) {
   const trust = JSON.parse(await run([axOracle!, 'trusted'])) as { trusted: boolean }

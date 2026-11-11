@@ -208,12 +208,13 @@ try {
     readOnly: { enabled: readOnlyField['enabled'], axFocus: 'moved' },
     disabled: { enabled: disabledField['enabled'], axFocus: 'unchanged', error: refused.error },
     // Recorded only: AppKit reports both settable on every AccessKit element.
-    settable: Object.fromEntries(
-      initial.map((entry) => [
-        String(entry.value),
-        { focus: entry['focusSettable'], value: entry['valueSettable'] },
-      ])
-    ),
+    // A list, not an object keyed by value: an empty field's value is "", a
+    // key PowerShell's ConvertFrom-Json rejects when the workflow reads it.
+    settable: initial.map((entry) => ({
+      value: String(entry.value),
+      focus: entry['focusSettable'],
+      valueSettable: entry['valueSettable'],
+    })),
   })
 
   // Keyboard-only focus order skips the disabled input and wraps both ways.
