@@ -154,20 +154,25 @@ executables and the session runtime directory), the host build log and
 SHA-256, and the exported record as the `benchmark-comparison-linux-X64`
 artifact, kept for 30 days, and writes the summary table to the job summary.
 Hosted runners are shared, so treat those numbers as descriptive of that run.
-The same workflow has a `macos-15` job and a `windows-2022` job. Each runs the
-comparison with `--input-trials 0` and then the direct Rust GPUI baseline on the
-same runner, and uploads `benchmark-comparison-macos-ARM64` or
-`benchmark-comparison-windows-X64`. Neither is gated against a baseline. Both
-are hosted virtual machines without a physical GPU.
-On macOS the controller samples RSS through `ps` and load through `sysctl vm.loadavg`
-and runs locally without a display server; `--input-trials` stays Linux-only because
-the XTest driver is. On Windows it also runs without a display server. It samples
-the working set of the application and its descendants through held process
-handles (`K32GetProcessMemoryInfo`, Toolhelp32 for the tree) every
-`--rss-interval-ms`, and records as load the CPU busy share from two
-`GetSystemTimes` readings 250 ms apart plus the process count before every launch.
-Windows has no load average. The Linux and macOS records are unchanged by this
-Windows support.
+The same workflow has a `macos-15` job. It runs the comparison with
+`--input-trials 0` and then the direct Rust GPUI baseline on the same runner,
+uploads `benchmark-comparison-macos-ARM64`, and is not gated against a baseline.
+It is a hosted virtual machine without a physical GPU. The controller samples RSS
+through `ps` and load through `sysctl vm.loadavg` and runs locally without a
+display server; `--input-trials` stays Linux-only because the XTest driver is.
+
+On Windows the controller also runs without a display server. It samples the
+working set of the application and its descendants through held process handles
+(`K32GetProcessMemoryInfo`, Toolhelp32 for the tree) every `--rss-interval-ms`,
+and records as load the CPU busy share from two `GetSystemTimes` readings 250 ms
+apart plus the process count before every launch. Windows has no load average.
+A `windows-2022` job ran it three times on
+[#628](https://github.com/0xPlayerOne/bun-native/pull/628): the direct Rust GPUI
+baseline passed each time, but core, Solid and React launches failed the
+unchanged collectability assertion with disposed probes still reachable
+([#629](https://github.com/0xPlayerOne/bun-native/issues/629)). The job is held
+out of this workflow until #629 is fixed, so a scheduled run does not report a
+known product defect every week; restore it from commit `0f6995f` with that fix.
 
 To keep a run in the repository, copy it into a compact record with
 `bun benchmarks/comparison/export.ts ABSOLUTE_RUN_OUTPUT ABSOLUTE_DEST`. The
@@ -225,8 +230,7 @@ artifact, so adopting a new baseline is a copy (see the baselines README).
   GPUI view with no Bun, protocol or IPC, with the same process metrics. Its
   operation timings are state application, not acknowledgements.
 - Display presentation, per-keystroke or text input latency and GPU utilization.
-  Windows is wired into CI (see above) but has no recorded run in this
-  repository yet. CPU time is recorded on Linux, macOS and Windows (see above) but not for the
+  Windows has no passing comparison run yet (#629, see above). CPU time is recorded on Linux, macOS and Windows (see above) but not for the
   Electrobun baseline. The Electrobun WebView baseline
   ([`benchmarks/electrobun`](electrobun/README.md)) covers process-level metrics
   only; its operation timings are not comparable.
