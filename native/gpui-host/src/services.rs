@@ -106,7 +106,7 @@ pub(crate) fn display_changes(cx: &App) -> bool {
     cfg!(any(target_os = "macos", target_os = "windows")) || wayland(cx)
 }
 
-fn wayland(cx: &App) -> bool {
+pub(crate) fn wayland(cx: &App) -> bool {
     cfg!(target_os = "linux") && cx.compositor_name() == "Wayland"
 }
 

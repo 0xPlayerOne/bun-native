@@ -47,7 +47,8 @@ const mode = process.env['BUN_NATIVE_SR_MODE']
 const platform = process.platform
 const linux = platform === 'linux'
 // Linux on Wayland: the owned headless sway session
-// (scripts/quality/native-wayland-session.sh); keys come from wtype.
+// (scripts/quality/native-wayland-session.sh); keys come from the virtual
+// keyboard of examples/wayland-input-peer.rs.
 const wayland = linux && Boolean(process.env['WAYLAND_DISPLAY'])
 const mac = platform === 'darwin'
 // Linux: a system Python with PyGObject that runs Orca. macOS: the compiled
@@ -146,7 +147,8 @@ class Orca implements Reader {
   #speechd: ReturnType<typeof Bun.spawn> | undefined
   #orca: ReturnType<typeof Bun.spawn> | undefined
   #xvfb: ReturnType<typeof Bun.spawn> | undefined
-  #keyboard: ReturnType<typeof Bun.spawn> | undefined
+  #keyboard: ReturnType<typeof Bun.spawn<'pipe', 'pipe', 'inherit'>> | undefined
+  #keyboardLines: AsyncIterator<string> | undefined
 
   async start() {
     // The socket path lives under a short temporary directory: the evidence
@@ -239,14 +241,31 @@ class Orca implements Reader {
     // The host has no DISPLAY and stays a native Wayland client.
     const orcaDisplay: Record<string, string> = {}
     if (wayland) {
-      // A virtual keyboard that lasts the whole run gives the seat its
-      // keyboard capability before the window exists, so the compositor can
-      // give the window keyboard focus (as tests/native/wayland.ts does).
-      this.#keyboard = Bun.spawn(['wtype', '-s', '3600000'], {
-        stdin: 'ignore',
-        stdout: 'ignore',
-        stderr: 'inherit',
-      })
+      // One virtual keyboard (examples/wayland-input-peer.rs) types every key
+      // and lasts the whole run. It gives the seat its keyboard capability
+      // before the window exists, so the compositor can give the window
+      // keyboard focus. A short-lived wtype per key adds and removes a seat
+      // device each time, and sway then takes keyboard focus from the window
+      // and gives it back; Orca re-presents the window on each return, which
+      // can preempt the phrase the key itself caused.
+      const peer = process.env['BUN_NATIVE_WAYLAND_INPUT_PEER'] ?? ''
+      if (!isAbsolute(peer)) throw new Error('Set BUN_NATIVE_WAYLAND_INPUT_PEER to the built peer')
+      this.#keyboard = Bun.spawn([peer], { stdin: 'pipe', stdout: 'pipe', stderr: 'inherit' })
+      this.#keyboardLines = (async function* (stdout: ReadableStream<Uint8Array>) {
+        let buffered = ''
+        const decoder = new TextDecoder()
+        for await (const chunk of stdout) {
+          buffered += decoder.decode(chunk, { stream: true })
+          let newline = buffered.indexOf('\n')
+          while (newline >= 0) {
+            yield buffered.slice(0, newline)
+            buffered = buffered.slice(newline + 1)
+            newline = buffered.indexOf('\n')
+          }
+        }
+      })(this.#keyboard.stdout)
+      assert.equal((await this.#keyboardLines.next()).value, 'ready', 'the input peer started')
+      await this.#peerKey('Shift_L')
       await waitFor(async () => {
         const seats = JSON.parse(await run(['swaymsg', '-t', 'get_seats', '--raw'])) as {
           capabilities: number
@@ -333,19 +352,18 @@ class Orca implements Reader {
       'where-am-i': ['key', '--clearmodifiers', 'KP_Enter'],
     }
     if (wayland) {
-      const [, ...xdotool] = keys[key]
-      const name = xdotool.at(-1)!
-      const [modifier, keysym] = name.includes('+') ? name.split('+') : [undefined, name]
-      const wtype =
-        key === 'x'
-          ? ['x']
-          : modifier
-            ? ['-M', modifier, '-k', keysym!, '-m', modifier]
-            : ['-k', keysym!]
-      await run(['wtype', ...wtype])
+      await this.#peerKey(keys[key].at(-1)!)
       return
     }
     await run(['xdotool', ...keys[key]])
+  }
+
+  async #peerKey(chord: string) {
+    const keyboard = this.#keyboard!
+    void keyboard.stdin.write('key ' + chord + '\n')
+    await keyboard.stdin.flush()
+    const reply = await this.#keyboardLines!.next()
+    if (reply.value !== 'ok') throw new Error(`Input peer failed on key ${chord}: ${reply.value}`)
   }
 
   utterances() {
@@ -770,14 +788,6 @@ try {
     return phrases
   }
   const per = (exact: string[], other: Expectation): Expectation => (linux ? { exact } : other)
-  // Phrases Orca derives from the key it saw. On sway nothing reports keys to
-  // Orca: with WAYLAND_DISPLAY set, libatspi gives Orca its legacy device,
-  // which hears only keys an application forwards to the AT-SPI registry's
-  // DeviceEventController, and AccessKit forwards none (Orca's debug log has
-  // no KEYBOARD EVENT on Wayland). Key echo and the character at a moved caret
-  // are therefore not spoken there, and Orca's own commands (Where Am I) never
-  // reach it; the keys still reach the host and are checked through Bun.
-  const keyed = (expected: Expectation): Expectation => (wayland ? null : expected)
 
   // The window and the input that owns initial focus. Before the host routed
   // AppKit's focused-element query from GPUI's first-responder view to the
@@ -822,7 +832,7 @@ try {
   // Editing: typed text reaches Bun, and the screen reader reads the new value,
   // characters at the moved caret, a selection and its deletion.
   await step('End', 'end', null, null)
-  await step('Type x', 'x', null, keyed(per(['x'], null)))
+  await step('Type x', 'x', null, per(['x'], null))
   await waitFor(
     () => searchValues.at(-1) === 'typedx',
     'typed input value',
@@ -832,6 +842,10 @@ try {
   // Orca's and NVDA's "where am I" commands read the focused control again,
   // now with the value the application changed. VoiceOver has no
   // AppleScript or single-key equivalent driven here.
+  // On Wayland Orca hears keys only as the host forwards them to the AT-SPI
+  // registry (native/gpui-host/src/view/key_forwarding.rs), and GPUI reports
+  // keypad Enter as `enter` (gpui_linux keystroke_from_xkb), so Orca's
+  // KP_Enter binding cannot match there.
   if (!mac && !wayland)
     await step(
       'Where am I',
@@ -839,9 +853,9 @@ try {
       null,
       per(['entry typedx.'], { name: 'typedx', role: ROLE.entry })
     )
-  await step('Left', 'left', null, keyed(per(['x'], null)))
-  await step('Home', 'home', null, keyed(per(['t'], null)))
-  await step('Right', 'right', null, keyed(per(['y'], null)))
+  await step('Left', 'left', null, per(['x'], null))
+  await step('Home', 'home', null, per(['t'], null))
+  await step('Right', 'right', null, per(['y'], null))
   await step('Shift+End', 'shift+end', null, per(['ypedx', 'selected'], null))
   await step('Backspace', 'backspace', null, per(['Selection deleted.'], null))
   await waitFor(

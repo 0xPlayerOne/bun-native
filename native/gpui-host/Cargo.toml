@@ -37,6 +37,9 @@ x11rb = "=0.13.2"
 futures = { version = "=0.3.34", default-features = false, features = ["std"] }
 futures-lite = "=2.6.1"
 zbus = { version = "=5.19.0", default-features = false, features = ["async-io"] }
+# Keysyms and US-layout keycodes for keys forwarded to AT-SPI on Wayland; the
+# version GPUI's Linux backend already locks.
+xkbcommon = { version = "=0.8.0", default-features = false }
 
 # The Wayland test's input peer (examples/wayland-input-peer.rs); the same
 # versions GPUI's Wayland backend already locks.

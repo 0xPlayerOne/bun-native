@@ -84,6 +84,8 @@ impl NativeView {
         cx: &mut Context<Self>,
     ) -> Self {
         let owned_window = window.window_handle();
+        #[cfg(target_os = "linux")]
+        key_forwarding::start(cx);
         let view = cx.weak_entity();
         let keyboard = cx.intercept_keystrokes(move |event, window, cx| {
             if window.window_handle() == owned_window {
@@ -707,6 +709,8 @@ mod accessibility;
 mod frame_keeper;
 mod index;
 mod interactions;
+#[cfg(target_os = "linux")]
+mod key_forwarding;
 mod keyboard;
 mod overlays;
 mod popups;
