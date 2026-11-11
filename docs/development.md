@@ -30,4 +30,4 @@ Application code depends on public host APIs and Solid/React adapters, not GPUI 
 - [#256](https://github.com/0xPlayerOne/bun-native/issues/256): native CI across OSs.
 - [#259](https://github.com/0xPlayerOne/bun-native/issues/259): code-health and performance regression automation.
 
-CI must replace old M1–M6 CEF workflows, keep meaningful required status contexts, and prefer a fast PR lane plus deeper scheduled/hosted native tests. No human approval checkpoints are part of this framework development workflow.
+The old M1–M6 CEF workflows were removed under [#251](https://github.com/0xPlayerOne/bun-native/issues/251). CI must keep meaningful required status contexts and prefer a fast PR lane plus deeper scheduled/hosted native tests. No human approval checkpoints are part of this framework development workflow.

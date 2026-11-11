@@ -18,7 +18,7 @@ export type InstallerFormat = 'dmg' | 'zip' | 'tar.gz'
 
 const namePattern = /^[A-Za-z0-9][A-Za-z0-9 ._-]{0,63}$/
 
-export function installerFormats(os: string): InstallerFormat[] {
+function installerFormats(os: string): InstallerFormat[] {
   if (os === 'darwin') return ['dmg', 'tar.gz']
   if (os === 'win32') return ['zip']
   if (os === 'linux') return ['tar.gz']
