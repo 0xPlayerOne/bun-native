@@ -1,5 +1,5 @@
 import * as jsc from 'bun:jsc'
-import { writeFileSync } from 'node:fs'
+import { existsSync, writeFileSync } from 'node:fs'
 
 /**
  * Failure-only retaining-path evidence for the shared workload (#629).
@@ -235,6 +235,12 @@ export async function writeRetentionEvidence(input: RetentionEvidenceInput) {
       'diagnostic only, after both unchanged checkpoints; each snapshot performs its own full collection',
   }
   const summary: Record<string, unknown> = { report: reportPath }
+  // Never overwrite an earlier launch's evidence, and skip both full-heap
+  // snapshots when their report could not be written anyway.
+  if (existsSync(reportPath)) {
+    summary['writeError'] = `EEXIST: ${reportPath} already exists`
+    return summary
+  }
   try {
     const targets: Target[] = input.stillReachable.map((index) => {
       const value = input.probes[index]?.deref()

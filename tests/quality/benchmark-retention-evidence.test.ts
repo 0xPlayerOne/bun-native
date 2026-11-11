@@ -175,7 +175,9 @@ test('failure-only evidence finds a real global owner and writes bounded files',
   } finally {
     rmSync(directory, { recursive: true, force: true })
   }
-})
+  // Two real full-heap snapshots of this whole test process (7.4 s on hosted
+  // macOS); the analysis cost scales with the runner's heap, not the target.
+}, 30_000)
 
 test('a collected target is recorded rather than failing the evidence', async () => {
   const directory = mkdtempSync(join(tmpdir(), 'bun-native-retention-'))
