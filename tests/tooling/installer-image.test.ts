@@ -8,6 +8,7 @@ import {
   realpath,
   writeFile,
 } from 'node:fs/promises'
+import { writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { crc32, gunzipSync, inflateRawSync } from 'node:zlib'
 import toolchain from '../../toolchain.json'
@@ -238,6 +239,122 @@ describe('installer images', () => {
       ).rejects.toThrow('Disk images are built on macOS')
     }
     expect(await readdir(linux.out)).toEqual([])
+  })
+})
+
+describe('signed installer paths with a recording runner', () => {
+  type Call = string[]
+  const ok = (stdout = '', stderr = '') => ({ exitCode: 0, stdout, stderr })
+
+  test('dmg: hdiutil is retried, then the image is signed, verified and its authority read', async () => {
+    const { directory, out } = await bundleFor('darwin')
+    const calls: Call[] = []
+    let creates = 0
+    const runner = (command: Call) => {
+      calls.push(command)
+      if (command[0] === 'hdiutil') {
+        creates++
+        if (creates === 1) return { exitCode: 1, stdout: '', stderr: 'Resource busy' }
+        writeFileSync(command.at(-1)!, 'image')
+        return ok()
+      }
+      if (command.includes('--display')) return ok('', 'Authority=Developer ID Application: X\n')
+      return ok()
+    }
+    const record = await createInstaller(directory, out, {
+      format: 'dmg',
+      name: 'Example App',
+      platform: 'darwin',
+      runner,
+      signing: { platform: 'darwin', identity: 'ABC', timestamp: true, keychain: '/k' } as never,
+    })
+    expect(creates).toBe(2)
+    expect(record.imageSignature).toBe('Developer ID Application: X')
+    expect(calls.find((c) => c[0] === 'codesign' && c[1] === '--force')).toEqual([
+      'codesign',
+      '--force',
+      '--sign',
+      'ABC',
+      '--timestamp',
+      '--keychain',
+      '/k',
+      record.file,
+    ])
+    expect(record.digest.bytes).toBe(5)
+  })
+
+  test('dmg: ad-hoc signatures skip the timestamp and failures stop the build', async () => {
+    const adhoc = await bundleFor('darwin')
+    const calls: Call[] = []
+    const record = await createInstaller(adhoc.directory, adhoc.out, {
+      format: 'dmg',
+      name: 'Example App',
+      platform: 'darwin',
+      runner: (command) => {
+        calls.push(command)
+        if (command[0] === 'hdiutil') writeFileSync(command.at(-1)!, 'image')
+        return ok()
+      },
+      signing: { platform: 'darwin', identity: '-', timestamp: true } as never,
+    })
+    expect(record.imageSignature).toBe('ad-hoc')
+    expect(calls.some((c) => c.includes('--timestamp=none'))).toBe(true)
+
+    const failing = (fails: (c: Call) => boolean) => (command: Call) =>
+      fails(command) ? { exitCode: 1, stdout: 'out', stderr: 'err' } : ok()
+    for (const [fails, message] of [
+      [(c: Call) => c[0] === 'hdiutil', 'hdiutil create failed'],
+      [(c: Call) => c[1] === '--force', 'Signing the disk image failed'],
+      [(c: Call) => c[1] === '--verify', 'The disk image signature is invalid'],
+    ] as const) {
+      const { directory, out } = await bundleFor('darwin')
+      await expect(
+        createInstaller(directory, out, {
+          format: 'dmg',
+          name: 'Example App',
+          platform: 'darwin',
+          runner: failing(fails),
+          signing: { platform: 'darwin', identity: 'ABC', timestamp: false } as never,
+        })
+      ).rejects.toThrow(message)
+    }
+  })
+
+  test('zip: the Windows install script is signed and its authority recorded', async () => {
+    const { directory, out } = await bundleFor('win32', 'unsigned-experimental')
+    const calls: Call[] = []
+    const record = await createInstaller(directory, out, {
+      format: 'zip',
+      name: 'Example App',
+      runner: (command) => {
+        calls.push(command)
+        return command[1] === 'verify'
+          ? ok(
+              'Signing Certificate Chain:\n    Issued to: Root CA\n        Issued to: Example Signer\nThe signature is timestamped: Mon Nov 10 2026\n'
+            )
+          : ok()
+      },
+      signing: {
+        platform: 'win32',
+        signtool: 'signtool',
+        certificate: { thumbprint: 'AB12' },
+        timestampUrl: 'http://timestamp.example',
+      } as never,
+    })
+    expect(calls[0]?.slice(0, 2)).toEqual(['signtool', 'sign'])
+    expect(calls[0]?.at(-1)).toEndWith('install.ps1')
+    expect(record.scriptSignature).toBeDefined()
+  })
+
+  test("an installer cannot be signed with another platform's tools", async () => {
+    const { directory, out } = await bundleFor('win32', 'unsigned-experimental')
+    await expect(
+      createInstaller(directory, out, {
+        format: 'zip',
+        name: 'Example App',
+        signing: { platform: 'darwin', identity: '-', timestamp: false } as never,
+      })
+    ).rejects.toThrow('A win32 installer cannot be signed with darwin tools')
   })
 })
 

@@ -180,6 +180,8 @@ export async function createInstaller(
     name: string
     signing?: SigningIdentity
     runner?: Runner
+    /** The building machine's OS; injectable so the disk-image path is tested elsewhere. */
+    platform?: NodeJS.Platform
   }
 ): Promise<InstallerRecord> {
   const source = resolve(bundle)
@@ -215,7 +217,8 @@ export async function createInstaller(
       })
     let imageSignature: string | undefined
     if (options.format === 'dmg') {
-      if (process.platform !== 'darwin') throw new Error('Disk images are built on macOS')
+      if ((options.platform ?? process.platform) !== 'darwin')
+        throw new Error('Disk images are built on macOS')
       // hdiutil intermittently reports "Resource busy" on hosted runners; retry.
       let created = { exitCode: 1, stdout: '', stderr: '' }
       for (let attempt = 0; attempt < 3 && created.exitCode !== 0; attempt++) {
