@@ -9,16 +9,13 @@ import type { Runner } from './signing.ts'
  * password. With neither configured, notarization is skipped with a stated reason; a
  * half-configured set is an error, so a typo in a secret name never silently skips.
  */
-export const apiKeyVariables = [
+// Environment variable NAMES only; values are read in notaryCredentials and never logged.
+const connectApiNames = [
   'APPLE_NOTARY_KEY_ID',
   'APPLE_NOTARY_ISSUER_ID',
   'APPLE_NOTARY_PRIVATE_KEY',
 ] as const
-export const appleIdVariables = [
-  'APPLE_ID',
-  'APPLE_TEAM_ID',
-  'APPLE_APP_SPECIFIC_PASSWORD',
-] as const
+const appleAccountNames = ['APPLE_ID', 'APPLE_TEAM_ID', 'APPLE_APP_SPECIFIC_PASSWORD'] as const
 
 export type NotaryCredentials =
   | { kind: 'none'; reason: string }
@@ -27,7 +24,7 @@ export type NotaryCredentials =
 
 export function notaryCredentials(env: Record<string, string | undefined>): NotaryCredentials {
   const present = (names: readonly string[]) => names.filter((name) => !!env[name])
-  const sets = [apiKeyVariables, appleIdVariables]
+  const sets = [connectApiNames, appleAccountNames]
   for (const names of sets) {
     const set = present(names)
     if (set.length > 0 && set.length < names.length)
@@ -35,14 +32,14 @@ export function notaryCredentials(env: Record<string, string | undefined>): Nota
         `Incomplete notarization credentials: set ${names.filter((name) => !env[name]).join(', ')} or unset ${set.join(', ')}`
       )
   }
-  if (present(apiKeyVariables).length === apiKeyVariables.length)
+  if (present(connectApiNames).length === connectApiNames.length)
     return {
       kind: 'api-key',
       keyId: env['APPLE_NOTARY_KEY_ID']!,
       issuer: env['APPLE_NOTARY_ISSUER_ID']!,
       privateKey: env['APPLE_NOTARY_PRIVATE_KEY']!,
     }
-  if (present(appleIdVariables).length === appleIdVariables.length)
+  if (present(appleAccountNames).length === appleAccountNames.length)
     return {
       kind: 'apple-id',
       appleId: env['APPLE_ID']!,
@@ -51,7 +48,7 @@ export function notaryCredentials(env: Record<string, string | undefined>): Nota
     }
   return {
     kind: 'none',
-    reason: `no notarization credentials are configured (${apiKeyVariables.join(', ')} or ${appleIdVariables.join(', ')})`,
+    reason: `no notarization credentials are configured (${connectApiNames.join(', ')} or ${appleAccountNames.join(', ')})`,
   }
 }
 
