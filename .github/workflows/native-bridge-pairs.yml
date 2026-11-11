@@ -7,9 +7,13 @@ on:
     types: [opened, reopened, ready_for_review, synchronize]
     paths:
       - .github/workflows/native-bridge-pairs.yml
+      - .github/actions/linux-native-prerequisites/**
       - benchmarks/bridge-pairs.py
+      - benchmarks/bridge-pairs-toolchain.json
       - benchmarks/BRIDGE_PAIRS.md
       - benchmarks/native-baseline.py
+      - scripts/install-bun.mjs
+      - scripts/install-bun/**
       - tests/quality/test_bridge_pairs.py
 
 permissions:
@@ -47,10 +51,13 @@ jobs:
             printf 'Runner OS=%s architecture=%s image=%s version=%s\n' "$RUNNER_OS" "$RUNNER_ARCH" "$ImageOS" "$ImageVersion"
             cat toolchain.json
           } > "$RUNNER_TEMP/bridge-pairs/bootstrap.txt"
-      - name: Install checksum-pinned Bun compiler
-        env:
-          BUN_NATIVE_GITHUB_TOKEN: ${{ github.token }}
-        run: node scripts/install-bun.mjs --destination "$RUNNER_TEMP/bun-native-bun" 2>&1 | tee "$PAIRED_EVIDENCE/bootstrap.log"
+      # Both historical revisions pin Bun da867c60b, whose GitHub canary assets
+      # were since overwritten; the same build's npm archive is pinned here (#631).
+      - name: Install the integrity-pinned historical Bun compiler
+        run: |
+          set -o pipefail
+          node scripts/install-bun.mjs --destination "$RUNNER_TEMP/bun-native-bun" \
+            --manifest "$GITHUB_WORKSPACE/benchmarks/bridge-pairs-toolchain.json" 2>&1 | tee "$PAIRED_EVIDENCE/bootstrap.log"
       - name: Checkout exact BN1 tested merge
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -63,14 +70,12 @@ jobs:
           ref: 4549e75ca5463f136898a2f5fb49d22b58dffa11
           path: .bun-native/performance-sources/events
           persist-credentials: false
-      - name: Install exact Rust and native prerequisites
+      - name: Install native prerequisites
+        timeout-minutes: 25
+        uses: ./.github/actions/linux-native-prerequisites
+      - name: Record exact Rust and native prerequisites
         run: |
           rustup show active-toolchain
-          sudo apt-get update
-          sudo apt-get install --no-install-recommends -y \
-            pkg-config libfontconfig-dev libglib2.0-dev libssl-dev libwayland-dev \
-            libx11-xcb-dev libxkbcommon-x11-dev libvulkan1 libzstd-dev \
-            mesa-vulkan-drivers xvfb xauth x11-utils openbox dbus-x11 fonts-dejavu-core
           {
             rustc --version --verbose
             cargo --version

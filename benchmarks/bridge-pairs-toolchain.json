@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 2,
+  "bun": {
+    "version": "1.4.4-canary.1",
+    "revision": "da867c60bf0bcbf9d6d36994f8ca0efa42075115",
+    "cliRevision": "1.4.4-canary.1+da867c60b",
+    "source": "https://github.com/oven-sh/bun/tree/da867c60bf0bcbf9d6d36994f8ca0efa42075115",
+    "distribution": "npm",
+    "packages": {
+      "linux-x64": {
+        "name": "@oven/bun-linux-x64",
+        "version": "1.4.4-canary.20261029.1+da867c6",
+        "url": "https://registry.npmjs.org/@oven/bun-linux-x64/-/bun-linux-x64-1.4.4-canary.20261029.1.tgz",
+        "integrity": "sha512-fs1Yta+8YNs62dxxBGjCccg3tu1sn2xw8SqWx9KaNM/KkEeVp+NWcylDJQs6JFPndE1jA8PIOmmxXvzpnhvkdg==",
+        "unpackedSize": 138468972
+      }
+    }
+  }
+}
