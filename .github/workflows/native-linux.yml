@@ -189,7 +189,7 @@ jobs:
         run: |
           # Each shard compiles only the entries its own steps run; shard 3's steps
           # compile their fixtures inline. A new entry defaults to shard 2.
-          shard1=' native-window input-race bridge javascript core-lifecycle event-throughput fault scheduling layout interactions '
+          shard1=' native-window input-race bridge javascript core-lifecycle event-throughput fault scheduling layout interactions solid-workspace-terminal react-workspace-terminal '
           # shellcheck disable=SC2016 # the xargs child shell expands its own variables
           for entry in native-window input-race bridge javascript core-lifecycle event-throughput fault scheduling layout interactions services display-semantics display-wayland clipboard global-shortcuts notifications overlays message-dialogs popups wayland filesystem-grants text-input accessibility screen-reader ime processes file-dialogs drag-drop solid-drag-drop react-drag-drop solid-services react-services solid solid-input-intent solid-interactions react react-interactions react-behavior react-workload react-workspace react-workspace-flow solid-workspace-terminal react-workspace-terminal; do
             case "$SHARD" in
@@ -725,7 +725,7 @@ jobs:
               --output "$evidence" -- "${command[@]}"
           done
       - name: Development and AOT workspace terminal pane OS input, PTY round trip and paint through Solid and React
-        if: matrix.shard == 2
+        if: matrix.shard == 1
         timeout-minutes: 3
         env:
           BUN_NATIVE_HOST: ${{ github.workspace }}/target/release/bun-native-host
@@ -1135,7 +1135,7 @@ jobs:
             done
           done
       - name: Development and AOT streaming-list soak through Solid and React
-        if: ${{ matrix.shard == 2 && (!cancelled() && steps.native-build.outcome == 'success') }}
+        if: ${{ matrix.shard == 1 && (!cancelled() && steps.native-build.outcome == 'success') }}
         timeout-minutes: 6
         env:
           BUN_NATIVE_HOST: ${{ github.workspace }}/target/release/bun-native-host
