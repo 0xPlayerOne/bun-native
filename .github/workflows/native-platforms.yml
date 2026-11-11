@@ -181,7 +181,7 @@ jobs:
           # The quick-start commands on this platform: all four CLI templates
           # are created, strictly checked and compiled with the pinned AOT
           # compiler beside the release host. Only provenance and logs are
-          # kept; the windowed template runs are Linux-only (native-linux.yml).
+          # kept; the windowed runs are the "open, take an OS click" step below.
           $packages = Join-Path $env:RUNNER_TEMP 'cli-templates'
           & '${{ matrix.python }}' tests/native/cli-templates.py prepare `
             --output $packages --bun (Get-Command bun).Source --host $env:BUN_NATIVE_HOST
@@ -264,6 +264,38 @@ jobs:
           "BUN_NATIVE_PLATFORM_HELPER=$helper" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
           Get-FileHash -Algorithm SHA256 $helper |
             Format-List | Out-File (Join-Path $env:NATIVE_EVIDENCE 'os-helper-sha256.txt')
+      - name: Generated templates open, take an OS click and close in development and AOT (#254)
+        if: ${{ matrix.shard == 1 && (!cancelled() && steps.native-build.outcome == 'success') }}
+        timeout-minutes: 14
+        run: |
+          # The four templates prepared by the create/check/build step run
+          # through `native dev --host` and as their AOT packages: each must
+          # paint its counter, take one real OS click (CoreGraphics on macOS,
+          # SendInput on Windows) shown by the host's own pointer and paint
+          # records, and close through the OS. On macOS every case also ends
+          # with SIGINT to the app's process group, as Ctrl-C does (#584).
+          # These are hosted VMs with software or paravirtual GPUs.
+          $packages = Join-Path $env:RUNNER_TEMP 'cli-templates'
+          if (!(Test-Path -LiteralPath (Join-Path $packages 'provenance.json'))) {
+            throw 'The prepared templates are missing; see the create/check/build step'
+          }
+          $evidence = Join-Path $env:NATIVE_EVIDENCE 'cli-templates-desktop'
+          New-Item -ItemType Directory -Force $evidence | Out-Null
+          $closes = if ($IsMacOS) { @('os', 'sigint') } else { @('os') }
+          $failed = @()
+          foreach ($case in @('solid-typescript', 'react-typescript', 'solid-javascript', 'react-javascript')) {
+            foreach ($mode in @('development', 'aot')) {
+              foreach ($close in $closes) {
+                & '${{ matrix.python }}' tests/native/cli-templates-platform.py `
+                  --packages $packages --case $case --mode $mode --close $close `
+                  --output (Join-Path $evidence "$case-$mode-$close")
+                # Exit 2 (input or Accessibility unavailable) is a failure too.
+                if ($LASTEXITCODE -ne 0) { $failed += "$case $mode $close (exit $LASTEXITCODE)" }
+              }
+            }
+          }
+          # Every case runs so one failure does not hide the others' evidence.
+          if ($failed) { throw "Template desktop runs not verified: $($failed -join ', ')" }
       - name: Development owned native window and OS input
         if: matrix.shard == 2
         timeout-minutes: 3
