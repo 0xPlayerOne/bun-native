@@ -85,6 +85,36 @@ test('Windows jscDescribe addresses match lowercase unpadded snapshot cells', ()
   expect(cellAddress({}).address).toMatch(/^0x[0-9a-f]+$/)
 })
 
+test('a FinalizationRegistry held value is a strong path to a probe', () => {
+  const rooted: DebugSnapshot = {
+    // global -> registry -> held object -> probe
+    nodes: [
+      [1, 8, 0, 0, 1, '0x10', '0x0'],
+      [2, 8, 1, 0, 0, '0x20', '0x0'],
+      [3, 8, 2, 0, 0, '0x30', '0x0'],
+      [4, 8, 3, 0, 0, '0x40', '0x0'],
+    ].flat(),
+    nodeClassNames: ['GlobalObject', 'FinalizationRegistry', 'Object', 'Function'],
+    edges: [
+      [1, 2, 1, 0],
+      [2, 3, 0, 0],
+      [3, 4, 1, 1],
+    ].flat(),
+    edgeTypes: ['Internal', 'Property'],
+    edgeNames: ['registry', 'listener'],
+    roots: [1, 2, 0],
+    labels: ['', 'global', 'StrongReferences'],
+  }
+  const [probe] = analyzeSnapshot(rooted, [
+    { index: 299, kind: 'mount 99 listener', address: '0x40', description: '' },
+  ])
+  expect(probe).toMatchObject({ presentInSnapshot: true, strongOwnerCount: 1 })
+  if (!probe?.presentInSnapshot) throw new Error('target missing')
+  expect(probe.pathsFromRoots.map((path) => path.map(({ className }) => className))).toEqual([
+    ['GlobalObject', 'FinalizationRegistry', 'Object', 'Function'],
+  ])
+})
+
 test('a target that is itself a root yields a one-step path', () => {
   const [root] = analyzeSnapshot(snapshot(), [
     { index: 0, kind: 'mount 0 render root', address: '0x40', description: '' },

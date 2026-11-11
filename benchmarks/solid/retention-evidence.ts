@@ -39,8 +39,12 @@ export const RETAINER_LIMIT = 32
 export const VISIT_LIMIT = 500_000
 /** Bounded upload: a larger compressed snapshot is described, not written. */
 export const SNAPSHOT_BYTES_LIMIT = 48 * 1024 * 1024
-/** WeakRef targets are reported by the snapshot but are not strong owners. */
-const WEAK_SOURCES = new Set(['WeakRef', 'JSWeakObjectRef', 'FinalizationRegistry'])
+/**
+ * A WeakRef's only reference is its target, so every edge out of one is weak.
+ * A FinalizationRegistry is deliberately absent: it holds each held value (and
+ * its cleanup callback) strongly, so its edges stay strong owners here.
+ */
+const WEAK_SOURCES = new Set(['WeakRef', 'JSWeakObjectRef'])
 
 /**
  * Canonical cell address. `jscDescribe` prints zero-padded uppercase hex on
