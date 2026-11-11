@@ -257,7 +257,7 @@ jobs:
           # compile their fixtures inline. A new entry defaults to shard 2.
           shard1=' native-window input-race bridge javascript core-lifecycle event-throughput fault scheduling layout interactions '
           # shellcheck disable=SC2016 # the xargs child shell expands its own variables
-          for entry in native-window input-race bridge javascript core-lifecycle event-throughput fault scheduling layout interactions services display-semantics clipboard global-shortcuts notifications overlays message-dialogs popups wayland filesystem-grants text-input accessibility ime processes file-dialogs drag-drop solid-drag-drop react-drag-drop solid-services react-services solid solid-input-intent solid-interactions react react-interactions react-behavior react-workload react-workspace react-workspace-flow; do
+          for entry in native-window input-race bridge javascript core-lifecycle event-throughput fault scheduling layout interactions services display-semantics display-wayland clipboard global-shortcuts notifications overlays message-dialogs popups wayland filesystem-grants text-input accessibility ime processes file-dialogs drag-drop solid-drag-drop react-drag-drop solid-services react-services solid solid-input-intent solid-interactions react react-interactions react-behavior react-workload react-workspace react-workspace-flow; do
             case "$SHARD" in
               1) [[ $shard1 == *" $entry "* ]] || continue ;;
               2) [[ $shard1 != *" $entry "* ]] || continue ;;
@@ -573,6 +573,27 @@ jobs:
               dbus-run-session -- bash scripts/quality/native-wayland-session.sh \
               "$evidence-session" "${command[@]}" 2>&1 | tee "$evidence/run.log"
             test -s "$evidence/wayland.json"
+          done
+      # Two headless sway outputs of different scale (#299): window migration,
+      # output reconfiguration and hotplug are real compositor operations.
+      - name: Development and AOT Wayland display migration, mixed scale and hotplug on two headless sway outputs
+        if: matrix.shard == 2
+        timeout-minutes: 3
+        env:
+          BUN_NATIVE_HOST: ${{ github.workspace }}/target/release/bun-native-host
+        run: |
+          for mode in development aot; do
+            command=(bun tests/native/display-wayland.ts)
+            if [[ "$mode" == aot ]]; then
+              command=("$NATIVE_EVIDENCE/display-wayland-package/display-wayland")
+            fi
+            evidence="$NATIVE_EVIDENCE/display-wayland-$mode"
+            mkdir "$evidence"
+            BUN_NATIVE_DISPLAY_EVIDENCE="$evidence" BUN_NATIVE_DISPLAY_MODE="$mode" \
+              BUN_NATIVE_WAYLAND_OUTPUTS=2 \
+              dbus-run-session -- bash scripts/quality/native-wayland-session.sh \
+              "$evidence-session" "${command[@]}" 2>&1 | tee "$evidence/run.log"
+            test -s "$evidence/display-wayland.json"
           done
       - name: Development and AOT X11 drag and drop through core, Solid and React
         if: matrix.shard == 2
@@ -1191,6 +1212,7 @@ jobs:
             ${{ runner.temp }}/native-evidence/filesystem-grants-*/
             ${{ runner.temp }}/native-evidence/processes-*/
             ${{ runner.temp }}/native-evidence/display-semantics-*/
+            ${{ runner.temp }}/native-evidence/display-wayland-*/
             ${{ runner.temp }}/native-evidence/file-dialogs-*/
             ${{ runner.temp }}/native-evidence/xdnd-source-sha256.txt
             ${{ runner.temp }}/native-evidence/wayland-input-peer-sha256.txt
@@ -1256,6 +1278,7 @@ jobs:
             echo 'Linux owned processes run in development and inspected AOT with real /bin/sh children: default denial, pipes with separate stdout and stderr, an explicit environment with nothing inherited, a working directory resolved beneath a file grant without following links, a sized pseudo-terminal with resize and input, a group signal reaching descendants, exit stopping the whole group (checked through /proc), credited output delivered completely to a slow consumer, release, owner close and shutdown stopping groups, and native rejection of foreign, stale and reused process handles. This does not qualify owned processes on macOS or Windows.'
             echo 'Linux OS file dialogs run through xdg-desktop-portal and its GTK file chooser on an isolated D-Bus session in development and inspected AOT: default denial, a bus without a portal reported as unavailable, a real dialog transient for the owner window, forged portal responses from an independent bus client ignored, real keyboard selection of one file, several files and a folder, a save selection that creates no file, Escape cancellation, and the OS dialog closed after an aborted signal, owner close and shutdown. Selected paths are data, not filesystem grants. This does not qualify file dialogs on Wayland, in Flatpak/Snap sandboxes, on macOS or Windows, or with other portal backends.'
             echo 'One Wayland step runs on a headless sway (wlroots) compositor with XWayland disabled and no DISPLAY, in development and inspected AOT at scale 1 and development at output scale 2: the window maps as an xdg-shell view and paints within 10 s on lavapipe Vulkan, a persistent virtual pointer click and virtual-keyboard text reach the app, grim pixels match the painted tree, the display snapshot matches the compositor output, X11-only clipboard/shortcut/drag-drop/popup capabilities are absent and their requests rejected, a dunst notification and an unparented portal file dialog work, the compositor closes the window and shutdown is clean. This does not qualify GNOME/KDE, fractional scaling, IME or physical input/GPU.'
+            echo 'A second Wayland step runs headless sway with two outputs (1280x800 at scale 1, 2048x1536 at scale 2) in development and inspected AOT: moving a window between outputs reports one display change with the new output size and scale, moving within an output or spanning both reports nothing, reconfiguring the window output (mode, scale) reports to every window on it, a connected output is reported only once a window moves onto it, unplugging another output reports nothing, and unplugging the window own output makes its snapshot fail closed. Expected values come from sway IPC. This does not qualify physical monitors, fractional scaling, other compositors, a work area or macOS/Windows migration.'
             echo 'Solid runs the exact source-fingerprinted generated module in development and through inspected Bun AOT against the same release GPUI host. Twelve scenarios require keyed identity, every native edit, delayed revision-aware replacement, shared keyboard/pointer/focus phases, caret and selection behavior, complete native paint, OS close and owner cleanup. These correctness cases do not close the separate retained-object investigation or establish matched framework performance.'
             echo 'Bridge acknowledgement timings run with instrumentation disabled; they are not display-presentation timings. The startup/RSS baseline retains one warm-up and five measured fresh-process trials per mode, alternating order, with a two-second idle interval and uncontrolled OS caches.'
             echo 'Separate Heaptrack runs profile only the real native host during the 1,000-cycle lifecycle in both modes. Full compressed allocation traces, tool/host/source hashes and bounded callsite reports are retained; profiler timing/RSS is not mixed into the baseline, and outstanding-at-exit allocations are not automatically leaks.'

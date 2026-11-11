@@ -76,6 +76,7 @@ The same compiler and inspection pipeline supports these explicit entries:
 | `services`                | `tests/native/services.ts`               | `services`               | Existing prebuilt host referenced by absolute path |
 | `display-semantics`       | `tests/native/display-semantics.ts`      | `display-semantics`      | Existing prebuilt host referenced by absolute path |
 | `display-platform`        | `tests/native/display-platform.ts`       | `display-platform`       | Existing prebuilt host referenced by absolute path |
+| `display-wayland`         | `tests/native/display-wayland.ts`        | `display-wayland`        | Existing prebuilt host referenced by absolute path |
 | `clipboard`               | `tests/native/clipboard.ts`              | `clipboard`              | Existing prebuilt host referenced by absolute path |
 | `global-shortcuts`        | `tests/native/global-shortcuts.ts`       | `global-shortcuts`       | Existing prebuilt host referenced by absolute path |
 | `notifications`           | `tests/native/notifications.ts`          | `notifications`          | Existing prebuilt host referenced by absolute path |

@@ -1,12 +1,13 @@
 //! Policy is fixed before the private channel starts. Wire messages cannot grant it.
 
+use crate::view::NativeView;
 use crate::{channel::EventSink, state::SharedWindowState};
 use bun_native_protocol::{
     DisplayBounds, DisplaySnapshot, ErrorCode, Event, FileAccess, FilesystemRoot,
     ProcessExecutable, ProcessLimits, ServicePolicy, WindowId, validate_filesystem_roots,
     validate_process_executables,
 };
-use gpui::{AnyWindowHandle, App, Bounds, Pixels, Subscription, Window};
+use gpui::{App, Bounds, DisplayEvent, DisplayId, Pixels, Subscription, Window, WindowHandle};
 use std::cell::RefCell;
 use std::ffi::OsString;
 use std::rc::Rc;
@@ -65,12 +66,22 @@ pub(crate) mod task_dialogs;
 pub(crate) mod x11;
 
 /// GPUI's macOS and Windows displays report a work area and an OS display
-/// identifier; the pinned X11 display reports neither.
+/// identifier; the pinned X11 and Wayland displays report no work area.
 pub(crate) const DISPLAY_DETAILS: bool = cfg!(any(target_os = "macos", target_os = "windows"));
-/// GPUI's macOS and Windows windows notify display observers when the window
-/// changes display or the OS reconfigures its display; the pinned X11 window's
+
+/// Whether owned windows report display changes. GPUI's macOS and Windows
+/// windows notify display observers when the window changes display or the OS
+/// reconfigures its display, and so does the pinned Wayland window when the
+/// compositor moves its surface to another output (`wl_surface.enter` and
+/// `leave`) or reconfigures that output. The pinned X11 window's
 /// `on_display_changed` is a no-op.
-pub(crate) const DISPLAY_CHANGES: bool = cfg!(any(target_os = "macos", target_os = "windows"));
+pub(crate) fn display_changes(cx: &App) -> bool {
+    cfg!(any(target_os = "macos", target_os = "windows")) || wayland(cx)
+}
+
+fn wayland(cx: &App) -> bool {
+    cfg!(target_os = "linux") && cx.compositor_name() == "Wayland"
+}
 
 pub(crate) const DISPLAY_PERMISSION_ARGUMENT: &str = "--bun-native-allow-window-display";
 pub(crate) const CLIPBOARD_READ_ARGUMENT: &str = "--bun-native-allow-clipboard-read";
@@ -250,34 +261,199 @@ pub(crate) fn display_snapshot(
     Ok(snapshot)
 }
 
+/// Whether an owned window's GPUI display can still be trusted after the
+/// platform disconnected displays.
+///
+/// The pinned Wayland backend keeps an output in a surface's entered set when
+/// the compositor removes that output's global without a `wl_surface.leave`,
+/// as wlroots does on unplug, so the window keeps naming the removed display
+/// and reports no move. A later output can reuse the removed output's protocol
+/// id, and so its `DisplayId`. A window whose display was removed is therefore
+/// untrusted until GPUI reports that it moved to a different display; until
+/// then a snapshot fails closed and no change is reported.
+#[derive(Debug, Default, PartialEq, Eq)]
+pub(crate) struct DisplayContinuity {
+    current: Option<DisplayId>,
+    lost: Option<DisplayId>,
+}
+
+impl DisplayContinuity {
+    pub(crate) fn new(current: Option<DisplayId>) -> Self {
+        Self {
+            current,
+            lost: None,
+        }
+    }
+
+    /// GPUI notified the window's display observers and now names `display`.
+    /// Returns whether the window's display is trustworthy.
+    pub(crate) fn observed(&mut self, display: Option<DisplayId>) -> bool {
+        if let Some(lost) = self.lost {
+            if display.is_none_or(|display| display == lost) {
+                return false;
+            }
+            self.lost = None;
+        }
+        self.current = display;
+        true
+    }
+
+    /// The platform disconnected `display`.
+    pub(crate) fn removed(&mut self, display: DisplayId) {
+        if self.current == Some(display) {
+            self.lost = Some(display);
+        }
+    }
+
+    pub(crate) fn connected(&self) -> bool {
+        self.lost.is_none()
+    }
+}
+
+/// The display observation of one owned window: dropping it stops reports.
+pub(crate) struct DisplayObservation {
+    continuity: Rc<RefCell<DisplayContinuity>>,
+    _subscriptions: Vec<Subscription>,
+}
+
+impl DisplayObservation {
+    /// False after the window's display was disconnected and before GPUI
+    /// reported where the window is now.
+    pub(crate) fn connected(&self) -> bool {
+        self.continuity.borrow().connected()
+    }
+}
+
 /// Reports each display change of a live owned window with a fresh snapshot.
 /// GPUI calls the observer when the window moves to another display or when
 /// the OS display configuration changes that display's bounds or refresh
-/// rate. The subscription is the window entry's; dropping it stops reports.
+/// rate. The subscriptions are the window entry's; dropping them stops
+/// reports.
+///
+/// On Wayland the window learns its output (`wl_surface.enter`) before its new
+/// scale (`preferred_scale`), and an output's scale can change after its
+/// geometry. The snapshot is therefore read after the current batch of
+/// compositor events, again whenever the window's scale or size changes, and
+/// reported only when it differs from the last one reported.
 pub(crate) fn observe_display(
-    handle: AnyWindowHandle,
+    handle: WindowHandle<NativeView>,
     window_id: WindowId,
     state: SharedWindowState,
     events: EventSink,
     cx: &mut App,
-) -> Option<Subscription> {
-    // The last snapshot reported, so a settle re-read reports only a change.
-    let reported: Rc<RefCell<Option<DisplaySnapshot>>> = Rc::new(RefCell::new(None));
-    handle
-        .update(cx, |_, window, _| {
-            window.observe_window_display(move |window, cx| {
-                if !state.borrow().active {
-                    return;
-                }
-                // A window between displays has no snapshot to report; the
-                // next change, or an explicit read, observes where it lands.
-                if let Ok(snapshot) = display_snapshot(window, cx) {
-                    report(&events, window_id, &reported, snapshot, cx);
-                }
-                settle(window, window_id, &state, &events, &reported, cx);
-            })
+) -> Option<DisplayObservation> {
+    let wayland = wayland(cx);
+    let reporter = Reporter {
+        window_id,
+        state,
+        events,
+        // The last snapshot reported, so a re-read reports only a change.
+        reported: Rc::new(RefCell::new(None)),
+        continuity: Rc::new(RefCell::new(DisplayContinuity::default())),
+    };
+    let mut subscriptions = handle
+        .update(cx, |_, window, cx| {
+            *reporter.continuity.borrow_mut() =
+                DisplayContinuity::new(window.display(cx).map(|display| display.id()));
+            if wayland {
+                *reporter.reported.borrow_mut() = display_snapshot(window, cx).ok();
+            }
+            let display = {
+                let reporter = reporter.clone();
+                window.observe_window_display(move |window, cx| {
+                    if !reporter.state.borrow().active {
+                        return;
+                    }
+                    let display = window.display(cx).map(|display| display.id());
+                    if !reporter.continuity.borrow_mut().observed(display) {
+                        return;
+                    }
+                    if wayland {
+                        reporter.schedule(window, cx);
+                        return;
+                    }
+                    // A window between displays has no snapshot to report; the
+                    // next change, or an explicit read, observes where it lands.
+                    if let Ok(snapshot) = display_snapshot(window, cx) {
+                        report(
+                            &reporter.events,
+                            window_id,
+                            &reporter.reported,
+                            snapshot,
+                            cx,
+                        );
+                    }
+                    settle(
+                        window,
+                        window_id,
+                        &reporter.state,
+                        &reporter.events,
+                        &reporter.reported,
+                        cx,
+                    );
+                })
+            };
+            let mut subscriptions = vec![display];
+            if wayland {
+                let reporter = reporter.clone();
+                subscriptions.push(cx.observe_window_bounds(window, move |_, window, cx| {
+                    reporter.schedule(window, cx);
+                }));
+            }
+            subscriptions
         })
-        .ok()
+        .ok()?;
+    let continuity = reporter.continuity.clone();
+    subscriptions.push(cx.observe_displays(move |event, _| {
+        if let DisplayEvent::Removed(display) = event {
+            continuity.borrow_mut().removed(display);
+        }
+    }));
+    Some(DisplayObservation {
+        continuity: reporter.continuity,
+        _subscriptions: subscriptions,
+    })
+}
+
+/// One owned window's change reporting state.
+#[derive(Clone)]
+struct Reporter {
+    window_id: WindowId,
+    state: SharedWindowState,
+    events: EventSink,
+    reported: Rc<RefCell<Option<DisplaySnapshot>>>,
+    continuity: Rc<RefCell<DisplayContinuity>>,
+}
+
+impl Reporter {
+    /// Reads the snapshot once the current batch of platform events has been
+    /// handled, so an output's geometry and the window's scale are read
+    /// together, and reports it if it differs from the last one reported and
+    /// the window's display is still connected.
+    fn schedule(&self, window: &Window, cx: &App) {
+        let reporter = self.clone();
+        window
+            .spawn(cx, async move |cx| {
+                let _ = cx.update(move |window, cx| {
+                    if !reporter.state.borrow().active || !reporter.continuity.borrow().connected()
+                    {
+                        return;
+                    }
+                    if let Ok(snapshot) = display_snapshot(window, cx)
+                        && reporter.reported.borrow().as_ref() != Some(&snapshot)
+                    {
+                        report(
+                            &reporter.events,
+                            reporter.window_id,
+                            &reporter.reported,
+                            snapshot,
+                            cx,
+                        );
+                    }
+                });
+            })
+            .detach();
+    }
 }
 
 fn report(
@@ -350,6 +526,37 @@ const DISPLAY_SETTLE_DELAYS: [Duration; 3] = [
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn a_window_whose_display_was_removed_is_untrusted_until_it_moves_elsewhere() {
+        let (first, second, third) = (DisplayId::new(4), DisplayId::new(5), DisplayId::new(6));
+        let mut continuity = DisplayContinuity::new(Some(second));
+        // Removing another display changes nothing.
+        continuity.removed(first);
+        assert!(continuity.connected());
+        // The window's display goes away and GPUI still names it.
+        continuity.removed(second);
+        assert!(!continuity.connected());
+        assert!(!continuity.observed(None));
+        // A new output that reuses the removed id is not the window's display.
+        assert!(!continuity.observed(Some(second)));
+        assert!(!continuity.connected());
+        // GPUI reports a move to a different display: trusted again.
+        assert!(continuity.observed(Some(third)));
+        assert!(continuity.connected());
+        continuity.removed(second);
+        assert!(continuity.connected());
+        // A move reported before the removal leaves the window trusted.
+        let mut continuity = DisplayContinuity::new(Some(first));
+        assert!(continuity.observed(Some(second)));
+        continuity.removed(first);
+        assert!(continuity.connected());
+        // A window that has not yet entered any display stays trusted.
+        let mut continuity = DisplayContinuity::new(None);
+        continuity.removed(first);
+        assert!(continuity.connected());
+        assert!(continuity.observed(None));
+    }
 
     #[test]
     fn service_policy_is_default_deny_and_accepts_only_an_explicit_launch_grant() {

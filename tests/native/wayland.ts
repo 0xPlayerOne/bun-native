@@ -338,8 +338,10 @@ async function capabilities(app: NativeApplication, window: NativeWindow) {
     availability: 'available',
     permission: 'allow',
     scope: 'owned_window',
+    // No work area or display identity; changes are qualified on two outputs
+    // in display-wayland.ts (#299).
     details: 'unavailable',
-    changes: 'unavailable',
+    changes: 'available',
   })
   for (const capability of [
     'clipboard_text_v1',

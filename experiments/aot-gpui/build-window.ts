@@ -46,6 +46,7 @@ const entries = {
   services: 'tests/native/services.ts',
   'display-semantics': 'tests/native/display-semantics.ts',
   'display-platform': 'tests/native/display-platform.ts',
+  'display-wayland': 'tests/native/display-wayland.ts',
   clipboard: 'tests/native/clipboard.ts',
   'global-shortcuts': 'tests/native/global-shortcuts.ts',
   notifications: 'tests/native/notifications.ts',
@@ -150,6 +151,7 @@ if (
     entry === 'services' ||
     entry === 'display-semantics' ||
     entry === 'display-platform' ||
+    entry === 'display-wayland' ||
     entry === 'clipboard' ||
     entry === 'global-shortcuts' ||
     entry === 'notifications' ||
