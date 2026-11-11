@@ -266,8 +266,32 @@ try {
   const a = await open(app, 'Display virtual first')
   const b = await open(app, 'Display virtual second')
   const pid = await hostPid()
-  for (const watched of [a, b])
-    assertOn(await watched.window.displaySnapshot(), main, `${watched.title} on the main display`)
+  // Launching the application resizes the Dock, and so the main work area, by a
+  // few points (681 vs 684 in job 130733876820, as in run 42193523182), so the
+  // first read is stale. As in display-platform.ts, the snapshots are compared
+  // exactly with an OS state that is settled and unchanged both before and
+  // after they are read; if it moved in between, the triple is read again.
+  {
+    const deadline = performance.now() + 20_000
+    const history: string[] = []
+    for (;;) {
+      const before = await settled()
+      const snapshots = [await a.window.displaySnapshot(), await b.window.displaySnapshot()]
+      const after = await settled()
+      if (JSON.stringify(before) === JSON.stringify(after)) {
+        const opened = after.find((display) => display.primary)
+        assert(opened && opened.id === main.id, 'the runner display stays the main display')
+        for (const [index, watched] of [a, b].entries())
+          assertOn(snapshots[index]!, opened, `${watched.title} on the main display`)
+        break
+      }
+      history.push(JSON.stringify([before, after].map((list) => list.map((d) => d.visibleBounds))))
+      if (performance.now() > deadline)
+        throw new Error(
+          'the OS work area kept changing while snapshots were read: ' + history.join(' ; ')
+        )
+    }
+  }
 
   // 1. Connect a display of the other scale. Windows on the main display may
   //    only report the main display as the OS reports it.
