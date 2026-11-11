@@ -27,6 +27,7 @@ import {
   run,
   type ExpectedDisplay,
   type Rect,
+  settledDisplays,
 } from './display-os.ts'
 import { windowsDeviceUuid } from './display-uuid.ts'
 
@@ -109,43 +110,7 @@ async function windowsScreens(): Promise<ExpectedDisplay[]> {
 
 const screens = () => (platform === 'darwin' ? readMacScreens(macHelper!, keep) : windowsScreens())
 
-/**
- * The OS displays once they stop changing. macOS relayouts the Dock (and so
- * the work area) for a few seconds after a display mode change, so a read made
- * right after a change, or after an earlier run's change, races that relayout.
- * Two reads 400 ms apart must agree; the read is never relaxed beyond that.
- *
- * The 15 s bounds how long the reads may keep disagreeing, not how long one
- * read may take: the first Windows oracle read starts PowerShell and loads
- * Windows Forms, which took the whole window on a loaded hosted runner (hosted
- * run 42212362205: one read, 22 s after launch, then "did not settle" with a
- * single state that no second read had contradicted). A state read before the
- * deadline is therefore always compared with one more read, however long each
- * takes.
- */
-async function settledScreens(): Promise<ExpectedDisplay[]> {
-  const deadline = performance.now() + 15_000
-  let previous: string | undefined
-  let latest: ExpectedDisplay[] | undefined
-  let failure: unknown
-  let overdue = 0
-  while (performance.now() < deadline || (previous !== undefined && overdue++ < 1)) {
-    try {
-      latest = await screens()
-      failure = undefined
-      const text = JSON.stringify(latest)
-      if (text === previous) return latest
-      previous = text
-    } catch (error) {
-      // The two independent oracle reads disagreed mid-relayout.
-      failure = error
-      previous = undefined
-    }
-    await Bun.sleep(400)
-  }
-  if (failure !== undefined) throw failure
-  throw new Error('the OS display state did not settle within 15 s: ' + JSON.stringify(latest))
-}
+const settledScreens = () => settledDisplays(screens)
 
 /**
  * Both windows' snapshots, compared exactly with the OS state they were read

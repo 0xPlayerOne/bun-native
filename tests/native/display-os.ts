@@ -129,3 +129,43 @@ JSON.stringify(out);`,
     }
   })
 }
+
+/**
+ * The OS displays once they stop changing. macOS relayouts the Dock (and so
+ * the work area) for a few seconds after an application launches or a display
+ * is connected, removed or changes mode, so a read can race that relayout.
+ * Two reads 400 ms apart must agree; the read is never relaxed beyond that.
+ * A read whose independent oracles disagree mid-relayout (for example the
+ * osascript and AppKit visibleFrame, job 130740014316) counts as not settled
+ * and is read again.
+ *
+ * The 15 s bounds how long the reads may keep disagreeing, not how long one
+ * read may take: the first Windows oracle read starts PowerShell and loads
+ * Windows Forms, which took the whole window on a loaded hosted runner (hosted
+ * run 42212362205). A state read before the deadline is therefore always
+ * compared with one more read, however long each takes.
+ */
+export async function settledDisplays(
+  read: () => Promise<ExpectedDisplay[]>
+): Promise<ExpectedDisplay[]> {
+  const deadline = performance.now() + 15_000
+  let previous: string | undefined
+  let latest: ExpectedDisplay[] | undefined
+  let failure: unknown
+  let overdue = 0
+  while (performance.now() < deadline || (previous !== undefined && overdue++ < 1)) {
+    try {
+      latest = await read()
+      failure = undefined
+      const text = JSON.stringify(latest)
+      if (text === previous) return latest
+      previous = text
+    } catch (error) {
+      failure = error
+      previous = undefined
+    }
+    await Bun.sleep(400)
+  }
+  if (failure !== undefined) throw failure
+  throw new Error('the OS display state did not settle within 15 s: ' + JSON.stringify(latest))
+}

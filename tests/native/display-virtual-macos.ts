@@ -19,7 +19,7 @@ import {
 import assert from 'node:assert/strict'
 import { statSync, writeFileSync } from 'node:fs'
 import { isAbsolute, join } from 'node:path'
-import { assertRect, macScreens, run, type ExpectedDisplay } from './display-os.ts'
+import { assertRect, macScreens, run, settledDisplays, type ExpectedDisplay } from './display-os.ts'
 
 const output = process.env['BUN_NATIVE_DISPLAY_EVIDENCE']
 const host = process.env['BUN_NATIVE_HOST']
@@ -73,24 +73,7 @@ async function waitFor<T>(
   }
 }
 
-/**
- * The OS displays once two reads 400 ms apart agree: macOS relayouts the Dock
- * and menu bar for a moment after a display is connected or removed.
- */
-async function settled(): Promise<ExpectedDisplay[]> {
-  let previous: string | undefined
-  let latest: ExpectedDisplay[] | undefined
-  const deadline = performance.now() + 15_000
-  while (performance.now() < deadline || previous !== undefined) {
-    latest = await macScreens(displayOracle, keep)
-    const text = JSON.stringify(latest)
-    if (text === previous) return latest
-    if (performance.now() >= deadline) break
-    previous = text
-    await Bun.sleep(400)
-  }
-  throw new Error('the OS display state did not settle within 15 s: ' + JSON.stringify(latest))
-}
+const settled = () => settledDisplays(() => macScreens(displayOracle, keep))
 
 /** The snapshot is exactly `display` as the OS reports it now. */
 function assertOn(snapshot: NativeDisplaySnapshot, display: ExpectedDisplay, at: string) {
