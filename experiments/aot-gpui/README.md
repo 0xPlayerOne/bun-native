@@ -76,6 +76,7 @@ The same compiler and inspection pipeline supports these explicit entries:
 | `services`                | `tests/native/services.ts`               | `services`               | Existing prebuilt host referenced by absolute path |
 | `display-semantics`       | `tests/native/display-semantics.ts`      | `display-semantics`      | Existing prebuilt host referenced by absolute path |
 | `display-platform`        | `tests/native/display-platform.ts`       | `display-platform`       | Existing prebuilt host referenced by absolute path |
+| `display-wayland`         | `tests/native/display-wayland.ts`        | `display-wayland`        | Existing prebuilt host referenced by absolute path |
 | `clipboard`               | `tests/native/clipboard.ts`              | `clipboard`              | Existing prebuilt host referenced by absolute path |
 | `global-shortcuts`        | `tests/native/global-shortcuts.ts`       | `global-shortcuts`       | Existing prebuilt host referenced by absolute path |
 | `notifications`           | `tests/native/notifications.ts`          | `notifications`          | Existing prebuilt host referenced by absolute path |
@@ -94,6 +95,8 @@ The same compiler and inspection pipeline supports these explicit entries:
 | `ime`                     | `tests/native/ime.ts`                    | `ime`                    | Existing prebuilt host referenced by absolute path |
 | `accessibility`           | `tests/native/accessibility.ts`          | `accessibility`          | Existing prebuilt host referenced by absolute path |
 | `accessibility-platform`  | `tests/native/accessibility-platform.ts` | `accessibility-platform` | Existing prebuilt host referenced by absolute path |
+| `screen-reader`           | `tests/native/screen-reader.ts`          | `screen-reader`          | Existing prebuilt host referenced by absolute path |
+| `ime-platform`            | `tests/native/ime-platform.ts`           | `ime-platform`           | Existing prebuilt host referenced by absolute path |
 | `solid-services`          | `tests/native/solid-services.tsx`        | `solid-services`         | Existing prebuilt host referenced by absolute path |
 | `react-services`          | `tests/native/react-services.tsx`        | `react-services`         | Existing prebuilt host referenced by absolute path |
 | `platform-smoke`          | `tests/native/platform-smoke.ts`         | `platform-smoke`         | Existing prebuilt host referenced by absolute path |

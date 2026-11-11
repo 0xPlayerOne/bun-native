@@ -17,10 +17,15 @@
 //! `zwp_text_input_v3` through the compositor as from an IME engine:
 //!   ime-active          wait (bounded) until the compositor activates the
 //!                       input method for a focused text input
+//!   ime-inactive        wait (bounded) until the compositor deactivates it
 //!   ime-preedit B E T   preedit T (rest of the line), cursor at bytes B..E
 //!   ime-commit T        commit T (rest of the line), ending any preedit
 //!   ime-clear           an empty preedit, cancelling the composition
 //!   ime-state           `ok active=<0|1> serial=<done events>`
+//!
+//! Each wait first reads every event the compositor sent before the command,
+//! so it never answers from a stale state, and later commits carry the serial
+//! of the latest `done`: wlroots drops a commit with an older one.
 
 #[cfg(target_os = "linux")]
 fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -136,18 +141,22 @@ mod peer {
                 }
             }
             let result: Result<(), String> = match (words.as_slice(), input_method.as_ref()) {
-                (["ime-active"], Some(_)) => {
+                ([command @ ("ime-active" | "ime-inactive")], Some(_)) => {
+                    let want = *command == "ime-active";
                     let deadline = Instant::now() + Duration::from_secs(5);
-                    while !state.active && !state.unavailable && Instant::now() < deadline {
-                        queue.roundtrip(&mut state).map_err(|e| e.to_string())?;
+                    queue.roundtrip(&mut state)?;
+                    while state.active != want && !state.unavailable && Instant::now() < deadline {
                         std::thread::sleep(Duration::from_millis(20));
+                        queue.roundtrip(&mut state)?;
                     }
                     if state.unavailable {
                         Err("the seat already has an input method".into())
-                    } else if state.active {
+                    } else if state.active == want {
                         Ok(())
-                    } else {
+                    } else if want {
                         Err("the input method was never activated".into())
+                    } else {
+                        Err("the input method was never deactivated".into())
                     }
                 }
                 (["ime-preedit", begin, end, ..], Some(method)) => {

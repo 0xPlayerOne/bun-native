@@ -111,3 +111,18 @@ two-field snapshot. Native acceptance is the hosted macOS/Windows workflow run
 only ([contract](../native-services.md#macos-and-windows-display-semantics-299));
 window migration, hotplug and mixed DPI remain unverified there because the
 hosted runners have one virtual display.
+
+### Linux Wayland (#299)
+
+GPUI's Wayland backend reports a window's move between outputs and output
+connection, removal and reconfiguration, so the host also advertises
+`display_changes_v1` when GPUI's compositor is Wayland, chosen at runtime
+because one Linux build serves both backends. `display_details_v1` stays
+macOS/Windows only: Wayland has no client-visible work area. Because the
+pinned backend keeps a removed output as a window's display when the
+compositor sends no `wl_surface.leave`, the host treats a window whose display
+was removed as disconnected until GPUI reports a move elsewhere: its snapshot
+fails closed and no change is reported. Two headless sway outputs of different
+scale exercise migration, mixed scale, reconfiguration and hotplug
+([contract](../native-services.md#wayland-display-changes-299)); physical
+monitors remain unverified.
