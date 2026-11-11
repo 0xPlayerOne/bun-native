@@ -97,6 +97,11 @@ test('every advertised macOS feature that M1 and M2 name has an expected report'
       'split_v1',
       'style_decoration_v1',
       'task_dialogs_v1',
+      'clipboard_text_v1',
+      'global_shortcuts_v1',
+      'file_dialogs_v1',
+      'popup_windows_v1',
+      'notifications_v1',
     ].sort()
   )
   for (const feature of FEATURES) expect(feature.reports.length).toBeGreaterThan(0)
@@ -188,6 +193,9 @@ test('the macOS feature steps gate on shard 2 and feed one record step', () => {
     if (at !== record) expect(record).toBeGreaterThan(at)
   }
   for (const at of features.slice(0, 4)) expect(steps[at]!.if).toContain('matrix.shard == 2')
+  // The record runs on both macOS shards and checks the shard's own features.
+  expect(steps[record]!.if ?? '').not.toContain('matrix.shard')
+  expect(steps[record]!.run).toContain('--shard ${{ matrix.shard }}')
   expect(steps[record]!.if).toContain("runner.os == 'macOS'")
   expect(steps[record]!.run).toContain('scripts/quality/macos-feature-evidence.ts')
   expect(steps[record]!.run).toContain('throw')
@@ -195,4 +203,60 @@ test('the macOS feature steps gate on shard 2 and feed one record step', () => {
   expect(menu).not.toContain('::warning::')
   expect(menu).toContain('if (-not $trust.trusted) { throw')
   expect(menu).toContain('throw "macOS $mode menu bar contents and selections are unverified')
+})
+
+test('the macOS service steps gate on shard 1 before the record, one feature each', () => {
+  const services = [
+    ['macOS clipboard text through the general pasteboard', 'clipboard_text_v1'],
+    ['macOS global shortcuts through Carbon hot keys', 'global_shortcuts_v1'],
+    ['macOS file dialogs through NSOpenPanel and NSSavePanel sheets', 'file_dialogs_v1'],
+    ['macOS popup windows as owned child panels', 'popup_windows_v1'],
+    [
+      "macOS user notifications from the bare host and the installed template's",
+      'notifications_v1',
+    ],
+  ] as const
+  const record = steps.findIndex(
+    (step) => step.name === 'Record source-bound macOS feature evidence'
+  )
+  for (const [prefix, capability] of services) {
+    const at = steps.findIndex((step) => step.name?.startsWith(prefix))
+    expect(at).toBeGreaterThanOrEqual(0)
+    expect(at).toBeLessThan(record)
+    const step = steps[at]!
+    expect(step['continue-on-error']).toBeUndefined()
+    expect(step.if).toContain('matrix.shard == 1')
+    expect(step.if).toContain("runner.os == 'macOS'")
+    expect(step.run).toContain('throw')
+    const feature = FEATURES.find((entry) => entry.capabilities.includes(capability))!
+    expect(feature.shard).toBe(1)
+    for (const report of feature.reports)
+      expect(step.run).toContain(`'${report.path.split('/')[0]}'`)
+  }
+  // Notifications use the host the signed template image installed.
+  const notifications = steps.find((step) => step.name?.startsWith(services[4][0]))!
+  expect(notifications.if).toContain("steps.signed-install.outcome == 'success'")
+  expect(notifications.run).toContain('installedHost.executable')
+  const install = steps.find((step) => step.name?.startsWith('Install the signed template'))!
+  expect((install as { id?: string }).id).toBe('signed-install')
+})
+
+test('a shard record checks only that shard and passes without the other shard', () => {
+  const inputs = passingTree()
+  const shardOne = FEATURES.filter((feature) => feature.shard === 1)
+  for (const feature of FEATURES)
+    if (feature.shard !== 1)
+      for (const report of feature.reports) rmSync(join(inputs.evidence, report.path))
+  const first = buildRecord({ ...inputs, shard: 1 })
+  expect(first.failures).toEqual([])
+  expect(first.shard).toBe(1)
+  expect(first.features.map((feature) => feature.capabilities)).toEqual(
+    shardOne.map((feature) => feature.capabilities)
+  )
+  const second = buildRecord({ ...inputs, shard: 2 })
+  expect(second.status).toBe('failed')
+  rmSync(join(inputs.evidence, shardOne[0]!.reports[0]!.path))
+  expect(buildRecord({ ...inputs, shard: 1 }).failures).toEqual([
+    `${shardOne[0]!.reports[0]!.path}: missing`,
+  ])
 })

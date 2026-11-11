@@ -3,8 +3,9 @@
  *
  * `UNUserNotificationCenter` serves only an application bundle, so the
  * workflow runs this fixture with two hosts: the bare release executable,
- * which must not offer the service at all, and the same executable copied
- * into an ad-hoc-signed `.app` bundle, which must.
+ * which must not offer the service at all, and the host of the signed template
+ * installed from its disk image, which a macOS `native build` places in
+ * `BunNativeHost.app` and which must offer it.
  *
  * What a hosted runner cannot automate: the first post of a bundle asks the
  * user for permission through an OS prompt that nobody answers here. A

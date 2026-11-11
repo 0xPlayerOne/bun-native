@@ -684,9 +684,12 @@ On macOS the host posts through `UNUserNotificationCenter` with backend
 bare executable it raises an exception that ends the process. The host therefore
 advertises `notifications_v1` only when its own main bundle has an identifier
 and is an `.app`, and never touches the framework otherwise; a bare host reports
-`unsupported_platform` and rejects a post with `service_unavailable`. The
-current packaging runs the host outside the application bundle, so packaged
-applications do not get notifications on macOS yet.
+`unsupported_platform` and rejects a post with `service_unavailable`. A macOS
+`native build` therefore puts the host in `BunNativeHost.app/Contents/MacOS`
+with an `Info.plist` naming the application's bundle identifier (`--bundle-id`,
+or one derived from the package name), and signing seals that bundle, so a
+packaged and installed application gets notifications. A host started from
+anywhere else, such as `native dev` with a bare `--host`, does not.
 
 Every post first asks for alert authorization. The first request for a bundle
 shows the OS permission prompt and the post stays pending until the user
@@ -707,8 +710,10 @@ The hosted macOS step runs
 [`notifications-macos.ts`](../tests/native/notifications-macos.ts) in
 development mode twice over: against the bare release host, which must report
 `unsupported_platform` and reject a granted post with `service_unavailable`
-without aborting, and against the same executable copied into an ad-hoc-signed
-`.app` bundle, which must advertise the service, deny an ungranted post with
+without aborting, and against the host of the signed template that the
+preceding step installed from its disk image (`BunNativeHost.app` inside the
+installed release, whose identifier, signature and running host that install
+step checks), which must advertise the service, deny an ungranted post with
 the launch-policy message, and end a granted post in exactly one of three
 recorded ways: posted and withdrawn, denied by the OS, or still awaiting the
 unanswered permission prompt and rejected with `invalid_handle` on owner close.

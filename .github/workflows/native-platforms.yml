@@ -320,6 +320,7 @@ jobs:
             Write-Output "::notice title=Notarization skipped::$(Get-Content -LiteralPath $record -TotalCount 1)"
           }
       - name: Install the signed template from its installer and confirm its health (#249)
+        id: signed-install
         if: ${{ matrix.shard == 1 && (!cancelled() && steps.signed-template.outcome == 'success') }}
         timeout-minutes: 8
         run: |
@@ -576,65 +577,6 @@ jobs:
           $env:BUN_NATIVE_CONTEXT_MENU_ORACLE = $oracle
           bun tests/native/context-menus.ts 2>&1 | Tee-Object -FilePath (Join-Path $evidence 'run.log')
           if ($LASTEXITCODE -ne 0) { throw 'macOS OS context menus were not verified' }
-      - name: macOS clipboard text through the general pasteboard (pbcopy/pbpaste oracle)
-        if: ${{ matrix.shard == 2 && runner.os == 'macOS' && !cancelled() && steps.native-build.outcome == 'success' }}
-        timeout-minutes: 4
-        run: |
-          $evidence = Join-Path $env:NATIVE_EVIDENCE 'clipboard-macos'
-          New-Item -ItemType Directory $evidence | Out-Null
-          $env:BUN_NATIVE_CLIPBOARD_EVIDENCE = $evidence
-          bun tests/native/clipboard-macos.ts 2>&1 | Tee-Object -FilePath (Join-Path $evidence 'run.log')
-          if ($LASTEXITCODE -ne 0) { throw 'macOS pasteboard clipboard text was not verified' }
-      - name: macOS global shortcuts through Carbon hot keys (independent Event Manager oracle)
-        if: ${{ matrix.shard == 2 && runner.os == 'macOS' && !cancelled() && steps.native-build.outcome == 'success' }}
-        timeout-minutes: 4
-        run: |
-          $oracle = Join-Path $env:NATIVE_EVIDENCE 'macos-hot-key-oracle'
-          xcrun clang -fobjc-arc -Wall -Wextra -Werror -framework AppKit -framework ApplicationServices -framework Carbon `
-            tests/native/macos-hot-key-oracle.m -o $oracle
-          if ($LASTEXITCODE -ne 0) { throw 'The independent hot key oracle did not compile' }
-          $trust = & $oracle trusted | ConvertFrom-Json
-          if (-not $trust.trusted) { throw 'The runner does not let the hot key oracle post events' }
-          $evidence = Join-Path $env:NATIVE_EVIDENCE 'global-shortcuts-macos'
-          New-Item -ItemType Directory $evidence | Out-Null
-          $env:BUN_NATIVE_SHORTCUT_EVIDENCE = $evidence
-          $env:BUN_NATIVE_HOT_KEY_ORACLE = $oracle
-          bun tests/native/global-shortcuts-macos.ts 2>&1 | Tee-Object -FilePath (Join-Path $evidence 'run.log')
-          if ($LASTEXITCODE -ne 0) { throw 'macOS global shortcuts were not verified' }
-      - name: macOS file dialogs through NSOpenPanel and NSSavePanel sheets (Accessibility oracle)
-        if: ${{ matrix.shard == 2 && runner.os == 'macOS' && !cancelled() && steps.native-build.outcome == 'success' }}
-        timeout-minutes: 6
-        run: |
-          $oracle = Join-Path $env:NATIVE_EVIDENCE 'macos-file-panel-oracle'
-          xcrun clang -fobjc-arc -Wall -Wextra -Werror -framework AppKit -framework ApplicationServices `
-            tests/native/macos-file-panel-oracle.m -o $oracle
-          if ($LASTEXITCODE -ne 0) { throw 'The independent Accessibility file panel oracle did not compile' }
-          $trust = & $oracle trusted | ConvertFrom-Json
-          if (-not $trust.trusted) { throw 'The runner does not trust the file panel oracle for Accessibility' }
-          $evidence = Join-Path $env:NATIVE_EVIDENCE 'file-dialogs-macos'
-          New-Item -ItemType Directory $evidence | Out-Null
-          $env:BUN_NATIVE_FILE_DIALOG_EVIDENCE = $evidence
-          $env:BUN_NATIVE_FILE_PANEL_ORACLE = $oracle
-          bun tests/native/file-dialogs-macos.ts 2>&1 | Tee-Object -FilePath (Join-Path $evidence 'run.log')
-          if ($LASTEXITCODE -ne 0) { throw 'macOS file dialogs were not verified' }
-      - name: macOS popup windows as owned child panels (WindowServer and Accessibility oracle)
-        if: ${{ matrix.shard == 2 && runner.os == 'macOS' && !cancelled() && steps.native-build.outcome == 'success' }}
-        timeout-minutes: 6
-        run: |
-          $oracle = Join-Path $env:NATIVE_EVIDENCE 'macos-popup-oracle'
-          xcrun clang -fobjc-arc -Wall -Wextra -Werror -framework AppKit -framework CoreGraphics -framework ApplicationServices `
-            tests/native/macos-popup-oracle.m -o $oracle
-          if ($LASTEXITCODE -ne 0) { throw 'The independent popup window oracle did not compile' }
-          $trust = & $oracle trusted | ConvertFrom-Json
-          if (-not $trust.trusted) { throw 'The runner does not trust the popup oracle for Accessibility' }
-          $evidence = Join-Path $env:NATIVE_EVIDENCE 'popups-macos'
-          New-Item -ItemType Directory $evidence | Out-Null
-          $env:BUN_NATIVE_POPUP_EVIDENCE = $evidence
-          $env:BUN_NATIVE_POPUP_ORACLE = $oracle
-          $env:BUN_NATIVE_EVIDENCE_LOG = Join-Path $evidence 'native-evidence.jsonl'
-          $env:BUN_NATIVE_EVIDENCE_NONCE = -join ((1..16) | ForEach-Object { '{0:x2}' -f (Get-Random -Maximum 256) })
-          bun tests/native/popups-macos.ts 2>&1 | Tee-Object -FilePath (Join-Path $evidence 'run.log')
-          if ($LASTEXITCODE -ne 0) { throw 'macOS popup windows were not verified' }
       - name: Development and AOT native fault containment
         if: ${{ matrix.shard == 2 && (runner.os != 'Linux' && !cancelled() && steps.native-build.outcome == 'success') }}
         timeout-minutes: 5
@@ -1274,45 +1216,89 @@ jobs:
             }
           }
           if ($failures.Count -gt 0) { throw ($failures -join '; ') }
-      # Last of the shard's macOS steps: an unanswered OS notification prompt
-      # can stay on screen after the host exits.
-      - name: macOS user notifications from a bare and an app-bundled host
-        if: ${{ matrix.shard == 2 && runner.os == 'macOS' && !cancelled() && steps.native-build.outcome == 'success' }}
+      - name: macOS clipboard text through the general pasteboard (pbcopy/pbpaste oracle)
+        if: ${{ matrix.shard == 1 && runner.os == 'macOS' && !cancelled() && steps.native-build.outcome == 'success' }}
         timeout-minutes: 4
         run: |
-          # UNUserNotificationCenter serves only an application bundle, so the
-          # same release executable also runs from an ad-hoc-signed .app.
-          $bundle = Join-Path $env:RUNNER_TEMP 'BunNativeNotifications.app'
-          $contents = Join-Path $bundle 'Contents'
-          New-Item -ItemType Directory (Join-Path $contents 'MacOS') | Out-Null
-          Copy-Item -LiteralPath $env:BUN_NATIVE_HOST -Destination (Join-Path $contents 'MacOS/bun-native-host')
-          @'
-          <?xml version="1.0" encoding="UTF-8"?>
-          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-          <plist version="1.0"><dict>
-          <key>CFBundleIdentifier</key><string>dev.bunnative.ci.notifications</string>
-          <key>CFBundleExecutable</key><string>bun-native-host</string>
-          <key>CFBundleName</key><string>Bun Native Notifications</string>
-          <key>CFBundlePackageType</key><string>APPL</string>
-          <key>CFBundleShortVersionString</key><string>1.0</string>
-          </dict></plist>
-          '@ | Out-File -FilePath (Join-Path $contents 'Info.plist') -Encoding utf8NoBOM
-          codesign --force --sign - $bundle
-          if ($LASTEXITCODE -ne 0) { throw 'The notification test bundle could not be signed' }
+          $evidence = Join-Path $env:NATIVE_EVIDENCE 'clipboard-macos'
+          New-Item -ItemType Directory $evidence | Out-Null
+          $env:BUN_NATIVE_CLIPBOARD_EVIDENCE = $evidence
+          bun tests/native/clipboard-macos.ts 2>&1 | Tee-Object -FilePath (Join-Path $evidence 'run.log')
+          if ($LASTEXITCODE -ne 0) { throw 'macOS pasteboard clipboard text was not verified' }
+      - name: macOS global shortcuts through Carbon hot keys (independent Event Manager oracle)
+        if: ${{ matrix.shard == 1 && runner.os == 'macOS' && !cancelled() && steps.native-build.outcome == 'success' }}
+        timeout-minutes: 4
+        run: |
+          $oracle = Join-Path $env:NATIVE_EVIDENCE 'macos-hot-key-oracle'
+          xcrun clang -fobjc-arc -Wall -Wextra -Werror -framework AppKit -framework ApplicationServices -framework Carbon `
+            tests/native/macos-hot-key-oracle.m -o $oracle
+          if ($LASTEXITCODE -ne 0) { throw 'The independent hot key oracle did not compile' }
+          $trust = & $oracle trusted | ConvertFrom-Json
+          if (-not $trust.trusted) { throw 'The runner does not let the hot key oracle post events' }
+          $evidence = Join-Path $env:NATIVE_EVIDENCE 'global-shortcuts-macos'
+          New-Item -ItemType Directory $evidence | Out-Null
+          $env:BUN_NATIVE_SHORTCUT_EVIDENCE = $evidence
+          $env:BUN_NATIVE_HOT_KEY_ORACLE = $oracle
+          bun tests/native/global-shortcuts-macos.ts 2>&1 | Tee-Object -FilePath (Join-Path $evidence 'run.log')
+          if ($LASTEXITCODE -ne 0) { throw 'macOS global shortcuts were not verified' }
+      - name: macOS file dialogs through NSOpenPanel and NSSavePanel sheets (Accessibility oracle)
+        if: ${{ matrix.shard == 1 && runner.os == 'macOS' && !cancelled() && steps.native-build.outcome == 'success' }}
+        timeout-minutes: 6
+        run: |
+          $oracle = Join-Path $env:NATIVE_EVIDENCE 'macos-file-panel-oracle'
+          xcrun clang -fobjc-arc -Wall -Wextra -Werror -framework AppKit -framework ApplicationServices `
+            tests/native/macos-file-panel-oracle.m -o $oracle
+          if ($LASTEXITCODE -ne 0) { throw 'The independent Accessibility file panel oracle did not compile' }
+          $trust = & $oracle trusted | ConvertFrom-Json
+          if (-not $trust.trusted) { throw 'The runner does not trust the file panel oracle for Accessibility' }
+          $evidence = Join-Path $env:NATIVE_EVIDENCE 'file-dialogs-macos'
+          New-Item -ItemType Directory $evidence | Out-Null
+          $env:BUN_NATIVE_FILE_DIALOG_EVIDENCE = $evidence
+          $env:BUN_NATIVE_FILE_PANEL_ORACLE = $oracle
+          bun tests/native/file-dialogs-macos.ts 2>&1 | Tee-Object -FilePath (Join-Path $evidence 'run.log')
+          if ($LASTEXITCODE -ne 0) { throw 'macOS file dialogs were not verified' }
+      - name: macOS popup windows as owned child panels (WindowServer and Accessibility oracle)
+        if: ${{ matrix.shard == 1 && runner.os == 'macOS' && !cancelled() && steps.native-build.outcome == 'success' }}
+        timeout-minutes: 6
+        run: |
+          $oracle = Join-Path $env:NATIVE_EVIDENCE 'macos-popup-oracle'
+          xcrun clang -fobjc-arc -Wall -Wextra -Werror -framework AppKit -framework CoreGraphics -framework ApplicationServices `
+            tests/native/macos-popup-oracle.m -o $oracle
+          if ($LASTEXITCODE -ne 0) { throw 'The independent popup window oracle did not compile' }
+          $trust = & $oracle trusted | ConvertFrom-Json
+          if (-not $trust.trusted) { throw 'The runner does not trust the popup oracle for Accessibility' }
+          $evidence = Join-Path $env:NATIVE_EVIDENCE 'popups-macos'
+          New-Item -ItemType Directory $evidence | Out-Null
+          $env:BUN_NATIVE_POPUP_EVIDENCE = $evidence
+          $env:BUN_NATIVE_POPUP_ORACLE = $oracle
+          $env:BUN_NATIVE_EVIDENCE_LOG = Join-Path $evidence 'native-evidence.jsonl'
+          $env:BUN_NATIVE_EVIDENCE_NONCE = -join ((1..16) | ForEach-Object { '{0:x2}' -f (Get-Random -Maximum 256) })
+          bun tests/native/popups-macos.ts 2>&1 | Tee-Object -FilePath (Join-Path $evidence 'run.log')
+          if ($LASTEXITCODE -ne 0) { throw 'macOS popup windows were not verified' }
+      # Packaged macOS applications run their host from BunNativeHost.app, so the
+      # notification check uses the installed, signed template's host as the
+      # bundled one. An unanswered OS notification prompt can stay on screen
+      # after the host exits, so this is the shard's last service step.
+      - name: macOS user notifications from the bare host and the installed template's bundled host
+        if: ${{ matrix.shard == 1 && runner.os == 'macOS' && !cancelled() && steps.native-build.outcome == 'success' && steps.signed-install.outcome == 'success' }}
+        timeout-minutes: 4
+        run: |
+          $install = Get-Content -Raw -LiteralPath (Join-Path $env:NATIVE_EVIDENCE 'signed-template/install-smoke.json') | ConvertFrom-Json
+          if (-not $install.installedHost.executable) { throw 'The signed template install recorded no bundled host' }
           $evidence = Join-Path $env:NATIVE_EVIDENCE 'notifications-macos'
           New-Item -ItemType Directory $evidence | Out-Null
           $env:BUN_NATIVE_NOTIFICATION_EVIDENCE = $evidence
-          $env:BUN_NATIVE_BUNDLED_HOST = Join-Path $contents 'MacOS/bun-native-host'
+          $env:BUN_NATIVE_BUNDLED_HOST = $install.installedHost.executable
           bun tests/native/notifications-macos.ts 2>&1 | Tee-Object -FilePath (Join-Path $evidence 'run.log')
           if ($LASTEXITCODE -ne 0) { throw 'macOS user notifications were not verified' }
       # M2: one source-bound record of every macOS feature this shard ran, read
       # from the gating steps' own reports and bound to this checkout, its AOT
       # packages and the release host. Missing or failed evidence fails here.
       - name: Record source-bound macOS feature evidence
-        if: ${{ matrix.shard == 2 && (runner.os == 'macOS' && !cancelled() && steps.native-build.outcome == 'success') }}
+        if: ${{ runner.os == 'macOS' && !cancelled() && steps.native-build.outcome == 'success' }}
         timeout-minutes: 3
         run: |
-          bun scripts/quality/macos-feature-evidence.ts --evidence $env:NATIVE_EVIDENCE `
+          bun scripts/quality/macos-feature-evidence.ts --evidence $env:NATIVE_EVIDENCE --shard ${{ matrix.shard }} `
             --source $env:GITHUB_WORKSPACE --host $env:BUN_NATIVE_HOST `
             --output (Join-Path $env:NATIVE_EVIDENCE 'macos-feature-record.json')
           if ($LASTEXITCODE -ne 0) { throw 'The macOS feature evidence is incomplete or not bound to this source' }

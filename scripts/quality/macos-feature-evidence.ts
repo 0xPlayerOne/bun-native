@@ -27,6 +27,8 @@ export type Report = {
 
 export type Feature = {
   capabilities: string[]
+  /** The macOS shard whose gating steps write the reports; 2 when omitted. */
+  shard?: 1 | 2
   /** What on macOS independently observes the effect. */
   oracle: string
   reports: Report[]
@@ -35,6 +37,13 @@ export type Feature = {
 }
 
 const perMode = (build: (mode: (typeof MODES)[number]) => Report) => MODES.map(build)
+
+/** A development-only service report: macOS, not failed, with every named outcome. */
+const service = (path: string, outcomes: string[]): Report => ({
+  path,
+  fields: { platform: 'darwin', failed: false },
+  outcomes,
+})
 
 const LAYOUT_ADAPTERS = [
   ['layout-style', 'core'],
@@ -252,6 +261,95 @@ export const FEATURES: Feature[] = [
     ]),
     packages: ['drag-drop', 'solid-drag-drop', 'react-drag-drop'],
   },
+  {
+    capabilities: ['clipboard_text_v1'],
+    shard: 1,
+    oracle: 'pbcopy, pbpaste and an osascript pasteboard clear',
+    reports: [
+      service('clipboard-macos/clipboard-macos.json', [
+        'defaultDenial',
+        'writeSeenByPbpaste',
+        'readPbcopyText',
+        'clearedReadsEmpty',
+        'boundedRead',
+        'abortBeforeDispatch',
+        'staleOwnerRejected',
+        'shutdownClean',
+      ]),
+    ],
+    packages: [],
+  },
+  {
+    capabilities: ['global_shortcuts_v1'],
+    shard: 1,
+    oracle:
+      'Carbon Event Manager registrations and CGEventPost key presses (macos-hot-key-oracle.m)',
+    reports: [
+      service('global-shortcuts-macos/global-shortcuts-macos.json', [
+        'defaultDenial',
+        'deliveredWhileFinderFrontmost',
+        'inSessionDuplicateConflict',
+        'externalConflictMapped',
+        'unregisterReleases',
+        'ownerCloseReleases',
+        'shutdownReleases',
+      ]),
+    ],
+    packages: [],
+  },
+  {
+    capabilities: ['file_dialogs_v1'],
+    shard: 1,
+    oracle: 'Accessibility open and save panel sheet oracle (macos-file-panel-oracle.m)',
+    reports: [
+      service('file-dialogs-macos/file-dialogs-macos.json', [
+        'defaultDenial',
+        'openCancelled',
+        'folderSelected',
+        'saveSelected',
+        'unsupportedFilterRefused',
+        'abortClosesSheet',
+        'ownerCloseEndsSheet',
+        'shutdownEndsSheet',
+        'ownershipReleased',
+      ]),
+    ],
+    packages: [],
+  },
+  {
+    capabilities: ['popup_windows_v1'],
+    shard: 1,
+    oracle:
+      'WindowServer window list, Accessibility window moves and Quartz input (macos-popup-oracle.m), host paint evidence',
+    reports: [
+      service('popups-macos/popups-macos.json', [
+        'placedBeyondParent',
+        'popupPointer',
+        'escapeDismissal',
+        'followsParentMove',
+        'blurDismissal',
+        'clampedToDisplay',
+        'closedWithParent',
+        'ownershipReleased',
+      ]),
+    ],
+    packages: [],
+  },
+  {
+    capabilities: ['notifications_v1'],
+    shard: 1,
+    oracle:
+      'the bare release host and the installed signed template host in BunNativeHost.app; the OS prompt answer is recorded, not chosen',
+    reports: [
+      service('notifications-macos/notifications-macos.json', [
+        'bareHostUnavailable',
+        'bundledDefaultDenial',
+        'authorization',
+        'bundledShutdownClean',
+      ]),
+    ],
+    packages: [],
+  },
 ]
 
 /** Sources the record binds beyond each package's own inventory. */
@@ -270,6 +368,15 @@ export const EXTRA_SOURCES = [
   'tests/native/layout-style-compare.ts',
   'tests/native/task-dialogs.ts',
   'tests/native/context-menus.ts',
+  'tests/native/clipboard-macos.ts',
+  'tests/native/global-shortcuts-macos.ts',
+  'tests/native/macos-hot-key-oracle.m',
+  'tests/native/file-dialogs-macos.ts',
+  'tests/native/macos-file-panel-oracle.m',
+  'tests/native/popups-macos.ts',
+  'tests/native/macos-popup-oracle.m',
+  'tests/native/notifications-macos.ts',
+  'scripts/quality/signed-installer-smoke.ts',
 ]
 
 type Manifest = {
@@ -300,6 +407,8 @@ export type Inputs = {
   tree: string
   dirty: string[]
   run: Record<string, string | undefined>
+  /** Check only this shard's features; every feature when omitted. */
+  shard?: 1 | 2
 }
 
 /** Build the record; `failures` lists every unmet requirement. */
@@ -348,7 +457,10 @@ export function buildRecord(inputs: Inputs) {
     }
   }
 
-  const features = FEATURES.map((feature) => {
+  const selected = FEATURES.filter(
+    (feature) => inputs.shard === undefined || (feature.shard ?? 2) === inputs.shard
+  )
+  const features = selected.map((feature) => {
     for (const entry of feature.packages) checkPackage(entry)
     const reports = feature.reports.map((report) => {
       const file = join(inputs.evidence, report.path)
@@ -396,8 +508,9 @@ export function buildRecord(inputs: Inputs) {
   const record = {
     schemaVersion: 1,
     status: failures.length ? 'failed' : 'passed',
+    shard: inputs.shard ?? 'all',
     scope:
-      'Hosted macOS feature qualification in development and inspected AOT against one release GPUI host. Each report comes from a gating step with a real native window and an independent macOS oracle; hosted VM, software-presented display and synthesized CoreGraphics input, not physical hardware.',
+      'Hosted macOS feature qualification in development and inspected AOT against one release GPUI host (for notifications also its signed copy installed from the template image). Each report comes from a gating step with a real native window and an independent macOS oracle; hosted VM, software-presented display and synthesized CoreGraphics input, not physical hardware.',
     run: inputs.run,
     source: {
       commit: inputs.commit,
@@ -428,12 +541,15 @@ if (import.meta.main) {
       source: { type: 'string' },
       host: { type: 'string' },
       output: { type: 'string' },
+      shard: { type: 'string' },
     },
     strict: true,
   })
   const { evidence, source, host, output } = values
+  const shard = values.shard === '1' ? 1 : values.shard === '2' ? 2 : undefined
   if (
     process.platform !== 'darwin' ||
+    shard === undefined ||
     !evidence ||
     !isAbsolute(evidence) ||
     !source ||
@@ -444,10 +560,11 @@ if (import.meta.main) {
     !isAbsolute(output)
   )
     throw new Error(
-      'Usage on macOS: bun scripts/quality/macos-feature-evidence.ts --evidence DIR --source CHECKOUT --host HOST --output FILE (all absolute)'
+      'Usage on macOS: bun scripts/quality/macos-feature-evidence.ts --evidence DIR --source CHECKOUT --host HOST --output FILE (all absolute) --shard 1|2'
     )
   const env = process.env
   const record = buildRecord({
+    shard,
     evidence,
     source,
     host,
