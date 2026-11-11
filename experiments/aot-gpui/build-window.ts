@@ -46,6 +46,7 @@ const entries = {
   services: 'tests/native/services.ts',
   'display-semantics': 'tests/native/display-semantics.ts',
   'display-platform': 'tests/native/display-platform.ts',
+  'display-wayland': 'tests/native/display-wayland.ts',
   clipboard: 'tests/native/clipboard.ts',
   'global-shortcuts': 'tests/native/global-shortcuts.ts',
   notifications: 'tests/native/notifications.ts',
@@ -64,6 +65,8 @@ const entries = {
   ime: 'tests/native/ime.ts',
   accessibility: 'tests/native/accessibility.ts',
   'accessibility-platform': 'tests/native/accessibility-platform.ts',
+  'screen-reader': 'tests/native/screen-reader.ts',
+  'ime-platform': 'tests/native/ime-platform.ts',
   'solid-services': 'tests/native/solid-services.tsx',
   'react-services': 'tests/native/react-services.tsx',
   'platform-smoke': 'tests/native/platform-smoke.ts',
@@ -150,6 +153,7 @@ if (
     entry === 'services' ||
     entry === 'display-semantics' ||
     entry === 'display-platform' ||
+    entry === 'display-wayland' ||
     entry === 'clipboard' ||
     entry === 'global-shortcuts' ||
     entry === 'notifications' ||
@@ -165,6 +169,8 @@ if (
     entry === 'text-input' ||
     entry === 'ime' ||
     entry === 'accessibility' ||
+    entry === 'screen-reader' ||
+    entry === 'ime-platform' ||
     entry === 'platform-smoke' ||
     solidEntry ||
     reactEntry) &&
@@ -283,6 +289,8 @@ async function sourceHashes() {
   if (entry === 'services' || entry === 'solid-services' || entry === 'react-services')
     sources.add('tests/native/display-service-policy.ts')
   for (const path of workloadSources.keys()) sources.add(path)
+  if (entry === 'solid-workspace-soak' || entry === 'react-workspace-soak')
+    sources.add('tests/native/workspace-session.ts')
   if (
     entry === 'solid-workspace' ||
     entry === 'solid-workspace-flow' ||

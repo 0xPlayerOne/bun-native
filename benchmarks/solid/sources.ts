@@ -7,6 +7,7 @@ export async function sharedWorkloadSources(source: string) {
   return Promise.all(
     [
       'benchmarks/solid/ownership.ts',
+      'benchmarks/solid/retention-evidence.ts',
       'benchmarks/solid/sources.ts',
       'benchmarks/solid/workload.ts',
     ].map(async (path) => {

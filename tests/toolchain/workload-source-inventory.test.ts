@@ -7,6 +7,7 @@ import { sharedWorkloadSources } from '../../benchmarks/solid/sources.ts'
 
 const required = [
   'benchmarks/solid/ownership.ts',
+  'benchmarks/solid/retention-evidence.ts',
   'benchmarks/solid/sources.ts',
   'benchmarks/solid/workload.ts',
 ]

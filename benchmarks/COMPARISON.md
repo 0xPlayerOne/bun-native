@@ -37,6 +37,25 @@ Timed launches disable native evidence serialization. Development calibration
 uses `BUN_JSC_useDFGJIT=0`, matching native CI's handling of the known DFG
 retention sensitivity (#287); timed launches keep default tiers.
 
+When a launch's second collection checkpoint still reaches a disposed probe,
+the workload records retaining-path evidence before the unchanged assertion
+fails (#629). It writes two files beside that launch's report (`<report>.json`):
+
+- `<report>.json.retention.json`: the probe identities and cell addresses, the
+  GC root-reason totals, and, for each still-reachable probe, its direct
+  retainers and one shortest strong path from a GC root per distinct owner.
+  WeakRef edges are not counted as owners. It holds two analyses. `sameJob` is
+  taken while the assertion's own `deref()` calls still keep the targets alive.
+  `nextTask` is taken after one timer turn. A probe that is absent from
+  `nextTask` had only a transient owner.
+- `<report>.json.retention-heap.json.gz`: the `sameJob` JSC GC-debugging heap
+  snapshot (`bun:jsc` `generateHeapSnapshotForDebugging`), at most 48 MiB
+  compressed.
+
+Each snapshot does its own full collection. That happens after both checkpoints
+have been recorded, so it does not change their results. The report's
+`retentionEvidence` field names both files. Passing launches write neither file.
+
 ## Recorded metrics
 
 Per launch (one fresh application and host process each): spawn-to-runtime
@@ -85,7 +104,12 @@ evidence are kept under `input/`.
 CPU time comes from the `wait4` resource usage of the launched application, so it
 covers the application and every descendant it reaped, which includes the native
 host after an orderly close. A host that is killed or orphaned is not counted. It
-is user plus system time on Linux and macOS and is recorded as `null` elsewhere. The
+is user plus system time on Linux and macOS. Windows has no `wait4`: there
+[`comparison/windows-processes.ts`](comparison/windows-processes.ts) opens a handle
+to the application right after spawning it and to each descendant it later sees,
+and CPU time is the sum of the final `GetProcessTimes` user and kernel time of
+every observed member, the host included even if it outlives the application. It
+is recorded as `null` on any other platform. The
 workload is paced by native acknowledgements and, for a WebView baseline, by frame
 callbacks, so `cpuUtilization` compares how busy each application is over its own
 run, not the cost of equal work per CPU second. GPU time is not measured.
@@ -148,10 +172,21 @@ a merge. Every run uploads the raw output directory (except the AOT
 executables and the session runtime directory), the host build log and
 SHA-256, and the exported record as the `benchmark-comparison-linux-X64`
 artifact, kept for 30 days, and writes the summary table to the job summary.
-Hosted runners are shared, so treat those numbers as descriptive of that run. macOS and Windows are not wired into CI.
+Hosted runners are shared, so treat those numbers as descriptive of that run.
+The same workflow has a `macos-15` job and a `windows-2022` job. Each runs the
+comparison with `--input-trials 0` and then the direct Rust GPUI baseline on the
+same runner, and uploads `benchmark-comparison-macos-ARM64` or
+`benchmark-comparison-windows-X64`. Neither is gated against a baseline. Both
+are hosted virtual machines without a physical GPU.
 On macOS the controller samples RSS through `ps` and load through `sysctl vm.loadavg`
 and runs locally without a display server; `--input-trials` stays Linux-only because
-the XTest driver is. Windows is not supported.
+the XTest driver is. On Windows it also runs without a display server. It samples
+the working set of the application and its descendants through held process
+handles (`K32GetProcessMemoryInfo`, Toolhelp32 for the tree) every
+`--rss-interval-ms`, and records as load the CPU busy share from two
+`GetSystemTimes` readings 250 ms apart plus the process count before every launch.
+Windows has no load average. The Linux and macOS records are unchanged by this
+Windows support.
 
 To keep a run in the repository, copy it into a compact record with
 `bun benchmarks/comparison/export.ts ABSOLUTE_RUN_OUTPUT ABSOLUTE_DEST`. The
@@ -208,8 +243,9 @@ artifact, so adopting a new baseline is a copy (see the baselines README).
   [`benchmarks/rust-gpui`](rust-gpui/README.md): the same workload as an ordinary
   GPUI view with no Bun, protocol or IPC, with the same process metrics. Its
   operation timings are state application, not acknowledgements.
-- Display presentation, per-keystroke or text input latency, GPU utilization and
-  Windows. CPU time is recorded on Linux and macOS (see above) but not for the
+- Display presentation, per-keystroke or text input latency and GPU utilization.
+  Windows is wired into CI (see above) but has no recorded run in this
+  repository yet. CPU time is recorded on Linux, macOS and Windows (see above) but not for the
   Electrobun baseline. The Electrobun WebView baseline
   ([`benchmarks/electrobun`](electrobun/README.md)) covers process-level metrics
   only; its operation timings are not comparable.

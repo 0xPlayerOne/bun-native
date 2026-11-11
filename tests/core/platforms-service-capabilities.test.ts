@@ -134,6 +134,24 @@ describe('public service records for each platform advertisement', () => {
     })
   })
 
+  test('Linux Wayland reports display changes without display details', () => {
+    const wayland = [
+      ...everywhere,
+      'display_changes_v1',
+      'notifications_v1',
+      'filesystem_grants_v1',
+      'processes_v1',
+      'file_dialogs_v1',
+    ] satisfies Capability[]
+    expect(serviceCapabilities(allowed, wayland).windowDisplay).toEqual({
+      availability: 'available',
+      permission: 'allow',
+      scope: 'owned_window',
+      details: 'unavailable',
+      changes: 'available',
+    })
+  })
+
   test('macOS adds display details and changes and keeps grants, processes and drops', () => {
     const services = serviceCapabilities(allowed, advertised.macos)
     expect(services.windowDisplay).toMatchObject({ details: 'available', changes: 'available' })

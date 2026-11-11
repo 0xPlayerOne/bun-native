@@ -6,7 +6,8 @@
 #
 # Exports to COMMAND:
 #   WAYLAND_DISPLAY, SWAYSOCK  the owned compositor and its IPC socket
-#   BUN_NATIVE_WAYLAND_OUTPUT  the one headless output's name (HEADLESS-1)
+#   BUN_NATIVE_WAYLAND_OUTPUT  the first headless output's name (HEADLESS-1)
+#   BUN_NATIVE_WAYLAND_SECOND_OUTPUT  HEADLESS-2, only with two outputs
 # Input comes from the compositor itself: `swaymsg seat ... cursor` for the
 # pointer and the virtual-keyboard protocol (wtype) for keys. grim reads
 # pixels back through the compositor's screencopy protocol.
@@ -37,7 +38,7 @@ trap stop_compositor EXIT
 # The application must reach no X server: GPUI prefers Wayland when
 # WAYLAND_DISPLAY is set, and an absent DISPLAY also rules out XWayland.
 unset DISPLAY XAUTHORITY WAYLAND_DISPLAY WAYLAND_SOCKET SWAYSOCK ZED_HEADLESS
-unset GPUI_X11_SCALE_FACTOR
+unset GPUI_X11_SCALE_FACTOR BUN_NATIVE_WAYLAND_SECOND_OUTPUT
 export LIBGL_ALWAYS_SOFTWARE=1
 
 shopt -s nullglob
@@ -58,6 +59,28 @@ case "${BUN_NATIVE_TEST_SCALE_FACTOR:-1}" in
     ;;
 esac
 
+# A multi-output qualification (#299) may request a second output: 2048x1536
+# pixels at scale 2 (1024x768 logical) to the right of the first, which then
+# keeps scale 1.
+case "${BUN_NATIVE_WAYLAND_OUTPUTS:-1}" in
+  1) outputs=1 ;;
+  2)
+    outputs=2
+    if (( scale != 1 )); then
+      echo 'Two outputs require BUN_NATIVE_TEST_SCALE_FACTOR=1' >&2
+      exit 1
+    fi
+    ;;
+  *)
+    echo 'BUN_NATIVE_WAYLAND_OUTPUTS must be 1 or 2' >&2
+    exit 1
+    ;;
+esac
+second_output=
+if (( outputs == 2 )); then
+  second_output='output HEADLESS-2 resolution 2048x1536 position 1280 0 scale 2'
+fi
+
 # One output of 1280x800 logical pixels at that scale. Windows float at their
 # requested size so the
 # geometry the application asks for is the geometry the compositor maps; no
@@ -65,6 +88,7 @@ esac
 # never warps on focus changes, so only the test moves the pointer.
 cat > "$evidence_dir/sway.conf" <<CONF
 output HEADLESS-1 resolution $((1280 * scale))x$((800 * scale)) position 0 0 scale $scale
+$second_output
 xwayland disable
 default_border none
 default_floating_border none
@@ -77,7 +101,7 @@ CONF
 # wlroots' headless backend with no libinput devices and the CPU (pixman)
 # renderer: no GPU, DRM or seat daemon is needed. Clients still render with
 # Vulkan/GL (lavapipe) and hand the compositor shared-memory or dmabuf frames.
-WLR_BACKENDS=headless WLR_LIBINPUT_NO_DEVICES=1 WLR_RENDERER=pixman \
+WLR_BACKENDS=headless WLR_HEADLESS_OUTPUTS=$outputs WLR_LIBINPUT_NO_DEVICES=1 WLR_RENDERER=pixman \
   sway --config "$evidence_dir/sway.conf" >"$evidence_dir/compositor.log" 2>&1 &
 compositor=$!
 
@@ -105,5 +129,8 @@ if [[ -z "$ready" ]]; then
 fi
 swaymsg -t get_version >"$evidence_dir/compositor-version.json"
 export BUN_NATIVE_WAYLAND_OUTPUT=HEADLESS-1
+if (( outputs == 2 )); then
+  export BUN_NATIVE_WAYLAND_SECOND_OUTPUT=HEADLESS-2
+fi
 
 "$@"

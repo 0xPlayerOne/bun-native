@@ -245,13 +245,27 @@ export async function createBundle(
     if (digest.bytes !== expected.bytes || digest.sha256 !== expected.sha256)
       throw new UpdateError('integrity', `Build file ${path} does not match the update manifest`)
   }
+  // `release-package.ts sign` records an OS code signature in the build manifest.
+  const signing = (
+    JSON.parse(await readFile(join(directory, 'payload', 'manifest.json'), 'utf8')) as {
+      verification?: { signing?: { identity?: unknown } | string }
+    }
+  ).verification?.signing
+  const codeSigned =
+    typeof signing === 'object' && typeof signing.identity === 'string'
+      ? `The payload executables are OS code-signed by ${signing.identity} (recorded in payload/manifest.json).`
+      : undefined
   await writeFile(
     join(directory, 'README.txt'),
     [
       `${manifest.product} ${manifest.version} for ${manifest.target.os}/${manifest.target.architecture}`,
       manifest.trust === 'ed25519'
-        ? 'Update manifest is Ed25519-signed; the OS code signature is NOT present (unsigned experimental package).'
-        : 'UNSIGNED EXPERIMENTAL package: neither the update manifest nor the executables are signed.',
+        ? codeSigned
+          ? `Update manifest is Ed25519-signed. ${codeSigned}`
+          : 'Update manifest is Ed25519-signed; the OS code signature is NOT present (unsigned experimental package).'
+        : codeSigned
+          ? `UNSIGNED EXPERIMENTAL update manifest. ${codeSigned}`
+          : 'UNSIGNED EXPERIMENTAL package: neither the update manifest nor the executables are signed.',
       ...installInstructions(manifest, options.selfContained),
       '',
     ].join('\n'),

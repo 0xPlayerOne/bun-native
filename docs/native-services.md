@@ -13,9 +13,10 @@ Linux development/AOT cases with a release-profile host at main
 [run 41831891686](https://github.com/0xPlayerOne/bun-native/actions/runs/41831891686/job/126580888949).
 The [hosted source-bound record](../tests/native/evidence/services-linux-hosted-release.json)
 binds the artifact, compiler manifests, raw results and source hashes. This
-qualifies one isolated scale-1 Xvfb screen; macOS, Windows and multi-monitor
-service behavior remain unverified. The display snapshot alone also runs on a
-headless Wayland compositor (see [Wayland](#wayland)). The earlier
+qualifies one isolated scale-1 Xvfb screen; macOS, Windows and physical
+multi-monitor service behavior remain unverified. The display snapshot and its
+change events also run on a headless Wayland compositor with two outputs of
+different scale (see [Wayland display changes](#wayland-display-changes-299)). The earlier
 [protocol-5 development-host record](../tests/native/evidence/services-linux-development-aot.json)
 remains separate historical evidence. Parser and type checks do not substitute
 for either native run.
@@ -212,17 +213,17 @@ following remain **unavailable** and are not part of the public result:
   all zeros, so there is no persistent identity to expose.
 - Mixed DPI: one scale factor per host process; per-monitor scale is not
   exposed by the X11 backend.
-- Wayland: `displaySnapshot` matches the compositor's output (bounds and
-  integer scale 1 or 2) on headless sway; see [Wayland](#wayland). Change
-  events stay unadvertised on all of Linux. macOS and Windows have their own
-  fixture, below.
+- Wayland is a different backend with per-output displays and change events;
+  see [Wayland display changes](#wayland-display-changes-299). macOS and
+  Windows have their own fixture, below.
 
 ### macOS and Windows display semantics (#299)
 
 On macOS and Windows the host advertises two optional capabilities, behind the
-same `windowDisplay` launch grant; Linux advertises neither, and
+same `windowDisplay` launch grant. Linux X11 advertises neither, and Linux
+Wayland only `display_changes_v1` ([below](#wayland-display-changes-299));
 `serviceCapabilities.windowDisplay.details` / `.changes` report
-`'unavailable'` there:
+`'unavailable'` for a capability the host does not advertise:
 
 | Capability           | Public result                                | GPUI source (pinned)                                                                                                                                                                                                                                                                                                          |
 | -------------------- | -------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -287,6 +288,84 @@ instead of claiming it. Always unavailable on hosted runners: window migration
 between displays and mixed DPI (one virtual display) and hotplug (no physical
 output).
 
+### Wayland display changes (#299)
+
+Under GPUI's Wayland backend each `wl_output` is a display, and a window's
+display is the output the compositor says its surface entered
+([`wl_surface.enter`/`leave`](https://github.com/zed-industries/zed/blob/ba63a022c9a22ca66d68ef2a8f0bb9b5b0a9984d/crates/gpui_linux/src/linux/wayland/window.rs#L1411-L1475));
+when the surface is on several outputs GPUI keeps the one with the
+[largest scale](https://github.com/zed-industries/zed/blob/ba63a022c9a22ca66d68ef2a8f0bb9b5b0a9984d/crates/gpui_linux/src/linux/wayland/window.rs#L668-L689).
+GPUI reports a move to window display observers, and output connection,
+removal and reconfiguration through
+[App `displays_changed`](https://github.com/zed-industries/zed/blob/ba63a022c9a22ca66d68ef2a8f0bb9b5b0a9984d/crates/gpui_linux/src/linux/wayland/client.rs#L1620-L1660).
+The host therefore advertises `display_changes_v1` when GPUI's compositor is
+Wayland, and `services::display_changes` chooses it at runtime; X11 keeps no
+change capability. `display_details_v1` is not advertised: Wayland gives
+clients no work area, so `visibleBounds` would only repeat `bounds`.
+
+- **Snapshot.** `bounds` is the output's current mode divided by its integer
+  `wl_output.scale`, at the `wl_output.geometry` origin. wlroots sends that
+  origin as `0,0` for every output (observed with `WAYLAND_DEBUG=client`:
+  `wl_output@5.geometry(0, 0, …)` for the output sway places at x = 1280), so
+  the layout position is not reported. `scaleFactor` is the window's scale
+  from `wp_fractional_scale_v1`, which follows the output it is on, so two
+  windows on outputs of different scale report different scales.
+- **Reported changes.** A move to another output, and a mode or scale change
+  of the window's output, each report one `display_change`. The host reads
+  the snapshot after the current batch of compositor events, and again when
+  the window's scale or size changes, and sends it only when it differs from
+  the last one sent: the compositor sends a new output before the window's new
+  `preferred_scale`, and a new scale before the output's new geometry, so an
+  immediate read could pair one output's size with another's scale. Moving or
+  resizing within an output, spanning two outputs while staying on the
+  larger-scale one, connecting an output and unplugging an output the window
+  is not on report nothing. With several outputs a new window has no display
+  until the compositor's first `enter`: `displaySnapshot()` rejects
+  `service_unavailable` until then, and the first `enter` is reported once.
+- **Unplugging the window's own output fails closed.** wlroots removes the
+  output global without sending `wl_surface.leave`, and the pinned GPUI then
+  keeps the removed output in the window's entered set: it reports no move,
+  and a later output can reuse the removed output's protocol id and so its
+  `DisplayId`. Before this change the snapshot of such a window first failed
+  with "no current native display", then, after `swaymsg create_output`,
+  reported the new output's geometry and the stale scale 2 for a window sway
+  had moved to the scale-1 output. The host now records, for each observed
+  window, when its current display is removed
+  ([`DisplayContinuity`](../native/gpui-host/src/services.rs)): until GPUI
+  reports a move to a different display, `displaySnapshot()` rejects
+  `service_unavailable` and no change is reported, even after the id is
+  reused. The same rule applies on macOS and Windows, where the OS moves the
+  window and reports it, so it only matters if that report never comes.
+
+[`tests/native/display-wayland.ts`](../tests/native/display-wayland.ts) runs
+in the Native Linux job, in development and inspected AOT, on headless sway
+1.9 with two outputs: HEADLESS-1 at 1280×800 scale 1 and HEADLESS-2 at
+2048×1536 scale 2 (1024×768 logical), from
+[`native-wayland-session.sh`](../scripts/quality/native-wayland-session.sh)
+with `BUN_NATIVE_WAYLAND_OUTPUTS=2`. Every expected value comes from sway IPC
+(`get_outputs` mode, scale and logical size; `get_tree` for the output a view
+is on), and every change is a real compositor operation:
+
+| Operation (swaymsg)                                       | Required result                                                                                                                  |
+| --------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| Default launch                                            | `changes: 'available'`, `details: 'unavailable'`; snapshot and `onDisplayChange` reject `permission_denied`                      |
+| Two windows map on HEADLESS-1                             | One initial change each, `{0, 0, 1280, 800} @1`                                                                                  |
+| `move container to output HEADLESS-2`                     | One change, `{0, 0, 1024, 768} @2`; the other window reports nothing                                                             |
+| `move absolute position`, `resize set` within HEADLESS-2  | Nothing                                                                                                                          |
+| Position spanning both outputs, then wholly on HEADLESS-1 | Nothing while spanning (snapshot stays `@2`), then one change back to `{0, 0, 1280, 800} @1`                                     |
+| `output HEADLESS-1 resolution 1600x1000`, then `scale 2`  | One change for each window on it, `{…1600, 1000} @1`, then `{…800, 500} @2`; restoring 1280×800 @1 reports once more             |
+| `output HEADLESS-2 scale 1`, then `scale 2`               | Nothing for windows on HEADLESS-1                                                                                                |
+| `create_output`; move onto it and back; `output … unplug` | Nothing on connect; one change onto the new output (`{…1920, 1080} @1`) and one back; nothing when that unused output is removed |
+| Window on HEADLESS-2, `output HEADLESS-2 unplug`          | sway moves it to HEADLESS-1; no change; snapshot `service_unavailable`; the other window is unaffected                           |
+| `create_output` (reusing the protocol id), `scale 2`      | Still no change and `service_unavailable`; a window opened afterwards reports its output                                         |
+| Listener removed, close, shutdown                         | A removed listener receives nothing later; close releases the listener (`invalid_handle`); shutdown aborts the remaining signals |
+
+Five consecutive local development runs and one inspected AOT run passed with
+a release host built from this change (see the Native Linux artifact
+`display-wayland-*/display-wayland.json` for CI). This qualifies the headless
+wlroots backend only: no physical monitor, DRM hotplug, fractional output
+scale, GNOME/KDE compositor or work area is covered.
+
 Reads share the public application's bounded serialized transaction queue.
 `displaySnapshot({ signal })` accepts a real `AbortSignal`; unknown options or
 a forged signal fail locally. An already-aborted or queued-aborted operation
@@ -303,14 +382,14 @@ receive `permission_denied` before any display read. Requests retain the
 normal transport deadline and channel-failure cleanup. A malformed response
 still fails the channel even if the caller cancelled in the meantime.
 
-| Error                                                     | Meaning                                                                                                                         |
-| --------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
-| `NativeServiceError`, `permission_denied`                 | Immutable native launch policy denied the read.                                                                                 |
-| `NativeServiceError`, `service_unavailable`               | The allowed owned window has no display available from the native backend.                                                      |
-| `NativeServiceError`, `cancelled`                         | Caller cancellation prevented dispatch or result delivery. `service` is `window_display`.                                       |
-| `NativeStateError`, `invalid_handle` / `invalid_state`    | Window/application ownership ended or the call was invalid locally.                                                             |
-| `NativeCommandError`, `invalid_handle` / `native_failure` | Native owner lookup failed or actual native geometry was invalid.                                                               |
-| `ProtocolError` or transport failure                      | Incompatible readiness, malformed/wrong-owner response, timeout, native exit or broken channel. No fallback result is supplied. |
+| Error                                                     | Meaning                                                                                                                                                              |
+| --------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `NativeServiceError`, `permission_denied`                 | Immutable native launch policy denied the read.                                                                                                                      |
+| `NativeServiceError`, `service_unavailable`               | The allowed owned window has no display available from the native backend, or its display was disconnected and the backend has not reported where the window is now. |
+| `NativeServiceError`, `cancelled`                         | Caller cancellation prevented dispatch or result delivery. `service` is `window_display`.                                                                            |
+| `NativeStateError`, `invalid_handle` / `invalid_state`    | Window/application ownership ended or the call was invalid locally.                                                                                                  |
+| `NativeCommandError`, `invalid_handle` / `native_failure` | Native owner lookup failed or actual native geometry was invalid.                                                                                                    |
+| `ProtocolError` or transport failure                      | Incompatible readiness, malformed/wrong-owner response, timeout, native exit or broken channel. No fallback result is supplied.                                      |
 
 ## Clipboard text and lifecycle
 
@@ -1092,7 +1171,7 @@ advertises a capability only for a backend it implements:
 | Popup windows (`surface: 'window'`)         | X11 override-redirect only                    | `popup_windows_v1` absent; core throws `UnsupportedFeatureError`                                     |
 | Notifications                               | Freedesktop D-Bus, display-independent        | `available`                                                                                          |
 | File dialogs                                | xdg-desktop-portal, unparented                | `available`                                                                                          |
-| Display snapshot                            | GPUI's Wayland output                         | `available`; no details or change events                                                             |
+| Display snapshot                            | GPUI's Wayland output                         | `available`; change events, no details ([display changes](#wayland-display-changes-299))             |
 | Filesystem grants, processes                | Display-independent                           | `available` (not run under Wayland)                                                                  |
 
 [`tests/native/wayland.ts`](../tests/native/wayland.ts) checks this matrix on

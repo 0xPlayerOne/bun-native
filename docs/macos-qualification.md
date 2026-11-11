@@ -137,6 +137,10 @@ text, wheel, resize and OS close) in development and AOT
 ([Validation 42746456002](https://github.com/0xPlayerOne/bun-native/actions/runs/42746456002)).
 That run is hosted, not physical; a physical run needs event posting granted to
 the controlling process ([runbook](real-machine-validation.md#macos-workspace-references-248-250)).
+The same step also runs a bounded 120 s long session of each workspace soak
+fixture in development and AOT, with CoreGraphics typing, Return and wheel input
+every round ([long session on a physical Mac](real-machine-validation.md#long-session-on-a-physical-mac-248-250));
+on hosted CI that is still a VM.
 
 ## Remaining
 

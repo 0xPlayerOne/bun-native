@@ -5,6 +5,7 @@ import { appendFileSync, existsSync, readFileSync, statSync, writeFileSync } fro
 import { isAbsolute } from 'node:path'
 import { parseArgs } from 'node:util'
 import { expectWindowRootOnly } from './ownership.ts'
+import { writeRetentionEvidence } from './retention-evidence.ts'
 
 export type Row = Readonly<{ id: number; text: string }>
 export type Mutations = { create: number; set: number; insert: number; remove: number }
@@ -393,14 +394,15 @@ export async function runWorkload(adapter: 'solid' | 'core' | 'react', mount: Mo
       const stillReachable = probes.flatMap((probe, index) =>
         probe.deref() === undefined ? [] : [index]
       )
+      const probeKinds =
+        adapter === 'core'
+          ? ['container handle', 'label handle', 'listener']
+          : ['render root', 'content node', 'listener']
       result['retentionObservation'] = {
         firstReachable,
         stillReachable,
         probesPerMount: 3,
-        probeKinds:
-          adapter === 'core'
-            ? ['container handle', 'label handle', 'listener']
-            : ['render root', 'content node', 'listener'],
+        probeKinds,
         collectionCheckpoints: 2,
         quiescence: 'empty core transaction queue fence; no additional native command',
       }
@@ -409,6 +411,15 @@ export async function runWorkload(adapter: 'solid' | 'core' | 'react', mount: Mo
         afterUpdates: afterUpdatesHeap,
         afterLifecycles: afterLifecyclesHeap,
       }
+      // Failure-only retaining-path evidence (#629). It runs after both
+      // checkpoints were captured above and never throws or changes them.
+      if (stillReachable.length > 0)
+        result['retentionEvidence'] = await writeRetentionEvidence({
+          output: values.output,
+          probes,
+          stillReachable,
+          probeKinds,
+        })
       expectWindowRootOnly(application)
       assert.equal(stillReachable.length, 0, 'Disposed view/callback targets remain observable')
       await window.close()

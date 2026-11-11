@@ -32,7 +32,7 @@ struct WindowEntry {
     handle: WindowHandle<NativeView>,
     state: SharedWindowState,
     /// Dropped with the entry, so a closed window reports no display change.
-    _display: Option<gpui::Subscription>,
+    display: Option<services::DisplayObservation>,
 }
 
 struct OpenWindow {
@@ -236,7 +236,7 @@ impl Session {
                 if services::DISPLAY_DETAILS {
                     capabilities.push(Capability::DisplayDetailsV1);
                 }
-                if services::DISPLAY_CHANGES {
+                if services::display_changes(cx) {
                     capabilities.push(Capability::DisplayChangesV1);
                 }
                 if crate::view::popups_available(cx) {
@@ -608,10 +608,10 @@ impl Session {
                         });
                     });
                 }
-                let display = (services::DISPLAY_CHANGES && self.policy.window_display)
+                let display = (services::display_changes(cx) && self.policy.window_display)
                     .then(|| {
                         services::observe_display(
-                            handle.into(),
+                            handle,
                             window_id,
                             state.clone(),
                             self.events.clone(),
@@ -624,7 +624,7 @@ impl Session {
                     WindowEntry {
                         handle,
                         state,
-                        _display: display,
+                        display,
                     },
                 );
                 self.last_window_id = window_id.get();
@@ -757,6 +757,21 @@ impl Session {
         let Some((handle, _)) = self.window(id, window_id, cx) else {
             return;
         };
+        let disconnected = self.windows.borrow().get(&window_id).is_some_and(|entry| {
+            entry
+                .display
+                .as_ref()
+                .is_some_and(|display| !display.connected())
+        });
+        if disconnected {
+            self.error(
+                id,
+                ErrorCode::ServiceUnavailable,
+                "the owned window's display was disconnected and the platform has not reported its new display",
+                cx,
+            );
+            return;
+        }
         match handle.update(cx, |_, window, cx| services::display_snapshot(window, cx)) {
             Ok(Ok(snapshot)) => self.events.send(
                 Event::DisplaySnapshot {

@@ -200,9 +200,39 @@ Use `--entry solid-workspace-flow` and `--scenario solid-workspace` for Solid,
 and `bun <package>/development/application.js` for development mode.
 **Evidence that counts:** the final JSON line has `"status": "passed"` and
 `result.json` has `hostSurvivors: 0` and `application.status: "passed"`.
-The Solid long-session soak, accessibility, a PTY and long-session stability
-remain separate gaps ([#241](https://github.com/0xPlayerOne/bun-native/issues/241),
+Accessibility and a PTY typed through OS input remain separate gaps
+([#241](https://github.com/0xPlayerOne/bun-native/issues/241),
 [#305](https://github.com/0xPlayerOne/bun-native/issues/305)).
+
+### Long session on a physical Mac (#248, #250)
+
+The workspace soak fixtures have a wall-clock session mode
+([`workspace-session.ts`](../tests/native/workspace-session.ts)): the fixed soak
+round repeats until `BUN_NATIVE_SOAK_SECONDS` pass, with one CoreGraphics-typed
+prompt or task, Return and 24 wheel notches per round through the same helper
+([`workspace-os-input.ts`](../tests/native/workspace-os-input.ts)),
+and a sample (host and app RSS from `ps`, threads, open files from `lsof`,
+acknowledgement and input-to-state latency) every `BUN_NATIVE_SOAK_SAMPLE_SECONDS`.
+Hosted `macos-15` runs 120 s of each framework and mode in the workspace step;
+that is a VM. On a physical Mac, with event posting granted to the terminal and
+the helper built as above:
+
+```sh
+bun experiments/aot-gpui/build-window.ts --entry solid-workspace-soak --source "$PWD" \
+  --host "$BUN_NATIVE_HOST" --host-profile release --outdir /tmp/bn-qual/solid-soak
+mkdir /tmp/bn-qual/solid-session-aot
+BUN_NATIVE_DIAGNOSTICS_DIR=/tmp/bn-qual/solid-session-aot BUN_NATIVE_SOAK_SECONDS=1800 \
+  BUN_NATIVE_SOAK_OS_INPUT=1 BUN_NATIVE_PHASE_TRACE=/tmp/bn-qual/solid-session-aot/phases.json \
+  /tmp/bn-qual/solid-soak/solid-workspace-soak
+python3 scripts/quality/native-solid-workspace-soak.py /tmp/bn-qual/solid-session-aot/soak-result.json \
+  --long-session 1800 --phases /tmp/bn-qual/solid-session-aot/phases.json
+```
+
+Do not touch the keyboard or pointer during the run: the helper refuses to post
+while a modifier or button is held, and a lost foreground fails the run. Use
+`react` in place of `solid` for React, and `bun <package>/development/application.js`
+for development mode. **Evidence that counts:** the checker prints its summary
+and exits 0; keep `soak-result.json`, `samples.jsonl` and `phases.json`.
 
 ## macOS: next 65-file drag-entry failure (#303)
 

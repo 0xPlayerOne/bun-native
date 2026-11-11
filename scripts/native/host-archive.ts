@@ -31,21 +31,30 @@ function octal(header: Buffer, offset: number, length: number, value: number): v
 }
 
 /**
- * A byte-stable USTAR + gzip archive of flat executable members. Everything the
- * platform tar would take from the build machine (mtime, owner ids and names,
- * directory order, gzip header time/OS) is fixed, so equal executables and an
- * equal epoch always produce an identical archive on every runner.
+ * A byte-stable USTAR + gzip archive. Everything the platform tar would take from
+ * the build machine (mtime, owner ids and names, directory order, gzip header
+ * time/OS) is fixed, so equal members and an equal epoch always produce an
+ * identical archive on every runner. Names are portable relative paths of at most
+ * 100 bytes; parent directories are implied, as GNU and BSD tar accept.
  */
-export function hostArchive(members: { name: string; data: Uint8Array }[], mtime: number): Buffer {
+export function ustarGzip(
+  members: { name: string; data: Uint8Array; mode: number }[],
+  mtime: number
+): Buffer {
   const names = members.map(({ name }) => name)
-  if (new Set(names).size !== names.length) throw new Error('Duplicate host archive member')
+  if (new Set(names).size !== names.length) throw new Error('Duplicate archive member')
   const parts: Buffer[] = []
-  for (const { name, data } of [...members].sort((a, b) => (a.name < b.name ? -1 : 1))) {
-    if (!/^[A-Za-z0-9._-]{1,100}$/.test(name) || name === '.' || name === '..')
-      throw new Error(`Host archive members must be flat portable file names: ${name}`)
+  for (const { name, data, mode } of [...members].sort((a, b) => (a.name < b.name ? -1 : 1))) {
+    if (
+      name.length > 100 ||
+      !/^[A-Za-z0-9._-]+(\/[A-Za-z0-9._-]+)*$/.test(name) ||
+      name.split('/').some((part) => part === '.' || part === '..')
+    )
+      throw new Error(`Archive members must be portable relative paths: ${name}`)
+    if (mode !== 0o755 && mode !== 0o644) throw new Error(`Unsupported archive mode for ${name}`)
     const header = Buffer.alloc(block)
     field(header, 0, 100, name)
-    octal(header, 100, 8, 0o755)
+    octal(header, 100, 8, mode)
     octal(header, 108, 8, 0)
     octal(header, 116, 8, 0)
     octal(header, 124, 12, data.length)
@@ -69,6 +78,19 @@ export function hostArchive(members: { name: string; data: Uint8Array }[], mtime
     throw new Error('Unexpected gzip header metadata')
   archive[9] = 0xff
   return archive
+}
+
+/** The CI host archive: flat executable members with mode 0755. */
+export function hostArchive(members: { name: string; data: Uint8Array }[], mtime: number): Buffer {
+  for (const { name } of members)
+    if (!/^[A-Za-z0-9._-]{1,100}$/.test(name) || name === '.' || name === '..')
+      throw new Error(`Host archive members must be flat portable file names: ${name}`)
+  const names = members.map(({ name }) => name)
+  if (new Set(names).size !== names.length) throw new Error('Duplicate host archive member')
+  return ustarGzip(
+    members.map((member) => ({ ...member, mode: 0o755 })),
+    mtime
+  )
 }
 
 export async function main(args: string[]): Promise<void> {

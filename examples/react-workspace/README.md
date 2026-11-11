@@ -184,6 +184,18 @@ input and no paint assertion, and the samples are single-run observations on
 Linux Xvfb/llvmpipe, not a leak-freedom, latency or capacity claim. Locally, 60
 rounds (480 plans, 5,040 actions) took about 14 s with the release host.
 
+The same wall-clock session mode as the [Solid workspace](../solid-workspace/README.md#wall-clock-long-sessions)
+applies: with `BUN_NATIVE_SOAK_SECONDS` and `BUN_NATIVE_SOAK_OS_INPUT=1` each
+round's task title is typed into the focused "Add a task" composer through the
+OS and added with Return through the app's own key handler (the composer must
+read back the typed text, then clear), and 24 wheel notches go to the task
+list's scroll viewport, unasserted. The Native Linux workflow and the hosted
+`macos-15` workspace step run 120 s per mode. One local 30-minute session in
+development and one as the inspected AOT executable, unpaced, on Linux
+Xvfb/lavapipe in a shared 4-vCPU container, are recorded in
+[the long-session evidence](../../benchmarks/results/workspace-long-session-2026-11-11/README.md);
+no session paced at the real 300 ms plan interval has been recorded.
+
 ## Dialogs and focus
 
 The example uses both kinds of confirmation the host offers:
@@ -240,11 +252,12 @@ are different fixtures, so no equal-workload performance comparison is made.
 | macOS hosted development and AOT                  | Native flow (same scenario)                                                                   | Native flow (same scenario)                             |
 | Windows hosted development and AOT                | Native flow (same scenario)                                                                   | Native flow (same scenario)                             |
 | Long-session ownership soak (60 rounds, dev+AOT)  | Native Linux: plans, stale callbacks, remounts, clear overlay; exact per-round baseline       | Native Linux: replies, stale callbacks, remounts, clear |
+| Wall-clock long session with OS typing and wheel  | Local Linux Xvfb: 30 min dev and AOT, unpaced; CI 120 s on Linux and macOS                    | The same                                                |
 | Owned shell on a pseudo-terminal (shared session) | Adapter test: command, Interrupt, Restart, unsubscribe on unmount                             | Adapter-free session tests; real shell in `processes`   |
 | Screenshots                                       | scrolled, dark, resized, edited, filtered, after, plan-streaming, plan-complete, plan-stopped | Per-scenario captures in its native evidence            |
 
 Unsupported or unqualified for both: OS menus and alerts (#239), accessibility
-and screen readers, IME (#241), virtualization and long-session memory (#257),
+and screen readers, IME (#241), virtualization (#257), memory beyond the recorded sessions,
 physical input devices and non-hosted display configurations (hosted runners use
 injected OS events at scale 1), and matched comparative performance (#244). React-specific limits from the [behavior matrix](../../docs/react-behavior.md)
 also apply: suspended/hidden subtrees, hydration, portals and view-transition
