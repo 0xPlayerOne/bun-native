@@ -1,7 +1,9 @@
 /**
  * Real accessibility-role and keyboard split-divider qualification.
  *
- * Linux: inside an isolated Xvfb + openbox + DBus session at scale 1. OS input
+ * Linux: inside an isolated Xvfb + openbox + DBus session at GPUI's X11 scale
+ * 1 or 2 (`GPUI_X11_SCALE_FACTOR`); geometry is logical and every OS
+ * coordinate, capture pixel and AT-SPI extent is checked in device pixels. OS input
  * comes from XTEST (xdotool). Roles, names, states and values are read by an
  * independent AT-SPI client (tests/native/atspi-probe.py) over the session
  * accessibility bus; focus and resize events come from public Bun APIs; the
@@ -34,6 +36,7 @@ const atspiPython = process.env['BUN_NATIVE_ATSPI_PYTHON']
 const mac = process.platform === 'darwin'
 // macOS: the compiled AXUIElement client and the bounded CoreGraphics helper.
 const axOracle = process.env['BUN_NATIVE_A11Y_ORACLE']
+const scaleSetting = process.env['GPUI_X11_SCALE_FACTOR']
 if (
   !output ||
   !isAbsolute(output) ||
@@ -44,16 +47,18 @@ if (
   (mac
     ? !axOracle || !isAbsolute(axOracle) || !process.env['BUN_NATIVE_PLATFORM_HELPER']
     : !atspiPython ||
-      process.env['GPUI_X11_SCALE_FACTOR'] !== '1' ||
+      (scaleSetting !== '1' && scaleSetting !== '2') ||
       !process.env['DISPLAY'] ||
       process.env['WAYLAND_DISPLAY'])
 )
   throw new Error(
     mac
       ? 'macOS needs an evidence directory, host, mode, the AX oracle and the OS input helper'
-      : 'An isolated X11 display at scale 1, evidence directory, host, mode and AT-SPI Python are required'
+      : 'An isolated X11 display at scale 1 or 2, evidence directory, host, mode and AT-SPI Python are required'
   )
 const host = executable
+// macOS reads AX geometry in points; the helper works in window points.
+const SCALE = mac ? 1 : Number(scaleSetting)
 // Resolved from the checkout, not import.meta, so the AOT executable finds it too.
 const probe = resolve('tests/native/atspi-probe.py')
 
@@ -101,6 +106,7 @@ type Accessible = {
   selections?: number[][]
   extents?: number[][]
   value?: { current: number; minimum: number; maximum: number }
+  bounds?: number[]
 }
 
 const TITLE = 'Bun Native accessibility qualification'
@@ -385,6 +391,20 @@ try {
   assert(divider.states.includes('focusable') && !divider.states.includes('focused'))
   assert(divider.states.includes('vertical'), 'a row split has a vertical divider')
   near(divider.value?.current, 40, 'divider value is the ratio in percent')
+  if (!mac) {
+    // Its extents are the painted divider in device pixels: the OS window is
+    // the logical size times the scale, and so is every accessible rectangle.
+    const geometry = await run(['xdotool', 'getwindowgeometry', xid])
+    assert.match(geometry, new RegExp(`Geometry: ${WIDTH * SCALE}x${HEIGHT * SCALE}\\b`))
+    const expectedDivider = [0.4 * PANES, HEADING + SCROLL, DIVIDER, SPLIT_HEIGHT].map(
+      (value) => value * SCALE
+    )
+    assert(
+      divider.bounds?.every((value, index) => Math.abs(value - expectedDivider[index]!) <= SCALE),
+      `divider extents ${JSON.stringify(divider.bounds)} are ${JSON.stringify(expectedDivider)}`
+    )
+    record('scale', { scale: SCALE, geometry, divider: divider.bounds })
+  }
   near(divider.value?.minimum, (MIN_PANE / PANES) * 100, 'divider minimum from min_size')
   near(divider.value?.maximum, (1 - MIN_PANE / PANES) * 100, 'divider maximum from min_size')
   const action = find(initial, 'push-button', 'Leading action')
@@ -528,7 +548,7 @@ try {
       'convert',
       capture,
       '-crop',
-      `1x1+${Math.round(x)}+${Math.round(y)}`,
+      `1x1+${Math.round(x * SCALE)}+${Math.round(y * SCALE)}`,
       '-depth',
       '8',
       'txt:-',
@@ -589,10 +609,19 @@ try {
     )
     assert.equal(whileHeld, dragFrom, 'no report while the button is held')
   } else {
-    await run(['xdotool', 'mousemove', '--window', xid, String(Math.round(fromX)), String(SPLIT_Y)])
+    const move = (x: number, y: number) =>
+      run([
+        'xdotool',
+        'mousemove',
+        '--window',
+        xid,
+        String(Math.round(x * SCALE)),
+        String(Math.round(y * SCALE)),
+      ])
+    await move(fromX, SPLIT_Y)
     await run(['xdotool', 'mousedown', '1'])
     for (const x of [450, 400, 350, ratioX(0.5)]) {
-      await run(['xdotool', 'mousemove', '--window', xid, String(Math.round(x)), String(SPLIT_Y)])
+      await move(x, SPLIT_Y)
       await Bun.sleep(30)
     }
     await Bun.sleep(200)

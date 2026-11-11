@@ -197,7 +197,7 @@ disabled button differed from an enabled one only by the missing `focusable`.
 
 **Verified** by [`tests/native/accessibility.ts`](../tests/native/accessibility.ts)
 (Native Linux CI, development and inspected AOT, Xvfb + openbox + DBus at X11
-scale 1, `at-spi2-core` registry, PyGObject `Atspi` 2.0 client
+scales 1 and 2, `at-spi2-core` registry, PyGObject `Atspi` 2.0 client
 [`atspi-probe.py`](../tests/native/atspi-probe.py), XTEST input): the role, name,
 states and nesting above for every kind; the separator's value 40 at ratio 0.4
 and its minimum/maximum from `min_size`; Tab and Shift+Tab reaching the divider
@@ -212,7 +212,11 @@ staying inside it, and focus and the tree returning after it closes. The same
 run checks the entry's character extents, and AT-SPI requests: a caret offset
 and then a selection, each confirmed by OS typing landing there; a button's
 click action; `grab_focus`; and the divider's `set_current_value`, clamped to
-`min_size`, as keyboard `split_resize` events. `tests/native/text-input.ts`
+`min_size`, as keyboard `split_resize` events. At scale 2 the same
+run checks every OS coordinate, capture pixel and drag position in device
+pixels, the window at twice its logical size, and the divider's AT-SPI window
+extents at twice its painted logical bounds (`[475, 176, 12, 320]` against
+`[238, 88, 6, 160]` at scale 1). `tests/native/text-input.ts`
 reads the Hebrew entry's extents as the bidirectional display oracle.
 
 **Modal dialogs.** While a modal overlay is open, every node that is neither
@@ -250,8 +254,7 @@ record the platform's enabled flag for it without asserting it.
 
 **Not verified:** screen reader speech on macOS and Windows (see
 [screen reader speech](#screen-reader-speech) for Orca); on Wayland, the modal, divider and element-role rows
-(only entry, button and label are checked there, at scales 1 and 2); X11
-accessibility at scale 2; announcements of value or
+(only entry, button and label are checked there, at scales 1 and 2); announcements of value or
 dialog changes; and the popup window tree.
 
 **Verified on macOS and Windows** by

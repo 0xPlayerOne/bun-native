@@ -3,7 +3,8 @@
 `enable` turns on the session accessibility bus as a screen reader would.
 `dump TITLE` waits for the owned window and prints its accessible subtree as
 JSON in pre-order; each entry's `depth` is its distance below the window, and
-text entries carry their selection and each character's window extents.
+components carry their window extents, and text entries carry their selection
+and each character's window extents.
 `act TITLE ROLE NAME ACTION [ARGS...]` performs one request as an assistive
 technology would, on the first node with that role and name (an entry is
 matched by its text): `click` (the node's AT-SPI action), `focus`
@@ -54,6 +55,11 @@ def describe(node: Atspi.Accessible, depth: int) -> dict:
         "states": states(node),
         "depth": depth,
     }
+    component = node.get_component_iface()
+    if component is not None:
+        entry["bounds"] = rect_list(
+            Atspi.Component.get_extents(component, Atspi.CoordType.WINDOW)
+        )
     value = node.get_value_iface()
     if value is not None:
         entry["value"] = {
