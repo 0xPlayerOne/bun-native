@@ -40,6 +40,10 @@ zbus = { version = "=5.19.0", default-features = false, features = ["async-io"] 
 
 # The Wayland test's input peer (examples/wayland-input-peer.rs); the same
 # versions GPUI's Wayland backend already locks.
+[dev-dependencies]
+# Polls the report pump in its unit tests; already locked through GPUI.
+futures-lite = "=2.6.1"
+
 [target.'cfg(target_os = "linux")'.dev-dependencies]
 wayland-client = "=0.31.15"
 wayland-protocols-wlr = { version = "=0.3.12", features = ["client"] }

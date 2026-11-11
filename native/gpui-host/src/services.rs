@@ -58,6 +58,8 @@ pub(crate) mod processes;
 #[cfg(not(any(target_os = "linux", target_os = "macos", windows)))]
 #[path = "services/processes_unavailable.rs"]
 pub(crate) mod processes;
+#[cfg(any(target_os = "macos", test))]
+pub(crate) mod report_pump;
 #[cfg(target_os = "linux")]
 pub(crate) mod shortcuts;
 #[cfg(target_os = "macos")]

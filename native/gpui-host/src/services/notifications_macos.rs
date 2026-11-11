@@ -10,6 +10,7 @@
 //! OS permission prompt; withdrawal, owner close and shutdown do not wait.
 
 use crate::channel::EventSink;
+use crate::services::report_pump::{self, ReportLink};
 use bun_native_macos_surface::notifications::{self, Center, CenterEvent, PostFailure};
 use bun_native_protocol::{
     ErrorCode, Event, MAX_NOTIFICATIONS, NotificationDismissal, NotificationId, RequestId, WindowId,
@@ -43,6 +44,9 @@ struct Inner {
     events: EventSink,
     available: bool,
     center: RefCell<Option<Center>>,
+    /// Closes the report channel on shutdown or drop, ending the worker,
+    /// which holds this service only weakly (see `report_pump`).
+    reports: RefCell<Option<ReportLink<CenterEvent>>>,
 }
 
 #[derive(Clone)]
@@ -57,6 +61,7 @@ impl Notifications {
             events,
             available: notifications::bundled(),
             center: RefCell::new(None),
+            reports: RefCell::new(None),
         }))
     }
 
@@ -101,8 +106,10 @@ impl Notifications {
         if self.0.center.borrow().is_some() {
             return Ok(());
         }
-        let (sender, reports) = async_channel::bounded::<CenterEvent>(MAX_REPORTS);
+        let (sender, link, reports) = report_pump::channel::<CenterEvent>(MAX_REPORTS);
         let center = Center::new(move |event| {
+            // Fails once the service stopped or was dropped: nothing owns
+            // the outcome any more.
             let _ = sender.try_send(event);
         })
         .map_err(|_| {
@@ -112,11 +119,13 @@ impl Notifications {
             )
         })?;
         self.0.center.replace(Some(center));
-        let this = self.clone();
+        self.0.reports.replace(Some(link));
+        let service = Rc::downgrade(&self.0);
         cx.spawn(async move |cx| {
-            while let Ok(report) = reports.recv().await {
-                cx.update(|cx| this.report(report, cx));
-            }
+            report_pump::pump(service, reports, |inner, report| {
+                cx.update(|cx| Notifications(inner).report(report, cx));
+            })
+            .await;
         })
         .detach();
         Ok(())
@@ -323,6 +332,13 @@ impl Notifications {
             ),
             cx,
         );
+        // Release the center and its sink, and end the worker now. A native
+        // callback still in flight keeps only its own sink clone, whose
+        // report is refused by the closed channel.
+        self.0.center.take();
+        if let Some(link) = self.0.reports.take() {
+            link.close();
+        }
         None
     }
 }

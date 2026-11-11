@@ -7,6 +7,7 @@
 //! released is never published.
 
 use crate::channel::EventSink;
+use crate::services::report_pump::{self, ReportLink};
 use bun_native_macos_surface::hot_keys::{self, HotKey, HotKeyError, HotKeyModifiers, HotKeys};
 use bun_native_protocol::{
     ErrorCode, Event, MAX_GLOBAL_SHORTCUTS, RequestId, ShortcutId, ShortcutModifiers, WindowId,
@@ -43,6 +44,9 @@ struct Inner {
     events: EventSink,
     /// Installed with the first registration, removed at shutdown.
     handler: RefCell<Option<HotKeys>>,
+    /// Closes the press channel on shutdown or drop, ending the worker,
+    /// which holds this service only weakly (see `report_pump`).
+    presses: RefCell<Option<ReportLink<u32>>>,
 }
 
 #[derive(Clone)]
@@ -57,6 +61,7 @@ impl Shortcuts {
             stopping: Cell::new(false),
             events,
             handler: RefCell::new(None),
+            presses: RefCell::new(None),
         }))
     }
 
@@ -132,7 +137,7 @@ impl Shortcuts {
         if self.0.handler.borrow().is_some() {
             return Ok(());
         }
-        let (sender, presses) = async_channel::bounded::<u32>(MAX_PRESSES);
+        let (sender, link, presses) = report_pump::channel::<u32>(MAX_PRESSES);
         let installed = HotKeys::install(move |number| {
             // Activations are edge notifications; a full queue drops one.
             let _ = sender.try_send(number);
@@ -144,12 +149,13 @@ impl Shortcuts {
             )
         })?;
         self.0.handler.replace(Some(installed));
-        let this = self.clone();
+        self.0.presses.replace(Some(link));
+        let service = Rc::downgrade(&self.0);
         cx.spawn(async move |cx| {
-            // Ends when the handler, and with it the sender, is removed.
-            while let Ok(number) = presses.recv().await {
-                cx.update(|cx| this.pressed(number, cx));
-            }
+            report_pump::pump(service, presses, |inner, number| {
+                cx.update(|cx| Shortcuts(inner).pressed(number, cx));
+            })
+            .await;
         })
         .detach();
         Ok(())
@@ -222,6 +228,9 @@ impl Shortcuts {
         self.0.stopping.set(true);
         self.0.registrations.borrow_mut().clear();
         self.0.handler.replace(None);
+        if let Some(link) = self.0.presses.take() {
+            link.close();
+        }
         None
     }
 }
