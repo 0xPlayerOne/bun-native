@@ -11,6 +11,13 @@
 //! center reports through completion handlers and its delegate on arbitrary
 //! threads, so outcomes go to a `Send` sink as [`CenterEvent`]s naming the
 //! request identifier. Nothing else crosses threads.
+//!
+//! Those completion handlers retain the center itself, so they can still add
+//! a notification after the [`Center`] is closed or dropped. A shared
+//! [`PostGate`] decides each late completion: after close, an authorization
+//! adds nothing and an addition that completes is withdrawn at once, and
+//! close withdraws every addition already reported but not yet settled by
+//! its owner. No notification can stay on screen after its owner stopped.
 #![allow(unsafe_code)] // Reviewed delegate class, framework constants and NSError pointers.
 
 use crate::{SurfaceError, main_thread};
@@ -26,7 +33,8 @@ use objc2_user_notifications::{
     UNNotificationRequest, UNNotificationResponse, UNUserNotificationCenter,
     UNUserNotificationCenterDelegate,
 };
-use std::sync::Arc;
+use std::collections::BTreeSet;
+use std::sync::{Arc, Mutex, MutexGuard};
 
 /// The one category every notification uses: no actions, and a dismissal
 /// callback (`UNNotificationCategoryOptionCustomDismissAction`).
@@ -143,12 +151,86 @@ impl Delegate {
     }
 }
 
-/// This process's notification center, with its delegate installed.
+/// What a late successful addition must do.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum Addition {
+    /// The center is open: report it; its owner settles it.
+    Report,
+    /// The center closed while it was in flight: remove it now.
+    Withdraw,
+}
+
+/// Shared by a [`Center`] and every completion handler of its posts. Each
+/// decision is made under one lock, so a completion either runs before close
+/// (and close withdraws what it reported) or after it (and withdraws itself).
+#[derive(Default)]
+struct PostGate(Mutex<GateState>);
+
+#[derive(Default)]
+struct GateState {
+    closed: bool,
+    /// Reported additions whose owner has not settled them yet.
+    unsettled: BTreeSet<String>,
+}
+
+impl PostGate {
+    fn state(&self) -> MutexGuard<'_, GateState> {
+        // The lock guards plain data; a panic elsewhere cannot leave it torn.
+        self.0
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner())
+    }
+
+    /// Whether an authorized post may still be added.
+    fn may_add(&self) -> bool {
+        !self.state().closed
+    }
+
+    /// A successful addition completed.
+    fn added(&self, identifier: &str) -> Addition {
+        let mut state = self.state();
+        if state.closed {
+            return Addition::Withdraw;
+        }
+        state.unsettled.insert(identifier.to_owned());
+        Addition::Report
+    }
+
+    /// The owner took responsibility for a reported addition.
+    fn settle(&self, identifier: &str) {
+        self.state().unsettled.remove(identifier);
+    }
+
+    /// Refuse every later addition; return the reported, unsettled ones.
+    fn close(&self) -> Vec<String> {
+        let mut state = self.state();
+        state.closed = true;
+        std::mem::take(&mut state.unsettled).into_iter().collect()
+    }
+}
+
+fn remove(center: &UNUserNotificationCenter, identifiers: &[String]) {
+    if identifiers.is_empty() {
+        return;
+    }
+    let identifiers = NSArray::from_retained_slice(
+        &identifiers
+            .iter()
+            .map(|identifier| NSString::from_str(identifier))
+            .collect::<Vec<_>>(),
+    );
+    center.removePendingNotificationRequestsWithIdentifiers(&identifiers);
+    center.removeDeliveredNotificationsWithIdentifiers(&identifiers);
+}
+
+/// This process's notification center, with its delegate installed. Closing
+/// or dropping it withdraws every post its owner has not settled.
 pub struct Center {
     center: Retained<UNUserNotificationCenter>,
     /// The center's delegate property is weak; this keeps it alive.
     _delegate: Retained<Delegate>,
     sink: Sink,
+    gate: Arc<PostGate>,
 }
 
 impl Center {
@@ -175,15 +257,19 @@ impl Center {
             center,
             _delegate: delegate,
             sink,
+            gate: Arc::default(),
         })
     }
 
     /// Ask for authorization, then deliver the notification now. The outcome
     /// arrives as [`CenterEvent::Posted`]; it waits for the user's answer the
-    /// first time this bundle asks.
+    /// first time this bundle asks. A successful post stays unsettled until
+    /// the owner calls [`Center::settle`]; after [`Center::close`] a late
+    /// authorization adds nothing and a late addition is withdrawn.
     pub fn post(&self, identifier: &str, title: &str, body: &str) {
         let center = self.center.clone();
         let sink = self.sink.clone();
+        let gate = self.gate.clone();
         let (identifier, title, body) = (identifier.to_owned(), title.to_owned(), body.to_owned());
         let authorized = RcBlock::new(move |granted: Bool, error: *mut NSError| {
             let posted = |result| {
@@ -196,6 +282,10 @@ impl Center {
                 posted(Err(failure));
                 return;
             }
+            // Closed while the prompt was open: nothing owns the post.
+            if !gate.may_add() {
+                return;
+            }
             let content = UNMutableNotificationContent::new();
             content.setTitle(&NSString::from_str(&title));
             content.setBody(&NSString::from_str(&body));
@@ -205,16 +295,23 @@ impl Center {
                 &content,
                 None,
             );
-            let sink = sink.clone();
-            let identifier = identifier.clone();
+            let (sink, gate, identifier) = (sink.clone(), gate.clone(), identifier.clone());
+            let owner = center.clone();
             let added = RcBlock::new(move |error: *mut NSError| {
+                let result = if error.is_null() {
+                    match gate.added(&identifier) {
+                        Addition::Report => Ok(()),
+                        Addition::Withdraw => {
+                            remove(&owner, std::slice::from_ref(&identifier));
+                            return;
+                        }
+                    }
+                } else {
+                    Err(PostFailure::Failed)
+                };
                 sink(CenterEvent::Posted {
                     identifier: identifier.clone(),
-                    result: if error.is_null() {
-                        Ok(())
-                    } else {
-                        Err(PostFailure::Failed)
-                    },
+                    result,
                 });
             });
             center.addNotificationRequest_withCompletionHandler(&request, Some(&added));
@@ -226,13 +323,28 @@ impl Center {
             );
     }
 
+    /// The owner received a successful [`CenterEvent::Posted`] and now
+    /// withdraws it itself when it must.
+    pub fn settle(&self, identifier: &str) {
+        self.gate.settle(identifier);
+    }
+
+    /// Refuse every post still in flight and withdraw the reported posts the
+    /// owner has not settled. Later completions withdraw their own addition.
+    pub fn close(&self) {
+        remove(&self.center, &self.gate.close());
+    }
+
     /// Remove a pending or delivered notification. No callback follows.
     pub fn withdraw(&self, identifier: &str) {
-        let identifiers = NSArray::from_retained_slice(&[NSString::from_str(identifier)]);
-        self.center
-            .removePendingNotificationRequestsWithIdentifiers(&identifiers);
-        self.center
-            .removeDeliveredNotificationsWithIdentifiers(&identifiers);
+        self.gate.settle(identifier);
+        remove(&self.center, &[identifier.to_owned()]);
+    }
+}
+
+impl Drop for Center {
+    fn drop(&mut self) {
+        self.close();
     }
 }
 
@@ -262,6 +374,35 @@ mod tests {
         assert_eq!(authorization(true, false), Ok(()));
         assert_eq!(authorization(false, false), Err(PostFailure::Denied));
         assert_eq!(authorization(false, true), Err(PostFailure::Failed));
+    }
+
+    #[test]
+    fn a_post_pending_at_close_is_never_added_or_is_withdrawn() {
+        // post pending -> close -> late authorization: nothing is added.
+        let gate = PostGate::default();
+        assert!(gate.may_add());
+        assert!(gate.close().is_empty());
+        assert!(!gate.may_add());
+        // post pending -> authorized -> close -> late addition succeeds: it
+        // is withdrawn, not reported.
+        let gate = PostGate::default();
+        assert!(gate.may_add());
+        assert!(gate.close().is_empty());
+        assert_eq!(gate.added("a"), Addition::Withdraw);
+        assert!(gate.close().is_empty(), "a withdrawn addition is not kept");
+    }
+
+    #[test]
+    fn close_withdraws_reported_posts_the_owner_has_not_settled() {
+        // The addition is reported, then the owner stops before receiving
+        // it: close returns it for withdrawal.
+        let gate = PostGate::default();
+        assert_eq!(gate.added("a"), Addition::Report);
+        assert_eq!(gate.added("b"), Addition::Report);
+        // The owner received and settled "b"; it withdraws it itself.
+        gate.settle("b");
+        assert_eq!(gate.close(), ["a".to_owned()]);
+        assert_eq!(gate.added("c"), Addition::Withdraw);
     }
 
     #[test]

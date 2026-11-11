@@ -142,6 +142,11 @@ impl Notifications {
     fn report(&self, report: CenterEvent, cx: &mut App) {
         match report {
             CenterEvent::Posted { identifier, result } => {
+                // From here this registry withdraws a successful post itself:
+                // when revoked below, on withdrawal, owner close or shutdown.
+                if let Some(center) = &*self.0.center.borrow() {
+                    center.settle(&identifier);
+                }
                 let Some(notification) = self.find(&identifier) else {
                     // Revoked while posting: nothing owns it any more.
                     if result.is_ok() {
@@ -332,10 +337,14 @@ impl Notifications {
             ),
             cx,
         );
-        // Release the center and its sink, and end the worker now. A native
-        // callback still in flight keeps only its own sink clone, whose
-        // report is refused by the closed channel.
-        self.0.center.take();
+        // Close the center, then release it and end the worker. Close
+        // withdraws every successful post this registry has not received
+        // yet; a native completion still in flight retains the OS center, so
+        // the center's gate makes it add nothing, or withdraw what it added,
+        // instead of reporting to the closed channel.
+        if let Some(center) = self.0.center.take() {
+            center.close();
+        }
         if let Some(link) = self.0.reports.take() {
             link.close();
         }
