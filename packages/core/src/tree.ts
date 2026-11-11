@@ -84,6 +84,14 @@ function supported(element: Element, capabilities: readonly Capability[]): Eleme
     !capabilities.includes('accessibility_v1')
   )
     throw new UnsupportedFeatureError(element.kind + ':accessible_label')
+  if (
+    ((element.kind === 'box' && element.accessible_role !== undefined) ||
+      (element.kind === 'text' && element.accessible_live !== undefined)) &&
+    !capabilities.includes('accessibility_lists_v1')
+  )
+    throw new UnsupportedFeatureError(
+      element.kind === 'box' ? 'box:accessible_role' : 'text:accessible_live'
+    )
   return element
 }
 

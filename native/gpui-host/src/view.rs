@@ -384,11 +384,14 @@ impl NativeView {
                 &drop_scope,
                 cx,
             ),
-            NativeElement::Text { .. } => accessibility::states(
+            NativeElement::Text {
+                accessible_live, ..
+            } => accessibility::live_states(
                 // AccessKit names labels from their value.
                 base.role(Role::Label).aria_value(self.label(node_id)),
                 false,
                 hidden,
+                *accessible_live,
             )
             .child(self.label(node_id))
             .into_any_element(),

@@ -20,6 +20,7 @@ const everywhere: Capability[] = [
   'input_states_v1',
   'split_resize_v1',
   'accessibility_v1',
+  'accessibility_lists_v1',
 ]
 const advertised: Record<'linux' | 'macos' | 'windows', Capability[]> = {
   linux: [

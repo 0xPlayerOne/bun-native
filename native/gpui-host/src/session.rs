@@ -278,6 +278,7 @@ impl Session {
                 }
                 capabilities.push(Capability::SplitResizeV1);
                 capabilities.push(Capability::AccessibilityV1);
+                capabilities.push(Capability::AccessibilityListsV1);
                 self.events.send(
                     Event::Ready {
                         protocol: PROTOCOL_VERSION,

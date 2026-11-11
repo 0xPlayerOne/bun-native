@@ -103,9 +103,39 @@ export interface AccessibleLabel {
   accessible_label?: string
 }
 
+/** The largest `accessible_set_size` and `accessible_position`. */
+export const MAX_ACCESSIBLE_SET_SIZE = 2_147_483_647
+
+/**
+ * Requires `accessibility_lists_v1`. A box without `accessible_role` is layout
+ * only and has no accessible node. A list's `accessible_set_size` counts every
+ * item, mounted or not; an item's `accessible_position` is its 1-based place
+ * in that full set, so assistive technology knows a windowed list's extent.
+ */
+export interface BoxAccessibility {
+  accessible_role?: 'list' | 'list_item'
+  /** Only with a role: the list's or item's accessible name. */
+  accessible_label?: string
+  /** Only on a `list`. */
+  accessible_set_size?: number
+  /** Only on a `list_item`; 1-based. */
+  accessible_position?: number
+  /** Only on a `list_item`. Present: the item is selectable; true when selected. */
+  accessible_selected?: boolean
+}
+
 export type Element =
-  | { kind: 'box'; style?: Style }
-  | { kind: 'text'; text: string; style?: LeafStyle }
+  | ({ kind: 'box'; style?: Style } & BoxAccessibility)
+  | {
+      kind: 'text'
+      text: string
+      /**
+       * Requires `accessibility_lists_v1`: announce the text when the node
+       * appears and whenever it changes.
+       */
+      accessible_live?: 'polite' | 'assertive'
+      style?: LeafStyle
+    }
   | { kind: 'button'; text: string; disabled?: boolean; style?: LeafStyle }
   | {
       kind: 'input'
@@ -226,18 +256,92 @@ function accessibleLabel(element: Record<string, unknown>): AccessibleLabel {
     : {}
 }
 
+function boxAccessibility(element: Record<string, unknown>): BoxAccessibility {
+  const label = accessibleLabel(element)
+  if (!('accessible_role' in element)) {
+    for (const name of [
+      'accessible_label',
+      'accessible_set_size',
+      'accessible_position',
+      'accessible_selected',
+    ])
+      if (name in element) throw new ProtocolError(name + ' requires accessible_role')
+    return {}
+  }
+  const role = choice(element['accessible_role'], 'accessible_role', ['list', 'list_item'])
+  if (role === 'list') {
+    for (const name of ['accessible_position', 'accessible_selected'])
+      if (name in element) throw new ProtocolError(name + ' is only accepted on a list_item')
+    return {
+      accessible_role: role,
+      ...label,
+      ...('accessible_set_size' in element
+        ? {
+            accessible_set_size: integer(
+              element['accessible_set_size'],
+              'accessible_set_size',
+              0,
+              MAX_ACCESSIBLE_SET_SIZE
+            ),
+          }
+        : {}),
+    }
+  }
+  if ('accessible_set_size' in element)
+    throw new ProtocolError('accessible_set_size is only accepted on a list')
+  if ('accessible_selected' in element && typeof element['accessible_selected'] !== 'boolean')
+    throw new ProtocolError('accessible_selected must be a boolean')
+  return {
+    accessible_role: role,
+    ...label,
+    ...('accessible_position' in element
+      ? {
+          accessible_position: integer(
+            element['accessible_position'],
+            'accessible_position',
+            1,
+            MAX_ACCESSIBLE_SET_SIZE
+          ),
+        }
+      : {}),
+    ...('accessible_selected' in element
+      ? { accessible_selected: element['accessible_selected'] as boolean }
+      : {}),
+  }
+}
+
 /** Normalize and validate the entire property set, including JavaScript consumers. */
 export function parseElement(value: unknown): Element {
   const element = object(value)
   const style = 'style' in element ? parseStyle(element['style']) : {}
   switch (element['kind']) {
     case 'box':
-      keys(element, ['kind', 'style'])
-      return { kind: 'box', style }
+      keys(element, [
+        'kind',
+        'accessible_role',
+        'accessible_label',
+        'accessible_set_size',
+        'accessible_position',
+        'accessible_selected',
+        'style',
+      ])
+      return { kind: 'box', ...boxAccessibility(element), style }
     case 'text':
-      keys(element, ['kind', 'text', 'style'])
+      keys(element, ['kind', 'text', 'accessible_live', 'style'])
       requireLeafStyle(style)
-      return { kind: 'text', text: string(element['text'], 'text'), style }
+      return {
+        kind: 'text',
+        text: string(element['text'], 'text'),
+        ...('accessible_live' in element
+          ? {
+              accessible_live: choice(element['accessible_live'], 'accessible_live', [
+                'polite',
+                'assertive',
+              ]),
+            }
+          : {}),
+        style,
+      }
     case 'button': {
       keys(element, ['kind', 'text', 'disabled', 'style'])
       requireLeafStyle(style)

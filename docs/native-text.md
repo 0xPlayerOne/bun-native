@@ -172,21 +172,32 @@ before sending to a host without the capability; Solid and React spell it
 Other kinds take no label: text and buttons are named by their text, and a box
 or input label is not implemented.
 
-| Element                       | AccessKit role → AT-SPI role (AccessKit 0.24)  | Name                                 | States and value                                                                                                              |
-| ----------------------------- | ---------------------------------------------- | ------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------- |
-| `box` (not scrolling)         | none: layout only, children move to the parent | —                                    | —                                                                                                                             |
-| `box` with scrolling overflow | `ScrollView` → `panel`                         | none                                 | contains its children                                                                                                         |
-| `text`                        | `Label` → `label`                              | the text                             | —                                                                                                                             |
-| `button`                      | `Button` → `push-button`                       | the label                            | `focusable` when enabled; a disabled button is only not focusable (see below); no `checkable`/`checked` state                 |
-| `input`                       | `TextInput` → `entry`                          | none (the placeholder is not a name) | as in the matrix above                                                                                                        |
-| `split` divider               | `Splitter` → `separator`                       | `accessible_label`                   | `focusable`, `focused`; `vertical` (row) or `horizontal` (column); Value interface: ratio × 100, `min_size` limits as min/max |
-| `overlay`                     | `Dialog` → `dialog`                            | `accessible_label`                   | `modal` when `modal: true`; AccessKit adds `active` while it is the active dialog; contains its children                      |
+| Element                               | AccessKit role → AT-SPI role (AccessKit 0.24)  | Name                                 | States and value                                                                                                               |
+| ------------------------------------- | ---------------------------------------------- | ------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------ |
+| `box` (not scrolling)                 | none: layout only, children move to the parent | —                                    | —                                                                                                                              |
+| `box` with scrolling overflow         | `ScrollView` → `panel`                         | none                                 | contains its children                                                                                                          |
+| `box`, `accessible_role: 'list'`      | `List` → `list`                                | `accessible_label`                   | `accessible_set_size` as AccessKit `size_of_set`, read by AT-SPI clients as each item's `setsize` attribute                    |
+| `box`, `accessible_role: 'list_item'` | `ListItem` → `list-item`                       | `accessible_label`                   | `accessible_position` (1-based) as the `posinset` attribute; `selectable`, and `selected` when `accessible_selected` is true   |
+| `text`                                | `Label` → `label`                              | the text                             | with `accessible_live`, AccessKit `Live` polite or assertive: an `object:announcement` of the text when it appears and changes |
+| `button`                              | `Button` → `push-button`                       | the label                            | `focusable` when enabled; a disabled button is only not focusable (see below); no `checkable`/`checked` state                  |
+| `input`                               | `TextInput` → `entry`                          | none (the placeholder is not a name) | as in the matrix above                                                                                                         |
+| `split` divider                       | `Splitter` → `separator`                       | `accessible_label`                   | `focusable`, `focused`; `vertical` (row) or `horizontal` (column); Value interface: ratio × 100, `min_size` limits as min/max  |
+| `overlay`                             | `Dialog` → `dialog`                            | `accessible_label`                   | `modal` when `modal: true`; AccessKit adds `active` while it is the active dialog; contains its children                       |
 
 The split itself has no node; only its divider does. Popup window overlays
 (`surface: 'window'`) are given the same dialog role in their popup window
-(see **Popup windows** below). There is no list or list-item role:
-[streaming lists](native-lists.md) are application-level boxes, so their rows
-appear as their text and controls only.
+(see **Popup windows** below).
+
+**Lists (`accessibility_lists_v1`).** A box may declare `accessible_role`
+`list` or `list_item`, with an optional `accessible_label`; a list may declare
+`accessible_set_size` and an item `accessible_position` (1 to 2,147,483,647)
+and `accessible_selected`. Each member is rejected on any other kind or role,
+and a box without a role stays layout only. A text node may declare
+`accessible_live: 'polite' | 'assertive'`. A windowed list follows what native
+toolkits do for virtualized views: only mounted rows have nodes, and the
+list's set size and each mounted item's position describe the whole
+collection, so assistive technology knows its full extent. The
+[streaming list](native-lists.md) fixtures declare them for every row.
 
 **Before this change** (measured with the same AT-SPI probe against the
 protocol-11 host from `main` on a scene with every kind and an open modal
@@ -282,14 +293,23 @@ closes. GPUI's Wayland window reports no screen position to AccessKit
 `crates/gpui_linux/src/linux/wayland/window.rs:2278-2280` at zed `ba63a022`),
 so only character bounds relative to the window are checked there.
 
+**Lists, verified** by the same run (X11, scales 1 and 2, development and
+AOT) in a second window: a `list` named `Messages` with set size 10,000 holding
+five mounted `list_item` boxes at positions 4996–5000. The AT-SPI tree has
+exactly those five `list-item` children, each with `posinset` equal to its
+position, `setsize` 10000, `selectable`, `selected` only on the declared item,
+and its label nested inside. After the window shifts by one row (the first
+item removed, item 5001 appended) the tree holds 4997–5001 and the set size is
+unchanged, and moving `accessible_selected` moves the `selected` state. An
+independent AT-SPI listener records exactly three `object:announcement`
+events, `Idle` when the live text appears and then `Streaming one` and
+`Streaming one two`, and none for an ordinary text change. Orca's speech for
+the same structures is under [screen reader speech](#screen-reader-speech).
+
 **Not verified:** screen reader speech on macOS and Windows (see
 [screen reader speech](#screen-reader-speech) for Orca); the popup window tree
-and AT-SPI announcements on Wayland; and virtualized lists. A
-[streaming list](native-lists.md) has no list or list-item role, no set size
-or position, rows windowed out of view have no node at all, and streamed text
-is not announced (the protocol has no live-region attribute). These are host
-and protocol gaps, not GPUI or AccessKit limits: AccessKit 0.24 has `List`,
-`ListItem`, `size_of_set`, `position_in_set` and `Live`.
+and AT-SPI announcements on Wayland; list roles and live regions on macOS and
+Windows (AccessKit maps them, no client has read them).
 
 **Verified on macOS and Windows** by
 [`tests/native/accessibility-platform.ts`](../tests/native/accessibility-platform.ts)
@@ -327,26 +347,29 @@ ALSA `null` device satisfies the module's audio initialization), so
 `--debug-file` log is kept beside it. Keys come from XTEST. The fixture
 asserts these phrases, in order, among everything said for each step:
 
-| Action (XTEST)                      | Host event                 | Orca phrases                                                     |
-| ----------------------------------- | -------------------------- | ---------------------------------------------------------------- |
-| Window opens with the input focused | `focus` search             | `entry typed.`                                                   |
-| Tab                                 | `focus` button             | `Leading action push button.`                                    |
-| Tab                                 | `focus` read-only          | `read only entry Fixed.`                                         |
-| Tab (skips the disabled button)     | `focus` button             | `Open dialog push button.`                                       |
-| Tab (wraps)                         | `focus` search             | `entry typed.`                                                   |
-| End, then type `x`                  | `input` `typedx`           | `x` (key echo)                                                   |
-| KP_Enter (Orca "Where Am I")        | none                       | `entry typedx.`                                                  |
-| Left, Home, Right                   | none                       | `x`, `t`, `y` (the character at the caret)                       |
-| Shift+End                           | none                       | `ypedx`, `selected`                                              |
-| Backspace                           | `input` `t`                | `Selection deleted.`                                             |
-| Shift+Tab (wraps backwards)         | `focus` button             | `Open dialog push button.`                                       |
-| Space                               | `focus` Confirm            | `Confirm dialog dialog Discard changes?`, `Confirm push button.` |
-| Tab inside the dialog               | `focus` Cancel             | `Cancel push button.`                                            |
-| Space on Cancel (dialog closes)     | `focus` button             | `Open dialog push button.`                                       |
-| Tab, Tab                            | `focus` search, button     | `entry t.`, `Leading action push button.`                        |
-| Shift+Tab, Shift+Tab (wraps)        | `focus` search, divider    | `entry t.`, `vertical splitter Sidebar.`                         |
-| Right, End on the divider           | `split_resize` 0.41, limit | `vertical splitter` each time                                    |
-| KP_Enter on the divider             | none                       | `vertical splitter Sidebar.`                                     |
+| Action (XTEST)                        | Host event                 | Orca phrases                                                     |
+| ------------------------------------- | -------------------------- | ---------------------------------------------------------------- |
+| Window opens with the input focused   | `focus` search             | `entry typed.`                                                   |
+| Tab                                   | `focus` button             | `Leading action push button.`                                    |
+| Tab                                   | `focus` read-only          | `read only entry Fixed.`                                         |
+| Tab (skips the disabled button)       | `focus` button             | `Open dialog push button.`                                       |
+| Tab (wraps)                           | `focus` search             | `entry typed.`                                                   |
+| End, then type `x`                    | `input` `typedx`           | `x` (key echo)                                                   |
+| KP_Enter (Orca "Where Am I")          | none                       | `entry typedx.`                                                  |
+| Left, Home, Right                     | none                       | `x`, `t`, `y` (the character at the caret)                       |
+| Shift+End                             | none                       | `ypedx`, `selected`                                              |
+| Backspace                             | `input` `t`                | `Selection deleted.`                                             |
+| Shift+Tab (wraps backwards)           | `focus` button             | `Open dialog push button.`                                       |
+| Space                                 | `focus` Confirm            | `Confirm dialog dialog Discard changes?`, `Confirm push button.` |
+| Tab inside the dialog                 | `focus` Cancel             | `Cancel push button.`                                            |
+| Space on Cancel (dialog closes)       | `focus` button             | `Open dialog push button.`                                       |
+| Tab, Tab                              | `focus` search, button     | `entry t.`, `Leading action push button.`                        |
+| Shift+Tab, Shift+Tab (wraps)          | `focus` search, divider    | `entry t.`, `vertical splitter Sidebar.`                         |
+| Right, End on the divider             | `split_resize` 0.41, limit | `vertical splitter` each time                                    |
+| KP_Enter on the divider               | none                       | `vertical splitter Sidebar.`                                     |
+| Tab into a list row's button          | `focus` Reply 4998         | `Messages.`, `List with 3 items.`, `Reply 4998 push button.`     |
+| Tab                                   | `focus` Reply 4999         | `Reply 4999 push button.`                                        |
+| Live text appears, then changes twice | none                       | `Idle`, `Streaming one`, `Streaming one two`                     |
 
 No phrase may mention `Disabled action`. Observed locally with the host rebuilt
 from this change and the final fixture: five consecutive development runs
@@ -384,6 +407,14 @@ Measured limits:
   spoke. In every other run the host's window and focus were spoken within
   about 100 ms of launch. The cause on the host side has not been isolated, and
   the step can fail on CI the same way.
+- Orca says `List with 3 items.` for a list whose set size is 10,000, and
+  never a row's position. Orca 46's default (non-web) script counts list-item
+  children (`orca/speech_generator.py` `_generateNumberOfChildren`, lines
+  1589-1596) and a control's siblings (`orca/script_utilities.py`
+  `getPositionAndSetSize`, lines 3249-3296); only its web scripts read the
+  AT-SPI `setsize` and `posinset` attributes, which the host does expose (see
+  [lists, verified](#accessibility-roles-accessibility_v1)). The list rows
+  are not focusable, so a row's own position is never spoken either.
 - Orca never speaks the divider's value. It re-announces the focused
   separator on every AT-SPI value change, but Orca 46.1's separator format
   (`orca/formatting.py`, `Atspi.Role.SEPARATOR`: `'focused': 'roleName +

@@ -61,6 +61,14 @@ def describe(node: Atspi.Accessible, depth: int) -> dict:
         "states": states(node),
         "depth": depth,
     }
+    # Set size and position reach AT-SPI as object attributes.
+    attributes = {
+        key: value
+        for key, value in (node.get_attributes() or {}).items()
+        if key in ("setsize", "posinset")
+    }
+    if attributes:
+        entry["attributes"] = attributes
     component = node.get_component_iface()
     if component is not None:
         entry["bounds"] = rect_list(

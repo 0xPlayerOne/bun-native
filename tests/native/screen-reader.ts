@@ -567,6 +567,13 @@ const SPLIT_SPEECH = {
   whereAmI: { exact: ['vertical splitter Sidebar.'] },
 } satisfies Record<string, Expectation>
 
+// Orca 46's phrases for the windowed list and its live status (Linux only).
+const LIST_SPEECH = {
+  enter: { exact: ['Messages.', 'List with 3 items.', 'Reply 4998 push button.'] },
+  next: { exact: ['Reply 4999 push button.'] },
+  live: (text: string): Expectation => ({ exact: [text] }),
+}
+
 const reader: Reader = linux ? new Orca() : mac ? new VoiceOver() : new Nvda()
 let readerInfo: Record<string, unknown> = {}
 const steps: Array<{
@@ -725,12 +732,14 @@ try {
     key: Key | null,
     focus: string | null,
     expected: Expectation,
-    settle = 400
+    settle = 400,
+    act?: () => Promise<unknown>
   ) => {
     const from =
       key === null && focus !== null && steps.length === 0 ? 0 : reader.utterances().length
     const focusFrom = focusTrace().length
     if (key) await reader.press(key)
+    if (act) await act()
     if (focus)
       await waitFor(
         () => (key ? focusTrace().slice(focusFrom).includes(focus) : focusTrace().at(-1) === focus),
@@ -919,6 +928,59 @@ try {
       resizes.length === 2 && resizes.every((ratio, i) => Math.abs(ratio - expected[i]!) < 1e-9),
       `one split_resize per key: ${resizes.join()}`
     )
+
+    // A windowed list (accessibility_lists_v1): three mounted rows of a
+    // 10,000-message history, each holding a Reply button, and a live
+    // status line that streams text. Orca 46's default (non-web) script
+    // counts a list's list-item children and a control's siblings itself
+    // (orca/speech_generator.py _generateNumberOfChildren, and
+    // orca/script_utilities.py getPositionAndSetSize); only its web scripts
+    // read the AT-SPI setsize and posinset that accessibility.ts checks. So
+    // it says the mounted count.
+    const list = await window.batch((batch) => {
+      const list = batch.create({
+        kind: 'box',
+        accessible_role: 'list',
+        accessible_label: 'Messages',
+        accessible_set_size: 10_000,
+        style: { direction: 'row', gap: 4, flex_shrink: 0 },
+      })
+      batch.append(window.root, list)
+      const replies: NativeNode[] = []
+      for (const position of [4_998, 4_999, 5_000]) {
+        const item = batch.create({
+          kind: 'box',
+          accessible_role: 'list_item',
+          accessible_label: 'Message ' + position,
+          accessible_position: position,
+          accessible_selected: position === 4_999,
+          style: { padding: 2 },
+        })
+        const reply = batch.create({ kind: 'button', text: 'Reply ' + position })
+        batch.append(list, item)
+        batch.append(item, reply)
+        replies.push(reply)
+      }
+      return { replies }
+    })
+    list.replies.forEach((reply, index) => watch(reply, 'reply' + index))
+    await step('Tab into the list', 'tab', 'reply0', LIST_SPEECH.enter)
+    await step('Tab to the next row', 'tab', 'reply1', LIST_SPEECH.next)
+    // Live text is spoken when it appears and on each change, without focus.
+    let status: NativeNode<'text'> | undefined
+    await step('Live text appears', null, null, LIST_SPEECH.live('Idle'), 400, async () => {
+      status = await window.batch((batch) => {
+        const node = batch.create({ kind: 'text', text: 'Idle', accessible_live: 'polite' })
+        batch.append(window.root, node)
+        return node
+      })
+    })
+    for (const text of ['Streaming one', 'Streaming one two'])
+      await step('Live text ' + text, null, null, LIST_SPEECH.live(text), 400, () =>
+        window.batch((batch) =>
+          batch.set(status!, { kind: 'text', text, accessible_live: 'polite' })
+        )
+      )
   }
 
   const spoken = reader.utterances()

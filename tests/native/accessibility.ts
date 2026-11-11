@@ -107,11 +107,17 @@ type Accessible = {
   extents?: number[][]
   value?: { current: number; minimum: number; maximum: number }
   bounds?: number[]
+  attributes?: { setsize?: string; posinset?: string }
 }
 
 const TITLE = 'Bun Native accessibility qualification'
 // The host's fixed popup window title (native/gpui-host/src/view/popups.rs).
 const POPUP_TITLE = 'Bun Native popup'
+const LIST_TITLE = 'Bun Native list accessibility'
+// A windowed list: the history holds LIST_TOTAL messages, LIST_MOUNTED rows
+// are mounted at a time, as in docs/native-lists.md.
+const LIST_TOTAL = 10_000
+const LIST_MOUNTED = 5
 const WIDTH = 640
 const HEIGHT = 480
 // Fixed geometry: the split starts below the heading and the scroll view.
@@ -208,8 +214,8 @@ for (const capability of [
   'overlays_v1',
   'split_resize_v1',
   'accessibility_v1',
-  // The popup window section runs on Linux only.
-  ...(mac ? [] : ['popup_windows_v1']),
+  // The popup window and list sections run on Linux only.
+  ...(mac ? [] : ['popup_windows_v1', 'accessibility_lists_v1']),
 ])
   assert(app.capabilities.includes(capability as never), capability)
 
@@ -848,6 +854,152 @@ try {
     await waitFor(() => popupClicks === 1, 'AT click in the popup window')
     await owned.batch((batch) => batch.remove(popup.layer))
     record('popupWindow', { dialog: popupDialog, inside: popupInside, clicks: popupClicks })
+  }
+
+  if (!mac) {
+    // accessibility_lists_v1, in its own window: a windowed list exposes the
+    // full history's set size, each mounted row its place in it and its
+    // selection; rows outside the window have no node. A live text node is
+    // announced when it appears and on each change; ordinary text is not.
+    const lists = await app.openWindow({ title: LIST_TITLE, width: 480, height: 320 })
+    const listWatcher = await watchEvents()
+    const rowNodes = new Map<number, { item: NativeNode<'box'>; label: NativeNode<'text'> }>()
+    const listScene = await lists.batch((batch) => {
+      const list = batch.create({
+        kind: 'box',
+        accessible_role: 'list',
+        accessible_label: 'Messages',
+        accessible_set_size: LIST_TOTAL,
+        style: { direction: 'column', gap: 4, padding: 8, width: 'fill', height: 240 },
+      })
+      batch.append(lists.root, list)
+      for (let position = 4_996; position < 4_996 + LIST_MOUNTED; position += 1) {
+        const item = batch.create({
+          kind: 'box',
+          accessible_role: 'list_item',
+          accessible_position: position,
+          accessible_selected: position === 4_998,
+          style: { height: 36, padding: 4 },
+        })
+        const label = batch.create({ kind: 'text', text: 'Message ' + position })
+        batch.append(list, item)
+        batch.append(item, label)
+        rowNodes.set(position, { item, label })
+      }
+      const status = batch.create({ kind: 'text', text: 'Idle', accessible_live: 'polite' })
+      batch.append(lists.root, status)
+      return { list, status }
+    })
+    type ListItem = { position: number; setSize: number; selected: boolean; text: string[] }
+    const listItems = (tree: Accessible[]): ListItem[] | undefined => {
+      const list = find(tree, 'list', 'Messages')
+      if (!list) return undefined
+      const below = tree.slice(tree.indexOf(list) + 1)
+      const end = below.findIndex((node) => node.depth <= list.depth)
+      const inside = end < 0 ? below : below.slice(0, end)
+      return inside
+        .filter((node) => node.depth === list.depth + 1)
+        .map((item) => {
+          assert.equal(item.role, 'list-item', 'every child of the list is a list item')
+          assert(
+            item.states.includes('selectable'),
+            'an item with accessible_selected is selectable'
+          )
+          const after = inside.slice(inside.indexOf(item) + 1)
+          const stop = after.findIndex((node) => node.depth <= item.depth)
+          return {
+            position: Number(item.attributes?.posinset),
+            setSize: Number(item.attributes?.setsize),
+            selected: item.states.includes('selected'),
+            text: (stop < 0 ? after : after.slice(0, stop)).map(
+              (node) => node.role + ':' + node.name
+            ),
+          }
+        })
+    }
+    const expectItems = async (name: string, first: number, selected: number) => {
+      const expected = Array.from({ length: LIST_MOUNTED }, (_, index) => ({
+        position: first + index,
+        setSize: LIST_TOTAL,
+        selected: first + index === selected,
+        text: ['label:Message ' + (first + index)],
+      }))
+      const tree = await poll(
+        name,
+        (candidate) => {
+          const items = listItems(candidate)
+          return items !== undefined && JSON.stringify(items) === JSON.stringify(expected)
+        },
+        LIST_TITLE
+      )
+      const list = find(tree, 'list', 'Messages')!
+      assert.equal(list.attributes?.posinset, undefined, 'the list itself has no position')
+      return listItems(tree)!
+    }
+    const initialItems = await expectItems('list initial', 4_996, 4_998)
+    // The window shifts down by one row, as a scrolled windowed list does:
+    // the first row's node goes away, the next history row gets one, and the
+    // set size stays the whole history.
+    await lists.batch((batch) => {
+      const first = rowNodes.get(4_996)!
+      batch.remove(first.item)
+      rowNodes.delete(4_996)
+      const position = 4_996 + LIST_MOUNTED
+      const item = batch.create({
+        kind: 'box',
+        accessible_role: 'list_item',
+        accessible_position: position,
+        accessible_selected: false,
+        style: { height: 36, padding: 4 },
+      })
+      const label = batch.create({ kind: 'text', text: 'Message ' + position })
+      batch.append(listScene.list, item)
+      batch.append(item, label)
+      rowNodes.set(position, { item, label })
+    })
+    await expectItems('list shifted', 4_997, 4_998)
+    // Selection moves by changing which mounted item declares it.
+    await lists.batch((batch) => {
+      for (const [position, row] of rowNodes)
+        batch.set(row.item, {
+          kind: 'box',
+          accessible_role: 'list_item',
+          accessible_position: position,
+          accessible_selected: position === 4_999,
+          style: { height: 36, padding: 4 },
+        })
+    })
+    const shiftedItems = await expectItems('list selection moved', 4_997, 4_999)
+    // Streamed text: the live status changes twice; an ordinary row's text
+    // changes once and is not announced.
+    // Each change is read back before the next, so neither is coalesced
+    // into one accessibility update.
+    await poll('live idle', (tree) => find(tree, 'label', 'Idle') !== undefined, LIST_TITLE)
+    for (const text of ['Streaming one', 'Streaming one two']) {
+      await lists.batch((batch) =>
+        batch.set(listScene.status, { kind: 'text', text, accessible_live: 'polite' })
+      )
+      await poll('live ' + text, (tree) => find(tree, 'label', text) !== undefined, LIST_TITLE)
+    }
+    await lists.batch((batch) =>
+      batch.set(rowNodes.get(4_997)!.label, { kind: 'text', text: 'Message 4997 edited' })
+    )
+    await poll(
+      'list edited',
+      (tree) => find(tree, 'label', 'Message 4997 edited') !== undefined,
+      LIST_TITLE
+    )
+    const listEvents = await listWatcher.stop()
+    const spoken = listEvents
+      .filter((event) => event.type === 'object:announcement' && !event.source.defunct)
+      .map((event) => event.data)
+    assert.deepEqual(
+      spoken,
+      ['Idle', 'Streaming one', 'Streaming one two'],
+      'the live text is announced when it appears and on each change, and nothing else is'
+    )
+    record('lists', { initial: initialItems, shifted: shiftedItems, announcements: spoken })
+    await lists.close()
   }
 
   writeFileSync(

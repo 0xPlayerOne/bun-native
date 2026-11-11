@@ -228,7 +228,7 @@ The existing overlay fixture still passed against the same host.
 - **Keyboard.** No arrow-key navigation, type-ahead or keyboard activation of popup buttons; Tab stays in the parent window. Editors and nested overlays are rejected inside popups.
 - **Outside presses.** A press elsewhere in the parent window is delivered there normally and is not reported as a dismissal; the application decides. Presses on other applications' windows dismiss only through the resulting parent blur, which depends on the window manager changing focus.
 - **Placement races.** The popup is opened at its computed position and then moved to exact bounds; a first frame may briefly appear two pixels to the right. Parent moves are followed only when GPUI reports them; a popup does not follow a parent node that moves without a repaint of the parent window.
-- **Accessibility.** With `accessibility_v1` a popup window's content is given the dialog role and `accessible_label` like an in-window overlay, but no AT-SPI client has read a popup window, and no announcement is made.
+- **Accessibility.** With `accessibility_v1` a popup window's content is given the dialog role and `accessible_label` like an in-window overlay. On Linux X11 an AT-SPI client reads the popup window's own tree (one dialog holding the overlay's content, none of it in the parent window's tree) and an AT click reaches Bun ([native text](native-text.md#accessibility-roles-accessibility_v1)); Wayland, macOS and Windows popups are not read by a client.
 
 ## Limitations
 
