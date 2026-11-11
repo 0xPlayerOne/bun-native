@@ -55,6 +55,9 @@ wayland-protocols-misc = { version = "=0.3.12", features = ["client"] }
 [target.'cfg(target_os = "macos")'.dependencies]
 base64 = "=0.22.1"
 bun-native-macos-surface = { path = "../macos-surface" }
+# Patched in from native/vendor/gpui_macos for its frame-source switch
+# (src/frame_pacing.rs); default features stay as gpui_platform selects them.
+gpui_macos = { git = "https://github.com/zed-industries/zed", rev = "ba63a022c9a22ca66d68ef2a8f0bb9b5b0a9984d", default-features = false }
 bun-native-posix-services = { path = "../posix-services" }
 pty-process = "=0.5.4"
 raw-window-handle = "=0.6.2"

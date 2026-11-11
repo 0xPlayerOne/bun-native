@@ -281,6 +281,8 @@ impl Evidence {
                     bun_native_macos_surface::metal_device(handle)
                         .map_err(|error| error.to_string())
                 });
+            record["frame_source"] =
+                json!(crate::frame_pacing::chosen().map(|source| source.name()));
             record["metal_device"] = match device {
                 Ok(device) => json!({
                     "status": "reported", "source": "CAMetalLayer.device",
