@@ -189,7 +189,8 @@ export function parseCodesignDisplay(text: string): Omit<SignatureVerification, 
 
 /** Parse `signtool verify /pa /v`: the chain's "Issued to" names and the timestamp line. */
 export function parseSigntoolVerify(text: string): Omit<SignatureVerification, 'file' | 'kind'> {
-  const lines = text.split(/\r?\n/)
+  // Hosted windows-2022 signtool ends lines with CR CR LF; a bare CR would defeat `.+$`.
+  const lines = text.split(/\r*\n/).map((line) => line.replace(/\r+$/, ''))
   const start = lines.findIndex((line) => /Signing Certificate Chain:/.test(line))
   const end = lines.findIndex((line, index) => index > start && /timestamp/i.test(line))
   const chain = lines

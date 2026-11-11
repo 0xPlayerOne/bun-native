@@ -409,6 +409,32 @@ describe('parsing tool output', () => {
     expect(parseSigntoolVerify('SignTool Error: No signature found.')).toEqual({ authority: [] })
   })
 
+  // Recorded from hosted windows-2022 (job 130252336069): CR CR LF line ends, a self-signed
+  // leaf, then a separate timestamp chain that must not be read as the signer.
+  test('signtool verify with CR CR LF line ends from a hosted runner', () => {
+    const hosted = [
+      'Verifying: D:\\a\\_temp\\signed-template\\build\\application.exe',
+      '',
+      'Signature Index: 0 (Primary Signature)',
+      'Hash of file (sha256): 97FB28EC61F58A706044717B745DADFD631E0FD7DCCC04299D8C906BFB3CAC1B',
+      '',
+      'Signing Certificate Chain:',
+      '    Issued to: Bun Native CI Throwaway Code Signing',
+      '    Issued by: Bun Native CI Throwaway Code Signing',
+      '    Expires:   Fri Nov 13 01:21:56 2026',
+      '    SHA1 hash: 91ED3DCB892A0286C72001E171E838C5F6113558',
+      '',
+      'The signature is timestamped: Wed Nov 11 01:21:58 2026',
+      'Timestamp Verified by:',
+      '    Issued to: DigiCert Assured ID Root CA',
+      '    Issued by: DigiCert Assured ID Root CA',
+    ].join('\r\r\n')
+    expect(parseSigntoolVerify(hosted)).toEqual({
+      authority: ['Bun Native CI Throwaway Code Signing'],
+      timestamp: 'Wed Nov 11 01:21:58 2026',
+    })
+  })
+
   test('a signtool verification without a chain fails with the raw output', () => {
     expect(() =>
       verifySignature('win32', 'C:\\work\\a.exe', () => ({
