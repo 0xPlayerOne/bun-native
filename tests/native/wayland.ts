@@ -605,6 +605,12 @@ async function qualify(app: NativeApplication) {
   )
   await waitFor(() => window.input(ui.field).value === 'ab', 'the reset input')
   origin = (await mapped(TITLE)).rect
+  // The first preedit needs GPUI's input handler for the field, which its
+  // next painted frame installs, and an input method that has seen every
+  // `done` (#630). GPUI enables text input at the end of that frame, so a
+  // fresh activation follows the handler. The AT click left the button
+  // focused, so the method is first deactivated, then the click reactivates it.
+  await pointer.send('ime-inactive')
   await clickAt(...center(origin, field), origin)
   await pointer.send('ime-active')
   const imeValues: string[] = []
@@ -756,6 +762,11 @@ const dunst = Bun.spawn(['dunst'], {
 const portal = await startPortal(join(output, 'portal'))
 pointer = new PointerPeer()
 assert.equal(await pointer.line(), 'ready')
+// The seat's input method exists before any window, so sway relays every
+// zwp_text_input_v3 enable and disable to it (#630). Without one, sway ignores
+// an enable, and wlroots takes GPUI's next enable as a commit of an already
+// enabled input, so the method is never activated.
+await pointer.query('ime-state')
 // A keyboard that lives for the whole run. Each typing wtype adds and removes
 // its own virtual keyboard; without a lasting one the seat's keyboard
 // capability would appear with it, and its first key would race the client's
