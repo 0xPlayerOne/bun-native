@@ -761,14 +761,15 @@ jobs:
               throw "${{ runner.os }} $mode accessibility evidence does not record a pass"
             }
           }
-      # EXPERIMENTAL (#241): the first hosted runs of a real screen reader and a
-      # real OS input method on these images. Each step reports failure in its
-      # own outcome but does not fail the job until it has passed on hosted
-      # runners; it does not replace or relax the AX/UI Automation step above.
-      - name: Experimental macOS VoiceOver and Windows NVDA speech in development and AOT (#241)
+      # A real screen reader and a real OS input method (#241). macOS gates: both
+      # passed on hosted macOS after the focus routing fix (runs 43087027363 and
+      # 43093920340). Windows stays experimental until it passes there (#629);
+      # its failure is reported in the step outcome without failing the job.
+      # Neither replaces or relaxes the AX/UI Automation step above.
+      - name: macOS VoiceOver and experimental Windows NVDA speech in development and AOT (#241)
         id: screen-reader
         if: ${{ matrix.shard == 2 && (!cancelled() && steps.native-build.outcome == 'success') }}
-        continue-on-error: true
+        continue-on-error: ${{ runner.os == 'Windows' }}
         timeout-minutes: 15
         run: |
           if ($IsMacOS) {
@@ -843,10 +844,10 @@ jobs:
             }
             $global:LASTEXITCODE = 0
           }
-      - name: Experimental macOS and Windows Korean input method composition in development and AOT (#241)
+      - name: macOS and experimental Windows Korean input method composition in development and AOT (#241)
         id: ime-platform
         if: ${{ matrix.shard == 2 && (!cancelled() && steps.native-build.outcome == 'success') }}
-        continue-on-error: true
+        continue-on-error: ${{ runner.os == 'Windows' }}
         timeout-minutes: 15
         run: |
           if ($IsMacOS) {
@@ -900,8 +901,8 @@ jobs:
               throw "${{ runner.os }} $mode IME evidence does not record a pass"
             }
           }
-      - name: Report experimental screen-reader and IME outcomes (#241)
-        if: ${{ matrix.shard == 2 && !cancelled() && steps.native-build.outcome == 'success' }}
+      - name: Report experimental Windows screen-reader and IME outcomes (#241)
+        if: ${{ matrix.shard == 2 && runner.os == 'Windows' && !cancelled() && steps.native-build.outcome == 'success' }}
         run: |
           foreach ($pair in @(@('screen reader', '${{ steps.screen-reader.outcome }}'), @('IME', '${{ steps.ime-platform.outcome }}'))) {
             if ($pair[1] -ne 'success') {
