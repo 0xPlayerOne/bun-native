@@ -174,28 +174,79 @@ export function distribution(values: readonly number[]) {
   }
 }
 
-/** Per-interval acknowledgement and input-latency observations plus a JSONL sink. */
+/**
+ * Fixed-memory latency histogram: 10 µs buckets up to 1 s, plus a count and
+ * maximum of anything slower. A whole-session distribution must not grow the
+ * heap it is observing.
+ */
+export class LatencyHistogram {
+  static readonly #RESOLUTION_MS = 0.01
+  static readonly #BUCKETS = 100_000
+  readonly #counts = new Uint32Array(LatencyHistogram.#BUCKETS)
+  #count = 0
+  #slower = 0
+  #max = 0
+
+  add(milliseconds: number) {
+    this.#count++
+    this.#max = Math.max(this.#max, milliseconds)
+    const bucket = Math.floor(milliseconds / LatencyHistogram.#RESOLUTION_MS)
+    if (bucket >= LatencyHistogram.#BUCKETS) this.#slower++
+    else this.#counts[Math.max(0, bucket)]!++
+  }
+
+  /** Nearest-rank tails at bucket resolution (upper bucket edge). */
+  summary() {
+    if (this.#count === 0) return { count: 0 }
+    const round = (value: number) => Math.round(value * 1000) / 1000
+    const at = (q: number) => {
+      const wanted = Math.min(this.#count - 1, Math.floor(q * this.#count))
+      let seen = 0
+      for (let bucket = 0; bucket < this.#counts.length; bucket++) {
+        seen += this.#counts[bucket]!
+        if (seen > wanted) return round((bucket + 1) * LatencyHistogram.#RESOLUTION_MS)
+      }
+      return round(this.#max)
+    }
+    return {
+      count: this.#count,
+      p50: at(0.5),
+      p95: at(0.95),
+      p99: at(0.99),
+      max: round(this.#max),
+      slowerThan1sCount: this.#slower,
+    }
+  }
+}
+
+/**
+ * Per-interval acknowledgement and input-latency observations. Samples and
+ * round durations go to samples.jsonl and rounds.txt as they are taken, so a
+ * failed run keeps them and a long session does not retain them in the heap
+ * it samples; the whole-session latency distributions are fixed-size
+ * histograms.
+ */
 export class SessionRecorder {
-  readonly #path: string | undefined
+  readonly #directory: string | undefined
   #ack: number[] = []
   #input: number[] = []
-  readonly allAck: number[] = []
-  readonly allInput: number[] = []
+  readonly ackTotal = new LatencyHistogram()
+  readonly inputTotal = new LatencyHistogram()
 
   constructor(directory: string | undefined) {
-    this.#path = directory === undefined ? undefined : join(directory, 'samples.jsonl')
+    this.#directory = directory
   }
 
   /** Milliseconds from a component action to its native acknowledgement. */
   ack(milliseconds: number) {
     this.#ack.push(milliseconds)
-    this.allAck.push(milliseconds)
+    this.ackTotal.add(milliseconds)
   }
 
   /** Milliseconds from an OS input command to the app state it causes. */
   input(milliseconds: number) {
     this.#input.push(milliseconds)
-    this.allInput.push(milliseconds)
+    this.inputTotal.add(milliseconds)
   }
 
   /** Close the current interval and append one sample line. */
@@ -208,8 +259,28 @@ export class SessionRecorder {
     }
     this.#ack = []
     this.#input = []
-    if (this.#path) appendFileSync(this.#path, JSON.stringify(row) + '\n')
+    if (this.#directory)
+      appendFileSync(join(this.#directory, 'samples.jsonl'), JSON.stringify(row) + '\n')
     return row
+  }
+
+  /** Append one round's duration to rounds.txt. */
+  round(milliseconds: number) {
+    appendFileSync(join(this.#directory!, 'rounds.txt'), `${milliseconds}\n`)
+  }
+
+  readSamples(): Array<Record<string, unknown>> {
+    return readFileSync(join(this.#directory!, 'samples.jsonl'), 'utf8')
+      .split('\n')
+      .filter(Boolean)
+      .map((line) => JSON.parse(line))
+  }
+
+  readRounds(): number[] {
+    return readFileSync(join(this.#directory!, 'rounds.txt'), 'utf8')
+      .split('\n')
+      .filter(Boolean)
+      .map(Number)
   }
 }
 

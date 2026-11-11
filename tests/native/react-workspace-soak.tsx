@@ -21,7 +21,6 @@ import {
   type WorkspaceState,
 } from '../../examples/react-workspace/model.ts'
 import {
-  distribution,
   openOsInput,
   ownedHost,
   processSample,
@@ -108,6 +107,7 @@ const samples: Array<Record<string, unknown>> = []
 const roundDurationsMs: number[] = []
 let hostPid: number | undefined
 let lastSample = 0
+let lastRound = -1
 
 async function sample(round: number) {
   // Sparse measurement only: collect, then count observed live cells.
@@ -118,25 +118,26 @@ async function sample(round: number) {
   const hostProcess = processSample(hostPid)
   const elapsedMs = performance.now() - started
   lastSample = elapsedMs
-  samples.push(
-    recorder.record({
-      round,
-      elapsedMs,
-      commits: root!.diagnostics.commits,
-      actions,
-      heapSize: statistics.heapSize,
-      objectCount: statistics.objectCount,
-      protectedObjectCount: statistics.protectedObjectCount,
-      bunRssBytes: process.memoryUsage().rss,
-      hostRssKiB: hostProcess?.rssKiB ?? null,
-      host: hostProcess,
-      app: processSample(native ? process.pid : undefined),
-      rootNodes: root!.diagnostics.nodes,
-      rootListeners: root!.diagnostics.listeners,
-      application: app.diagnostics,
-      pendingTimers: pending === undefined ? 0 : 1,
-    })
-  )
+  const row = recorder.record({
+    round,
+    elapsedMs,
+    commits: root!.diagnostics.commits,
+    actions,
+    heapSize: statistics.heapSize,
+    objectCount: statistics.objectCount,
+    protectedObjectCount: statistics.protectedObjectCount,
+    bunRssBytes: process.memoryUsage().rss,
+    hostRssKiB: hostProcess?.rssKiB ?? null,
+    host: hostProcess,
+    app: processSample(native ? process.pid : undefined),
+    rootNodes: root!.diagnostics.nodes,
+    rootListeners: root!.diagnostics.listeners,
+    application: app.diagnostics,
+    pendingTimers: pending === undefined ? 0 : 1,
+  })
+  // A long session keeps its samples on disk, not in the heap it samples.
+  if (session) lastRound = round
+  else samples.push(row)
 }
 
 function shape(value: WorkspaceState) {
@@ -332,14 +333,19 @@ try {
     assert.equal(root.diagnostics.listeners, baseline.rootListeners, `Round ${round} listeners`)
     assert.deepEqual(app.diagnostics, baseline.application, `Round ${round} public resources`)
     assert.equal(pending, undefined)
-    roundDurationsMs.push(performance.now() - roundStarted)
+    if (session) recorder.round(performance.now() - roundStarted)
+    else roundDurationsMs.push(performance.now() - roundStarted)
     if (session) {
       if (performance.now() - started - lastSample >= session.sampleSeconds * 1000)
         await sample(round)
     } else if (round % SAMPLE_EVERY === 0) await sample(round)
   }
   const rounds = round
-  if (session && samples.at(-1)!['round'] !== rounds) await sample(rounds)
+  if (session && lastRound !== rounds) await sample(rounds)
+  if (session) {
+    samples.push(...recorder.readSamples())
+    roundDurationsMs.push(...recorder.readRounds())
+  }
   if (input) assert.equal(typedTasks, rounds)
 
   const plans = rounds * PLANS_PER_ROUND
@@ -399,8 +405,8 @@ try {
     ...(session && {
       session: {
         ...session,
-        ackMs: distribution(recorder.allAck),
-        inputToStateMs: distribution(recorder.allInput),
+        ackMs: recorder.ackTotal.summary(),
+        inputToStateMs: recorder.inputTotal.summary(),
         osInput: input ? { typedTasks, ...input.counts } : null,
       },
     }),

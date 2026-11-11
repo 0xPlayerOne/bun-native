@@ -1,5 +1,10 @@
 import { afterEach, expect, test } from 'bun:test'
-import { distribution, psCpuSeconds, sessionConfig } from '../native/workspace-session.ts'
+import {
+  distribution,
+  LatencyHistogram,
+  psCpuSeconds,
+  sessionConfig,
+} from '../native/workspace-session.ts'
 
 const names = [
   'BUN_NATIVE_SOAK_SECONDS',
@@ -62,4 +67,19 @@ test('macOS ps CPU time is read in every printed form', () => {
   expect(psCpuSeconds('2-01:00:00.00')).toBe(176_400)
   for (const invalid of ['', '12', '1:x', '1:2:3:4:5'])
     expect(() => psCpuSeconds(invalid)).toThrow('Unexpected ps CPU time')
+})
+
+test('the whole-session latency histogram keeps fixed memory and bucket-edge tails', () => {
+  const histogram = new LatencyHistogram()
+  expect(histogram.summary()).toEqual({ count: 0 })
+  for (let index = 1; index <= 100; index++) histogram.add(index / 10)
+  histogram.add(2500)
+  expect(histogram.summary()).toEqual({
+    count: 101,
+    p50: 5.1,
+    p95: 9.61,
+    p99: 10.01,
+    max: 2500,
+    slowerThan1sCount: 1,
+  })
 })
