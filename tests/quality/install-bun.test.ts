@@ -409,7 +409,7 @@ test('the explicit historical manifest selects its own revision without modifyin
   temporary.push(directory)
   const destination = join(directory, 'installed')
   await Bun.write(join(destination, process.platform === 'win32' ? 'bun.exe' : 'bun'), 'fixture')
-  const target = `${process.platform}-${process.arch}`
+  const target = `${process.platform}-${process.arch}` as keyof typeof toolchain.bun.packages
   const historicalRevision = 'f00baaa'
   const historicalCliRevision = `1.4.4-canary.1+${historicalRevision}`
   const historical = structuredClone(toolchain)
@@ -417,7 +417,7 @@ test('the explicit historical manifest selects its own revision without modifyin
   historical.bun.cliRevision = historicalCliRevision
   const pinned = historical.bun.packages[target]
   if (!pinned) throw new Error(`The test runner has no pinned archive for ${target}`)
-  pinned.version = pinned.version.replace(/\\+[a-f0-9]{7}$/, `+${historicalRevision}`)
+  pinned.version = pinned.version.replace(/\+[a-f0-9]{7}$/, `+${historicalRevision}`)
   const manifestPath = join(directory, 'historical.json')
   await Bun.write(manifestPath, JSON.stringify(historical))
 
