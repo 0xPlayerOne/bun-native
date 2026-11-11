@@ -1,6 +1,7 @@
 //! Private borrowed macOS surface access, without timers, input posting or device selection,
 //! the window-owned alert sheets of OS message dialogs ([`alert`]) and OS context
-//! menus ([`context_menu`]), and the two pieces that let assistive technology
+//! menus ([`context_menu`]), plain text on the general pasteboard
+//! ([`pasteboard`]), and the two pieces that let assistive technology
 //! follow keyboard focus into a GPUI window's AccessKit tree: routing AppKit's
 //! focus and hit-test queries to the adapter ([`focus_route`]) and the repeated
 //! key-window notification that keeps the adapter's focus state current
@@ -11,6 +12,7 @@ pub mod alert;
 pub mod context_menu;
 pub mod focus_route;
 pub mod key_status;
+pub mod pasteboard;
 
 use objc2::MainThreadMarker;
 use objc2::rc::Retained;
@@ -30,6 +32,7 @@ pub enum SurfaceError {
     MissingWindow,
     InvalidAlert,
     MissingAccessibility,
+    PasteboardRefused,
 }
 
 impl fmt::Display for SurfaceError {
@@ -45,6 +48,7 @@ impl fmt::Display for SurfaceError {
             Self::MissingAccessibility => {
                 "native view or window class already defines the accessibility focus methods"
             }
+            Self::PasteboardRefused => "the pasteboard refused the plain-text write",
         })
     }
 }

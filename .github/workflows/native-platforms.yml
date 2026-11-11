@@ -576,6 +576,15 @@ jobs:
           $env:BUN_NATIVE_CONTEXT_MENU_ORACLE = $oracle
           bun tests/native/context-menus.ts 2>&1 | Tee-Object -FilePath (Join-Path $evidence 'run.log')
           if ($LASTEXITCODE -ne 0) { throw 'macOS OS context menus were not verified' }
+      - name: macOS clipboard text through the general pasteboard (pbcopy/pbpaste oracle)
+        if: ${{ matrix.shard == 2 && runner.os == 'macOS' && !cancelled() && steps.native-build.outcome == 'success' }}
+        timeout-minutes: 4
+        run: |
+          $evidence = Join-Path $env:NATIVE_EVIDENCE 'clipboard-macos'
+          New-Item -ItemType Directory $evidence | Out-Null
+          $env:BUN_NATIVE_CLIPBOARD_EVIDENCE = $evidence
+          bun tests/native/clipboard-macos.ts 2>&1 | Tee-Object -FilePath (Join-Path $evidence 'run.log')
+          if ($LASTEXITCODE -ne 0) { throw 'macOS pasteboard clipboard text was not verified' }
       - name: Development and AOT native fault containment
         if: ${{ matrix.shard == 2 && (runner.os != 'Linux' && !cancelled() && steps.native-build.outcome == 'success') }}
         timeout-minutes: 5

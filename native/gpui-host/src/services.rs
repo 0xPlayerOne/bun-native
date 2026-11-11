@@ -16,7 +16,10 @@ use std::time::Duration;
 pub(crate) mod app_menu;
 #[cfg(target_os = "linux")]
 pub(crate) mod clipboard;
-#[cfg(not(target_os = "linux"))]
+#[cfg(target_os = "macos")]
+#[path = "services/clipboard_macos.rs"]
+pub(crate) mod clipboard;
+#[cfg(not(any(target_os = "linux", target_os = "macos")))]
 #[path = "services/clipboard_unavailable.rs"]
 pub(crate) mod clipboard;
 #[cfg(any(windows, target_os = "macos", test))]

@@ -78,7 +78,8 @@ export interface ServiceCapabilities {
         read: 'allow' | 'deny'
         write: 'allow' | 'deny'
         scope: 'owned_window'
-        backend: 'x11'
+        /** X11 selections on Linux; the general pasteboard's plain text on macOS. */
+        backend: 'x11' | 'appkit'
       }>
     | Readonly<{ availability: 'unavailable'; reason: 'unsupported_platform' }>
   readonly globalShortcuts:
@@ -257,7 +258,7 @@ export function serviceCapabilities(
           read: policy.clipboard_read ? 'allow' : 'deny',
           write: policy.clipboard_write ? 'allow' : 'deny',
           scope: 'owned_window',
-          backend: 'x11',
+          backend: process.platform === 'darwin' ? 'appkit' : 'x11',
         })
       : Object.freeze({ availability: 'unavailable', reason: 'unsupported_platform' }),
     globalShortcuts: capabilities.includes('global_shortcuts_v1')
