@@ -37,6 +37,25 @@ Timed launches disable native evidence serialization. Development calibration
 uses `BUN_JSC_useDFGJIT=0`, matching native CI's handling of the known DFG
 retention sensitivity (#287); timed launches keep default tiers.
 
+When a launch's second collection checkpoint still reaches a disposed probe,
+the workload records retaining-path evidence before the unchanged assertion
+fails (#629). It writes two files beside that launch's report (`<report>.json`):
+
+- `<report>.json.retention.json`: the probe identities and cell addresses, the
+  GC root-reason totals, and, for each still-reachable probe, its direct
+  retainers and one shortest strong path from a GC root per distinct owner.
+  WeakRef edges are not counted as owners. It holds two analyses. `sameJob` is
+  taken while the assertion's own `deref()` calls still keep the targets alive.
+  `nextTask` is taken after one timer turn. A probe that is absent from
+  `nextTask` had only a transient owner.
+- `<report>.json.retention-heap.json.gz`: the `sameJob` JSC GC-debugging heap
+  snapshot (`bun:jsc` `generateHeapSnapshotForDebugging`), at most 48 MiB
+  compressed.
+
+Each snapshot does its own full collection. That happens after both checkpoints
+have been recorded, so it does not change their results. The report's
+`retentionEvidence` field names both files. Passing launches write neither file.
+
 ## Recorded metrics
 
 Per launch (one fresh application and host process each): spawn-to-runtime
