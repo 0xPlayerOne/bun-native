@@ -6,6 +6,7 @@ import { gunzipSync } from 'bun'
 import {
   analyzeSnapshot,
   cellAddress,
+  normalizeAddress,
   rootReasonCounts,
   writeRetentionEvidence,
   type DebugSnapshot,
@@ -69,6 +70,19 @@ test('retention analysis reports the shortest strong path from a GC root', () =>
   expect(weakOnly.pathsFromRoots).toEqual([])
   expect(absent).toMatchObject({ presentInSnapshot: false })
   expect(rootReasonCounts(snapshot())).toEqual({ StrongReferences: 1, Conservative: 1 })
+})
+
+test('Windows jscDescribe addresses match lowercase unpadded snapshot cells', () => {
+  // Recorded on windows-2022 (run 42951989943): jscDescribe prints
+  // `0x00000281357D3660`, the debugging snapshot stores `0x281357d3660`.
+  expect(normalizeAddress('0x00000281357D3660')).toBe('0x281357d3660')
+  expect(normalizeAddress('0x281357d3660')).toBe('0x281357d3660')
+  expect(normalizeAddress('?')).toBe('?')
+  const [held] = analyzeSnapshot(snapshot(), [
+    { index: 3, kind: 'mount 1 render root', address: '0x0000000000000030', description: '' },
+  ])
+  expect(held).toMatchObject({ presentInSnapshot: true })
+  expect(cellAddress({}).address).toMatch(/^0x[0-9a-f]+$/)
 })
 
 test('a target that is itself a root yields a one-step path', () => {

@@ -42,11 +42,19 @@ export const SNAPSHOT_BYTES_LIMIT = 48 * 1024 * 1024
 /** WeakRef targets are reported by the snapshot but are not strong owners. */
 const WEAK_SOURCES = new Set(['WeakRef', 'JSWeakObjectRef', 'FinalizationRegistry'])
 
+/**
+ * Canonical cell address. `jscDescribe` prints zero-padded uppercase hex on
+ * Windows (`0x00000281357D3660`) while heap snapshots print `0x281357d3660`.
+ */
+export function normalizeAddress(text: string) {
+  return /^0x[0-9a-f]+$/i.test(text) ? `0x${BigInt(text).toString(16)}` : text
+}
+
 export function cellAddress(value: object): { address: string; description: string } {
   const description = jsc.jscDescribe(value)
-  const match = /: (0x[0-9a-f]+)/.exec(description)
+  const match = /: (0x[0-9a-f]+)/i.exec(description)
   if (!match?.[1]) throw new Error('jscDescribe did not report a cell address')
-  return { address: match[1], description: description.slice(0, 240) }
+  return { address: normalizeAddress(match[1]), description: description.slice(0, 240) }
 }
 
 function edgeName(snapshot: DebugSnapshot, type: string, data: number) {
@@ -62,7 +70,7 @@ export function analyzeSnapshot(snapshot: DebugSnapshot, targets: readonly Targe
   for (let offset = 0; offset < snapshot.nodes.length; offset += NODE_FIELDS) {
     const id = snapshot.nodes[offset] as number
     position.set(id, offset)
-    byAddress.set(String(snapshot.nodes[offset + 5]), id)
+    byAddress.set(normalizeAddress(String(snapshot.nodes[offset + 5])), id)
   }
   const describe = (id: number) => {
     const offset = position.get(id)
@@ -127,7 +135,7 @@ export function analyzeSnapshot(snapshot: DebugSnapshot, targets: readonly Targe
   }
 
   return targets.map((target) => {
-    const id = byAddress.get(target.address)
+    const id = byAddress.get(normalizeAddress(target.address))
     if (id === undefined) return { ...target, presentInSnapshot: false as const }
     const retainers = (incoming.get(id) ?? []).map((offset) => ({
       from: step(snapshot.edges[offset]!, edgeText(offset)),
