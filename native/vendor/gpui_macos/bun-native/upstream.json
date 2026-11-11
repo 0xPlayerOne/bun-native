@@ -4,11 +4,7 @@
   "commit": "ba63a022c9a22ca66d68ef2a8f0bb9b5b0a9984d",
   "package": "crates/gpui_macos",
   "workspace_manifest_sha256": "1e7c07401d52902c7070c7b0ca7584f32e9dde25e17829947b3292c895f8f255",
-  "patched": [
-    "src/display_link.rs",
-    "src/gpui_macos.rs",
-    "src/window.rs"
-  ],
+  "patched": ["src/display_link.rs", "src/gpui_macos.rs", "src/window.rs"],
   "files": {
     "Cargo.toml": {
       "bytes": 2267,
