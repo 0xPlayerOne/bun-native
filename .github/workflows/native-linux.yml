@@ -991,7 +991,7 @@ jobs:
           done
       - name: Solid workspace long-session ownership in development and AOT
         if: ${{ matrix.shard == 1 && (!cancelled() && steps.native-build.outcome == 'success') }}
-        timeout-minutes: 6
+        timeout-minutes: 12
         env:
           BUN_NATIVE_HOST: ${{ github.workspace }}/target/release/bun-native-host
         run: |
@@ -1012,9 +1012,16 @@ jobs:
               "$evidence-session" -- timeout 150s "${command[@]}" 2>&1 | tee "$evidence/fixture.log"
             python3 scripts/quality/native-solid-workspace-soak.py "$evidence/soak-result.json"
           done
+          # A bounded wall-clock session of the same round with real X11
+          # typing, Return and wheel input each round (#250).
+          for mode in development aot; do
+            BUN_NATIVE_SOAK_SAMPLE_SECONDS=10 bash scripts/quality/native-workspace-long-session.sh \
+              solid "$mode" "$NATIVE_EVIDENCE/solid-workspace-soak-package" \
+              "$NATIVE_EVIDENCE/solid-workspace-session-$mode" 120
+          done
       - name: React workspace long-session ownership in development and AOT
         if: ${{ matrix.shard == 3 && (!cancelled() && steps.native-build.outcome == 'success') }}
-        timeout-minutes: 6
+        timeout-minutes: 12
         env:
           BUN_NATIVE_HOST: ${{ github.workspace }}/target/release/bun-native-host
         run: |
@@ -1034,6 +1041,13 @@ jobs:
               dbus-run-session -- bash scripts/quality/native-linux-session.sh \
               "$evidence-session" -- timeout 150s "${command[@]}" 2>&1 | tee "$evidence/fixture.log"
             python3 scripts/quality/native-react-workspace-soak.py "$evidence/soak-result.json"
+          done
+          # A bounded wall-clock session of the same round with real X11
+          # typing, Return and wheel input each round (#248).
+          for mode in development aot; do
+            BUN_NATIVE_SOAK_SAMPLE_SECONDS=10 bash scripts/quality/native-workspace-long-session.sh \
+              react "$mode" "$NATIVE_EVIDENCE/react-workspace-soak-package" \
+              "$NATIVE_EVIDENCE/react-workspace-session-$mode" 120
           done
       - name: Generated Solid and React templates in development and inspected AOT
         if: ${{ matrix.shard == 3 && (!cancelled() && steps.native-build.outcome == 'success') }}
