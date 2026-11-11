@@ -121,7 +121,8 @@ export interface ServiceCapabilities {
         availability: 'available'
         permission: 'allow' | 'deny'
         scope: 'owned_window'
-        backend: 'xdg_desktop_portal'
+        /** The desktop portal's file chooser on Linux; open and save panel sheets on macOS. */
+        backend: 'xdg_desktop_portal' | 'appkit'
       }>
     | Readonly<{ availability: 'unavailable'; reason: 'unsupported_platform' }>
   /**
@@ -291,7 +292,7 @@ export function serviceCapabilities(
           availability: 'available',
           permission: policy.file_dialogs ? 'allow' : 'deny',
           scope: 'owned_window',
-          backend: 'xdg_desktop_portal',
+          backend: process.platform === 'darwin' ? 'appkit' : 'xdg_desktop_portal',
         })
       : Object.freeze({ availability: 'unavailable', reason: 'unsupported_platform' }),
     // The modal overlay and a focus request are the only native features used.

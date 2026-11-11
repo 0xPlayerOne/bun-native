@@ -112,8 +112,16 @@ rejects with `NativeStateError` `invalid_handle`.
   handle is not implemented; that path is not qualified.
 - Flatpak/Snap sandboxes, where the document portal returns `/run/user/.../doc`
   paths, are not qualified.
-- macOS (`NSOpenPanel`/`NSSavePanel`) and Windows (`IFileDialog`) report
+- Windows (`IFileDialog`) reports
   `{ availability: 'unavailable', reason: 'unsupported_platform' }`.
+- macOS (2026-11-11 addendum) shows `NSOpenPanel`/`NSSavePanel` as sheets on
+  the owner window with backend `appkit`, through the same protocol, grant and
+  lifecycle. GPUI's `prompt_for_paths` was not used for the same reasons as on
+  Linux: it cannot close a shown panel, attach it to a chosen window, set a
+  title or filters. Panels filter by file name extension only, so other globs
+  are refused, and they offer no filter chooser. See
+  [native services](../native-services.md#macos-open-and-save-panels); the hosted
+  check has not yet run.
 
 ## Message and confirm dialogs
 

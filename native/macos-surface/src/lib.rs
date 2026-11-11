@@ -1,7 +1,8 @@
 //! Private borrowed macOS surface access, without timers, input posting or device selection,
 //! the window-owned alert sheets of OS message dialogs ([`alert`]) and OS context
 //! menus ([`context_menu`]), plain text on the general pasteboard
-//! ([`pasteboard`]), OS-wide Carbon hot keys ([`hot_keys`]), and the two pieces that let assistive technology
+//! ([`pasteboard`]), OS-wide Carbon hot keys ([`hot_keys`]), window-owned
+//! open and save panel sheets ([`file_panel`]), and the two pieces that let assistive technology
 //! follow keyboard focus into a GPUI window's AccessKit tree: routing AppKit's
 //! focus and hit-test queries to the adapter ([`focus_route`]) and the repeated
 //! key-window notification that keeps the adapter's focus state current
@@ -10,6 +11,7 @@
 
 pub mod alert;
 pub mod context_menu;
+pub mod file_panel;
 pub mod focus_route;
 pub mod hot_keys;
 pub mod key_status;
@@ -34,6 +36,7 @@ pub enum SurfaceError {
     InvalidAlert,
     MissingAccessibility,
     PasteboardRefused,
+    InvalidPanel,
 }
 
 impl fmt::Display for SurfaceError {
@@ -50,6 +53,7 @@ impl fmt::Display for SurfaceError {
                 "native view or window class already defines the accessibility focus methods"
             }
             Self::PasteboardRefused => "the pasteboard refused the plain-text write",
+            Self::InvalidPanel => "a file panel filter names no content type",
         })
     }
 }

@@ -32,9 +32,14 @@ pub(crate) mod context_menus;
 pub(crate) mod drops;
 #[cfg(target_os = "linux")]
 pub(crate) mod file_dialogs;
-#[cfg(not(target_os = "linux"))]
+#[cfg(target_os = "macos")]
+#[path = "services/file_dialogs_macos.rs"]
+pub(crate) mod file_dialogs;
+#[cfg(not(any(target_os = "linux", target_os = "macos")))]
 #[path = "services/file_dialogs_unavailable.rs"]
 pub(crate) mod file_dialogs;
+#[cfg(any(target_os = "macos", test))]
+pub(crate) mod file_panel_model;
 #[cfg(any(target_os = "linux", target_os = "macos", windows))]
 pub(crate) mod files;
 #[cfg(not(any(target_os = "linux", target_os = "macos", windows)))]

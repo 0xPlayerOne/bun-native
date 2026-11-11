@@ -601,6 +601,22 @@ jobs:
           $env:BUN_NATIVE_HOT_KEY_ORACLE = $oracle
           bun tests/native/global-shortcuts-macos.ts 2>&1 | Tee-Object -FilePath (Join-Path $evidence 'run.log')
           if ($LASTEXITCODE -ne 0) { throw 'macOS global shortcuts were not verified' }
+      - name: macOS file dialogs through NSOpenPanel and NSSavePanel sheets (Accessibility oracle)
+        if: ${{ matrix.shard == 2 && runner.os == 'macOS' && !cancelled() && steps.native-build.outcome == 'success' }}
+        timeout-minutes: 6
+        run: |
+          $oracle = Join-Path $env:NATIVE_EVIDENCE 'macos-file-panel-oracle'
+          xcrun clang -fobjc-arc -Wall -Wextra -Werror -framework AppKit -framework ApplicationServices `
+            tests/native/macos-file-panel-oracle.m -o $oracle
+          if ($LASTEXITCODE -ne 0) { throw 'The independent Accessibility file panel oracle did not compile' }
+          $trust = & $oracle trusted | ConvertFrom-Json
+          if (-not $trust.trusted) { throw 'The runner does not trust the file panel oracle for Accessibility' }
+          $evidence = Join-Path $env:NATIVE_EVIDENCE 'file-dialogs-macos'
+          New-Item -ItemType Directory $evidence | Out-Null
+          $env:BUN_NATIVE_FILE_DIALOG_EVIDENCE = $evidence
+          $env:BUN_NATIVE_FILE_PANEL_ORACLE = $oracle
+          bun tests/native/file-dialogs-macos.ts 2>&1 | Tee-Object -FilePath (Join-Path $evidence 'run.log')
+          if ($LASTEXITCODE -ne 0) { throw 'macOS file dialogs were not verified' }
       - name: Development and AOT native fault containment
         if: ${{ matrix.shard == 2 && (runner.os != 'Linux' && !cancelled() && steps.native-build.outcome == 'success') }}
         timeout-minutes: 5

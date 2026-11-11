@@ -966,6 +966,7 @@ bus is configured; the host talks to `org.freedesktop.portal.FileChooser`
 (xdg-desktop-portal) on that bus. A bus without a portal, or a portal without
 a file chooser backend, rejects with `service_unavailable` when a dialog is
 shown. Every bus call is bounded to two seconds; waiting for the user is not.
+macOS always advertises it, with backend `appkit` ([below](#macos-open-and-save-panels)).
 
 Options are bounded and validated by both language implementations: a
 one-line `title` of at most 256 UTF-8 bytes, an optional `acceptLabel` of at
@@ -1012,9 +1013,41 @@ aborted signal, owner close and shutdown. On Wayland the same portal dialog
 opens unparented (no xdg-foreign handle is exported) and closes on abort and
 on a compositor close; selection through it was not run there
 ([Wayland](#wayland)). Flatpak/Snap document-portal paths, other portal
-backends, macOS and Windows are not qualified. Message and confirm dialogs are not OS alerts; they are drawn on
+backends and Windows are not qualified. Message and confirm dialogs are not OS alerts; they are drawn on
 the modal overlay, [below](#message-and-confirm-dialogs). See
 [ADR 0013](decisions/0013-native-file-dialogs.md).
+
+### macOS open and save panels
+
+On macOS the host attaches an `NSOpenPanel` (open, several files, folder) or
+`NSSavePanel` (save) **sheet** to the owner window, as it does `NSAlert` sheets.
+A sheet runs no nested event loop, so GPUI keeps serving other windows and
+commands, and the owner is document-modal while it is attached. The title is
+set as the panel's message, so the sheet shows it, and as its window title;
+`acceptLabel` is the panel's prompt, `folder` its starting directory and `name`
+the save panel's name field. Panels filter by content type, so only `*.ext`
+patterns (and `*` or `*.*`, which allow every file) are accepted; any other glob
+is refused with `service_unavailable` before a panel is shown, never
+approximated. A panel has no filter chooser: the union of every filter's
+extensions is allowed at once. Accepted URLs must be local file URLs; anything
+else fails the whole selection with `native_failure`, as do a path count that
+does not match the mode and a response AppKit reports without a selection.
+Abort, close, owner close and shutdown end the sheet with
+`endSheet:returnCode:`; such a sheet reports no selection, and an application
+close is answered once AppKit has ended it. The panel's security-scoped access
+is not kept: the paths are data, as on Linux.
+
+The hosted macOS step runs [`file-dialogs-macos.ts`](../tests/native/file-dialogs-macos.ts)
+in development mode with an independent Accessibility oracle,
+[`macos-file-panel-oracle.m`](../tests/native/macos-file-panel-oracle.m), that
+finds the sheet by its title and presses its buttons. It requires default
+denial, the accept label on a filtered file panel and Cancel giving `cancelled`,
+the accept button of a folder panel started in a temporary folder choosing that
+folder, the accept button of a save panel choosing the suggested name in that
+folder without creating it, an unsupported glob refused with no sheet, a second
+dialog refused while one is live, and the sheet gone after abort, owner close
+and shutdown. Choosing an individual file in the panel's browser is not
+automated, and it is pending its first hosted run; there is no AOT macOS run.
 
 ## Message and confirm dialogs
 
@@ -1448,7 +1481,7 @@ already exists. The linked follow-ups belong to
 | Global shortcuts  | `registerGlobalShortcut`; `globalShortcuts` grant             | X11 dev+AOT verified with release host                                                              | Unavailable (`unsupported_platform`)                               | Carbon hot keys; hosted CI dev only (Event Manager oracle), pending first run            | Unavailable                                                  | macOS/Windows backends, Wayland portal design and keyboard-map change tracking. [#301](https://github.com/0xPlayerOne/bun-native/issues/301).                                                                                                                                            |
 | Application menu  | `setMenuBar` / `clearMenuBar`; `appMenu` grant                | Unavailable (GPUI stores menus only)                                                                | Unavailable (GPUI stores menus only)                               | AppKit `NSMenu` bar; hosted CI only (AX oracle)                                          | Unavailable                                                  | Dock menus, dynamic validation, Linux/Windows menu bars drawn by the application. [#239](https://github.com/0xPlayerOne/bun-native/issues/239).                                                                                                                                          |
 | Context menus     | `window.showContextMenu`; no grant                            | Unavailable                                                                                         | Unavailable                                                        | AppKit `NSMenu` pop-up; hosted CI only (AX oracle)                                       | `TrackPopupMenuEx`; hosted CI only (UIA oracle)              | Dock menu, dynamic validation, icons, element-relative positioning. [#239](https://github.com/0xPlayerOne/bun-native/issues/239).                                                                                                                                                        |
-| File dialogs      | `showOpenDialog` / `showSaveDialog`; `fileDialogs` grant      | xdg-desktop-portal (GTK) dev+AOT verified                                                           | Portal (GTK) opens unparented; abort and compositor close verified | Unavailable                                                                              | Unavailable                                                  | macOS/Windows panels, Wayland parenting, sandboxed document-portal paths and explicit file-grant conversion. [#239](https://github.com/0xPlayerOne/bun-native/issues/239).                                                                                                               |
+| File dialogs      | `showOpenDialog` / `showSaveDialog`; `fileDialogs` grant      | xdg-desktop-portal (GTK) dev+AOT verified                                                           | Portal (GTK) opens unparented; abort and compositor close verified | Open/save panel sheets; hosted CI dev only (AX oracle), pending first run                | Unavailable                                                  | macOS/Windows panels, Wayland parenting, sandboxed document-portal paths and explicit file-grant conversion. [#239](https://github.com/0xPlayerOne/bun-native/issues/239).                                                                                                               |
 | Message dialogs   | `showMessageDialog` / `showConfirmDialog`; no grant           | Modal overlay dev+AOT verified locally                                                              | Modal overlay (same core code); unqualified on Wayland             | Modal overlay, or opt-in `NSAlert` sheet (hosted CI, AX oracle)                          | Modal overlay, or opt-in task dialog (hosted CI, UIA oracle) | Opt-in `taskDialogs` backends: `NSAlert` sheets (macOS) and task dialogs (Windows), hosted evidence only. [#239](https://github.com/0xPlayerOne/bun-native/issues/239).                                                                                                                  |
 | Notifications     | `postNotification`; `notifications` grant                     | Freedesktop D-Bus (dunst) dev+AOT verified                                                          | Freedesktop (dunst) post and withdraw verified                     | Unavailable                                                                              | Unavailable                                                  | macOS/Windows backends, additional notification servers, named actions and replacement. [#302](https://github.com/0xPlayerOne/bun-native/issues/302).                                                                                                                                    |
 | Drag/drop         | `registerDropTarget`; `dragDrop` grant                        | XDND dev+AOT verified locally (core/Solid/React)                                                    | Unavailable (`unsupported_platform`)                               | AppKit; hosted CI only (NSDraggingSession source)                                        | OLE; hosted CI only (DoDragDrop source)                      | Other payload kinds and file promises, refusal (GPUI always accepts), Wayland, physical devices and real file managers, Windows resolution in the Solid/React fixtures (core resolves drive roots on hosted windows-2022). [#303](https://github.com/0xPlayerOne/bun-native/issues/303). |
