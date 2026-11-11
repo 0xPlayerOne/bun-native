@@ -79,6 +79,7 @@ const entries = {
   'adea-components': 'examples/adea-components/main.tsx',
   'solid-workspace-flow': 'tests/native/solid-workspace.tsx',
   'solid-workspace-soak': 'tests/native/solid-workspace-soak.tsx',
+  'solid-workspace-terminal': 'tests/native/solid-workspace-terminal.tsx',
   'solid-input-intent': 'tests/native/solid-input-intent.tsx',
   'solid-interactions': 'tests/native/solid-interactions.tsx',
   'solid-input-viewport': 'tests/native/solid-input-viewport.tsx',
@@ -88,6 +89,7 @@ const entries = {
   'react-workspace': 'examples/react-workspace/main.tsx',
   'react-workspace-flow': 'tests/native/react-workspace.tsx',
   'react-workspace-soak': 'tests/native/react-workspace-soak.tsx',
+  'react-workspace-terminal': 'tests/native/react-workspace-terminal.tsx',
   'react-interactions': 'tests/native/react-interactions.tsx',
   'react-input-viewport': 'tests/native/react-input-viewport.tsx',
   'react-streaming-list': 'tests/native/react-streaming-list.tsx',
@@ -107,6 +109,7 @@ const solidEntry =
   entry === 'adea-components' ||
   entry === 'solid-workspace-flow' ||
   entry === 'solid-workspace-soak' ||
+  entry === 'solid-workspace-terminal' ||
   entry === 'solid-input-intent' ||
   entry === 'solid-interactions' ||
   entry === 'solid-input-viewport' ||
@@ -120,6 +123,7 @@ const reactEntry =
   entry === 'react-workspace' ||
   entry === 'react-workspace-flow' ||
   entry === 'react-workspace-soak' ||
+  entry === 'react-workspace-terminal' ||
   entry === 'react-interactions' ||
   entry === 'react-input-viewport' ||
   entry === 'react-streaming-list' ||
@@ -315,10 +319,13 @@ async function sourceHashes() {
   for (const path of workloadSources.keys()) sources.add(path)
   if (entry === 'solid-workspace-soak' || entry === 'react-workspace-soak')
     sources.add('tests/native/workspace-session.ts')
+  if (entry === 'solid-workspace-terminal' || entry === 'react-workspace-terminal')
+    sources.add('tests/native/workspace-terminal.ts')
   if (
     entry === 'solid-workspace' ||
     entry === 'solid-workspace-flow' ||
-    entry === 'solid-workspace-soak'
+    entry === 'solid-workspace-soak' ||
+    entry === 'solid-workspace-terminal'
   ) {
     sources.add('examples/solid-workspace/app.tsx')
     sources.add('examples/solid-workspace/model.ts')
@@ -339,7 +346,8 @@ async function sourceHashes() {
   if (
     entry === 'react-workspace' ||
     entry === 'react-workspace-flow' ||
-    entry === 'react-workspace-soak'
+    entry === 'react-workspace-soak' ||
+    entry === 'react-workspace-terminal'
   ) {
     sources.add('examples/react-workspace/app.tsx')
     sources.add('examples/shared/terminal.ts')

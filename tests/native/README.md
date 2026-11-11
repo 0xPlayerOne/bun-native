@@ -42,6 +42,14 @@ selection, click, focus and value requests and checks character bounds and the
 tree beneath a modal dialog. See
 [native text](../../docs/native-text.md#accessibility-roles-accessibility_v1).
 
+`tests/native/solid-workspace-terminal.tsx` and
+`tests/native/react-workspace-terminal.tsx` are self-driving through
+`workspace-terminal.ts`: the actual workspace with its real `/bin/sh` on an
+owned PTY, XTest clicks and keys into the terminal pane, the PTY round trip of
+a command's output, its paint (host paint evidence and window pixels),
+Interrupt and Alt+F4. They need `BUN_NATIVE_EVIDENCE_LOG` and
+`BUN_NATIVE_EVIDENCE_NONCE` for the host's paint evidence.
+
 `tests/native/accessibility-platform.ts` is the macOS and Windows counterpart:
 an independent AX (`macos-accessibility-oracle.m`) or UI Automation
 (`windows-accessibility-oracle.ps1`) client reads the same element kinds and

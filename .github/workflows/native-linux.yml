@@ -191,7 +191,7 @@ jobs:
           # compile their fixtures inline. A new entry defaults to shard 2.
           shard1=' native-window input-race bridge javascript core-lifecycle event-throughput fault scheduling layout interactions '
           # shellcheck disable=SC2016 # the xargs child shell expands its own variables
-          for entry in native-window input-race bridge javascript core-lifecycle event-throughput fault scheduling layout interactions services display-semantics display-wayland clipboard global-shortcuts notifications overlays message-dialogs popups wayland filesystem-grants text-input accessibility screen-reader ime processes file-dialogs drag-drop solid-drag-drop react-drag-drop solid-services react-services solid solid-input-intent solid-interactions react react-interactions react-behavior react-workload react-workspace react-workspace-flow; do
+          for entry in native-window input-race bridge javascript core-lifecycle event-throughput fault scheduling layout interactions services display-semantics display-wayland clipboard global-shortcuts notifications overlays message-dialogs popups wayland filesystem-grants text-input accessibility screen-reader ime processes file-dialogs drag-drop solid-drag-drop react-drag-drop solid-services react-services solid solid-input-intent solid-interactions react react-interactions react-behavior react-workload react-workspace react-workspace-flow solid-workspace-terminal react-workspace-terminal; do
             case "$SHARD" in
               1) [[ $shard1 == *" $entry "* ]] || continue ;;
               2) [[ $shard1 != *" $entry "* ]] || continue ;;
@@ -704,6 +704,37 @@ jobs:
               "$evidence-session" -- python3 scripts/quality/native-diagnostics-linux.py \
               --scenario react-workspace --mode "$mode" --host-profile release \
               --output "$evidence" -- "${command[@]}"
+          done
+      - name: Development and AOT workspace terminal pane OS input, PTY round trip and paint through Solid and React
+        if: matrix.shard == 2
+        timeout-minutes: 3
+        env:
+          BUN_NATIVE_HOST: ${{ github.workspace }}/target/release/bun-native-host
+        run: |
+          # The actual workspaces with their real /bin/sh on an owned PTY: an
+          # XTest click focuses the terminal input at its painted bounds, typed
+          # keys and Return run a command whose output differs from its text,
+          # the output returns through the PTY and is painted (host paint
+          # evidence and window pixels), Interrupt stops a foreground job, and
+          # openbox Alt+F4 closes the window with every owner released.
+          for framework in solid react; do
+            entry="$framework-workspace-terminal"
+            for mode in development aot; do
+              command=(bun "$NATIVE_EVIDENCE/$entry-package/development/application.js")
+              if [[ "$mode" == aot ]]; then
+                command=("$NATIVE_EVIDENCE/$entry-package/$entry")
+              fi
+              evidence="$NATIVE_EVIDENCE/$entry-$mode"
+              mkdir "$evidence"
+              BUN_NATIVE_TERMINAL_EVIDENCE="$evidence" BUN_NATIVE_TERMINAL_MODE="$mode" \
+                BUN_NATIVE_EVIDENCE_LOG="$evidence/host-evidence.jsonl" \
+                BUN_NATIVE_EVIDENCE_NONCE="$(python3 -c 'import secrets; print(secrets.token_hex(16))')" \
+                xvfb-run --auto-servernum --server-args='-screen 0 1280x800x24 -nolisten tcp' \
+                dbus-run-session -- bash scripts/quality/native-linux-session.sh \
+                "$evidence-session" -- env GPUI_X11_SCALE_FACTOR=1 \
+                "${command[@]}" 2>&1 | tee "$evidence/run.log"
+              test -s "$evidence/result.json"
+            done
           done
       - name: Development and AOT React update and lifecycle diagnostics
         if: matrix.shard == 2
@@ -1231,6 +1262,7 @@ jobs:
             ${{ runner.temp }}/native-evidence/ime-development/
             ${{ runner.temp }}/native-evidence/ime-aot/
             ${{ runner.temp }}/native-evidence/accessibility-*/
+            ${{ runner.temp }}/native-evidence/*-workspace-terminal-*/
             ${{ runner.temp }}/native-evidence/screen-reader-development/
             ${{ runner.temp }}/native-evidence/screen-reader-aot/
             ${{ runner.temp }}/native-evidence/screen-reader-*-session/
@@ -1305,6 +1337,7 @@ jobs:
             echo 'Linux OS file dialogs run through xdg-desktop-portal and its GTK file chooser on an isolated D-Bus session in development and inspected AOT: default denial, a bus without a portal reported as unavailable, a real dialog transient for the owner window, forged portal responses from an independent bus client ignored, real keyboard selection of one file, several files and a folder, a save selection that creates no file, Escape cancellation, and the OS dialog closed after an aborted signal, owner close and shutdown. Selected paths are data, not filesystem grants. This does not qualify file dialogs on Wayland, in Flatpak/Snap sandboxes, on macOS or Windows, or with other portal backends.'
             echo 'One Wayland step runs on a headless sway (wlroots) compositor with XWayland disabled and no DISPLAY, in development and inspected AOT at scale 1 and development at output scale 2: the window maps as an xdg-shell view and paints within 10 s on lavapipe Vulkan, a persistent virtual pointer click and virtual-keyboard text reach the app, grim pixels match the painted tree, the display snapshot matches the compositor output, X11-only clipboard/shortcut/drag-drop/popup capabilities are absent and their requests rejected, a dunst notification and an unparented portal file dialog work, the compositor closes the window and shutdown is clean. This does not qualify GNOME/KDE, fractional scaling, IME or physical input/GPU.'
             echo 'A second Wayland step runs headless sway with two outputs (1280x800 at scale 1, 2048x1536 at scale 2) in development and inspected AOT: moving a window between outputs reports one display change with the new output size and scale, moving within an output or spanning both reports nothing, reconfiguring the window output (mode, integer and fractional scale) reports to every window on it, every snapshot names its output (displayId = v5 of the sway output name), a connected output is reported only once a window moves onto it, unplugging another output reports nothing, and unplugging the window own output makes its snapshot fail closed. Expected values come from sway IPC. This does not qualify physical monitors, EDID identity, other compositors, a work area or macOS/Windows migration.'
+            echo 'The Solid and React workspaces run with their real /bin/sh on an owned 80x24 pseudo-terminal in development and inspected AOT: an XTest click focuses the terminal command input at the bounds the host painted it at, typed keys reach the native input, Return runs a command whose output differs from its text, the output returns through the PTY into the terminal session and the host paints it (paint evidence plus text-coloured window pixels inside its painted bounds), the Interrupt button stops a foreground job with Ctrl-C through the PTY, and openbox Alt+F4 closes the window with every owner released. This does not qualify a full terminal emulator (escape sequences are stripped), Wayland, or macOS/Windows terminals.'
             echo 'Real Orca 46 runs in the isolated X11 session in development and inspected AOT, speaking through a private speech-dispatcher whose only output module writes each utterance to a file. XTEST Tab, Shift+Tab, typing, caret keys, a selection deletion and Space must produce matching Bun focus/input events and the exact Orca phrases (role, name, read-only state, typed value, characters at the caret, selection and deletion, the modal dialog and its first control, and every control again after the dialog closes). This does not qualify Orca braille, other screen readers, Wayland or physical input.'
             echo 'Solid runs the exact source-fingerprinted generated module in development and through inspected Bun AOT against the same release GPUI host. Twelve scenarios require keyed identity, every native edit, delayed revision-aware replacement, shared keyboard/pointer/focus phases, caret and selection behavior, complete native paint, OS close and owner cleanup. These correctness cases do not close the separate retained-object investigation or establish matched framework performance.'
             echo 'Bridge acknowledgement timings run with instrumentation disabled; they are not display-presentation timings. The startup/RSS baseline retains one warm-up and five measured fresh-process trials per mode, alternating order, with a two-second idle interval and uncontrolled OS caches.'
