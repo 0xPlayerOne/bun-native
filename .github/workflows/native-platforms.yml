@@ -1008,14 +1008,12 @@ jobs:
             }
           }
           if ($failures.Count -gt 0) { throw ($failures -join '; ') }
-      - name: Development and AOT macOS Solid and React workspace references and long sessions (#248, #250)
+      - name: Development and AOT macOS Solid and React workspace references (#248, #250)
         if: ${{ matrix.shard == 1 && (runner.os == 'macOS' && !cancelled() && steps.native-build.outcome == 'success') }}
-        timeout-minutes: 25
+        timeout-minutes: 12
         run: |
           # The Linux workspace scenarios, unchanged, driven by CoreGraphics
-          # pointer, wheel and key events and Accessibility resize/close. Then
-          # a bounded long session of each workspace soak fixture on the same
-          # hosted macOS VM (not a physical Mac).
+          # pointer, wheel and key events and Accessibility resize/close.
           if (-not (Get-Command magick -ErrorAction SilentlyContinue) -and -not (Get-Command convert -ErrorAction SilentlyContinue)) {
             brew install imagemagick
             if ($LASTEXITCODE -ne 0) { throw 'ImageMagick for the workspace pixel checks did not install' }
@@ -1060,6 +1058,45 @@ jobs:
                 if ($LASTEXITCODE -ne 0) { $failed += "$scenario $mode (exit $LASTEXITCODE)" }
               }
             }
+            # Every case runs so one failure does not hide the others' evidence.
+            if ($failed) { throw "macOS workspace references not verified: $($failed -join ', ')" }
+          } finally {
+            if ($original -ge 0) { & $oracle set $main.number $original | Out-Null }
+            Write-Output "modifier flags after the restore: $(& $flags)"
+          }
+      - name: Development and AOT macOS Solid and React workspace long sessions (#248, #250)
+        if: ${{ matrix.shard == 1 && (runner.os == 'macOS' && !cancelled() && steps.native-build.outcome == 'success') }}
+        timeout-minutes: 13
+        run: |
+          # A bounded long session of each workspace soak fixture on the same
+          # hosted macOS VM (not a physical Mac), timed apart from the
+          # reference scenarios above so they keep their own deadline.
+          # The fixtures open 1000x760 and 1120x760 windows, which AppKit fits
+          # to the hosted 1024x768 display. Use the smallest 1x desktop mode that
+          # holds them for this step only, and restore the original afterwards.
+          $oracle = Join-Path $env:NATIVE_EVIDENCE 'macos-workspace-display-oracle'
+          xcrun clang -fobjc-arc -Wall -Wextra -Werror -framework AppKit -framework CoreGraphics `
+            -framework ApplicationServices tests/native/macos-display-oracle.m -o $oracle
+          if ($LASTEXITCODE -ne 0) { throw 'The display oracle did not compile' }
+          $main = (& $oracle screens | ConvertFrom-Json) | Where-Object { $_.main } | Select-Object -First 1
+          if (!$main) { throw 'No main display is available' }
+          $modes = & $oracle modes $main.number | ConvertFrom-Json
+          $original = $modes.currentIndex
+          $large = $modes.modes | Where-Object { $_.pixelWidth -eq $_.width -and $_.width -ge 1200 -and $_.height -ge 900 } |
+            Sort-Object { $_.width * $_.height } | Select-Object -First 1
+          if (!$large) { throw 'The hosted display offers no desktop mode that holds the workspace fixtures' }
+          # Record the session's held modifier flags around each display change:
+          # the OS input helper refuses to inject while any is held.
+          $flags = { & '${{ matrix.python }}' -c "import ctypes; a=ctypes.CDLL('/System/Library/Frameworks/ApplicationServices.framework/ApplicationServices'); a.CGEventSourceFlagsState.restype=ctypes.c_uint64; print(hex(a.CGEventSourceFlagsState(0)))" }
+          Write-Output "modifier flags before the display change: $(& $flags)"
+          try {
+            if ($modes.current.height -lt 900 -or $modes.current.width -lt 1200) {
+              & $oracle set $main.number $large.index | Tee-Object -FilePath (Join-Path $env:NATIVE_EVIDENCE 'workspace-display-mode.json')
+              if ($LASTEXITCODE -ne 0) { throw 'The workspace display mode was not applied' }
+              Start-Sleep -Seconds 2
+              Write-Output "modifier flags after the display change: $(& $flags)"
+            }
+            $failed = @()
             # The fixed soak round repeated for 120 s per framework and mode,
             # with one CoreGraphics-typed entry, Return and 24 wheel notches per
             # round through the bounded helper, sampled every 10 s.
@@ -1097,7 +1134,7 @@ jobs:
               }
             }
             # Every case runs so one failure does not hide the others' evidence.
-            if ($failed) { throw "macOS workspace references not verified: $($failed -join ', ')" }
+            if ($failed) { throw "macOS workspace long sessions not verified: $($failed -join ', ')" }
           } finally {
             if ($original -ge 0) { & $oracle set $main.number $original | Out-Null }
             Write-Output "modifier flags after the restore: $(& $flags)"
