@@ -779,6 +779,15 @@ jobs:
               tests/native/macos-input-oracle.m -o $driver
             if ($LASTEXITCODE -ne 0) { throw 'The macOS input controller did not compile' }
             $env:BUN_NATIVE_SR_INPUT = $driver
+            # The independent AX client reads the host's AXFocusedUIElement at
+            # every focus step, separating host exposure from VoiceOver speech.
+            $axOracle = Join-Path $env:NATIVE_EVIDENCE 'macos-accessibility-oracle'
+            if (-not (Test-Path $axOracle)) {
+              xcrun clang -fobjc-arc -Wall -Wextra -Werror -framework AppKit -framework ApplicationServices `
+                tests/native/macos-accessibility-oracle.m -o $axOracle
+              if ($LASTEXITCODE -ne 0) { throw 'The independent Accessibility client did not compile' }
+            }
+            $env:BUN_NATIVE_A11Y_ORACLE = $axOracle
           } else {
             # NV Access's signed NVDA 2024.4.2 launcher, pinned by SHA-256. Its
             # NSIS payload holds the complete program directory, which runs
