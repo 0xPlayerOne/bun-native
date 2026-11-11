@@ -96,7 +96,15 @@ JSON.stringify(out);`,
     assert.equal(other.number, screen.number)
     assert.equal(other.backingScaleFactor, screen.backingScaleFactor)
     assertRect(other.frame, screen.frame, 'osascript frame')
-    assertRect(other.visibleFrame, screen.visibleFrame, 'osascript visibleFrame')
+    // On a display without the system menu bar the two readers disagree
+    // steadily, not mid-relayout: job 130748685321 saw osascript report a
+    // 800-point-high work area on the 1280x800 virtual display and this
+    // NSApplication helper 775 (a 25-point menu bar) for all 15 s of reads,
+    // while the main display agreed. The host is an NSApplication like the
+    // helper, so the helper defines non-main work areas; osascript still
+    // checks the main display's work area and every display's frame, scale
+    // and number.
+    if (screen.main) assertRect(other.visibleFrame, screen.visibleFrame, 'osascript visibleFrame')
     // NSScreen points and CoreGraphics display bounds describe the same size.
     assert(close(screen.cgBounds.width, screen.frame.width))
     assert(close(screen.cgBounds.height, screen.frame.height))
