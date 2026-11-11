@@ -98,3 +98,14 @@ center's delegate and are matched by request identifier in the UI-thread
 registry, so the ownership rules above are unchanged. The hosted macOS check is
 described in [native services](../native-services.md#macos-user-notifications);
 the prompt, delivery and activation are not automated.
+
+Packaging follows from this: a macOS `native build` places the host at
+`BunNativeHost.app/Contents/MacOS/bun-native-host` with an `Info.plist` whose
+`CFBundleIdentifier` is the application's `--bundle-id` (by default derived from
+its package name), records it as `host.bundle` in the build manifest, and the
+signing step signs and verifies the host through that bundle so the
+`Info.plist` is sealed. The installed release therefore runs its host from an
+application bundle. The hosted signed-template install checks the installed
+host's identifier and that it runs from the bundle, and the notification check
+uses that installed host. Notification permission is stored per identifier, so
+changing an application's bundle identifier asks the user again.
