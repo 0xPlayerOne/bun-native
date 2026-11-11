@@ -289,6 +289,8 @@ async function sourceHashes() {
   if (entry === 'services' || entry === 'solid-services' || entry === 'react-services')
     sources.add('tests/native/display-service-policy.ts')
   for (const path of workloadSources.keys()) sources.add(path)
+  if (entry === 'solid-workspace-soak' || entry === 'react-workspace-soak')
+    sources.add('tests/native/workspace-session.ts')
   if (
     entry === 'solid-workspace' ||
     entry === 'solid-workspace-flow' ||
