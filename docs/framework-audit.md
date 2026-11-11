@@ -61,14 +61,18 @@ checked by hand.
   clone in the TypeScript of `packages/*/src`, so the Solid and React adapters
   share no copied code. In `native/gpui-host/src` and `native/protocol/src` it
   found 19 Rust clones (370 lines, 1.3%): 9 in protocol test files and 10 in the
-  host. The largest host ones are the D-Bus connection plumbing that
-  `services/file_dialogs.rs` and `services/notifications.rs` each own (`spawn`,
-  `link`, shutdown accounting; about 80 lines over four clones), the Linux and
-  macOS dialog paths in `task_dialogs.rs`/`task_dialogs_macos.rs`, and the
-  request scaffolding in `shortcuts.rs`/`clipboard.rs`. They are kept for now:
-  each service owns a different inner type and listener, so sharing them needs a
-  small generic service core, and that is a host change to validate with the
-  Linux native suite, not a deletion. It is backlog below.
+  host. The largest host ones were the D-Bus connection plumbing that
+  `services/file_dialogs.rs` and `services/notifications.rs` each owned
+  (`spawn`, `link`, shutdown accounting; about 80 lines over four clones). That
+  is now one module, [`services/session_bus.rs`](../native/gpui-host/src/services/session_bus.rs):
+  the lazily opened connection, its signal listener, the in-flight count and
+  bounded shutdown drain, the two-second bound, connection setup and the
+  session-bus check. Each service keeps its own registry, match rule, signal
+  parsing and failure texts, so behavior is unchanged; the file dialog and
+  notification native suites pass unchanged in development and AOT on X11.
+  Still kept: the Linux and macOS dialog paths in
+  `task_dialogs.rs`/`task_dialogs_macos.rs` (different OS APIs) and the request
+  scaffolding in `shortcuts.rs`/`clipboard.rs` (X11 protocol code, not D-Bus).
 - **CEF and Bunly references:** no code path remains. `docs/development.md`
   still said CI "must replace" the old M1–M6 CEF workflows; it now says they were
   removed under #251. Left as they are: the disclaimers that the packages use no
@@ -118,7 +122,6 @@ These are tracked honestly as open and are not CI work:
 | Physical multi-monitor hardware                | headless sway outputs, two Xvfb screens and a macOS virtual display cover the semantics in CI; EDID monitors, cables, GPU outputs and Windows mixed DPI need hardware | #299       |
 | Babel 8                                        | no Solid preset release supports it yet                                                                                                                               | #316       |
 | Hosted first-window deadline                   | not recurred since November 6 ([below](#first-window-deadline-296))                                                                                                   | #296       |
-| Shared Linux D-Bus service core (Rust clones)  | refactor, not deletion; needs the Linux native suite                                                                                                                  | #260       |
 | Windows disposal retention                     | Windows support waits on it                                                                                                                                           | #629       |
 | Physical GPU, Windows and real-Mac performance | hosted runners use software or paravirtual GPUs                                                                                                                       | #244       |
 | Release-readiness decision                     | per-platform draft in [ADR 0021](decisions/0021-platform-release-readiness.md) (proposed)                                                                             | #245       |

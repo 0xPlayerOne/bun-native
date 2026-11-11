@@ -61,6 +61,8 @@ pub(crate) mod processes;
 #[cfg(any(target_os = "macos", test))]
 pub(crate) mod report_pump;
 #[cfg(target_os = "linux")]
+mod session_bus;
+#[cfg(target_os = "linux")]
 pub(crate) mod shortcuts;
 #[cfg(target_os = "macos")]
 #[path = "services/shortcuts_macos.rs"]
