@@ -32,7 +32,7 @@ export type ProvenancePolicy = {
 type Command = { exitCode: number; stdout: string; stderr: string }
 export type Runner = (command: string[]) => Command
 
-const runCommand: Runner = (command) => {
+export const runCommand: Runner = (command) => {
   const result = Bun.spawnSync(command, { stdout: 'pipe', stderr: 'pipe', timeout: 300_000 })
   return {
     exitCode: result.exitCode ?? 1,
@@ -169,7 +169,11 @@ export function verifyProvenance(
   return checkVerification(result.stdout, policy, digest)
 }
 
-function main(argv: string[], log: (line: string) => void = console.log): number {
+export function main(
+  argv: string[],
+  log: (line: string) => void = console.log,
+  run: Runner = runCommand
+): number {
   const usage =
     'usage: linux-provenance.ts verify FILE --repo OWNER/NAME --signer-workflow .github/workflows/NAME.yml --source-ref REF --source-digest SHA'
   const { values, positionals } = parseArgs({
@@ -186,13 +190,16 @@ function main(argv: string[], log: (line: string) => void = console.log): number
   if (command !== 'verify' || !file || extra.length > 0) throw new Error(usage)
   for (const key of ['repo', 'signer-workflow', 'source-ref', 'source-digest'] as const)
     if (!values[key]) throw new Error(`--${key} is required\n${usage}`)
-  const result = verifyProvenance({
-    file,
-    repository: values.repo as string,
-    signerWorkflow: values['signer-workflow'] as string,
-    sourceRef: values['source-ref'] as string,
-    sourceDigest: values['source-digest'] as string,
-  })
+  const result = verifyProvenance(
+    {
+      file,
+      repository: values.repo as string,
+      signerWorkflow: values['signer-workflow'] as string,
+      sourceRef: values['source-ref'] as string,
+      sourceDigest: values['source-digest'] as string,
+    },
+    run
+  )
   log(JSON.stringify(result, null, 2))
   return 0
 }

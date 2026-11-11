@@ -5,6 +5,8 @@ import { join } from 'node:path'
 import { sha256 } from '../../scripts/quality/host-reproducibility.ts'
 import {
   checkVerification,
+  main,
+  runCommand,
   slsaProvenance,
   verifyCommand,
   verifyProvenance,
@@ -164,4 +166,36 @@ test('a malformed policy is refused before gh runs', async () => {
     [{ sourceDigest: 'abc' }, '40-hex commit'],
   ] as const)
     expect(() => verifyProvenance({ ...policy, ...change }, run)).toThrow(message)
+})
+
+test('the command runner returns exit code, stdout and stderr', () => {
+  expect(runCommand(['sh', '-c', 'printf out; printf err >&2; exit 3'])).toEqual({
+    exitCode: 3,
+    stdout: 'out',
+    stderr: 'err',
+  })
+})
+
+test('the CLI verifies an archive and prints the verified result', async () => {
+  const policy = await archive()
+  const digest = sha256(Buffer.from('host archive bytes'))
+  const lines: string[] = []
+  const run: Runner = () => ({ exitCode: 0, stdout: verified(digest), stderr: '' })
+  const argv = [
+    'verify',
+    policy.file,
+    '--repo',
+    policy.repository,
+    '--signer-workflow',
+    policy.signerWorkflow,
+    '--source-ref',
+    policy.sourceRef,
+    '--source-digest',
+    policy.sourceDigest,
+  ]
+  expect(main(argv, (line) => lines.push(line), run)).toBe(0)
+  expect(JSON.parse(lines.join('\n'))).toMatchObject({ file: policy.file, sha256: digest })
+  expect(() => main(['verify'], () => {}, run)).toThrow('usage: linux-provenance.ts verify')
+  expect(() => main([...argv, 'extra'], () => {}, run)).toThrow('usage:')
+  expect(() => main(argv.slice(0, 4), () => {}, run)).toThrow('--signer-workflow is required')
 })
