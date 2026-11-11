@@ -65,6 +65,8 @@ const entries = {
   ime: 'tests/native/ime.ts',
   accessibility: 'tests/native/accessibility.ts',
   'accessibility-platform': 'tests/native/accessibility-platform.ts',
+  'screen-reader': 'tests/native/screen-reader.ts',
+  'ime-platform': 'tests/native/ime-platform.ts',
   'solid-services': 'tests/native/solid-services.tsx',
   'react-services': 'tests/native/react-services.tsx',
   'platform-smoke': 'tests/native/platform-smoke.ts',
@@ -167,6 +169,8 @@ if (
     entry === 'text-input' ||
     entry === 'ime' ||
     entry === 'accessibility' ||
+    entry === 'screen-reader' ||
+    entry === 'ime-platform' ||
     entry === 'platform-smoke' ||
     solidEntry ||
     reactEntry) &&

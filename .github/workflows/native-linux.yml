@@ -59,7 +59,7 @@ jobs:
             dbus-x11 dunst xdg-desktop-portal xdg-desktop-portal-gtk libglib2.0-bin
             fonts-dejavu-core heaptrack binutils
             x11-xkb-utils xclip at-spi2-core gir1.2-atspi-2.0 python3-gi
-            sway grim wtype ibus ibus-hangul
+            sway grim wtype ibus ibus-hangul orca speech-dispatcher
           )
           printf '%s\n' "${packages[@]}" > "$RUNNER_TEMP/native-apt-packages"
           # Outside the runner home so apt's sandboxed _apt user can download into it.
@@ -257,7 +257,7 @@ jobs:
           # compile their fixtures inline. A new entry defaults to shard 2.
           shard1=' native-window input-race bridge javascript core-lifecycle event-throughput fault scheduling layout interactions '
           # shellcheck disable=SC2016 # the xargs child shell expands its own variables
-          for entry in native-window input-race bridge javascript core-lifecycle event-throughput fault scheduling layout interactions services display-semantics display-wayland clipboard global-shortcuts notifications overlays message-dialogs popups wayland filesystem-grants text-input accessibility ime processes file-dialogs drag-drop solid-drag-drop react-drag-drop solid-services react-services solid solid-input-intent solid-interactions react react-interactions react-behavior react-workload react-workspace react-workspace-flow; do
+          for entry in native-window input-race bridge javascript core-lifecycle event-throughput fault scheduling layout interactions services display-semantics display-wayland clipboard global-shortcuts notifications overlays message-dialogs popups wayland filesystem-grants text-input accessibility screen-reader ime processes file-dialogs drag-drop solid-drag-drop react-drag-drop solid-services react-services solid solid-input-intent solid-interactions react react-interactions react-behavior react-workload react-workspace react-workspace-flow; do
             case "$SHARD" in
               1) [[ $shard1 == *" $entry "* ]] || continue ;;
               2) [[ $shard1 != *" $entry "* ]] || continue ;;
@@ -386,6 +386,30 @@ jobs:
               dbus-run-session -- bash scripts/quality/native-linux-session.sh \
               "$evidence-session" -- env GPUI_X11_SCALE_FACTOR=1 \
               "${command[@]}" 2>&1 | tee "$evidence/run.log"
+            test -s "$evidence/result.json"
+          done
+      - name: Development and AOT Orca screen-reader speech through speech-dispatcher (#241)
+        if: matrix.shard == 2
+        timeout-minutes: 5
+        env:
+          BUN_NATIVE_HOST: ${{ github.workspace }}/target/release/bun-native-host
+          # The system Python carries PyGObject; it also runs Orca.
+          BUN_NATIVE_ATSPI_PYTHON: /usr/bin/python3
+        run: |
+          # Real Orca 46 in the isolated session speaks through a private
+          # speech-dispatcher whose sd_generic module writes each utterance to
+          # a file; XTEST keys move focus, edit text and open a modal dialog.
+          for mode in development aot; do
+            command=(bun tests/native/screen-reader.ts)
+            if [[ "$mode" == aot ]]; then
+              command=("$NATIVE_EVIDENCE/screen-reader-package/screen-reader")
+            fi
+            evidence="$NATIVE_EVIDENCE/screen-reader-$mode"
+            mkdir "$evidence"
+            BUN_NATIVE_SR_EVIDENCE="$evidence" BUN_NATIVE_SR_MODE="$mode" \
+              xvfb-run --auto-servernum --server-args='-screen 0 1280x1024x24 -nolisten tcp' \
+              dbus-run-session -- bash scripts/quality/native-linux-session.sh \
+              "$evidence-session" -- "${command[@]}" 2>&1 | tee "$evidence/run.log"
             test -s "$evidence/result.json"
           done
       - name: Development and AOT freedesktop notifications
@@ -1208,6 +1232,9 @@ jobs:
             ${{ runner.temp }}/native-evidence/ime-development/
             ${{ runner.temp }}/native-evidence/ime-aot/
             ${{ runner.temp }}/native-evidence/accessibility-*/
+            ${{ runner.temp }}/native-evidence/screen-reader-development/
+            ${{ runner.temp }}/native-evidence/screen-reader-aot/
+            ${{ runner.temp }}/native-evidence/screen-reader-*-session/
             ${{ runner.temp }}/native-evidence/notifications-*/
             ${{ runner.temp }}/native-evidence/filesystem-grants-*/
             ${{ runner.temp }}/native-evidence/processes-*/
@@ -1279,6 +1306,7 @@ jobs:
             echo 'Linux OS file dialogs run through xdg-desktop-portal and its GTK file chooser on an isolated D-Bus session in development and inspected AOT: default denial, a bus without a portal reported as unavailable, a real dialog transient for the owner window, forged portal responses from an independent bus client ignored, real keyboard selection of one file, several files and a folder, a save selection that creates no file, Escape cancellation, and the OS dialog closed after an aborted signal, owner close and shutdown. Selected paths are data, not filesystem grants. This does not qualify file dialogs on Wayland, in Flatpak/Snap sandboxes, on macOS or Windows, or with other portal backends.'
             echo 'One Wayland step runs on a headless sway (wlroots) compositor with XWayland disabled and no DISPLAY, in development and inspected AOT at scale 1 and development at output scale 2: the window maps as an xdg-shell view and paints within 10 s on lavapipe Vulkan, a persistent virtual pointer click and virtual-keyboard text reach the app, grim pixels match the painted tree, the display snapshot matches the compositor output, X11-only clipboard/shortcut/drag-drop/popup capabilities are absent and their requests rejected, a dunst notification and an unparented portal file dialog work, the compositor closes the window and shutdown is clean. This does not qualify GNOME/KDE, fractional scaling, IME or physical input/GPU.'
             echo 'A second Wayland step runs headless sway with two outputs (1280x800 at scale 1, 2048x1536 at scale 2) in development and inspected AOT: moving a window between outputs reports one display change with the new output size and scale, moving within an output or spanning both reports nothing, reconfiguring the window output (mode, scale) reports to every window on it, a connected output is reported only once a window moves onto it, unplugging another output reports nothing, and unplugging the window own output makes its snapshot fail closed. Expected values come from sway IPC. This does not qualify physical monitors, fractional scaling, other compositors, a work area or macOS/Windows migration.'
+            echo 'Real Orca 46 runs in the isolated X11 session in development and inspected AOT, speaking through a private speech-dispatcher whose only output module writes each utterance to a file. XTEST Tab, Shift+Tab, typing, caret keys, a selection deletion and Space must produce matching Bun focus/input events and the exact Orca phrases (role, name, read-only state, typed value, characters at the caret, selection and deletion, the modal dialog and its first control, and every control again after the dialog closes). This does not qualify Orca braille, other screen readers, Wayland or physical input.'
             echo 'Solid runs the exact source-fingerprinted generated module in development and through inspected Bun AOT against the same release GPUI host. Twelve scenarios require keyed identity, every native edit, delayed revision-aware replacement, shared keyboard/pointer/focus phases, caret and selection behavior, complete native paint, OS close and owner cleanup. These correctness cases do not close the separate retained-object investigation or establish matched framework performance.'
             echo 'Bridge acknowledgement timings run with instrumentation disabled; they are not display-presentation timings. The startup/RSS baseline retains one warm-up and five measured fresh-process trials per mode, alternating order, with a two-second idle interval and uncontrolled OS caches.'
             echo 'Separate Heaptrack runs profile only the real native host during the 1,000-cycle lifecycle in both modes. Full compressed allocation traces, tool/host/source hashes and bounded callsite reports are retained; profiler timing/RSS is not mixed into the baseline, and outstanding-at-exit allocations are not automatically leaks.'

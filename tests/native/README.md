@@ -47,6 +47,13 @@ an independent AX (`macos-accessibility-oracle.m`) or UI Automation
 (`windows-accessibility-oracle.ps1`) client reads the same element kinds and
 makes every change through assistive-technology requests only.
 
+`tests/native/screen-reader.ts` drives a real screen reader with real OS keys
+and asserts what it says: Orca through a capturing `speech-dispatcher` module on
+Linux, and, experimentally on hosted CI, VoiceOver's last phrase on macOS and
+NVDA's speech log on Windows. `tests/native/ime-platform.ts` repeats the Linux
+Hangul composition with the macOS or Windows Korean input method (experimental).
+See [native text](../../docs/native-text.md#screen-reader-speech).
+
 The input driver verifies that the target window belongs to the launched
 application, focuses it, injects XTest input and requires matching Bun events and
 complete native paint snapshots. It waits for the mounted tree before injecting

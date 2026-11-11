@@ -761,6 +761,143 @@ jobs:
               throw "${{ runner.os }} $mode accessibility evidence does not record a pass"
             }
           }
+      # EXPERIMENTAL (#241): the first hosted runs of a real screen reader and a
+      # real OS input method on these images. Each step reports failure in its
+      # own outcome but does not fail the job until it has passed on hosted
+      # runners; it does not replace or relax the AX/UI Automation step above.
+      - name: Experimental macOS VoiceOver and Windows NVDA speech in development and AOT (#241)
+        id: screen-reader
+        if: ${{ matrix.shard == 2 && (!cancelled() && steps.native-build.outcome == 'success') }}
+        continue-on-error: true
+        timeout-minutes: 15
+        run: |
+          if ($IsMacOS) {
+            bash scripts/quality/macos-voiceover-setup.sh (Join-Path $env:NATIVE_EVIDENCE 'voiceover-setup')
+            if ($LASTEXITCODE -ne 0) { throw 'VoiceOver AppleScript control could not be enabled on this runner' }
+            $driver = Join-Path $env:NATIVE_EVIDENCE 'macos-input-oracle'
+            xcrun clang -fobjc-arc -Wall -Wextra -Werror -framework AppKit -framework Carbon `
+              tests/native/macos-input-oracle.m -o $driver
+            if ($LASTEXITCODE -ne 0) { throw 'The macOS input controller did not compile' }
+            $env:BUN_NATIVE_SR_INPUT = $driver
+          } else {
+            # NV Access's signed NVDA 2024.4.2 launcher, pinned by SHA-256. Its
+            # NSIS payload holds the complete program directory, which runs
+            # without installation.
+            $installer = Join-Path $env:RUNNER_TEMP 'nvda_2024.4.2.exe'
+            Invoke-WebRequest -Uri 'https://download.nvaccess.org/releases/2024.4.2/nvda_2024.4.2.exe' -OutFile $installer
+            $hash = (Get-FileHash -Algorithm SHA256 $installer).Hash.ToLowerInvariant()
+            if ($hash -ne 'b66bbc3d87f11140fe9493ca22955c401c0b09abd0bf3c9d49260807986d4f05') {
+              throw "The NVDA download hash $hash does not match the pin"
+            }
+            $signature = Get-AuthenticodeSignature $installer
+            if ($signature.Status -ne 'Valid') { throw "The NVDA launcher signature is $($signature.Status)" }
+            $nvda = Join-Path $env:RUNNER_TEMP 'nvda'
+            7z x -y "-o$nvda" $installer | Out-Null
+            if ($LASTEXITCODE -ne 0) { throw 'The NVDA launcher did not extract' }
+            $env:BUN_NATIVE_NVDA = Join-Path $nvda '$PLUGINSDIR\app\nvda_noUIAccess.exe'
+            if (-not (Test-Path -LiteralPath $env:BUN_NATIVE_NVDA)) { throw 'nvda_noUIAccess.exe is not in the NVDA launcher' }
+            $env:BUN_NATIVE_SR_INPUT = (Resolve-Path 'tests/native/windows-input-oracle.ps1').Path
+            [ordered]@{ version = '2024.4.2'; sha256 = $hash; signer = $signature.SignerCertificate.Subject } |
+              ConvertTo-Json | Out-File (Join-Path $env:NATIVE_EVIDENCE 'nvda-download.json')
+          }
+          $package = Join-Path $env:NATIVE_EVIDENCE 'screen-reader-package'
+          bun experiments/aot-gpui/build-window.ts --entry screen-reader `
+            --source $env:GITHUB_WORKSPACE --host $env:BUN_NATIVE_HOST `
+            --host-profile release --outdir $package
+          if ($LASTEXITCODE -ne 0) { throw 'The screen-reader AOT compiler or inspection failed' }
+          $manifest = Get-Content -Raw (Join-Path $package 'manifest.json') | ConvertFrom-Json
+          try {
+            foreach ($mode in @('development', 'aot')) {
+              $evidence = Join-Path $env:NATIVE_EVIDENCE "screen-reader-$mode"
+              New-Item -ItemType Directory $evidence | Out-Null
+              $env:BUN_NATIVE_SR_EVIDENCE = $evidence
+              $env:BUN_NATIVE_SR_MODE = $mode
+              if ($mode -eq 'development') {
+                bun tests/native/screen-reader.ts 2>&1 | Tee-Object -FilePath (Join-Path $evidence 'run.log')
+              } else {
+                & (Join-Path $package $manifest.application.file) 2>&1 |
+                  Tee-Object -FilePath (Join-Path $evidence 'run.log')
+              }
+              if ($LASTEXITCODE -ne 0) { throw "${{ runner.os }} $mode screen-reader qualification failed" }
+              $report = Get-Content -Raw (Join-Path $evidence 'result.json') | ConvertFrom-Json
+              if ($report.status -ne 'passed' -or $report.mode -ne $mode) {
+                throw "${{ runner.os }} $mode screen-reader evidence does not record a pass"
+              }
+            }
+          } finally {
+            # Never leave a screen reader running into later steps.
+            if ($IsMacOS) {
+              osascript -e 'tell application "VoiceOver" to quit' 2>$null
+              pkill -15 -x VoiceOver
+            } else {
+              Get-Process -Name 'nvda*' -ErrorAction SilentlyContinue | Stop-Process -Force
+            }
+            $global:LASTEXITCODE = 0
+          }
+      - name: Experimental macOS and Windows Korean input method composition in development and AOT (#241)
+        id: ime-platform
+        if: ${{ matrix.shard == 2 && (!cancelled() && steps.native-build.outcome == 'success') }}
+        continue-on-error: true
+        timeout-minutes: 15
+        run: |
+          if ($IsMacOS) {
+            $driver = Join-Path $env:NATIVE_EVIDENCE 'macos-input-oracle'
+            if (-not (Test-Path $driver)) {
+              xcrun clang -fobjc-arc -Wall -Wextra -Werror -framework AppKit -framework Carbon `
+                tests/native/macos-input-oracle.m -o $driver
+              if ($LASTEXITCODE -ne 0) { throw 'The macOS input controller did not compile' }
+            }
+            $env:BUN_NATIVE_IME_INPUT = $driver
+            & $driver current | Out-File (Join-Path $env:NATIVE_EVIDENCE 'input-source-before.json')
+          } else {
+            # Record what the image offers before anything is added.
+            $tip = Test-Path 'HKLM:\SOFTWARE\Microsoft\CTF\TIP\{A028AE76-01B1-46C2-99C4-ACD9858AE02F}'
+            $layout = Test-Path 'HKLM:\SYSTEM\CurrentControlSet\Control\Keyboard Layouts\00000412'
+            $capability = Get-WindowsCapability -Online -Name 'Language.Basic~~~ko-KR~0.0.1.0'
+            [ordered]@{
+              koreanImeTip = $tip
+              koreanLayout = $layout
+              capability = "$($capability.State)"
+              languages = @(Get-WinUserLanguageList | ForEach-Object { $_.LanguageTag })
+            } | ConvertTo-Json | Out-File (Join-Path $env:NATIVE_EVIDENCE 'windows-ime-before.json')
+            if (-not ($tip -and $layout)) {
+              Add-WindowsCapability -Online -Name 'Language.Basic~~~ko-KR~0.0.1.0' |
+                ConvertTo-Json | Out-File (Join-Path $env:NATIVE_EVIDENCE 'windows-ime-capability.json')
+            }
+            $env:BUN_NATIVE_IME_INPUT = (Resolve-Path 'tests/native/windows-input-oracle.ps1').Path
+          }
+          $package = Join-Path $env:NATIVE_EVIDENCE 'ime-platform-package'
+          bun experiments/aot-gpui/build-window.ts --entry ime-platform `
+            --source $env:GITHUB_WORKSPACE --host $env:BUN_NATIVE_HOST `
+            --host-profile release --outdir $package
+          if ($LASTEXITCODE -ne 0) { throw 'The IME AOT compiler or inspection failed' }
+          $manifest = Get-Content -Raw (Join-Path $package 'manifest.json') | ConvertFrom-Json
+          foreach ($mode in @('development', 'aot')) {
+            $evidence = Join-Path $env:NATIVE_EVIDENCE "ime-platform-$mode"
+            New-Item -ItemType Directory $evidence | Out-Null
+            $env:BUN_NATIVE_IME_EVIDENCE = $evidence
+            $env:BUN_NATIVE_IME_MODE = $mode
+            if ($mode -eq 'development') {
+              bun tests/native/ime-platform.ts 2>&1 | Tee-Object -FilePath (Join-Path $evidence 'run.log')
+            } else {
+              & (Join-Path $package $manifest.application.file) 2>&1 |
+                Tee-Object -FilePath (Join-Path $evidence 'run.log')
+            }
+            if ($LASTEXITCODE -ne 0) { throw "${{ runner.os }} $mode IME composition failed" }
+            $report = Get-Content -Raw (Join-Path $evidence 'result.json') | ConvertFrom-Json
+            if ($report.status -ne 'passed' -or $report.mode -ne $mode) {
+              throw "${{ runner.os }} $mode IME evidence does not record a pass"
+            }
+          }
+      - name: Report experimental screen-reader and IME outcomes (#241)
+        if: ${{ matrix.shard == 2 && !cancelled() && steps.native-build.outcome == 'success' }}
+        run: |
+          foreach ($pair in @(@('screen reader', '${{ steps.screen-reader.outcome }}'), @('IME', '${{ steps.ime-platform.outcome }}'))) {
+            if ($pair[1] -ne 'success') {
+              Write-Output "::warning::Experimental ${{ runner.os }} $($pair[0]) qualification outcome: $($pair[1]) (not gating; see the step log and evidence)"
+            }
+            "- Experimental ${{ runner.os }} $($pair[0]): $($pair[1])" | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append -Encoding utf8
+          }
       - name: Display snapshot, work area, identity and display-change qualification (#299)
         if: ${{ matrix.shard == 2 && (!cancelled() && steps.native-build.outcome == 'success') }}
         timeout-minutes: 8
@@ -1007,6 +1144,10 @@ jobs:
             !${{ runner.temp }}/bun-native-platform-evidence/display-platform-package/display-platform.exe
             !${{ runner.temp }}/bun-native-platform-evidence/accessibility-platform-package/accessibility-platform
             !${{ runner.temp }}/bun-native-platform-evidence/accessibility-platform-package/accessibility-platform.exe
+            !${{ runner.temp }}/bun-native-platform-evidence/screen-reader-package/screen-reader
+            !${{ runner.temp }}/bun-native-platform-evidence/screen-reader-package/screen-reader.exe
+            !${{ runner.temp }}/bun-native-platform-evidence/ime-platform-package/ime-platform
+            !${{ runner.temp }}/bun-native-platform-evidence/ime-platform-package/ime-platform.exe
             !${{ runner.temp }}/bun-native-platform-evidence/drag-drop-package/drag-drop
             !${{ runner.temp }}/bun-native-platform-evidence/drag-drop-package/drag-drop.exe
             !${{ runner.temp }}/bun-native-platform-evidence/solid-drag-drop-package/solid-drag-drop
