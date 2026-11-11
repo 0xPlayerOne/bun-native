@@ -404,6 +404,71 @@ syncBuiltinESMExports();
   expect(JSON.parse(result.stdout).downloadedIntegrity).toBeNull()
 })
 
+test('the explicit historical manifest selects its own revision without modifying the workspace pin', async () => {
+  const directory = await mkdtemp(join(tmpdir(), 'bun-native-historical-pin-'))
+  temporary.push(directory)
+  const destination = join(directory, 'installed')
+  await Bun.write(join(destination, process.platform === 'win32' ? 'bun.exe' : 'bun'), 'fixture')
+  const target = `${process.platform}-${process.arch}`
+  const historicalRevision = 'f00baaa'
+  const historicalCliRevision = `1.4.4-canary.1+${historicalRevision}`
+  const historical = structuredClone(toolchain)
+  historical.bun.revision = historicalRevision.padEnd(40, '0')
+  historical.bun.cliRevision = historicalCliRevision
+  const pinned = historical.bun.packages[target]
+  if (!pinned) throw new Error(`The test runner has no pinned archive for ${target}`)
+  pinned.version = pinned.version.replace(/\\+[a-f0-9]{7}$/, `+${historicalRevision}`)
+  const manifestPath = join(directory, 'historical.json')
+  await Bun.write(manifestPath, JSON.stringify(historical))
+
+  const preload = join(directory, 'guard.mjs')
+  await Bun.write(
+    preload,
+    `import childProcess from 'node:child_process';
+import { syncBuiltinESMExports } from 'node:module';
+childProcess.spawnSync = () => ({ status: 0, stdout: ${JSON.stringify(historicalCliRevision)}, stderr: '' });
+globalThis.fetch = () => { throw new Error('The existing-install path must never download'); };
+syncBuiltinESMExports();
+`
+  )
+  const command = resolve(import.meta.dir, '../../scripts/install-bun.mjs')
+  const run = (selected: string) =>
+    spawnSync(
+      'node',
+      [
+        '--import',
+        pathToFileURL(preload).href,
+        command,
+        '--destination',
+        destination,
+        '--manifest',
+        selected,
+      ],
+      { encoding: 'utf8', timeout: 10_000, env: { ...process.env, GITHUB_PATH: '' } }
+    )
+
+  const historicalResult = run(manifestPath)
+  expect(historicalResult.error).toBeUndefined()
+  expect(historicalResult.status).toBe(0)
+  expect(historicalResult.stderr).toBe('')
+  expect(JSON.parse(historicalResult.stdout).revision).toBe(historicalCliRevision)
+  expect(JSON.parse(historicalResult.stdout).downloadedIntegrity).toBeNull()
+
+  // No explicit manifest means the current workspace pin, which must reject
+  // an executable reporting a different historical revision.
+  const workspaceResult = spawnSync(
+    'node',
+    ['--import', pathToFileURL(preload).href, command, '--destination', destination],
+    { encoding: 'utf8', timeout: 10_000, env: { ...process.env, GITHUB_PATH: '' } }
+  )
+  expect(workspaceResult.status).not.toBe(0)
+  expect(workspaceResult.stderr).toContain('Bun revision mismatch')
+
+  const invalidPathResult = run('relative-pin.json')
+  expect(invalidPathResult.status).not.toBe(0)
+  expect(invalidPathResult.stderr).toContain('Usage: node scripts/install-bun.mjs')
+})
+
 test('one deadline subscription covers every fragment of the complete download', () => {
   const moduleUrl = pathToFileURL(
     resolve(import.meta.dir, '../../scripts/install-bun/download.mjs')
