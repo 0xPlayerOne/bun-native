@@ -20,21 +20,29 @@ import { extractPinnedExecutable } from './install-bun/archive.mjs'
 import { createHash } from 'node:crypto'
 
 // Node bootstraps Bun so a clean hosted runner does not need another Bun version.
-const manifest = JSON.parse(readFileSync(new URL('../toolchain.json', import.meta.url), 'utf8'))
 // Public npm archives need no credential. Never inherit a formerly scoped token.
 delete process.env.BUN_NATIVE_GITHUB_TOKEN
-if (manifest.schemaVersion !== 2 || manifest.bun.distribution !== 'npm')
-  throw new Error('Expected the explicit npm Bun distribution manifest')
 const args = process.argv.slice(2)
 const destination = args[1]
+const manifestPath = args.length === 4 && args[2] === '--manifest' ? args[3] : undefined
 if (
-  args.length !== 2 ||
+  (args.length !== 2 && args.length !== 4) ||
   args[0] !== '--destination' ||
   typeof destination !== 'string' ||
-  !isAbsolute(destination)
+  !isAbsolute(destination) ||
+  (args.length === 4 && (typeof manifestPath !== 'string' || !isAbsolute(manifestPath)))
 ) {
-  throw new Error('Usage: node scripts/install-bun.mjs --destination <absolute directory>')
+  throw new Error(
+    'Usage: node scripts/install-bun.mjs --destination <absolute directory> [--manifest <absolute JSON path>]'
+  )
 }
+// The optional manifest is for exact historical releases; every archive still
+// must pass the same origin, version, checksum, size and executable revision checks.
+const manifest = JSON.parse(
+  readFileSync(manifestPath ?? new URL('../toolchain.json', import.meta.url), 'utf8')
+)
+if (manifest.schemaVersion !== 2 || manifest.bun.distribution !== 'npm')
+  throw new Error('Expected the explicit npm Bun distribution manifest')
 const target = `${process.platform}-${process.arch}`
 const archive = manifest.bun.packages[target]
 if (!archive) throw new Error(`No pinned Bun package for ${target}`)
