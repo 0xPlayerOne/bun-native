@@ -110,18 +110,18 @@ measured before a decision.
 
 These are tracked honestly as open and are not CI work:
 
-| Limit                                          | Why it is open                                                                                                          | Issue      |
-| ---------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- | ---------- |
-| macOS and Windows code signing, notarization   | owner-only: Apple Developer ID and Windows certificate                                                                  | #249, #223 |
-| Linux host archive provenance                  | keyless Sigstore attestation wired; first `main` run pending ([releasing](releasing.md#linux-keyless-build-provenance)) | #249, #223 |
-| Screen readers and OS IME composition          | needs VoiceOver/NVDA/Orca and real input methods                                                                        | #241, #222 |
-| Multi-monitor, hotplug and mixed DPI           | CI runners have one virtual screen                                                                                      | #299       |
-| Babel 8                                        | no Solid preset release supports it yet                                                                                 | #316       |
-| Hosted first-window deadline                   | not recurred since November 6 ([below](#first-window-deadline-296))                                                     | #296       |
-| Shared Linux D-Bus service core (Rust clones)  | refactor, not deletion; needs the Linux native suite                                                                    | #260       |
-| Windows disposal retention                     | Windows support waits on it                                                                                             | #629       |
-| Physical GPU, Windows and real-Mac performance | hosted runners use software or paravirtual GPUs                                                                         | #244       |
-| Release-readiness decision                     | per-platform draft in [ADR 0021](decisions/0021-platform-release-readiness.md) (proposed)                               | #245       |
+| Limit                                          | Why it is open                                                                                                                                                        | Issue      |
+| ---------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------- |
+| macOS and Windows code signing, notarization   | owner-only: Apple Developer ID and Windows certificate                                                                                                                | #249, #223 |
+| Linux host archive provenance                  | keyless Sigstore attestation wired; first `main` run pending ([releasing](releasing.md#linux-keyless-build-provenance))                                               | #249, #223 |
+| Screen readers and OS IME composition          | needs VoiceOver/NVDA/Orca and real input methods                                                                                                                      | #241, #222 |
+| Physical multi-monitor hardware                | headless sway outputs, two Xvfb screens and a macOS virtual display cover the semantics in CI; EDID monitors, cables, GPU outputs and Windows mixed DPI need hardware | #299       |
+| Babel 8                                        | no Solid preset release supports it yet                                                                                                                               | #316       |
+| Hosted first-window deadline                   | not recurred since November 6 ([below](#first-window-deadline-296))                                                                                                   | #296       |
+| Shared Linux D-Bus service core (Rust clones)  | refactor, not deletion; needs the Linux native suite                                                                                                                  | #260       |
+| Windows disposal retention                     | Windows support waits on it                                                                                                                                           | #629       |
+| Physical GPU, Windows and real-Mac performance | hosted runners use software or paravirtual GPUs                                                                                                                       | #244       |
+| Release-readiness decision                     | per-platform draft in [ADR 0021](decisions/0021-platform-release-readiness.md) (proposed)                                                                             | #245       |
 
 ## First-window deadline (#296)
 

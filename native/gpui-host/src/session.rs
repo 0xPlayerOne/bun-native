@@ -239,6 +239,9 @@ impl Session {
                 if services::display_changes(cx) {
                     capabilities.push(Capability::DisplayChangesV1);
                 }
+                if services::display_identity(cx) {
+                    capabilities.push(Capability::DisplayIdentityV1);
+                }
                 if crate::view::popups_available(cx) {
                     capabilities.push(Capability::PopupWindowsV1);
                 }

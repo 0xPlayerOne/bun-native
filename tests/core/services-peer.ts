@@ -15,6 +15,8 @@ if (!directory) throw new Error('Service peer needs its owned control directory'
 const mode = process.argv[3] ?? 'normal'
 // Advertises the macOS/Windows display capabilities.
 const detailed = mode === 'details' || mode === 'details-missing'
+// Advertises the Linux Wayland display capabilities: changes and identity, no work area.
+const identified = mode === 'identity'
 const allowed = process.argv.includes('--bun-native-allow-window-display')
 const windows = new Set<number>()
 const output = Bun.stdout.writer()
@@ -39,8 +41,17 @@ for await (const chunk of Bun.stdin.stream()) {
             mode === 'missing-service'
               ? REQUIRED_CAPABILITIES.filter((value) => value !== 'window_display_v1')
               : detailed
-                ? [...REQUIRED_CAPABILITIES, 'display_details_v1', 'display_changes_v1']
-                : REQUIRED_CAPABILITIES,
+                ? [
+                    ...REQUIRED_CAPABILITIES,
+                    'display_details_v1',
+                    'display_changes_v1',
+                    'display_identity_v1',
+                  ]
+                : identified
+                  ? [...REQUIRED_CAPABILITIES, 'display_changes_v1', 'display_identity_v1']
+                  : mode === 'undeclared-identity'
+                    ? [...REQUIRED_CAPABILITIES, 'display_details_v1', 'display_changes_v1']
+                    : REQUIRED_CAPABILITIES,
           limits: DEFAULT_LIMITS,
           service_policy: {
             window_display: mode === 'wrong-policy' ? !allowed : allowed,
@@ -101,15 +112,25 @@ for await (const chunk of Bun.stdin.stream()) {
           const snapshot = {
             bounds: { x: -1920, y: 0, width: 1920, height: 1080 },
             scale_factor: 1.5,
-            ...(mode === 'details' || mode === 'undeclared-details'
+            ...(mode === 'details' ||
+            mode === 'undeclared-details' ||
+            mode === 'undeclared-identity'
               ? {
                   visible_bounds: { x: -1920, y: 25, width: 1920, height: 1055 },
                   display_uuid: '37d8832a-2d66-02ca-b9f7-8f30a301b230',
                 }
-              : {}),
+              : identified
+                ? { display_uuid: 'b7e1f07c-5b0e-5a8b-9a4c-1f2d3e4f5a6b' }
+                : {}),
           }
           // The read itself stands in for an OS display reconfiguration.
-          if (mode === 'details' || mode === 'details-missing' || mode === 'undeclared-change')
+          if (
+            mode === 'details' ||
+            mode === 'details-missing' ||
+            mode === 'undeclared-change' ||
+            mode === 'undeclared-identity' ||
+            identified
+          )
             await emit({
               type: 'display_changed',
               sequence: ++sequence,

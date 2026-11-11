@@ -37,6 +37,7 @@ const advertised: Record<'linux' | 'macos' | 'windows', Capability[]> = {
     ...everywhere,
     'display_details_v1',
     'display_changes_v1',
+    'display_identity_v1',
     'filesystem_grants_v1',
     'processes_v1',
     'drag_drop_files_v1',
@@ -46,6 +47,7 @@ const advertised: Record<'linux' | 'macos' | 'windows', Capability[]> = {
     ...everywhere,
     'display_details_v1',
     'display_changes_v1',
+    'display_identity_v1',
     'filesystem_grants_v1',
     'processes_v1',
     'drag_drop_files_v1',
@@ -91,13 +93,14 @@ function availability(record: Readonly<Record<string, unknown>>): unknown {
 }
 
 describe('public service records for each platform advertisement', () => {
-  test('Linux X11 exposes every optional service except display details and changes', () => {
+  test('Linux X11 exposes every optional service except display details, identity and changes', () => {
     const services = serviceCapabilities(allowed, advertised.linux)
     expect(services.windowDisplay).toEqual({
       availability: 'available',
       permission: 'allow',
       scope: 'owned_window',
       details: 'unavailable',
+      identity: 'unavailable',
       changes: 'unavailable',
     })
     expect(services.clipboardText).toEqual({
@@ -134,10 +137,11 @@ describe('public service records for each platform advertisement', () => {
     })
   })
 
-  test('Linux Wayland reports display changes without display details', () => {
+  test('Linux Wayland reports display changes and identity without a work area', () => {
     const wayland = [
       ...everywhere,
       'display_changes_v1',
+      'display_identity_v1',
       'notifications_v1',
       'filesystem_grants_v1',
       'processes_v1',
@@ -148,13 +152,18 @@ describe('public service records for each platform advertisement', () => {
       permission: 'allow',
       scope: 'owned_window',
       details: 'unavailable',
+      identity: 'available',
       changes: 'available',
     })
   })
 
   test('macOS adds display details and changes and keeps grants, processes and drops', () => {
     const services = serviceCapabilities(allowed, advertised.macos)
-    expect(services.windowDisplay).toMatchObject({ details: 'available', changes: 'available' })
+    expect(services.windowDisplay).toMatchObject({
+      details: 'available',
+      identity: 'available',
+      changes: 'available',
+    })
     for (const record of [services.filesystemGrants, services.ptyProcess, services.dragDrop])
       expect(availability(record)).toBe('available')
     for (const record of [
@@ -168,7 +177,11 @@ describe('public service records for each platform advertisement', () => {
 
   test('Windows offers display details and changes, grants, processes and file drops', () => {
     const services = serviceCapabilities(allowed, advertised.windows)
-    expect(services.windowDisplay).toMatchObject({ details: 'available', changes: 'available' })
+    expect(services.windowDisplay).toMatchObject({
+      details: 'available',
+      identity: 'available',
+      changes: 'available',
+    })
     for (const record of [services.dragDrop, services.filesystemGrants, services.ptyProcess])
       expect(availability(record)).toBe('available')
     for (const record of [
@@ -231,18 +244,22 @@ describe('public service records for each platform advertisement', () => {
       availability: 'available',
       permission: 'allow',
       details: 'unavailable',
+      identity: 'unavailable',
       changes: 'unavailable',
     })
     for (const [name, record] of Object.entries(services))
       if (name !== 'windowDisplay') expect(availability(record)).toBe('unavailable')
   })
 
-  test('display details and changes are independent capabilities', () => {
+  test('display details, identity and changes are independent capabilities', () => {
     expect(
       serviceCapabilities(denied, [...REQUIRED_CAPABILITIES, 'display_changes_v1']).windowDisplay
-    ).toMatchObject({ details: 'unavailable', changes: 'available' })
+    ).toMatchObject({ details: 'unavailable', identity: 'unavailable', changes: 'available' })
     expect(
       serviceCapabilities(denied, [...REQUIRED_CAPABILITIES, 'display_details_v1']).windowDisplay
-    ).toMatchObject({ details: 'available', changes: 'unavailable' })
+    ).toMatchObject({ details: 'available', identity: 'unavailable', changes: 'unavailable' })
+    expect(
+      serviceCapabilities(denied, [...REQUIRED_CAPABILITIES, 'display_identity_v1']).windowDisplay
+    ).toMatchObject({ details: 'unavailable', identity: 'available', changes: 'unavailable' })
   })
 })

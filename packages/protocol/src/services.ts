@@ -126,7 +126,7 @@ export interface DisplaySnapshot {
   scale_factor: number
   /** Work area in the logical coordinates of `bounds` (`display_details_v1` only). */
   visible_bounds?: DisplayBounds
-  /** Platform display identifier, lowercase hyphenated (`display_details_v1` only). */
+  /** Platform display identifier, lowercase hyphenated (`display_identity_v1` only). */
   display_uuid?: string
 }
 
