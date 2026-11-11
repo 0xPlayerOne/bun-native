@@ -70,20 +70,36 @@ export function summary(reports: TagReport[]): string {
   return `${lines.join('\n')}\n`
 }
 
+/** Fetches the preset document and returns the summary plus one notice per ready tag. */
+export async function check(
+  registry: string,
+  fetcher: (url: string, init: RequestInit) => Promise<Response> = fetch
+): Promise<{ summary: string; notices: string[] }> {
+  const response = await fetcher(`${registry.replace(/\/$/, '')}/${PACKAGE}`, {
+    headers: { accept: 'application/json' },
+  })
+  if (!response.ok) throw new Error(`registry returned ${response.status} for ${PACKAGE}`)
+  const reports = evaluate((await response.json()) as Packument)
+  return {
+    summary: summary(reports),
+    notices: reports
+      .filter((report) => report.supportsBabel8)
+      .map(
+        (r) =>
+          `::notice title=Babel 8 preset available (#316)::${PACKAGE}@${r.version} (${r.tag}) declares @babel/core ${r.babelPeer}`
+      ),
+  }
+}
+
 if (import.meta.main) {
   const flag = process.argv.indexOf('--registry')
   const registry = (flag >= 0 ? process.argv[flag + 1] : undefined) ?? 'https://registry.npmjs.org'
-  const response = await fetch(`${registry.replace(/\/$/, '')}/${PACKAGE}`, {
-    headers: { accept: 'application/json' },
-  })
-  if (!response.ok) {
-    console.error(`registry returned ${response.status} for ${PACKAGE}`)
+  try {
+    const result = await check(registry)
+    process.stdout.write(result.summary)
+    for (const notice of result.notices) console.error(notice)
+  } catch (error) {
+    console.error(error instanceof Error ? error.message : error)
     process.exit(1)
   }
-  const reports = evaluate((await response.json()) as Packument)
-  process.stdout.write(summary(reports))
-  for (const r of reports.filter((report) => report.supportsBabel8))
-    console.error(
-      `::notice title=Babel 8 preset available (#316)::${PACKAGE}@${r.version} (${r.tag}) declares @babel/core ${r.babelPeer}`
-    )
 }

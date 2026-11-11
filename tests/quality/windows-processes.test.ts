@@ -6,10 +6,12 @@ import {
   hundredNanosecondsToMs,
   MEMORY_COUNTERS_BYTES,
   PROCESS_ENTRY_BYTES,
+  processApi,
   processEntry,
   ProcessTreeSampler,
   windowsLoad,
   workingSetBytes,
+  type Kernel32Symbols,
   type ProcessApi,
   type ProcessTimes,
 } from '../../benchmarks/comparison/windows-processes.ts'
@@ -189,5 +191,120 @@ describe('ProcessTreeSampler', () => {
     const { api } = fakeApi([{ ...root, gone: true }])
     expect(() => new ProcessTreeSampler(api, 10)).toThrow('Cannot open the launched process 10')
     expect(() => new ProcessTreeSampler(api, 99)).toThrow('Cannot open')
+  })
+})
+
+describe('kernel32 ProcessApi over injected symbols', () => {
+  const u64 = (bytes: Uint8Array, value: bigint, offset = 0) =>
+    new DataView(bytes.buffer, bytes.byteOffset).setBigUint64(offset, value, true)
+
+  function symbols(overrides: Partial<Kernel32Symbols> = {}) {
+    const closed: bigint[] = []
+    const processes = [
+      [4, 0],
+      [100, 4],
+    ] as const
+    let cursor = 0
+    const write = (entry: Uint8Array) => {
+      const next = processes[cursor++]
+      if (!next) return 0
+      entry.set(entryBytes(next[0], next[1]))
+      return 1
+    }
+    const base: Kernel32Symbols = {
+      CreateToolhelp32Snapshot: () => 9n,
+      Process32FirstW: (_snapshot, entry) => {
+        cursor = 0
+        return write(entry)
+      },
+      Process32NextW: (_snapshot, entry) => write(entry),
+      OpenProcess: (access, _inherit, pid) => (pid === 100 && access & 0x0010 ? 0 : 50n),
+      GetProcessTimes: (_handle, creation, _exit, kernel, user) => {
+        u64(creation, 11n)
+        u64(kernel, 22n)
+        u64(user, 33n)
+        return 1
+      },
+      K32GetProcessMemoryInfo: (_handle, counters) => {
+        u64(counters, 4096n, 16)
+        return 1
+      },
+      WaitForSingleObject: (handle) => (handle === 51n ? 0 : 0x102),
+      GetSystemTimes: (idle, kernel, user) => {
+        u64(idle, 1n)
+        u64(kernel, 2n)
+        u64(user, 3n)
+        return 1
+      },
+      CloseHandle: (handle) => {
+        closed.push(handle)
+        return 1
+      },
+    }
+    return { symbols: { ...base, ...overrides }, closed }
+  }
+
+  test('enumerates the snapshot and always closes it', () => {
+    const fake = symbols()
+    expect(processApi(fake.symbols).entries()).toEqual([
+      { pid: 4, parent: 0 },
+      { pid: 100, parent: 4 },
+    ])
+    expect(fake.closed).toEqual([9n])
+  })
+
+  test('a failed snapshot throws, and a runaway snapshot is bounded', () => {
+    expect(() =>
+      processApi(symbols({ CreateToolhelp32Snapshot: () => -1n }).symbols).entries()
+    ).toThrow('CreateToolhelp32Snapshot failed')
+    expect(() =>
+      processApi(symbols({ CreateToolhelp32Snapshot: () => 0 }).symbols).entries()
+    ).toThrow('CreateToolhelp32Snapshot failed')
+    const endless = symbols({
+      Process32FirstW: (_s, entry) => (entry.set(entryBytes(1, 0)), 1),
+      Process32NextW: () => 1,
+    })
+    expect(() => processApi(endless.symbols).entries()).toThrow('exceeded its bounded scan')
+    expect(endless.closed).toEqual([9n])
+  })
+
+  test('open falls back to access without PROCESS_VM_READ, then reports null', () => {
+    expect(processApi(symbols().symbols).open(4)).toBe(50n)
+    const seen: number[] = []
+    const api = processApi(
+      symbols({
+        OpenProcess: (access) => {
+          seen.push(access)
+          return access & 0x0010 ? 0 : 7
+        },
+      }).symbols
+    )
+    expect(api.open(100)).toBe(7n)
+    expect(seen).toEqual([0x101010, 0x101000])
+    expect(processApi(symbols({ OpenProcess: () => 0 }).symbols).open(1)).toBeNull()
+  })
+
+  test('times, working set and system times read their FILETIME and counter buffers', () => {
+    const fake = symbols()
+    const api = processApi(fake.symbols)
+    expect(api.times(50n)).toEqual({ creation: 11n, kernel: 22n, user: 33n })
+    expect(api.workingSet(50n)).toBe(4096)
+    expect(api.workingSet(51n)).toBeNull()
+    expect(api.systemTimes()).toEqual({ idle: 1n, kernel: 2n, user: 3n })
+    api.close(50n)
+    expect(fake.closed).toEqual([50n])
+  })
+
+  test('failed calls report null instead of zero', () => {
+    const api = processApi(
+      symbols({
+        GetProcessTimes: () => 0,
+        K32GetProcessMemoryInfo: () => 0,
+        GetSystemTimes: () => 0,
+      }).symbols
+    )
+    expect(api.times(50n)).toBeNull()
+    expect(api.workingSet(50n)).toBeNull()
+    expect(api.systemTimes()).toBeNull()
   })
 })

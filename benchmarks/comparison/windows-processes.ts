@@ -194,32 +194,29 @@ const INVALID_HANDLE = -1n
 // PROCESS_QUERY_LIMITED_INFORMATION | PROCESS_VM_READ | SYNCHRONIZE
 const QUERY_ACCESS = 0x1000 | 0x0010 | 0x100000
 
-let api: ProcessApi | undefined
+/** The kernel32 functions ProcessApi calls, as `bun:ffi` binds them. */
+export type Kernel32Symbols = {
+  CreateToolhelp32Snapshot(flags: number, pid: number): number | bigint
+  Process32FirstW(snapshot: bigint, entry: Uint8Array): number
+  Process32NextW(snapshot: bigint, entry: Uint8Array): number
+  OpenProcess(access: number, inherit: number, pid: number): number | bigint
+  GetProcessTimes(
+    handle: bigint,
+    creation: Uint8Array,
+    exit: Uint8Array,
+    kernel: Uint8Array,
+    user: Uint8Array
+  ): number
+  K32GetProcessMemoryInfo(handle: bigint, counters: Uint8Array, size: number): number
+  WaitForSingleObject(handle: bigint, milliseconds: number): number
+  GetSystemTimes(idle: Uint8Array, kernel: Uint8Array, user: Uint8Array): number
+  CloseHandle(handle: bigint): number
+}
 
-/** The kernel32 implementation of ProcessApi, loaded once on Windows. */
-export async function kernel32(): Promise<ProcessApi> {
-  if (api) return api
-  if (process.platform !== 'win32') throw new Error('kernel32 is only available on Windows')
-  const { dlopen, FFIType } = await import('bun:ffi')
-  const { symbols } = dlopen('kernel32.dll', {
-    CreateToolhelp32Snapshot: { args: [FFIType.u32, FFIType.u32], returns: FFIType.i64 },
-    Process32FirstW: { args: [FFIType.i64, FFIType.ptr], returns: FFIType.i32 },
-    Process32NextW: { args: [FFIType.i64, FFIType.ptr], returns: FFIType.i32 },
-    OpenProcess: { args: [FFIType.u32, FFIType.i32, FFIType.u32], returns: FFIType.i64 },
-    GetProcessTimes: {
-      args: [FFIType.i64, FFIType.ptr, FFIType.ptr, FFIType.ptr, FFIType.ptr],
-      returns: FFIType.i32,
-    },
-    K32GetProcessMemoryInfo: {
-      args: [FFIType.i64, FFIType.ptr, FFIType.u32],
-      returns: FFIType.i32,
-    },
-    WaitForSingleObject: { args: [FFIType.i64, FFIType.u32], returns: FFIType.u32 },
-    GetSystemTimes: { args: [FFIType.ptr, FFIType.ptr, FFIType.ptr], returns: FFIType.i32 },
-    CloseHandle: { args: [FFIType.i64], returns: FFIType.i32 },
-  })
+/** ProcessApi over bound kernel32 symbols; injectable so it is tested off Windows. */
+export function processApi(symbols: Kernel32Symbols): ProcessApi {
   const handleOf = (value: number | bigint) => BigInt(value)
-  api = {
+  return {
     entries() {
       const snapshot = handleOf(symbols.CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0))
       if (snapshot === INVALID_HANDLE || snapshot === 0n)
@@ -282,5 +279,32 @@ export async function kernel32(): Promise<ProcessApi> {
       }
     },
   }
+}
+
+let api: ProcessApi | undefined
+
+/** The kernel32 implementation of ProcessApi, loaded once on Windows. */
+export async function kernel32(): Promise<ProcessApi> {
+  if (api) return api
+  if (process.platform !== 'win32') throw new Error('kernel32 is only available on Windows')
+  const { dlopen, FFIType } = await import('bun:ffi')
+  const { symbols } = dlopen('kernel32.dll', {
+    CreateToolhelp32Snapshot: { args: [FFIType.u32, FFIType.u32], returns: FFIType.i64 },
+    Process32FirstW: { args: [FFIType.i64, FFIType.ptr], returns: FFIType.i32 },
+    Process32NextW: { args: [FFIType.i64, FFIType.ptr], returns: FFIType.i32 },
+    OpenProcess: { args: [FFIType.u32, FFIType.i32, FFIType.u32], returns: FFIType.i64 },
+    GetProcessTimes: {
+      args: [FFIType.i64, FFIType.ptr, FFIType.ptr, FFIType.ptr, FFIType.ptr],
+      returns: FFIType.i32,
+    },
+    K32GetProcessMemoryInfo: {
+      args: [FFIType.i64, FFIType.ptr, FFIType.u32],
+      returns: FFIType.i32,
+    },
+    WaitForSingleObject: { args: [FFIType.i64, FFIType.u32], returns: FFIType.u32 },
+    GetSystemTimes: { args: [FFIType.ptr, FFIType.ptr, FFIType.ptr], returns: FFIType.i32 },
+    CloseHandle: { args: [FFIType.i64], returns: FFIType.i32 },
+  })
+  api = processApi(symbols as unknown as Kernel32Symbols)
   return api
 }
