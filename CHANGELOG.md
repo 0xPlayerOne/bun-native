@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.32.1](https://github.com/0xPlayerOne/bun-native/compare/v0.32.0...v0.32.1) (2026-11-11)
+
+
+### Maintenance
+
+* **scripts:** stop exporting symbols nothing imports ([#623](https://github.com/0xPlayerOne/bun-native/issues/623)) ([1b15191](https://github.com/0xPlayerOne/bun-native/commit/1b15191056401f3fa3fb157b2ac438746ae76992)), closes [#260](https://github.com/0xPlayerOne/bun-native/issues/260)
+
 ## [0.32.0](https://github.com/0xPlayerOne/bun-native/compare/v0.31.1...v0.32.0) (2026-11-10)
 
 
