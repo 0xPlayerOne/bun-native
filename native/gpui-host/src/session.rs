@@ -32,7 +32,7 @@ struct WindowEntry {
     handle: WindowHandle<NativeView>,
     state: SharedWindowState,
     /// Dropped with the entry, so a closed window reports no display change.
-    _display: Option<gpui::Subscription>,
+    display: Option<services::DisplayObservation>,
 }
 
 struct OpenWindow {
@@ -236,8 +236,11 @@ impl Session {
                 if services::DISPLAY_DETAILS {
                     capabilities.push(Capability::DisplayDetailsV1);
                 }
-                if services::DISPLAY_CHANGES {
+                if services::display_changes(cx) {
                     capabilities.push(Capability::DisplayChangesV1);
+                }
+                if services::display_identity(cx) {
+                    capabilities.push(Capability::DisplayIdentityV1);
                 }
                 if crate::view::popups_available(cx) {
                     capabilities.push(Capability::PopupWindowsV1);
@@ -275,6 +278,7 @@ impl Session {
                 }
                 capabilities.push(Capability::SplitResizeV1);
                 capabilities.push(Capability::AccessibilityV1);
+                capabilities.push(Capability::AccessibilityListsV1);
                 self.events.send(
                     Event::Ready {
                         protocol: PROTOCOL_VERSION,
@@ -566,7 +570,11 @@ impl Session {
         let events = self.events.clone();
         let drops = self.drops.clone();
         let evidence = self.evidence.clone();
-        let bounds = Bounds::centered(None, size(px(width as f32), px(height as f32)), cx);
+        let bounds = whole_point_origin(Bounds::centered(
+            None,
+            size(px(width as f32), px(height as f32)),
+            cx,
+        ));
         self.evidence.startup("open_window_enter", id, window_id);
         let result = cx.open_window(
             WindowOptions {
@@ -608,10 +616,10 @@ impl Session {
                         });
                     });
                 }
-                let display = (services::DISPLAY_CHANGES && self.policy.window_display)
+                let display = (services::display_changes(cx) && self.policy.window_display)
                     .then(|| {
                         services::observe_display(
-                            handle.into(),
+                            handle,
                             window_id,
                             state.clone(),
                             self.events.clone(),
@@ -624,11 +632,26 @@ impl Session {
                     WindowEntry {
                         handle,
                         state,
-                        _display: display,
+                        display,
                     },
                 );
                 self.last_window_id = window_id.get();
                 self.last_node_id = root_id.get();
+                // The pinned GPUI's AccessKit adapter subclasses the window's
+                // content view, but AppKit asks the first responder (GPUI's view,
+                // a subview of it) for the focused element, and the adapter
+                // starts out believing the window is unfocused although GPUI
+                // already made it key (#241); see bun_native_macos_surface.
+                #[cfg(target_os = "macos")]
+                let _ = handle.update(cx, |_, window, _| {
+                    let native = raw_window_handle::HasWindowHandle::window_handle(window)
+                        .expect("an owned macOS GPUI window exposes its native view");
+                    if let Err(error) = bun_native_macos_surface::focus_route::route(native) {
+                        eprintln!("Bun Native accessibility focus routing unavailable: {error}");
+                    }
+                    bun_native_macos_surface::key_status::track(native)
+                        .expect("GPUI opens its windows on the AppKit owner thread");
+                });
                 cx.activate(true);
                 self.evidence.startup("activation_returned", id, window_id);
                 self.events.send(
@@ -757,6 +780,21 @@ impl Session {
         let Some((handle, _)) = self.window(id, window_id, cx) else {
             return;
         };
+        let disconnected = self.windows.borrow().get(&window_id).is_some_and(|entry| {
+            entry
+                .display
+                .as_ref()
+                .is_some_and(|display| !display.connected())
+        });
+        if disconnected {
+            self.error(
+                id,
+                ErrorCode::ServiceUnavailable,
+                "the owned window's display was disconnected and the platform has not reported its new display",
+                cx,
+            );
+            return;
+        }
         match handle.update(cx, |_, window, cx| services::display_snapshot(window, cx)) {
             Ok(Ok(snapshot)) => self.events.send(
                 Event::DisplaySnapshot {
@@ -1304,5 +1342,30 @@ fn flush_and_quit(events: EventSink, final_event: Event, cx: &mut App) {
             })
             .detach(),
         None => cx.quit(),
+    }
+}
+
+/// Centering on a work area with an odd height (or width) leaves a half-point
+/// origin. AppKit aligns a window's content rectangle to whole backing pixels
+/// by growing it outward, so on a 1x display a requested 420-point-high
+/// window opened with a 421-point viewport (hosted run 43110442504). Whole
+/// points keep the requested content size on every platform.
+fn whole_point_origin(mut bounds: Bounds<gpui::Pixels>) -> Bounds<gpui::Pixels> {
+    bounds.origin.x = bounds.origin.x.floor();
+    bounds.origin.y = bounds.origin.y.floor();
+    bounds
+}
+
+#[cfg(test)]
+mod window_origin_tests {
+    use super::whole_point_origin;
+    use gpui::{Bounds, point, px, size};
+
+    #[test]
+    fn a_half_point_centered_origin_becomes_whole_and_keeps_the_size() {
+        let centered = Bounds::new(point(px(272.), px(170.5)), size(px(480.), px(420.)));
+        let whole = whole_point_origin(centered);
+        assert_eq!(whole.origin, point(px(272.), px(170.)));
+        assert_eq!(whole.size, size(px(480.), px(420.)));
     }
 }

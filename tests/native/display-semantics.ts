@@ -192,6 +192,7 @@ record('independentScreens', { source: 'xdpyinfo + xwininfo -root', screens })
     const want = expected(screens[0]!, 1)
     // X11 advertises neither the work area/identity nor display changes.
     assert.equal(app.serviceCapabilities.windowDisplay.details, 'unavailable')
+    assert.equal(app.serviceCapabilities.windowDisplay.identity, 'unavailable')
     assert.equal(app.serviceCapabilities.windowDisplay.changes, 'unavailable')
     assert(!app.capabilities.some((value) => value.startsWith('display_')))
     assert.throws(

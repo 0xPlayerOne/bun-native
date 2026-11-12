@@ -27,6 +27,7 @@ import {
   type Launch,
 } from './stats.ts'
 import toolchain from '../../toolchain.json'
+import { kernel32, ProcessTreeSampler, windowsLoad } from './windows-processes.ts'
 
 const ADAPTERS = ['core', 'solid', 'react'] as const
 const MODES = ['development', 'aot'] as const
@@ -167,9 +168,11 @@ async function sourceFiles() {
   )
 }
 
-// Process-tree RSS sampling on Linux (/proc) and macOS (ps); other platforms report null rather than a guess.
+// Process-tree RSS sampling on Linux (/proc) and macOS (ps); Windows uses
+// windows-processes.ts; other platforms report null rather than a guess.
 const rssSupported = platform() === 'linux' || platform() === 'darwin'
 const cpuSupported = rssSupported
+const windowsApi = platform() === 'win32' ? await kernel32() : null
 const pageSize = Number(optionalVersion(['getconf', 'PAGESIZE']) ?? '4096')
 /** pid -> parent pid, and (macOS only) resident bytes from one consistent `ps` snapshot. */
 function processTable() {
@@ -231,6 +234,8 @@ function treeRss(root: number) {
 }
 /** One-line system load: /proc/loadavg on Linux, `sysctl vm.loadavg` on macOS. */
 function loadAverage() {
+  // Windows has no load average: CPU busy share over 250 ms and the process count.
+  if (windowsApi) return windowsLoad(windowsApi)
   if (platform() === 'darwin')
     return optionalVersion(['sysctl', '-n', 'vm.loadavg']) ?? 'unavailable'
   return readFileSync('/proc/loadavg', 'utf8').trim()
@@ -301,6 +306,36 @@ async function launch(
       await Promise.race([Bun.sleep(rssInterval), child.exited])
     }
   }
+  let windowsCpu: { cpuUserMs: number; cpuSystemMs: number } | null = null
+  if (windowsApi) {
+    // Same sampling as above through held process handles; the final CPU time
+    // of every observed tree member replaces wait4 (see windows-processes.ts).
+    let sampler: ProcessTreeSampler | null = null
+    try {
+      sampler = new ProcessTreeSampler(windowsApi, child.pid)
+    } catch {
+      // The process exited before it could be opened; report nulls.
+    }
+    if (sampler) {
+      peakTree = peakApplication = peakHost = 0
+      try {
+        while (!exited) {
+          const rss = sampler.sample()
+          if (rss.total > 0) {
+            samples++
+            peakTree = Math.max(peakTree, rss.total)
+            peakApplication = Math.max(peakApplication, rss.application)
+            peakHost = Math.max(peakHost, rss.descendants)
+          }
+          await Promise.race([Bun.sleep(rssInterval), child.exited])
+        }
+        await child.exited
+        windowsCpu = sampler.cpu()
+      } finally {
+        sampler.close()
+      }
+    }
+  }
   const exitCode = await child.exited
   clearTimeout(timer)
   // wait4 resource usage of the application, including every descendant it reaped
@@ -312,8 +347,8 @@ async function launch(
     wallMs: performance.now() - start,
     exitCode,
     pageCacheDropped: coldCache,
-    cpuUserMs: usage ? Number(usage.cpuTime.user) / 1_000 : null,
-    cpuSystemMs: usage ? Number(usage.cpuTime.system) / 1_000 : null,
+    cpuUserMs: usage ? Number(usage.cpuTime.user) / 1_000 : (windowsCpu?.cpuUserMs ?? null),
+    cpuSystemMs: usage ? Number(usage.cpuTime.system) / 1_000 : (windowsCpu?.cpuSystemMs ?? null),
     peakTreeRssBytes: peakTree,
     peakApplicationRssBytes: peakApplication,
     peakHostRssBytes: peakHost,
@@ -386,6 +421,7 @@ function workloadArguments(
 }
 
 function osRelease() {
+  if (platform() === 'win32') return optionalVersion(['cmd', '/c', 'ver']) ?? `Windows ${release()}`
   if (platform() === 'darwin') {
     const version = optionalVersion(['sw_vers', '-productVersion'])
     const build = optionalVersion(['sw_vers', '-buildVersion'])
@@ -433,7 +469,7 @@ const report: Record<string, unknown> = {
     cpuModels: [...new Set(cpus().map((cpu) => cpu.model))],
     logicalCpus: cpus().length,
     memoryBytes: totalmem(),
-    powerAndOtherLoad: `uncontrolled; ${platform() === 'darwin' ? 'sysctl vm.loadavg' : '/proc/loadavg'} is recorded before every launch`,
+    powerAndOtherLoad: `uncontrolled; ${platform() === 'win32' ? 'GetSystemTimes CPU busy share over 250 ms' : platform() === 'darwin' ? 'sysctl vm.loadavg' : '/proc/loadavg'} is recorded before every launch`,
     ...(platform() === 'darwin'
       ? {
           macos: {
@@ -467,8 +503,11 @@ const report: Record<string, unknown> = {
       'failed launches are retained with logs and excluded from distributions; they are never retried',
     intervals:
       'per-launch metrics use each fresh process as the independent unit (percentile bootstrap, 2000 resamples, seed 244); pooled per-operation samples are described but not bootstrapped',
-    rss: `controller samples ${platform() === 'darwin' ? 'ps rss' : '/proc statm'} of the launched process and its descendants (native host) every ${rssInterval} ms; peaks can be missed and shared pages are counted per process`,
-    cpu: 'CPU time is the wait4 user plus system time of the application including descendants it reaped (the native host on an orderly exit); GPU time is not measured',
+    rss: `controller samples ${platform() === 'win32' ? 'the working set (K32GetProcessMemoryInfo)' : platform() === 'darwin' ? 'ps rss' : '/proc statm'} of the launched process and its descendants (native host) every ${rssInterval} ms; peaks can be missed and shared pages are counted per process`,
+    cpu:
+      platform() === 'win32'
+        ? 'CPU time is the final GetProcessTimes user plus kernel time of the application and every descendant the controller observed (the native host), read through handles held from first observation; GPU time is not measured'
+        : 'CPU time is the wait4 user plus system time of the application including descendants it reaped (the native host on an orderly exit); GPU time is not measured',
     startup:
       'controller spawn epoch combined with child performance.timeOrigin milestones; window open and view mount are acknowledged native states, not display presentation',
     aotVerification:

@@ -1,5 +1,7 @@
 mod channel;
 mod evidence;
+#[cfg(any(target_os = "macos", test))]
+mod frame_pacing;
 mod input;
 mod phases;
 mod services;
@@ -35,6 +37,8 @@ fn main() {
     phases::install_from_environment();
     let (commands, events) = channel::connect();
     let evidence = evidence::Evidence::from_environment();
+    #[cfg(target_os = "macos")]
+    frame_pacing::configure();
     gpui_platform::application()
         .with_quit_mode(QuitMode::Explicit)
         .run(move |cx: &mut App| {

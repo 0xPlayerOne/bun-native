@@ -1,11 +1,20 @@
 /**
- * Real X11 accessibility-role and keyboard split-divider qualification.
+ * Real accessibility-role and keyboard split-divider qualification.
  *
- * Runs inside an isolated Xvfb + openbox + DBus session at scale 1. OS input
+ * Linux: inside an isolated Xvfb + openbox + DBus session at GPUI's X11 scale
+ * 1 or 2 (`GPUI_X11_SCALE_FACTOR`); geometry is logical and every OS
+ * coordinate, capture pixel and AT-SPI extent is checked in device pixels. OS input
  * comes from XTEST (xdotool). Roles, names, states and values are read by an
  * independent AT-SPI client (tests/native/atspi-probe.py) over the session
  * accessibility bus; focus and resize events come from public Bun APIs; the
  * divider focus ring is read from a capture of the displayed window.
+ *
+ * macOS: the same scene and steps in the hosted runner's GUI session. OS input
+ * is CoreGraphics key and pointer events through the bounded SDK helper
+ * (tests/native/macos-window-input.ts); the tree is read and requested through
+ * the independent AXUIElement client (tests/native/macos-accessibility-oracle.m)
+ * and normalized to the AT-SPI vocabulary below; the focus ring is read from a
+ * `screencapture` of the owned window.
  */
 import {
   createApplication,
@@ -17,12 +26,17 @@ import {
 import assert from 'node:assert/strict'
 import { statSync, writeFileSync } from 'node:fs'
 import { isAbsolute, join, resolve } from 'node:path'
+import { hostPid, MacWindow } from './macos-window-input.ts'
 
 const output = process.env['BUN_NATIVE_A11Y_EVIDENCE']
 const executable = process.env['BUN_NATIVE_HOST']
 const mode = process.env['BUN_NATIVE_A11Y_MODE']
 // The independent AT-SPI client is a separate system Python with PyGObject.
 const atspiPython = process.env['BUN_NATIVE_ATSPI_PYTHON']
+const mac = process.platform === 'darwin'
+// macOS: the compiled AXUIElement client and the bounded CoreGraphics helper.
+const axOracle = process.env['BUN_NATIVE_A11Y_ORACLE']
+const scaleSetting = process.env['GPUI_X11_SCALE_FACTOR']
 if (
   !output ||
   !isAbsolute(output) ||
@@ -30,15 +44,21 @@ if (
   !executable ||
   !isAbsolute(executable) ||
   (mode !== 'development' && mode !== 'aot') ||
-  !atspiPython ||
-  process.env['GPUI_X11_SCALE_FACTOR'] !== '1' ||
-  !process.env['DISPLAY'] ||
-  process.env['WAYLAND_DISPLAY']
+  (mac
+    ? !axOracle || !isAbsolute(axOracle) || !process.env['BUN_NATIVE_PLATFORM_HELPER']
+    : !atspiPython ||
+      (scaleSetting !== '1' && scaleSetting !== '2') ||
+      !process.env['DISPLAY'] ||
+      process.env['WAYLAND_DISPLAY'])
 )
   throw new Error(
-    'An isolated X11 display at scale 1, evidence directory, host, mode and AT-SPI Python are required'
+    mac
+      ? 'macOS needs an evidence directory, host, mode, the AX oracle and the OS input helper'
+      : 'An isolated X11 display at scale 1 or 2, evidence directory, host, mode and AT-SPI Python are required'
   )
 const host = executable
+// macOS reads AX geometry in points; the helper works in window points.
+const SCALE = mac ? 1 : Number(scaleSetting)
 // Resolved from the checkout, not import.meta, so the AOT executable finds it too.
 const probe = resolve('tests/native/atspi-probe.py')
 
@@ -86,9 +106,18 @@ type Accessible = {
   selections?: number[][]
   extents?: number[][]
   value?: { current: number; minimum: number; maximum: number }
+  bounds?: number[]
+  attributes?: { setsize?: string; posinset?: string }
 }
 
 const TITLE = 'Bun Native accessibility qualification'
+// The host's fixed popup window title (native/gpui-host/src/view/popups.rs).
+const POPUP_TITLE = 'Bun Native popup'
+const LIST_TITLE = 'Bun Native list accessibility'
+// A windowed list: the history holds LIST_TOTAL messages, LIST_MOUNTED rows
+// are mounted at a time, as in docs/native-lists.md.
+const LIST_TOTAL = 10_000
+const LIST_MOUNTED = 5
 const WIDTH = 640
 const HEIGHT = 480
 // Fixed geometry: the split starts below the heading and the scroll view.
@@ -106,12 +135,99 @@ const near = (actual: number | undefined, expected: number, label: string, toler
     `${label}: ${actual} is not ${expected}`
   )
 
-await run([atspiPython, '-I', probe, 'enable'])
+/** AppKit roles as the AT-SPI roles AccessKit gives the same nodes on Linux. */
+const MAC_ROLES: Record<string, string> = {
+  AXStaticText: 'label',
+  AXButton: 'push-button',
+  AXTextField: 'entry',
+  AXSplitter: 'separator',
+  // AccessKit's ScrollView (and only that container here) is AXUnknown.
+  AXUnknown: 'panel',
+  // AccessKit exposes a Dialog as AXWindow with the AXDialog subrole.
+  AXWindow: 'dialog',
+}
+// The NSWindow's own title-bar buttons, outside the GPUI content.
+const WINDOW_BUTTONS = new Set([
+  'AXCloseButton',
+  'AXMinimizeButton',
+  'AXZoomButton',
+  'AXFullScreenButton',
+])
+const flag = (value: unknown) => value === true || value === 1
+/**
+ * One AXUIElement dump entry in the Linux probe's shape. Names are the AX
+ * title, then description, then a label's value; states come from AXFocused,
+ * AXEnabled, AXOrientation and AXModal; UTF-16 selection [start, length]
+ * becomes the AT-SPI caret or selection. AppKit reports AXFocused and AXValue
+ * settable on every AccessKit element, whatever AccessKit's
+ * isAccessibilitySelectorAllowed: answers (hosted run 43110442504: a button's
+ * AXValue and a disabled field's AXFocused were both settable), so neither
+ * becomes `focusable` or `editable`; macOS judges those by their effect.
+ */
+function fromAx(entry: Record<string, unknown>): Accessible {
+  const native = String(entry['role'])
+  const role = MAC_ROLES[native] ?? native
+  const value = entry['value']
+  const states: string[] = []
+  if (flag(entry['focused'])) states.push('focused')
+  if (flag(entry['enabled'])) states.push('enabled')
+  if (entry['orientation'] === 'AXVerticalOrientation') states.push('vertical')
+  if (entry['orientation'] === 'AXHorizontalOrientation') states.push('horizontal')
+  if (flag(entry['modal'])) states.push('modal')
+  const result: Accessible = {
+    role,
+    name:
+      String(entry['title'] ?? '') ||
+      String(entry['description'] ?? '') ||
+      (role === 'label' && typeof value === 'string' ? value : ''),
+    states: states.sort(),
+    depth: Number(entry['depth']),
+  }
+  if (role === 'entry') {
+    result.text = typeof value === 'string' ? value : ''
+    const selection = entry['selection'] as [number, number] | null
+    if (selection) {
+      result.caret = selection[0] + selection[1]
+      result.selections = selection[1] > 0 ? [[selection[0], selection[0] + selection[1]]] : []
+    }
+    const extents = entry['extents'] as number[][] | null
+    if (extents) result.extents = extents
+  }
+  if (role === 'separator' && typeof value === 'number')
+    result.value = {
+      current: value,
+      minimum: Number(entry['minimum']),
+      maximum: Number(entry['maximum']),
+    }
+  return result
+}
+/**
+ * Entries outside the GPUI content: title-bar buttons, the title bar's own
+ * title text (a window child, a sibling of the content, carrying the window
+ * title; hosted run 43116232661) and AccessKit's root group.
+ */
+const frame = (entry: Record<string, unknown>) =>
+  WINDOW_BUTTONS.has(String(entry['subrole'])) ||
+  entry['role'] === 'AXGroup' ||
+  (entry['role'] === 'AXStaticText' && entry['depth'] === 1 && entry['value'] === TITLE)
+
+if (mac) {
+  const trust = JSON.parse(await run([axOracle!, 'trusted'])) as { trusted: boolean }
+  assert.equal(trust.trusted, true, 'the runner trusts the AX oracle for Accessibility')
+} else await run([atspiPython!, '-I', probe, 'enable'])
 const app = await createApplication({ executable: host })
-for (const capability of ['split_v1', 'overlays_v1', 'split_resize_v1', 'accessibility_v1'])
+for (const capability of [
+  'split_v1',
+  'overlays_v1',
+  'split_resize_v1',
+  'accessibility_v1',
+  // The popup window and list sections run on Linux only.
+  ...(mac ? [] : ['popup_windows_v1', 'accessibility_lists_v1']),
+])
   assert(app.capabilities.includes(capability as never), capability)
 
 let window: NativeWindow | undefined
+let macWindow: MacWindow | undefined
 try {
   window = await app.openWindow({ title: TITLE, width: WIDTH, height: HEIGHT })
   const owned = window
@@ -162,7 +278,7 @@ try {
       owned.root,
       batch.create({ kind: 'button', text: 'Open dialog', style: { height: 40 } })
     )
-    return { split, action, search, open }
+    return { split, leading, action, search, open }
   })
   const focusTrace: string[] = []
   const names = new Map<NativeNode, string>([
@@ -225,28 +341,95 @@ try {
     )
   })
 
-  const ids = (await run(['xdotool', 'search', '--sync', '--name', '^' + TITLE + '$'])).split('\n')
-  assert.equal(ids.length, 1, 'exactly one owned window')
-  const xid = ids[0]!
-  await run(['xdotool', 'windowactivate', '--sync', xid])
-  const press = (...keys: string[]) => run(['xdotool', 'key', '--clearmodifiers', ...keys])
-  const dumps: Record<string, Accessible[]> = {}
-  const dump = async (name: string) => {
-    const tree = JSON.parse(await run([atspiPython, '-I', probe, 'dump', TITLE])) as {
+  let xid = ''
+  let pid = 0
+  if (mac) {
+    pid = await hostPid(host)
+    macWindow = await MacWindow.open(TITLE, host, () => [WIDTH, HEIGHT])
+  } else {
+    const ids = (await run(['xdotool', 'search', '--sync', '--name', '^' + TITLE + '$'])).split(
+      '\n'
+    )
+    assert.equal(ids.length, 1, 'exactly one owned window')
+    xid = ids[0]!
+    await run(['xdotool', 'windowactivate', '--sync', xid])
+  }
+  const press = async (...keys: string[]) => {
+    if (macWindow) await macWindow.press(...keys)
+    else await run(['xdotool', 'key', '--clearmodifiers', ...keys])
+  }
+  const dumps: Record<string, unknown> = {}
+  const dump = async (name: string, title = TITLE) => {
+    if (mac) {
+      const raw = JSON.parse(await run([axOracle!, 'dump', String(pid), title])) as Array<
+        Record<string, unknown>
+      >
+      dumps[name] = raw
+      // Every entry is either window frame or a node with a known role.
+      const unknown = raw.filter((entry) => !frame(entry) && !MAC_ROLES[String(entry['role'])])
+      assert.deepEqual(unknown, [], 'every GPUI content node has a mapped AX role')
+      return raw.filter((entry) => !frame(entry)).map(fromAx)
+    }
+    const tree = JSON.parse(await run([atspiPython!, '-I', probe, 'dump', title])) as {
       roles: Accessible[]
     }
     dumps[name] = tree.roles
     return tree.roles
   }
   /** Poll the AT-SPI tree until the condition holds; AccessKit updates after a frame. */
-  const poll = async (name: string, check: (tree: Accessible[]) => boolean) => {
+  const poll = async (name: string, check: (tree: Accessible[]) => boolean, title = TITLE) => {
     const until = performance.now() + 5_000
     for (;;) {
-      const tree = await dump(name)
+      const tree = await dump(name, title)
       if (check(tree)) return tree
       if (performance.now() > until)
         throw new Error('Timed out waiting for AT-SPI ' + name + ': ' + JSON.stringify(tree))
       await Bun.sleep(50)
+    }
+  }
+  type AtspiEvent = {
+    type: string
+    source: { role?: string; name?: string; defunct?: boolean }
+    detail1: number
+    detail2: number
+    data: unknown
+    current?: number
+  }
+  /** Start the independent AT-SPI event listener; `stop` returns every event it saw. */
+  const watchEvents = async () => {
+    const child = Bun.spawn([atspiPython!, '-I', probe, 'watch', '120'], {
+      stdin: 'pipe',
+      stdout: 'pipe',
+      stderr: 'pipe',
+    })
+    const events: AtspiEvent[] = []
+    let ready = false
+    const reading = (async () => {
+      let buffered = ''
+      const decoder = new TextDecoder()
+      for await (const chunk of child.stdout) {
+        buffered += decoder.decode(chunk, { stream: true })
+        let newline = buffered.indexOf('\n')
+        while (newline >= 0) {
+          const line = JSON.parse(buffered.slice(0, newline)) as AtspiEvent | { ready: true }
+          buffered = buffered.slice(newline + 1)
+          if ('ready' in line) ready = true
+          else events.push(line)
+          newline = buffered.indexOf('\n')
+        }
+      }
+    })()
+    await waitFor(() => ready, 'the AT-SPI event listener', 10_000)
+    return {
+      events,
+      stop: async () => {
+        // Let events from the last change arrive before closing.
+        await Bun.sleep(300)
+        void child.stdin.end()
+        await child.exited
+        await reading
+        return events
+      },
     }
   }
   const find = (tree: Accessible[], role: string, name: string) =>
@@ -272,21 +455,42 @@ try {
   assert.deepEqual(scrolled.slice(0, 3), ['Item 1', 'Item 2', 'Item 3'], 'list items inside it')
   const divider = separator(initial)
   assert(divider, 'the divider is a separator named by accessible_label')
-  assert(divider.states.includes('focusable') && !divider.states.includes('focused'))
+  assert(!divider.states.includes('focused'))
+  if (!mac) assert(divider.states.includes('focusable'))
   assert(divider.states.includes('vertical'), 'a row split has a vertical divider')
   near(divider.value?.current, 40, 'divider value is the ratio in percent')
+  if (!mac) {
+    // Its extents are the painted divider in device pixels: the OS window is
+    // the logical size times the scale, and so is every accessible rectangle.
+    const geometry = await run(['xdotool', 'getwindowgeometry', xid])
+    assert.match(geometry, new RegExp(`Geometry: ${WIDTH * SCALE}x${HEIGHT * SCALE}\\b`))
+    const expectedDivider = [0.4 * PANES, HEADING + SCROLL, DIVIDER, SPLIT_HEIGHT].map(
+      (value) => value * SCALE
+    )
+    assert(
+      divider.bounds?.every((value, index) => Math.abs(value - expectedDivider[index]!) <= SCALE),
+      `divider extents ${JSON.stringify(divider.bounds)} are ${JSON.stringify(expectedDivider)}`
+    )
+    record('scale', { scale: SCALE, geometry, divider: divider.bounds })
+  }
   near(divider.value?.minimum, (MIN_PANE / PANES) * 100, 'divider minimum from min_size')
   near(divider.value?.maximum, (1 - MIN_PANE / PANES) * 100, 'divider maximum from min_size')
   const action = find(initial, 'push-button', 'Leading action')
-  assert(action?.states.includes('focusable') && action.states.includes('enabled'))
+  assert(action, 'the leading button is exposed by name')
+  assert(action.states.includes('enabled'))
+  if (!mac) assert(action.states.includes('focusable'))
   const disabled = find(initial, 'push-button', 'Disabled action')
   assert(disabled, 'the disabled button is exposed by name')
   // AccessKit 0.24's AT-SPI adapter reports `enabled`/`sensitive` for every
-  // button; a disabled one is distinguishable only as not focusable.
-  assert(!disabled.states.includes('focusable'), 'a disabled button is not focusable')
+  // button; a disabled one is distinguishable only as not focusable. On macOS
+  // AXEnabled says it, and focusability is judged below by AX focus requests.
+  if (mac) assert(!disabled.states.includes('enabled'), 'a disabled button is not AXEnabled')
+  else assert(!disabled.states.includes('focusable'), 'a disabled button is not focusable')
   const entry = initial.find((node) => node.role === 'entry')
   assert.equal(entry?.text, 'typed')
-  assert(entry.states.includes('focused') && entry.states.includes('editable'))
+  assert(entry.states.includes('focused'))
+  // macOS proves editability by typing at the AT caret below.
+  if (!mac) assert(entry.states.includes('editable'))
   assert(find(initial, 'push-button', 'Open dialog'))
   assert(!initial.some((node) => node.role === 'dialog'), 'no dialog before it opens')
   assert(
@@ -312,8 +516,25 @@ try {
   // selection moves reach the host model (later OS typing lands there), a
   // button's action clicks it, grab_focus focuses, and the divider's Value
   // interface sets its ratio.
-  const act = (role: string, name: string, ...request: string[]) =>
-    run([atspiPython, '-I', probe, 'act', TITLE, role, name, ...request])
+  const actIn = (title: string, role: string, name: string, ...request: string[]) =>
+    run([atspiPython!, '-I', probe, 'act', title, role, name, ...request])
+  /** One AT request; macOS names the AX attribute or action that carries it. */
+  const act = (role: string, name: string, ...request: string[]) => {
+    if (!mac) return actIn(TITLE, role, name, ...request)
+    const native = Object.entries(MAC_ROLES).find(([, mapped]) => mapped === role)![0]
+    const [verb, ...args] = request
+    const translated =
+      verb === 'caret'
+        ? ['select', args[0]!, '0']
+        : verb === 'select'
+          ? ['select', args[0]!, String(Number(args[1]) - Number(args[0]))]
+          : verb === 'click'
+            ? ['press']
+            : verb === 'value'
+              ? ['number', ...args]
+              : [verb!, ...args]
+    return run([axOracle!, 'act', String(pid), TITLE, native, name, ...translated])
+  }
   const entryText = (tree: Accessible[]) => tree.find((node) => node.role === 'entry')
   await act('entry', 'typed', 'caret', '2')
   await poll('caret set', (tree) => entryText(tree)?.caret === 2)
@@ -346,6 +567,29 @@ try {
     5_000,
     () => focusTrace.join()
   )
+  if (mac) {
+    // AccessKit's setAccessibilityFocused: performs Focus only on a focusable
+    // node (accesskit_macos 0.26.3 src/node.rs:638-650), so the AX request is
+    // the macOS form of the focusable state: it moves focus to an enabled
+    // button and leaves focus where it is for a disabled one. The enabled
+    // request runs second, so a late effect of the first would show in the
+    // exact trace.
+    const before = focusTrace.length
+    const refused = JSON.parse(await act('push-button', 'Disabled action', 'request-focus')) as {
+      error: number
+    }
+    await Bun.sleep(500)
+    assert.deepEqual(focusTrace.slice(before), [], 'AX focus on a disabled button moves no focus')
+    await act('push-button', 'Leading action', 'focus')
+    await waitFor(() => focusTrace.at(-1) === 'action', 'AX focus on an enabled button')
+    await act('entry', 'ZXped', 'focus')
+    await waitFor(() => focusTrace.at(-1) === 'search', 'AX focus back on the input')
+    assert.deepEqual(focusTrace.slice(before), ['-search', 'action', '-action', 'search'])
+    record('axFocusability', {
+      disabledRequestError: refused.error,
+      trace: focusTrace.slice(before),
+    })
+  }
   const resizedFrom = resizes.length
   await act('separator', 'Sidebar', 'value', '30')
   await waitFor(() => resizes.length === resizedFrom + 1, 'AT divider value')
@@ -395,13 +639,15 @@ try {
   const ratioX = (ratio: number) => ratio * PANES + DIVIDER / 2
   const capture = join(output, 'divider-focused.png')
   await Bun.sleep(100)
-  await run(['import', '-window', xid, capture])
+  const shot = macWindow ? await macWindow.capture(capture) : undefined
+  if (!shot) await run(['import', '-window', xid, capture])
   const pixel = async (x: number, y: number) => {
+    if (shot) return shot.pixel([x, y])
     const text = await run([
       'convert',
       capture,
       '-crop',
-      `1x1+${Math.round(x)}+${Math.round(y)}`,
+      `1x1+${Math.round(x * SCALE)}+${Math.round(y * SCALE)}`,
       '-depth',
       '8',
       'txt:-',
@@ -427,6 +673,9 @@ try {
     )
     return tree
   }
+  // What a screen reader is told as values and dialogs change: an
+  // independent AT-SPI listener records every event from here on.
+  const watcher = mac ? undefined : await watchEvents()
   await expectResize(['Right'], 0.41, 'Right step')
   await expectResize(['shift+Right'], 0.51, 'Shift+Right step')
   await expectResize(['Left'], 0.5, 'Left step')
@@ -452,15 +701,35 @@ try {
   focusTrace.length = 0
   const dragFrom = resizes.length
   const fromX = ratioX(1 - MIN_PANE / PANES)
-  await run(['xdotool', 'mousemove', '--window', xid, String(Math.round(fromX)), String(SPLIT_Y)])
-  await run(['xdotool', 'mousedown', '1'])
-  for (const x of [450, 400, 350, ratioX(0.5)]) {
-    await run(['xdotool', 'mousemove', '--window', xid, String(Math.round(x)), String(SPLIT_Y)])
-    await Bun.sleep(30)
+  if (macWindow) {
+    // One helper drag: press, moves, then 400 ms held before the release.
+    let whileHeld: number | undefined
+    await macWindow.drag(
+      [fromX, 450, 400, 350, ratioX(0.5)].map((x) => [Math.round(x), SPLIT_Y] as const),
+      400,
+      () => void setTimeout(() => (whileHeld = resizes.length), 200)
+    )
+    assert.equal(whileHeld, dragFrom, 'no report while the button is held')
+  } else {
+    const move = (x: number, y: number) =>
+      run([
+        'xdotool',
+        'mousemove',
+        '--window',
+        xid,
+        String(Math.round(x * SCALE)),
+        String(Math.round(y * SCALE)),
+      ])
+    await move(fromX, SPLIT_Y)
+    await run(['xdotool', 'mousedown', '1'])
+    for (const x of [450, 400, 350, ratioX(0.5)]) {
+      await move(x, SPLIT_Y)
+      await Bun.sleep(30)
+    }
+    await Bun.sleep(200)
+    assert.equal(resizes.length, dragFrom, 'no report while the button is held')
+    await run(['xdotool', 'mouseup', '1'])
   }
-  await Bun.sleep(200)
-  assert.equal(resizes.length, dragFrom, 'no report while the button is held')
-  await run(['xdotool', 'mouseup', '1'])
   await waitFor(() => resizes.length === dragFrom + 1, 'pointer resize after release')
   const dragged = resizes.at(-1)!
   assert.equal(dragged.source, 'pointer')
@@ -522,7 +791,258 @@ try {
   )
   record('modalDialog', { focusAfterClose: focusTrace.at(-1) })
 
-  writeFileSync(join(output, 'atspi-trees.json'), JSON.stringify(dumps, null, 2) + '\n')
+  // Linux only: this section reads AT-SPI events and the popup window's own
+  // AT-SPI tree.
+  if (watcher) {
+    // Value changes: each keyboard step and the drag announced the divider's
+    // new value; the dialog's appearance was announced as a new dialog child
+    // and its first control's focus. (Orca's speech for both is in
+    // screen-reader.ts.)
+    const announced = await watcher.stop()
+    const fromHost = announced.filter((event) => !event.source.defunct)
+    const values = fromHost
+      .filter(
+        (event) =>
+          event.type === 'object:property-change:accessible-value' &&
+          event.source.role === 'separator' &&
+          event.source.name === 'Sidebar'
+      )
+      .map((event) => Math.round(Number(event.current) * 1000) / 1000)
+    const expectedValues = [41, 51, 50, (MIN_PANE / PANES) * 100, (1 - MIN_PANE / PANES) * 100].map(
+      (value) => Math.round(value * 1000) / 1000
+    )
+    assert.deepEqual(
+      values.slice(0, expectedValues.length),
+      expectedValues,
+      'one value-change event per keyboard step, carrying the new value'
+    )
+    assert(
+      values
+        .slice(expectedValues.length)
+        .some((value) => Math.abs(value - dragged.ratio * 100) < 0.01),
+      'the drag announced its final value'
+    )
+    const dialogAdded = fromHost.find(
+      (event) =>
+        event.type.startsWith('object:children-changed:add') &&
+        typeof event.data === 'object' &&
+        event.data !== null &&
+        (event.data as { role?: string }).role === 'dialog' &&
+        (event.data as { name?: string }).name === 'Confirm dialog'
+    )
+    assert(dialogAdded, 'the dialog was announced as a new child')
+    const confirmFocused = fromHost.findIndex(
+      (event) =>
+        event.type === 'object:state-changed:focused' &&
+        event.detail1 === 1 &&
+        event.source.role === 'push-button' &&
+        event.source.name === 'Confirm'
+    )
+    assert(confirmFocused > fromHost.indexOf(dialogAdded), "then its first control's focus")
+    record('announcements', { values, dialog: dialogAdded, events: announced.length })
+
+    // A popup window overlay (popup_windows_v1) is its own OS window with its
+    // own accessible tree: a dialog named by accessible_label holding the
+    // overlay's content, none of which appears in the parent window's tree. An
+    // AT click on its button reaches Bun as a click.
+    let popupClicks = 0
+    const popup = await owned.batch((batch) => {
+      const layer = batch.create({
+        kind: 'overlay',
+        anchor: 'parent',
+        surface: 'window',
+        accessible_label: 'Suggestions',
+        style: { width: 220, height: 96, padding: 8, gap: 4, background: 0xf4e3c1 },
+      })
+      const copy = batch.create({ kind: 'button', text: 'Copy suggestion' })
+      batch.append(nodes.leading, layer)
+      batch.append(layer, batch.create({ kind: 'text', text: 'Two suggestions' }))
+      batch.append(layer, copy)
+      return { layer, copy }
+    })
+    owned.onClick(popup.copy, () => void (popupClicks += 1))
+    const popupTree = await poll(
+      'popup window',
+      (tree) => find(tree, 'push-button', 'Copy suggestion') !== undefined,
+      POPUP_TITLE
+    )
+    const popupDialog = find(popupTree, 'dialog', 'Suggestions')
+    assert(popupDialog, 'the popup surface is a dialog named by accessible_label')
+    assert(!popupDialog.states.includes('modal'), 'a popup overlay is never modal')
+    const popupInside = popupTree
+      .slice(popupTree.indexOf(popupDialog) + 1)
+      .filter((node) => node.depth > popupDialog.depth)
+      .map((node) => node.role + ':' + node.name)
+    assert.deepEqual(
+      popupInside,
+      ['label:Two suggestions', 'push-button:Copy suggestion'],
+      'the popup content is nested under its dialog'
+    )
+    assert(
+      popupTree.every((node) => node === popupDialog || node.depth > popupDialog.depth),
+      'nothing else is in the popup window tree'
+    )
+    const parentTree = await dump('parent with popup')
+    assert(
+      !parentTree.some((node) => node.name === 'Suggestions' || node.name === 'Copy suggestion'),
+      "the popup's nodes are not in the parent window's tree"
+    )
+    await actIn(POPUP_TITLE, 'push-button', 'Copy suggestion', 'click')
+    await waitFor(() => popupClicks === 1, 'AT click in the popup window')
+    await owned.batch((batch) => batch.remove(popup.layer))
+    record('popupWindow', { dialog: popupDialog, inside: popupInside, clicks: popupClicks })
+  }
+
+  if (!mac) {
+    // accessibility_lists_v1, in its own window: a windowed list exposes the
+    // full history's set size, each mounted row its place in it and its
+    // selection; rows outside the window have no node. A live text node is
+    // announced when it appears and on each change; ordinary text is not.
+    const lists = await app.openWindow({ title: LIST_TITLE, width: 480, height: 320 })
+    const listWatcher = await watchEvents()
+    const rowNodes = new Map<number, { item: NativeNode<'box'>; label: NativeNode<'text'> }>()
+    const listScene = await lists.batch((batch) => {
+      const list = batch.create({
+        kind: 'box',
+        accessible_role: 'list',
+        accessible_label: 'Messages',
+        accessible_set_size: LIST_TOTAL,
+        style: { direction: 'column', gap: 4, padding: 8, width: 'fill', height: 240 },
+      })
+      batch.append(lists.root, list)
+      for (let position = 4_996; position < 4_996 + LIST_MOUNTED; position += 1) {
+        const item = batch.create({
+          kind: 'box',
+          accessible_role: 'list_item',
+          accessible_position: position,
+          accessible_selected: position === 4_998,
+          style: { height: 36, padding: 4 },
+        })
+        const label = batch.create({ kind: 'text', text: 'Message ' + position })
+        batch.append(list, item)
+        batch.append(item, label)
+        rowNodes.set(position, { item, label })
+      }
+      const status = batch.create({ kind: 'text', text: 'Idle', accessible_live: 'polite' })
+      batch.append(lists.root, status)
+      return { list, status }
+    })
+    type ListItem = { position: number; setSize: number; selected: boolean; text: string[] }
+    const listItems = (tree: Accessible[]): ListItem[] | undefined => {
+      const list = find(tree, 'list', 'Messages')
+      if (!list) return undefined
+      const below = tree.slice(tree.indexOf(list) + 1)
+      const end = below.findIndex((node) => node.depth <= list.depth)
+      const inside = end < 0 ? below : below.slice(0, end)
+      return inside
+        .filter((node) => node.depth === list.depth + 1)
+        .map((item) => {
+          assert.equal(item.role, 'list-item', 'every child of the list is a list item')
+          assert(
+            item.states.includes('selectable'),
+            'an item with accessible_selected is selectable'
+          )
+          const after = inside.slice(inside.indexOf(item) + 1)
+          const stop = after.findIndex((node) => node.depth <= item.depth)
+          return {
+            position: Number(item.attributes?.posinset),
+            setSize: Number(item.attributes?.setsize),
+            selected: item.states.includes('selected'),
+            text: (stop < 0 ? after : after.slice(0, stop)).map(
+              (node) => node.role + ':' + node.name
+            ),
+          }
+        })
+    }
+    const expectItems = async (name: string, first: number, selected: number) => {
+      const expected = Array.from({ length: LIST_MOUNTED }, (_, index) => ({
+        position: first + index,
+        setSize: LIST_TOTAL,
+        selected: first + index === selected,
+        text: ['label:Message ' + (first + index)],
+      }))
+      const tree = await poll(
+        name,
+        (candidate) => {
+          const items = listItems(candidate)
+          return items !== undefined && JSON.stringify(items) === JSON.stringify(expected)
+        },
+        LIST_TITLE
+      )
+      const list = find(tree, 'list', 'Messages')!
+      assert.equal(list.attributes?.posinset, undefined, 'the list itself has no position')
+      return listItems(tree)!
+    }
+    const initialItems = await expectItems('list initial', 4_996, 4_998)
+    // The window shifts down by one row, as a scrolled windowed list does:
+    // the first row's node goes away, the next history row gets one, and the
+    // set size stays the whole history.
+    await lists.batch((batch) => {
+      const first = rowNodes.get(4_996)!
+      batch.remove(first.item)
+      rowNodes.delete(4_996)
+      const position = 4_996 + LIST_MOUNTED
+      const item = batch.create({
+        kind: 'box',
+        accessible_role: 'list_item',
+        accessible_position: position,
+        accessible_selected: false,
+        style: { height: 36, padding: 4 },
+      })
+      const label = batch.create({ kind: 'text', text: 'Message ' + position })
+      batch.append(listScene.list, item)
+      batch.append(item, label)
+      rowNodes.set(position, { item, label })
+    })
+    await expectItems('list shifted', 4_997, 4_998)
+    // Selection moves by changing which mounted item declares it.
+    await lists.batch((batch) => {
+      for (const [position, row] of rowNodes)
+        batch.set(row.item, {
+          kind: 'box',
+          accessible_role: 'list_item',
+          accessible_position: position,
+          accessible_selected: position === 4_999,
+          style: { height: 36, padding: 4 },
+        })
+    })
+    const shiftedItems = await expectItems('list selection moved', 4_997, 4_999)
+    // Streamed text: the live status changes twice; an ordinary row's text
+    // changes once and is not announced.
+    // Each change is read back before the next, so neither is coalesced
+    // into one accessibility update.
+    await poll('live idle', (tree) => find(tree, 'label', 'Idle') !== undefined, LIST_TITLE)
+    for (const text of ['Streaming one', 'Streaming one two']) {
+      await lists.batch((batch) =>
+        batch.set(listScene.status, { kind: 'text', text, accessible_live: 'polite' })
+      )
+      await poll('live ' + text, (tree) => find(tree, 'label', text) !== undefined, LIST_TITLE)
+    }
+    await lists.batch((batch) =>
+      batch.set(rowNodes.get(4_997)!.label, { kind: 'text', text: 'Message 4997 edited' })
+    )
+    await poll(
+      'list edited',
+      (tree) => find(tree, 'label', 'Message 4997 edited') !== undefined,
+      LIST_TITLE
+    )
+    const listEvents = await listWatcher.stop()
+    const spoken = listEvents
+      .filter((event) => event.type === 'object:announcement' && !event.source.defunct)
+      .map((event) => event.data)
+    assert.deepEqual(
+      spoken,
+      ['Idle', 'Streaming one', 'Streaming one two'],
+      'the live text is announced when it appears and on each change, and nothing else is'
+    )
+    record('lists', { initial: initialItems, shifted: shiftedItems, announcements: spoken })
+    await lists.close()
+  }
+
+  writeFileSync(
+    join(output, mac ? 'ax-trees.json' : 'atspi-trees.json'),
+    JSON.stringify(dumps, null, 2) + '\n'
+  )
   await owned.close()
 } finally {
   await app.shutdown()
@@ -532,6 +1052,11 @@ assert(Object.values(app.diagnostics).every((count) => count === 0))
 const result = {
   status: 'passed',
   scenario: 'accessibility',
+  platform: process.platform,
+  client: mac
+    ? 'AXUIElement (macos-accessibility-oracle.m); CoreGraphics input (native-platform-macos.m)'
+    : 'AT-SPI (atspi-probe.py); XTEST input (xdotool)',
+  ...(macWindow ? { osInput: macWindow.log } : {}),
   mode,
   elapsedMs: Math.round(performance.now() - started),
   outcomes,

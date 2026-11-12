@@ -16,6 +16,10 @@ use std::rc::Rc;
 use std::time::Instant;
 
 const MAX_STARTUP_RECORDS: u16 = 256;
+/// Presentation records have their own bound, so a long fixture's paints
+/// neither exhaust the startup budget nor stop before a late failure.
+#[cfg(any(target_os = "macos", test))]
+const MAX_PRESENTATION_RECORDS: u16 = 1024;
 
 #[derive(Clone, Default)]
 pub(crate) struct Evidence(Option<Rc<RefCell<Log>>>);
@@ -32,6 +36,8 @@ struct Log {
     input_viewports: bool,
     startup_started: Option<Instant>,
     startup_records: u16,
+    #[cfg(any(target_os = "macos", test))]
+    presentation_records: u16,
 }
 
 fn append(file: &mut File, record: &Value) -> io::Result<()> {
@@ -70,6 +76,8 @@ impl Evidence {
                 startup_started: (std::env::var("BUN_NATIVE_STARTUP_TRACE").as_deref() == Ok("1"))
                     .then(Instant::now),
                 startup_records: 0,
+                #[cfg(any(target_os = "macos", test))]
+                presentation_records: 0,
             })))),
             Err(error) => {
                 eprintln!("Bun Native native evidence log unavailable: {error}");
@@ -165,6 +173,99 @@ impl Evidence {
         }
     }
 
+    /// Whether [`Evidence::presentation`] records anything, so callers can
+    /// skip reading native state that would only be discarded.
+    #[cfg(any(target_os = "macos", test))]
+    pub(crate) fn presentation_tracing(&self) -> bool {
+        self.0.as_ref().is_some_and(|log| {
+            let log = log.borrow();
+            log.startup_started.is_some() && log.presentation_records < MAX_PRESENTATION_RECORDS
+        })
+    }
+
+    /// One bounded record of the native surface's presentation state at a
+    /// paint, a layer invalidation or a key dispatch, on the same process clock
+    /// as the scheduling records. It shares their explicit opt-in. A paint
+    /// record is not a presentation: `native` says which GPUI path drew it
+    /// (see `bun_native_macos_surface::presentation`), so a stale capture can
+    /// be matched to the last frame that GPUI actually presented.
+    #[cfg(any(target_os = "macos", test))]
+    pub(crate) fn presentation(
+        &self,
+        phase: &'static str,
+        window_id: WindowId,
+        tree: &Tree,
+        native: Value,
+    ) {
+        let Some(log) = &self.0 else {
+            return;
+        };
+        let mut log = log.borrow_mut();
+        let Some(started) = log.startup_started else {
+            return;
+        };
+        if log.presentation_records >= MAX_PRESENTATION_RECORDS {
+            return;
+        }
+        log.presentation_records += 1;
+        let mut record = json!({
+            "nonce": log.nonce,
+            "type": "presentation",
+            "stage": "native-presentation",
+            "clock": "process_monotonic_relative",
+            "elapsed_ns": started.elapsed().as_nanos().to_string(),
+            "index": log.presentation_records,
+            "window_id": window_id,
+        });
+        if log.presentation_records == MAX_PRESENTATION_RECORDS {
+            record["phase"] = json!("record_limit");
+        } else {
+            record["phase"] = json!(phase);
+            record["tree_revision"] = json!(tree.revision());
+            record["input_revisions"] = json!(
+                tree.nodes()
+                    .filter_map(|(id, node)| node
+                        .input_revision()
+                        .map(|revision| [id.get(), revision]))
+                    .collect::<Vec<_>>()
+            );
+            record["native"] = native;
+        }
+        if append(&mut log.file, &record).is_err() {
+            log.presentation_records = MAX_PRESENTATION_RECORDS;
+        }
+    }
+
+    /// [`Evidence::presentation`] with the owned window's native surface state.
+    #[cfg(target_os = "macos")]
+    pub(crate) fn surface_presentation(
+        &self,
+        phase: &'static str,
+        window_id: WindowId,
+        tree: &Tree,
+        window: &gpui::Window,
+    ) {
+        if !self.presentation_tracing() {
+            return;
+        }
+        let state = raw_window_handle::HasWindowHandle::window_handle(window)
+            .map_err(|_| "native window handle is unavailable".to_string())
+            .and_then(|handle| {
+                bun_native_macos_surface::presentation::presentation_state(handle)
+                    .map_err(|error| error.to_string())
+            });
+        let native = match state {
+            Ok(state) => json!({
+                "presents_with_transaction": state.presents_with_transaction,
+                "needs_display": state.needs_display,
+                "occlusion_visible": state.occlusion_visible,
+                "key_window": state.key_window,
+            }),
+            Err(reason) => json!({"status": "unavailable", "reason": reason}),
+        };
+        self.presentation(phase, window_id, tree, native);
+    }
+
     pub(crate) fn renderer(&self, window_id: WindowId, window: &gpui::Window) {
         let Some(log) = &self.0 else {
             return;
@@ -180,6 +281,8 @@ impl Evidence {
                     bun_native_macos_surface::metal_device(handle)
                         .map_err(|error| error.to_string())
                 });
+            record["frame_source"] =
+                json!(crate::frame_pacing::chosen().map(|source| source.name()));
             record["metal_device"] = match device {
                 Ok(device) => json!({
                     "status": "reported", "source": "CAMetalLayer.device",

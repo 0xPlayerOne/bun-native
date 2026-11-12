@@ -30,6 +30,8 @@ pub(super) struct Overlays {
     live: BTreeMap<NodeId, Entry>,
     /// The topmost modal layer, if any. Tab order and key routing stay inside it.
     active_modal: Option<NodeId>,
+    /// Counts modal layers that closed or were replaced. See [`Overlays::exposure`].
+    exposure: u64,
 }
 
 /// Keep the native diagnostics observer after every overlay's mouse listeners.
@@ -42,6 +44,17 @@ impl Overlays {
 
     pub(super) fn active_modal(&self) -> Option<NodeId> {
         self.active_modal
+    }
+
+    /// Changes whenever a modal layer stops being the active one, which
+    /// re-exposes the content beneath it. The view folds it into every
+    /// element id, so that content returns to the accessibility tree as new
+    /// nodes. AccessKit 0.24's AT-SPI adapter marks a node it removes defunct
+    /// and never clears that state when a node with the same id is added
+    /// again; Orca then ignored every focus change beneath a closed dialog
+    /// (measured with Orca 46.1 in `tests/native/screen-reader.ts`).
+    pub(super) fn exposure(&self) -> u64 {
+        self.exposure
     }
 }
 
@@ -158,6 +171,9 @@ impl NativeView {
                     });
             }
             let modal = tree.active_modal();
+            if self.overlays.active_modal.is_some() && self.overlays.active_modal != modal {
+                self.overlays.exposure = self.overlays.exposure.wrapping_add(1);
+            }
             self.overlays.active_modal = modal;
             let allowed = |id: NodeId| modal.is_none_or(|modal| within(tree, id, modal));
             // Outermost closed layer first: closing nested layers together

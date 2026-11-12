@@ -15,11 +15,47 @@ fn non_null_revision_oracle<'de, D: Deserializer<'de>>(d: D) -> Result<Option<u6
 #[serde(tag = "kind", rename_all = "snake_case", deny_unknown_fields)]
 enum OracleElement {
     Box {
+        #[serde(
+            default,
+            skip_serializing_if = "Option::is_none",
+            deserialize_with = "non_null"
+        )]
+        accessible_role: Option<AccessibleRole>,
+        #[serde(
+            default,
+            skip_serializing_if = "Option::is_none",
+            deserialize_with = "non_null"
+        )]
+        accessible_label: Option<String>,
+        #[serde(
+            default,
+            skip_serializing_if = "Option::is_none",
+            deserialize_with = "non_null_color"
+        )]
+        accessible_set_size: Option<u32>,
+        #[serde(
+            default,
+            skip_serializing_if = "Option::is_none",
+            deserialize_with = "non_null_color"
+        )]
+        accessible_position: Option<u32>,
+        #[serde(
+            default,
+            skip_serializing_if = "Option::is_none",
+            deserialize_with = "non_null"
+        )]
+        accessible_selected: Option<bool>,
         #[serde(default)]
         style: Style,
     },
     Text {
         text: String,
+        #[serde(
+            default,
+            skip_serializing_if = "Option::is_none",
+            deserialize_with = "non_null"
+        )]
+        accessible_live: Option<Live>,
         #[serde(default)]
         style: Style,
     },
@@ -205,6 +241,11 @@ fn elements() -> Vec<Value> {
                "navigation": "menu", "surface": "window", "style": {"width": 100, "height": 50}}),
         json!({"kind": "overlay", "modal": true, "accessible_label": "Delete file"}),
         json!({"kind": "overlay"}),
+        json!({"kind": "box", "accessible_role": "list", "accessible_label": "Messages",
+               "accessible_set_size": 10150}),
+        json!({"kind": "box", "accessible_role": "list_item", "accessible_position": 3,
+               "accessible_selected": true}),
+        json!({"kind": "text", "text": "Token", "accessible_live": "polite"}),
     ]
 }
 

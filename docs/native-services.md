@@ -13,9 +13,12 @@ Linux development/AOT cases with a release-profile host at main
 [run 41831891686](https://github.com/0xPlayerOne/bun-native/actions/runs/41831891686/job/126580888949).
 The [hosted source-bound record](../tests/native/evidence/services-linux-hosted-release.json)
 binds the artifact, compiler manifests, raw results and source hashes. This
-qualifies one isolated scale-1 Xvfb screen; macOS, Windows and multi-monitor
-service behavior remain unverified. The display snapshot alone also runs on a
-headless Wayland compositor (see [Wayland](#wayland)). The earlier
+qualifies one isolated scale-1 Xvfb screen; macOS, Windows and physical
+multi-monitor service behavior remain unverified. The display snapshot, its
+identity and its change events also run on a headless Wayland compositor with
+two outputs of different scale (see [Wayland display changes](#wayland-display-changes-299)),
+and a hosted macOS step adds a CoreGraphics virtual second display of the
+other backing scale (see [macOS virtual second display](#macos-virtual-second-display-299)). The earlier
 [protocol-5 development-host record](../tests/native/evidence/services-linux-development-aot.json)
 remains separate historical evidence. Parser and type checks do not substitute
 for either native run.
@@ -82,21 +85,22 @@ protocol 7 added global shortcuts, 8 notifications, 9 `filesystem_roots`, 10
 `service_policy` with explicit `window_display`, `clipboard_read`,
 `clipboard_write`, `global_shortcuts`, `notifications` and `drag_drop`
 booleans plus the `filesystem_roots` and `processes` lists. Display details,
-display changes and file dialogs are optional capabilities that kept protocol
-11; `file_dialogs` is the only optional policy field. The runtime requires the
+display identity, display changes and file dialogs are optional capabilities
+that kept protocol 11; `file_dialogs` is the only optional policy field. The runtime requires the
 reported policy to match its launch request exactly. Missing capabilities,
 missing policy, conflicting policy or an older protocol fail launch and clean
 up the child. Feature negotiation says what the host implements; permission
 says which implemented service the application elected to expose.
 
 `app.serviceCapabilities` is a frozen record. `windowDisplay` contains
-`{ availability: 'available', permission: 'allow' | 'deny', scope: 'owned_window', details, changes }`,
-where `details` and `changes` are `'available'` only when the host advertises
-`display_details_v1` / `display_changes_v1`.
-The optional `clipboard_text_v1` feature is advertised only for the implemented
-local Linux X11 backend. Its capability record reports independent `read` and
-`write` permissions, `owned_window` scope and backend `x11`. Other targets and
-backends report `unavailable` / `unsupported_platform` for clipboard text.
+`{ availability: 'available', permission: 'allow' | 'deny', scope: 'owned_window', details, identity, changes }`,
+where `details`, `identity` and `changes` are `'available'` only when the host
+advertises `display_details_v1` / `display_identity_v1` / `display_changes_v1`.
+The optional `clipboard_text_v1` feature is advertised for the implemented
+local Linux X11 backend and on macOS. Its capability record reports independent
+`read` and `write` permissions, `owned_window` scope and backend `x11` or
+`appkit`. Other targets and backends report `unavailable` /
+`unsupported_platform` for clipboard text.
 Every other optional service has the same shape: available with its
 grant, scope and backend when its capability is advertised, otherwise
 `unavailable` / `unsupported_platform`. `messageDialogs` is available with
@@ -126,16 +130,20 @@ interface NativeDisplaySnapshot {
   readonly scaleFactor: number
   // Only when serviceCapabilities.windowDisplay.details is 'available' (macOS, Windows):
   readonly visibleBounds?: Readonly<{ x: number; y: number; width: number; height: number }>
+  // Only when serviceCapabilities.windowDisplay.identity is 'available'
+  // (macOS, Windows, Linux Wayland) and the platform names the display:
   readonly displayId?: string
 }
 ```
 
-`visibleBounds` and `displayId` exist only where the host advertises the
-optional `display_details_v1` capability, and `window.onDisplayChange()` only
-where it advertises `display_changes_v1`; see
-[macOS and Windows display semantics](#macos-and-windows-display-semantics-299).
-Neither changes `PROTOCOL_VERSION`; a host that sends a detail or a change
-without advertising it fails the session as a protocol error.
+`visibleBounds` exists only where the host advertises the optional
+`display_details_v1` capability, `displayId` only where it advertises
+`display_identity_v1`, and `window.onDisplayChange()` only where it advertises
+`display_changes_v1`; see
+[macOS and Windows display semantics](#macos-and-windows-display-semantics-299)
+and [Wayland display changes](#wayland-display-changes-299).
+None changes `PROTOCOL_VERSION`; a host that sends a work area, an identity or
+a change without advertising it fails the session as a protocol error.
 
 Bounds are the GPUI platform display's reported logical pixels; coordinate
 origins depend on its backend. `scaleFactor` is the owning window's current
@@ -153,7 +161,7 @@ physical monitor selected by the window's overlap. Its bounds originate at
 zero and divide X screen pixels by the configured scale. The API does not
 promise refresh rate, raw DPI, display enumeration or automatic window
 placement anywhere, and offers a work area, display identifier and
-display-change events only through the macOS/Windows capabilities below. A
+display-change events only through the optional capabilities below. A
 snapshot is a read at one instant: moving a window afterwards can make it
 stale.
 These semantics follow the pinned
@@ -212,22 +220,24 @@ following remain **unavailable** and are not part of the public result:
   all zeros, so there is no persistent identity to expose.
 - Mixed DPI: one scale factor per host process; per-monitor scale is not
   exposed by the X11 backend.
-- Wayland: `displaySnapshot` matches the compositor's output (bounds and
-  integer scale 1 or 2) on headless sway; see [Wayland](#wayland). Change
-  events stay unadvertised on all of Linux. macOS and Windows have their own
-  fixture, below.
+- Wayland is a different backend with per-output displays and change events;
+  see [Wayland display changes](#wayland-display-changes-299). macOS and
+  Windows have their own fixture, below.
 
 ### macOS and Windows display semantics (#299)
 
-On macOS and Windows the host advertises two optional capabilities, behind the
-same `windowDisplay` launch grant; Linux advertises neither, and
-`serviceCapabilities.windowDisplay.details` / `.changes` report
-`'unavailable'` there:
+On macOS and Windows the host advertises three optional capabilities, behind
+the same `windowDisplay` launch grant. Linux X11 advertises none, and Linux
+Wayland `display_identity_v1` and `display_changes_v1`
+([below](#wayland-display-changes-299));
+`serviceCapabilities.windowDisplay.details` / `.identity` / `.changes` report
+`'unavailable'` for a capability the host does not advertise:
 
-| Capability           | Public result                                | GPUI source (pinned)                                                                                                                                                                                                                                                                                                          |
-| -------------------- | -------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `display_details_v1` | `visibleBounds` (work area) and `displayId`  | macOS [`visible_bounds`/`uuid`](https://github.com/zed-industries/zed/blob/ba63a022c9a22ca66d68ef2a8f0bb9b5b0a9984d/crates/gpui_macos/src/display.rs#L85-L149), Windows [`rcWork`/`szDevice`](https://github.com/zed-industries/zed/blob/ba63a022c9a22ca66d68ef2a8f0bb9b5b0a9984d/crates/gpui_windows/src/display.rs#L39-L77) |
-| `display_changes_v1` | `window.onDisplayChange(listener) => remove` | [`observe_window_display`](https://github.com/zed-industries/zed/blob/ba63a022c9a22ca66d68ef2a8f0bb9b5b0a9984d/crates/gpui/src/window.rs#L2867-L2918), fed by [App `displays_changed`](https://github.com/zed-industries/zed/blob/ba63a022c9a22ca66d68ef2a8f0bb9b5b0a9984d/crates/gpui/src/app.rs#L1699-L1721)                |
+| Capability            | Public result                                | GPUI source (pinned)                                                                                                                                                                                                                                                                                                                                                                                                                                              |
+| --------------------- | -------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `display_details_v1`  | `visibleBounds` (work area)                  | macOS [`visible_bounds`](https://github.com/zed-industries/zed/blob/ba63a022c9a22ca66d68ef2a8f0bb9b5b0a9984d/crates/gpui_macos/src/display.rs#L127-L150), Windows [`rcWork`](https://github.com/zed-industries/zed/blob/ba63a022c9a22ca66d68ef2a8f0bb9b5b0a9984d/crates/gpui_windows/src/display.rs#L39-L77)                                                                                                                                                      |
+| `display_identity_v1` | `displayId`                                  | macOS [`uuid`](https://github.com/zed-industries/zed/blob/ba63a022c9a22ca66d68ef2a8f0bb9b5b0a9984d/crates/gpui_macos/src/display.rs#L85-L112), Windows [`szDevice`](https://github.com/zed-industries/zed/blob/ba63a022c9a22ca66d68ef2a8f0bb9b5b0a9984d/crates/gpui_windows/src/display.rs#L39-L77), Wayland [`uuid`](https://github.com/zed-industries/zed/blob/ba63a022c9a22ca66d68ef2a8f0bb9b5b0a9984d/crates/gpui_linux/src/linux/wayland/display.rs#L33-L39) |
+| `display_changes_v1`  | `window.onDisplayChange(listener) => remove` | [`observe_window_display`](https://github.com/zed-industries/zed/blob/ba63a022c9a22ca66d68ef2a8f0bb9b5b0a9984d/crates/gpui/src/window.rs#L2867-L2918), fed by [App `displays_changed`](https://github.com/zed-industries/zed/blob/ba63a022c9a22ca66d68ef2a8f0bb9b5b0a9984d/crates/gpui/src/app.rs#L1699-L1721)                                                                                                                                                    |
 
 - **Work area.** macOS: `NSScreen.visibleFrame` relative to the screen's
   top-left, so the menu bar and Dock are excluded. Windows: `rcWork` from
@@ -238,6 +248,7 @@ same `windowDisplay` launch grant; Linux advertises neither, and
   the whole 32-unit `szDevice` buffer), so it identifies an adapter output,
   not a physical monitor, and can follow a different monitor after
   reconfiguration. `displayId` is omitted if the OS returns no identifier.
+  Linux Wayland: [below](#wayland-display-changes-299).
 - **Display changes.** The host observes each owned window, only with the
   launch grant, and sends `display_changed { sequence, window_id, snapshot }`
   when GPUI reports that the window moved to another display or that its
@@ -257,8 +268,9 @@ same `windowDisplay` launch grant; Linux advertises neither, and
   `{ type: 'display_change', sequence, snapshot, signal }`. Its `snapshot`
   has the same shape and capability check as `displaySnapshot()`. A
   `display_changed` from a host that did not advertise the capability, or a
-  snapshot whose details do not match `display_details_v1`, fails the session
-  with `ProtocolError` even when no listener is registered.
+  snapshot whose work area does not match `display_details_v1` or whose
+  identity arrives without `display_identity_v1`, fails the session with
+  `ProtocolError` even when no listener is registered.
 
 [`tests/native/display-platform.ts`](../tests/native/display-platform.ts) runs
 in the **Native Platforms** workflow on the hosted `macos-15` and
@@ -283,9 +295,147 @@ selected by `cfg!` constants rather than separate code, but their native
 behavior is established only by the hosted run's `display-platform.json`
 artifact. If a hosted display offers no other desktop mode or refuses every
 change, the fixture records `displayChange` as unavailable with the mode list
-instead of claiming it. Always unavailable on hosted runners: window migration
-between displays and mixed DPI (one virtual display) and hotplug (no physical
-output).
+instead of claiming it. Window migration between displays, mixed DPI and
+connecting and removing a display are not part of this fixture: the hosted
+Windows runner has one virtual display and no way to add one, and on macOS
+they run in the [virtual second display](#macos-virtual-second-display-299)
+step below.
+
+### macOS virtual second display (#299)
+
+[`tests/native/display-virtual-macos.ts`](../tests/native/display-virtual-macos.ts)
+runs in its own **Native Platforms** step on the hosted `macos-15` runner, in
+development and inspected AOT against the release host. A small helper,
+[`macos-virtual-display.m`](../tests/native/macos-virtual-display.m), creates
+a second display through CoreGraphics' private `CGVirtualDisplay` API (the one
+DeskPad, BetterDisplay and Chromium's `virtual_display_mac_util` use): 1280×800
+points at the backing scale the runner's own display does not have (2 next to
+the hosted 1×), selecting that HiDPI mode for the session if macOS brings the
+display up in its 1× duplicate. It keeps the display connected until the
+fixture closes its stdin, then releases it and waits until CoreGraphics
+reports it offline. The same helper moves an owned window by setting its
+`AXPosition` through the Accessibility API, so the window server, not the
+application, moves it. Every expected value comes from the existing
+NSScreen/CoreGraphics oracle and its `osascript` cross-check; nothing is
+compared with a tolerance beyond the display oracle's.
+
+| Operation                               | Required result                                                                                                                                                      |
+| --------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Connect the virtual display             | NSScreen lists it with its own CoreGraphics UUID and the other scale; the runner display stays main; windows on it report only the main display as the OS reports it |
+| Move one window onto it (`AXPosition`)  | A `display_change` with the virtual display's `displayId`, bounds, work area and scale; the other window keeps the main display                                      |
+| Read both windows                       | Mixed DPI: two snapshots with different `displayId` and `scaleFactor`, each exactly its OS display                                                                   |
+| Move it back                            | A `display_change` back to the main display                                                                                                                          |
+| Release the display with a window on it | macOS relocates the window and it reports the main display; the other window reports nothing else                                                                    |
+| Close, shutdown                         | Close releases the window's listener; shutdown aborts the remaining signal and every ownership counter returns to zero                                               |
+
+**This is unverified locally**: it was written on Linux, where neither the
+helper nor the fixture can run, and CGVirtualDisplay is a private API whose
+behaviour on the hosted macOS VM is established only by that step's
+`display-virtual-macos.json` artifact. If the VM refuses the display, or the
+requested mode, the step fails rather than recording the case as passed. A
+virtual display is not a physical monitor or cable: EDID identity, physical
+hotplug and GPU output changes stay hardware-only.
+
+### Wayland display changes (#299)
+
+Under GPUI's Wayland backend each `wl_output` is a display, and a window's
+display is the output the compositor says its surface entered
+([`wl_surface.enter`/`leave`](https://github.com/zed-industries/zed/blob/ba63a022c9a22ca66d68ef2a8f0bb9b5b0a9984d/crates/gpui_linux/src/linux/wayland/window.rs#L1411-L1475));
+when the surface is on several outputs GPUI keeps the one with the
+[largest scale](https://github.com/zed-industries/zed/blob/ba63a022c9a22ca66d68ef2a8f0bb9b5b0a9984d/crates/gpui_linux/src/linux/wayland/window.rs#L668-L689).
+GPUI reports a move to window display observers, and output connection,
+removal and reconfiguration through
+[App `displays_changed`](https://github.com/zed-industries/zed/blob/ba63a022c9a22ca66d68ef2a8f0bb9b5b0a9984d/crates/gpui_linux/src/linux/wayland/client.rs#L1620-L1660).
+The host therefore advertises `display_changes_v1` when GPUI's compositor is
+Wayland, and `services::display_changes` chooses it at runtime; X11 keeps no
+change capability. `display_details_v1` is not advertised: Wayland gives
+clients no work area, and the pinned
+[`WaylandDisplay`](https://github.com/zed-industries/zed/blob/ba63a022c9a22ca66d68ef2a8f0bb9b5b0a9984d/crates/gpui_linux/src/linux/wayland/display.rs#L28-L48)
+does not override `visible_bounds`, so `visibleBounds` would only repeat
+`bounds`. `display_identity_v1` is advertised the same way
+(`services::display_identity`): the pinned display's
+[`uuid`](https://github.com/zed-industries/zed/blob/ba63a022c9a22ca66d68ef2a8f0bb9b5b0a9984d/crates/gpui_linux/src/linux/wayland/display.rs#L33-L39) is
+v5(DNS, `wl_output.name`), the compositor's connector name (`DP-1`,
+`HEADLESS-1`) that GPUI binds from
+[wl_output version 4](https://github.com/zed-industries/zed/blob/ba63a022c9a22ca66d68ef2a8f0bb9b5b0a9984d/crates/gpui_linux/src/linux/wayland/client.rs#L956-L969).
+It names a connector, not an EDID monitor: a different monitor on the same
+connector has the same `displayId`, and it is omitted for an output that
+sends no name (wl_output before version 4).
+
+- **Snapshot.** `bounds` is the output's current mode divided by its integer
+  `wl_output.scale`, at the `wl_output.geometry` origin. With a fractional
+  output scale wlroots sends `wl_output.scale` as the ceiling, and the
+  [display list](https://github.com/zed-industries/zed/blob/ba63a022c9a22ca66d68ef2a8f0bb9b5b0a9984d/crates/gpui_linux/src/linux/wayland/client.rs#L1247-L1260)
+  that [`Window::display`](https://github.com/zed-industries/zed/blob/ba63a022c9a22ca66d68ef2a8f0bb9b5b0a9984d/crates/gpui/src/window.rs#L3145-L3150) reads
+  divides by that integer: a 1280×800 output at scale 1.5 reports
+  `{0, 0, 640, 400} @1.5`, not its 853×533 logical size. This is the pinned
+  behaviour, qualified as such; the host has no access to the output's mode or
+  integer scale to correct it. wlroots sends the geometry
+  origin as `0,0` for every output (observed with `WAYLAND_DEBUG=client`:
+  `wl_output@5.geometry(0, 0, …)` for the output sway places at x = 1280), so
+  the layout position is not reported. `scaleFactor` is the window's scale
+  from `wp_fractional_scale_v1`, which follows the output it is on, so two
+  windows on outputs of different scale report different scales.
+- **Reported changes.** A move to another output, and a mode or scale change
+  of the window's output, each report one `display_change`. The host reads
+  the snapshot after the current batch of compositor events, and again when
+  the window's scale or size changes, and sends it only when it differs from
+  the last one sent: the compositor sends a new output before the window's new
+  `preferred_scale`, and a new scale before the output's new geometry, so an
+  immediate read could pair one output's size with another's scale. Moving or
+  resizing within an output, spanning two outputs while staying on the
+  larger-scale one, connecting an output and unplugging an output the window
+  is not on report nothing. With several outputs a new window has no display
+  until the compositor's first `enter`: `displaySnapshot()` rejects
+  `service_unavailable` until then, and the first `enter` is reported once.
+- **Unplugging the window's own output fails closed.** wlroots removes the
+  output global without sending `wl_surface.leave`, and the pinned GPUI then
+  keeps the removed output in the window's entered set: it reports no move,
+  and a later output can reuse the removed output's protocol id and so its
+  `DisplayId`. Before this change the snapshot of such a window first failed
+  with "no current native display", then, after `swaymsg create_output`,
+  reported the new output's geometry and the stale scale 2 for a window sway
+  had moved to the scale-1 output. The host now records, for each observed
+  window, when its current display is removed
+  ([`DisplayContinuity`](../native/gpui-host/src/services.rs)): until GPUI
+  reports a move to a different display, `displaySnapshot()` rejects
+  `service_unavailable` and no change is reported, even after the id is
+  reused. The same rule applies on macOS and Windows, where the OS moves the
+  window and reports it, so it only matters if that report never comes.
+
+[`tests/native/display-wayland.ts`](../tests/native/display-wayland.ts) runs
+in the Native Linux job, in development and inspected AOT, on headless sway
+1.9 with two outputs: HEADLESS-1 at 1280×800 scale 1 and HEADLESS-2 at
+2048×1536 scale 2 (1024×768 logical), from
+[`native-wayland-session.sh`](../scripts/quality/native-wayland-session.sh)
+with `BUN_NATIVE_WAYLAND_OUTPUTS=2`. Every expected value comes from sway IPC
+(`get_outputs` mode, scale and logical size; `get_tree` for the output a view
+is on; v5(DNS, output name) for `displayId`, computed independently in
+[`display-uuid.ts`](../tests/native/display-uuid.ts)), and every change is a
+real compositor operation:
+
+| Operation (swaymsg)                                       | Required result                                                                                                                  |
+| --------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| Default launch                                            | `changes`, `identity: 'available'`, `details: 'unavailable'`; snapshot and `onDisplayChange` reject `permission_denied`          |
+| Two windows map on HEADLESS-1                             | One initial change each, `{0, 0, 1280, 800} @1`                                                                                  |
+| `move container to output HEADLESS-2`                     | One change, `{0, 0, 1024, 768} @2`; the other window reports nothing                                                             |
+| `move absolute position`, `resize set` within HEADLESS-2  | Nothing                                                                                                                          |
+| Position spanning both outputs, then wholly on HEADLESS-1 | Nothing while spanning (snapshot stays `@2`), then one change back to `{0, 0, 1280, 800} @1`                                     |
+| `output HEADLESS-1 resolution 1600x1000`, then `scale 2`  | One change for each window on it, `{…1600, 1000} @1`, then `{…800, 500} @2`; restoring 1280×800 @1 reports once more             |
+| `output HEADLESS-2 scale 1`, then `scale 2`               | Nothing for windows on HEADLESS-1                                                                                                |
+| `output HEADLESS-1 scale 1.5`, then `scale 1`             | One change for each window on it, `{…640, 400} @1.5` with the same `displayId`, then one back to `{…1280, 800} @1`               |
+| `create_output`; move onto it and back; `output … unplug` | Nothing on connect; one change onto the new output (`{…1920, 1080} @1`) and one back; nothing when that unused output is removed |
+| Window on HEADLESS-2, `output HEADLESS-2 unplug`          | sway moves it to HEADLESS-1; no change; snapshot `service_unavailable`; the other window is unaffected                           |
+| `create_output` (reusing the protocol id), `scale 2`      | Still no change and `service_unavailable`; a window opened afterwards reports its output                                         |
+| Listener removed, close, shutdown                         | A removed listener receives nothing later; close releases the listener (`invalid_handle`); shutdown aborts the remaining signals |
+
+Five consecutive local development runs and one inspected AOT run passed with
+a release host built from this change (see the Native Linux artifact
+`display-wayland-*/display-wayland.json` for CI). Every snapshot and change in
+it, including the first `enter`, a connected output and a fractional scale,
+also carries the output's `displayId`. This qualifies the headless wlroots
+backend only: no physical monitor, EDID identity, DRM hotplug, GNOME/KDE
+compositor or work area is covered.
 
 Reads share the public application's bounded serialized transaction queue.
 `displaySnapshot({ signal })` accepts a real `AbortSignal`; unknown options or
@@ -303,14 +453,14 @@ receive `permission_denied` before any display read. Requests retain the
 normal transport deadline and channel-failure cleanup. A malformed response
 still fails the channel even if the caller cancelled in the meantime.
 
-| Error                                                     | Meaning                                                                                                                         |
-| --------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
-| `NativeServiceError`, `permission_denied`                 | Immutable native launch policy denied the read.                                                                                 |
-| `NativeServiceError`, `service_unavailable`               | The allowed owned window has no display available from the native backend.                                                      |
-| `NativeServiceError`, `cancelled`                         | Caller cancellation prevented dispatch or result delivery. `service` is `window_display`.                                       |
-| `NativeStateError`, `invalid_handle` / `invalid_state`    | Window/application ownership ended or the call was invalid locally.                                                             |
-| `NativeCommandError`, `invalid_handle` / `native_failure` | Native owner lookup failed or actual native geometry was invalid.                                                               |
-| `ProtocolError` or transport failure                      | Incompatible readiness, malformed/wrong-owner response, timeout, native exit or broken channel. No fallback result is supplied. |
+| Error                                                     | Meaning                                                                                                                                                              |
+| --------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `NativeServiceError`, `permission_denied`                 | Immutable native launch policy denied the read.                                                                                                                      |
+| `NativeServiceError`, `service_unavailable`               | The allowed owned window has no display available from the native backend, or its display was disconnected and the backend has not reported where the window is now. |
+| `NativeServiceError`, `cancelled`                         | Caller cancellation prevented dispatch or result delivery. `service` is `window_display`.                                                                            |
+| `NativeStateError`, `invalid_handle` / `invalid_state`    | Window/application ownership ended or the call was invalid locally.                                                                                                  |
+| `NativeCommandError`, `invalid_handle` / `native_failure` | Native owner lookup failed or actual native geometry was invalid.                                                                                                    |
+| `ProtocolError` or transport failure                      | Incompatible readiness, malformed/wrong-owner response, timeout, native exit or broken channel. No fallback result is supplied.                                      |
 
 ## Clipboard text and lifecycle
 
@@ -338,9 +488,10 @@ bytes and reject NUL/invalid Unicode. Worst-case JSON escaping remains below
 the private frame cap.
 
 The implementation supports a **local Linux X11 connection** selected by the
-actual GPUI environment. Wayland, macOS, Windows, remote/TCP X11, nontext
-formats, clipboard history and persistence after host exit remain unavailable
-or unimplemented. Granting a permission does not invent backend support.
+actual GPUI environment, and the macOS general pasteboard (below). Wayland,
+Windows, remote/TCP X11, nontext formats, clipboard history and persistence
+after host exit remain unavailable or unimplemented. Granting a permission does
+not invent backend support.
 Read and write denial is enforced before native owner lookup or clipboard I/O.
 
 Clipboard operations do not occupy the application's serialized tree queue.
@@ -382,6 +533,28 @@ or host exit ends that ownership. A submitted copy cannot be rolled back by
 later window revocation. Worker teardown never restores old clipboard contents
 or clears a newer external owner.
 
+### macOS general pasteboard
+
+On macOS the host reads and writes only the general pasteboard's
+`public.utf8-plain-text` flavor through `NSPasteboard`, on GPUI's main thread.
+There is no worker: a granted request is queued behind the command that
+submitted it and runs on the next main-thread turn, so closing its owner or
+shutting down first revokes it without touching the pasteboard. A pasteboard
+without a plain-text flavor reads as `{ kind: 'empty' }`; text over 8,192 UTF-8
+bytes is `payload_too_large` and text containing NUL is `native_failure`, never
+truncated. A write clears every flavor and leaves one string; it is
+acknowledged once `NSPasteboard` accepted it. A provider that promised its data
+lazily is asked by AppKit within AppKit's own pasteboard timeout, not the X11
+worker's two-second deadline. Window revocation, the eight-request limit and the
+error codes are as on X11; there is no `operation_timed_out`.
+
+The hosted macOS step runs [`clipboard-macos.ts`](../tests/native/clipboard-macos.ts)
+in development mode against the OS's own tools: `pbpaste` reads what the host
+wrote, `pbcopy` supplies text the host reads, and `osascript` clears every
+flavor for the empty case. It also checks default denial, the 8,192-byte bound,
+pre-dispatch abort, a closed owner and clean shutdown. It is pending its first
+hosted run; there is no AOT macOS clipboard run.
+
 Clipboard `NativeServiceError.service` is `clipboard_read` or `clipboard_write`.
 The codes are `permission_denied`, `service_unavailable`, `cancelled`,
 `operation_timed_out`, `payload_too_large`, `native_failure` and native
@@ -393,8 +566,8 @@ read fails explicitly; it does not return a possibly mixed snapshot.
 
 `window.registerGlobalShortcut(options, listener)` registers an owned OS-wide
 combination under the separate `globalShortcuts` grant. The optional
-`global_shortcuts_v1` feature is advertised only for a local Linux X11 session.
-The worker holds passive grabs on the root window through its own X
+`global_shortcuts_v1` feature is advertised for a local Linux X11 session and on
+macOS ([below](#macos-carbon-hot-keys)). On X11 the worker holds passive grabs on the root window through its own X
 connection, resolving keycodes and the Alt, Super and Num Lock bits from the
 server's live keyboard and modifier maps. Each combination is grabbed with
 every Caps Lock/Num Lock state, so lock state never changes the shortcut.
@@ -424,8 +597,42 @@ focused, no activation for the unmodified key, Num Lock independence, a real
 ([`shortcut-peer`](../native/gpui-host/examples/shortcut-peer.rs)), `conflict`
 for both a foreign and an in-session holder, and an independent client
 successfully grabbing the same combination after unregistration, owner close
-and shutdown. macOS, Windows, Wayland and remote X11 remain unavailable. See
+and shutdown. Windows, Wayland and remote X11 remain unavailable. See
 [ADR 0008](decisions/0008-native-global-shortcuts.md).
+
+### macOS Carbon hot keys
+
+On macOS each registration is a Carbon `RegisterEventHotKey` with
+`kEventHotKeyExclusive`, made on GPUI's main thread; the record reports backend
+`carbon`. It needs no Accessibility or Input Monitoring permission and sees
+only its own combinations. `platform` is Command and `alt` is Option. A letter
+or digit names the main-block key that types it, unshifted, in the current
+keyboard layout (`UCKeyTranslate`); keypad keys are never chosen, and a layout
+without such a key is `service_unavailable`. `f1`-`f12` are fixed key codes. A
+combination another process holds exclusively is refused with
+`eventHotKeyExistsErr`, reported as `conflict`. Registration and unregistration
+are synchronous Event Manager calls, so a registered response means the OS holds
+the combination and an unregistered response means it released it. The main run
+loop dispatches presses to one handler that only queues the registration's
+number; the registry decides delivery, so a press for a released registration is
+never published. Owner close and shutdown unregister at once. The layout is read
+at registration: a later layout change does not move an existing registration.
+
+The hosted macOS step runs
+[`global-shortcuts-macos.ts`](../tests/native/global-shortcuts-macos.ts) in
+development mode with an independent oracle,
+[`macos-hot-key-oracle.m`](../tests/native/macos-hot-key-oracle.m), that does
+not link GPUI. It requires default denial with the combination still free at
+the Event Manager, delivery of a combination posted through
+`CGEventPost(kCGHIDEventTap)` while the oracle itself is frontmost (it
+activates through a real click on its own window, because cooperative
+activation since macOS 14 ignores an inactive process's request to activate
+another application), the oracle's own
+exclusive registration refused while the host holds the combination, `conflict`
+for both an in-session duplicate and a combination the oracle holds, and the
+combination free again after unregistration, owner close and shutdown. It is
+pending its first hosted run; there is no AOT macOS run, and its key codes
+assume the runner's U.S. layout.
 
 ## Notifications
 
@@ -469,9 +676,59 @@ an isolated bus without a server, a displayed notification, activation through
 the server's own action (`dunstctl action`), a user dismissal (`dunstctl
 close`), forged `ActionInvoked`/`NotificationClosed` signals from an
 independent bus client ignored, and the server's displayed count returning to
-zero after withdrawal, owner close and shutdown. macOS and Windows remain
-unavailable, and other notification servers are not qualified. See
+zero after withdrawal, owner close and shutdown. Windows remains unavailable,
+and other notification servers are not qualified. See
 [ADR 0009](decisions/0009-native-notifications.md).
+
+### macOS user notifications
+
+On macOS the host posts through `UNUserNotificationCenter` with backend
+`user_notifications`. That framework serves only an application bundle: for a
+bare executable it raises an exception that ends the process. The host therefore
+advertises `notifications_v1` only when its own main bundle has an identifier
+and is an `.app`, and never touches the framework otherwise; a bare host reports
+`unsupported_platform` and rejects a post with `service_unavailable`. A macOS
+`native build` therefore puts the host in `BunNativeHost.app/Contents/MacOS`
+with an `Info.plist` naming the application's bundle identifier (`--bundle-id`,
+or one derived from the package name), and signing seals that bundle, so a
+packaged and installed application gets notifications. A host started from
+anywhere else, such as `native dev` with a bare `--host`, does not.
+
+Every post first asks for alert authorization. The first request for a bundle
+shows the OS permission prompt. A post is answered within two seconds, as on
+Linux: while the prompt still waits for the user it rejects with
+`operation_timed_out`, the prompt stays on screen, and a grant that arrives
+later adds nothing, so the application posts again once the user has answered.
+A request the host left unanswered past the client's request timeout (five
+seconds by default) would end the whole session. A denied answer rejects with
+`permission_denied` ("the user has not allowed notifications for this
+application"), which callers can tell from the launch-policy denial by its
+message. Notifications use one category with no
+actions and a dismissal callback, so `activatable` is always true, clicking
+reports the default action as `notification_activated`, and a user dismissal
+ends the handle with reason `dismissed`. Expiry is not reported by the OS.
+Request identifiers name the host process and notification, and the UI-thread
+registry decides delivery, so a response for a withdrawn notification is never
+published. Withdrawal, owner close and shutdown remove the registration and the
+pending and delivered request at once; the center's removal calls do not report
+back, so there is nothing to wait for. A post that completes after its owner was
+revoked is withdrawn then.
+
+The hosted macOS step runs
+[`notifications-macos.ts`](../tests/native/notifications-macos.ts) in
+development mode twice over: against the bare release host, which must report
+`unsupported_platform` and reject a granted post with `service_unavailable`
+without aborting, and against the host of the signed template that the
+preceding step installed from its disk image (`BunNativeHost.app` inside the
+installed release, whose identifier, signature and running host that install
+step checks), which must advertise the service, deny an ungranted post with
+the launch-policy message, and end a granted post in exactly one of three
+recorded ways: posted and withdrawn, denied by the OS, or still awaiting the
+unanswered permission prompt and rejected with `operation_timed_out` within
+the bound.
+Nothing answers the prompt on a hosted runner, and no independent process can
+read another application's delivered notifications, so delivery, activation and
+user dismissal are not observed. It is pending its first hosted run.
 
 ## Filesystem grants
 
@@ -762,6 +1019,7 @@ bus is configured; the host talks to `org.freedesktop.portal.FileChooser`
 (xdg-desktop-portal) on that bus. A bus without a portal, or a portal without
 a file chooser backend, rejects with `service_unavailable` when a dialog is
 shown. Every bus call is bounded to two seconds; waiting for the user is not.
+macOS always advertises it, with backend `appkit` ([below](#macos-open-and-save-panels)).
 
 Options are bounded and validated by both language implementations: a
 one-line `title` of at most 256 UTF-8 bytes, an optional `acceptLabel` of at
@@ -808,9 +1066,43 @@ aborted signal, owner close and shutdown. On Wayland the same portal dialog
 opens unparented (no xdg-foreign handle is exported) and closes on abort and
 on a compositor close; selection through it was not run there
 ([Wayland](#wayland)). Flatpak/Snap document-portal paths, other portal
-backends, macOS and Windows are not qualified. Message and confirm dialogs are not OS alerts; they are drawn on
+backends and Windows are not qualified. Message and confirm dialogs are not OS alerts; they are drawn on
 the modal overlay, [below](#message-and-confirm-dialogs). See
 [ADR 0013](decisions/0013-native-file-dialogs.md).
+
+### macOS open and save panels
+
+On macOS the host attaches an `NSOpenPanel` (open, several files, folder) or
+`NSSavePanel` (save) **sheet** to the owner window, as it does `NSAlert` sheets.
+A sheet runs no nested event loop, so GPUI keeps serving other windows and
+commands, and the owner is document-modal while it is attached. The title is
+set as the panel's message, so the sheet shows it, and as its window title;
+`acceptLabel` is the panel's prompt, `folder` its starting directory and `name`
+the save panel's name field. Panels filter by content type, so only `*.ext`
+patterns (and `*` or `*.*`, which allow every file) are accepted; any other glob
+is refused with `service_unavailable` before a panel is shown, never
+approximated. A panel has no filter chooser: the union of every filter's
+extensions is allowed at once. Accepted URLs must be local file URLs; anything
+else fails the whole selection with `native_failure`, as do a path count that
+does not match the mode and a response AppKit reports without a selection.
+Abort, close, owner close and shutdown end the sheet with
+`endSheet:returnCode:`; such a sheet reports no selection, and an application
+close is answered once AppKit has ended it. The panel's security-scoped access
+is not kept: the paths are data, as on Linux.
+
+The hosted macOS step runs [`file-dialogs-macos.ts`](../tests/native/file-dialogs-macos.ts)
+in development mode with an independent Accessibility oracle,
+[`macos-file-panel-oracle.m`](../tests/native/macos-file-panel-oracle.m), that
+finds the sheet by its title and presses its buttons. It requires default
+denial, the accept label on a filtered file panel and Cancel giving `cancelled`,
+the accept button of a folder panel started in a temporary folder choosing that
+folder, the accept button of a save panel choosing the suggested name in that
+folder without creating it (the step shows all filename extensions, since a
+save panel otherwise hides a known extension in its name field), an
+unsupported glob refused with no sheet, a second
+dialog refused while one is live, and the sheet gone after abort, owner close
+and shutdown. Choosing an individual file in the panel's browser is not
+automated, and it is pending its first hosted run; there is no AOT macOS run.
 
 ## Message and confirm dialogs
 
@@ -1092,7 +1384,7 @@ advertises a capability only for a backend it implements:
 | Popup windows (`surface: 'window'`)         | X11 override-redirect only                    | `popup_windows_v1` absent; core throws `UnsupportedFeatureError`                                     |
 | Notifications                               | Freedesktop D-Bus, display-independent        | `available`                                                                                          |
 | File dialogs                                | xdg-desktop-portal, unparented                | `available`                                                                                          |
-| Display snapshot                            | GPUI's Wayland output                         | `available`; no details or change events                                                             |
+| Display snapshot                            | GPUI's Wayland output                         | `available`; change events, no details ([display changes](#wayland-display-changes-299))             |
 | Filesystem grants, processes                | Display-independent                           | `available` (not run under Wayland)                                                                  |
 
 [`tests/native/wayland.ts`](../tests/native/wayland.ts) checks this matrix on
@@ -1237,19 +1529,19 @@ are requirements for future work, not promises that an exported function
 already exists. The linked follow-ups belong to
 [#255](https://github.com/0xPlayerOne/bun-native/issues/255).
 
-| Service           | Current public surface                                        | Linux X11                                                                                           | Linux Wayland                                                      | macOS                                                           | Windows                                                      | Required scope before exposing more operations                                                                                                                                                                                                                                           |
-| ----------------- | ------------------------------------------------------------- | --------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------ | --------------------------------------------------------------- | ------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Window/display    | Existing owned open/close; permission-gated `displaySnapshot` | Core/Solid/React dev+AOT verified with release host; X11 semantics fixture dev+AOT verified locally | Snapshot dev+AOT verified on headless sway (scale 1 and 2)         | Service execution unverified                                    | Service execution unverified                                 | X11 semantics qualified; change events, work area, identity and mixed DPI unavailable on X11. Other platforms and placement remain. [#299](https://github.com/0xPlayerOne/bun-native/issues/299).                                                                                        |
-| Clipboard text    | `readClipboardText` / `writeClipboardText`; separate grants   | X11 dev+AOT verified with release host                                                              | Unavailable (`unsupported_platform`)                               | Unavailable                                                     | Unavailable                                                  | Additional platforms/formats and extended lifecycle coverage. [#300](https://github.com/0xPlayerOne/bun-native/issues/300).                                                                                                                                                              |
-| Global shortcuts  | `registerGlobalShortcut`; `globalShortcuts` grant             | X11 dev+AOT verified with release host                                                              | Unavailable (`unsupported_platform`)                               | Unavailable                                                     | Unavailable                                                  | macOS/Windows backends, Wayland portal design and keyboard-map change tracking. [#301](https://github.com/0xPlayerOne/bun-native/issues/301).                                                                                                                                            |
-| Application menu  | `setMenuBar` / `clearMenuBar`; `appMenu` grant                | Unavailable (GPUI stores menus only)                                                                | Unavailable (GPUI stores menus only)                               | AppKit `NSMenu` bar; hosted CI only (AX oracle)                 | Unavailable                                                  | Dock menus, dynamic validation, Linux/Windows menu bars drawn by the application. [#239](https://github.com/0xPlayerOne/bun-native/issues/239).                                                                                                                                          |
-| Context menus     | `window.showContextMenu`; no grant                            | Unavailable                                                                                         | Unavailable                                                        | AppKit `NSMenu` pop-up; hosted CI only (AX oracle)              | `TrackPopupMenuEx`; hosted CI only (UIA oracle)              | Dock menu, dynamic validation, icons, element-relative positioning. [#239](https://github.com/0xPlayerOne/bun-native/issues/239).                                                                                                                                                        |
-| File dialogs      | `showOpenDialog` / `showSaveDialog`; `fileDialogs` grant      | xdg-desktop-portal (GTK) dev+AOT verified                                                           | Portal (GTK) opens unparented; abort and compositor close verified | Unavailable                                                     | Unavailable                                                  | macOS/Windows panels, Wayland parenting, sandboxed document-portal paths and explicit file-grant conversion. [#239](https://github.com/0xPlayerOne/bun-native/issues/239).                                                                                                               |
-| Message dialogs   | `showMessageDialog` / `showConfirmDialog`; no grant           | Modal overlay dev+AOT verified locally                                                              | Modal overlay (same core code); unqualified on Wayland             | Modal overlay, or opt-in `NSAlert` sheet (hosted CI, AX oracle) | Modal overlay, or opt-in task dialog (hosted CI, UIA oracle) | Opt-in `taskDialogs` backends: `NSAlert` sheets (macOS) and task dialogs (Windows), hosted evidence only. [#239](https://github.com/0xPlayerOne/bun-native/issues/239).                                                                                                                  |
-| Notifications     | `postNotification`; `notifications` grant                     | Freedesktop D-Bus (dunst) dev+AOT verified                                                          | Freedesktop (dunst) post and withdraw verified                     | Unavailable                                                     | Unavailable                                                  | macOS/Windows backends, additional notification servers, named actions and replacement. [#302](https://github.com/0xPlayerOne/bun-native/issues/302).                                                                                                                                    |
-| Drag/drop         | `registerDropTarget`; `dragDrop` grant                        | XDND dev+AOT verified locally (core/Solid/React)                                                    | Unavailable (`unsupported_platform`)                               | AppKit; hosted CI only (NSDraggingSession source)               | OLE; hosted CI only (DoDragDrop source)                      | Other payload kinds and file promises, refusal (GPUI always accepts), Wayland, physical devices and real file managers, Windows resolution in the Solid/React fixtures (core resolves drive roots on hosted windows-2022). [#303](https://github.com/0xPlayerOne/bun-native/issues/303). |
-| Filesystem grants | `openFileGrant`; `filesystemRoots` launch roots               | openat2 dev+AOT verified locally                                                                    | Advertised; display-independent, not run on Wayland                | `openat` walk; CI-only                                          | `NtCreateFile` walk; CI-only                                 | OS file selection and dropped files as explicit user grants. [#304](https://github.com/0xPlayerOne/bun-native/issues/304).                                                                                                                                                               |
-| PTY/process       | `spawnProcess`; `processes` launch executables                | Pipes and PTY dev+AOT verified locally                                                              | Advertised; display-independent, not run on Wayland                | Dev+AOT in CI only; `cwd` through `fchdir`                      | Job object and ConPTY; CI-only                               | Descendants that leave the group (POSIX), `hangup` on Windows, resource limits. [#305](https://github.com/0xPlayerOne/bun-native/issues/305).                                                                                                                                            |
+| Service           | Current public surface                                        | Linux X11                                                                                           | Linux Wayland                                                      | macOS                                                                                    | Windows                                                      | Required scope before exposing more operations                                                                                                                                                                                                                                           |
+| ----------------- | ------------------------------------------------------------- | --------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------ | ---------------------------------------------------------------------------------------- | ------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Window/display    | Existing owned open/close; permission-gated `displaySnapshot` | Core/Solid/React dev+AOT verified with release host; X11 semantics fixture dev+AOT verified locally | Snapshot dev+AOT verified on headless sway (scale 1 and 2)         | Service execution unverified                                                             | Service execution unverified                                 | X11 semantics qualified; change events, work area, identity and mixed DPI unavailable on X11. Other platforms and placement remain. [#299](https://github.com/0xPlayerOne/bun-native/issues/299).                                                                                        |
+| Clipboard text    | `readClipboardText` / `writeClipboardText`; separate grants   | X11 dev+AOT verified with release host                                                              | Unavailable (`unsupported_platform`)                               | `NSPasteboard` plain text; hosted CI dev only (pbcopy/pbpaste oracle), pending first run | Unavailable                                                  | Additional platforms/formats and extended lifecycle coverage. [#300](https://github.com/0xPlayerOne/bun-native/issues/300).                                                                                                                                                              |
+| Global shortcuts  | `registerGlobalShortcut`; `globalShortcuts` grant             | X11 dev+AOT verified with release host                                                              | Unavailable (`unsupported_platform`)                               | Carbon hot keys; hosted CI dev only (Event Manager oracle), pending first run            | Unavailable                                                  | macOS/Windows backends, Wayland portal design and keyboard-map change tracking. [#301](https://github.com/0xPlayerOne/bun-native/issues/301).                                                                                                                                            |
+| Application menu  | `setMenuBar` / `clearMenuBar`; `appMenu` grant                | Unavailable (GPUI stores menus only)                                                                | Unavailable (GPUI stores menus only)                               | AppKit `NSMenu` bar; hosted CI only (AX oracle)                                          | Unavailable                                                  | Dock menus, dynamic validation, Linux/Windows menu bars drawn by the application. [#239](https://github.com/0xPlayerOne/bun-native/issues/239).                                                                                                                                          |
+| Context menus     | `window.showContextMenu`; no grant                            | Unavailable                                                                                         | Unavailable                                                        | AppKit `NSMenu` pop-up; hosted CI only (AX oracle)                                       | `TrackPopupMenuEx`; hosted CI only (UIA oracle)              | Dock menu, dynamic validation, icons, element-relative positioning. [#239](https://github.com/0xPlayerOne/bun-native/issues/239).                                                                                                                                                        |
+| File dialogs      | `showOpenDialog` / `showSaveDialog`; `fileDialogs` grant      | xdg-desktop-portal (GTK) dev+AOT verified                                                           | Portal (GTK) opens unparented; abort and compositor close verified | Open/save panel sheets; hosted CI dev only (AX oracle), pending first run                | Unavailable                                                  | macOS/Windows panels, Wayland parenting, sandboxed document-portal paths and explicit file-grant conversion. [#239](https://github.com/0xPlayerOne/bun-native/issues/239).                                                                                                               |
+| Message dialogs   | `showMessageDialog` / `showConfirmDialog`; no grant           | Modal overlay dev+AOT verified locally                                                              | Modal overlay (same core code); unqualified on Wayland             | Modal overlay, or opt-in `NSAlert` sheet (hosted CI, AX oracle)                          | Modal overlay, or opt-in task dialog (hosted CI, UIA oracle) | Opt-in `taskDialogs` backends: `NSAlert` sheets (macOS) and task dialogs (Windows), hosted evidence only. [#239](https://github.com/0xPlayerOne/bun-native/issues/239).                                                                                                                  |
+| Notifications     | `postNotification`; `notifications` grant                     | Freedesktop D-Bus (dunst) dev+AOT verified                                                          | Freedesktop (dunst) post and withdraw verified                     | UNUserNotificationCenter from an `.app` only; hosted CI dev, pending first run           | Unavailable                                                  | Windows backend, macOS delivery and activation evidence, additional notification servers, named actions and replacement. [#302](https://github.com/0xPlayerOne/bun-native/issues/302).                                                                                                   |
+| Drag/drop         | `registerDropTarget`; `dragDrop` grant                        | XDND dev+AOT verified locally (core/Solid/React)                                                    | Unavailable (`unsupported_platform`)                               | AppKit; hosted CI only (NSDraggingSession source)                                        | OLE; hosted CI only (DoDragDrop source)                      | Other payload kinds and file promises, refusal (GPUI always accepts), Wayland, physical devices and real file managers, Windows resolution in the Solid/React fixtures (core resolves drive roots on hosted windows-2022). [#303](https://github.com/0xPlayerOne/bun-native/issues/303). |
+| Filesystem grants | `openFileGrant`; `filesystemRoots` launch roots               | openat2 dev+AOT verified locally                                                                    | Advertised; display-independent, not run on Wayland                | `openat` walk; CI-only                                                                   | `NtCreateFile` walk; CI-only                                 | OS file selection and dropped files as explicit user grants. [#304](https://github.com/0xPlayerOne/bun-native/issues/304).                                                                                                                                                               |
+| PTY/process       | `spawnProcess`; `processes` launch executables                | Pipes and PTY dev+AOT verified locally                                                              | Advertised; display-independent, not run on Wayland                | Dev+AOT in CI only; `cwd` through `fchdir`                                               | Job object and ConPTY; CI-only                               | Descendants that leave the group (POSIX), `hangup` on Windows, resource limits. [#305](https://github.com/0xPlayerOne/bun-native/issues/305).                                                                                                                                            |
 
 For the deferred rows, the exported typed contract is the frozen availability
 record in `ServiceCapabilities`. There is no callable operation, configurable

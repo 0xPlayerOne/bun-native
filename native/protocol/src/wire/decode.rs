@@ -12,8 +12,8 @@
 //! compare both decoders on a corpus.
 
 use super::{
-    half, safe_integer, safe_usize, Element, NodeId, Operation, OverlayAnchor, OverlayNavigation,
-    OverlaySurface, Style,
+    half, safe_integer, safe_u32, safe_usize, AccessibleRole, BoxAccessibility, Element, Live,
+    NodeId, Operation, OverlayAnchor, OverlayNavigation, OverlaySurface, Style,
 };
 use serde::de::{self, Deserialize, Deserializer, MapAccess, Visitor};
 use std::fmt;
@@ -69,6 +69,13 @@ struct SafeUsize(usize);
 impl<'de> Deserialize<'de> for SafeUsize {
     fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
         safe_usize(deserializer).map(Self)
+    }
+}
+
+struct SafeU32(u32);
+impl<'de> Deserialize<'de> for SafeU32 {
+    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        safe_u32(deserializer).map(Self)
     }
 }
 
@@ -184,6 +191,11 @@ const ELEMENT_FIELDS: &[&str] = &[
     "navigation",
     "surface",
     "accessible_label",
+    "accessible_role",
+    "accessible_set_size",
+    "accessible_position",
+    "accessible_selected",
+    "accessible_live",
 ];
 
 #[derive(Clone, Copy)]
@@ -203,6 +215,11 @@ enum ElementField {
     Navigation,
     Surface,
     AccessibleLabel,
+    AccessibleRole,
+    AccessibleSetSize,
+    AccessiblePosition,
+    AccessibleSelected,
+    AccessibleLive,
 }
 
 fn element_field(name: &str) -> Option<ElementField> {
@@ -222,6 +239,11 @@ fn element_field(name: &str) -> Option<ElementField> {
         "navigation" => ElementField::Navigation,
         "surface" => ElementField::Surface,
         "accessible_label" => ElementField::AccessibleLabel,
+        "accessible_role" => ElementField::AccessibleRole,
+        "accessible_set_size" => ElementField::AccessibleSetSize,
+        "accessible_position" => ElementField::AccessiblePosition,
+        "accessible_selected" => ElementField::AccessibleSelected,
+        "accessible_live" => ElementField::AccessibleLive,
         _ => return None,
     })
 }
@@ -253,6 +275,11 @@ impl<'de> Deserialize<'de> for Element {
                 let mut navigation: Option<OverlayNavigation> = None;
                 let mut surface: Option<OverlaySurface> = None;
                 let mut accessible_label: Option<String> = None;
+                let mut accessible_role: Option<AccessibleRole> = None;
+                let mut accessible_set_size: Option<SafeU32> = None;
+                let mut accessible_position: Option<SafeU32> = None;
+                let mut accessible_selected: Option<bool> = None;
+                let mut accessible_live: Option<Live> = None;
                 while let Some(field) = key(&mut map, element_field)? {
                     let Some(field) = field else {
                         // Any unread member of an unknown name is an error, so
@@ -286,13 +313,44 @@ impl<'de> Deserialize<'de> for Element {
                         ElementField::AccessibleLabel => {
                             once(&mut accessible_label, "accessible_label", &mut map)?;
                         }
+                        ElementField::AccessibleRole => {
+                            once(&mut accessible_role, "accessible_role", &mut map)?;
+                        }
+                        ElementField::AccessibleSetSize => {
+                            once(&mut accessible_set_size, "accessible_set_size", &mut map)?;
+                        }
+                        ElementField::AccessiblePosition => {
+                            once(&mut accessible_position, "accessible_position", &mut map)?;
+                        }
+                        ElementField::AccessibleSelected => {
+                            once(&mut accessible_selected, "accessible_selected", &mut map)?;
+                        }
+                        ElementField::AccessibleLive => {
+                            once(&mut accessible_live, "accessible_live", &mut map)?;
+                        }
                     }
                 }
                 let kind: ElementKind = required(kind, "kind")?;
+                // Only boxes carry the list members and only text carries
+                // `accessible_live`; every other kind rejects them by name.
+                let list_members = |own: &'static [&'static str]| -> Result<(), A::Error> {
+                    reject(&accessible_role, "accessible_role", own)?;
+                    reject(&accessible_set_size, "accessible_set_size", own)?;
+                    reject(&accessible_position, "accessible_position", own)?;
+                    reject(&accessible_selected, "accessible_selected", own)
+                };
                 let style_out = style.take().unwrap_or_default();
                 match kind {
                     ElementKind::Box => {
-                        let own = &["kind", "style"];
+                        let own = &[
+                            "kind",
+                            "accessible_role",
+                            "accessible_label",
+                            "accessible_set_size",
+                            "accessible_position",
+                            "accessible_selected",
+                            "style",
+                        ];
                         reject(&text, "text", own)?;
                         reject(&value, "value", own)?;
                         reject(&placeholder, "placeholder", own)?;
@@ -305,11 +363,21 @@ impl<'de> Deserialize<'de> for Element {
                         reject(&autofocus, "autofocus", own)?;
                         reject(&navigation, "navigation", own)?;
                         reject(&surface, "surface", own)?;
-                        reject(&accessible_label, "accessible_label", own)?;
-                        Ok(Element::Box { style: style_out })
+                        reject(&accessible_live, "accessible_live", own)?;
+                        Ok(Element::Box {
+                            accessibility: BoxAccessibility {
+                                accessible_role,
+                                accessible_label,
+                                accessible_set_size: accessible_set_size.map(|size| size.0),
+                                accessible_position: accessible_position.map(|position| position.0),
+                                accessible_selected,
+                            },
+                            style: style_out,
+                        })
                     }
                     ElementKind::Text => {
-                        let own = &["kind", "text", "style"];
+                        let own = &["kind", "text", "accessible_live", "style"];
+                        list_members(own)?;
                         reject(&value, "value", own)?;
                         reject(&placeholder, "placeholder", own)?;
                         reject(&disabled, "disabled", own)?;
@@ -324,11 +392,14 @@ impl<'de> Deserialize<'de> for Element {
                         reject(&accessible_label, "accessible_label", own)?;
                         Ok(Element::Text {
                             text: required(text, "text")?,
+                            accessible_live,
                             style: style_out,
                         })
                     }
                     ElementKind::Button => {
                         let own = &["kind", "text", "disabled", "style"];
+                        list_members(own)?;
+                        reject(&accessible_live, "accessible_live", own)?;
                         reject(&value, "value", own)?;
                         reject(&placeholder, "placeholder", own)?;
                         reject(&read_only, "read_only", own)?;
@@ -355,6 +426,8 @@ impl<'de> Deserialize<'de> for Element {
                             "read_only",
                             "style",
                         ];
+                        list_members(own)?;
+                        reject(&accessible_live, "accessible_live", own)?;
                         reject(&text, "text", own)?;
                         reject(&ratio, "ratio", own)?;
                         reject(&min_size, "min_size", own)?;
@@ -374,6 +447,8 @@ impl<'de> Deserialize<'de> for Element {
                     }
                     ElementKind::Split => {
                         let own = &["kind", "ratio", "min_size", "accessible_label", "style"];
+                        list_members(own)?;
+                        reject(&accessible_live, "accessible_live", own)?;
                         reject(&text, "text", own)?;
                         reject(&value, "value", own)?;
                         reject(&placeholder, "placeholder", own)?;
@@ -402,6 +477,8 @@ impl<'de> Deserialize<'de> for Element {
                             "accessible_label",
                             "style",
                         ];
+                        list_members(own)?;
+                        reject(&accessible_live, "accessible_live", own)?;
                         reject(&text, "text", own)?;
                         reject(&value, "value", own)?;
                         reject(&placeholder, "placeholder", own)?;

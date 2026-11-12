@@ -353,6 +353,7 @@ export function Workspace({
   schedule = schedulePlanStep,
   confirm,
   onDispatch,
+  onComposer,
   terminal,
 }: {
   onChange?: (state: WorkspaceState) => void
@@ -361,6 +362,11 @@ export function Workspace({
    * long-session fixture can drive the same actions its controls dispatch.
    */
   onDispatch?: (dispatch: Dispatch<WorkspaceAction>) => void
+  /**
+   * Qualification only: the mounted task composer, so a long-session fixture
+   * can focus it and type through real OS input.
+   */
+  onComposer?: (composer: NativeRef) => void
   schedule?: PlanScheduler
   /** When given, deleting a task asks first. Without it the delete is immediate. */
   confirm?: ConfirmAction | undefined
@@ -381,6 +387,9 @@ export function Workspace({
   const streamingPlan = state.plan?.status === 'streaming' ? state.plan : null
   useEffect(() => onChange?.(state), [onChange, state])
   useEffect(() => onDispatch?.(dispatch), [onDispatch])
+  useEffect(() => {
+    if (composer.current) onComposer?.(composer.current)
+  }, [onComposer])
   // Keep, Escape and the backdrop return focus natively to the control that
   // opened the panel. A confirmed clear disables that control, so focus moves
   // to the composer once the panel has left the native tree.

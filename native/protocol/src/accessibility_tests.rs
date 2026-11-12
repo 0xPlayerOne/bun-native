@@ -106,3 +106,59 @@ fn accessible_labels_count_toward_text_budgets() {
         .get("accessible_label")
         .is_none());
 }
+
+#[test]
+fn list_accessibility_matches_javascript() {
+    let fixtures: Value = serde_json::from_str(include_str!(
+        "../../../tests/fixtures/accessibility-lists.json"
+    ))
+    .unwrap();
+    assert_eq!(
+        fixtures["capability"],
+        json!(Capability::AccessibilityListsV1)
+    );
+    let mut names = BTreeSet::new();
+    for case in fixtures["cases"].as_array().unwrap() {
+        assert!(names.insert(case["name"].as_str().unwrap()));
+        let batch = json!({"type":"batch","id":1,"window_id":1,"base_revision":0,"operations":[{"type":"create","node_id":2,"element":case["element"]}]});
+        let result =
+            CommandReader::default().read(&mut Cursor::new(format!("{batch}\n").as_bytes()));
+        let expected = case.get("expected");
+        assert_eq!(
+            result.is_ok(),
+            expected.is_some(),
+            "{}: {result:?}",
+            case["name"]
+        );
+        if let Some(expected) = expected {
+            let element: Element = serde_json::from_value(case["element"].clone()).unwrap();
+            let actual = serde_json::to_value(&element).unwrap();
+            assert!(same(&actual, expected), "{}: {actual}", case["name"]);
+            assert_eq!(serde_json::from_value::<Element>(actual).unwrap(), element);
+        }
+    }
+}
+
+#[test]
+fn list_labels_count_toward_text_budgets() {
+    let list = Element::Box {
+        accessibility: BoxAccessibility {
+            accessible_role: Some(AccessibleRole::List),
+            accessible_label: Some("Messages".into()),
+            accessible_set_size: Some(3),
+            ..BoxAccessibility::default()
+        },
+        style: Style::default(),
+    };
+    assert_eq!(list.text_bytes(), 8);
+    assert_eq!(list.accessible_label(), Some("Messages"));
+    // A plain box keeps its exact earlier wire form.
+    let plain = Element::Box {
+        accessibility: BoxAccessibility::default(),
+        style: Style::default(),
+    };
+    assert_eq!(
+        serde_json::to_value(&plain).unwrap(),
+        json!({"kind":"box","style":{}})
+    );
+}

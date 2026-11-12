@@ -133,7 +133,7 @@ function add(metrics: Record<string, Metric>, name: string, unit: string, value:
 }
 
 /** Metrics of one exported comparison directory. */
-export function fromComparison(
+function fromComparison(
   comparison: Comparison,
   reports: ReadonlyMap<string, Record<string, unknown> | null>
 ): Record<string, Metric> {

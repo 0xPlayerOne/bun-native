@@ -1,0 +1,62 @@
+{
+  "schema_version": 1,
+  "repository": "https://github.com/zed-industries/zed",
+  "commit": "ba63a022c9a22ca66d68ef2a8f0bb9b5b0a9984d",
+  "package": "crates/gpui_macos",
+  "workspace_manifest_sha256": "1e7c07401d52902c7070c7b0ca7584f32e9dde25e17829947b3292c895f8f255",
+  "patched": ["src/display_link.rs", "src/gpui_macos.rs", "src/window.rs"],
+  "files": {
+    "Cargo.toml": {
+      "bytes": 2267,
+      "sha256": "497653382da3cb1491108b01f633534ddcea262b344e4bcbc18c6c604995412f"
+    },
+    "LICENSE-APACHE": {
+      "bytes": 10768,
+      "sha256": "752daf2fb234ca4a1fa372c073fe127f44b7b90fd2529ae44273a64f9d53da7a"
+    },
+    "src/display.rs": {
+      "bytes": 6740,
+      "sha256": "eb232a1ab75d8199741e2cc800b21acc725eeddcf8883ff05baf2fcc5ce2d260"
+    },
+    "src/display_link.rs": {
+      "bytes": 25871,
+      "sha256": "b74ca5ae9b60a0a585d1105a24ce2c238efc41ca14310a7509b51e93bcc57a5b"
+    },
+    "src/events.rs": {
+      "bytes": 24569,
+      "sha256": "73ef912d8ef63a7282c5a7d1b93e0b12e11cba5075b5a4bf4f09541783f5d619"
+    },
+    "src/gpui_macos.rs": {
+      "bytes": 2914,
+      "sha256": "a0f917b3e28b087b8ce80ccc78a2eb316b2f571c191ab03dc4ca12e305dfb8db"
+    },
+    "src/keyboard.rs": {
+      "bytes": 39126,
+      "sha256": "6a017f020ba10396e1ef827a036a6181644f2fe62d3ac4a7721781e2f08feeaa"
+    },
+    "src/pasteboard.rs": {
+      "bytes": 17861,
+      "sha256": "05d01ac0c7e532a16eb0a962ebd1299b0cacaf64616d3d0d11a1495b5feac994"
+    },
+    "src/platform.rs": {
+      "bytes": 63816,
+      "sha256": "ecb4a5a58ac650e0245f0fb145bba412fca2605ef992387774186823aa146b71"
+    },
+    "src/screen_capture.rs": {
+      "bytes": 9871,
+      "sha256": "996c4308d93aea1c809e27baa2ac42b18d038a677cfdd599e481abf5ad200d4b"
+    },
+    "src/system_notifications.rs": {
+      "bytes": 12437,
+      "sha256": "df8374f075932996d58b99c043d97a82e1cefebab79e5b0f4648c8a3776ea5fe"
+    },
+    "src/window.rs": {
+      "bytes": 164089,
+      "sha256": "73fce4ce13ef5f28d1424eabbbccd96e044e7cf81513a3e70993f5c92c32ad70"
+    },
+    "src/window_appearance.rs": {
+      "bytes": 1441,
+      "sha256": "c1ea31769bfd6b324339525b8ffec3be0f59a24495a7e491c1df66bd43db5b75"
+    }
+  }
+}

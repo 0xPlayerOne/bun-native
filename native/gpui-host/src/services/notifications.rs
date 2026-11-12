@@ -7,29 +7,22 @@
 //! is never published. Only signals from the bus connection that answered
 //! `Notify` are accepted for that notification.
 
+use super::session_bus::{Failure, Link, Messages, SessionBus, sender, session_bus_configured};
 use crate::channel::EventSink;
 use bun_native_protocol::{
     ErrorCode, Event, MAX_NOTIFICATIONS, NotificationDismissal, NotificationId, RequestId, WindowId,
 };
-use futures::future::Shared;
-use futures::{FutureExt, StreamExt};
 use gpui::{App, AsyncApp, Task};
 use std::cell::{Cell, RefCell};
 use std::collections::{BTreeMap, HashMap, VecDeque};
-use std::rc::{Rc, Weak};
-use std::time::Duration;
+use std::ops::ControlFlow;
+use std::rc::Rc;
 use zbus::names::OwnedUniqueName;
-
-type Failure = (ErrorCode, &'static str);
 
 const NAME: &str = "org.freedesktop.Notifications";
 const PATH: &str = "/org/freedesktop/Notifications";
-/// Every bus operation, including connection setup, is bounded.
-const TIMEOUT: Duration = Duration::from_secs(2);
-const MAX_QUEUED_SIGNALS: usize = 64;
 /// Closures seen before the matching `Notify` reply was processed.
 const MAX_EARLY_CLOSURES: usize = 64;
-const DRAIN_POLL: Duration = Duration::from_millis(5);
 
 enum State {
     Posting(RequestId),
@@ -41,15 +34,11 @@ struct Entry {
     state: State,
 }
 
-type Link = Shared<Task<Result<zbus::Connection, Failure>>>;
-
 struct Inner {
     entries: RefCell<BTreeMap<NotificationId, Entry>>,
     last_notification: Cell<u64>,
-    link: RefCell<Option<Link>>,
-    listener: RefCell<Option<Task<()>>>,
+    bus: SessionBus,
     early: RefCell<VecDeque<(OwnedUniqueName, u32, NotificationDismissal)>>,
-    in_flight: Cell<usize>,
     stopping: Cell<bool>,
     events: EventSink,
     available: bool,
@@ -63,10 +52,11 @@ impl Notifications {
         Self(Rc::new(Inner {
             entries: RefCell::new(BTreeMap::new()),
             last_notification: Cell::new(0),
-            link: RefCell::new(None),
-            listener: RefCell::new(None),
+            bus: SessionBus::new(Messages {
+                timed_out: "notification server did not answer within two seconds",
+                subscribe_failed: "cannot subscribe to desktop notification signals",
+            }),
             early: RefCell::new(VecDeque::new()),
-            in_flight: Cell::new(0),
             stopping: Cell::new(false),
             events,
             available: session_bus_configured(),
@@ -104,7 +94,7 @@ impl Notifications {
             },
         );
         self.spawn(cx, async move |this, cx| {
-            let result = bounded(cx, notify(link, title, body)).await;
+            let result = this.bounded(cx, notify(link, title, body)).await;
             cx.update(|cx| this.posted(notification, result, cx));
         });
         Ok(())
@@ -140,7 +130,7 @@ impl Notifications {
         self.0.entries.borrow_mut().remove(&notification);
         let link = self.link(cx);
         self.spawn(cx, async move |this, cx| {
-            let result = bounded(cx, close(link, server, key)).await;
+            let result = this.bounded(cx, close(link, server, key)).await;
             cx.update(|cx| {
                 let event = match result {
                     Ok(()) => Event::NotificationWithdrawn {
@@ -191,42 +181,35 @@ impl Notifications {
     /// reported, but shutdown waits for it.
     fn discard(&self, server: OwnedUniqueName, key: u32, cx: &mut App) {
         let link = self.link(cx);
-        self.spawn(cx, async move |_, cx| {
-            let _ = bounded(cx, close(link, server, key)).await;
+        self.spawn(cx, async move |this, cx| {
+            let _ = this.bounded(cx, close(link, server, key)).await;
         });
     }
 
     fn spawn(&self, cx: &mut App, work: impl AsyncFnOnce(Self, &mut AsyncApp) + 'static) {
-        let this = self.clone();
-        this.0.in_flight.set(this.0.in_flight.get() + 1);
-        cx.spawn(async move |cx| {
-            work(this.clone(), cx).await;
-            this.0.in_flight.set(this.0.in_flight.get() - 1);
-        })
-        .detach();
+        self.0.bus.spawn(self.clone(), cx, work);
+    }
+
+    async fn bounded<T>(
+        &self,
+        cx: &mut AsyncApp,
+        work: impl Future<Output = Result<T, Failure>>,
+    ) -> Result<T, Failure> {
+        self.0.bus.bounded(cx, work).await
     }
 
     fn link(&self, cx: &mut App) -> Link {
-        if let Some(link) = &*self.0.link.borrow() {
-            return link.clone();
-        }
         let weak = Rc::downgrade(&self.0);
-        let link: Link = cx
-            .spawn(async move |cx| {
-                let connection = bounded(cx, connect()).await?;
-                let signals = bounded(cx, subscribe(connection.clone())).await?;
-                let listener = cx.spawn({
-                    let weak = weak.clone();
-                    async move |cx| listen(weak, signals, cx).await
-                });
-                if let Some(inner) = weak.upgrade() {
-                    inner.listener.replace(Some(listener));
-                }
-                Ok(connection)
-            })
-            .shared();
-        self.0.link.replace(Some(link.clone()));
-        link
+        self.0.bus.link(cx, signal_rule, move |message, cx| {
+            let Some(signal) = parse_signal(message) else {
+                return ControlFlow::Continue(());
+            };
+            let Some(inner) = weak.upgrade() else {
+                return ControlFlow::Break(());
+            };
+            cx.update(|cx| Notifications(inner).signal(signal, cx));
+            ControlFlow::Continue(())
+        })
     }
 
     fn posted(
@@ -390,16 +373,7 @@ impl Notifications {
                 State::Live { server, key } => self.discard(server, key, cx),
             }
         }
-        self.0.link.borrow().as_ref()?;
-        let this = self.clone();
-        Some(cx.spawn(async move |cx| {
-            let deadline = std::time::Instant::now() + TIMEOUT * 2;
-            while this.0.in_flight.get() > 0 && std::time::Instant::now() < deadline {
-                cx.background_executor().timer(DRAIN_POLL).await;
-            }
-            this.0.listener.replace(None);
-            this.0.link.replace(None);
-        }))
+        self.0.bus.drain(cx)
     }
 }
 
@@ -413,31 +387,6 @@ enum Signal {
         key: u32,
         reason: NotificationDismissal,
     },
-}
-
-fn session_bus_configured() -> bool {
-    std::env::var_os("DBUS_SESSION_BUS_ADDRESS").is_some_and(|address| !address.is_empty())
-        || std::env::var_os("XDG_RUNTIME_DIR")
-            .is_some_and(|directory| std::path::Path::new(&directory).join("bus").exists())
-}
-
-async fn bounded<T>(
-    cx: &mut AsyncApp,
-    work: impl Future<Output = Result<T, Failure>>,
-) -> Result<T, Failure> {
-    let timer = cx.background_executor().timer(TIMEOUT);
-    let timeout = async move {
-        timer.await;
-        Err((
-            ErrorCode::OperationTimedOut,
-            "notification server did not answer within two seconds",
-        ))
-    };
-    // `select` polls `work` first, so a ready answer wins over the timer.
-    futures::future::select(std::pin::pin!(work), std::pin::pin!(timeout))
-        .await
-        .factor_first()
-        .0
 }
 
 fn bus_failure(error: &zbus::Error) -> Failure {
@@ -458,48 +407,17 @@ fn bus_failure(error: &zbus::Error) -> Failure {
     }
 }
 
-async fn connect() -> Result<zbus::Connection, Failure> {
-    zbus::Connection::session().await.map_err(|_| {
-        (
-            ErrorCode::ServiceUnavailable,
-            "cannot connect to the D-Bus session bus",
-        )
-    })
-}
-
-async fn subscribe(connection: zbus::Connection) -> Result<zbus::MessageStream, Failure> {
-    let failed = |_| {
-        (
-            ErrorCode::NativeFailure,
-            "cannot subscribe to desktop notification signals",
-        )
-    };
-    let rule = zbus::MatchRule::builder()
+fn signal_rule() -> zbus::Result<zbus::MatchRule<'static>> {
+    Ok(zbus::MatchRule::builder()
         .msg_type(zbus::message::Type::Signal)
-        .interface(NAME)
-        .map_err(failed)?
-        .path(PATH)
-        .map_err(failed)?
-        .build();
-    zbus::MessageStream::for_match_rule(rule, &connection, Some(MAX_QUEUED_SIGNALS))
-        .await
-        .map_err(failed)
-}
-
-async fn listen(inner: Weak<Inner>, mut signals: zbus::MessageStream, cx: &mut AsyncApp) {
-    while let Some(Ok(message)) = signals.next().await {
-        let Some(signal) = parse_signal(&message) else {
-            continue;
-        };
-        let Some(inner) = inner.upgrade() else { return };
-        cx.update(|cx| Notifications(inner).signal(signal, cx));
-    }
+        .interface(NAME)?
+        .path(PATH)?
+        .build())
 }
 
 fn parse_signal(message: &zbus::Message) -> Option<Signal> {
-    let header = message.header();
-    let sender = OwnedUniqueName::from(header.sender()?.to_owned());
-    match header.member()?.as_str() {
+    let sender = sender(message)?;
+    match message.header().member()?.as_str() {
         "ActionInvoked" => {
             let (key, action): (u32, String) = message.body().deserialize().ok()?;
             (action == "default").then_some(Signal::Activated { sender, key })

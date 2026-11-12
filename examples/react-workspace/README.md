@@ -12,7 +12,7 @@ selected task. The plan streams one step every 300 ms, can be stopped, and stops
 when the selection changes. Plan text is fixed local data: no model, backend or
 network is contacted. The list and detail pane use native vertical
 scroll containers. Initial tasks make the list scroll at the default window size.
-The interactive example also runs a real shell at the top of the details pane, using the same `TerminalSession` as the Solid workspace (`examples/shared/terminal.ts`): `/bin/sh` on macOS and Linux, `cmd.exe` on Windows, started through the owned [process service](../../docs/native-services.md) on an 80×24 pseudo-terminal. It is the only executable in the app's launch policy and receives an explicit environment. The panel shows plain-text scrollback, sends one command per Enter, types Ctrl-C for **Interrupt** and can restart the shell. The native qualification fixtures mount `Workspace` without a terminal. `tests/react/workspace-terminal.test.tsx` drives the panel through the public React adapter, and `tests/native/processes.ts` drives the session against a real shell on Linux, macOS and Windows.
+The interactive example also runs a real shell at the top of the details pane, using the same `TerminalSession` as the Solid workspace (`examples/shared/terminal.ts`): `/bin/sh` on macOS and Linux, `cmd.exe` on Windows, started through the owned [process service](../../docs/native-services.md) on an 80×24 pseudo-terminal. It is the only executable in the app's launch policy and receives an explicit environment. The panel shows plain-text scrollback, sends one command per Enter, types Ctrl-C for **Interrupt** and can restart the shell. The task-flow and long-session native fixtures mount `Workspace` without a terminal. [`tests/native/react-workspace-terminal.tsx`](../../tests/native/react-workspace-terminal.tsx) mounts it with the real shell on Linux X11 in development and AOT (Native Linux CI) and drives the terminal pane with XTest clicks and keys: the command's output returns through the PTY and is painted, **Interrupt** stops a running job, and Alt+F4 closes the window with every owner released (the same checks as the Solid workspace, [`workspace-terminal.ts`](../../tests/native/workspace-terminal.ts)). `tests/react/workspace-terminal.test.tsx` drives the panel through the public React adapter, and `tests/native/processes.ts` drives the session against a real shell on Linux, macOS and Windows.
 Closing the window disposes the renderer before shutting down the application.
 
 ## Run in development
@@ -184,6 +184,18 @@ input and no paint assertion, and the samples are single-run observations on
 Linux Xvfb/llvmpipe, not a leak-freedom, latency or capacity claim. Locally, 60
 rounds (480 plans, 5,040 actions) took about 14 s with the release host.
 
+The same wall-clock session mode as the [Solid workspace](../solid-workspace/README.md#wall-clock-long-sessions)
+applies: with `BUN_NATIVE_SOAK_SECONDS` and `BUN_NATIVE_SOAK_OS_INPUT=1` each
+round's task title is typed into the focused "Add a task" composer through the
+OS and added with Return through the app's own key handler (the composer must
+read back the typed text, then clear), and 24 wheel notches go to the task
+list's scroll viewport, unasserted. The Native Linux workflow and the hosted
+`macos-15` workspace step run 120 s per mode. One local 30-minute session in
+development and one as the inspected AOT executable, unpaced, on Linux
+Xvfb/lavapipe in a shared 4-vCPU container, are recorded in
+[the long-session evidence](../../benchmarks/results/workspace-long-session-2026-11-11/README.md);
+no session paced at the real 300 ms plan interval has been recorded.
+
 ## Dialogs and focus
 
 The example uses both kinds of confirmation the host offers:
@@ -240,11 +252,12 @@ are different fixtures, so no equal-workload performance comparison is made.
 | macOS hosted development and AOT                  | Native flow (same scenario)                                                                   | Native flow (same scenario)                             |
 | Windows hosted development and AOT                | Native flow (same scenario)                                                                   | Native flow (same scenario)                             |
 | Long-session ownership soak (60 rounds, dev+AOT)  | Native Linux: plans, stale callbacks, remounts, clear overlay; exact per-round baseline       | Native Linux: replies, stale callbacks, remounts, clear |
+| Wall-clock long session with OS typing and wheel  | Local Linux Xvfb: 30 min dev and AOT, unpaced; CI 120 s on Linux and macOS                    | The same                                                |
 | Owned shell on a pseudo-terminal (shared session) | Adapter test: command, Interrupt, Restart, unsubscribe on unmount                             | Adapter-free session tests; real shell in `processes`   |
 | Screenshots                                       | scrolled, dark, resized, edited, filtered, after, plan-streaming, plan-complete, plan-stopped | Per-scenario captures in its native evidence            |
 
 Unsupported or unqualified for both: OS menus and alerts (#239), accessibility
-and screen readers, IME (#241), virtualization and long-session memory (#257),
+and screen readers, IME (#241), virtualization (#257), memory beyond the recorded sessions,
 physical input devices and non-hosted display configurations (hosted runners use
 injected OS events at scale 1), and matched comparative performance (#244). React-specific limits from the [behavior matrix](../../docs/react-behavior.md)
 also apply: suspended/hidden subtrees, hydration, portals and view-transition

@@ -11,7 +11,7 @@ import assert from 'node:assert/strict'
 import { appendFileSync, writeFileSync } from 'node:fs'
 import { isAbsolute, join } from 'node:path'
 
-export const INITIAL_VALUE = ' '.repeat(96) + 'TAIL'
+const INITIAL_VALUE = ' '.repeat(96) + 'TAIL'
 export interface ViewportState {
   input: InputState
   edits: number

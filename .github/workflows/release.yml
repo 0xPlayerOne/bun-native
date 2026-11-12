@@ -34,6 +34,8 @@ jobs:
       contents: read
     outputs:
       release: ${{ steps.check.outputs.release }}
+      commit: ${{ steps.check.outputs.commit }}
+      validation-run: ${{ steps.check.outputs.validation-run }}
     steps:
       - name: Require the current main head's own successful Validation
         id: check
@@ -63,17 +65,64 @@ jobs:
             exit 0
           fi
           # Fail closed: the newest completed push Validation of this exact commit must be a success.
-          conclusion=$(gh api "repos/$GITHUB_REPOSITORY/actions/workflows/bun-native.yml/runs?head_sha=$target&event=push&status=completed&per_page=1" --jq '.workflow_runs[0].conclusion // "missing"')
+          run=$(gh api "repos/$GITHUB_REPOSITORY/actions/workflows/bun-native.yml/runs?head_sha=$target&event=push&status=completed&per_page=1" --jq '.workflow_runs[0] // {} | "\(.conclusion // "missing") \(.id // "")"')
+          conclusion="${run%% *}"
           if [ "$conclusion" != success ]; then
             echo "::error::Main $target has no successful push Validation ($conclusion); refusing to release."
             exit 1
           fi
           echo "Releasing from $target after its own successful Validation and CodeQL."
-          echo release=true >> "$GITHUB_OUTPUT"
+          { echo release=true; echo "commit=$target"; echo "validation-run=${run#* }"; } >> "$GITHUB_OUTPUT"
+
+  linux-provenance:
+    # Fail closed: the Linux host archive that this exact commit's Validation built
+    # must carry keyless Sigstore build provenance signed by native-linux.yml on
+    # main (#249). Verification needs no secret; anyone can repeat it with
+    # `gh attestation verify` (docs/releasing.md).
+    name: Verify Linux host provenance
+    needs: qualified
+    if: needs.qualified.outputs.release == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      actions: read
+      attestations: read
+      contents: read
+    steps:
+      # The verifier comes from the default branch, never from the workflow_run
+      # commit: the qualified commit is only data here (its run id and digest),
+      # so no code from a triggering run executes with this job's token.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Install checksum-pinned Bun compiler
+        run: node scripts/install-bun.mjs --destination "$RUNNER_TEMP/bun-native-bun"
+      - name: Download the attested Linux host archive from Validation
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_ID: ${{ needs.qualified.outputs.validation-run }}
+        run: gh run download "$RUN_ID" --repo "$GITHUB_REPOSITORY" --name linux-host-provenance-X64 --dir "$RUNNER_TEMP/host"
+      - name: Verify the archive's checksum and keyless provenance
+        env:
+          GH_TOKEN: ${{ github.token }}
+          COMMIT: ${{ needs.qualified.outputs.commit }}
+        run: |
+          set -euo pipefail
+          archive="$RUNNER_TEMP/host/unsigned-native-host.tar.gz"
+          expected=$(cut -d' ' -f1 "$archive.sha256")
+          actual=$(sha256sum "$archive" | cut -d' ' -f1)
+          if [ "$expected" != "$actual" ]; then
+            echo "::error::Host archive digest $actual does not match its recorded $expected"
+            exit 1
+          fi
+          bun scripts/quality/linux-provenance.ts verify "$archive" \
+            --repo "$GITHUB_REPOSITORY" --signer-workflow .github/workflows/native-linux.yml \
+            --source-ref refs/heads/main --source-digest "$COMMIT" | tee "$RUNNER_TEMP/verification.json"
+          { echo '## Linux host provenance'; echo; echo '```json'; cat "$RUNNER_TEMP/verification.json"; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
 
   release:
     name: Release
-    needs: qualified
+    needs: [qualified, linux-provenance]
     # Release Please manages version metadata. A version release is not native
     # window, packaging, signing or Bun AOT acceptance; those have separate gates.
     if: needs.qualified.outputs.release == 'true'

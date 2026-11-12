@@ -2,7 +2,8 @@
 // Launches the direct Rust GPUI baseline (#244) as fresh processes and records the
 // process metrics the Bun Native comparison records: spawn to window/view/first
 // paint, process wall time, CPU time, sampled peak process-tree RSS and the
-// executable's bytes. Linux (inside the private display session) and macOS.
+// executable's bytes. Linux (inside the private display session), macOS and
+// Windows (process tree and CPU time through ../comparison/windows-processes.ts).
 import { createHash } from 'node:crypto'
 import { existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs'
 import { arch, cpus, platform, release, totalmem } from 'node:os'
@@ -10,6 +11,7 @@ import { isAbsolute, join } from 'node:path'
 import { parseArgs } from 'node:util'
 import { count } from '../solid/workload.ts'
 import { reportProblem, summarizeBaseline, type BaselineLaunch, type Workload } from './summary.ts'
+import { kernel32, ProcessTreeSampler, windowsLoad } from '../comparison/windows-processes.ts'
 
 const { values } = parseArgs({
   options: {
@@ -27,8 +29,9 @@ const { values } = parseArgs({
   strict: true,
   allowPositionals: false,
 })
-if (platform() !== 'linux' && platform() !== 'darwin')
-  throw new Error('The Rust GPUI baseline runner supports Linux and macOS')
+if (platform() !== 'linux' && platform() !== 'darwin' && platform() !== 'win32')
+  throw new Error('The Rust GPUI baseline runner supports Linux, macOS and Windows')
+const windowsApi = platform() === 'win32' ? await kernel32() : null
 if (!values.binary || !isAbsolute(values.binary) || !values.output || !isAbsolute(values.output))
   throw new Error('--binary and --output require absolute paths')
 if (existsSync(values.output)) throw new Error('--output must not exist yet')
@@ -128,7 +131,31 @@ async function launch(name: string, first: boolean): Promise<BaselineLaunch> {
   void child.exited.then(() => (exited = true))
   let peak = 0
   let samples = 0
-  while (!exited) {
+  let windowsCpu: { cpuUserMs: number; cpuSystemMs: number } | null = null
+  if (windowsApi) {
+    // Working sets through held handles; final CPU time of every observed member.
+    let sampler: ProcessTreeSampler | null = null
+    try {
+      sampler = new ProcessTreeSampler(windowsApi, child.pid)
+    } catch {
+      // The process exited before it could be opened; report nulls.
+    }
+    try {
+      while (sampler && !exited) {
+        const rss = sampler.sample().total
+        if (rss > 0) {
+          samples++
+          peak = Math.max(peak, rss)
+        }
+        await Promise.race([Bun.sleep(rssInterval), child.exited])
+      }
+      await child.exited
+      windowsCpu = sampler?.cpu() ?? null
+    } finally {
+      sampler?.close()
+    }
+  }
+  while (!windowsApi && !exited) {
     const rss = treeRss(child.pid)
     if (rss > 0) {
       samples++
@@ -139,7 +166,7 @@ async function launch(name: string, first: boolean): Promise<BaselineLaunch> {
   const exitCode = await child.exited
   clearTimeout(timer)
   const wallMs = performance.now() - started
-  const usage = child.resourceUsage()
+  const usage = windowsApi ? undefined : child.resourceUsage()
   const report = existsSync(reportPath) ? JSON.parse(readFileSync(reportPath, 'utf8')) : null
   const problem = exitCode !== 0 ? `exit ${exitCode}` : reportProblem(report, workload)
   console.log(JSON.stringify({ name, status: problem ? 'failed' : 'passed', error: problem }))
@@ -151,8 +178,8 @@ async function launch(name: string, first: boolean): Promise<BaselineLaunch> {
     exitCode,
     spawnEpochMs,
     wallMs,
-    cpuUserMs: usage ? Number(usage.cpuTime.user) / 1_000 : null,
-    cpuSystemMs: usage ? Number(usage.cpuTime.system) / 1_000 : null,
+    cpuUserMs: usage ? Number(usage.cpuTime.user) / 1_000 : (windowsCpu?.cpuUserMs ?? null),
+    cpuSystemMs: usage ? Number(usage.cpuTime.system) / 1_000 : (windowsCpu?.cpuSystemMs ?? null),
     peakTreeRssBytes: samples ? peak : null,
     rssSamples: samples,
     report,
@@ -183,8 +210,9 @@ const record = {
       DISPLAY: process.env['DISPLAY'] ?? null,
       WAYLAND_DISPLAY: process.env['WAYLAND_DISPLAY'] ?? null,
     },
-    load:
-      platform() === 'darwin'
+    load: windowsApi
+      ? windowsLoad(windowsApi)
+      : platform() === 'darwin'
         ? optional(['sysctl', '-n', 'vm.loadavg'])
         : readFileSync('/proc/loadavg', 'utf8').trim(),
   },
@@ -195,8 +223,10 @@ const record = {
       'apply is the state mutation plus notify, the nearest analogue of the Bun Native acknowledgement (which also includes IPC, JavaScript and tree preparation); turn adds one yielded foreground turn; toPaint is a separate, frame-paced phase and is not comparable with acknowledgements',
     startup:
       'controller spawn epoch combined with the child wall-clock origin; viewMounted is state applied, firstPaint is the first GPUI paint of the mounted view',
-    cpu: 'wait4 user plus system time of the baseline process',
-    rss: `sampled ${platform() === 'darwin' ? 'ps rss' : '/proc statm'} of the process and its descendants every ${rssInterval} ms; peaks can be missed`,
+    cpu: windowsApi
+      ? 'final GetProcessTimes user plus kernel time of the baseline process and any descendant observed'
+      : 'wait4 user plus system time of the baseline process',
+    rss: `sampled ${windowsApi ? 'working set (K32GetProcessMemoryInfo)' : platform() === 'darwin' ? 'ps rss' : '/proc statm'} of the process and its descendants every ${rssInterval} ms; peaks can be missed`,
     failures: 'failed launches are retained and excluded; never retried',
     firstLaunch: 'launch "first" runs once before the trials and is reported separately',
   },
