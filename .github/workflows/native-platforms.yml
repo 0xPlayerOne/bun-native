@@ -865,10 +865,15 @@ jobs:
           bun tests/native/layout-style-compare.ts @reports |
             Tee-Object -FilePath (Join-Path $comparison 'report.json')
           if ($LASTEXITCODE -ne 0) { throw 'macOS adapters or modes committed different layout trees or geometry' }
-      - name: macOS development and AOT accessibility roles, keyboard and pointer split divider (#241)
+      - name: macOS development and AOT accessibility roles, keyboard and pointer split divider, lists and live announcements (#241)
         if: ${{ matrix.shard == 2 && (runner.os == 'macOS' && !cancelled() && steps.native-build.outcome == 'success') }}
         timeout-minutes: 6
         run: |
+          # accessibility.ts also runs its accessibility_lists_v1 window here:
+          # AXList, its AXGroup rows and their AXSelected, set size and position
+          # asserted absent (accesskit_macos 0.26.3 exposes neither), and the
+          # live status's AXAnnouncementRequested notifications through the
+          # oracle's AXObserver.
           $oracle = Join-Path $env:NATIVE_EVIDENCE 'macos-accessibility-roles-oracle'
           xcrun clang -fobjc-arc -Wall -Wextra -Werror -framework AppKit -framework ApplicationServices `
             tests/native/macos-accessibility-oracle.m -o $oracle
