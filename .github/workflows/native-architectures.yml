@@ -41,6 +41,15 @@ jobs:
       - name: Install native build and isolated X11 prerequisites
         timeout-minutes: 25
         uses: ./.github/actions/linux-native-prerequisites
+      - name: Pin the installed Mesa CPU Vulkan ICD for isolated Xvfb
+        run: |
+          mapfile -t manifests < <(dpkg-query -L mesa-vulkan-drivers | grep -E '/lvp_icd[^/]*\.json$' || true)
+          if (( ${#manifests[@]} != 1 )); then
+            echo "::error::Expected exactly one Mesa Lavapipe ICD, found ${#manifests[@]}" >&2
+            exit 1
+          fi
+          test -r "${manifests[0]}"
+          printf 'VK_DRIVER_FILES=%s\n' "${manifests[0]}" >> "$GITHUB_ENV"
       - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: |
