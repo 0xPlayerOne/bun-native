@@ -1091,7 +1091,9 @@ finds the sheet by its title and presses its buttons. It requires default
 denial, the accept label on a filtered file panel and Cancel giving `cancelled`,
 the accept button of a folder panel started in a temporary folder choosing that
 folder, the accept button of a save panel choosing the suggested name in that
-folder without creating it, an unsupported glob refused with no sheet, a second
+folder without creating it (the step shows all filename extensions, since a
+save panel otherwise hides a known extension in its name field), an
+unsupported glob refused with no sheet, a second
 dialog refused while one is live, and the sheet gone after abort, owner close
 and shutdown. Choosing an individual file in the panel's browser is not
 automated, and it is pending its first hosted run; there is no AOT macOS run.

@@ -10,6 +10,13 @@
  * started in a known folder (which chooses that folder), and the accept button
  * of a save panel with a suggested name (which chooses that name there). Picking
  * an individual file in the panel's browser is not automated here.
+ *
+ * A save panel shows a suggested name with a known extension without that
+ * extension unless the user chose to show all filename extensions (Finder's
+ * `AppleShowAllExtensions` in the global domain); the chosen path keeps it
+ * either way. The workflow sets that preference so the name field shows the
+ * whole name, and this fixture refuses to run without it rather than accept a
+ * truncated name.
  */
 import { createApplication, NativeServiceError, NativeStateError } from '@bun-native/core'
 import assert from 'node:assert/strict'
@@ -82,6 +89,12 @@ writeFileSync(join(folder, 'note.txt'), 'note\n')
 let failure: unknown
 try {
   assert.equal(JSON.parse((await run([oracle, 'trusted'])).stdout).trusted, true)
+  const extensions = await run(['defaults', 'read', '-g', 'AppleShowAllExtensions'])
+  assert.equal(
+    extensions.stdout,
+    '1',
+    'Run with `defaults write -g AppleShowAllExtensions -bool true`: otherwise the save panel hides the suggested extension'
+  )
 
   // 1. Without the grant no panel is shown.
   {

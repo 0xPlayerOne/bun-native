@@ -1267,6 +1267,10 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'The independent Accessibility file panel oracle did not compile' }
           $trust = & $oracle trusted | ConvertFrom-Json
           if (-not $trust.trusted) { throw 'The runner does not trust the file panel oracle for Accessibility' }
+          # A save panel hides a known extension in its name field unless all
+          # filename extensions are shown; the fixture reads the whole name.
+          defaults write -g AppleShowAllExtensions -bool true
+          if ($LASTEXITCODE -ne 0) { throw 'Cannot show all filename extensions' }
           $evidence = Join-Path $env:NATIVE_EVIDENCE 'file-dialogs-macos'
           New-Item -ItemType Directory $evidence | Out-Null
           $env:BUN_NATIVE_FILE_DIALOG_EVIDENCE = $evidence
