@@ -404,6 +404,9 @@ async function qualification() {
       }
       throw error
     }
+    // How often the source had to repost the target position before its own
+    // session tracked it there (AppKit); see macos-drag-source.m `track_to`.
+    if (backend === 'appkit') console.log(JSON.stringify({ largeListSource: largeListEntry }))
     await xdnd.drop()
     assert.deepEqual(await since(mark), [
       { target: 'left', type: 'drag_entered' },

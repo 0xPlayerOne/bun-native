@@ -827,16 +827,20 @@ impl MacWindowState {
     /// `window_state` is the handle this state lives in; a Metal link holds it
     /// weakly to deliver frames.
     fn start_display_link(&mut self, window_state: &Rc<Mutex<MacWindowState>>) {
-        self.stop_display_link();
         if !self
             .native_window()
             .occlusionState()
             .contains(NSWindowOcclusionState::Visible)
         {
+            self.stop_display_link();
             return;
         }
         match &mut self.frame_source {
             FrameSource::Metal(metal_frames) => {
+                if metal_frames.is_attached() {
+                    metal_frames.replace(None);
+                    self.renderer.set_display_link_attached(false);
+                }
                 let Some(layer) = self.renderer.layer() else {
                     return;
                 };
@@ -859,12 +863,27 @@ impl MacWindowState {
                     // AppKit can temporarily report no screen while displays are being reconfigured.
                     return;
                 };
+                // Bun Native patch: a window already subscribed on this
+                // display stays subscribed (see `WindowFrameSource::start`).
                 let data = self.native_view.as_ptr() as *mut c_void;
                 frame_source
                     .get_or_insert_with(|| WindowFrameSource::new(data, step))
                     .start(display_id)
                     .log_err();
             }
+        }
+    }
+
+    /// Bun Native patch: before a synchronous `displayLayer:` draw, only a
+    /// Metal link is detached, so that the draw can use the layer's
+    /// `nextDrawable`. A window paced by the shared `CVDisplayLink` keeps its
+    /// subscription: `step` runs on the main queue and finds the frame
+    /// callback taken, so it cannot interleave with the draw, and stopping and
+    /// at once restarting the display's only subscription left that link
+    /// delivering no further frames on hosted macOS 15.
+    fn pause_for_synchronous_draw(&mut self) {
+        if let FrameSource::Metal(_) = &self.frame_source {
+            self.stop_display_link();
         }
     }
 
@@ -3267,7 +3286,7 @@ extern "C" fn window_did_change_key_status(this: &AnyObject, selector: Sel, _: *
         if lock.activated_least_once {
             if let Some(mut callback) = lock.request_frame_callback.take() {
                 lock.renderer.set_presents_with_transaction(true);
-                lock.stop_display_link();
+                lock.pause_for_synchronous_draw();
                 drop(lock);
                 callback(RequestFrameOptions {
                     signal_at,
@@ -3393,7 +3412,7 @@ extern "C" fn display_layer(this: &AnyObject, _: Sel, _: *mut AnyObject) {
     let mut lock = window_state.lock();
     if let Some(mut callback) = lock.request_frame_callback.take() {
         lock.renderer.set_presents_with_transaction(true);
-        lock.stop_display_link();
+        lock.pause_for_synchronous_draw();
         drop(lock);
         callback(RequestFrameOptions {
             signal_at,

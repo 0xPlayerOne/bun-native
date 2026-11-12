@@ -394,6 +394,11 @@ impl WindowFrameSource {
     }
 
     pub fn start(&mut self, display_id: CGDirectDisplayID) -> Result<()> {
+        // Bun Native patch: already subscribed on this display, so the shared
+        // link keeps running instead of being stopped and restarted at once.
+        if matches!(self.registration, Some((current, _)) if current == display_id) {
+            return Ok(());
+        }
         self.stop();
         let subscriber_id =
             subscribe(display_id, self.frame_requests.clone(), self.signal.clone())?;

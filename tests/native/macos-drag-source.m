@@ -13,8 +13,9 @@
 //   offer files JSON    offer file URLs for these absolute paths
 //   offer text JSON     offer one plain string
 //   enter X Y           mouse-down on the source, begin the session, move to
-//                       the window-relative point X,Y of the found window
-//   move X Y            drag to X,Y
+//                       the window-relative point X,Y of the found window and
+//                       wait until the session itself has tracked it there
+//   move X Y            drag to X,Y, with the same wait
 //   drop                release the button; reports the session's operation
 //   leave               cancel with Escape, then release over the source
 #import <AppKit/AppKit.h>
@@ -36,6 +37,14 @@ static dispatch_semaphore_t began;
 static dispatch_semaphore_t ended;
 static NSDragOperation endedOperation;
 static NSInteger legacyFilenames;
+
+// What the session itself tracked, in Quartz coordinates. The main thread
+// writes these from the session's callbacks; the command thread reads them
+// under the same lock and never waits on the main thread during a drag.
+static NSObject *sessionLock;
+static CGFloat primaryHeight;
+static NSInteger sessionMoves;
+static CGPoint sessionPoint;
 
 // Only the command thread touches these.
 static BOOL targetFound;
@@ -107,6 +116,14 @@ static CGPoint source_center(void) {
     sourceOperationMaskForDraggingContext:(NSDraggingContext)context {
     (void)session;
     return context == NSDraggingContextOutsideApplication ? NSDragOperationCopy : NSDragOperationNone;
+}
+
+- (void)draggingSession:(NSDraggingSession *)session movedToPoint:(NSPoint)point {
+    (void)session;
+    @synchronized(sessionLock) {
+        sessionMoves++;
+        sessionPoint = CGPointMake(point.x, primaryHeight - point.y);
+    }
 }
 
 - (void)draggingSession:(NSDraggingSession *)session
@@ -219,13 +236,51 @@ static CGPoint target_point(NSString *rest) {
     return CGPointMake(targetOrigin.x + x, targetOrigin.y + y);
 }
 
+static NSInteger session_moves(CGPoint *point) {
+    @synchronized(sessionLock) {
+        if (point) *point = sessionPoint;
+        return sessionMoves;
+    }
+}
+
+/// Waits until the session has tracked a move past `after` that ends within
+/// two points of `point`, reposting that same position every 100 ms. A
+/// session whose tracking starts after the posted motion (a 65-item session
+/// takes longer to begin) otherwise never sees the pointer arrive, and the
+/// destination is never entered. Returns the number of reposts.
+static NSInteger track_to(CGPoint point, NSInteger after) {
+    NSTimeInterval deadline = NSProcessInfo.processInfo.systemUptime + Wait / (double)NSEC_PER_SEC;
+    for (NSInteger reposts = 0;; reposts++) {
+        for (int poll = 0; poll < 4; poll++) {
+            CGPoint at;
+            if (session_moves(&at) > after && fabs(at.x - point.x) <= 2 && fabs(at.y - point.y) <= 2)
+                return reposts;
+            pause_ms(25);
+        }
+        if (NSProcessInfo.processInfo.systemUptime > deadline) {
+            CGPoint at;
+            NSInteger moves = session_moves(&at);
+            fail([NSString stringWithFormat:
+                @"The dragging session did not track the pointer to %.0f,%.0f (%ld moves, last %.0f,%.0f)",
+                point.x, point.y, (long)moves, at.x, at.y]);
+        }
+        post_mouse(kCGEventLeftMouseDragged, point);
+    }
+}
+
 /// One jump, then a still update, so the destination sees one position only.
-static void drag_to(CGPoint point) {
+/// Returns how often the session needed the position reposted.
+static NSInteger drag_to(CGPoint point) {
+    CGPoint was;
+    NSInteger before = session_moves(&was);
+    // A session already tracked at this position need not see a new move.
+    if (before > 0 && fabs(was.x - point.x) <= 2 && fabs(was.y - point.y) <= 2) before--;
     post_mouse(kCGEventLeftMouseDragged, point);
     pause_ms(40);
     post_mouse(kCGEventLeftMouseDragged, point);
     pause_ms(80);
     current = point;
+    return track_to(point, before);
 }
 
 static NSDictionary *wait_ended(int64_t timeout) {
@@ -280,15 +335,16 @@ static NSDictionary *command(NSString *line) {
             post_mouse(kCGEventLeftMouseDragged, CGPointMake(start.x + 4 * step, start.y));
             pause_ms(20);
         }
-        drag_to(point);
+        NSInteger reposts = drag_to(point);
         return @{@"entered": @YES, @"legacyFilenames": @(legacyFilenames),
-            @"screenPoint": @[@(point.x), @(point.y)]};
+            @"screenPoint": @[@(point.x), @(point.y)], @"sessionMoves": @(session_moves(NULL)),
+            @"reposts": @(reposts)};
     }
     if ([verb isEqualToString:@"move"]) {
         CGPoint point = target_point(rest);
         if (!dragging) fail(@"No drag is active");
-        drag_to(point);
-        return @{@"moved": @YES};
+        NSInteger reposts = drag_to(point);
+        return @{@"moved": @YES, @"reposts": @(reposts)};
     }
     if ([verb isEqualToString:@"drop"]) {
         if (!dragging) fail(@"No drag is active");
@@ -369,6 +425,7 @@ int main(void) {
         [NSApplication sharedApplication];
         [NSApp setActivationPolicy:NSApplicationActivationPolicyRegular];
         began = dispatch_semaphore_create(0);
+        sessionLock = [NSObject new];
         ended = dispatch_semaphore_create(0);
         if (!CGPreflightPostEventAccess()) {
             fputs("{\"error\":\"CoreGraphics event posting permission is unavailable\"}\n", stdout);
@@ -376,6 +433,7 @@ int main(void) {
         }
         NSScreen *primary = NSScreen.screens.firstObject;
         if (!primary) return 2;
+        primaryHeight = primary.frame.size.height;
         // AppKit's origin is the primary screen's bottom-left; Quartz's is top-left.
         NSRect frame = NSMakeRect(SourceLeft, primary.frame.size.height - SourceTop - SourceSize,
             SourceSize, SourceSize);
