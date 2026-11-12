@@ -5,9 +5,11 @@ import {
   bodyStyle,
   frameStyle,
   headerStyle,
+  listAccessibility,
   listStyle,
   mainStyle,
   metaStyle,
+  rowAccessibility,
   rowStyle,
   sidebarLines,
   sidebarStyle,
@@ -44,13 +46,17 @@ await runStreamingList('Solid', (window, initial, select) => {
         </box>
         <box style={mainStyle()}>
           <text text={view().status} style={headerStyle(view())} />
-          <box style={listStyle(view())}>
+          <box {...listAccessibility(view())} style={listStyle(view())}>
             <For each={ids()}>
               {(id) => {
                 // A removed id is unmounted before this accessor can be read again.
                 const row = () => rows().get(id) as ListRow
                 return (
-                  <box style={rowStyle(view(), row())} onPointerDown={() => select(id)}>
+                  <box
+                    {...rowAccessibility(row())}
+                    style={rowStyle(view(), row())}
+                    onPointerDown={() => select(id)}
+                  >
                     <text text={row().meta} style={metaStyle(view(), row())} />
                     <text text={row().text} style={bodyStyle(view())} />
                   </box>

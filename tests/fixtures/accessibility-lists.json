@@ -1,0 +1,272 @@
+{
+  "capability": "accessibility_lists_v1",
+  "scope": "Shared list role, set size, position, selection and live-region element validation; not native GUI evidence.",
+  "cases": [
+    {
+      "name": "list",
+      "element": {
+        "kind": "box",
+        "accessible_role": "list",
+        "accessible_label": "Messages",
+        "accessible_set_size": 10150
+      },
+      "expected": {
+        "kind": "box",
+        "accessible_role": "list",
+        "accessible_label": "Messages",
+        "accessible_set_size": 10150,
+        "style": {}
+      }
+    },
+    {
+      "name": "empty-list",
+      "element": {
+        "kind": "box",
+        "accessible_role": "list",
+        "accessible_set_size": 0
+      },
+      "expected": {
+        "kind": "box",
+        "accessible_role": "list",
+        "accessible_set_size": 0,
+        "style": {}
+      }
+    },
+    {
+      "name": "list-item",
+      "element": {
+        "kind": "box",
+        "accessible_role": "list_item",
+        "accessible_position": 10150,
+        "accessible_selected": true,
+        "style": {
+          "height": 24
+        }
+      },
+      "expected": {
+        "kind": "box",
+        "accessible_role": "list_item",
+        "accessible_position": 10150,
+        "accessible_selected": true,
+        "style": {
+          "height": 24
+        }
+      }
+    },
+    {
+      "name": "unselected-list-item",
+      "element": {
+        "kind": "box",
+        "accessible_role": "list_item",
+        "accessible_selected": false
+      },
+      "expected": {
+        "kind": "box",
+        "accessible_role": "list_item",
+        "accessible_selected": false,
+        "style": {}
+      }
+    },
+    {
+      "name": "scrolling-list",
+      "element": {
+        "kind": "box",
+        "accessible_role": "list",
+        "style": {
+          "overflow": "scroll_y"
+        }
+      },
+      "expected": {
+        "kind": "box",
+        "accessible_role": "list",
+        "style": {
+          "overflow": "scroll_y"
+        }
+      }
+    },
+    {
+      "name": "polite-text",
+      "element": {
+        "kind": "text",
+        "text": "Token",
+        "accessible_live": "polite"
+      },
+      "expected": {
+        "kind": "text",
+        "text": "Token",
+        "accessible_live": "polite",
+        "style": {}
+      }
+    },
+    {
+      "name": "assertive-text",
+      "element": {
+        "kind": "text",
+        "text": "Failed",
+        "accessible_live": "assertive"
+      },
+      "expected": {
+        "kind": "text",
+        "text": "Failed",
+        "accessible_live": "assertive",
+        "style": {}
+      }
+    },
+    {
+      "name": "plain-box",
+      "element": {
+        "kind": "box"
+      },
+      "expected": {
+        "kind": "box",
+        "style": {}
+      }
+    },
+    {
+      "name": "unknown-role",
+      "element": {
+        "kind": "box",
+        "accessible_role": "table"
+      }
+    },
+    {
+      "name": "label-without-role",
+      "element": {
+        "kind": "box",
+        "accessible_label": "Messages"
+      }
+    },
+    {
+      "name": "set-size-without-role",
+      "element": {
+        "kind": "box",
+        "accessible_set_size": 3
+      }
+    },
+    {
+      "name": "set-size-on-item",
+      "element": {
+        "kind": "box",
+        "accessible_role": "list_item",
+        "accessible_set_size": 3
+      }
+    },
+    {
+      "name": "position-on-list",
+      "element": {
+        "kind": "box",
+        "accessible_role": "list",
+        "accessible_position": 1
+      }
+    },
+    {
+      "name": "selected-on-list",
+      "element": {
+        "kind": "box",
+        "accessible_role": "list",
+        "accessible_selected": true
+      }
+    },
+    {
+      "name": "position-zero",
+      "element": {
+        "kind": "box",
+        "accessible_role": "list_item",
+        "accessible_position": 0
+      }
+    },
+    {
+      "name": "position-too-large",
+      "element": {
+        "kind": "box",
+        "accessible_role": "list_item",
+        "accessible_position": 2147483648
+      }
+    },
+    {
+      "name": "set-size-negative",
+      "element": {
+        "kind": "box",
+        "accessible_role": "list",
+        "accessible_set_size": -1
+      }
+    },
+    {
+      "name": "set-size-fraction",
+      "element": {
+        "kind": "box",
+        "accessible_role": "list",
+        "accessible_set_size": 1.5
+      }
+    },
+    {
+      "name": "selected-not-boolean",
+      "element": {
+        "kind": "box",
+        "accessible_role": "list_item",
+        "accessible_selected": "yes"
+      }
+    },
+    {
+      "name": "null-role",
+      "element": {
+        "kind": "box",
+        "accessible_role": null
+      }
+    },
+    {
+      "name": "unknown-live",
+      "element": {
+        "kind": "text",
+        "text": "a",
+        "accessible_live": "off"
+      }
+    },
+    {
+      "name": "live-on-box",
+      "element": {
+        "kind": "box",
+        "accessible_role": "list",
+        "accessible_live": "polite"
+      }
+    },
+    {
+      "name": "live-on-button",
+      "element": {
+        "kind": "button",
+        "text": "a",
+        "accessible_live": "polite"
+      }
+    },
+    {
+      "name": "role-on-text",
+      "element": {
+        "kind": "text",
+        "text": "a",
+        "accessible_role": "list_item"
+      }
+    },
+    {
+      "name": "role-on-overlay",
+      "element": {
+        "kind": "overlay",
+        "accessible_role": "list"
+      }
+    },
+    {
+      "name": "position-on-split",
+      "element": {
+        "kind": "split",
+        "accessible_position": 1
+      }
+    },
+    {
+      "name": "set-size-on-input",
+      "element": {
+        "kind": "input",
+        "value": "",
+        "accessible_set_size": 1
+      }
+    }
+  ]
+}

@@ -8,11 +8,13 @@ fn id(value: u64) -> NodeId {
 }
 fn box_element() -> Element {
     Element::Box {
+        accessibility: Default::default(),
         style: Style::default(),
     }
 }
 fn text(value: &str) -> Element {
     Element::Text {
+        accessible_live: None,
         text: value.into(),
         style: Style::default(),
     }

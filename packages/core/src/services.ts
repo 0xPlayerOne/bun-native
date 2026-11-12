@@ -78,7 +78,8 @@ export interface ServiceCapabilities {
         read: 'allow' | 'deny'
         write: 'allow' | 'deny'
         scope: 'owned_window'
-        backend: 'x11'
+        /** X11 selections on Linux; the general pasteboard's plain text on macOS. */
+        backend: 'x11' | 'appkit'
       }>
     | Readonly<{ availability: 'unavailable'; reason: 'unsupported_platform' }>
   readonly globalShortcuts:
@@ -86,7 +87,8 @@ export interface ServiceCapabilities {
         availability: 'available'
         permission: 'allow' | 'deny'
         scope: 'owned_window'
-        backend: 'x11'
+        /** X11 passive key grabs on Linux; exclusive Carbon hot keys on macOS. */
+        backend: 'x11' | 'carbon'
       }>
     | Readonly<{ availability: 'unavailable'; reason: 'unsupported_platform' }>
   /**
@@ -119,7 +121,8 @@ export interface ServiceCapabilities {
         availability: 'available'
         permission: 'allow' | 'deny'
         scope: 'owned_window'
-        backend: 'xdg_desktop_portal'
+        /** The desktop portal's file chooser on Linux; open and save panel sheets on macOS. */
+        backend: 'xdg_desktop_portal' | 'appkit'
       }>
     | Readonly<{ availability: 'unavailable'; reason: 'unsupported_platform' }>
   /**
@@ -141,7 +144,12 @@ export interface ServiceCapabilities {
         availability: 'available'
         permission: 'allow' | 'deny'
         scope: 'owned_window'
-        backend: 'freedesktop'
+        /**
+         * The freedesktop.org notification service on Linux;
+         * `UNUserNotificationCenter` on macOS, offered only when the host runs
+         * from an application bundle.
+         */
+        backend: 'freedesktop' | 'user_notifications'
       }>
     | Readonly<{ availability: 'unavailable'; reason: 'unsupported_platform' }>
   readonly dragDrop:
@@ -257,7 +265,7 @@ export function serviceCapabilities(
           read: policy.clipboard_read ? 'allow' : 'deny',
           write: policy.clipboard_write ? 'allow' : 'deny',
           scope: 'owned_window',
-          backend: 'x11',
+          backend: process.platform === 'darwin' ? 'appkit' : 'x11',
         })
       : Object.freeze({ availability: 'unavailable', reason: 'unsupported_platform' }),
     globalShortcuts: capabilities.includes('global_shortcuts_v1')
@@ -265,7 +273,7 @@ export function serviceCapabilities(
           availability: 'available',
           permission: policy.global_shortcuts ? 'allow' : 'deny',
           scope: 'owned_window',
-          backend: 'x11',
+          backend: process.platform === 'darwin' ? 'carbon' : 'x11',
         })
       : Object.freeze({ availability: 'unavailable', reason: 'unsupported_platform' }),
     contextMenus: capabilities.includes('context_menus_v1')
@@ -289,7 +297,7 @@ export function serviceCapabilities(
           availability: 'available',
           permission: policy.file_dialogs ? 'allow' : 'deny',
           scope: 'owned_window',
-          backend: 'xdg_desktop_portal',
+          backend: process.platform === 'darwin' ? 'appkit' : 'xdg_desktop_portal',
         })
       : Object.freeze({ availability: 'unavailable', reason: 'unsupported_platform' }),
     // The modal overlay and a focus request are the only native features used.
@@ -310,7 +318,7 @@ export function serviceCapabilities(
           availability: 'available',
           permission: policy.notifications ? 'allow' : 'deny',
           scope: 'owned_window',
-          backend: 'freedesktop',
+          backend: process.platform === 'darwin' ? 'user_notifications' : 'freedesktop',
         })
       : Object.freeze({ availability: 'unavailable', reason: 'unsupported_platform' }),
     dragDrop: capabilities.includes('drag_drop_files_v1')

@@ -6,9 +6,11 @@ import {
   bodyStyle,
   frameStyle,
   headerStyle,
+  listAccessibility,
   listStyle,
   mainStyle,
   metaStyle,
+  rowAccessibility,
   rowStyle,
   sidebarLines,
   sidebarStyle,
@@ -40,7 +42,11 @@ const sameRow = (a: RowProps, b: RowProps) =>
 const Row = memo(function Row({ row, theme, density, select }: RowProps) {
   const tokens = { theme, density }
   return (
-    <box style={rowStyle(tokens, row)} onPointerDown={() => select(row.id)}>
+    <box
+      {...rowAccessibility(row)}
+      style={rowStyle(tokens, row)}
+      onPointerDown={() => select(row.id)}
+    >
       <text text={row.meta} style={metaStyle(tokens, row)} />
       <text text={row.text} style={bodyStyle(tokens)} />
     </box>
@@ -74,7 +80,7 @@ await runStreamingList('React', (window, initial, select) => {
         </box>
         <box style={mainStyle()}>
           <text text={view.status} style={headerStyle(view)} />
-          <box style={listStyle(view)}>
+          <box {...listAccessibility(view)} style={listStyle(view)}>
             {view.rows.map((row) => (
               <Row
                 key={row.id}

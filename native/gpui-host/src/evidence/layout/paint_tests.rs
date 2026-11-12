@@ -44,6 +44,7 @@ fn recolor(tree: &Tree) -> Tree {
         vec![Operation::Set {
             node_id: id(1),
             element: Element::Box {
+                accessibility: Default::default(),
                 style: Style {
                     background: Some(0xffffff),
                     ..Style::default()

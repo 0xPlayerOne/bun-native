@@ -52,6 +52,11 @@ type Properties = EventListeners & {
   surface?: 'layer' | 'window'
   readOnly?: boolean
   accessibleLabel?: string
+  accessibleRole?: 'list' | 'list_item'
+  accessibleSetSize?: number
+  accessiblePosition?: number
+  accessibleSelected?: boolean
+  accessibleLive?: 'polite' | 'assertive'
 }
 
 /** Every native element tag the renderer accepts. */
@@ -425,11 +430,36 @@ export function setProperty(node: Node, name: PropertyName, value: unknown): voi
       else throw new TypeError('Native overlay surface must be layer or window')
       break
     case 'accessibleLabel':
-      if (node.kind !== 'split' && node.kind !== 'overlay')
-        throw new TypeError('Only splits and overlays accept accessibleLabel')
+      if (node.kind !== 'split' && node.kind !== 'overlay' && node.kind !== 'box')
+        throw new TypeError('Only boxes, splits and overlays accept accessibleLabel')
       if (value === undefined) delete props.accessibleLabel
       else if (typeof value === 'string') props.accessibleLabel = value
       else throw new TypeError('Native accessibleLabel must be a string')
+      break
+    case 'accessibleRole':
+      if (node.kind !== 'box') throw new TypeError('Only boxes accept accessibleRole')
+      if (value === undefined) delete props.accessibleRole
+      else if (value === 'list' || value === 'list_item') props.accessibleRole = value
+      else throw new TypeError('Native accessibleRole must be list or list_item')
+      break
+    case 'accessibleSetSize':
+    case 'accessiblePosition':
+      if (node.kind !== 'box') throw new TypeError('Only boxes accept ' + name)
+      if (value === undefined) delete props[name]
+      else if (typeof value === 'number' && Number.isSafeInteger(value)) props[name] = value
+      else throw new TypeError(`Native ${name} must be an integer`)
+      break
+    case 'accessibleSelected':
+      if (node.kind !== 'box') throw new TypeError('Only boxes accept accessibleSelected')
+      if (value === undefined) delete props.accessibleSelected
+      else if (typeof value === 'boolean') props.accessibleSelected = value
+      else throw new TypeError('Native accessibleSelected must be boolean')
+      break
+    case 'accessibleLive':
+      if (node.kind !== 'text') throw new TypeError('Only text accepts accessibleLive')
+      if (value === undefined) delete props.accessibleLive
+      else if (value === 'polite' || value === 'assertive') props.accessibleLive = value
+      else throw new TypeError('Native accessibleLive must be polite or assertive')
       break
     case 'readOnly':
       if (node.kind !== 'input') throw new TypeError('Only inputs accept readOnly')
@@ -530,7 +560,22 @@ function build(node: Node, parent: Node | undefined): Snapshot {
   const style = props.style && !isContainer(node.kind) ? { style: leafStyle(props.style) } : {}
   let element: Element
   if (node.kind === 'box')
-    element = { kind: 'box', ...(props.style ? { style: { ...props.style } } : {}) }
+    // Core validation rejects members that do not fit the role.
+    element = {
+      kind: 'box',
+      ...(props.accessibleRole === undefined ? {} : { accessible_role: props.accessibleRole }),
+      ...(props.accessibleLabel === undefined ? {} : { accessible_label: props.accessibleLabel }),
+      ...(props.accessibleSetSize === undefined
+        ? {}
+        : { accessible_set_size: props.accessibleSetSize }),
+      ...(props.accessiblePosition === undefined
+        ? {}
+        : { accessible_position: props.accessiblePosition }),
+      ...(props.accessibleSelected === undefined
+        ? {}
+        : { accessible_selected: props.accessibleSelected }),
+      ...(props.style ? { style: { ...props.style } } : {}),
+    } as Element
   else if (node.kind === 'split')
     // Core validation rejects gap and alignment on a split.
     element = {
@@ -579,7 +624,14 @@ function build(node: Node, parent: Node | undefined): Snapshot {
             ...(props.disabled === undefined ? {} : { disabled: props.disabled }),
             ...style,
           }
-        : { kind: 'text', text, ...style }
+        : {
+            kind: 'text',
+            text,
+            ...(props.accessibleLive === undefined
+              ? {}
+              : { accessible_live: props.accessibleLive }),
+            ...style,
+          }
   }
   return {
     element,

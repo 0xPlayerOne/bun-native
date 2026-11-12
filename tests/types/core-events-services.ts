@@ -235,7 +235,7 @@ export const cssColor: Style = { color: '#fff' }
 export function checkCapabilities(app: NativeApplication): void {
   const services: Readonly<ServiceCapabilities> = app.serviceCapabilities
   if (services.clipboardText.availability === 'available') {
-    const backend: 'x11' = services.clipboardText.backend
+    const backend: 'x11' | 'appkit' = services.clipboardText.backend
     const read: 'allow' | 'deny' = services.clipboardText.read
     void [backend, read]
   } else {
@@ -243,7 +243,7 @@ export function checkCapabilities(app: NativeApplication): void {
     void reason
   }
   if (services.notifications.availability === 'available') {
-    const backend: 'freedesktop' = services.notifications.backend
+    const backend: 'freedesktop' | 'user_notifications' = services.notifications.backend
     void backend
   }
   const menus: 'available' | 'unavailable' = services.appMenu.availability

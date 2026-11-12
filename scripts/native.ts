@@ -12,7 +12,7 @@ const usage = `Bun Native application tooling
   bun run native create apps/my-app [--framework solid|react] [--language typescript|javascript]
   bun scripts/native.ts create /path/to/my-app --packages /path/to/package-set/manifest.json
   bun run native dev apps/my-app --host /absolute/path/to/bun-native-host [--watch]
-  bun run native build apps/my-app --host /absolute/path/to/bun-native-host --host-profile dev|release [--outdir directory]
+  bun run native build apps/my-app --host /absolute/path/to/bun-native-host --host-profile dev|release [--outdir directory] [--bundle-id reverse.dns.id]
   bun run native check apps/my-app
   bun run native format apps/my-app [--check]
   bun run native lint apps/my-app
@@ -118,6 +118,7 @@ async function main(args: string[]): Promise<void> {
   if (command === 'build') {
     options['outdir'] = { type: 'string' }
     options['host-profile'] = { type: 'string' }
+    options['bundle-id'] = { type: 'string' }
   } else options['watch'] = { type: 'boolean' }
   const { values, positionals } = parseArgs({
     args: rest,
@@ -143,7 +144,14 @@ async function main(args: string[]): Promise<void> {
     const outdir = resolve(
       typeof values.outdir === 'string' ? values.outdir : join(project.directory, 'dist')
     )
-    await buildProject(project, host, outdir, profile)
+    const bundleIdentifier = values['bundle-id']
+    await buildProject(
+      project,
+      host,
+      outdir,
+      profile,
+      typeof bundleIdentifier === 'string' ? { bundleIdentifier } : {}
+    )
     console.log(`Built unsigned AOT application and supplied host in ${outdir}`)
     return
   }

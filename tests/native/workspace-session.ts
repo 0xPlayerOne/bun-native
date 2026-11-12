@@ -1,4 +1,11 @@
-import { appendFileSync, existsSync, readdirSync, readFileSync, realpathSync } from 'node:fs'
+import {
+  appendFileSync,
+  existsSync,
+  writeFileSync,
+  readdirSync,
+  readFileSync,
+  realpathSync,
+} from 'node:fs'
 import { loadavg, platform } from 'node:os'
 import { isAbsolute, join } from 'node:path'
 
@@ -18,6 +25,10 @@ import { isAbsolute, join } from 'node:path'
  *   X11 display; macOS uses the bounded CoreGraphics helper named by
  *   BUN_NATIVE_PLATFORM_HELPER (scripts/quality/native-platform-macos.m),
  *   which verifies the owned window and foreground before every post.
+ * - BUN_NATIVE_SOAK_HEAP_CENSUS=1: each sample also records JSC's live
+ *   object count per type after the forced collection, and writes
+ *   strings-<round>.json with every live string's text and count, taken from
+ *   a heap snapshot, to attribute growth.
  *
  * Samples are appended to samples.jsonl as they are taken, so a failed run
  * keeps every sample it reached.
@@ -27,6 +38,7 @@ export interface SessionConfig {
   readonly sampleSeconds: number
   readonly paceMs: number
   readonly osInput: boolean
+  readonly census: boolean
 }
 
 function integer(name: string, fallback: number, minimum: number, maximum: number): number {
@@ -54,7 +66,31 @@ export function sessionConfig(native: boolean): SessionConfig | undefined {
     sampleSeconds: integer('BUN_NATIVE_SOAK_SAMPLE_SECONDS', 30, 1, 600),
     paceMs: integer('BUN_NATIVE_SOAK_PACE_MS', 0, 0, 2_000),
     osInput,
+    census: process.env['BUN_NATIVE_SOAK_HEAP_CENSUS'] === '1',
   }
+}
+
+/** Count every live string in a heap snapshot by its text (census mode). */
+export function writeStringCensus(directory: string, round: number) {
+  const snapshot = JSON.parse(Bun.generateHeapSnapshot('v8')) as {
+    snapshot: { meta: { node_fields: string[]; node_types: [string[]] } }
+    nodes: number[]
+    strings: string[]
+  }
+  const fields = snapshot.snapshot.meta.node_fields
+  const typeField = fields.indexOf('type')
+  const nameField = fields.indexOf('name')
+  const stringType = snapshot.snapshot.meta.node_types[0].indexOf('string')
+  const counts = new Map<string, number>()
+  for (let node = 0; node < snapshot.nodes.length; node += fields.length) {
+    if (snapshot.nodes[node + typeField] !== stringType) continue
+    const text = snapshot.strings[snapshot.nodes[node + nameField]!]!
+    counts.set(text, (counts.get(text) ?? 0) + 1)
+  }
+  writeFileSync(
+    join(directory, `strings-${round}.json`),
+    JSON.stringify(Object.fromEntries(counts))
+  )
 }
 
 /** Find the owned native host among this process's children by executable. */

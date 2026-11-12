@@ -8,6 +8,7 @@ fn id(value: u64) -> NodeId {
 fn node(label: u64) -> Node {
     Node {
         element: Arc::new(Element::Text {
+            accessible_live: None,
             text: label.to_string(),
             style: Style::default(),
         }),
@@ -217,6 +218,7 @@ fn diff_of_identical_clones_reads_nothing() {
     // One replaced element reports exactly that node.
     let mut changed = map.clone();
     changed.get_mut(id(77)).unwrap().element = Arc::new(Element::Text {
+        accessible_live: None,
         text: "new".to_string(),
         style: Style::default(),
     });

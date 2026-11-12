@@ -10,11 +10,13 @@ fn id(value: u64) -> NodeId {
 }
 fn box_element() -> Element {
     Element::Box {
+        accessibility: Default::default(),
         style: Style::default(),
     }
 }
 fn text(value: &str) -> Element {
     Element::Text {
+        accessible_live: None,
         text: value.into(),
         style: Style::default(),
     }
@@ -157,6 +159,7 @@ fn unknown_handles_in_every_operation_are_invalid() {
 #[test]
 fn invalid_elements_are_rejected_in_create_and_set_without_consuming_ids() {
     let scrolling_text = Element::Text {
+        accessible_live: None,
         text: "x".into(),
         style: Style {
             overflow: Some(Overflow::Scroll),

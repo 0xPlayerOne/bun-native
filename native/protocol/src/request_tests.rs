@@ -30,6 +30,7 @@ fn button(disabled: bool) -> Element {
 }
 fn scroller(overflow: Overflow) -> Element {
     Element::Box {
+        accessibility: Default::default(),
         style: Style {
             overflow: Some(overflow),
             ..Style::default()

@@ -370,6 +370,7 @@ const CAPABILITIES = [
   'context_menus_v1',
   'split_resize_v1',
   'accessibility_v1',
+  'accessibility_lists_v1',
   'display_identity_v1',
 ] as const
 export type Capability = (typeof CAPABILITIES)[number]

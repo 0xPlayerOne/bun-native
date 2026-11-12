@@ -12,7 +12,7 @@ type ShortcutFlags = {
   readonly control?: boolean
   readonly alt?: boolean
   readonly shift?: boolean
-  /** Super on Linux. */
+  /** Super on Linux, Command on macOS. */
   readonly platform?: boolean
 }
 

@@ -95,6 +95,7 @@ fn overlays_own_children_and_nest_to_a_bounded_depth() {
     operations.push(create(
         100,
         Element::Text {
+            accessible_live: None,
             text: "deepest".into(),
             style: Style::default(),
         },
@@ -126,6 +127,7 @@ fn overlays_own_children_and_nest_to_a_bounded_depth() {
                 create(
                     101,
                     Element::Box {
+                        accessibility: Default::default(),
                         style: Style::default()
                     }
                 ),
@@ -159,6 +161,7 @@ fn modal_overlays_reject_parent_anchoring_and_set_keeps_the_kind() {
             vec![Operation::Set {
                 node_id: node(2),
                 element: Element::Box {
+                    accessibility: Default::default(),
                     style: Style::default(),
                 },
                 expected_input_revision: None,

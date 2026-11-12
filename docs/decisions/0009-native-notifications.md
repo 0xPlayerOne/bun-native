@@ -83,4 +83,32 @@ naming an unallocated notification is a protocol violation.
 - Servers differ in when they close an activated notification. dunst 1.9 keeps
   it until its timeout, so the qualification records whichever closure reason
   the server reports.
-- macOS and Windows report `{ availability: 'unavailable', reason: 'unsupported_platform' }`.
+- Windows reports `{ availability: 'unavailable', reason: 'unsupported_platform' }`,
+  and so does macOS outside an application bundle (see the addendum).
+
+## macOS addendum (2026-11-11)
+
+macOS advertises `notifications_v1` with backend `user_notifications` only when
+the host runs from an `.app` bundle with an identifier, because
+`UNUserNotificationCenter` aborts any other process. Each post asks for alert
+authorization first, so the first post of a bundle shows the OS prompt and a
+refusal is `permission_denied`. A post is answered within two seconds, as on
+Linux: one still waiting for the user then rejects with `operation_timed_out`
+and a later grant adds nothing, because a request left unanswered past the
+client's request timeout ends the whole session. There is no expiry
+report and no named action; activation and user dismissal arrive through the
+center's delegate and are matched by request identifier in the UI-thread
+registry, so the ownership rules above are unchanged. The hosted macOS check is
+described in [native services](../native-services.md#macos-user-notifications);
+the prompt, delivery and activation are not automated.
+
+Packaging follows from this: a macOS `native build` places the host at
+`BunNativeHost.app/Contents/MacOS/bun-native-host` with an `Info.plist` whose
+`CFBundleIdentifier` is the application's `--bundle-id` (by default derived from
+its package name), records it as `host.bundle` in the build manifest, and the
+signing step signs and verifies the host through that bundle so the
+`Info.plist` is sealed. The installed release therefore runs its host from an
+application bundle. The hosted signed-template install checks the installed
+host's identifier and that it runs from the bundle, and the notification check
+uses that installed host. Notification permission is stored per identifier, so
+changing an application's bundle identifier asks the user again.

@@ -316,9 +316,16 @@ static void key(pid_t pid, CGKeyCode code, UniChar character) {
 // Named keys use ANSI virtual key codes (HIToolbox Events.h); the active
 // keyboard layout supplies the characters, as for a physical key press.
 static CGKeyCode named_key(NSString *name) {
+    // GPUI names a printable key from its virtual key code through the active
+    // layout (gpui_macos events.rs parse_keystroke), so every letter has its own
+    // ANSI code rather than a Unicode string on key code 0.
     NSDictionary *codes = @{@"Return": @36, @"Escape": @53, @"BackSpace": @51, @"Delete": @117,
         @"Tab": @48, @"space": @49, @"Left": @123, @"Right": @124, @"Down": @125, @"Up": @126,
-        @"Home": @115, @"End": @119, @"a": @0, @"c": @8, @"v": @9, @"x": @7};
+        @"Home": @115, @"End": @119,
+        @"a": @0, @"s": @1, @"d": @2, @"f": @3, @"h": @4, @"g": @5, @"z": @6, @"x": @7,
+        @"c": @8, @"v": @9, @"b": @11, @"q": @12, @"w": @13, @"e": @14, @"r": @15, @"y": @16,
+        @"t": @17, @"o": @31, @"u": @32, @"i": @34, @"p": @35, @"l": @37, @"j": @38, @"k": @40,
+        @"n": @45, @"m": @46};
     NSNumber *code = [name isKindOfClass:NSString.class] ? codes[name] : nil;
     if (!code) fail(@"Unknown bounded key name");
     return (CGKeyCode)code.unsignedShortValue;
@@ -456,6 +463,66 @@ static NSDictionary *input(NSDictionary *request, NSDictionary *state) {
         CGEventFlags flags = modifier_flags(request[@"modifiers"]);
         key_with(pid, code, flags, 0);
         events = 2 + 2 * (NSUInteger)__builtin_popcountll(flags);
+    } else if ([action isEqualToString:@"keys"]) {
+        // A bounded sequence of named key chords, each checked for the owned
+        // foreground immediately before it is posted.
+        NSArray *sequence = request[@"keys"];
+        if (![sequence isKindOfClass:NSArray.class] || !sequence.count || sequence.count > 64)
+            fail(@"A bounded key sequence is required");
+        for (NSUInteger i = 0; i < sequence.count; i++) {
+            NSDictionary *chord = sequence[i];
+            if (![chord isKindOfClass:NSDictionary.class]) fail(@"Invalid bounded key chord");
+            CGKeyCode code = named_key(chord[@"key"]);
+            CGEventFlags flags = modifier_flags(chord[@"modifiers"]);
+            if (i) pause_ms(request[@"delayMs"]);
+            key_with(pid, code, flags, 0);
+            events += 2 + 2 * (NSUInteger)__builtin_popcountll(flags);
+        }
+    } else if ([action isEqualToString:@"drag"]) {
+        // One left-button drag: press at the first viewport point, dragged
+        // moves through the rest, an optional hold, then release at the last.
+        // Every point must hit the owned window before its event is posted.
+        NSArray *path = request[@"points"];
+        id hold = request[@"holdMs"];
+        if (![path isKindOfClass:NSArray.class] || path.count < 2 || path.count > 32
+            || (hold && (!number(hold) || [hold doubleValue] < 0 || [hold doubleValue] > 2000)))
+            fail(@"Invalid bounded drag request");
+        NSMutableArray *points = [NSMutableArray arrayWithCapacity:path.count];
+        for (id entry in path) {
+            if (![entry isKindOfClass:NSArray.class] || [entry count] != 2) fail(@"Invalid bounded drag point");
+            NSMutableDictionary *at = [request mutableCopy];
+            at[@"x"] = entry[0];
+            at[@"y"] = entry[1];
+            [points addObject:[NSValue valueWithPoint:NSPointFromCGPoint(content_point(at, state))]];
+        }
+        // Move, press at the first point, drag through the rest, release at the last.
+        NSUInteger last = points.count - 1;
+        for (NSUInteger i = 0; i <= last + 2; i++) {
+            NSUInteger index = i < 2 ? 0 : MIN(i - 1, last);
+            CGPoint point = NSPointToCGPoint([points[index] pointValue]);
+            CGEventType type = i == 0 ? kCGEventMouseMoved
+                : i == 1 ? kCGEventLeftMouseDown
+                : i <= last + 1 ? kCGEventLeftMouseDragged : kCGEventLeftMouseUp;
+            if (type == kCGEventLeftMouseUp && hold) {
+                // The caller observes that nothing is reported while the
+                // button is still held, then the release.
+                fprintf(stderr, "held\n");
+                fflush(stderr);
+                [NSThread sleepForTimeInterval:[hold doubleValue] / 1000];
+            }
+            CGEventRef event = CGEventCreateMouseEvent(NULL, type, point, kCGMouseButtonLeft);
+            if (!event) fail(@"Cannot allocate a bounded CoreGraphics drag event");
+            id owned = CFBridgingRelease(event);
+            CGEventSetFlags(event, 0);
+            CGEventSetIntegerValueField(event, kCGMouseEventClickState, i == 0 ? 0 : 1);
+            require_foreground(pid);
+            require_pointer_target(state, point);
+            CGEventPost(kCGSessionEventTap, (__bridge CGEventRef)owned);
+            events += 1;
+            if (type == kCGEventLeftMouseDragged) [NSThread sleepForTimeInterval:0.03];
+        }
+        result[@"viewportPoints"] = path;
+        result[@"windowServerTargetVerified"] = @YES;
     } else if ([action isEqualToString:@"type"]) {
         NSString *text = request[@"text"];
         NSCharacterSet *printable = [NSCharacterSet characterSetWithRange:NSMakeRange(0x20, 0x5f)];

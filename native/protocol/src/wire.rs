@@ -413,10 +413,17 @@ fn half() -> f64 {
 #[serde(tag = "kind", rename_all = "snake_case")]
 pub enum Element {
     Box {
+        /// Requires `accessibility_lists_v1`; every member is omitted when unset.
+        #[serde(flatten)]
+        accessibility: BoxAccessibility,
         style: Style,
     },
     Text {
         text: String,
+        /// Requires `accessibility_lists_v1`: announce the text when the node
+        /// appears and whenever it changes.
+        #[serde(skip_serializing_if = "Option::is_none")]
+        accessible_live: Option<Live>,
         style: Style,
     },
     Button {
@@ -473,6 +480,86 @@ pub enum Element {
 
 /// Main-axis thickness of a split divider, in logical pixels.
 pub const SPLIT_DIVIDER: f64 = 6.;
+
+/// The largest `accessible_set_size` and `accessible_position`.
+pub const MAX_ACCESSIBLE_SET_SIZE: u32 = i32::MAX as u32;
+
+/// `accessibility_lists_v1`: the role a box may declare. A box without one is
+/// layout only and has no accessible node.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum AccessibleRole {
+    List,
+    ListItem,
+}
+
+/// `accessibility_lists_v1`: how urgently a live text node is announced.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum Live {
+    Polite,
+    Assertive,
+}
+
+/// `accessibility_lists_v1` members of a box. A list's `accessible_set_size`
+/// counts every item, including items the application has not mounted; an
+/// item's `accessible_position` is its 1-based place in that full set.
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize)]
+pub struct BoxAccessibility {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub accessible_role: Option<AccessibleRole>,
+    /// Only with a role: the list's or item's accessible name.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub accessible_label: Option<String>,
+    /// Only on a `list`.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub accessible_set_size: Option<u32>,
+    /// Only on a `list_item`; 1-based.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub accessible_position: Option<u32>,
+    /// Only on a `list_item`: selectable, and whether it is selected.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub accessible_selected: Option<bool>,
+}
+
+impl BoxAccessibility {
+    pub fn is_empty(&self) -> bool {
+        *self == Self::default()
+    }
+
+    fn validate(&self) -> Result<(), &'static str> {
+        let Some(role) = self.accessible_role else {
+            return if self.is_empty() {
+                Ok(())
+            } else {
+                Err("box accessibility members require accessible_role")
+            };
+        };
+        if role != AccessibleRole::List && self.accessible_set_size.is_some() {
+            return Err("accessible_set_size is only accepted on a list");
+        }
+        if role != AccessibleRole::ListItem
+            && (self.accessible_position.is_some() || self.accessible_selected.is_some())
+        {
+            return Err(
+                "accessible_position and accessible_selected are only accepted on a list_item",
+            );
+        }
+        if self
+            .accessible_set_size
+            .is_some_and(|size| size > MAX_ACCESSIBLE_SET_SIZE)
+        {
+            return Err("accessible_set_size must be between 0 and 2147483647");
+        }
+        if self
+            .accessible_position
+            .is_some_and(|position| position == 0 || position > MAX_ACCESSIBLE_SET_SIZE)
+        {
+            return Err("accessible_position must be between 1 and 2147483647");
+        }
+        Ok(())
+    }
+}
 
 /// Decoded by hand in `decode.rs`; unknown, duplicate and null members are rejected.
 #[derive(Debug, Clone, PartialEq, Serialize)]
@@ -777,6 +864,9 @@ pub enum Capability {
     /// Every element kind has an accessibility role, and overlays and splits
     /// accept an `accessible_label`.
     AccessibilityV1,
+    /// Boxes accept list and list-item roles with set size, position and
+    /// selection, and text nodes accept `accessible_live`.
+    AccessibilityListsV1,
     /// Snapshots carry the platform display UUID when the backend names the
     /// display (macOS, Windows, Linux Wayland).
     DisplayIdentityV1,
@@ -1068,11 +1158,15 @@ impl Element {
             | Self::Overlay {
                 accessible_label, ..
             } => accessible_label.as_ref().map_or(0, String::len),
-            Self::Box { .. } => 0,
+            Self::Box { accessibility, .. } => accessibility
+                .accessible_label
+                .as_ref()
+                .map_or(0, String::len),
         }
     }
 
-    /// The `accessibility_v1` name an overlay or split declares.
+    /// The name an overlay or split (`accessibility_v1`) or a list or list
+    /// item box (`accessibility_lists_v1`) declares.
     pub fn accessible_label(&self) -> Option<&str> {
         match self {
             Self::Split {
@@ -1081,7 +1175,8 @@ impl Element {
             | Self::Overlay {
                 accessible_label, ..
             } => accessible_label.as_deref(),
-            Self::Box { .. } | Self::Text { .. } | Self::Button { .. } | Self::Input { .. } => None,
+            Self::Box { accessibility, .. } => accessibility.accessible_label.as_deref(),
+            Self::Text { .. } | Self::Button { .. } | Self::Input { .. } => None,
         }
     }
 
@@ -1104,7 +1199,7 @@ impl Element {
 
     pub fn style(&self) -> &Style {
         match self {
-            Self::Box { style }
+            Self::Box { style, .. }
             | Self::Text { style, .. }
             | Self::Button { style, .. }
             | Self::Input { style, .. }
@@ -1180,7 +1275,8 @@ impl Element {
                     return Err("split panes do not accept gap or alignment");
                 }
             }
-            Self::Box { .. } | Self::Overlay { .. } => {}
+            Self::Box { accessibility, .. } => accessibility.validate()?,
+            Self::Overlay { .. } => {}
         }
         if let Some(label) = self.accessible_label() {
             validate_text(label)?;

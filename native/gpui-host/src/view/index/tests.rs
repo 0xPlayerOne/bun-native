@@ -47,12 +47,14 @@ fn element(rng: &mut Rng, kind: usize) -> Element {
     let text = rng.pick(&TEXTS).to_owned();
     match kind {
         0 => Element::Box {
+            accessibility: Default::default(),
             style: Style {
                 overflow: rng.pick(&OVERFLOWS),
                 ..Style::default()
             },
         },
         1 => Element::Text {
+            accessible_live: None,
             text,
             style: Style::default(),
         },
@@ -179,6 +181,7 @@ fn large_tree(nodes: usize) -> (Tree, u64) {
             operations.push(Operation::Create {
                 node_id: parent,
                 element: Element::Box {
+                    accessibility: Default::default(),
                     style: Style {
                         overflow: Some(Overflow::ScrollY),
                         ..Style::default()

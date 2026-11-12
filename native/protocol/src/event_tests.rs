@@ -56,6 +56,7 @@ fn event_path_is_a_committed_snapshot_across_reparent_and_delete() {
         operations.push(Operation::Create {
             node_id: node(id),
             element: Element::Box {
+                accessibility: Default::default(),
                 style: Style::default(),
             },
         });
@@ -109,6 +110,7 @@ fn deepest_valid_tree_has_a_bounded_writable_event_route() {
                 }
             } else {
                 Element::Box {
+                    accessibility: Default::default(),
                     style: Style::default(),
                 }
             },

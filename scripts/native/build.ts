@@ -1,6 +1,6 @@
 import { constants } from 'node:fs'
-import { chmod, copyFile, mkdir, readdir, writeFile } from 'node:fs/promises'
-import { isAbsolute, join, relative, resolve } from 'node:path'
+import { chmod, copyFile, mkdir, readFile, readdir, writeFile } from 'node:fs/promises'
+import { dirname, isAbsolute, join, relative, resolve } from 'node:path'
 import { compileApplication } from '../../experiments/aot-gpui/compile.ts'
 import type { Project } from './project.ts'
 import { fileDigest } from './artifact.ts'
@@ -47,18 +47,96 @@ async function bundleFromProject(project: Project, outdir: string): Promise<stri
   return join(outdir, 'application.js')
 }
 
+/** The application bundle that holds the host in a macOS build. */
+export const MACOS_HOST_BUNDLE = 'BunNativeHost.app'
+const BUNDLE_IDENTIFIER = /^[A-Za-z0-9-]+(\.[A-Za-z0-9-]+)+$/
+
+const xml = (text: string) =>
+  text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
+
+/** The Info.plist that makes the macOS host an application bundle with an identifier. */
+export function hostInfoPlist(identifier: string, name: string, executable: string): string {
+  if (!BUNDLE_IDENTIFIER.test(identifier))
+    throw new Error(`Bundle identifier ${JSON.stringify(identifier)} is not reverse-DNS text`)
+  const entry = (key: string, value: string) =>
+    `  <key>${key}</key>\n  <string>${xml(value)}</string>`
+  return [
+    '<?xml version="1.0" encoding="UTF-8"?>',
+    '<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">',
+    '<plist version="1.0">',
+    '<dict>',
+    entry('CFBundleIdentifier', identifier),
+    entry('CFBundleExecutable', executable),
+    entry('CFBundleName', name),
+    entry('CFBundleDisplayName', name),
+    entry('CFBundlePackageType', 'APPL'),
+    entry('CFBundleInfoDictionaryVersion', '6.0'),
+    entry('CFBundleShortVersionString', '1.0'),
+    entry('CFBundleVersion', '1'),
+    '  <key>NSHighResolutionCapable</key>\n  <true/>',
+    '</dict>',
+    '</plist>',
+    '',
+  ].join('\n')
+}
+
+/**
+ * Where the host goes in a build. macOS user notifications serve only a process
+ * that runs from an application bundle with an identifier
+ * (docs/decisions/0009-native-notifications.md), so a macOS build puts the host in
+ * `BunNativeHost.app/Contents/MacOS` next to its Info.plist; every other platform
+ * keeps it adjacent to the application.
+ */
+export function hostLayout(
+  platform: NodeJS.Platform,
+  hostFile: string
+): { file: string; infoPlist?: string } {
+  if (platform !== 'darwin') return { file: hostFile }
+  return {
+    file: `${MACOS_HOST_BUNDLE}/Contents/MacOS/${hostFile}`,
+    infoPlist: `${MACOS_HOST_BUNDLE}/Contents/Info.plist`,
+  }
+}
+
+/** The default bundle identity: the project's package name under `dev.bun-native.app`. */
+export async function defaultBundleIdentity(
+  project: Project
+): Promise<{ identifier: string; name: string }> {
+  let name = 'application'
+  try {
+    const value = JSON.parse(await readFile(join(project.directory, 'package.json'), 'utf8')) as {
+      name?: unknown
+    }
+    if (typeof value.name === 'string' && value.name) name = value.name
+  } catch {}
+  const slug =
+    name
+      .replace(/^@/, '')
+      .replace(/[^A-Za-z0-9-]+/g, '-')
+      .replace(/^-+|-+$/g, '') || 'application'
+  return { identifier: `dev.bun-native.app.${slug}`, name }
+}
+
 export async function buildProject(
   project: Project,
   host: string,
   destination: string,
-  hostProfile: 'dev' | 'release'
+  hostProfile: 'dev' | 'release',
+  options: { bundleIdentifier?: string } = {}
 ) {
   if (Bun.revision !== toolchain.bun.revision) throw new Error('Use the pinned Bun AOT compiler')
   const outdir = resolve(destination)
   await mkdir(outdir, { recursive: true })
   if ((await readdir(outdir)).length !== 0) throw new Error('Output directory must be empty')
   const suffix = process.platform === 'win32' ? '.exe' : ''
-  const hostFile = `bun-native-host${suffix}`
+  const layout = hostLayout(process.platform, `bun-native-host${suffix}`)
+  const hostFile = layout.file
+  const identity = await defaultBundleIdentity(project)
+  if (options.bundleIdentifier !== undefined) identity.identifier = options.bundleIdentifier
+  // Validate before any output exists.
+  const infoPlist = layout.infoPlist
+    ? hostInfoPlist(identity.identifier, identity.name, `bun-native-host${suffix}`)
+    : undefined
   const applicationFile = `application${suffix}`
   const originalHost = await fileDigest(host)
   const module = await bundleProject(project, join(outdir, 'development'))
@@ -71,6 +149,10 @@ export async function buildProject(
     { flag: 'wx' }
   )
   const compiled = compileApplication(launcher, join(outdir, applicationFile), project.directory)
+  if (layout.infoPlist && infoPlist) {
+    await mkdir(dirname(join(outdir, hostFile)), { recursive: true })
+    await writeFile(join(outdir, layout.infoPlist), infoPlist, { flag: 'wx' })
+  }
   await copyFile(host, join(outdir, hostFile), constants.COPYFILE_EXCL)
   if (process.platform !== 'win32') await chmod(join(outdir, hostFile), 0o755)
   const packagedHost = await fileDigest(join(outdir, hostFile))
@@ -117,6 +199,7 @@ export async function buildProject(
       deterministic: [
         applicationFile,
         hostFile,
+        ...(layout.infoPlist ? [layout.infoPlist] : []),
         'development/application.js',
         'development/application.js.map',
         'launcher.ts',
@@ -128,12 +211,27 @@ export async function buildProject(
       file: hostFile,
       profile: hostProfile,
       ...packagedHost,
+      ...(layout.infoPlist
+        ? {
+            bundle: {
+              directory: MACOS_HOST_BUNDLE,
+              identifier: identity.identifier,
+              infoPlist: {
+                file: layout.infoPlist,
+                ...(await fileDigest(join(outdir, layout.infoPlist))),
+              },
+            },
+          }
+        : {}),
       provenance:
         'Caller-supplied prebuilt executable. Profile is caller-declared; match the hash to native build evidence.',
     },
     launch: {
       executable: applicationFile,
-      host: 'Adjacent bundled host; BUN_NATIVE_HOST can explicitly override it',
+      host:
+        process.platform === 'darwin'
+          ? 'Bundled host inside BunNativeHost.app, so macOS serves it user notifications; BUN_NATIVE_HOST can explicitly override it'
+          : 'Adjacent bundled host; BUN_NATIVE_HOST can explicitly override it',
     },
     verification: {
       aotCompiledProgram: 'passed',

@@ -3,12 +3,19 @@
 `enable` turns on the session accessibility bus as a screen reader would.
 `dump TITLE` waits for the owned window and prints its accessible subtree as
 JSON in pre-order; each entry's `depth` is its distance below the window, and
-text entries carry their selection and each character's window extents.
+components carry their window extents, and text entries carry their selection
+and each character's window extents.
 `act TITLE ROLE NAME ACTION [ARGS...]` performs one request as an assistive
 technology would, on the first node with that role and name (an entry is
 matched by its text): `click` (the node's AT-SPI action), `focus`
 (Component.grab_focus), `value N` (Value.set_current_value), `caret N`
 (Text.set_caret_offset) or `select START END` (Text.set_selection).
+`watch SECONDS` prints `{"ready": true}` once its listeners are registered and
+then one JSON line per AT-SPI event a screen reader listens to (value and
+name changes, children added or removed, state changes, announcements),
+naming the source's role and name and the event's detail and data (and, for a
+value change, the source's value when the event arrives), until
+SECONDS pass or its input closes.
 Run with a system Python that provides PyGObject and the Atspi typelib.
 """
 
@@ -54,6 +61,19 @@ def describe(node: Atspi.Accessible, depth: int) -> dict:
         "states": states(node),
         "depth": depth,
     }
+    # Set size and position reach AT-SPI as object attributes.
+    attributes = {
+        key: value
+        for key, value in (node.get_attributes() or {}).items()
+        if key in ("setsize", "posinset")
+    }
+    if attributes:
+        entry["attributes"] = attributes
+    component = node.get_component_iface()
+    if component is not None:
+        entry["bounds"] = rect_list(
+            Atspi.Component.get_extents(component, Atspi.CoordType.WINDOW)
+        )
     value = node.get_value_iface()
     if value is not None:
         entry["value"] = {
@@ -173,14 +193,79 @@ def act(title: str, role: str, name: str, action: str, args: list[str]) -> None:
     print(json.dumps({"role": role, "name": name, "action": action, "done": done}))
 
 
+WATCHED = (
+    "object:property-change:accessible-value",
+    "object:property-change:accessible-name",
+    "object:children-changed",
+    "object:state-changed",
+    "object:announcement",
+)
+
+
+def event_data(value: object) -> object:
+    if isinstance(value, Atspi.Accessible):
+        try:
+            return {"role": value.get_role().value_nick, "name": value.get_name() or ""}
+        except GLib.Error:
+            return {"defunct": True}
+    if isinstance(value, (bool, int, float, str)) or value is None:
+        return value
+    return str(value)
+
+
+def watch(seconds: float) -> None:
+    Atspi.init()
+    loop = GLib.MainLoop()
+
+    def on_event(event: Atspi.Event) -> None:
+        try:
+            source = {
+                "role": event.source.get_role().value_nick,
+                "name": event.source.get_name() or "",
+            }
+        except GLib.Error:
+            source = {"defunct": True}
+        line = {
+            "type": event.type,
+            "source": source,
+            "detail1": event.detail1,
+            "detail2": event.detail2,
+            "data": event_data(event.any_data),
+        }
+        # libatspi does not carry a value change's number in any_data; read
+        # the source's value as the event is delivered.
+        if event.type == "object:property-change:accessible-value":
+            try:
+                value = event.source.get_value_iface()
+                if value is not None:
+                    line["current"] = Atspi.Value.get_current_value(value)
+            except GLib.Error:
+                pass
+        print(json.dumps(line, ensure_ascii=False), flush=True)
+
+    listener = Atspi.EventListener.new(on_event)
+    for name in WATCHED:
+        listener.register(name)
+    # Stop when the driver closes stdin or the bound passes.
+    GLib.io_add_watch(
+        sys.stdin, GLib.IO_HUP | GLib.IO_IN, lambda *_: loop.quit() or False
+    )
+    GLib.timeout_add(int(seconds * 1000), loop.quit)
+    print(json.dumps({"ready": True}), flush=True)
+    loop.run()
+
+
 if __name__ == "__main__":
     if sys.argv[1:] == ["enable"]:
         enable()
     elif len(sys.argv) == 3 and sys.argv[1] == "dump":
         dump(sys.argv[2])
+    elif len(sys.argv) == 3 and sys.argv[1] == "watch":
+        watch(float(sys.argv[2]))
     elif len(sys.argv) >= 6 and sys.argv[1] == "act":
         act(sys.argv[2], sys.argv[3], sys.argv[4], sys.argv[5], sys.argv[6:])
     else:
         raise SystemExit(
-            "usage: atspi-probe.py enable | dump TITLE | act TITLE ROLE NAME ACTION [ARGS]"
+            "usage: atspi-probe.py enable | dump TITLE | watch SECONDS"
+            " | act TITLE ROLE NAME ACTION [ARGS]"
         )

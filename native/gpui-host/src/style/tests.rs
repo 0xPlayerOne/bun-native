@@ -9,7 +9,7 @@ use std::time::{Duration, Instant};
 fn by_value(element: &Element, root: bool) -> Div {
     let base = div().flex_shrink_0();
     match element {
-        Element::Box { style } => {
+        Element::Box { style, .. } => {
             let base = if root { base.size_full() } else { base };
             apply(base.flex().flex_col(), style)
         }
@@ -104,9 +104,11 @@ fn elements(seed: usize) -> Vec<Element> {
     let style = style(seed);
     vec![
         Element::Box {
+            accessibility: Default::default(),
             style: style.clone(),
         },
         Element::Text {
+            accessible_live: None,
             text: "label".into(),
             style: style.clone(),
         },

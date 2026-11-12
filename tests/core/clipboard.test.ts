@@ -63,7 +63,7 @@ describe('clipboard lifecycle and independent scheduling (headless real subproce
           read: 'deny',
           write: 'deny',
           scope: 'owned_window',
-          backend: 'x11',
+          backend: process.platform === 'darwin' ? 'appkit' : 'x11',
         })
         expect(Object.isFrozen(app.serviceCapabilities.clipboardText)).toBe(true)
         expect(Object.isFrozen(app.capabilities)).toBe(true)

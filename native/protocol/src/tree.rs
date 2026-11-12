@@ -119,6 +119,7 @@ impl Tree {
             root_id,
             Node {
                 element: Arc::new(Element::Box {
+                    accessibility: Default::default(),
                     style: Style::default(),
                 }),
                 parent: None,

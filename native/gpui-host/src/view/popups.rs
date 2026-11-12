@@ -6,7 +6,8 @@
 //! parent view: it is closed when its node leaves the tree and when the parent
 //! view is released (window close or shutdown). Placement is below the parent
 //! node in screen coordinates, flipped above it when only that fits, and
-//! shifted onto the X screen. Keyboard focus never moves to a popup.
+//! shifted onto the screen: the X screen on Linux, and the parent window's
+//! screen on macOS. Keyboard focus never moves to a popup.
 
 use super::{DropScope, NativeView, PointerFrame, PressedButtons};
 use crate::style;
@@ -22,10 +23,18 @@ use std::cell::Cell;
 use std::collections::BTreeMap;
 use std::rc::Rc;
 
+#[cfg(any(target_os = "macos", test))]
+mod cocoa;
+#[cfg(target_os = "macos")]
+mod macos;
+#[cfg(target_os = "macos")]
+use macos as backend;
 #[cfg(target_os = "linux")]
 mod x11;
-#[cfg(not(target_os = "linux"))]
-mod x11 {
+#[cfg(target_os = "linux")]
+use x11 as backend;
+#[cfg(not(any(target_os = "linux", target_os = "macos")))]
+mod backend {
     use gpui::{App, Bounds, Point, Size, Window};
     pub(crate) struct Placement;
     pub(crate) fn window_id(_: &Window) -> Option<u32> {
@@ -53,8 +62,8 @@ mod x11 {
     }
 }
 
-use x11::Placement;
-pub(crate) use x11::available;
+use backend::Placement;
+pub(crate) use backend::available;
 
 /// The popup's title, for window-manager diagnostics and test discovery.
 const POPUP_TITLE: &str = "Bun Native popup";
@@ -220,7 +229,7 @@ impl NativeView {
         let Some(placement) = self.popups.placement.as_ref() else {
             return;
         };
-        let Some(parent) = x11::window_id(window) else {
+        let Some(parent) = backend::window_id(window) else {
             return;
         };
         let Some(origin) = placement.origin(parent) else {
@@ -258,7 +267,7 @@ impl NativeView {
                 Some(handle) if popup.placed != Some(target) => {
                     let placed = handle
                         .update(cx, |_, popup_window, _| {
-                            x11::window_id(popup_window)
+                            backend::window_id(popup_window)
                                 .and_then(|xid| placement.place(xid, target))
                         })
                         .ok()
@@ -301,10 +310,10 @@ impl NativeView {
         popup.window = Some(handle);
         popup.placed = None;
         if let (Some(placement), Some(parent)) =
-            (self.popups.placement.as_ref(), x11::window_id(window))
+            (self.popups.placement.as_ref(), backend::window_id(window))
         {
             let _ = handle.update(cx, |_, popup_window, _| {
-                x11::window_id(popup_window).and_then(|xid| placement.own(xid, parent))
+                backend::window_id(popup_window).and_then(|xid| placement.own(xid, parent))
             });
         }
         self.place_popups(window, cx);

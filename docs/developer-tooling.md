@@ -102,14 +102,14 @@ bun run native build apps/my-app \
 The build reuses the fixture packager's pinned `bun compile` implementation and executable inspectors. A successful build proves that the generated executable has a compiled-program record and records removal of the JIT compiler. It produces:
 
 - `application` (`application.exe` on Windows), the actual AOT executable.
-- `bun-native-host` (`bun-native-host.exe` on Windows), copied from the explicit input.
+- `bun-native-host` (`bun-native-host.exe` on Windows), copied from the explicit input. On macOS it is `BunNativeHost.app/Contents/MacOS/bun-native-host`, next to a generated `Info.plist`: macOS serves user notifications only to a process that runs from an application bundle with an identifier ([ADR 0009](decisions/0009-native-notifications.md)). The identifier is `--bundle-id` when given, otherwise `dev.bun-native.app.` followed by the project's package name with every other character replaced by `-`; the bundle name is the package name. Notification permission belongs to that identifier, so give a shipped application a stable `--bundle-id`. The manifest records it under `host.bundle`.
 - `manifest.json`, with OS/CPU, exact toolchain, application/module/source-map/launcher/host SHA-256 and byte sizes, the compiler revision and executable digest, the compiler command (paths relative to the output directory), executable inspections, validation status and a `reproducibility` file inventory.
 - The bundled development module and source map, generated launcher, and compiler logs for reproduction and diagnosis.
 - `build-metrics.json`, with the compilation duration.
 
 Equal sources and pins produce byte-identical files listed in `manifest.reproducibility.deterministic`, independent of the checkout location, output directory, working directory and build time. Compiler logs and `build-metrics.json` are diagnostics and are not reproducible. See [reproducible builds](reproducible-builds.md).
 
-The application resolves its host next to its own executable, so the output directory can be moved and launched from another working directory. `BUN_NATIVE_HOST` is an explicit runtime override. Keep the application and bundled host together. Changed host or bundled-module bytes during packaging cause a failure. On failure, inspect the retained logs and use a new empty output directory for a retry.
+The application resolves its host at `host.file` relative to its own executable, so the output directory can be moved and launched from another working directory. `BUN_NATIVE_HOST` is an explicit runtime override. Keep the application and bundled host together. Changed host or bundled-module bytes during packaging cause a failure. On failure, inspect the retained logs and use a new empty output directory for a retry.
 
 Only the current OS and CPU are supported by this command; no `--target` or cross-compilation flag is accepted. Packaging checks do not launch a GUI. The manifest explicitly records native rendering, OS input and teardown as `not-run`, installation as `not-tested` and signing as `unsigned`. A native desktop and the required platform libraries are still needed to run the app. This is not a signed installer or proof of platform qualification.
 

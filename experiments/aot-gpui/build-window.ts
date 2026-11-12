@@ -66,6 +66,7 @@ const entries = {
   ime: 'tests/native/ime.ts',
   accessibility: 'tests/native/accessibility.ts',
   'accessibility-platform': 'tests/native/accessibility-platform.ts',
+  'input-states-platform': 'tests/native/input-states-platform.ts',
   'screen-reader': 'tests/native/screen-reader.ts',
   'ime-platform': 'tests/native/ime-platform.ts',
   'solid-services': 'tests/native/solid-services.tsx',
@@ -78,6 +79,7 @@ const entries = {
   'adea-components': 'examples/adea-components/main.tsx',
   'solid-workspace-flow': 'tests/native/solid-workspace.tsx',
   'solid-workspace-soak': 'tests/native/solid-workspace-soak.tsx',
+  'solid-workspace-terminal': 'tests/native/solid-workspace-terminal.tsx',
   'solid-input-intent': 'tests/native/solid-input-intent.tsx',
   'solid-interactions': 'tests/native/solid-interactions.tsx',
   'solid-input-viewport': 'tests/native/solid-input-viewport.tsx',
@@ -87,6 +89,7 @@ const entries = {
   'react-workspace': 'examples/react-workspace/main.tsx',
   'react-workspace-flow': 'tests/native/react-workspace.tsx',
   'react-workspace-soak': 'tests/native/react-workspace-soak.tsx',
+  'react-workspace-terminal': 'tests/native/react-workspace-terminal.tsx',
   'react-interactions': 'tests/native/react-interactions.tsx',
   'react-input-viewport': 'tests/native/react-input-viewport.tsx',
   'react-streaming-list': 'tests/native/react-streaming-list.tsx',
@@ -106,6 +109,7 @@ const solidEntry =
   entry === 'adea-components' ||
   entry === 'solid-workspace-flow' ||
   entry === 'solid-workspace-soak' ||
+  entry === 'solid-workspace-terminal' ||
   entry === 'solid-input-intent' ||
   entry === 'solid-interactions' ||
   entry === 'solid-input-viewport' ||
@@ -119,6 +123,7 @@ const reactEntry =
   entry === 'react-workspace' ||
   entry === 'react-workspace-flow' ||
   entry === 'react-workspace-soak' ||
+  entry === 'react-workspace-terminal' ||
   entry === 'react-interactions' ||
   entry === 'react-input-viewport' ||
   entry === 'react-streaming-list' ||
@@ -171,6 +176,7 @@ if (
     entry === 'text-input' ||
     entry === 'ime' ||
     entry === 'accessibility' ||
+    entry === 'input-states-platform' ||
     entry === 'screen-reader' ||
     entry === 'ime-platform' ||
     entry === 'platform-smoke' ||
@@ -261,6 +267,22 @@ async function sourceHashes() {
       sources.add(path)
   if (entry === 'layout-style' || entry === 'solid-layout-style' || entry === 'react-layout-style')
     sources.add('tests/native/layout-style-scene.ts')
+  // The macOS branches drive the window through these and the SDK helper.
+  if (
+    entry === 'layout-style' ||
+    entry === 'solid-layout-style' ||
+    entry === 'react-layout-style' ||
+    entry === 'overlays' ||
+    entry === 'accessibility' ||
+    entry === 'input-states-platform'
+  )
+    for (const path of [
+      'tests/native/macos-window-input.ts',
+      'tests/native/png.ts',
+      'scripts/quality/native-platform-macos.m',
+      'tests/native/macos-accessibility-oracle.m',
+    ])
+      sources.add(path)
   if (solidEntry) {
     for (const path of [
       'packages/solid/package.json',
@@ -297,10 +319,13 @@ async function sourceHashes() {
   for (const path of workloadSources.keys()) sources.add(path)
   if (entry === 'solid-workspace-soak' || entry === 'react-workspace-soak')
     sources.add('tests/native/workspace-session.ts')
+  if (entry === 'solid-workspace-terminal' || entry === 'react-workspace-terminal')
+    sources.add('tests/native/workspace-terminal.ts')
   if (
     entry === 'solid-workspace' ||
     entry === 'solid-workspace-flow' ||
-    entry === 'solid-workspace-soak'
+    entry === 'solid-workspace-soak' ||
+    entry === 'solid-workspace-terminal'
   ) {
     sources.add('examples/solid-workspace/app.tsx')
     sources.add('examples/solid-workspace/model.ts')
@@ -321,7 +346,8 @@ async function sourceHashes() {
   if (
     entry === 'react-workspace' ||
     entry === 'react-workspace-flow' ||
-    entry === 'react-workspace-soak'
+    entry === 'react-workspace-soak' ||
+    entry === 'react-workspace-terminal'
   ) {
     sources.add('examples/react-workspace/app.tsx')
     sources.add('examples/shared/terminal.ts')

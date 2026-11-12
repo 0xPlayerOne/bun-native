@@ -61,14 +61,18 @@ checked by hand.
   clone in the TypeScript of `packages/*/src`, so the Solid and React adapters
   share no copied code. In `native/gpui-host/src` and `native/protocol/src` it
   found 19 Rust clones (370 lines, 1.3%): 9 in protocol test files and 10 in the
-  host. The largest host ones are the D-Bus connection plumbing that
-  `services/file_dialogs.rs` and `services/notifications.rs` each own (`spawn`,
-  `link`, shutdown accounting; about 80 lines over four clones), the Linux and
-  macOS dialog paths in `task_dialogs.rs`/`task_dialogs_macos.rs`, and the
-  request scaffolding in `shortcuts.rs`/`clipboard.rs`. They are kept for now:
-  each service owns a different inner type and listener, so sharing them needs a
-  small generic service core, and that is a host change to validate with the
-  Linux native suite, not a deletion. It is backlog below.
+  host. The largest host ones were the D-Bus connection plumbing that
+  `services/file_dialogs.rs` and `services/notifications.rs` each owned
+  (`spawn`, `link`, shutdown accounting; about 80 lines over four clones). That
+  is now one module, [`services/session_bus.rs`](../native/gpui-host/src/services/session_bus.rs):
+  the lazily opened connection, its signal listener, the in-flight count and
+  bounded shutdown drain, the two-second bound, connection setup and the
+  session-bus check. Each service keeps its own registry, match rule, signal
+  parsing and failure texts, so behavior is unchanged; the file dialog and
+  notification native suites pass unchanged in development and AOT on X11.
+  Still kept: the Linux and macOS dialog paths in
+  `task_dialogs.rs`/`task_dialogs_macos.rs` (different OS APIs) and the request
+  scaffolding in `shortcuts.rs`/`clipboard.rs` (X11 protocol code, not D-Bus).
 - **CEF and Bunly references:** no code path remains. `docs/development.md`
   still said CI "must replace" the old M1–M6 CEF workflows; it now says they were
   removed under #251. Left as they are: the disclaimers that the packages use no
@@ -84,16 +88,59 @@ checked by hand.
 Every item below has raw data in the linked record, and every candidate change was
 measured before a decision.
 
-| Path                         | Finding                                                                                                                                                                                                                          | Decision                                      | Record                                                                                          |
-| ---------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------- | ----------------------------------------------------------------------------------------------- |
-| Bridge acknowledgement tail  | Native prepare/apply/reply is p50 about 0.03 ms. The tail is the roughly 2% of requests that wait behind a full 1,001-node render on the UI thread.                                                                              | No bridge change; frame cost decides the tail | [BRIDGE.md, phase attribution](../benchmarks/BRIDGE.md#phase-and-render-attribution-297)        |
-| Per-node pointer listeners   | They cost 8 allocations per node per frame. A same-semantics hitbox registry removed them and passed pointer, overlay and popup tests, but frames got about 10% slower in 5 of 5 pairs.                                          | Not adopted; listeners stay                   | [pointer registry](../benchmarks/results/pointer-registry-2026-11-10/README.md)                 |
-| Host CPU during the bridge   | `perf` over a whole bridge run (Linux, lavapipe): about two thirds of the host's user-space samples are host and GPUI code and about a quarter is lavapipe rasterization. The top host symbol, `NativeView::apply`, is about 6%. | No hot spot worth a change at this load       | this section                                                                                    |
-| Watch compiler memory        | RSS growth came from mimalloc's purge delay keeping freed bundler pages resident, not from a retained object.                                                                                                                    | `MIMALLOC_PURGE_DELAY=0` for the CLI (#448)   | [tooling controls](../benchmarks/tooling/README.md)                                             |
-| Solid transform              | Babel garbage is collectable; reusing the preset changed nothing.                                                                                                                                                                | No change                                     | [Solid stages](../benchmarks/tooling/results/solid-transform-linux-x64/README.md)               |
-| Sustained native watch       | Over 601 real edits, controller RSS levels off after about 100 edits. React keeps about 6 KB per edit of residual growth, and edit-to-paint time does not degrade.                                                               | No architecture change                        | [sustained watch](../benchmarks/tooling/README.md#sustained-native-watch-601-edits-november-10) |
-| AOT heap retention (#287)    | Reproduced 19/60 on the old Bun pin and 0/60 on the current pin.                                                                                                                                                                 | Fixed by the Bun pin                          | #287                                                                                            |
-| Framework and execution mode | Core, Solid and React in development and AOT, with a direct Rust GPUI baseline, on Linux and macOS. A scheduled regression gate runs against committed baselines.                                                                | Gate at 25% (hosted VMs vary 12–15%)          | [COMPARISON.md](../benchmarks/COMPARISON.md), [Rust GPUI](../benchmarks/rust-gpui/README.md)    |
+| Path                         | Finding                                                                                                                                                                                                                               | Decision                                      | Record                                                                                          |
+| ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------- | ----------------------------------------------------------------------------------------------- |
+| Bridge acknowledgement tail  | Native prepare/apply/reply is p50 about 0.03 ms. The tail is the roughly 2% of requests that wait behind a full 1,001-node render on the UI thread.                                                                                   | No bridge change; frame cost decides the tail | [BRIDGE.md, phase attribution](../benchmarks/BRIDGE.md#phase-and-render-attribution-297)        |
+| Per-node pointer listeners   | They cost 8 allocations per node per frame. A same-semantics hitbox registry removed them and passed pointer, overlay and popup tests, but frames got about 10% slower in 5 of 5 pairs.                                               | Not adopted; listeners stay                   | [pointer registry](../benchmarks/results/pointer-registry-2026-11-10/README.md)                 |
+| Host CPU during the bridge   | `perf` over a whole bridge run (Linux, lavapipe): about two thirds of the host's user-space samples are host and GPUI code and about a quarter is lavapipe rasterization. The top host symbol, `NativeView::apply`, is about 6%.      | No hot spot worth a change at this load       | this section                                                                                    |
+| Watch compiler memory        | RSS growth came from mimalloc's purge delay keeping freed bundler pages resident, not from a retained object.                                                                                                                         | `MIMALLOC_PURGE_DELAY=0` for the CLI (#448)   | [tooling controls](../benchmarks/tooling/README.md)                                             |
+| Solid transform              | Babel garbage is collectable; reusing the preset changed nothing.                                                                                                                                                                     | No change                                     | [Solid stages](../benchmarks/tooling/results/solid-transform-linux-x64/README.md)               |
+| Sustained native watch       | Over 601 real edits, controller RSS levels off after about 100 edits. React keeps about 6 KB per edit of residual growth, and edit-to-paint time does not degrade.                                                                    | No architecture change                        | [sustained watch](../benchmarks/tooling/README.md#sustained-native-watch-601-edits-november-10) |
+| AOT heap retention (#287)    | Reproduced 19/60 on the old Bun pin and 0/60 on the current pin.                                                                                                                                                                      | Fixed by the Bun pin                          | #287                                                                                            |
+| AOT object growth (M9)       | The forced-collection object count that rose in 30-minute AOT sessions is live number strings held by a bounded AOT number-to-string cache, not Bun Native state. It levels off. See [below](#aot-object-growth-in-long-sessions-m9). |
+| Framework and execution mode | Core, Solid and React in development and AOT, with a direct Rust GPUI baseline, on Linux and macOS. A scheduled regression gate runs against committed baselines.                                                                     | Gate at 25% (hosted VMs vary 12–15%)          | [COMPARISON.md](../benchmarks/COMPARISON.md), [Rust GPUI](../benchmarks/rust-gpui/README.md)    |
+
+### AOT object growth in long sessions (M9)
+
+The [30-minute sessions](../benchmarks/results/workspace-long-session-2026-11-11/README.md)
+recorded an AOT-only rise in live objects after a forced collection (Solid
+11,125 → 12,576, React 9,762 → 13,032), while the heap stayed under 2 MB.
+`BUN_NATIVE_SOAK_HEAP_CENSUS=1` (`tests/native/workspace-session.ts`) makes each
+sample record JSC's `objectTypeCounts` and a `strings-<round>.json` count of
+every live string's text.
+
+- Type census, 20-minute AOT sessions of both soaks (local X11, Bun
+  `1.4.4-canary.1+b1007f117`): from 180 s to 1,200 s, live strings rose by
+  1,062 (Solid) and 2,765 (React). Every other type changed by less than 140
+  (Solid) and less than 4 (React), and Solid's other types returned to the
+  same values in later samples.
+- String census, 10-minute AOT sessions: every string that grew after warm-up
+  was a number's text. Solid had 1,024 integer and 449 decimal strings; React
+  had 989 integer and 607 decimal strings. The integers are the round numbers
+  in the fixture's `Round ${round} …` titles. The decimals are round durations,
+  which `SessionRecorder` writes to `rounds.txt` as `${milliseconds}\n`.
+- [`aot-number-strings.js`](../benchmarks/retention/aot-number-strings.js)
+  reproduces this with no Bun Native, framework, host or file I/O. Each round
+  makes and drops one number's string. In development, 0 such strings stay
+  live. In AOT, live integer strings go to 1,025 by 2,500 rounds and stay
+  there through 40,000 rounds. Live decimal strings, made with a template or
+  `String()`, rise along a fill curve (1,846 at 2,500 rounds, 3,984 at 15,000)
+  and reach exactly 4,096 at 40,000 rounds, then stay there through 60,000.
+  The pattern fits a fixed-size cache of number strings in the AOT runtime,
+  with about 1,024 integer and 4,096 decimal entries. That is inferred from
+  the plateaus, not read from Bun's source.
+- Why the counts rose more slowly later in the session: the integer slots
+  fill within the first rounds, and the decimal slots then fill more slowly
+  as fewer stay empty. For a soak, 1,024 integer plus 4,096 decimal entries
+  bound the increase at about 5,100 strings. That is the scale of the
+  observed +4,300 to +4,900 objects from the first sample of the 30-minute
+  sessions to the last. Number strings are short, so the bound is roughly
+  100–200 KB of heap.
+
+The growth is therefore bounded and belongs to the Bun AOT runtime, not to
+Bun Native ownership. Not done: a session longer than 30 minutes that shows
+the soak's own object count flat once both caches are full, and reading the
+AOT runtime source to confirm the cache.
 
 ## Lifecycle, failure and packaging audits
 
@@ -114,11 +161,10 @@ These are tracked honestly as open and are not CI work:
 | ---------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------- |
 | macOS and Windows code signing, notarization   | owner-only: Apple Developer ID and Windows certificate                                                                                                                | #249, #223 |
 | Linux host archive provenance                  | keyless Sigstore attestation wired; first `main` run pending ([releasing](releasing.md#linux-keyless-build-provenance))                                               | #249, #223 |
-| Screen readers and OS IME composition          | needs VoiceOver/NVDA/Orca and real input methods                                                                                                                      | #241, #222 |
+| Windows screen reader and OS IME composition   | Orca, IBus Hangul, VoiceOver and macOS Korean composition gate CI; NVDA speech and the Windows Korean IME still fail                                                  | #241, #629 |
 | Physical multi-monitor hardware                | headless sway outputs, two Xvfb screens and a macOS virtual display cover the semantics in CI; EDID monitors, cables, GPU outputs and Windows mixed DPI need hardware | #299       |
 | Babel 8                                        | no Solid preset release supports it yet                                                                                                                               | #316       |
 | Hosted first-window deadline                   | not recurred since November 6 ([below](#first-window-deadline-296))                                                                                                   | #296       |
-| Shared Linux D-Bus service core (Rust clones)  | refactor, not deletion; needs the Linux native suite                                                                                                                  | #260       |
 | Windows disposal retention                     | Windows support waits on it                                                                                                                                           | #629       |
 | Physical GPU, Windows and real-Mac performance | hosted runners use software or paravirtual GPUs                                                                                                                       | #244       |
 | Release-readiness decision                     | per-platform draft in [ADR 0021](decisions/0021-platform-release-readiness.md) (proposed)                                                                             | #245       |

@@ -91,6 +91,15 @@ describe('split resize contract (headless subprocess)', () => {
             error instanceof UnsupportedFeatureError &&
             error.feature === element.kind + ':accessible_label'
         )
+      expect(app.capabilities).not.toContain('accessibility_lists_v1')
+      for (const [element, feature] of [
+        [{ kind: 'box', accessible_role: 'list', accessible_set_size: 3 }, 'box:accessible_role'],
+        [{ kind: 'text', text: 'Token', accessible_live: 'polite' }, 'text:accessible_live'],
+      ] as const)
+        await assert.rejects(
+          window.batch((batch) => batch.append(window.root, batch.create(element))),
+          (error: unknown) => error instanceof UnsupportedFeatureError && error.feature === feature
+        )
       expect(window.revision).toBe(1)
     }, false))
 

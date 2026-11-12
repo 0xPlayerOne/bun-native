@@ -1,0 +1,59 @@
+--- a/src/display_link.rs
++++ b/src/display_link.rs
+@@ -294,6 +294,25 @@
+     }
+ }
+ 
++/// Bun Native patch: set once a process must not pace windows with
++/// `CAMetalDisplayLink` (see [`disable_metal_display_link`]).
++static METAL_DISPLAY_LINK_DISABLED: std::sync::atomic::AtomicBool =
++    std::sync::atomic::AtomicBool::new(false);
++
++/// Bun Native patch: pace every window opened after this call with the shared
++/// `CVDisplayLink` registry and draw into `nextDrawable`, the path this crate
++/// already takes where `CAMetalDisplayLink` is unavailable (before macOS 14).
++/// Windows already open keep their frame source.
++pub fn disable_metal_display_link() {
++    METAL_DISPLAY_LINK_DISABLED.store(true, std::sync::atomic::Ordering::Relaxed);
++}
++
++/// Whether a window opened now is paced by a `CAMetalDisplayLink`.
++pub(crate) fn metal_display_link_enabled() -> bool {
++    MetalFrameSource::is_available()
++        && !METAL_DISPLAY_LINK_DISABLED.load(std::sync::atomic::Ordering::Relaxed)
++}
++
+ /// A window's `CAMetalDisplayLink`, shared with GPUI's frame waker so that a
+ /// wake reaches the current link without taking the window's lock.
+ ///
+--- a/src/gpui_macos.rs
++++ b/src/gpui_macos.rs
+@@ -43,6 +43,8 @@
+ pub(crate) use window::*;
+ 
+ pub use platform::MacPlatform;
++// Bun Native patch: see `display_link::disable_metal_display_link`.
++pub use display_link::disable_metal_display_link;
+ 
+ trait BoolExt {
+     fn to_objc(self) -> Bool;
+--- a/src/window.rs
++++ b/src/window.rs
+@@ -2,7 +2,7 @@
+     BoolExt, MacDisplay, MetalFrames, NSRange, NSStringExt, TISCopyCurrentKeyboardInputSource,
+     TISGetInputSourceProperty, WindowFrameSource, events::platform_input_from_native,
+     kTISPropertyInputSourceIsASCIICapable, kTISPropertyInputSourceType, kTISTypeKeyboardInputMode,
+-    ns_string, renderer,
++    metal_display_link_enabled, ns_string, renderer,
+ };
+ use anyhow::Result;
+ use block2::RcBlock;
+@@ -1108,7 +1108,7 @@
+             let native_view: *mut AnyObject = msg_send![native_view, initWithFrame: content_bounds];
+             assert!(!native_view.is_null());
+ 
+-            let metal_frames = MetalFrameSource::is_available().then(Rc::<MetalFrames>::default);
++            let metal_frames = metal_display_link_enabled().then(Rc::<MetalFrames>::default);
+             let state = Rc::new(Mutex::new(MacWindowState {
+                 handle,
+                 foreground_executor,

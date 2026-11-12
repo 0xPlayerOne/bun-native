@@ -6,7 +6,7 @@
 //! the nearest exposed ancestor.
 
 use super::NativeView;
-use bun_native_protocol::{Element as NativeElement, NodeId, Tree};
+use bun_native_protocol::{AccessibleRole, Element as NativeElement, Live, NodeId, Tree};
 use gpui::{Context, Div, Role, Stateful, prelude::*};
 
 /// Whether a node lies beneath the open modal layer: neither inside it nor on
@@ -22,7 +22,19 @@ pub(super) fn beneath_modal(tree: &Tree, node: NodeId, modal: Option<NodeId>) ->
 
 /// The disabled and hidden states of a node that has a role.
 pub(super) fn states(base: Stateful<Div>, disabled: bool, hidden: bool) -> Stateful<Div> {
-    if !disabled && !hidden {
+    live_states(base, disabled, hidden, None)
+}
+
+/// [`states`] plus a text node's `accessible_live` politeness. AccessKit
+/// announces a live node's name when the node is added and whenever the name
+/// changes (AT-SPI `object:announcement`).
+pub(super) fn live_states(
+    base: Stateful<Div>,
+    disabled: bool,
+    hidden: bool,
+    live: Option<Live>,
+) -> Stateful<Div> {
+    if !disabled && !hidden && live.is_none() {
         return base;
     }
     base.a11y_synthetic_children(move |builder| {
@@ -33,19 +45,50 @@ pub(super) fn states(base: Stateful<Div>, disabled: bool, hidden: bool) -> State
         if hidden {
             node.set_hidden();
         }
+        match live {
+            Some(Live::Polite) => node.set_live(accesskit::Live::Polite),
+            Some(Live::Assertive) => node.set_live(accesskit::Live::Assertive),
+            None => {}
+        }
     })
 }
 
-/// A scrolling box is a scroll view; an overlay is a dialog named by its
-/// `accessible_label`, with AccessKit's modal state when it traps focus.
+/// A box with an `accessible_role` is a list or list item, named by its
+/// `accessible_label`, with its set size, 1-based position (AccessKit counts
+/// from 0) and selection; otherwise a scrolling box is a scroll view. An
+/// overlay is a dialog named by its `accessible_label`, with AccessKit's
+/// modal state when it traps focus.
 pub(super) fn container(
     base: Stateful<Div>,
     element: &NativeElement,
     hidden: bool,
 ) -> Stateful<Div> {
     match element {
-        NativeElement::Box { style } if style.overflow.is_some_and(|mode| mode.scrolls()) => {
-            states(base.role(Role::ScrollView), false, hidden)
+        NativeElement::Box {
+            accessibility,
+            style,
+        } => {
+            let mut node = match accessibility.accessible_role {
+                Some(AccessibleRole::List) => base.role(Role::List),
+                Some(AccessibleRole::ListItem) => base.role(Role::ListItem),
+                None if style.overflow.is_some_and(|mode| mode.scrolls()) => {
+                    base.role(Role::ScrollView)
+                }
+                None => return base,
+            };
+            if let Some(label) = &accessibility.accessible_label {
+                node = node.aria_label(label.clone());
+            }
+            if let Some(size) = accessibility.accessible_set_size {
+                node = node.aria_size_of_set(size as usize);
+            }
+            if let Some(position) = accessibility.accessible_position {
+                node = node.aria_position_in_set(position as usize - 1);
+            }
+            if let Some(selected) = accessibility.accessible_selected {
+                node = node.aria_selected(selected);
+            }
+            states(node, false, hidden)
         }
         NativeElement::Overlay {
             modal,

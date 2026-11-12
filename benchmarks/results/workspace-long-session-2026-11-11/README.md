@@ -131,9 +131,9 @@ Threads and open files (first / last / max) in every sample:
   (−1 KB and +49 KB) and app RSS moved by under 1 MiB. In development the object
   count was flat (+50 and +96). The fixture's per-round assertions that roots,
   listeners and application resources equal the baseline exactly held for every
-  round, so the growth is not in those owned resources. It is not attributed
-  here; a longer AOT session or a heap census would be needed to tell whether
-  it levels off.
+  round, so the growth is not in those owned resources. A later heap census attributes it to live number strings
+  held by a bounded number-to-string cache in Bun's AOT runtime, which levels
+  off ([framework audit](../../../docs/framework-audit.md#aot-object-growth-in-long-sessions-m9)).
 - The phase-trace rows describe only the first 224–258 s of each session.
 
 Each `fixture.log` holds the expected Xvfb/DBus/portal start-up warnings. The

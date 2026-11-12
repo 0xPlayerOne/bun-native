@@ -234,6 +234,8 @@ impl NativeView {
         if key.is_modifier_key() {
             return;
         }
+        #[cfg(target_os = "linux")]
+        super::key_forwarding::forward(key, down, cx);
         let state = self.state.borrow();
         if !state.active {
             return;

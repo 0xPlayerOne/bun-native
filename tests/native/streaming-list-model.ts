@@ -327,6 +327,25 @@ export function listStyle(view: ListView): Style {
     justify_content: view.follow ? 'end' : 'start',
   }
 }
+/**
+ * `accessibility_lists_v1`: the list reports the whole history as its set
+ * size although only `rows` items are mounted, and each mounted item its
+ * 1-based place in that history and whether it is the selection.
+ */
+export function listAccessibility(view: ListView) {
+  return {
+    accessibleRole: 'list',
+    accessibleLabel: 'Messages',
+    accessibleSetSize: view.total,
+  } as const
+}
+export function rowAccessibility(row: ListRow) {
+  return {
+    accessibleRole: 'list_item',
+    accessiblePosition: row.id,
+    accessibleSelected: row.selected,
+  } as const
+}
 export function rowStyle(view: Tokens, row: ListRow): Style {
   const theme = THEMES[view.theme]
   const density = DENSITIES[view.density]

@@ -3,6 +3,10 @@
  * isolated Xvfb + openbox session. OS input comes from XTEST (xdotool); native
  * geometry comes from the host's nonce-tagged paint evidence, so every click
  * targets the position GPUI actually painted.
+ *
+ * On macOS the same steps run in the hosted runner's GUI session: CoreGraphics
+ * key, click and wheel events through the bounded SDK helper, and displayed
+ * pixels from `screencapture` of the owned window (tests/native/macos-window-input.ts).
  */
 import {
   createApplication,
@@ -15,19 +19,26 @@ import {
 import assert from 'node:assert/strict'
 import { readFileSync, statSync, writeFileSync } from 'node:fs'
 import { isAbsolute, join } from 'node:path'
+import { MacWindow } from './macos-window-input.ts'
 
 const output = process.env['BUN_NATIVE_OVERLAY_EVIDENCE']
 const mode = process.env['BUN_NATIVE_OVERLAY_MODE']
+const mac = process.platform === 'darwin'
 if (
   !output ||
   !isAbsolute(output) ||
   !statSync(output).isDirectory() ||
   !process.env['BUN_NATIVE_HOST'] ||
   (mode !== 'development' && mode !== 'aot') ||
-  !process.env['DISPLAY'] ||
-  process.env['WAYLAND_DISPLAY']
+  (mac
+    ? !process.env['BUN_NATIVE_PLATFORM_HELPER']
+    : !process.env['DISPLAY'] || process.env['WAYLAND_DISPLAY'])
 )
-  throw new Error('An isolated X11 display, evidence directory, host and mode are required')
+  throw new Error(
+    mac
+      ? 'macOS needs an evidence directory, host, mode and the OS input helper'
+      : 'An isolated X11 display, evidence directory, host and mode are required'
+  )
 const executable = process.env['BUN_NATIVE_HOST']
 // The host inherits these from the launching environment; Bun.spawn does not
 // observe later process.env mutation.
@@ -133,21 +144,37 @@ function bounds(layout: Layout, id: number): Rect {
 }
 
 let windowId = ''
+let macWindow: MacWindow | undefined
+const WIDTH = 480
+const HEIGHT = 420
 async function activate() {
+  if (mac) {
+    macWindow = await MacWindow.open(TITLE, executable!, () => [WIDTH, HEIGHT])
+    return
+  }
   const ids = (await run(['xdotool', 'search', '--sync', '--name', '^' + TITLE + '$'])).split('\n')
   assert.equal(ids.length, 1, 'expected exactly one owned window named ' + TITLE)
   windowId = ids[0]!
   await run(['xdotool', 'windowactivate', '--sync', windowId])
 }
-const press = (...keys: string[]) => run(['xdotool', 'key', '--clearmodifiers', ...keys])
-const type = (text: string) => run(['xdotool', 'type', '--delay', '20', text])
-async function click([x, y, width, height]: Rect, button = '1') {
+async function press(...keys: string[]) {
+  if (macWindow) await macWindow.press(...keys)
+  else await run(['xdotool', 'key', '--clearmodifiers', ...keys])
+}
+async function type(text: string) {
+  if (macWindow) await macWindow.type(text)
+  else await run(['xdotool', 'type', '--delay', '20', text])
+}
+async function click([x, y, width, height]: Rect, button: '1' | '4' | '5' = '1') {
+  if (macWindow)
+    return macWindow.click([Math.round(x + width / 2), Math.round(y + height / 2)], button)
   const at = [String(Math.round(x + width / 2)), String(Math.round(y + height / 2))]
   await run(['xdotool', 'mousemove', '--window', windowId, ...at, 'click', button])
 }
 /** Capture the owned window and read one displayed pixel as 0xRRGGBB. */
 async function screenshot(name: string, [x, y]: [number, number]): Promise<number> {
   const file = join(output!, name + '.png')
+  if (macWindow) return (await macWindow.capture(file)).pixel([x, y])
   await run(['import', '-window', windowId, file])
   const text = await run(['convert', file, '-crop', `1x1+${x}+${y}`, '-depth', '8', 'txt:-'])
   const hex = /#([0-9A-Fa-f]{6})/.exec(text)
@@ -167,6 +194,11 @@ async function displayed(name: string, [x, y]: [number, number], expected: numbe
     await Bun.sleep(50)
     value = await screenshot(name, [Math.floor(x), Math.floor(y)])
   }
+  if (value !== expected && macWindow) {
+    const point: [number, number] = [Math.floor(x), Math.floor(y)]
+    const stale = await macWindow.staleCapture(join(output!, name + '.png'), [point])
+    console.log(JSON.stringify({ staleCapture: name, expected: expected.toString(16), ...stale }))
+  }
   return value
 }
 
@@ -177,7 +209,7 @@ async function clickLabel(window: NativeWindow, label: string) {
 async function qualify(app: NativeApplication) {
   assert.ok(app.capabilities.includes('overlays_v1'))
   assert.ok(app.capabilities.includes('scroll_anchor_v1'))
-  const window = await app.openWindow({ title: TITLE, width: 480, height: 420 })
+  const window = await app.openWindow({ title: TITLE, width: WIDTH, height: HEIGHT })
   const names = new Map<NativeNode, string>()
   const focus: string[] = []
   const blurs: string[] = []
@@ -675,11 +707,17 @@ writeFileSync(
     {
       schemaVersion: 1,
       mode,
+      platform: process.platform,
       bun: process.versions.bun,
       revision: Bun.revision,
-      display: 'isolated Xvfb with openbox',
-      input: 'XTEST via xdotool',
+      display: mac
+        ? 'hosted macOS GUI session; screencapture of the owned window'
+        : 'isolated Xvfb with openbox',
+      input: mac
+        ? 'CoreGraphics through scripts/quality/native-platform-macos.m'
+        : 'XTEST via xdotool',
       geometry: 'nonce-tagged native paint evidence',
+      ...(macWindow ? { osInput: macWindow.log } : {}),
       outcomes,
     },
     null,

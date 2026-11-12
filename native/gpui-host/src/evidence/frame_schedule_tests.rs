@@ -33,6 +33,7 @@ pub(super) fn make_log(enabled: bool) -> (TemporaryLog, Evidence) {
         input_viewports: false,
         startup_started: enabled.then(Instant::now),
         startup_records: 0,
+        presentation_records: 0,
         started: Instant::now(),
     };
     (
@@ -89,4 +90,66 @@ fn scheduling_records_share_one_bounded_budget_across_clones_and_windows() {
     assert_eq!(rows.last().unwrap()["phase"], "record_limit");
     assert_eq!(rows.last().unwrap()["index"], MAX_STARTUP_RECORDS);
     assert!(text.len() < usize::from(MAX_STARTUP_RECORDS) * 1024);
+}
+
+fn rows(file: &TemporaryLog) -> Vec<Value> {
+    std::fs::read_to_string(&file.0)
+        .unwrap()
+        .lines()
+        .map(|line| serde_json::from_str(line).unwrap())
+        .collect()
+}
+
+#[test]
+fn presentation_records_require_explicit_trace_and_name_the_painted_state() {
+    let window = WindowId::try_from(1).unwrap();
+    let tree = Tree::new(NodeId::try_from(1).unwrap());
+    let native = json!({"presents_with_transaction": true, "needs_display": false});
+    let (disabled_file, disabled) = make_log(false);
+    assert!(!disabled.presentation_tracing());
+    disabled.presentation("painted", window, &tree, native.clone());
+    assert!(rows(&disabled_file).is_empty());
+
+    let (file, evidence) = make_log(true);
+    assert!(evidence.presentation_tracing());
+    evidence.presentation("layer_invalidated", window, &tree, native.clone());
+    evidence.presentation("painted", window, &tree, native.clone());
+    let written = rows(&file);
+    assert_eq!(written.len(), 2);
+    for (index, (record, phase)) in written
+        .iter()
+        .zip(["layer_invalidated", "painted"])
+        .enumerate()
+    {
+        assert_eq!(record["type"], "presentation");
+        assert_eq!(record["stage"], "native-presentation");
+        assert_eq!(record["clock"], "process_monotonic_relative");
+        assert_eq!(record["phase"], phase);
+        assert_eq!(record["index"], index + 1);
+        assert_eq!(record["window_id"], 1);
+        assert_eq!(record["tree_revision"], tree.revision());
+        assert_eq!(record["input_revisions"], json!([]));
+        assert_eq!(record["native"], native);
+        assert!(record.get("nodes").is_none());
+    }
+    // Presentation records keep their own budget: scheduling still records.
+    evidence.frame_schedule("layer_invalidated", window, 1);
+    assert_eq!(rows(&file)[2]["index"], 1);
+}
+
+#[test]
+fn presentation_records_are_bounded_with_a_visible_limit() {
+    let window = WindowId::try_from(1).unwrap();
+    let tree = Tree::new(NodeId::try_from(1).unwrap());
+    let (file, evidence) = make_log(true);
+    for _ in 0..u32::from(MAX_PRESENTATION_RECORDS) + 8 {
+        evidence.presentation("painted", window, &tree, json!({}));
+    }
+    assert!(!evidence.presentation_tracing());
+    let written = rows(&file);
+    assert_eq!(written.len(), usize::from(MAX_PRESENTATION_RECORDS));
+    let last = written.last().unwrap();
+    assert_eq!(last["phase"], "record_limit");
+    assert_eq!(last["index"], MAX_PRESENTATION_RECORDS);
+    assert!(last.get("native").is_none());
 }

@@ -53,7 +53,7 @@ async function until(condition: () => boolean) {
 }
 
 describe('owned OS file dialogs (headless real subprocess)', () => {
-  test('reports the portal backend and the immutable, default-denied launch grant', async () => {
+  test('reports the platform backend and the immutable, default-denied launch grant', async () => {
     for (const [permissions, permission] of [
       [ALLOW, 'allow'],
       [{}, 'deny'],
@@ -64,7 +64,7 @@ describe('owned OS file dialogs (headless real subprocess)', () => {
             availability: 'available',
             permission,
             scope: 'owned_window',
-            backend: 'xdg_desktop_portal',
+            backend: process.platform === 'darwin' ? 'appkit' : 'xdg_desktop_portal',
           })
           expect(app.serviceCapabilities.messageDialogs).toEqual({
             availability: 'unavailable',

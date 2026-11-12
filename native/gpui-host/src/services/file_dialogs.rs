@@ -12,36 +12,27 @@
 //! `Response` from the bus connection that answered the request is accepted.
 //! Selected paths are returned as data and never become a filesystem grant.
 
+use super::session_bus::{Failure, Link, Messages, SessionBus, sender, session_bus_configured};
 use crate::channel::EventSink;
 use bun_native_protocol::{
     DialogId, ErrorCode, Event, EventSequence, FileDialogFailure, FileDialogMode,
     FileDialogOptions, FileDialogResult, MAX_DIALOG_PATHS, MAX_FILE_DIALOGS, MAX_FRAME_BYTES,
     MAX_ID, RequestId, WindowId, validate_dialog_path,
 };
-use futures::FutureExt;
-use futures::future::Shared;
-use futures_lite::StreamExt;
 use gpui::{App, AsyncApp, Task, Window};
 use std::cell::{Cell, RefCell};
 use std::collections::{BTreeMap, HashMap, VecDeque};
-use std::rc::{Rc, Weak};
-use std::time::Duration;
+use std::ops::ControlFlow;
+use std::rc::Rc;
 use zbus::names::OwnedUniqueName;
 use zbus::zvariant::{OwnedObjectPath, OwnedValue, Value};
-
-type Failure = (ErrorCode, &'static str);
 
 const PORTAL: &str = "org.freedesktop.portal.Desktop";
 const PORTAL_PATH: &str = "/org/freedesktop/portal/desktop";
 const FILE_CHOOSER: &str = "org.freedesktop.portal.FileChooser";
 const REQUEST: &str = "org.freedesktop.portal.Request";
-/// Every bus operation, including showing the dialog, is bounded. Waiting for
-/// the user is not: that is the dialog's purpose, and it is always closable.
-const TIMEOUT: Duration = Duration::from_secs(2);
-const MAX_QUEUED_SIGNALS: usize = 64;
 /// Responses seen before the matching request reply was processed.
 const MAX_EARLY_RESPONSES: usize = 16;
-const DRAIN_POLL: Duration = Duration::from_millis(5);
 
 enum State {
     Opening(RequestId),
@@ -64,15 +55,14 @@ struct Response {
     uris: Option<Vec<String>>,
 }
 
-type Link = Shared<Task<Result<zbus::Connection, Failure>>>;
-
 struct Inner {
     entries: RefCell<BTreeMap<DialogId, Entry>>,
     last_dialog: Cell<u64>,
-    link: RefCell<Option<Link>>,
-    listener: RefCell<Option<Task<()>>>,
+    /// Every bus operation, including showing the dialog, is bounded. Waiting
+    /// for the user is not: that is the dialog's purpose, and it is always
+    /// closable.
+    bus: SessionBus,
     early: RefCell<VecDeque<Response>>,
-    in_flight: Cell<usize>,
     stopping: Cell<bool>,
     events: EventSink,
     available: bool,
@@ -86,10 +76,11 @@ impl FileDialogs {
         Self(Rc::new(Inner {
             entries: RefCell::new(BTreeMap::new()),
             last_dialog: Cell::new(0),
-            link: RefCell::new(None),
-            listener: RefCell::new(None),
+            bus: SessionBus::new(Messages {
+                timed_out: "desktop portal did not answer within two seconds",
+                subscribe_failed: "cannot subscribe to desktop portal responses",
+            }),
             early: RefCell::new(VecDeque::new()),
-            in_flight: Cell::new(0),
             stopping: Cell::new(false),
             events,
             available: session_bus_configured(),
@@ -159,7 +150,7 @@ impl FileDialogs {
             },
         );
         self.spawn(cx, async move |this, cx| {
-            let result = bounded(cx, open(link, dialog, options, parent)).await;
+            let result = this.bounded(cx, open(link, dialog, options, parent)).await;
             cx.update(|cx| this.opened(dialog, result, cx));
         });
         Ok(())
@@ -193,7 +184,7 @@ impl FileDialogs {
         self.0.entries.borrow_mut().remove(&dialog);
         let link = self.link(cx);
         self.spawn(cx, async move |this, cx| {
-            let result = bounded(cx, close_request(link, portal, handle)).await;
+            let result = this.bounded(cx, close_request(link, portal, handle)).await;
             cx.update(|cx| {
                 let event = match result {
                     Ok(()) => Event::FileDialogClosed {
@@ -243,42 +234,35 @@ impl FileDialogs {
     /// Close a dialog nobody owns any more; shutdown waits for it.
     fn discard(&self, portal: OwnedUniqueName, handle: OwnedObjectPath, cx: &mut App) {
         let link = self.link(cx);
-        self.spawn(cx, async move |_, cx| {
-            let _ = bounded(cx, close_request(link, portal, handle)).await;
+        self.spawn(cx, async move |this, cx| {
+            let _ = this.bounded(cx, close_request(link, portal, handle)).await;
         });
     }
 
     fn spawn(&self, cx: &mut App, work: impl AsyncFnOnce(Self, &mut AsyncApp) + 'static) {
-        let this = self.clone();
-        this.0.in_flight.set(this.0.in_flight.get() + 1);
-        cx.spawn(async move |cx| {
-            work(this.clone(), cx).await;
-            this.0.in_flight.set(this.0.in_flight.get() - 1);
-        })
-        .detach();
+        self.0.bus.spawn(self.clone(), cx, work);
+    }
+
+    async fn bounded<T>(
+        &self,
+        cx: &mut AsyncApp,
+        work: impl Future<Output = Result<T, Failure>>,
+    ) -> Result<T, Failure> {
+        self.0.bus.bounded(cx, work).await
     }
 
     fn link(&self, cx: &mut App) -> Link {
-        if let Some(link) = &*self.0.link.borrow() {
-            return link.clone();
-        }
         let weak = Rc::downgrade(&self.0);
-        let link: Link = cx
-            .spawn(async move |cx| {
-                let connection = bounded(cx, connect()).await?;
-                let signals = bounded(cx, subscribe(connection.clone())).await?;
-                let listener = cx.spawn({
-                    let weak = weak.clone();
-                    async move |cx| listen(weak, signals, cx).await
-                });
-                if let Some(inner) = weak.upgrade() {
-                    inner.listener.replace(Some(listener));
-                }
-                Ok(connection)
-            })
-            .shared();
-        self.0.link.replace(Some(link.clone()));
-        link
+        self.0.bus.link(cx, response_rule, move |message, cx| {
+            let Some(response) = parse_response(message) else {
+                return ControlFlow::Continue(());
+            };
+            let Some(inner) = weak.upgrade() else {
+                return ControlFlow::Break(());
+            };
+            cx.update(|cx| FileDialogs(inner).response(response, cx));
+            ControlFlow::Continue(())
+        })
     }
 
     fn opened(
@@ -415,16 +399,7 @@ impl FileDialogs {
                 State::Live { portal, handle } => self.discard(portal, handle, cx),
             }
         }
-        self.0.link.borrow().as_ref()?;
-        let this = self.clone();
-        Some(cx.spawn(async move |cx| {
-            let deadline = std::time::Instant::now() + TIMEOUT * 2;
-            while this.0.in_flight.get() > 0 && std::time::Instant::now() < deadline {
-                cx.background_executor().timer(DRAIN_POLL).await;
-            }
-            this.0.listener.replace(None);
-            this.0.link.replace(None);
-        }))
+        self.0.bus.drain(cx)
     }
 }
 
@@ -507,27 +482,6 @@ fn file_uri_path(uri: &str) -> Option<String> {
     Some(path)
 }
 
-fn session_bus_configured() -> bool {
-    std::env::var_os("DBUS_SESSION_BUS_ADDRESS").is_some_and(|address| !address.is_empty())
-        || std::env::var_os("XDG_RUNTIME_DIR")
-            .is_some_and(|directory| std::path::Path::new(&directory).join("bus").exists())
-}
-
-async fn bounded<T>(
-    cx: &mut AsyncApp,
-    work: impl Future<Output = Result<T, Failure>>,
-) -> Result<T, Failure> {
-    let timer = cx.background_executor().timer(TIMEOUT);
-    futures_lite::future::or(work, async move {
-        timer.await;
-        Err((
-            ErrorCode::OperationTimedOut,
-            "desktop portal did not answer within two seconds",
-        ))
-    })
-    .await
-}
-
 fn bus_failure(error: &zbus::Error) -> Failure {
     match error {
         zbus::Error::MethodError(name, _, _)
@@ -559,48 +513,17 @@ fn bus_failure(error: &zbus::Error) -> Failure {
     }
 }
 
-async fn connect() -> Result<zbus::Connection, Failure> {
-    zbus::Connection::session().await.map_err(|_| {
-        (
-            ErrorCode::ServiceUnavailable,
-            "cannot connect to the D-Bus session bus",
-        )
-    })
-}
-
-async fn subscribe(connection: zbus::Connection) -> Result<zbus::MessageStream, Failure> {
-    let failed = |_| {
-        (
-            ErrorCode::NativeFailure,
-            "cannot subscribe to desktop portal responses",
-        )
-    };
-    let rule = zbus::MatchRule::builder()
+fn response_rule() -> zbus::Result<zbus::MatchRule<'static>> {
+    Ok(zbus::MatchRule::builder()
         .msg_type(zbus::message::Type::Signal)
-        .interface(REQUEST)
-        .map_err(failed)?
-        .member("Response")
-        .map_err(failed)?
-        .build();
-    zbus::MessageStream::for_match_rule(rule, &connection, Some(MAX_QUEUED_SIGNALS))
-        .await
-        .map_err(failed)
-}
-
-async fn listen(inner: Weak<Inner>, mut signals: zbus::MessageStream, cx: &mut AsyncApp) {
-    while let Some(Ok(message)) = signals.next().await {
-        let Some(response) = parse_response(&message) else {
-            continue;
-        };
-        let Some(inner) = inner.upgrade() else { return };
-        cx.update(|cx| FileDialogs(inner).response(response, cx));
-    }
+        .interface(REQUEST)?
+        .member("Response")?
+        .build())
 }
 
 fn parse_response(message: &zbus::Message) -> Option<Response> {
-    let header = message.header();
-    let portal = OwnedUniqueName::from(header.sender()?.to_owned());
-    let handle = OwnedObjectPath::from(header.path()?.to_owned());
+    let portal = sender(message)?;
+    let handle = OwnedObjectPath::from(message.header().path()?.to_owned());
     let (code, results): (u32, HashMap<String, OwnedValue>) = message.body().deserialize().ok()?;
     let uris = match results.get("uris") {
         Some(value) => Some(Vec::<String>::try_from(value.try_clone().ok()?).ok()?),

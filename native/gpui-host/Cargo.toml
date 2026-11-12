@@ -37,9 +37,16 @@ x11rb = "=0.13.2"
 futures = { version = "=0.3.34", default-features = false, features = ["std"] }
 futures-lite = "=2.6.1"
 zbus = { version = "=5.19.0", default-features = false, features = ["async-io"] }
+# Keysyms and US-layout keycodes for keys forwarded to AT-SPI on Wayland; the
+# version GPUI's Linux backend already locks.
+xkbcommon = { version = "=0.8.0", default-features = false }
 
 # The Wayland test's input peer (examples/wayland-input-peer.rs); the same
 # versions GPUI's Wayland backend already locks.
+[dev-dependencies]
+# Polls the report pump in its unit tests; already locked through GPUI.
+futures-lite = "=2.6.1"
+
 [target.'cfg(target_os = "linux")'.dev-dependencies]
 wayland-client = "=0.31.15"
 wayland-protocols-wlr = { version = "=0.3.12", features = ["client"] }
@@ -48,6 +55,9 @@ wayland-protocols-misc = { version = "=0.3.12", features = ["client"] }
 [target.'cfg(target_os = "macos")'.dependencies]
 base64 = "=0.22.1"
 bun-native-macos-surface = { path = "../macos-surface" }
+# Patched in from native/vendor/gpui_macos for its frame-source switch
+# (src/frame_pacing.rs); default features stay as gpui_platform selects them.
+gpui_macos = { git = "https://github.com/zed-industries/zed", rev = "ba63a022c9a22ca66d68ef2a8f0bb9b5b0a9984d", default-features = false }
 bun-native-posix-services = { path = "../posix-services" }
 pty-process = "=0.5.4"
 raw-window-handle = "=0.6.2"

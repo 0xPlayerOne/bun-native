@@ -50,6 +50,7 @@ fn text(id: u64) -> Operation {
     create(
         id,
         Element::Text {
+            accessible_live: None,
             text: "item".into(),
             style: Style::default(),
         },
@@ -93,6 +94,7 @@ fn popup_content_rejects_editors_and_nested_layers_atomically() {
                 create(
                     2,
                     Element::Box {
+                        accessibility: Default::default(),
                         style: Style::default(),
                     },
                 ),
@@ -148,6 +150,7 @@ fn popup_content_rejects_editors_and_nested_layers_atomically() {
                     create(
                         9,
                         Element::Box {
+                            accessibility: Default::default(),
                             style: Style::default(),
                         },
                     ),
