@@ -289,6 +289,14 @@ impl NativeView {
                 .expect("an owned macOS GPUI window exposes its native view");
             bun_native_macos_surface::invalidate(handle)
                 .expect("GPUI updates its backed surface on the AppKit owner thread");
+            // That display pass presents with presentsWithTransaction, at
+            // once, while a frame queued just before it through the command
+            // queue may still be in flight and land after it: hosted macOS
+            // then kept the older frame on screen while the window sat idle
+            // (run 43125006334: "helX" shown, the popover frame drawn 7 ms
+            // later never). Redraw once more on the next frame so the last
+            // present of every update is queue-ordered after the others.
+            window.on_next_frame(|window, _| window.refresh());
             let state = self.state.borrow();
             self.evidence.frame_schedule(
                 "layer_invalidated",
