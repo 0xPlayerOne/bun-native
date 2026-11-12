@@ -1,5 +1,5 @@
 import { mkdir, readFile, writeFile } from 'node:fs/promises'
-import { isAbsolute, join, resolve } from 'node:path'
+import { isAbsolute, join, relative, resolve } from 'node:path'
 import { parseArgs } from 'node:util'
 import { packageNames, readPackageSet, type PackageManifest } from './native/package-set.ts'
 
@@ -106,11 +106,17 @@ export async function main(args: string[]): Promise<void> {
     const directory = join(output, short)
     await mkdir(directory)
     const archive = join(setDirectory, manifest.packages[name]!.archive.file)
-    const tar = Bun.spawnSync(['tar', '-xzf', archive, '-C', directory, '--strip-components=1'], {
-      stdout: 'pipe',
-      stderr: 'pipe',
-      timeout: 30_000,
-    })
+    // A relative archive path inside the extraction directory: GNU tar on Windows
+    // reads an absolute `C:\\...` argument as a remote `host:path`.
+    const tar = Bun.spawnSync(
+      ['tar', '-xzf', relative(directory, archive), '--strip-components=1'],
+      {
+        cwd: directory,
+        stdout: 'pipe',
+        stderr: 'pipe',
+        timeout: 30_000,
+      }
+    )
     if (tar.exitCode !== 0) throw new Error(`Unpacking ${name} failed: ${tar.stderr}`)
     const published = registryManifest(manifests[name]!, root.version)
     await writeFile(join(directory, 'package.json'), JSON.stringify(published, null, 2) + '\n')
