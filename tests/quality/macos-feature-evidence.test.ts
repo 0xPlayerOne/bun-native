@@ -101,6 +101,8 @@ test('every advertised macOS feature that M1 and M2 name has an expected report'
       'overlay_keyboard_v1',
       'overlays_v1',
       'processes_v1',
+      // The workspace terminal panes' owned PTY shell, recorded on shard 1.
+      'processes_v1',
       'scroll_anchor_v1',
       'scroll_control_v1',
       'split_resize_v1',
@@ -250,6 +252,33 @@ test('the macOS service steps gate on shard 1 before the record, one feature eac
   expect(notifications.run).toContain('installedHost.executable')
   const install = steps.find((step) => step.name?.startsWith('Install the signed template'))!
   expect((install as { id?: string }).id).toBe('signed-install')
+})
+
+test('the macOS workspace terminal step gates on shard 1 before the record, both frameworks and modes', () => {
+  const record = steps.findIndex(
+    (step) => step.name === 'Record source-bound macOS feature evidence'
+  )
+  const at = steps.findIndex((step) =>
+    step.name?.startsWith('Development and AOT macOS workspace terminal pane OS input')
+  )
+  expect(at).toBeGreaterThanOrEqual(0)
+  expect(at).toBeLessThan(record)
+  const step = steps[at]!
+  expect(step['continue-on-error']).toBeUndefined()
+  expect(step.if).toContain('matrix.shard == 1')
+  expect(step.if).toContain("runner.os == 'macOS'")
+  expect(step.run).toContain("foreach ($framework in @('solid', 'react'))")
+  expect(step.run).toContain("foreach ($mode in @('development', 'aot'))")
+  expect(step.run).toContain('"$entry-macos-$mode"')
+  expect(step.run).toContain('throw "macOS workspace terminal panes not verified')
+  const feature = FEATURES.find((entry) => entry.packages.includes('solid-workspace-terminal'))!
+  expect(feature.shard).toBe(1)
+  expect(feature.reports.map((report) => report.path).sort()).toEqual([
+    'react-workspace-terminal-macos-aot/result.json',
+    'react-workspace-terminal-macos-development/result.json',
+    'solid-workspace-terminal-macos-aot/result.json',
+    'solid-workspace-terminal-macos-development/result.json',
+  ])
 })
 
 test('a display-change report that recorded the mode change unavailable fails the record', () => {

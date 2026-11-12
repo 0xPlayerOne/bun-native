@@ -356,6 +356,27 @@ export const FEATURES: Feature[] = [
     packages: [],
   },
   {
+    // The Solid and React workspace terminal panes: the owned PTY shell
+    // (processes_v1) driven by OS input, beside the shard 2 processes record.
+    capabilities: ['processes_v1'],
+    shard: 1,
+    oracle:
+      'workspace terminal pane: CoreGraphics pointer and key input through the bounded helper, the real /bin/sh on an owned PTY, host paint evidence and screencapture pixels, the standard close button pressed through Accessibility',
+    reports: (['solid', 'react'] as const).flatMap((framework) =>
+      perMode((mode) => ({
+        path: `${framework}-workspace-terminal-macos-${mode}/result.json`,
+        fields: {
+          status: 'passed',
+          platform: 'darwin',
+          scenario: `${framework}-workspace-terminal`,
+          mode,
+        },
+        outcomes: ['focused', 'roundTrip', 'paint', 'interrupt', 'closed'],
+      }))
+    ),
+    packages: ['solid-workspace-terminal', 'react-workspace-terminal'],
+  },
+  {
     capabilities: ['notifications_v1'],
     shard: 1,
     oracle:
