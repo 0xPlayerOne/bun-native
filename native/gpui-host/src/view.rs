@@ -281,34 +281,36 @@ impl NativeView {
         #[cfg(target_os = "macos")]
         {
             window.refresh();
-            // GPUI's Metal surface is a layer-backed view with a custom
-            // displayLayer: delegate. Dirty the backing layer itself so its
-            // normal deferred display pass also serves external commits when
-            // the display link is idle. This never draws inside this update.
-            let handle = raw_window_handle::HasWindowHandle::window_handle(window)
-                .expect("an owned macOS GPUI window exposes its native view");
-            bun_native_macos_surface::invalidate(handle)
-                .expect("GPUI updates its backed surface on the AppKit owner thread");
-            // That display pass presents with presentsWithTransaction, at
-            // once, while a frame queued just before it through the command
-            // queue may still be in flight and land after it: hosted macOS
-            // then kept the older frame on screen while the window sat idle
-            // (run 43125006334: "helX" shown, the popover frame drawn 7 ms
-            // later never). Redraw once more on the next frame so the last
-            // present of every update is queue-ordered after the others.
+            // Under the CVDisplayLink (frame_pacing) the refresh alone is
+            // drawn on the next display-link frame, and a synchronous
+            // displayLayer: pass while visible ended the frames shown.
+            let phase = if crate::frame_pacing::invalidates_layer() {
+                // GPUI's Metal surface is a layer-backed view with a custom
+                // displayLayer: delegate. Dirty the backing layer itself so its
+                // normal deferred display pass also serves external commits
+                // when the display link is idle. This never draws inside this
+                // update.
+                let handle = raw_window_handle::HasWindowHandle::window_handle(window)
+                    .expect("an owned macOS GPUI window exposes its native view");
+                bun_native_macos_surface::invalidate(handle)
+                    .expect("GPUI updates its backed surface on the AppKit owner thread");
+                "layer_invalidated"
+            } else {
+                "refresh_requested"
+            };
+            // A display pass presents with presentsWithTransaction, at once,
+            // while a frame queued just before it through the command queue
+            // may still be in flight and land after it: hosted macOS then kept
+            // the older frame on screen while the window sat idle (run
+            // 43125006334: "helX" shown, the popover frame drawn 7 ms later
+            // never). Redraw once more on the next frame so the last present
+            // of every update is queue-ordered after the others.
             window.on_next_frame(|window, _| window.refresh());
             let state = self.state.borrow();
-            self.evidence.frame_schedule(
-                "layer_invalidated",
-                self.window_id,
-                state.tree.revision(),
-            );
-            self.evidence.surface_presentation(
-                "layer_invalidated",
-                self.window_id,
-                &state.tree,
-                window,
-            );
+            self.evidence
+                .frame_schedule(phase, self.window_id, state.tree.revision());
+            self.evidence
+                .surface_presentation(phase, self.window_id, &state.tree, window);
         }
     }
 

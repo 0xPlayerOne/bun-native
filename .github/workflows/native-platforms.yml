@@ -865,10 +865,15 @@ jobs:
           bun tests/native/layout-style-compare.ts @reports |
             Tee-Object -FilePath (Join-Path $comparison 'report.json')
           if ($LASTEXITCODE -ne 0) { throw 'macOS adapters or modes committed different layout trees or geometry' }
-      - name: macOS development and AOT accessibility roles, keyboard and pointer split divider (#241)
+      - name: macOS development and AOT accessibility roles, keyboard and pointer split divider, lists and live announcements (#241)
         if: ${{ matrix.shard == 2 && (runner.os == 'macOS' && !cancelled() && steps.native-build.outcome == 'success') }}
         timeout-minutes: 6
         run: |
+          # accessibility.ts also runs its accessibility_lists_v1 window here:
+          # AXList, its AXGroup rows and their AXSelected, set size and position
+          # asserted absent (accesskit_macos 0.26.3 exposes neither), and the
+          # live status's AXAnnouncementRequested notifications through the
+          # oracle's AXObserver.
           $oracle = Join-Path $env:NATIVE_EVIDENCE 'macos-accessibility-roles-oracle'
           xcrun clang -fobjc-arc -Wall -Wextra -Werror -framework AppKit -framework ApplicationServices `
             tests/native/macos-accessibility-oracle.m -o $oracle
@@ -1295,6 +1300,80 @@ jobs:
           $env:BUN_NATIVE_EVIDENCE_NONCE = -join ((1..16) | ForEach-Object { '{0:x2}' -f (Get-Random -Maximum 256) })
           bun tests/native/popups-macos.ts 2>&1 | Tee-Object -FilePath (Join-Path $evidence 'run.log')
           if ($LASTEXITCODE -ne 0) { throw 'macOS popup windows were not verified' }
+      # The Linux terminal-pane fixture (#248, #250) on macOS: the actual Solid
+      # and React workspaces with their real /bin/sh on an owned PTY. A
+      # CoreGraphics click through the bounded helper focuses the terminal
+      # input at its painted bounds, typed keys and Return run a command whose
+      # output differs from its text, the output returns through the PTY and is
+      # painted (host paint evidence and screencapture pixels), Interrupt stops
+      # a foreground job, and the standard close button pressed through
+      # Accessibility closes the window with every owner released.
+      - name: Development and AOT macOS workspace terminal pane OS input, PTY round trip and paint through Solid and React (#248, #250)
+        if: ${{ matrix.shard == 1 && runner.os == 'macOS' && !cancelled() && steps.native-build.outcome == 'success' }}
+        timeout-minutes: 10
+        run: |
+          # The fixtures open 1000x760 and 1120x760 windows, which AppKit fits
+          # to the hosted 1024x768 display. Use the smallest 1x desktop mode that
+          # holds them for this step only, and restore the original afterwards.
+          $oracle = Join-Path $env:NATIVE_EVIDENCE 'macos-terminal-display-oracle'
+          xcrun clang -fobjc-arc -Wall -Wextra -Werror -framework AppKit -framework CoreGraphics `
+            -framework ApplicationServices tests/native/macos-display-oracle.m -o $oracle
+          if ($LASTEXITCODE -ne 0) { throw 'The display oracle did not compile' }
+          $main = (& $oracle screens | ConvertFrom-Json) | Where-Object { $_.main } | Select-Object -First 1
+          if (!$main) { throw 'No main display is available' }
+          $modes = & $oracle modes $main.number | ConvertFrom-Json
+          $original = $modes.currentIndex
+          $large = $modes.modes | Where-Object { $_.pixelWidth -eq $_.width -and $_.width -ge 1200 -and $_.height -ge 900 } |
+            Sort-Object { $_.width * $_.height } | Select-Object -First 1
+          if (!$large) { throw 'The hosted display offers no desktop mode that holds the workspace terminal fixtures' }
+          # Record the session's held modifier flags around each display change:
+          # the OS input helper refuses to inject while any is held.
+          $flags = { & '${{ matrix.python }}' -c "import ctypes; a=ctypes.CDLL('/System/Library/Frameworks/ApplicationServices.framework/ApplicationServices'); a.CGEventSourceFlagsState.restype=ctypes.c_uint64; print(hex(a.CGEventSourceFlagsState(0)))" }
+          Write-Output "modifier flags before the display change: $(& $flags)"
+          try {
+            if ($modes.current.height -lt 900 -or $modes.current.width -lt 1200) {
+              & $oracle set $main.number $large.index | Tee-Object -FilePath (Join-Path $env:NATIVE_EVIDENCE 'workspace-terminal-display-mode.json')
+              if ($LASTEXITCODE -ne 0) { throw 'The workspace terminal display mode was not applied' }
+              Start-Sleep -Seconds 2
+              Write-Output "modifier flags after the display change: $(& $flags)"
+            }
+            $failed = @()
+            foreach ($framework in @('solid', 'react')) {
+              $entry = "$framework-workspace-terminal"
+              $package = Join-Path $env:NATIVE_EVIDENCE "$entry-package"
+              bun experiments/aot-gpui/build-window.ts --entry $entry `
+                --source $env:GITHUB_WORKSPACE --host $env:BUN_NATIVE_HOST `
+                --host-profile release --outdir $package
+              if ($LASTEXITCODE -ne 0) { throw "The macOS $entry AOT compiler or inspection failed" }
+              $manifest = Get-Content -Raw (Join-Path $package 'manifest.json') | ConvertFrom-Json
+              foreach ($mode in @('development', 'aot')) {
+                $evidence = Join-Path $env:NATIVE_EVIDENCE "$entry-macos-$mode"
+                New-Item -ItemType Directory $evidence | Out-Null
+                $env:BUN_NATIVE_TERMINAL_EVIDENCE = $evidence
+                $env:BUN_NATIVE_TERMINAL_MODE = $mode
+                $env:BUN_NATIVE_EVIDENCE_LOG = Join-Path $evidence 'host-evidence.jsonl'
+                $env:BUN_NATIVE_EVIDENCE_NONCE = -join ((1..16) | ForEach-Object { '{0:x2}' -f (Get-Random -Maximum 256) })
+                if ($mode -eq 'development') {
+                  bun (Join-Path $package 'development/application.js') 2>&1 |
+                    Tee-Object -FilePath (Join-Path $evidence 'run.log')
+                } else {
+                  & (Join-Path $package $manifest.application.file) 2>&1 |
+                    Tee-Object -FilePath (Join-Path $evidence 'run.log')
+                }
+                if ($LASTEXITCODE -ne 0) { $failed += "$entry $mode (exit $LASTEXITCODE)"; continue }
+                $result = Join-Path $evidence 'result.json'
+                $report = if (Test-Path -LiteralPath $result -PathType Leaf) { Get-Content -Raw $result | ConvertFrom-Json }
+                if (!$report -or $report.status -ne 'passed' -or $report.platform -ne 'darwin' -or $report.mode -ne $mode -or $report.scenario -ne $entry) {
+                  $failed += "$entry $mode (no passing macOS evidence)"
+                }
+              }
+            }
+            # Every case runs so one failure does not hide the others' evidence.
+            if ($failed) { throw "macOS workspace terminal panes not verified: $($failed -join ', ')" }
+          } finally {
+            if ($original -ge 0) { & $oracle set $main.number $original | Out-Null }
+            Write-Output "modifier flags after the restore: $(& $flags)"
+          }
       # Packaged macOS applications run their host from BunNativeHost.app, so the
       # notification check uses the installed, signed template's host as the
       # bundled one. An unanswered OS notification prompt can stay on screen
@@ -1552,5 +1631,7 @@ jobs:
             !${{ runner.temp }}/bun-native-platform-evidence/react-layout-style-package/react-layout-style
             !${{ runner.temp }}/bun-native-platform-evidence/accessibility-package/accessibility
             !${{ runner.temp }}/bun-native-platform-evidence/input-states-platform-package/input-states-platform
+            !${{ runner.temp }}/bun-native-platform-evidence/solid-workspace-terminal-package/solid-workspace-terminal
+            !${{ runner.temp }}/bun-native-platform-evidence/react-workspace-terminal-package/react-workspace-terminal
           if-no-files-found: error
           retention-days: 14

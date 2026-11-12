@@ -313,9 +313,27 @@ events, `Idle` when the live text appears and then `Streaming one` and
 `Streaming one two`, and none for an ordinary text change. Orca's speech for
 the same structures is under [screen reader speech](#screen-reader-speech).
 
+**Lists on macOS.** The same list window runs in the hosted macOS step in
+development and inspected AOT, read through the AXUIElement client
+[`macos-accessibility-oracle.m`](../tests/native/macos-accessibility-oracle.m),
+and is part of the source-bound macOS feature record. It checks what
+AccessKit's macOS adapter (`accesskit_macos` 0.26.3, `src/node.rs` and
+`src/event.rs`) maps: the list is an `AXList` named by `accessible_label`; each
+mounted row is an `AXGroup` child of it (AccessKit's `ListItem` role) holding
+its label, and rows outside the window have none; `AXSelected` is true on the
+selected row only and moves with `accessible_selected`; and an AXObserver on
+the application receives exactly three `AXAnnouncementRequested`
+notifications, `Idle`, `Streaming one` and `Streaming one two`, each at
+medium priority (50, polite), and none for an ordinary text change. Upstream
+limit, asserted absent rather than passed: that adapter maps the set size and
+position to no AppKit attribute (no `AXIndex` or row count), so neither the
+history size nor a row's place in it reaches VoiceOver, and a `List` answers
+no `AXSelectedChildren` or `AXSelectedRows` (AccessKit gives those only to
+list boxes, grids, trees and other containers with selectable children).
+
 **Not verified:** screen reader speech on macOS and Windows (see
 [screen reader speech](#screen-reader-speech) for Orca); list roles and live
-regions on macOS and Windows (AccessKit maps them, no client has read them);
+regions on Windows (AccessKit maps them, no client has read them);
 and popup windows on Wayland. The host implements popup windows (`surface:
 'window'`) only on X11 and does not advertise `popup_windows_v1` on Wayland
 ([overlays](native-overlays.md)), so there is no Wayland popup tree to read.

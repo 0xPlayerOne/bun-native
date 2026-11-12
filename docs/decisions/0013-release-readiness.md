@@ -224,6 +224,15 @@ physical-machine runs, and Babel 8 for the Solid compiler, which no published
 preset supports yet ([#316](https://github.com/0xPlayerOne/bun-native/issues/316);
 a weekly audit job reports when one does).
 
+## Revision for ADR 0021 acceptance (2026-11-12)
+
+[ADR 0021](0021-platform-release-readiness.md#acceptance-2026-11-12) is
+accepted. Under it, Linux x64 X11 is release-ready. Wayland is supported where
+the pinned GPUI allows. macOS ARM64 is supported as a preview, except for
+notarized distribution, which needs the owner's Developer ID. Windows still
+waits on [#629](https://github.com/0xPlayerOne/bun-native/issues/629). This
+record stays the statement of the preview's general scope.
+
 ## Risks, unsupported cases and follow-up
 
 Revisit this decision when any blocking risk closes with linked evidence, when
