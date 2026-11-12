@@ -83,8 +83,9 @@ pub fn frame(number: u32) -> Result<Frame, SurfaceError> {
 }
 
 /// Make `popup` a borderless child of `parent` that stays above it and moves
-/// with it, and that never takes key status from it: clicking the popup
-/// leaves keyboard focus and the active window where they were.
+/// with it at its own pop-up level, and that never takes key status from it:
+/// clicking the popup leaves keyboard focus and the active window where they
+/// were.
 pub fn own(popup: u32, parent: u32) -> Result<(), SurfaceError> {
     let (popup, parent) = (window(popup)?, window(parent)?);
     if popup == parent {
@@ -97,9 +98,14 @@ pub fn own(popup: u32, parent: u32) -> Result<(), SurfaceError> {
     panel.setStyleMask(NSWindowStyleMask::Borderless | nonactivating);
     panel.setBecomesKeyOnlyIfNeeded(true);
     panel.setHasShadow(true);
+    // Attaching a child window gives it its parent's level (here the normal
+    // level), so the pop-up menu level GPUI set is restored afterwards: the
+    // popup stays above other applications' normal windows, as a menu does.
+    let level = panel.level();
     // SAFETY: both are live windows of this application on the main thread,
     // and a window is never made its own child (checked above).
     unsafe { parent.addChildWindow_ordered(&panel, NSWindowOrderingMode::Above) };
+    panel.setLevel(level);
     Ok(())
 }
 

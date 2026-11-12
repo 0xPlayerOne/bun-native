@@ -101,8 +101,16 @@ async function popups(): Promise<ServerWindow[]> {
   return (await listing()).windows.filter((window) => window.layer > 0)
 }
 async function onePopup(): Promise<ServerWindow> {
+  let server: Listing | undefined
   let found: ServerWindow[] = []
-  await waitFor(async () => (found = await popups()).length === 1, 'one popup window')
+  await waitFor(async () => {
+    server = await listing()
+    found = server.windows.filter((window) => window.layer > 0)
+    return found.length === 1
+  }, 'one popup window').catch((error: Error) => {
+    // Every on-screen window of the host, with its level, for the evidence.
+    throw new Error(error.message + ': ' + JSON.stringify(server))
+  })
   return found[0]!
 }
 const gone = () => waitFor(async () => (await popups()).length === 0, 'no popup window')
