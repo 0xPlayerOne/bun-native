@@ -79,7 +79,7 @@ function readme(name: string, version: string, commit: string): string {
   return `# ${name}\n\n${descriptions[name]}\n\nPart of [Bun Native](https://github.com/0xPlayerOne/bun-native), an experimental developer preview. Version ${version} was built from [${commit.slice(0, 12)}](https://github.com/0xPlayerOne/bun-native/tree/${commit}) and published from GitHub Actions with npm provenance. Use the Bun revision pinned in that commit's toolchain.json. Start with the [getting-started guide](https://github.com/0xPlayerOne/bun-native/blob/${commit}/docs/getting-started.md); \`bun-native host install\` fetches the matching release host. The license notice is in LICENSE.\n`
 }
 
-async function main(args: string[]): Promise<void> {
+export async function main(args: string[]): Promise<void> {
   const { values } = parseArgs({
     args,
     strict: true,

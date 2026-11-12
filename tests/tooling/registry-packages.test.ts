@@ -1,6 +1,14 @@
 import { expect, test } from 'bun:test'
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
 import { packageNames, type PackageManifest } from '../../scripts/native/package-set.ts'
-import { publishOrder, registryManifest, repositoryUrl } from '../../scripts/registry-packages.ts'
+import {
+  main,
+  publishOrder,
+  registryManifest,
+  repositoryUrl,
+} from '../../scripts/registry-packages.ts'
+import { packageFixture } from './package-fixture.ts'
 
 const manifest = (name: string, dependencies?: Record<string, string>): PackageManifest => ({
   name,
@@ -54,4 +62,30 @@ test('dependencies publish before their dependents', () => {
     '@bun-native/core': '0.0.0',
   })
   expect(() => publishOrder(manifests)).toThrow('dependency cycle')
+})
+
+test('a verified package set becomes publishable package directories in dependency order', async () => {
+  await expect(main(['--package-set', 'relative.json'])).rejects.toThrow('Usage:')
+  await packageFixture(async ({ directory, manifest }) => {
+    const output = join(directory, 'registry')
+    await main(['--package-set', manifest, '--outdir', output])
+    const order = readFileSync(join(output, 'publish-order.txt'), 'utf8').trim().split('\n')
+    expect([...order].sort()).toEqual(packageNames.map((name) => name.slice(12)).sort())
+    const version = JSON.parse(
+      readFileSync(join(import.meta.dir, '../../package.json'), 'utf8')
+    ).version
+    for (const short of order) {
+      const published = JSON.parse(readFileSync(join(output, short, 'package.json'), 'utf8'))
+      expect(published.name).toBe(`@bun-native/${short}`)
+      expect(published.version).toBe(version)
+      expect(published.private).toBeUndefined()
+      for (const [name, range] of Object.entries(published.dependencies ?? {}))
+        if (name.startsWith('@bun-native/')) {
+          expect(range).toBe(version)
+          expect(order.indexOf(name.slice(12))).toBeLessThan(order.indexOf(short))
+        }
+      expect(readFileSync(join(output, short, 'README.md'), 'utf8')).toContain('npm provenance')
+    }
+    await expect(main(['--package-set', manifest, '--outdir', output])).rejects.toThrow()
+  })
 })
