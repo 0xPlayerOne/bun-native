@@ -1,6 +1,6 @@
 # ADR 0021 — Release readiness by platform: Linux and macOS first, Windows waiting
 
-Status: proposed
+Status: accepted (2026-11-12, see [Acceptance](#acceptance-2026-11-12))
 
 Date: 2026-11-11
 
@@ -39,9 +39,9 @@ an exact source on the stated environment, not compile success.
    owner's bar explicitly excludes.
 3. **Decide per platform**: Linux x64 X11 is the release candidate; macOS ARM64
    is observed with a named list of gaps to close; Windows is explicitly waiting
-   on #629 and an owner certificate. Proposed.
+   on #629 and an owner certificate. Chosen.
 
-## Decision and rationale (proposed)
+## Decision and rationale
 
 ### Per-platform scope
 
@@ -59,7 +59,7 @@ an exact source on the stated environment, not compile success.
 
 | Item                                                | State                                                                                                                                                                                                                                                   |
 | --------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Linux host archive provenance                       | Keyless Sigstore build provenance through GitHub OIDC on `main` pushes, verified in the job and again before Release Please runs. No credential needed. Wired and unit-tested; **not yet run** on `main`.                                               |
+| Linux host archive provenance                       | Keyless Sigstore build provenance through GitHub OIDC on `main` pushes, verified in the job and again before Release Please runs. No credential needed. Attested and verified on `main` (see [Acceptance](#acceptance-2026-11-12)).                     |
 | macOS Developer ID signing and notarization         | **Owner-only.** Implemented and exercised with a throwaway identity; ad-hoc `codesign` is unit-tested. No Developer ID signature, notarization or Gatekeeper result exists ([owner steps](../releasing.md#configuring-release-identities-owner-steps)). |
 | Windows Authenticode                                | **Owner-only**, and deferred with Windows.                                                                                                                                                                                                              |
 | Update-manifest Ed25519 release key                 | **Owner-only** for a real application channel; the repository holds no release key.                                                                                                                                                                     |
@@ -74,6 +74,62 @@ from observed to supported when gaps (1)–(4) in its row are each run with
 retained evidence or explicitly removed from the advertised capability list,
 and the owner supplies the Developer ID identity so that gap (5) produces a
 notarized, Gatekeeper-accepted image. Windows is not part of the first release.
+
+## Acceptance (2026-11-12)
+
+The conditions in [What "Linux and macOS complete" will require](#what-linux-and-macos-complete-will-require)
+are met for Linux x64 X11 and for macOS ARM64 except the owner-only item. The
+per-platform table above records the state when this was proposed; where it
+differs, this section governs.
+
+- **Linux x64, X11: supported; release-ready.**
+  - Provenance: Native Linux in main Validation
+    [43142396083](https://github.com/0xPlayerOne/bun-native/actions/runs/43142396083)
+    (`e1b6c60`) attested the host archive (sha256 `eb8930dc…b426`, Rekor
+    index 3822959972) and verified it in the job. The release workflow
+    [43145047946](https://github.com/0xPlayerOne/bun-native/actions/runs/43145047946)
+    verified it again ([releasing](../releasing.md#linux-keyless-build-provenance)).
+  - [#296](https://github.com/0xPlayerOne/bun-native/issues/296) closes on the
+    documented-clean-runs condition. The cause was measured (first touch of the
+    Lavapipe/LLVM closure on hosted VMs) and mitigated by the warm-up step
+    (#442). No `Native open request N timed out` appears in any of the 24 failed
+    jobs of the 40 most recent failed Validation runs since November 6
+    (checked 2026-11-12).
+  - The real generated template is packaged into the tar.gz installer,
+    installed, launched through the installed verifying launcher, painted under
+    Xvfb and removed in a gating Native Linux step
+    ([releasing](../releasing.md)). The tar.gz plus `install.sh` is the Linux
+    platform installer; `.deb` and AppImage are out of scope.
+- **Linux x64, Wayland: supported where the pinned GPUI allows (owner's scope
+  decision, 2026-11-12).** Window, input, pixels, text input, display identity,
+  changes, migration and hotplug run on headless sway in development and AOT.
+  Clipboard, global shortcuts, drag and drop and popup windows stay X11-only
+  because GPUI owns the Wayland data device and surface roles; those limits are
+  tracked upstream in [#635](https://github.com/0xPlayerOne/bun-native/issues/635)
+  and do not count against Linux completeness.
+- **macOS 15 ARM64: supported (preview), except notarized distribution.**
+  - Gaps (1) and (2): every listed capability now has a retained source-bound
+    record from a passing main run
+    ([`macos-features-hosted-shard-1.json`](../../tests/native/evidence/macos-features-hosted-shard-1.json),
+    [`macos-features-hosted-shard-2.json`](../../tests/native/evidence/macos-features-hosted-shard-2.json);
+    [capabilities by platform](../native-platforms.md#advertised-capabilities-by-platform)).
+  - Gap (3): clipboard, global shortcuts, notifications, file dialogs and popup
+    windows are implemented on macOS and recorded in the same way.
+  - `accessibility_lists_v1`, the workspace terminal pane's OS input, and
+    display identity and changes gate on hosted macOS as well. What AccessKit's
+    macOS adapter does not expose for lists (set size, position, list-level
+    selection) is asserted absent, not claimed
+    ([native text](../native-text.md)).
+  - VoiceOver speech and Korean composition gate Native Platforms.
+  - Gap (4) remains **owner-only**: a Developer ID identity, notarization and a
+    Gatekeeper-accepted image ([#636](https://github.com/0xPlayerOne/bun-native/issues/636)).
+    Until then, macOS artifacts are throwaway- or ad-hoc-signed.
+- **Windows** is unchanged: waiting on
+  [#629](https://github.com/0xPlayerOne/bun-native/issues/629) and the Windows
+  lane follow-up [#638](https://github.com/0xPlayerOne/bun-native/issues/638).
+- **Physical hardware** (EDID monitors, physical GPUs and keyboards) is tracked in
+  [#637](https://github.com/0xPlayerOne/bun-native/issues/637). All GUI evidence
+  above comes from hosted VMs.
 
 ## Implementation consequences
 

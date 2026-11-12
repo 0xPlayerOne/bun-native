@@ -112,7 +112,7 @@ Or, with the repository checked out, `bun scripts/quality/linux-provenance.ts ve
 
 **What it proves and what it does not.** A passing verification shows that these exact archive bytes were produced by `native-linux.yml` on a GitHub-hosted runner from the named `main` commit of this repository. It does not show that the host is free of defects, it is not an OS code signature (no Linux desktop checks one), and it does not cover the application's AOT executable or a `.tar.gz` installer from `release-package.ts installer`; those are built by the application's own release, which can attest them the same way. A version release still attaches no host (see [Version and support policy](#version-and-support-policy)).
 
-**Results.** The unit and workflow-wiring tests pass on Linux x64 with pinned Bun (2026-11-11). The attestation and the two verifications have **not run yet**: they first run on the first `main` push after this change.
+**Results.** The unit and workflow-wiring tests pass on Linux x64 with pinned Bun (2026-11-11). On `main` at `e1b6c60`, Native Linux in Validation [43142396083](https://github.com/0xPlayerOne/bun-native/actions/runs/43142396083) attested `unsigned-native-host.tar.gz` (sha256 `eb8930dc37a6209b5338f2bd3834c82d8acf4d4f0e5579e11792b48d36bab426`, Rekor log index 3822959972) and verified it in the job against the `native-linux.yml` signer, `refs/heads/main` and that commit; the release workflow run [43145047946](https://github.com/0xPlayerOne/bun-native/actions/runs/43145047946) verified the checksum and provenance again before Release Please.
 
 ### What remains owner-only
 
