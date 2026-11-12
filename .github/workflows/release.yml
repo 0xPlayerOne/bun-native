@@ -143,3 +143,93 @@ jobs:
     secrets:
       CODE_FOUNDRY_TOKEN: ${{ secrets.CODE_FOUNDRY_TOKEN }}
       NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+  release-hosts:
+    # Attach the qualified commit's release host archives to the version's GitHub
+    # release, so `bun run native host install` (and `--host auto`) can fetch a
+    # host that matches the checkout. Each archive comes from this exact commit's
+    # successful Validation. Linux x64 is the archive whose keyless provenance the
+    # linux-provenance job verified. Windows is deferred (ADR 0021).
+    name: Attach release host archives
+    needs: [qualified, linux-provenance, release]
+    if: needs.qualified.outputs.release == 'true' && needs.release.outputs.release_created == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      actions: read
+      contents: write
+    steps:
+      - name: Download, verify and attach every release host archive
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_ID: ${{ needs.qualified.outputs.validation-run }}
+          TAG: ${{ needs.release.outputs.tag_name }}
+        run: |
+          set -euo pipefail
+          work="$RUNNER_TEMP/release-hosts"
+          mkdir -p "$work/assets"
+          # Artifact name (runner OS and arch) -> Node platform-arch asset name.
+          for pair in Linux-X64:linux-x64 Linux-ARM64:linux-arm64 macOS-ARM64:darwin-arm64 macOS-X64:darwin-x64; do
+            artifact="native-host-${pair%%:*}"
+            target="${pair#*:}"
+            gh run download "$RUN_ID" --repo "$GITHUB_REPOSITORY" --name "$artifact" --dir "$work/$artifact"
+            archive="$work/$artifact/unsigned-native-host.tar.gz"
+            expected=$(cut -d' ' -f1 "$archive.sha256")
+            actual=$(sha256sum "$archive" | cut -d' ' -f1)
+            if [ "$expected" != "$actual" ]; then
+              echo "::error::$artifact digest $actual does not match its recorded $expected"
+              exit 1
+            fi
+            cp "$archive" "$work/assets/bun-native-host-$target.tar.gz"
+          done
+          (cd "$work/assets" && sha256sum bun-native-host-*.tar.gz > SHA256SUMS)
+          cat "$work/assets/SHA256SUMS"
+          gh release upload "$TAG" --repo "$GITHUB_REPOSITORY" "$work"/assets/*
+          { echo '## Release host archives'; echo; echo '```'; cat "$work/assets/SHA256SUMS"; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+
+  npm:
+    # Publish the @bun-native packages of the released commit to npm with
+    # trusted publishing: npm exchanges this job's GitHub OIDC token for a
+    # short-lived publish credential and records provenance. No npm token or
+    # secret exists. Each package's trusted publisher names this workflow file
+    # ("npm packages" in docs/releasing.md). Versions already on npm are skipped, so
+    # a re-run after a partial publish completes the set.
+    name: Publish @bun-native packages to npm
+    needs: [qualified, release, release-hosts]
+    if: needs.qualified.outputs.release == 'true' && needs.release.outputs.release_created == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          ref: ${{ needs.release.outputs.tag_name }}
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24
+      - name: Use an npm with trusted publishing
+        run: npm install -g npm@11.15.0 && npm --version
+      - name: Install checksum-pinned Bun compiler
+        run: node scripts/install-bun.mjs --destination "$RUNNER_TEMP/bun-native-bun"
+      - run: bun install --frozen-lockfile
+      - name: Produce the verified package set and its registry packages
+        run: |
+          bun scripts/package-native.ts --outdir "$RUNNER_TEMP/package-set"
+          bun scripts/registry-packages.ts --package-set "$RUNNER_TEMP/package-set/manifest.json" --outdir "$RUNNER_TEMP/registry"
+      - name: Publish in dependency order with provenance
+        run: |
+          set -euo pipefail
+          while read -r short; do
+            directory="$RUNNER_TEMP/registry/$short"
+            name=$(node -p "require('$directory/package.json').name")
+            version=$(node -p "require('$directory/package.json').version")
+            if npm view "$name@$version" version > /dev/null 2>&1; then
+              echo "$name@$version is already published; skipping."
+              continue
+            fi
+            (cd "$directory" && npm publish --access public --provenance)
+            echo "- $name@$version" >> "$GITHUB_STEP_SUMMARY"
+          done < "$RUNNER_TEMP/registry/publish-order.txt"
