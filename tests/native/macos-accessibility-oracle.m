@@ -17,9 +17,17 @@
 // reports at the centre of the target's frame). `focused <pid>` prints the element that
 // process reports as its AXFocusedUIElement, the attribute VoiceOver follows,
 // with the application's AXFocusedWindow title and whether it is active.
+// `watch <pid> <seconds>` registers an AXObserver on that process's
+// application element for AXAnnouncementRequested, the notification AccessKit
+// posts for a live region (accesskit_macos 0.26.3 src/event.rs) and VoiceOver
+// speaks, prints {"ready":true} once registered and then one line per
+// announcement with its AXAnnouncementKey text and AXPriorityKey level, until
+// stdin closes or the bound elapses.
 // It moves no pointer and sends no keys.
 #import <AppKit/AppKit.h>
 #import <ApplicationServices/ApplicationServices.h>
+#include <signal.h>
+#include <unistd.h>
 
 static void emit(id value) {
     NSError *error = nil;
@@ -30,6 +38,7 @@ static void emit(id value) {
     }
     fwrite(data.bytes, 1, data.length, stdout);
     fputc('\n', stdout);
+    fflush(stdout);
 }
 
 __attribute__((noreturn)) static void fail(NSString *message) {
@@ -115,6 +124,12 @@ static id extents(AXUIElementRef element) {
     return boxes;
 }
 
+// How many elements AXSelectedChildren names; null when the attribute is absent.
+static id selected_children(AXUIElementRef element) {
+    id value = attribute(element, kAXSelectedChildrenAttribute);
+    return [value isKindOfClass:[NSArray class]] ? @([value count]) : [NSNull null];
+}
+
 static NSArray *actions(AXUIElementRef element) {
     CFArrayRef names = NULL;
     if (AXUIElementCopyActionNames(element, &names) != kAXErrorSuccess || !names) return @[];
@@ -158,6 +173,11 @@ static void walk(AXUIElementRef element, int depth, NSMutableArray *entries, NSM
             @"modal" : scalar(element, kAXModalAttribute),
             @"extents" : extents(element),
             @"selection" : selected_range(element),
+            // A list row's AXSelected, AXIndex and a list's AXSelectedChildren
+            // (accessibility_lists_v1); null where the element has none.
+            @"selected" : scalar(element, kAXSelectedAttribute),
+            @"index" : scalar(element, kAXIndexAttribute),
+            @"selectedChildren" : selected_children(element),
             @"actions" : actions(element),
             @"depth" : @(depth),
         }];
@@ -175,13 +195,68 @@ static void check(AXError error, NSString *what) {
     if (error != kAXErrorSuccess) fail([NSString stringWithFormat:@"%@ failed (AXError %d)", what, (int)error]);
 }
 
+static volatile sig_atomic_t input_closed = 0;
+
+// One AXAnnouncementRequested notification. The element is not queried: the
+// announcing process may be busy, and the text and priority are in the info.
+static void announced(AXObserverRef observer, AXUIElementRef element, CFStringRef notification,
+                      CFDictionaryRef info, void *context) {
+    (void)observer;
+    (void)element;
+    (void)context;
+    NSDictionary *details = (__bridge NSDictionary *)info;
+    id announcement = details[@"AXAnnouncementKey"];
+    id priority = details[@"AXPriorityKey"];
+    emit(@{
+        @"notification" : (__bridge NSString *)notification,
+        @"announcement" : [announcement isKindOfClass:[NSString class]] ? announcement : [NSNull null],
+        @"priority" : [priority isKindOfClass:[NSNumber class]] ? priority : [NSNull null],
+    });
+}
+
+static void watch(pid_t pid, double seconds) {
+    if (!(seconds > 0 && seconds <= 600)) fail(@"The watch bound must be between 0 and 600 seconds");
+    AXObserverRef observer = NULL;
+    check(AXObserverCreateWithInfoCallback(pid, announced, &observer), @"AXObserverCreateWithInfoCallback");
+    AXUIElementRef application = AXUIElementCreateApplication(pid);
+    if (!application) fail(@"No accessibility element for the process");
+    // Registered on the application element, the observer receives the
+    // notification from every element of the process, including the NSWindow
+    // AccessKit posts it on.
+    check(AXObserverAddNotification(observer, application, CFSTR("AXAnnouncementRequested"), NULL),
+          @"AXObserverAddNotification(AXAnnouncementRequested)");
+    CFRunLoopAddSource(CFRunLoopGetCurrent(), AXObserverGetRunLoopSource(observer), kCFRunLoopDefaultMode);
+    [NSThread detachNewThreadWithBlock:^{
+      char buffer[64];
+      while (read(STDIN_FILENO, buffer, sizeof buffer) > 0) {
+      }
+      input_closed = 1;
+    }];
+    emit(@{@"ready" : @YES});
+    NSDate *until = [NSDate dateWithTimeIntervalSinceNow:seconds];
+    while (!input_closed && [until timeIntervalSinceNow] > 0)
+        CFRunLoopRunInMode(kCFRunLoopDefaultMode, 0.05, false);
+    CFRunLoopRemoveSource(CFRunLoopGetCurrent(), AXObserverGetRunLoopSource(observer), kCFRunLoopDefaultMode);
+    AXObserverRemoveNotification(observer, application, CFSTR("AXAnnouncementRequested"));
+    CFRelease(application);
+    CFRelease(observer);
+}
+
 int main(int argc, const char *argv[]) {
     @autoreleasepool {
         if (argc == 2 && strcmp(argv[1], "trusted") == 0) {
             emit(@{@"trusted" : AXIsProcessTrusted() ? @YES : @NO});
             return 0;
         }
-        NSString *usage = @"Usage: trusted | focused <pid> | dump <pid> <title> | act <pid> <title> <role> <name> <action> [args]";
+        NSString *usage = @"Usage: trusted | focused <pid> | watch <pid> <seconds> | dump <pid> <title> | act <pid> <title> <role> <name> <action> [args]";
+        if (argc == 4 && strcmp(argv[1], "watch") == 0) {
+            if (!AXIsProcessTrusted()) fail(@"This process is not trusted for Accessibility");
+            char *end = NULL;
+            double seconds = strtod(argv[3], &end);
+            if (!end || *end) fail(@"Invalid watch bound");
+            watch(parse_pid(argv[2]), seconds);
+            return 0;
+        }
         if (argc == 3 && strcmp(argv[1], "focused") == 0) {
             if (!AXIsProcessTrusted()) fail(@"This process is not trusted for Accessibility");
             pid_t pid = parse_pid(argv[2]);

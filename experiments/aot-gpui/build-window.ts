@@ -274,7 +274,9 @@ async function sourceHashes() {
     entry === 'react-layout-style' ||
     entry === 'overlays' ||
     entry === 'accessibility' ||
-    entry === 'input-states-platform'
+    entry === 'input-states-platform' ||
+    entry === 'solid-workspace-terminal' ||
+    entry === 'react-workspace-terminal'
   )
     for (const path of [
       'tests/native/macos-window-input.ts',

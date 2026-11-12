@@ -12,7 +12,8 @@
  *
  * Callers speak the xdotool vocabulary the Linux fixtures use: key names such
  * as `Tab`, `shift+Tab`, `ctrl+a`, `Escape`, `Return`, `space` and letters;
- * pointer buttons 1 (left), 4 (wheel up) and 5 (wheel down) at a viewport point.
+ * pointer buttons 1 (left), 4 (wheel up) and 5 (wheel down) at a viewport point;
+ * `close` for the window manager's close.
  */
 import { mkdtempSync, readFileSync, realpathSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
@@ -234,6 +235,16 @@ export class MacWindow {
     await flush()
   }
 
+  /**
+   * Printable ASCII in one helper call, every character a Unicode key event
+   * `delayMs` apart, as native-platform-input.py `type_printable` types into
+   * the workspace references' inputs. For text entry, where the inserted
+   * characters matter and not the keys' names.
+   */
+  async typeText(text: string, delayMs = 20) {
+    await this.#input('type', { text, delayMs }, 5_000 + text.length * (delayMs + 20))
+  }
+
   #viewportRequest() {
     const [width, height] = this.#viewport()
     return [width, height]
@@ -277,6 +288,15 @@ export class MacWindow {
     const result = await this.#input('resize', { width, height, viewport: this.#viewportRequest() })
     const { injection: _, ...state } = result
     this.#state = state as State
+  }
+
+  /**
+   * The OS close of the owned window: its standard close button pressed
+   * through Accessibility, the macOS form of the window manager's Alt+F4.
+   * The caller observes the close through its own native evidence.
+   */
+  async close() {
+    await this.#input('close')
   }
 
   /** Capture the owned window and read displayed viewport pixels. */

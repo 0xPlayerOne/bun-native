@@ -46,10 +46,15 @@ coordinate, capture pixel and AT-SPI extent in device pixels. See
 `tests/native/solid-workspace-terminal.tsx` and
 `tests/native/react-workspace-terminal.tsx` are self-driving through
 `workspace-terminal.ts`: the actual workspace with its real `/bin/sh` on an
-owned PTY, XTest clicks and keys into the terminal pane, the PTY round trip of
+owned PTY, OS clicks and keys into the terminal pane, the PTY round trip of
 a command's output, its paint (host paint evidence and window pixels),
-Interrupt and Alt+F4. They need `BUN_NATIVE_EVIDENCE_LOG` and
-`BUN_NATIVE_EVIDENCE_NONCE` for the host's paint evidence.
+Interrupt and the OS close. On Linux X11 the input is XTest, the capture
+ImageMagick `import` and the close openbox Alt+F4; on macOS the input is
+CoreGraphics through the bounded helper (`BUN_NATIVE_PLATFORM_HELPER`,
+`macos-window-input.ts`), the capture `screencapture` and the close the
+standard close button pressed through Accessibility. They need
+`BUN_NATIVE_EVIDENCE_LOG` and `BUN_NATIVE_EVIDENCE_NONCE` for the host's paint
+evidence.
 
 `tests/native/accessibility-platform.ts` is the macOS and Windows counterpart:
 an independent AX (`macos-accessibility-oracle.m`) or UI Automation

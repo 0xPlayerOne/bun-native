@@ -14,7 +14,10 @@
  * (tests/native/macos-window-input.ts); the tree is read and requested through
  * the independent AXUIElement client (tests/native/macos-accessibility-oracle.m)
  * and normalized to the AT-SPI vocabulary below; the focus ring is read from a
- * `screencapture` of the owned window.
+ * `screencapture` of the owned window. The list section reads AXList, its
+ * AXGroup rows and their AXSelected, and AXAnnouncementRequested
+ * notifications through an AXObserver in the same client; what AccessKit's
+ * macOS adapter does not expose is asserted absent (MAC_LIST_LIMITS).
  */
 import {
   createApplication,
@@ -108,6 +111,10 @@ type Accessible = {
   value?: { current: number; minimum: number; maximum: number }
   bounds?: number[]
   attributes?: { setsize?: string; posinset?: string }
+  /** macOS: AXSelected (absent: undefined), AXIndex and AXSelectedChildren's count. */
+  axSelected?: boolean
+  axIndex?: unknown
+  axSelectedChildren?: number | null
 }
 
 const TITLE = 'Bun Native accessibility qualification'
@@ -141,6 +148,8 @@ const MAC_ROLES: Record<string, string> = {
   AXButton: 'push-button',
   AXTextField: 'entry',
   AXSplitter: 'separator',
+  // AccessKit's List (accesskit_macos 0.26.3 src/node.rs ns_role).
+  AXList: 'list',
   // AccessKit's ScrollView (and only that container here) is AXUnknown.
   AXUnknown: 'panel',
   // AccessKit exposes a Dialog as AXWindow with the AXDialog subrole.
@@ -155,6 +164,19 @@ const WINDOW_BUTTONS = new Set([
 ])
 const flag = (value: unknown) => value === true || value === 1
 /**
+ * What accessibility_lists_v1 cannot show on macOS at the pinned AccessKit
+ * (accesskit_macos 0.26.3, src/node.rs), asserted absent below rather than
+ * reported as a pass.
+ */
+const MAC_LIST_LIMITS = {
+  setSize:
+    'accesskit_macos 0.26.3 maps size_of_set to no AppKit attribute (no accessibilityIndex, accessibilityRowCount or other set-size selector), so the windowed history size is not exposed',
+  position:
+    'accesskit_macos 0.26.3 maps position_in_set to no AppKit attribute (no accessibilityIndex), so a mounted row does not report its place in the history',
+  listSelection:
+    'accesskit_macos 0.26.3 answers AXSelectedChildren and AXSelectedRows only for containers with selectable children (ListBox, Grid, Tree and similar), not Role::List, so selection is exposed per row through AXSelected only',
+}
+/**
  * One AXUIElement dump entry in the Linux probe's shape. Names are the AX
  * title, then description, then a label's value; states come from AXFocused,
  * AXEnabled, AXOrientation and AXModal; UTF-16 selection [start, length]
@@ -164,9 +186,10 @@ const flag = (value: unknown) => value === true || value === 1
  * AXValue and a disabled field's AXFocused were both settable), so neither
  * becomes `focusable` or `editable`; macOS judges those by their effect.
  */
-function fromAx(entry: Record<string, unknown>): Accessible {
+function fromAx(entry: Record<string, unknown>, listItem = false): Accessible {
   const native = String(entry['role'])
-  const role = MAC_ROLES[native] ?? native
+  // AccessKit gives a ListItem the AXGroup role; it is the AXList's child.
+  const role = listItem ? 'list-item' : (MAC_ROLES[native] ?? native)
   const value = entry['value']
   const states: string[] = []
   if (flag(entry['focused'])) states.push('focused')
@@ -174,6 +197,7 @@ function fromAx(entry: Record<string, unknown>): Accessible {
   if (entry['orientation'] === 'AXVerticalOrientation') states.push('vertical')
   if (entry['orientation'] === 'AXHorizontalOrientation') states.push('horizontal')
   if (flag(entry['modal'])) states.push('modal')
+  if (listItem && flag(entry['selected'])) states.push('selected')
   const result: Accessible = {
     role,
     name:
@@ -193,6 +217,11 @@ function fromAx(entry: Record<string, unknown>): Accessible {
     const extents = entry['extents'] as number[][] | null
     if (extents) result.extents = extents
   }
+  if (listItem) {
+    if (entry['selected'] !== null) result.axSelected = flag(entry['selected'])
+    result.axIndex = entry['index']
+  }
+  if (role === 'list') result.axSelectedChildren = entry['selectedChildren'] as number | null
   if (role === 'separator' && typeof value === 'number')
     result.value = {
       current: value,
@@ -204,12 +233,24 @@ function fromAx(entry: Record<string, unknown>): Accessible {
 /**
  * Entries outside the GPUI content: title-bar buttons, the title bar's own
  * title text (a window child, a sibling of the content, carrying the window
- * title; hosted run 43116232661) and AccessKit's root group.
+ * title; hosted run 43116232661) and AccessKit's root group. An AXGroup whose
+ * parent is an AXList is a list row, not frame.
  */
-const frame = (entry: Record<string, unknown>) =>
+const frame = (entry: Record<string, unknown>, title: string, parent: string | undefined) =>
   WINDOW_BUTTONS.has(String(entry['subrole'])) ||
-  entry['role'] === 'AXGroup' ||
-  (entry['role'] === 'AXStaticText' && entry['depth'] === 1 && entry['value'] === TITLE)
+  (entry['role'] === 'AXGroup' && parent !== 'AXList') ||
+  (entry['role'] === 'AXStaticText' && entry['depth'] === 1 && entry['value'] === title)
+/** Each pre-order dump entry's parent role, from the depths. */
+const parentRoles = (raw: Array<Record<string, unknown>>) => {
+  const stack: string[] = []
+  return raw.map((entry) => {
+    const depth = Number(entry['depth'])
+    const parent = stack[depth - 1]
+    stack[depth] = String(entry['role'])
+    stack.length = depth + 1
+    return parent
+  })
+}
 
 if (mac) {
   const trust = JSON.parse(await run([axOracle!, 'trusted'])) as { trusted: boolean }
@@ -221,8 +262,9 @@ for (const capability of [
   'overlays_v1',
   'split_resize_v1',
   'accessibility_v1',
-  // The popup window and list sections run on Linux only.
-  ...(mac ? [] : ['popup_windows_v1', 'accessibility_lists_v1']),
+  'accessibility_lists_v1',
+  // The popup window section runs on Linux only.
+  ...(mac ? [] : ['popup_windows_v1']),
 ])
   assert(app.capabilities.includes(capability as never), capability)
 
@@ -365,10 +407,17 @@ try {
         Record<string, unknown>
       >
       dumps[name] = raw
-      // Every entry is either window frame or a node with a known role.
-      const unknown = raw.filter((entry) => !frame(entry) && !MAC_ROLES[String(entry['role'])])
+      const parents = parentRoles(raw)
+      const rows = raw.map(
+        (entry, index) => entry['role'] === 'AXGroup' && parents[index] === 'AXList'
+      )
+      const content = raw.filter((entry, index) => !frame(entry, title, parents[index]))
+      // Every entry is either window frame, a list row or a node with a known role.
+      const unknown = content.filter(
+        (entry) => !rows[raw.indexOf(entry)] && !MAC_ROLES[String(entry['role'])]
+      )
       assert.deepEqual(unknown, [], 'every GPUI content node has a mapped AX role')
-      return raw.filter((entry) => !frame(entry)).map(fromAx)
+      return content.map((entry) => fromAx(entry, rows[raw.indexOf(entry)]))
     }
     const tree = JSON.parse(await run([atspiPython!, '-I', probe, 'dump', title])) as {
       roles: Accessible[]
@@ -395,9 +444,17 @@ try {
     data: unknown
     current?: number
   }
-  /** Start the independent AT-SPI event listener; `stop` returns every event it saw. */
+  /**
+   * Start the independent AT-SPI event listener; `stop` returns every event it
+   * saw. On macOS the AXObserver in the AX oracle reports the host's
+   * AXAnnouncementRequested notifications, as AT-SPI announcement events whose
+   * data is the AXAnnouncementKey text and detail1 the AXPriorityKey level.
+   */
   const watchEvents = async () => {
-    const child = Bun.spawn([atspiPython!, '-I', probe, 'watch', '120'], {
+    const command = mac
+      ? [axOracle!, 'watch', String(pid), '120']
+      : [atspiPython!, '-I', probe, 'watch', '120']
+    const child = Bun.spawn(command, {
       stdin: 'pipe',
       stdout: 'pipe',
       stderr: 'pipe',
@@ -411,15 +468,29 @@ try {
         buffered += decoder.decode(chunk, { stream: true })
         let newline = buffered.indexOf('\n')
         while (newline >= 0) {
-          const line = JSON.parse(buffered.slice(0, newline)) as AtspiEvent | { ready: true }
+          const line = JSON.parse(buffered.slice(0, newline)) as
+            | AtspiEvent
+            | { ready: true }
+            | { notification: string; announcement: unknown; priority: unknown }
           buffered = buffered.slice(newline + 1)
           if ('ready' in line) ready = true
-          else events.push(line)
+          else if ('notification' in line) {
+            // Only the macOS AX oracle reports notifications.
+            assert(mac, 'an AXObserver notification from the AT-SPI listener')
+            assert.equal(line.notification, 'AXAnnouncementRequested')
+            events.push({
+              type: 'object:announcement',
+              source: {},
+              detail1: Number(line.priority),
+              detail2: 0,
+              data: line.announcement,
+            })
+          } else events.push(line)
           newline = buffered.indexOf('\n')
         }
       }
     })()
-    await waitFor(() => ready, 'the AT-SPI event listener', 10_000)
+    await waitFor(() => ready, mac ? 'the AXObserver' : 'the AT-SPI event listener', 10_000)
     return {
       events,
       stop: async () => {
@@ -893,11 +964,15 @@ try {
     record('popupWindow', { dialog: popupDialog, inside: popupInside, clicks: popupClicks })
   }
 
-  if (!mac) {
+  {
     // accessibility_lists_v1, in its own window: a windowed list exposes the
     // full history's set size, each mounted row its place in it and its
     // selection; rows outside the window have no node. A live text node is
     // announced when it appears and on each change; ordinary text is not.
+    // macOS exposes the list (AXList), its rows (AXGroup children of the
+    // AXList), each row's selection (AXSelected) and the announcements
+    // (AXAnnouncementRequested); set size and position are not exposed there
+    // (MAC_LIST_LIMITS) and are asserted absent instead.
     const lists = await app.openWindow({ title: LIST_TITLE, width: 480, height: 320 })
     const listWatcher = await watchEvents()
     const rowNodes = new Map<number, { item: NativeNode<'box'>; label: NativeNode<'text'> }>()
@@ -927,7 +1002,12 @@ try {
       batch.append(lists.root, status)
       return { list, status }
     })
-    type ListItem = { position: number; setSize: number; selected: boolean; text: string[] }
+    type ListItem = {
+      position: number | null
+      setSize: number | null
+      selected: boolean
+      text: string[]
+    }
     const listItems = (tree: Accessible[]): ListItem[] | undefined => {
       const list = find(tree, 'list', 'Messages')
       if (!list) return undefined
@@ -938,15 +1018,24 @@ try {
         .filter((node) => node.depth === list.depth + 1)
         .map((item) => {
           assert.equal(item.role, 'list-item', 'every child of the list is a list item')
-          assert(
-            item.states.includes('selectable'),
-            'an item with accessible_selected is selectable'
-          )
+          if (mac)
+            // AccessKit answers isAccessibilitySelected for every item-like
+            // node (accesskit_macos 0.26.3 src/node.rs): AXSelected is a
+            // boolean on every row.
+            assert(
+              item.axSelected !== undefined,
+              'an item with accessible_selected reports AXSelected'
+            )
+          else
+            assert(
+              item.states.includes('selectable'),
+              'an item with accessible_selected is selectable'
+            )
           const after = inside.slice(inside.indexOf(item) + 1)
           const stop = after.findIndex((node) => node.depth <= item.depth)
           return {
-            position: Number(item.attributes?.posinset),
-            setSize: Number(item.attributes?.setsize),
+            position: mac ? null : Number(item.attributes?.posinset),
+            setSize: mac ? null : Number(item.attributes?.setsize),
             selected: item.states.includes('selected'),
             text: (stop < 0 ? after : after.slice(0, stop)).map(
               (node) => node.role + ':' + node.name
@@ -955,9 +1044,10 @@ try {
         })
     }
     const expectItems = async (name: string, first: number, selected: number) => {
+      // macOS: no set size or position (MAC_LIST_LIMITS), checked below.
       const expected = Array.from({ length: LIST_MOUNTED }, (_, index) => ({
-        position: first + index,
-        setSize: LIST_TOTAL,
+        position: mac ? null : first + index,
+        setSize: mac ? null : LIST_TOTAL,
         selected: first + index === selected,
         text: ['label:Message ' + (first + index)],
       }))
@@ -971,6 +1061,25 @@ try {
       )
       const list = find(tree, 'list', 'Messages')!
       assert.equal(list.attributes?.posinset, undefined, 'the list itself has no position')
+      if (mac) {
+        // Expected unsupported on macOS: neither the history size nor a row's
+        // place in it reaches any AX attribute, and the AXList names no
+        // selected children; each is asserted absent so a pass cannot be faked.
+        const raw = dumps[name] as Array<Record<string, unknown>>
+        const numbers = raw.flatMap((entry) =>
+          ['value', 'minimum', 'maximum', 'index'].map((key) => entry[key])
+        )
+        assert(!numbers.includes(LIST_TOTAL), 'setSize: ' + MAC_LIST_LIMITS.setSize)
+        const rows = tree.filter((node) => node.role === 'list-item')
+        rows.forEach((row, index) => {
+          const position = first + index
+          assert(
+            row.axIndex !== position && row.axIndex !== position - 1,
+            'position: ' + MAC_LIST_LIMITS.position
+          )
+        })
+        assert(!list.axSelectedChildren, 'listSelection: ' + MAC_LIST_LIMITS.listSelection)
+      }
       return listItems(tree)!
     }
     const initialItems = await expectItems('list initial', 4_996, 4_998)
@@ -1035,7 +1144,18 @@ try {
       ['Idle', 'Streaming one', 'Streaming one two'],
       'the live text is announced when it appears and on each change, and nothing else is'
     )
-    record('lists', { initial: initialItems, shifted: shiftedItems, announcements: spoken })
+    if (mac) {
+      // accesskit_macos 0.26.3 (src/event.rs) posts a polite live region's
+      // value at NSAccessibilityPriorityMedium (50).
+      const priorities = listEvents.map((event) => event.detail1)
+      assert.deepEqual(priorities, [50, 50, 50], 'polite announcements at medium priority')
+    }
+    record('lists', {
+      initial: initialItems,
+      shifted: shiftedItems,
+      announcements: spoken,
+      ...(mac ? { unsupported: MAC_LIST_LIMITS } : {}),
+    })
     await lists.close()
   }
 

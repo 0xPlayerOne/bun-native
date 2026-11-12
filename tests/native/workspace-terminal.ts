@@ -5,21 +5,30 @@
  * 80x24 pseudo-terminal, as the interactive example does. Everything the
  * fixture checks arrives through independent channels:
  *
- * - Input: XTEST (xdotool) clicks the terminal's command input at the bounds
- *   the host painted it at, types a command and presses Return.
+ * - Input: XTEST (xdotool) on Linux X11, or CoreGraphics key and pointer
+ *   events through the bounded SDK helper on macOS (tests/native/macos-window-input.ts),
+ *   clicks the terminal's command input at the bounds the host painted it at,
+ *   types a command and presses Return.
  * - Round trip: the command runs in `/bin/sh` and its output, which differs
  *   from the typed text, returns through the PTY to the terminal session.
  * - Paint: the host's own paint evidence (`BUN_NATIVE_EVIDENCE_LOG`) shows the
  *   output line in the tree it painted, at bounds from the same paint, and a
- *   capture of the displayed window has text-coloured pixels inside them.
+ *   capture of the displayed window (ImageMagick `import` on X11,
+ *   `screencapture -l` of the owned window on macOS) has text-coloured pixels
+ *   inside them.
  *
- * Interrupt (Ctrl-C through the PTY) and OS close are then driven the same way.
+ * Interrupt (Ctrl-C through the PTY) and OS close (openbox Alt+F4 on X11, the
+ * standard close button pressed through Accessibility on macOS) are then
+ * driven the same way.
  */
 import type { NativeWindow } from '@bun-native/core'
 import assert from 'node:assert/strict'
 import { readFileSync, statSync, writeFileSync } from 'node:fs'
 import { isAbsolute, join } from 'node:path'
 import type { TerminalSession } from '../../examples/shared/terminal.ts'
+import { MacWindow } from './macos-window-input.ts'
+
+const mac = process.platform === 'darwin'
 
 export interface TerminalFixtureEnvironment {
   output: string
@@ -45,12 +54,17 @@ export function terminalFixtureEnvironment(): TerminalFixtureEnvironment {
     !log ||
     !isAbsolute(log) ||
     !nonce ||
-    !process.env['DISPLAY'] ||
-    process.env['WAYLAND_DISPLAY'] ||
-    process.env['GPUI_X11_SCALE_FACTOR'] !== '1'
+    (mac
+      ? !process.env['BUN_NATIVE_PLATFORM_HELPER'] ||
+        !isAbsolute(process.env['BUN_NATIVE_PLATFORM_HELPER'])
+      : !process.env['DISPLAY'] ||
+        process.env['WAYLAND_DISPLAY'] ||
+        process.env['GPUI_X11_SCALE_FACTOR'] !== '1')
   )
     throw new Error(
-      'An isolated X11 display at scale 1, evidence directory, host, mode and host evidence log and nonce are required'
+      mac
+        ? 'macOS needs an evidence directory, host, mode, host evidence log and nonce and the OS input helper'
+        : 'An isolated X11 display at scale 1, evidence directory, host, mode and host evidence log and nonce are required'
     )
   return { output, host, mode, log, nonce }
 }
@@ -169,10 +183,45 @@ export async function driveTerminal(options: {
   window.on(window.root, 'input', (event) => void values.push(event.value), { capture: true })
   const frame = () => latestFrame(environment.log, environment.nonce)
 
-  const ids = (await run(['xdotool', 'search', '--sync', '--name', '^' + title + '$'])).split('\n')
-  assert.equal(ids.length, 1, 'exactly one owned window')
-  const xid = ids[0]!
-  await run(['xdotool', 'windowactivate', '--sync', xid])
+  // The OS input for each step: XTEST on X11, the bounded CoreGraphics helper
+  // on macOS (which re-identifies the owned window before every post).
+  let xid = ''
+  let macWindow: MacWindow | undefined
+  if (mac) {
+    macWindow = await MacWindow.open(title, environment.host, () => {
+      const viewport = frame()?.layout.viewport
+      if (!viewport) throw new Error('No painted viewport for the owned window yet')
+      return viewport
+    })
+  } else {
+    const ids = (await run(['xdotool', 'search', '--sync', '--name', '^' + title + '$'])).split(
+      '\n'
+    )
+    assert.equal(ids.length, 1, 'exactly one owned window')
+    xid = ids[0]!
+    await run(['xdotool', 'windowactivate', '--sync', xid])
+  }
+  const click = async (x: number, y: number) => {
+    if (macWindow) return macWindow.click([Math.round(x), Math.round(y)])
+    await run([
+      'xdotool',
+      'mousemove',
+      '--window',
+      xid,
+      String(Math.round(x)),
+      String(Math.round(y)),
+      'click',
+      '1',
+    ])
+  }
+  const type = async (text: string) => {
+    if (macWindow) return macWindow.typeText(text, 20)
+    await run(['xdotool', 'type', '--delay', '20', text])
+  }
+  const pressReturn = async () => {
+    if (macWindow) return macWindow.press('Return')
+    await run(['xdotool', 'key', '--clearmodifiers', 'Return'])
+  }
 
   // The shell starts on the PTY and prints its prompt through it.
   await waitFor(
@@ -197,18 +246,11 @@ export async function driveTerminal(options: {
     () => frame()?.layout.status
   )
   const input = commandInput(ready)!
-  assert.equal(ready.layout.scale_factor, 1)
+  // X11 input and capture are in device pixels, so Linux runs at scale 1;
+  // macOS input and the capture's point mapping are in logical points.
+  if (!mac) assert.equal(ready.layout.scale_factor, 1)
   const [x, y, width, height] = bounds(ready, input.node_id)!
-  await run([
-    'xdotool',
-    'mousemove',
-    '--window',
-    xid,
-    String(Math.round(x + width / 2)),
-    String(Math.round(y + height / 2)),
-    'click',
-    '1',
-  ])
+  await click(x + width / 2, y + height / 2)
   await waitFor(
     () => frame()?.layout.focused_node_id === input.node_id,
     'the clicked terminal input to take focus',
@@ -217,7 +259,7 @@ export async function driveTerminal(options: {
   record('focused', { node: input.node_id, bounds: [x, y, width, height] })
 
   // Real key events type the command into the native input.
-  await run(['xdotool', 'type', '--delay', '20', COMMAND])
+  await type(COMMAND)
   await waitFor(
     () => values.at(-1) === COMMAND,
     'the typed command in the native input',
@@ -228,7 +270,7 @@ export async function driveTerminal(options: {
     false,
     'no output before Return'
   )
-  await run(['xdotool', 'key', '--clearmodifiers', 'Return'])
+  await pressReturn()
   // The terminal echoes the command line and then prints the shell's output.
   const lines = await waitFor(
     () => {
@@ -268,58 +310,64 @@ export async function driveTerminal(options: {
   assert(ink !== undefined && paper !== undefined, 'the output line has a colour and a background')
   await Bun.sleep(100)
   const capture = join(environment.output, 'terminal-output.png')
-  await run(['import', '-window', xid, capture])
   const [bx, by, bw, bh] = painted.box.map(Math.round) as Bounds
-  const pixels = await run([
-    'convert',
-    capture,
-    '-crop',
-    `${bw}x${bh}+${bx}+${by}`,
-    '-depth',
-    '8',
-    'txt:-',
-  ])
   const channels = (color: number) => [(color >> 16) & 0xff, (color >> 8) & 0xff, color & 0xff]
   const distance = (a: number[], b: number[]) =>
     a.reduce((sum, value, i) => sum + Math.abs(value - b[i]!), 0)
   let inked = 0
   let total = 0
-  for (const match of pixels.matchAll(/#([0-9A-F]{6})/gi)) {
-    const rgb = channels(Number.parseInt(match[1]!, 16))
+  let expected = bw * bh
+  const count = (color: number) => {
+    const rgb = channels(color)
     total += 1
     if (distance(rgb, channels(ink)) < distance(rgb, channels(paper))) inked += 1
+  }
+  let scale = 1
+  if (macWindow) {
+    // Every physical capture pixel inside the logical painted bounds.
+    const shot = await macWindow.capture(capture)
+    scale = shot.scale
+    const [columns, rows] = [Math.round(bw * scale), Math.round(bh * scale)]
+    expected = columns * rows
+    for (let row = 0; row < rows; row += 1)
+      for (let column = 0; column < columns; column += 1)
+        count(shot.pixel([bx + (column + 0.5) / scale, by + (row + 0.5) / scale]))
+  } else {
+    await run(['import', '-window', xid, capture])
+    const pixels = await run([
+      'convert',
+      capture,
+      '-crop',
+      `${bw}x${bh}+${bx}+${by}`,
+      '-depth',
+      '8',
+      'txt:-',
+    ])
+    for (const match of pixels.matchAll(/#([0-9A-F]{6})/gi)) count(Number.parseInt(match[1]!, 16))
   }
   record('paint', {
     revision: painted.current.revision,
     bounds: painted.box,
     ink: ink.toString(16),
     paper: paper.toString(16),
+    ...(macWindow ? { scale } : {}),
     inked,
     total,
   })
-  assert.equal(total, bw * bh, 'the capture covers the painted bounds')
+  assert.equal(total, expected, 'the capture covers the painted bounds')
   assert(inked >= 20, `the output line is visibly painted (${inked} text-coloured pixels)`)
 
   // Ctrl-C from the pane's Interrupt button stops a foreground job through
   // the PTY; the same shell prints a new prompt and keeps running.
   values.length = 0
-  await run([
-    'xdotool',
-    'mousemove',
-    '--window',
-    xid,
-    String(Math.round(x + width / 2)),
-    String(Math.round(y + height / 2)),
-    'click',
-    '1',
-  ])
-  await run(['xdotool', 'type', '--delay', '20', BLOCKING])
+  await click(x + width / 2, y + height / 2)
+  await type(BLOCKING)
   await waitFor(
     () => values.at(-1) === BLOCKING,
     'the blocking command',
     () => values.slice(-3)
   )
-  await run(['xdotool', 'key', '--clearmodifiers', 'Return'])
+  await pressReturn()
   const blockingLine = await waitFor(
     () => session.current.lines.findLast((line) => line.text.endsWith(BLOCKING))?.id,
     'the blocking command to start',
@@ -344,16 +392,7 @@ export async function driveTerminal(options: {
     () => frame()?.revision
   )
   const interruptedAt = performance.now()
-  await run([
-    'xdotool',
-    'mousemove',
-    '--window',
-    xid,
-    String(Math.round(interrupt[0] + interrupt[2] / 2)),
-    String(Math.round(interrupt[1] + interrupt[3] / 2)),
-    'click',
-    '1',
-  ])
+  await click(interrupt[0] + interrupt[2] / 2, interrupt[1] + interrupt[3] / 2)
   await waitFor(
     () =>
       session.current.status === 'running' &&
@@ -365,11 +404,18 @@ export async function driveTerminal(options: {
   )
   record('interrupt', { promptAfterMs: Math.round(performance.now() - interruptedAt) })
 
-  // OS close through the window manager.
-  await run(['xdotool', 'windowactivate', '--sync', xid])
-  await run(['xdotool', 'key', '--clearmodifiers', 'alt+F4'])
+  // OS close through the window manager: openbox Alt+F4 on X11; on macOS the
+  // owned window's standard close button, pressed through Accessibility.
+  if (macWindow) {
+    await macWindow.activate()
+    await macWindow.close()
+  } else {
+    await run(['xdotool', 'windowactivate', '--sync', xid])
+    await run(['xdotool', 'key', '--clearmodifiers', 'alt+F4'])
+  }
   await window.closed
   record('closed', { status: session.current.status })
+  if (macWindow) outcomes['osInput'] = macWindow.log
   return outcomes
 }
 
@@ -379,7 +425,14 @@ export function writeTerminalResult(
   outcomes: Record<string, unknown>,
   extra: Record<string, unknown>
 ) {
-  const result = { status: 'passed', scenario, mode: environment.mode, outcomes, ...extra }
+  const result = {
+    status: 'passed',
+    scenario,
+    platform: process.platform,
+    mode: environment.mode,
+    outcomes,
+    ...extra,
+  }
   writeFileSync(join(environment.output, 'result.json'), JSON.stringify(result, null, 2) + '\n')
   console.log(JSON.stringify({ status: 'passed', scenario, mode: environment.mode }))
 }
