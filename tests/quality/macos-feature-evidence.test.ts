@@ -31,15 +31,22 @@ function passingTree() {
   for (const path of [...EXTRA_SOURCES, 'tests/native/fixture.ts'])
     write(join(source, path), `// ${path}\n`)
   write(host, 'host binary')
+  // One report file can serve several features (display-platform's report is
+  // read for display details and for identity and changes): merge them.
+  const reports = new Map<string, Record<string, unknown>>()
+  for (const report of FEATURES.flatMap((feature) => feature.reports)) {
+    const previous = reports.get(report.path) ?? { outcomes: {} }
+    reports.set(report.path, {
+      ...previous,
+      ...report.fields,
+      outcomes: {
+        ...(previous['outcomes'] as Record<string, boolean>),
+        ...Object.fromEntries((report.outcomes ?? []).map((name) => [name, true])),
+      },
+    })
+  }
+  for (const [path, report] of reports) write(join(evidence, path), JSON.stringify(report))
   for (const feature of FEATURES) {
-    for (const report of feature.reports)
-      write(
-        join(evidence, report.path),
-        JSON.stringify({
-          ...report.fields,
-          outcomes: Object.fromEntries((report.outcomes ?? []).map((name) => [name, true])),
-        })
-      )
     for (const entry of feature.packages) {
       write(join(evidence, `${entry}-package`, entry), `application ${entry}`)
       write(
@@ -81,15 +88,20 @@ test('every advertised macOS feature that M1 and M2 name has an expected report'
   expect(capabilities).toEqual(
     [
       'accessibility_v1',
+      'accessibility_lists_v1',
       'app_menu_v1',
       'context_menus_v1',
       'display_details_v1',
+      'display_identity_v1',
+      'display_changes_v1',
       'drag_drop_files_v1',
       'filesystem_grants_v1',
       'focus_v1',
       'input_states_v1',
       'overlay_keyboard_v1',
       'overlays_v1',
+      'processes_v1',
+      // The workspace terminal panes' owned PTY shell, recorded on shard 1.
       'processes_v1',
       'scroll_anchor_v1',
       'scroll_control_v1',
@@ -180,6 +192,7 @@ test('the macOS feature steps gate on shard 2 and feed one record step', () => {
     'macOS OS message dialogs through NSAlert sheets',
     'macOS OS context menus through NSMenu pop-ups',
     'Display snapshot, work area, identity and display-change qualification',
+    'macOS virtual second display, migration, mixed DPI and removal',
     'macOS and Windows development and AOT filesystem grants',
     'Development and AOT owned processes',
     'Development and AOT OS drag and drop through core, Solid and React',
@@ -241,12 +254,57 @@ test('the macOS service steps gate on shard 1 before the record, one feature eac
   expect((install as { id?: string }).id).toBe('signed-install')
 })
 
+test('the macOS workspace terminal step gates on shard 1 before the record, both frameworks and modes', () => {
+  const record = steps.findIndex(
+    (step) => step.name === 'Record source-bound macOS feature evidence'
+  )
+  const at = steps.findIndex((step) =>
+    step.name?.startsWith('Development and AOT macOS workspace terminal pane OS input')
+  )
+  expect(at).toBeGreaterThanOrEqual(0)
+  expect(at).toBeLessThan(record)
+  const step = steps[at]!
+  expect(step['continue-on-error']).toBeUndefined()
+  expect(step.if).toContain('matrix.shard == 1')
+  expect(step.if).toContain("runner.os == 'macOS'")
+  expect(step.run).toContain("foreach ($framework in @('solid', 'react'))")
+  expect(step.run).toContain("foreach ($mode in @('development', 'aot'))")
+  expect(step.run).toContain('"$entry-macos-$mode"')
+  expect(step.run).toContain('throw "macOS workspace terminal panes not verified')
+  const feature = FEATURES.find((entry) => entry.packages.includes('solid-workspace-terminal'))!
+  expect(feature.shard).toBe(1)
+  expect(feature.reports.map((report) => report.path).sort()).toEqual([
+    'react-workspace-terminal-macos-aot/result.json',
+    'react-workspace-terminal-macos-development/result.json',
+    'solid-workspace-terminal-macos-aot/result.json',
+    'solid-workspace-terminal-macos-development/result.json',
+  ])
+})
+
+test('a display-change report that recorded the mode change unavailable fails the record', () => {
+  const inputs = passingTree()
+  write(
+    join(inputs.evidence, 'display-platform-aot/display-platform.json'),
+    JSON.stringify({
+      platform: 'darwin',
+      mode: 'aot',
+      unavailable: { displayChange: 'the OS refused every alternative display mode' },
+      outcomes: { snapshot: {}, displayChange: {}, revocation: {}, shutdown: {} },
+    })
+  )
+  const record = buildRecord(inputs)
+  expect(record.failures.join('\n')).toContain(
+    'display-platform-aot/display-platform.json: unavailable.displayChange="the OS refused every alternative display mode" (want undefined)'
+  )
+})
+
 test('a shard record checks only that shard and passes without the other shard', () => {
   const inputs = passingTree()
   const shardOne = FEATURES.filter((feature) => feature.shard === 1)
   for (const feature of FEATURES)
     if (feature.shard !== 1)
-      for (const report of feature.reports) rmSync(join(inputs.evidence, report.path))
+      for (const report of feature.reports)
+        rmSync(join(inputs.evidence, report.path), { force: true })
   const first = buildRecord({ ...inputs, shard: 1 })
   expect(first.failures).toEqual([])
   expect(first.shard).toBe(1)
