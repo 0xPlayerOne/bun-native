@@ -1051,6 +1051,7 @@ jobs:
               "$NATIVE_EVIDENCE/react-workspace-session-$mode" 120
           done
       - name: Generated Solid and React templates in development and inspected AOT
+        id: cli-templates
         if: ${{ matrix.shard == 3 && (!cancelled() && steps.native-build.outcome == 'success') }}
         timeout-minutes: 6
         run: |
@@ -1074,6 +1075,76 @@ jobs:
             done
           done
           exit "$template_status"
+      # The Linux installer (#249): the generated Solid template above is bundled with its
+      # Ed25519 update manifest, packaged as the tar.gz platform installer and installed from
+      # it, as the macOS and Windows signed-template steps in native-platforms.yml do. Linux
+      # has no OS signature; the update manifest's key set is the trust root.
+      - name: Bundle the generated Solid template with keyed update manifests into a Linux tar.gz installer (#249)
+        id: linux-template-installer
+        if: ${{ matrix.shard == 3 && (!cancelled() && steps.cli-templates.outcome == 'success') }}
+        timeout-minutes: 4
+        run: |
+          work="$RUNNER_TEMP/linux-template-installer"
+          evidence="$NATIVE_EVIDENCE/linux-template-installer"
+          mkdir "$work" "$evidence" "$work/bundles" "$work/installers" "$work/second"
+          logged() {
+            # Runs the remaining arguments and keeps their output as evidence.
+            local log=$1
+            shift
+            "$@" 2>&1 | tee "$evidence/$log"
+          }
+          build="$work/build"
+          cp -R "$NATIVE_EVIDENCE/cli-templates/solid-typescript/package" "$build"
+          product=dev.bun-native.template
+          logged keygen.log bun scripts/release-update.ts keygen \
+            --private-key "$work/release.pem" --public-key "$work/release.pub.pem"
+          logged key-set.log bun scripts/release-update.ts key-set --product "$product" --version 1 \
+            --minimum-sequence 1 --public-key "$work/release.pub.pem" --out "$work/keys.json"
+          # A second manifest of the same payload with a higher sequence is the pending update the smoke installs.
+          logged manifest-1.log bun scripts/release-update.ts manifest "$build" --product "$product" \
+            --version 1.0.1 --sequence 1 --signed --out "$work/update.json"
+          logged manifest-2.log bun scripts/release-update.ts manifest "$build" --product "$product" \
+            --version 1.0.2 --sequence 2 --signed --out "$work/second/update.json"
+          logged sign-update-1.log bun scripts/release-update.ts sign "$work/update.json" \
+            --private-key "$work/release.pem" --keyed
+          logged sign-update-2.log bun scripts/release-update.ts sign "$work/second/update.json" \
+            --private-key "$work/release.pem" --keyed
+          logged bundle.log bun scripts/release-update.ts bundle "$work/update.json" --payload "$build" \
+            --out "$work/bundles" --self-contained --key-set "$work/keys.json"
+          bundles=("$work"/bundles/*/)
+          if (( ${#bundles[@]} != 1 )); then
+            echo "Expected one bundle, found ${#bundles[@]}" >&2
+            exit 1
+          fi
+          logged installer.json bun scripts/release-package.ts installer "${bundles[0]%/}" --format tar.gz \
+            --name 'Bun Native Template' --out "$work/installers"
+          installers=("$work"/installers/*.tar.gz)
+          if (( ${#installers[@]} != 1 )) || [[ ! -f ${installers[0]} ]]; then
+            echo 'Expected one tar.gz installer' >&2
+            exit 1
+          fi
+          cp "$work/update.json" "$evidence/update-1.json"
+          cp "$work/second/update.json" "$evidence/update-2.json"
+          echo "LINUX_TEMPLATE_INSTALLER=${installers[0]}" >> "$GITHUB_ENV"
+          echo "LINUX_TEMPLATE_SECOND_UPDATE=$work/second/update.json" >> "$GITHUB_ENV"
+      - name: Install the Linux template from its tar.gz installer, confirm its health under Xvfb and remove it (#249)
+        if: ${{ matrix.shard == 3 && (!cancelled() && steps.linux-template-installer.outcome == 'success') }}
+        timeout-minutes: 4
+        run: |
+          # Extracts the tar.gz, runs its install.sh, checks the installed files and the
+          # verifying launcher against the bundle and its Ed25519 manifest (an altered manifest
+          # and a modified application are refused), installs sequence 2 as a pending update,
+          # starts the installed launcher until the AOT application paints and confirms its
+          # own health, stops it and uninstalls with nothing left behind.
+          evidence="$NATIVE_EVIDENCE/linux-template-installer"
+          xvfb-run --auto-servernum --server-args='-screen 0 1280x800x24 -nolisten tcp' \
+            dbus-run-session -- bash scripts/quality/native-linux-session.sh \
+            "$evidence/session" -- bun scripts/quality/signed-installer-smoke.ts \
+            --installer "$LINUX_TEMPLATE_INSTALLER" --second-update "$LINUX_TEMPLATE_SECOND_UPDATE" \
+            --work "$RUNNER_TEMP/linux-template-smoke" --evidence "$evidence/install-smoke.json" \
+            --verify-installation --window-title 'Bun Native Solid' --uninstall \
+            2>&1 | tee "$evidence/install-smoke.log"
+          grep -q '"status": "passed"' "$evidence/install-smoke.json"
       - name: Native CLI watch with 101 source-edit remounts per framework
         if: ${{ matrix.shard == 1 && (!cancelled() && steps.native-build.outcome == 'success') }}
         timeout-minutes: 14
@@ -1267,6 +1338,7 @@ jobs:
             ${{ runner.temp }}/native-evidence/binary-*.txt
             ${{ runner.temp }}/native-evidence/unsigned-native-host.tar.gz*
             ${{ runner.temp }}/native-evidence/cli-templates/
+            ${{ runner.temp }}/native-evidence/linux-template-installer/
             ${{ runner.temp }}/native-evidence/cli-watch-*/
             ${{ runner.temp }}/native-evidence/cli-standalone/
             !${{ runner.temp }}/native-evidence/cli-standalone/owned/**
@@ -1350,6 +1422,7 @@ jobs:
             echo 'The native input checks use isolated X11, XTest and verified Mesa software rendering. Exact paint trees, screenshots, source/artifact hashes and cleanup reports are retained.'
             echo 'All four unchanged CLI templates (Solid/React × TypeScript/JavaScript) are created, checked and compiled by the checkout CLI, then run from an unrelated working directory in development and inspected AOT. Each requires native pointer down/up, the complete counter paint changing from zero to one, native OS close, exactly one ready/zero-resource stopped IPC pair, and joined app/host cleanup. This is one bounded interaction per variant and mode, not native reload-cycle or independent-installation qualification.'
             echo 'The exact CLI dev --watch command performs an initial native launch and 101 source-edit remounts for each Solid/React TypeScript template. Every generation requires a unique source label, a complete reset counter paint, real XTest click/down/up and counter-one paint, validated zero-resource previous teardown, immutable app/host process identities and no observed overlap. A rejected syntax edit preserves a responsive working app; final OS close must exit watch with zero resources and remove its owned temporary root. A PATH sentinel and unchanged host/compiler hashes guard ordinary edits against native rebuilds. Edit-to-ready/paint/input-confirmed-paint intervals are instrumented observations, not presentation or cross-framework performance claims.'
+            echo 'The generated Solid TypeScript template is bundled with keyed Ed25519 update manifests into the Linux tar.gz installer, installed by its install.sh, checked file by file against the bundle (an altered manifest and a modified installed application are refused), updated to a pending release, started through the installed verifying launcher until the AOT application paints and confirms its own health under Xvfb, then uninstalled with no root, menu entry or process left. Linux has no OS code signature; .deb and AppImage are not built.'
             echo 'The Linux clipboard service uses an independent owned X11 peer in development and inspected AOT. Required outcomes cover immutable grants, ordinary/delayed/INCR text, payload and metadata rejection, owner loss, bounded stalled transfers with responsive input/commits, cancellation, idle worker sleep, selection persistence and joined cleanup. This does not qualify clipboard support on Wayland, macOS or Windows.'
             echo 'Linux X11 global shortcuts run in development and inspected AOT: default denial, delivery while another owned window is focused, Num Lock independence, real conflicts with an independent X11 client, and verified OS grab release after unregistration, owner close and shutdown. This does not qualify global shortcuts on Wayland, macOS or Windows.'
             echo 'Linux freedesktop notifications run against the real dunst server on an isolated D-Bus session in development and inspected AOT: default denial, an isolated bus without a server reported as unavailable, posting, server-action activation, user dismissal, forged signals from an independent bus client ignored, and server-side withdrawal on request, owner close and shutdown. This does not qualify notifications on macOS or Windows, or with other notification servers.'

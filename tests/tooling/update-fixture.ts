@@ -29,9 +29,30 @@ export const publicPem = keys.publicKey.export({ type: 'spki', format: 'pem' }).
 export const signed: TrustPolicy = { kind: 'ed25519', publicKeys: [publicPem] }
 const directories: string[] = []
 
+/**
+ * Windows keeps an executable's file locked briefly after its process exits
+ * (and while antivirus scans a newly written one), so removing a directory
+ * that held a just-run application can fail with EBUSY or EPERM (Protocol and
+ * AOT windows-2022, run 43149936296, after the test itself passed). Retry
+ * those two errors for up to two seconds, as Node's `rm` `maxRetries` does;
+ * anything else, or a lock that outlasts the bound, still fails the test.
+ */
+async function remove(directory: string): Promise<void> {
+  for (let attempt = 0; ; attempt++) {
+    try {
+      await rm(directory, { recursive: true, force: true })
+      return
+    } catch (error) {
+      const code = (error as NodeJS.ErrnoException).code
+      if (process.platform !== 'win32' || (code !== 'EBUSY' && code !== 'EPERM') || attempt === 19)
+        throw error
+      await Bun.sleep(100)
+    }
+  }
+}
+
 export async function cleanup(): Promise<void> {
-  for (const directory of directories.splice(0))
-    await rm(directory, { recursive: true, force: true })
+  for (const directory of directories.splice(0)) await remove(directory)
 }
 
 export async function temporary(): Promise<string> {

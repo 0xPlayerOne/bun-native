@@ -112,9 +112,9 @@ export const FEATURES: Feature[] = [
     packages: ['overlays'],
   },
   {
-    capabilities: ['accessibility_v1', 'split_resize_v1'],
+    capabilities: ['accessibility_v1', 'split_resize_v1', 'accessibility_lists_v1'],
     oracle:
-      'AXUIElement tree and requests (macos-accessibility-oracle.m), CoreGraphics key and drag input, screencapture focus-ring pixels',
+      'AXUIElement tree and requests and an AXObserver for AXAnnouncementRequested (macos-accessibility-oracle.m), CoreGraphics key and drag input, screencapture focus-ring pixels',
     reports: [
       ...perMode((mode) => ({
         path: `accessibility-${mode}/result.json`,
@@ -129,6 +129,7 @@ export const FEATURES: Feature[] = [
           'pointerDrag',
           'dialogTree',
           'modalDialog',
+          'lists',
         ],
       })),
       ...perMode((mode) => ({
@@ -223,6 +224,25 @@ export const FEATURES: Feature[] = [
       outcomes: ['osDisplays', 'denied', 'snapshot', 'revocation', 'shutdown'],
     })),
     packages: ['display-platform'],
+  },
+  {
+    capabilities: ['display_identity_v1', 'display_changes_v1'],
+    oracle:
+      'NSScreen and CoreGraphics display oracle (macos-display-oracle.m: CGDisplayCreateUUIDFromDisplayID, CGConfigureDisplayWithDisplayMode), JXA NSScreen, a CGVirtualDisplay second display and Accessibility window moves (macos-virtual-display.m)',
+    reports: [
+      // The real display-mode change must have been applied, not recorded unavailable.
+      ...perMode((mode) => ({
+        path: `display-platform-${mode}/display-platform.json`,
+        fields: { platform: 'darwin', mode, 'unavailable.displayChange': undefined },
+        outcomes: ['snapshot', 'displayChange', 'revocation', 'shutdown'],
+      })),
+      ...perMode((mode) => ({
+        path: `display-virtual-macos-${mode}/display-virtual-macos.json`,
+        fields: { platform: 'darwin', mode },
+        outcomes: ['osDisplays', 'connected', 'migration', 'removed', 'revocation', 'shutdown'],
+      })),
+    ],
+    packages: ['display-platform', 'display-virtual-macos'],
   },
   {
     capabilities: ['filesystem_grants_v1'],
@@ -336,6 +356,27 @@ export const FEATURES: Feature[] = [
     packages: [],
   },
   {
+    // The Solid and React workspace terminal panes: the owned PTY shell
+    // (processes_v1) driven by OS input, beside the shard 2 processes record.
+    capabilities: ['processes_v1'],
+    shard: 1,
+    oracle:
+      'workspace terminal pane: CoreGraphics pointer and key input through the bounded helper, the real /bin/sh on an owned PTY, host paint evidence and screencapture pixels, the standard close button pressed through Accessibility',
+    reports: (['solid', 'react'] as const).flatMap((framework) =>
+      perMode((mode) => ({
+        path: `${framework}-workspace-terminal-macos-${mode}/result.json`,
+        fields: {
+          status: 'passed',
+          platform: 'darwin',
+          scenario: `${framework}-workspace-terminal`,
+          mode,
+        },
+        outcomes: ['focused', 'roundTrip', 'paint', 'interrupt', 'closed'],
+      }))
+    ),
+    packages: ['solid-workspace-terminal', 'react-workspace-terminal'],
+  },
+  {
     capabilities: ['notifications_v1'],
     shard: 1,
     oracle:
@@ -364,6 +405,7 @@ export const EXTRA_SOURCES = [
   'tests/native/macos-alert-oracle.m',
   'tests/native/macos-context-menu-oracle.m',
   'tests/native/macos-display-oracle.m',
+  'tests/native/macos-virtual-display.m',
   'tests/native/macos-drag-source.m',
   'tests/native/layout-style-compare.ts',
   'tests/native/task-dialogs.ts',

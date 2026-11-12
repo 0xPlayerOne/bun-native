@@ -1,0 +1,192 @@
+{
+  "schemaVersion": 1,
+  "status": "passed",
+  "shard": 1,
+  "scope": "Hosted macOS feature qualification in development and inspected AOT against one release GPUI host (for notifications also its signed copy installed from the template image). Each report comes from a gating step with a real native window and an independent macOS oracle; hosted VM, software-presented display and synthesized CoreGraphics input, not physical hardware.",
+  "run": {
+    "repository": "0xPlayerOne/bun-native",
+    "runId": "43142396083",
+    "runAttempt": "1",
+    "job": "native",
+    "eventName": "push",
+    "ref": "refs/heads/main",
+    "sha": "e1b6c605de95d4cb49a37e3a8f270024ec5d8f13",
+    "imageOS": "macos15",
+    "imageVersion": "20261104.0514.1"
+  },
+  "source": {
+    "commit": "e1b6c605de95d4cb49a37e3a8f270024ec5d8f13",
+    "tree": "4f70fd12d16ed60e78365f19cf90c64bcf99d594",
+    "dirty": false,
+    "changes": [],
+    "filesSha256": {
+      ".github/workflows/native-platforms.yml": "a2793ee3be5d456b0a82a0d8f9cc711525e14740adb707bceb0c12bd1ef21e8d",
+      "scripts/quality/macos-feature-evidence.ts": "eb2aa98d94520fa31315c9b12595131869425deba7e8f5bc23ec733cf12e57c5",
+      "scripts/quality/native-platform-macos.m": "99e185f59b9ff93ff2ea541ec1af0c478bc31f5ba338b57763c920cf0223281c",
+      "scripts/quality/signed-installer-smoke.ts": "7134d8707b394c8ac1de1a50208ac0ce4ec25dfbdf667d175dc096ee1955c007",
+      "tests/native/clipboard-macos.ts": "a44f851dd096033b3d94682dff5c6bfeaffed09a0d3015de615262b7df56addc",
+      "tests/native/context-menus.ts": "e2a25a6e6170315e4e2cbb763209fb1ce664314b62ea6920ab57c4883e2bbbda",
+      "tests/native/file-dialogs-macos.ts": "01265b0650c6d0803810a2c5bf1bd06dd069bc2f7aee63eb69a26c83e72e2297",
+      "tests/native/global-shortcuts-macos.ts": "61d85e9326cdb64605ae0ef1f923aa9c51cb41c603ed66b249a27dead45c1eb0",
+      "tests/native/layout-style-compare.ts": "3388a6203c2468a8c61b1d730123b23f2aca353f2f42f615ec3528d2db678fce",
+      "tests/native/macos-accessibility-oracle.m": "84aebdacfc83d9a680fbcecd8637de86ca8c5fd875839ad78bfdcbc9744e7621",
+      "tests/native/macos-alert-oracle.m": "a187ba30a02a893aa3a562937baf7174bdc8ce11b7be8810ee877fc3eecb33dc",
+      "tests/native/macos-context-menu-oracle.m": "3eb1db6c5a1b4ca5d58ca3a30ec60e333c34fe2a8610b9e9783a66ac24a0c4a0",
+      "tests/native/macos-display-oracle.m": "6cf228076080594e30597c2411279ccf96bdbb7081834a8a8a671e51f760c983",
+      "tests/native/macos-drag-source.m": "2e50fee0dc32237ebf0e8c7c5ec8f6b99468d1c6b98c3dc62a39e1a70a23f556",
+      "tests/native/macos-file-panel-oracle.m": "3cb88343fcd4a0c3056e3b09163ccc40d5fbdd93dcabcc1efef98c0d39a0f415",
+      "tests/native/macos-hot-key-oracle.m": "602e1f79c545fc50ea8b345e328d504286e7bf9d3686c4e433ce4aa8625a7c34",
+      "tests/native/macos-menu-oracle.m": "446b66f7040b0dc60b941ef01f6c1a50a746826e7ccd73f5f1581578791c24c8",
+      "tests/native/macos-popup-oracle.m": "0500f39a89529a409c908fd220169f0a28227413bc248d6df621fefc24929e32",
+      "tests/native/macos-window-input.ts": "db85f18cc3f543567704dc6a910a15cd9cb18b10a79c0516a3c1f015617bbd95",
+      "tests/native/notifications-macos.ts": "4c11ec68c159e0ce8908cf18df653a8616be2b269ce38a67e5b8115bf4d34c4c",
+      "tests/native/png.ts": "14773f7a9b209c9a87f31310bf0832aa8a744f1ddc7d1f6ed33e6e7e55e3b2ff",
+      "tests/native/popups-macos.ts": "d3b4afa4568bc24e4b94588fde8842fa521736f435eb3a8e254a215caeebc49d",
+      "tests/native/task-dialogs.ts": "babed9a8e284a2a6417d7a109c61feeee625b3bbe8b9d67ad951d4f19bfdf4ab"
+    }
+  },
+  "host": {
+    "sha256": "522306f8c4d8fa973f44f27efacd44cd1ecd6af941c2e4c0e3d1cf98b17c156e",
+    "bytes": 9858816
+  },
+  "packages": {},
+  "features": [
+    {
+      "capabilities": ["clipboard_text_v1"],
+      "oracle": "pbcopy, pbpaste and an osascript pasteboard clear",
+      "status": "passed",
+      "reports": [
+        {
+          "path": "clipboard-macos/clipboard-macos.json",
+          "status": "passed",
+          "bytes": 300,
+          "sha256": "2156b26034aae9af863c248af48e39dbebcc81abdfb6b4b56af16e68675912fd",
+          "fields": {
+            "platform": "darwin",
+            "failed": false
+          },
+          "outcomes": [
+            "defaultDenial",
+            "writeSeenByPbpaste",
+            "readPbcopyText",
+            "clearedReadsEmpty",
+            "boundedRead",
+            "abortBeforeDispatch",
+            "staleOwnerRejected",
+            "shutdownClean"
+          ]
+        }
+      ],
+      "packages": []
+    },
+    {
+      "capabilities": ["global_shortcuts_v1"],
+      "oracle": "Carbon Event Manager registrations and CGEventPost key presses (macos-hot-key-oracle.m)",
+      "status": "passed",
+      "reports": [
+        {
+          "path": "global-shortcuts-macos/global-shortcuts-macos.json",
+          "status": "passed",
+          "bytes": 663,
+          "sha256": "6cd084641c899520bbabfdb7daf9db333970f0eff092b59efcec3ab7d1735e31",
+          "fields": {
+            "platform": "darwin",
+            "failed": false
+          },
+          "outcomes": [
+            "defaultDenial",
+            "deliveredWhileOtherAppFrontmost",
+            "inSessionDuplicateConflict",
+            "externalConflictMapped",
+            "unregisterReleases",
+            "ownerCloseReleases",
+            "shutdownReleases"
+          ]
+        }
+      ],
+      "packages": []
+    },
+    {
+      "capabilities": ["file_dialogs_v1"],
+      "oracle": "Accessibility open and save panel sheet oracle (macos-file-panel-oracle.m)",
+      "status": "passed",
+      "reports": [
+        {
+          "path": "file-dialogs-macos/file-dialogs-macos.json",
+          "status": "passed",
+          "bytes": 921,
+          "sha256": "35dfa3a0435be9b2d04f42e41837a8e3091508df332d50debdf9f0738b4acaaa",
+          "fields": {
+            "platform": "darwin",
+            "failed": false
+          },
+          "outcomes": [
+            "defaultDenial",
+            "openCancelled",
+            "folderSelected",
+            "saveSelected",
+            "unsupportedFilterRefused",
+            "abortClosesSheet",
+            "ownerCloseEndsSheet",
+            "shutdownEndsSheet",
+            "ownershipReleased"
+          ]
+        }
+      ],
+      "packages": []
+    },
+    {
+      "capabilities": ["popup_windows_v1"],
+      "oracle": "WindowServer window list, Accessibility window moves and Quartz input (macos-popup-oracle.m), host paint evidence",
+      "status": "passed",
+      "reports": [
+        {
+          "path": "popups-macos/popups-macos.json",
+          "status": "passed",
+          "bytes": 1500,
+          "sha256": "6880addcdfa7ca83fe58778bb8ba095fbf5ba3c618203abc67a203b2767b41bc",
+          "fields": {
+            "platform": "darwin",
+            "failed": false
+          },
+          "outcomes": [
+            "placedBeyondParent",
+            "popupPointer",
+            "escapeDismissal",
+            "followsParentMove",
+            "blurDismissal",
+            "clampedToDisplay",
+            "closedWithParent",
+            "ownershipReleased"
+          ]
+        }
+      ],
+      "packages": []
+    },
+    {
+      "capabilities": ["notifications_v1"],
+      "oracle": "the bare release host and the installed signed template host in BunNativeHost.app; the OS prompt answer is recorded, not chosen",
+      "status": "passed",
+      "reports": [
+        {
+          "path": "notifications-macos/notifications-macos.json",
+          "status": "passed",
+          "bytes": 213,
+          "sha256": "c9ec3ea65e9a5eec3be37f393ab1970b3797701381bbd375be515777beed420f",
+          "fields": {
+            "platform": "darwin",
+            "failed": false
+          },
+          "outcomes": [
+            "bareHostUnavailable",
+            "bundledDefaultDenial",
+            "authorization",
+            "bundledShutdownClean"
+          ]
+        }
+      ],
+      "packages": []
+    }
+  ],
+  "failures": []
+}

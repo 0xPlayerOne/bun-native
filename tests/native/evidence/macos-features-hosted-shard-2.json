@@ -1,0 +1,1534 @@
+{
+  "schemaVersion": 1,
+  "status": "passed",
+  "shard": 2,
+  "scope": "Hosted macOS feature qualification in development and inspected AOT against one release GPUI host (for notifications also its signed copy installed from the template image). Each report comes from a gating step with a real native window and an independent macOS oracle; hosted VM, software-presented display and synthesized CoreGraphics input, not physical hardware.",
+  "run": {
+    "repository": "0xPlayerOne/bun-native",
+    "runId": "43142396083",
+    "runAttempt": "1",
+    "job": "native",
+    "eventName": "push",
+    "ref": "refs/heads/main",
+    "sha": "e1b6c605de95d4cb49a37e3a8f270024ec5d8f13",
+    "imageOS": "macos15",
+    "imageVersion": "20261104.0514.1"
+  },
+  "source": {
+    "commit": "e1b6c605de95d4cb49a37e3a8f270024ec5d8f13",
+    "tree": "4f70fd12d16ed60e78365f19cf90c64bcf99d594",
+    "dirty": false,
+    "changes": [],
+    "filesSha256": {
+      ".bun-version": "8e88ab1b8c52566c35461f87112513119175f5c8f898e968f0684aabaa4e4e2b",
+      ".github/workflows/native-platforms.yml": "a2793ee3be5d456b0a82a0d8f9cc711525e14740adb707bceb0c12bd1ef21e8d",
+      "bun.lock": "65e3dbd01be4a1889367690faf1a9c3f08fb31d22dbd273d9bb9f39dd6baa6fb",
+      "bunfig.toml": "470a43d070cd85f18b120cfd3204291d4c1fe573758310d25b1c7b5dbbd8f988",
+      "Cargo.lock": "4c2490d359906a6213a1a2c0a56539e7ef0def087a4582d1aa942d8debeeb46e",
+      "Cargo.toml": "b0b2ebee6705c318f136411fec8ed3ce4cd7c3b4a253baaa2d9f355b4624760b",
+      "examples/native-window/content.ts": "43302d61a935f9d4c1fbf7d7f5371bf9e9366b345931c3cdca4cff79ebd5036f",
+      "examples/native-window/main.ts": "387a2dfb4fd848b7ccf8affaf673c17e7357b7473f667922aba715846fd3cf93",
+      "examples/shared/terminal.ts": "378d5574150e285e81c2d1cb7617816f8e9f9a6cd94cb820a05d9ea04d91fda1",
+      "experiments/aot-gpui/native-sources.ts": "9aa991e089339155205e075ec634fd470d4db211413c72be65a203be068efecd",
+      "native/gpui-host/Cargo.toml": "c3b34b9f8573fa07609f3a2227886a30764708c9ce922eed96b21fd341dfd39b",
+      "native/gpui-host/examples/xdnd-source.rs": "3f0dd363ca2fe8869f16c39e687019231f8a9989ce6195dfe5113ebce424e9fa",
+      "native/gpui-host/src/channel.rs": "1c5e1542ca713fef73890ba2f88dda5184649d87c973f26b7491ff937ffaf22f",
+      "native/gpui-host/src/evidence.rs": "5f0b83c020b0ea388de8b603adf1746ae51a43ea3e38894c1b7cf91cdb1401f0",
+      "native/gpui-host/src/evidence/frame_schedule_tests.rs": "61cc1e87b6c9984060ec03d4b2c89d39eff89c9f6dac62be52c2d57483523b2c",
+      "native/gpui-host/src/evidence/frames.rs": "f82343f6d02c74e2a71ce861f5b65efd6a7263ab1cc8ffdba760ce42ed01ecb3",
+      "native/gpui-host/src/evidence/layout.rs": "adbe80152a1f8f56dcfb23df01d80808b2edd6166493175156835e8218a684f8",
+      "native/gpui-host/src/evidence/layout/paint_tests.rs": "9540668b3751643c76b4af8d3b64271c253ffd7d4782a7ac825cbb0bd7d3303d",
+      "native/gpui-host/src/evidence/pointer.rs": "e9b774d219bedfe96587ea1b26787f010f85efa276e4f6e53302362da31cde8b",
+      "native/gpui-host/src/frame_pacing.rs": "ca17cedc11d08a5fbf00b50e64f7042898e0512710785aa8102ba9f4c9db7943",
+      "native/gpui-host/src/input.rs": "c95319aab90692e2a20bac130d3f6ada1709a04ead34e05c71d5ec816b0ddbac",
+      "native/gpui-host/src/input/accessible.rs": "b6f8c4b226185fd7d3dbd24eede5b9793cace7562df1ebdf320fc9b6467acb7b",
+      "native/gpui-host/src/input/accessible/tests.rs": "6340b11b62587536b008484a5a63587bac6eb68cdf798f4d02d8becfe95ff8f0",
+      "native/gpui-host/src/input/binding.rs": "cf91465fbb2a23cd15aecbeb44e6ec0fc77d48320bbf1a86191baa8c18d6aa9a",
+      "native/gpui-host/src/input/editing.rs": "5a6f7cf1b4250603b438b8752cc0f1d8883249c445ffbf47085102a39b3910b6",
+      "native/gpui-host/src/input/editing/tests.rs": "9fd41eabac2cb31de1983e61c7f26872e461df7bf5226bcf0555050841f2f8e5",
+      "native/gpui-host/src/input/hit_test.rs": "61a341639d2987cd48485436df339d90a1d04acfdcdbc7c6d18a6425b0c3428d",
+      "native/gpui-host/src/input/offsets.rs": "4456f247283bb699085778f86e3aab7acf016e3a9c2e927ef9de160531d57839",
+      "native/gpui-host/src/input/paint.rs": "776fbe82575b4f1f7f389327ae56f301a6fbd0d26e508d1256ac05bffccbd0a5",
+      "native/gpui-host/src/input/selection.rs": "ffa09813e3a5a1c0f985dd676135288e4b591e8e8a9da654a26cc4925145fa7d",
+      "native/gpui-host/src/input/viewport.rs": "d9c30777004a5120e98b02cc84eed7e197681a5f01ba6d6b00f2753dedd33e1c",
+      "native/gpui-host/src/input/viewport/tests.rs": "bcc731b0ad42da549a234cd26aa353082439626146c9de20554f56c860df7581",
+      "native/gpui-host/src/main.rs": "09868fcae7fc6c2f8a2a7ccf48415dd36717b3d65691574860889ef2e91a902b",
+      "native/gpui-host/src/phases.rs": "0c7b77d1d2816ab60d56a3a532aa43921ad50ff05d7b75106999e1d20be3ea59",
+      "native/gpui-host/src/services.rs": "c854ba19b6b47dae45642db6fe5585e833a97d4ebeccbc5d793025363d2e6a7e",
+      "native/gpui-host/src/services/app_menu.rs": "1d0f255af87c01259d98bd150cc7f18d1af6163c70c90bd237b294f068c8d2bf",
+      "native/gpui-host/src/services/clipboard_macos.rs": "d6d70ebb90998e6a84ef97ac9a3d90dbe44067884893af520300988a8d2f065c",
+      "native/gpui-host/src/services/clipboard_unavailable.rs": "5a902bfe43afb82360a15c0607891769b46f06d47dfc91b38dd25fa8baa8ffcc",
+      "native/gpui-host/src/services/clipboard.rs": "5b0409b88e4c8a0e2d3294eb4b604dfccec644210ed74ab19111c14583167faf",
+      "native/gpui-host/src/services/clipboard/selection.rs": "8b665877864f5ee31b75ac2ca3a3c6e51166f448611cc7220d646f5be6a61865",
+      "native/gpui-host/src/services/context_menu_model.rs": "6d533c9fbb77fdf8e69d06658c86e1af2a6e7f08ea6fba2d10fa5619fa87206f",
+      "native/gpui-host/src/services/context_menus_unavailable.rs": "a54d9677d5f733154eea420995722d3e79c7c80c24bc886a63975a7804e8012a",
+      "native/gpui-host/src/services/context_menus.rs": "e303d9fcf3df19f0f2936e60ab94cc4f70fea11e3c59bd21d92d860156344ff6",
+      "native/gpui-host/src/services/drops.rs": "75fbcec8a09e3ecb191f03770df9f8027c931f5c3bdb9f953b693dca840adb85",
+      "native/gpui-host/src/services/file_dialogs_macos.rs": "64f55ed129d3dfb4d0a8d7fef95419072f4d3e0db635f12d1136fca3a9f7dc31",
+      "native/gpui-host/src/services/file_dialogs_unavailable.rs": "33793eac41900cf8833583be5daebbbd6b424371ae067ec2d6c75a02c6fa47eb",
+      "native/gpui-host/src/services/file_dialogs.rs": "96b46d6b9e171eb4b484646e4bdbcfd55e09d2b9b119d4d2f215bdda5709e2b7",
+      "native/gpui-host/src/services/file_panel_model.rs": "bd4924b7181b8f065769674f5a5cbf1c2f2b5d855dd46f140730c9efd7339978",
+      "native/gpui-host/src/services/files_unavailable.rs": "62609690e62cae2c81a7beb4a7cf3a00a4227a221136f8b6330e6774c856b47b",
+      "native/gpui-host/src/services/files.rs": "8b6f4be8a42b54b0ad17a4ebe76575540e2c2055fea15fe373b0f8b7dc9e8944",
+      "native/gpui-host/src/services/files/openat2.rs": "d40ea574a750373714cf6de7e6a048fc233f174ad79952c2e444808c3ffd005a",
+      "native/gpui-host/src/services/files/walk.rs": "ce17f2f9e36b0b6aac99dfce75bd79b8931adaa0a207222bcb5bba8d31b05d72",
+      "native/gpui-host/src/services/files/windows.rs": "1f5660b69cdc124c9ec270184dc991763bedd161db089d3d4615e2ac6407e574",
+      "native/gpui-host/src/services/notifications_macos.rs": "8c713876dba01e9696560ced533c1812d153b48deab279253201ca934869e5c6",
+      "native/gpui-host/src/services/notifications_unavailable.rs": "c42057e923e25f8abd92239ad45fe58433b2f5020f9eea8846b6b087c6dd7c75",
+      "native/gpui-host/src/services/notifications.rs": "9a6f96b68a2a98293d997c2eb98a444e01722026928d3bb81bfcba9687e586fa",
+      "native/gpui-host/src/services/processes_unavailable.rs": "d0d67f8155527cd854aac7b67bccc282de349d2b876e4b40de19d0d85a93cb20",
+      "native/gpui-host/src/services/processes.rs": "bad740add41bc3828b2abf9ee88af345d38c30727eb1b48fc30197ca074d72a2",
+      "native/gpui-host/src/services/processes/linux.rs": "b4cb5a4a041a5425070dfda7114947c58afa1c7dc847a246ae1060f5dc1d3276",
+      "native/gpui-host/src/services/processes/macos.rs": "d87fbd00d5302b3d8b8e24f9da9c0c4b3c9da283ee301e79c58926155e1dcfb3",
+      "native/gpui-host/src/services/processes/windows.rs": "1bca2bc9addde9d8611c3ac2a87d7bfa124d7aef516adc1b7cdbbadeb8bb7d96",
+      "native/gpui-host/src/services/report_pump.rs": "8aeb30cdf537304576c2fde03909f5ac851f44a84be4491e778267f6e91f9e32",
+      "native/gpui-host/src/services/session_bus.rs": "dddc3b208b2c413698c87b3ac87543ef5bd9fc29092ee0b35f237297d42e63e4",
+      "native/gpui-host/src/services/shortcuts_macos.rs": "71bd95dacd280b029e159610b6e8a97c55910541bc6332bb60c4e6d25fc834f2",
+      "native/gpui-host/src/services/shortcuts_unavailable.rs": "f014d6a83d63ea75414fd2f4e9b86d66c1e5646d22f8dab3c08990e930bc7be9",
+      "native/gpui-host/src/services/shortcuts.rs": "ef2f71218a1c04baa77e0163c4771a529036c8bbbaa89cb91130c6dd1a2df539",
+      "native/gpui-host/src/services/shortcuts/grab.rs": "bd7e84398587ad3328d4eceac795ed2ae10ca5977c8c72b97a3a2fbfb102fe02",
+      "native/gpui-host/src/services/task_dialog_model.rs": "8da5afdb51d4da53bb8e7381ffe7aa81ed295da710038e212d60eaec51ea8b7b",
+      "native/gpui-host/src/services/task_dialogs_macos.rs": "eb5f245ed8a7881677dde47a872beeb7c7d6112ac54e02ca759a4e9875bbcbd7",
+      "native/gpui-host/src/services/task_dialogs_unavailable.rs": "6005e862742add6c0cea66fd3e6711a28c2bcaa5f5a2dd46751a89a09a5352ff",
+      "native/gpui-host/src/services/task_dialogs.rs": "8ac915486dc8ebdbe4af5f2cd4fde8b286366949322086426a30890a8592597f",
+      "native/gpui-host/src/services/x11.rs": "7deebec60f909fd76f5751ec16c28e33af1c6a146bbe1e1e2f9294259e67f097",
+      "native/gpui-host/src/services/x11/auth.rs": "46fbfd127c4035584f86899f00ab5f8a9f1addc570b38a8a46792d8de4b02cfe",
+      "native/gpui-host/src/services/x11/stream.rs": "5f6434f54ce3ac0ffef441a68fe1731ae8617b8202969c495159731a93759af7",
+      "native/gpui-host/src/services/x11/wake.rs": "73c6663ac2069af7eacd405f1b03f28a78254804b9bda01c0ecbff066067fb04",
+      "native/gpui-host/src/session.rs": "764514910f559cf59f77351080e96a83e14e9f6b28bc8de2b72fa9da8a2c621d",
+      "native/gpui-host/src/startup_log.rs": "a7b7bd30b3abdaf77b936975e6f35918d70fafd5dd94c4f97796b7786e9a7e80",
+      "native/gpui-host/src/startup_log/tests.rs": "8b1b3c4cfdafd8210817bfee38937fedf37d295789de5a623bcf89d0352f48b7",
+      "native/gpui-host/src/state.rs": "dfc7c88ff0f9cf9d82a087ae4441d3239cef40f48e920ff706e46e75eaa39e15",
+      "native/gpui-host/src/style.rs": "8bb48459f182b63f48b3eda52bea23ec918dbe3ff160f6088e2887d95a8881f4",
+      "native/gpui-host/src/style/tests.rs": "81a91a37d92225a00e5c8ae1f4231c7b7f60ff3e5d06581c2b9eb3b3c6d4ffa2",
+      "native/gpui-host/src/style/unit_tests.rs": "acdc21a3a3848d4005c804386e487469dda09fabb88b319c95c56d27e24e6bdc",
+      "native/gpui-host/src/view.rs": "5c1892734e032e98f09f5c92fc8e7e921eb25860f96fff9500b77dd62250af8e",
+      "native/gpui-host/src/view/accessibility.rs": "12bdf8a7809f60b96be0c91881bdf120893bdb7c4f270cf396bc108ac536d64b",
+      "native/gpui-host/src/view/frame_keeper.rs": "d47463221791764665a359a0d2886c37608c407975196b4edc64759353501634",
+      "native/gpui-host/src/view/index.rs": "7cf7f43c7cbf90945e341f24c3242051234c3c688acdafa24e1834c464e505f8",
+      "native/gpui-host/src/view/index/tests.rs": "1a505c5850c1a8818d7f7dd3c1a5132e18d7f8259f720bb6ceeaa56c984e060f",
+      "native/gpui-host/src/view/interactions.rs": "3e8c967b258617c4f22b2c84810107097f79a13c144799d72fc6c358ca3a53a4",
+      "native/gpui-host/src/view/key_forwarding.rs": "256db615af54108b73e3af0259ea7ecc4e0581e297020a1f5ccac622a25db032",
+      "native/gpui-host/src/view/keyboard.rs": "a284924225b27eaf7f9307ff1d22096cbeb0fa5ffa041c3e85986a746debf0a2",
+      "native/gpui-host/src/view/overlays.rs": "e7b41677544a4d2456df73e86bfa75c3734bec95ab006c791dc087e4c9d140ee",
+      "native/gpui-host/src/view/popups.rs": "17522d7b6de807e6bfd722b425914a435b9747f16a20f857159d4f932581aba1",
+      "native/gpui-host/src/view/popups/cocoa.rs": "40c691bebb316413863d7ad1fdd46fcc77deac1710fdf43c07f855cb29a0d207",
+      "native/gpui-host/src/view/popups/macos.rs": "21685cba80e2f3bd388a8d0ad4c3e9d5f15b374cd688ca7392801039b86450e8",
+      "native/gpui-host/src/view/popups/x11.rs": "a3dadefc69e77f73bd4767ca68053ed30e552e201c82fdf7f0106daec6822853",
+      "native/gpui-host/src/view/split.rs": "133099935b261c550c1b0a94aa6784c498cbe69ca18bec701eb4fb63280507a5",
+      "native/macos-surface/Cargo.toml": "bee92c45099df6cce5e1dc4dcea10f6f312ebdaaf6c8eb8fa83f1ad7e27a7a43",
+      "native/macos-surface/src/alert.rs": "fa5fd0cf7694ba91119d08e0b7ea3363be53a24fe07fb7e2ed68df14deafb72e",
+      "native/macos-surface/src/context_menu.rs": "3a8183b471ade589117b756bf2791ab199bafcf5ed4b9edefe4f88ba414b4398",
+      "native/macos-surface/src/file_panel.rs": "0f1fc0370cf580697afecc7d8db2939365cca1580ce386a392b3f3e85787e9c6",
+      "native/macos-surface/src/focus_route.rs": "896bfff9d06d268d63c549d9f3cf0d6aa0e5c8c887395add068d00e65afb4807",
+      "native/macos-surface/src/hot_keys.rs": "045da19e06fe4b74c682e9c50a544a4a0896286ac75ba8cb04140040398fa2c9",
+      "native/macos-surface/src/key_status.rs": "8c2dec2882dc9222d2fe3661cfdcf469dc03950c67050e69fecc41dbcbd662ec",
+      "native/macos-surface/src/lib.rs": "b896304936bf720dfc671bfdedd220302323a3cc22c304b69f3acc649028f050",
+      "native/macos-surface/src/notifications.rs": "af4c28d5924aac992f5236cbf6d203445c6820e3a83adf639e08f86d5414514a",
+      "native/macos-surface/src/pasteboard.rs": "6ccced968eadeac39b3fda19ee9b309e6522a81b6e445e4ed2899c10a264ec3f",
+      "native/macos-surface/src/popup.rs": "3d8c183d30ac94e14b4b834204f05a5bcd65c8a23ab5f859b95ea9e11aec7673",
+      "native/macos-surface/src/presentation.rs": "eff910540bba772f6d654ab8da8a5ebb9d3f1aff95a7deb57fc9c4d5b84e094c",
+      "native/posix-services/Cargo.toml": "cb91a60cc92ac7ce4698852b615be76c60e7729c9f618656310dcdb97655b3d1",
+      "native/posix-services/src/lib.rs": "6a20e26cc160b822b613d6cb401b4f025593f7958b96403a4140349fdeb8a985",
+      "native/protocol/Cargo.toml": "b62ea91005cbca4eb770859bac2341e340693c9453ee877486285afc7de7c415",
+      "native/protocol/src/accessibility_tests.rs": "df20986072414a39528a5a003aa2dc78ab595fc4f63770386be01949b5ce4a0f",
+      "native/protocol/src/app_menu_tests.rs": "c2eef4c2044ce86456bc8d29bb6987199e55de0778656531e9bce7d08735222e",
+      "native/protocol/src/app_menu.rs": "844c9caa44c34a50fcbe2660d47e6d9968bbf70be16905d2ae60f7c0ec5ef6e7",
+      "native/protocol/src/dialog_tests.rs": "6e5ad183ab348afe7ed7e51148f856ecd58d5297b5e929f73261f74b2abced61",
+      "native/protocol/src/dialogs.rs": "62149df279ce157cc27404b222d001549aee76f4e31e9c34b78ea9c8691f443d",
+      "native/protocol/src/drops.rs": "f56f6e894f60604b402c380183a0485975d636c453ff35758c93ffb8f9a1c404",
+      "native/protocol/src/event_tests.rs": "20879ff822e4a1514115cba903e924832225ba3218e6e2a9467fdaf9b3f5fa7f",
+      "native/protocol/src/events.rs": "f1e43270a53251536b6ed3bbd7f51662db63f79545338f5f9197468ce3b6fa10",
+      "native/protocol/src/files.rs": "707d79ee9a9a493bac06be75f4584f13438f0a6fcab7ab39f857a76b1832df31",
+      "native/protocol/src/framing_tests.rs": "dc9fe200b74cc0d8cc102f543d32a1b6623846c7049f02a0fb0cddc95af8d8ac",
+      "native/protocol/src/framing.rs": "412c45b6f9363f454241b7b2650dcecffe83b6cdff8772533c867ea915eb5ea7",
+      "native/protocol/src/framing/tests.rs": "ca53dcb6a838df807a91e478d7505df18c48896a6114d7da0f5c7b33dac9f1f3",
+      "native/protocol/src/layout_v2_tests.rs": "ca1951818b31494f489138db27630a02ab9a8dc6a9e49883f195edfc717cc80a",
+      "native/protocol/src/lib.rs": "90d572a9fe4ed80a80f8b83f40a3dea8ed96ba39b107e7b86ffd998c123a7d31",
+      "native/protocol/src/message_dialog_tests.rs": "a0440356ae97f382312e07a16bdd00de0946f2f921af10d5b96ea851e4d6f09e",
+      "native/protocol/src/message_dialogs.rs": "30ca0b3623761fa14e0726f5be6b1869b83de2012360973e5f3cf30a4677d4ed",
+      "native/protocol/src/overlay_tests.rs": "3e490e21da8f7de6b989d53b2b81cb450bc2eefe6dba74a65bde7377525a4f55",
+      "native/protocol/src/popup_tests.rs": "c0675fdea51f06e2ecc231387a1007506e697cc4c1fa0ee448f6c8edc38f4ad2",
+      "native/protocol/src/processes.rs": "c783f5f5aea465f1039f8a7bd1e9fa34109a41ec3fb4123ec186d5fb97453991",
+      "native/protocol/src/request_tests.rs": "b0f224f7d77888ffec183f9de45c78b90ea26a5cd580feaa7572e6bbc3bc1db7",
+      "native/protocol/src/security_tests.rs": "69e7c34e6f3819c4be09d501af3ff2fdf01a2ade9b63e59797ecd90635181868",
+      "native/protocol/src/service_tests.rs": "3ebe9827d0b7d7de008bf4f67e45e2b57c37016c8ba8fd000d4202b3ac4cdc50",
+      "native/protocol/src/services.rs": "8e4c029352b4e19fcfcdac41c5cc8e10c0e5dbf37f17d4c278167fc4967ebcfc",
+      "native/protocol/src/tests.rs": "26fc95e1468aa75462ed8a4d1c3b48013ca9eb1133fa5ac20f5211665288ba32",
+      "native/protocol/src/tree.rs": "f36ab527cbcbc9d88bc876fccf61b66ca6ee32f260be82dc69a50efee0ab5b18",
+      "native/protocol/src/tree/edge_tests.rs": "7a4f8824eecc3d06664f9dc40d6ca7377725a7b9c4550a02a8adea6d8ce54a31",
+      "native/protocol/src/tree/nodes.rs": "2fa73beb762ae7503f119afc3ba8454d9f6d7881ee0274390de4637f55bfdb9f",
+      "native/protocol/src/tree/nodes/tests.rs": "7c71008179cd13914164041a0b9d517d080905d3874f0e9626efc90473ee05ed",
+      "native/protocol/src/tree/tests.rs": "d9654a500b57a4a792ebc5f264ec7d3741260d8d7c9e3e25ffef31af99c8fda1",
+      "native/protocol/src/tree/tests/equivalence.rs": "2bbe5409c97b6a469818647b4348f10a0fc7d6702433d066b1a206885f4b7088",
+      "native/protocol/src/tree/tests/reference.rs": "af74a1770dd52bfcc24a9bd22a552cd05fe0e24dacf411670f94820040dbd50d",
+      "native/protocol/src/wire.rs": "339cc1493056287f52198754c3e39a81e0cca3c89db421f1f8067ce0d9816a4d",
+      "native/protocol/src/wire/decode.rs": "b8eec56e1a81c96e24840be1805d3fffede202e7f0cef690535838d76d0bde02",
+      "native/protocol/src/wire/oracle_tests.rs": "7675da623dc67efc087eac9a7340440ed6b2aa522bd727b97677579e502edf9c",
+      "native/vendor/gpui_macos/Cargo.toml": "d534e8bd210a41e81ce7e9a06c3cc55f119a7b1e685b0284611a85bb89e70291",
+      "native/vendor/gpui_macos/src/display_link.rs": "8ea99ef2f3573db2bfc2736f81156f16a99e2478fc76adda7432743c37e902c0",
+      "native/vendor/gpui_macos/src/display.rs": "eb232a1ab75d8199741e2cc800b21acc725eeddcf8883ff05baf2fcc5ce2d260",
+      "native/vendor/gpui_macos/src/events.rs": "73ef912d8ef63a7282c5a7d1b93e0b12e11cba5075b5a4bf4f09541783f5d619",
+      "native/vendor/gpui_macos/src/gpui_macos.rs": "d02892887cd85c7f27de1da4519c8e558babcfdf37eccb21b9d0bd3cf2eff191",
+      "native/vendor/gpui_macos/src/keyboard.rs": "6a017f020ba10396e1ef827a036a6181644f2fe62d3ac4a7721781e2f08feeaa",
+      "native/vendor/gpui_macos/src/pasteboard.rs": "05d01ac0c7e532a16eb0a962ebd1299b0cacaf64616d3d0d11a1495b5feac994",
+      "native/vendor/gpui_macos/src/platform.rs": "ecb4a5a58ac650e0245f0fb145bba412fca2605ef992387774186823aa146b71",
+      "native/vendor/gpui_macos/src/screen_capture.rs": "996c4308d93aea1c809e27baa2ac42b18d038a677cfdd599e481abf5ad200d4b",
+      "native/vendor/gpui_macos/src/system_notifications.rs": "df8374f075932996d58b99c043d97a82e1cefebab79e5b0f4648c8a3776ea5fe",
+      "native/vendor/gpui_macos/src/window_appearance.rs": "c1ea31769bfd6b324339525b8ffec3be0f59a24495a7e491c1df66bd43db5b75",
+      "native/vendor/gpui_macos/src/window.rs": "5d3f576de7cad8861352ecf085b76bfc0fd520faa502aaeceafc59fed6bc85d0",
+      "native/vendor/wgpu-hal/build.rs": "854fe4fe855316a8c3a2e281c73cabafcc80f752fbd802535e30c8f4fbce179c",
+      "native/vendor/wgpu-hal/Cargo.toml": "58dae1b22e375981100319767d7617e7dc3de3580605310eeb0e7910b7ab016e",
+      "native/vendor/wgpu-hal/src/auxil/dxgi/conv.rs": "a8edbb2700b2f3280bf87a3bd6e6d99a58e48d8ee9fa83e6ffc09d60f06b184c",
+      "native/vendor/wgpu-hal/src/auxil/dxgi/dxgi_lib.rs": "1709783b4ad555109602e05c210e9939192e956d7e0f905f9d0105361f743e23",
+      "native/vendor/wgpu-hal/src/auxil/dxgi/exception.rs": "a1cbc7f6090c2f45e36853ac287236f4a0f76c1335f2cb3c6e0aadf5decacf0f",
+      "native/vendor/wgpu-hal/src/auxil/dxgi/factory.rs": "cc3e3545b4831816880d64fa07640947b67b8d1694efe87ae861682a641e2ad0",
+      "native/vendor/wgpu-hal/src/auxil/dxgi/hdr.rs": "3579a8ad7a039956029bb04b580d2b73f91a22e3c54cc4831ee42ffc35380098",
+      "native/vendor/wgpu-hal/src/auxil/dxgi/mod.rs": "2816a2b832180bb33f6687c42045ca46eac742591751297e805ff0f99b6db07e",
+      "native/vendor/wgpu-hal/src/auxil/dxgi/name.rs": "ff942da0da1a497ee4d2be21604f7ba9fae963588105b3d1f63aae1a0c536e82",
+      "native/vendor/wgpu-hal/src/auxil/dxgi/result.rs": "ae8317767376c2d011d7562b37a99e14d72f2c8e37b107cd5e15e601c9abba8a",
+      "native/vendor/wgpu-hal/src/auxil/dxgi/time.rs": "d4cb85205f93a1c00f4ad7d6f7bec2bd18746b5724adcb4cf62c7d392680cca2",
+      "native/vendor/wgpu-hal/src/auxil/dyn_lib.rs": "23c12484d9325421c14bc156678c12ee72367344f62c36144d650be2299e1bd3",
+      "native/vendor/wgpu-hal/src/auxil/mod.rs": "50def244804cadc41503d1e415331c062ff38300dc8ca66c151c6ef6402ed564",
+      "native/vendor/wgpu-hal/src/auxil/renderdoc.rs": "f5b843f98a6c2132043a766b0bccfeeab5c154962909fd9bd5b42483cf59857f",
+      "native/vendor/wgpu-hal/src/dx12/adapter.rs": "183f1739bb30fb1de7622a697aebdfc9d171eda6bdaaa6311381864dc3b103d9",
+      "native/vendor/wgpu-hal/src/dx12/command.rs": "b10d42b2b084b6fd66a5e879facfc79f9a8ca3f9e09d603cb4cd8c931ab08258",
+      "native/vendor/wgpu-hal/src/dx12/conv.rs": "ac6d0e518b960d9ea46216532434bf2e16fa7bdbf95edb7a300a16f513f88d5d",
+      "native/vendor/wgpu-hal/src/dx12/dcomp.rs": "937c029796a87c8bde7e764c2e042e996d5484676666a076176ea5f958de4ed7",
+      "native/vendor/wgpu-hal/src/dx12/descriptor.rs": "2b57dd84464bd79298e9f30e417ed648755088d361085af82ba6565fb36b5120",
+      "native/vendor/wgpu-hal/src/dx12/device_creation.rs": "fbaf9487c63f936e3556ea6376d9b41b072c700aa69303f67ea20012ad61a54a",
+      "native/vendor/wgpu-hal/src/dx12/device.rs": "eb0b1e019bcaf076fd3d9d7b2db3a3ec14cc40da803a304cca051f529916411f",
+      "native/vendor/wgpu-hal/src/dx12/instance.rs": "c32194dacd2dd9e457225ea1de8bec8bb814e5740bd9470c348ef6c77e18da25",
+      "native/vendor/wgpu-hal/src/dx12/mod.rs": "6e71d2cefb125dd06b767e37d22547529a0297e8401413970ee114a4e0a6e561",
+      "native/vendor/wgpu-hal/src/dx12/pipeline_desc.rs": "631c72108f6735debe9f7059e22574ad50b11aca4dc0ca804e6d89b1373d19ff",
+      "native/vendor/wgpu-hal/src/dx12/sampler.rs": "23d72ded3348f3b948f6bed897a2b2765db08c80f063c9b8debae34c96c4ebd0",
+      "native/vendor/wgpu-hal/src/dx12/shader_compilation.rs": "b0eb5e04d1a2b0e481fbbcf116df9f253f5bb6672a47afe68156a0f38d48704b",
+      "native/vendor/wgpu-hal/src/dx12/suballocation.rs": "f6bd48db63ddf0a474e63e27a66be17ce9bff2317a4cd4d6296770b4399a635c",
+      "native/vendor/wgpu-hal/src/dx12/types.rs": "3fc7619fc09303eb3c936d4ded6889f94ce9e8b9aa62742ce900baa1b1e1cca7",
+      "native/vendor/wgpu-hal/src/dx12/view.rs": "54a8ba59471c0a4b5db1d9c3950b75d46678fcd30d0345ca5eb1737287b9fc7d",
+      "native/vendor/wgpu-hal/src/dynamic/adapter.rs": "df93d7856ec0c7c42ff6eb65435a16cc918c5d3b4f718ebcd6c695423ab9ca41",
+      "native/vendor/wgpu-hal/src/dynamic/command.rs": "eef0d49a9e39261d394a2274e89e2f3a0c0ce884c2f8d0d99d9d500dc93aff62",
+      "native/vendor/wgpu-hal/src/dynamic/device.rs": "47e5386af57bbf07d387ebe44534e1641cc77560af333e77732676aa6c1521a2",
+      "native/vendor/wgpu-hal/src/dynamic/instance.rs": "c5c9f1d3089c0b508c3619aceecaf99234e77af833cf124de792ca3ea8a56f70",
+      "native/vendor/wgpu-hal/src/dynamic/mod.rs": "8a33726e52fe301d9ebc002572c5d1fb720fd8e50106a8174dacd3aeb21d4f8a",
+      "native/vendor/wgpu-hal/src/dynamic/queue.rs": "c993c79029b182d21b48006e37715c1083817258764356c9b131b0637e7e8c86",
+      "native/vendor/wgpu-hal/src/dynamic/surface.rs": "a7b67292ead4c2f3978b4ba17e6a83d94fd80db81b2afbf1aa18da9d392b54b2",
+      "native/vendor/wgpu-hal/src/gles/adapter.rs": "6ec29317fb7a2c8662cbcf4debdf8ed6b6a6ace629f37839e9d99cb84a95ed93",
+      "native/vendor/wgpu-hal/src/gles/command.rs": "eadc274f8df3fbf7e4e7bc98ef5dbc115d6e935e4914fc979d7112f77da87f22",
+      "native/vendor/wgpu-hal/src/gles/conv.rs": "e30696c44423e1446f38934dfefa1554a5ca568b3f7f247e4d854cd39e10ba7f",
+      "native/vendor/wgpu-hal/src/gles/device.rs": "ad9a0d9abb0c0e7a5c3702e3cf6c87d5e39d55756ca9aeb4168c3f4bf08a26f0",
+      "native/vendor/wgpu-hal/src/gles/egl.rs": "b2dd2b061084c588711b9170ae541340e554ece5d307b71a38cae07f25b78dee",
+      "native/vendor/wgpu-hal/src/gles/emscripten.rs": "316d2bb6f2a4bb126dbe68a223f7393399080d116b61c39504454acdf4f9cfaf",
+      "native/vendor/wgpu-hal/src/gles/fence.rs": "af80bc4542e90052ae88d25f7112308b247860af4ff1d12cf1908caf7285cbfb",
+      "native/vendor/wgpu-hal/src/gles/mod.rs": "426e1be46b080b58f6041b501e808b216443b16adc2dec75786da0f1d720ae5b",
+      "native/vendor/wgpu-hal/src/gles/queue.rs": "fedddcfb152443a43bd3eb587d41c483c552728ca384fb385ca2bea3969d92cf",
+      "native/vendor/wgpu-hal/src/gles/shaders/clear.frag": "9133ed8ed97d3641fbb6b5f5ea894a3554c629ccc1b80a5fc9221d7293aa1954",
+      "native/vendor/wgpu-hal/src/gles/shaders/clear.vert": "a543768725f4121ff2e9e1fb5b00644931e9d6f2f946c0ef01968afb5a135abd",
+      "native/vendor/wgpu-hal/src/gles/shaders/srgb_present.frag": "dd9a43c339a2fa4ccf7f6a1854c6f400cabf271a7d5e9230768e9f39d47f3ff5",
+      "native/vendor/wgpu-hal/src/gles/shaders/srgb_present.vert": "6e85d489403d80b81cc94790730bb53b309dfc5eeede8f1ea3412a660f31d357",
+      "native/vendor/wgpu-hal/src/gles/web.rs": "41f6b9d6a3e4e5e614fecbf021d71c2187f40daa236ac2135711a4760910e1c9",
+      "native/vendor/wgpu-hal/src/gles/wgl.rs": "fb2458e693ee480e335a2e2d9a947f8f5480712d078638420033697013fe9efd",
+      "native/vendor/wgpu-hal/src/lib.rs": "a9817a2bf50a8ab7f1d880be6d9ee759be39cbc93a9bcaa13a234affffc97be2",
+      "native/vendor/wgpu-hal/src/metal/adapter.rs": "7a348d6f98b2a39c8ed0d02152fad4f2f9697759ec863e45c4c4f0286db7afc8",
+      "native/vendor/wgpu-hal/src/metal/command.rs": "c4230c33b71599e3d10de12612b29008d418a49d11e3d34c720f7a4c95ebb278",
+      "native/vendor/wgpu-hal/src/metal/conv.rs": "e4b8d3870bb5f9ec3833433538b695de42cf1dccefb91892e32e5a0dddc83148",
+      "native/vendor/wgpu-hal/src/metal/device.rs": "7a95bda96903fb4b17c49a7537bbb2ee9675eba1bbcb7a1281d4f7e38821f9df",
+      "native/vendor/wgpu-hal/src/metal/library_from_metallib.rs": "4484f4d622c39fac5038cd0bb9ea76eccaf12619b31ec231e2f34415bb72c386",
+      "native/vendor/wgpu-hal/src/metal/mod.rs": "485df01a7dd82ebfb6daae46a0ce54cc734714f6e797529993e1a3a55b2c2ecf",
+      "native/vendor/wgpu-hal/src/metal/surface.rs": "690b272462f5f267af5941fa70c9a6bf6a7d6b395924c0ea69cd9506a6d75a17",
+      "native/vendor/wgpu-hal/src/metal/time.rs": "c32d69f30e846dfcc0e39e01097fb80df63b2bebb6586143bb62494999850246",
+      "native/vendor/wgpu-hal/src/noop/buffer.rs": "975b4a8286d1e713c30431d01e811b143159f79fdd4ed8019708993d5bf49fa0",
+      "native/vendor/wgpu-hal/src/noop/command.rs": "d51ca6bd6705164124bd1bc31b60fa063082be0045592103ec9a527b7803053e",
+      "native/vendor/wgpu-hal/src/noop/mod.rs": "537191026ccef2811c04faa4c24483e47592a2fd2d759d4565d2278f7275bf66",
+      "native/vendor/wgpu-hal/src/validation_canary.rs": "5e1062cbe041b322b163c83e2e92d22ded0383e1745b2b3438915df549ae228c",
+      "native/vendor/wgpu-hal/src/vulkan/adapter.rs": "49a40b7e32802ea0c5f969cf8c2bd66896b70ad76643ad0015c7f2f193928c4d",
+      "native/vendor/wgpu-hal/src/vulkan/command.rs": "b004b40c9df77458401e4e00218746479ca158c600ed97eb31033905c96c8d24",
+      "native/vendor/wgpu-hal/src/vulkan/conv.rs": "340e3469a86ca639586d018e630faa0911c50aa017e423bd3de19ea2f7bedc27",
+      "native/vendor/wgpu-hal/src/vulkan/descriptor.rs": "0252ee9ae91b12e75985d07eb0fb32b2253484acd57a3ffa7f20e0208f4f2be3",
+      "native/vendor/wgpu-hal/src/vulkan/device.rs": "b8b565228a8f1d41c79413b94f45432de7ca89a07c4f1bc64024009d7e96f65f",
+      "native/vendor/wgpu-hal/src/vulkan/drm.rs": "b071e1092164bf7c9952f33aff26ad8d74789f233516ac986ac63b2e6a0a0210",
+      "native/vendor/wgpu-hal/src/vulkan/instance.rs": "0bd8ff2bd0ae83d5586ba9d36fff72cfed3e9b5cfe5e827589e2465ca49d7438",
+      "native/vendor/wgpu-hal/src/vulkan/mod.rs": "808dc4712b327f7b9d15cc0f69a75fb7debfa6c5255a4092505843554d2d33e7",
+      "native/vendor/wgpu-hal/src/vulkan/pnext_chain.rs": "45fa5e7a62e6dcb6ea36dc1c1f8fb5998bf8a19dd350ef0e005bdd9773edf9cb",
+      "native/vendor/wgpu-hal/src/vulkan/sampler.rs": "f65729d6df5cce681b7756b3e48074017f0c7f42da69ca55e26cc723cd14ad59",
+      "native/vendor/wgpu-hal/src/vulkan/semaphore_list.rs": "919c7dfd5864fa2f2ebb478268aa8bfe8a540ca759efb777066fa1f7216a6f9e",
+      "native/vendor/wgpu-hal/src/vulkan/swapchain/mod.rs": "68dc4eb82e3d9aa9d0a0343c430777f9c0a2870314da8806b96ca8a8cd8df0c6",
+      "native/vendor/wgpu-hal/src/vulkan/swapchain/native.rs": "66d23e17d7ec05190eee8c6e75de206b955385031069c0ed0006397f68c815b9",
+      "native/windows-services/Cargo.toml": "d204a798b59f80a498876c53d84f3a54f2ac25317ad5e5d87672aa1b19787c70",
+      "native/windows-services/src/command_line.rs": "b7cc399062184ec2d3bd3682122e2840327945110a5c38fbff529ac8e11e7155",
+      "native/windows-services/src/context_menu_spec.rs": "6536aac5c014cbab000b8b1a83997bef73e9dbfaac20836623506ea05ee47627",
+      "native/windows-services/src/context_menu.rs": "85692f065125b1fd86e63e99fc2ecccb54614ecdd10107b014e50cef460f0e7f",
+      "native/windows-services/src/fs.rs": "ac6192e41876b852ecec00d4454b6a29be21cc9da3853782240c508c3df54beb",
+      "native/windows-services/src/lib.rs": "abe1772865a79e42dcdaa3b329bc0d080fcbe4d3f1ab2289bd43430758b46521",
+      "native/windows-services/src/names.rs": "b99bd680387a87cb855dd4dbcb4af1f407d3b0efd523553f48058a09629dddaa",
+      "native/windows-services/src/process.rs": "e8a904c61683c86ea4ccc709e6396f0a1a1e1ddc6167794295531df552e30450",
+      "native/windows-services/src/task_dialog_spec.rs": "23d67ee84843d1d30ec40b89ac6490bcc3e225285789f36a96e7cebe38810d10",
+      "native/windows-services/src/task_dialog.rs": "0739e51e14e214221122df6ae31d8ca199193f68c691677d0cb36a8e0093fe1d",
+      "native/windows-services/src/wide.rs": "8240dc74b78a4c3187fcabc3c10bec95fd33881fd76390553256d51ec18d7131",
+      "package.json": "922d8af40c39699bb6e3497f8e8b71787e7fb7016f7bf9d0d1a3b7ee38016608",
+      "packages/core/package.json": "e3e6aabd2e22d892540bf5dc64630334307fcfebb9b9f05ef3034f51fa1d63fc",
+      "packages/core/src/app-menu.ts": "be41f76ea03059acb892700a172a8df3f07821af79f16332173399aaf6db7731",
+      "packages/core/src/application.ts": "4dea1f51d55025dd0427815d200537a8e295dd4245a99ebc1f1e82587c54556a",
+      "packages/core/src/commit-plan.ts": "04b4cd48ca0e6bf9eda03dce2fd3e0bf96eddea4e94bcf33ba7e4f597508a40d",
+      "packages/core/src/context-menus.ts": "19c59698130066d5a09c977a77a03f54450a51c89523aba4d797044270f90ec8",
+      "packages/core/src/dialogs.ts": "e0bfb065e5c63b835a4bf6b69c9d31d7608c5ddeaa5b5962c5cfff77ff5622cb",
+      "packages/core/src/display.ts": "e1fabce2f0640b4764c357834e6f600242941534ded6238b15c5e568dd66638e",
+      "packages/core/src/drops.ts": "57e9d4c563652156f48c95b88dd340643917dc8cdbaf2e1ad0824a9a883bc8fb",
+      "packages/core/src/events.ts": "3a4f8d97ccb50522e59db76f173cc88035b0c82e7a0b1df3c602498008243486",
+      "packages/core/src/files.ts": "a65dad7045a37592e4672c9237fe85d6b02cf1aca616fb34a71689625a4de293",
+      "packages/core/src/index.ts": "1ab9096fb92e6e0e06f73c07130f5c22e69e088896c59b8f6b3f7e803f425099",
+      "packages/core/src/message-dialogs.ts": "907e6eaa550eddded30a4447d18674a676dc6f1edaaf9961c2ee71b6ac812128",
+      "packages/core/src/notifications.ts": "7d2ead1b814304af936ff4ef990401a2728fd2847e6dd9d5f8041697310f016c",
+      "packages/core/src/overlays.ts": "1634d00f9585e355b633c461c64b702e19ab9b0277028357d75cf239e8f7c5de",
+      "packages/core/src/processes.ts": "079df5516eedc817b81068893cd0293fe7a9a12beeaaf681e9b00a71d3fea596",
+      "packages/core/src/services.ts": "d8f4af83a0c6e1c99bf93ab8fc628c2b62edef3ef804d46ebdd69ab5ae5d53a8",
+      "packages/core/src/shortcuts.ts": "51f3ffb2db76aeec1db8db63b18dedae2772c5ad33be41504e1a8070eaa2e3e0",
+      "packages/core/src/splits.ts": "1274f9e5b695e32959059e6fad95517369d05e260129c068064c3e10317d1fba",
+      "packages/core/src/theme.ts": "c460c4e1a2e9d337e79294bce333e53896381529af8f7e35b23e207c6e132b85",
+      "packages/core/src/tree.ts": "dcaf0b12360b8e7274a981ef1c2bde87b79fc46b0b5ce311a6c9a50f960c564b",
+      "packages/core/src/types.ts": "25400d57bebe1a449ec2c877b0d2cecd58ff172ddc3192eb93bc2532c5ccbf43",
+      "packages/protocol/package.json": "668f52c10a6db801c2d0c68c59998c489b50c0bb79cb7f60298dfbb83923b0ba",
+      "packages/protocol/src/app-menu.ts": "52ec565f7423671a13e3bc43d49129496ed9869f22b4fa1b7e3eba79191137b8",
+      "packages/protocol/src/dialogs.ts": "c2ea74d7175c75710146c788b261e5566301da5952359b8e50bc69a323cdef00",
+      "packages/protocol/src/drops.ts": "478b9952e406853b22e32e8b5c227fdc5936363665d984c628d18581de112191",
+      "packages/protocol/src/elements.ts": "3529a4f7fefa9d56880a5f32be83b7daea9ad492784478ddc413d2deb85f5283",
+      "packages/protocol/src/files.ts": "d4d890f22b6abdc713e544a4e3f7b0ed53df4a1d5f44044febea8d8cf9ca96a5",
+      "packages/protocol/src/framing.ts": "47d2473785f245d8f85bd1447fba3f7ed47d5ddac170f590df5c83623064158a",
+      "packages/protocol/src/index.ts": "7c7fd785b5037bc74ce0594f0ec5c49fca7ef9ae0b4dbab8fbf83d8427f6ead8",
+      "packages/protocol/src/message-dialogs.ts": "551dc23a2fde7771c28e485212d670f37db199da6f2f006344b0dc6b9064ef2b",
+      "packages/protocol/src/messages.ts": "cef29b0d2fa4b84d73df5c9b8abbf321dafc6a66d688ad00838f0c8aa50a1d03",
+      "packages/protocol/src/processes.ts": "80f109623ec5f17bc21fb20c4e3093829124839c6c9e5b2457120bff0a45c778",
+      "packages/protocol/src/services.ts": "eb128b1ef12d2650acc53b71c2c802f35d3fb983d1f584aa1d81251adfccd37b",
+      "packages/protocol/src/values.ts": "75d8f7ee9772c1aa2929a9dc4c416f42569795db089d17321398c3cdf482731b",
+      "packages/react/package.json": "18ac27eaf168a16c333e2b79e9aa7fa9ff9caf272fbf27523d865848946503ec",
+      "packages/react/src/commit-barrier.ts": "139f9f2827d3363642fee801e128dd1abf2a754d04550aca7d878493ef19bfd0",
+      "packages/react/src/index.ts": "211d06eb159c3afa4ceac566538e7cbc7ad4d106a4c58d05d7bb0cd842e2acda",
+      "packages/react/src/jsx-dev-runtime.ts": "bc127e1290abc7a6ba83fac0647b9f8ecca35c7aaa025a9ad25e35289a93bd85",
+      "packages/react/src/jsx-runtime.ts": "df1c78b5c254c4ccfa226d9b3d0c2b2a9dbf0733d40deac4f45cb47692a3763d",
+      "packages/react/src/jsx.ts": "4458ba8196591d768d0c7d1a333e47fb2902f44b3e848b9fd7289f68092b8502",
+      "packages/react/src/mount.ts": "73b271cb21be8774674a428550cd3cab42c065b6b8286f7c1c914e86fe65addd",
+      "packages/react/src/reconciler.ts": "f29e9099e177009760406e4164bf8b740715d89bf6bc12b450cb4d575880615a",
+      "packages/react/src/root-errors.ts": "2380b9bcc709010f9f09bef444fda47fdda9f64f1fd22d0a4b351069ce09826a",
+      "packages/renderer/package.json": "720be385eb972eff6dac08b77948e09166ca11aa1db0100312cf6b7f36f53ae3",
+      "packages/renderer/src/event-properties.ts": "558e70f2f2e146145feacfaeb1818070c304f32b120740886555ff960eb9d9b3",
+      "packages/renderer/src/index.ts": "9553c06c040e33a67cfc9b609e69bc296becbcd1514da73222048ae395ada9b9",
+      "packages/renderer/src/input-intent.ts": "efe908fe1df1d14a7cbc1e3e30e8e76dc888fb865dca6b203bf91c18f3bb4d02",
+      "packages/renderer/src/native-tree.ts": "8a2b8d02964ef3cd1624725a15edde9398453c643976b9a5e34df159a461a063",
+      "packages/renderer/src/nodes.ts": "184763af49875dbbfd9aff5bd2f903e03efdf8caed913dbbf788460d57e3318b",
+      "packages/renderer/src/order.ts": "d115b5aafa2662509e7d600d23b00a596bf022f949f573ac9e8e585fb388af5e",
+      "packages/renderer/src/root.ts": "61603fbb1b578fa4f5b4ea5f93d36446b158b229ed7c2ab4660994936155ec2a",
+      "packages/renderer/src/window-lifetime.ts": "e75cedfc7285f7b134bed4d1e861b125b29a5024b25188583eeb077ce545ad6b",
+      "packages/runtime/package.json": "30d8e6684ee94e266b3bc63d151f718a5d0a8804b2155c11f74de3e7189af63a",
+      "packages/runtime/src/exit-diagnostic.ts": "f73b2259d80a6584427ad3b27ad239b5950b816468cca8d64bdfc35a5f3cfce8",
+      "packages/runtime/src/index.ts": "aba3c6c58e2b9089b4faaf32e512736e660314bc2c0f74f62fe6dba45df5b053",
+      "packages/runtime/src/installation.ts": "a89c677fad56ace6839bda86891fafa088f3a37e0248c313a72d7918a0538a10",
+      "packages/runtime/src/startup-trace.ts": "b34971a20cb541fa8cd97eb611d59923297844186b6653ecb607b4b29bf80b2d",
+      "packages/solid/package.json": "5da76ecbbb9ba781fc827191b33a42b25ddcfd8ba1838c0256f82ea1c6838b84",
+      "packages/solid/src/index.ts": "88fe2cfc3d59011bb756bb86bfb040e6280feabd1edb33b7cdeecfc524652250",
+      "packages/solid/src/jsx.ts": "0ea5386e11e9df63541c381d4794fe0edc0e8269158fa3ac6b6739d12f16c729",
+      "packages/solid/src/mount.ts": "411fa124f9ef0a3aab4333ec6fe8aee57bc8ba4032565e2c1cb361d9d89c3ab2",
+      "packages/solid/src/renderer.ts": "2d1682b885c1dee1953ba09fdf28bf524945654f7c460840c113cc7b00213ab1",
+      "rust-toolchain.toml": "887f9be066a15585a2c583578e84b0fcb541126d81546276bad3d2ff00d61167",
+      "scripts/quality/macos-feature-evidence.ts": "eb2aa98d94520fa31315c9b12595131869425deba7e8f5bc23ec733cf12e57c5",
+      "scripts/quality/native-platform-macos.m": "99e185f59b9ff93ff2ea541ec1af0c478bc31f5ba338b57763c920cf0223281c",
+      "scripts/quality/signed-installer-smoke.ts": "7134d8707b394c8ac1de1a50208ac0ce4ec25dfbdf667d175dc096ee1955c007",
+      "scripts/solid-build.ts": "5f263562cc299642e2971cce1dd913533ff092bc5543abd11d07048e8b3e5908",
+      "scripts/solid/preset.d.ts": "13ed7d2d8eb4deb50cdaa4ca50ec3156157e6c3f7da7cb4a8bbd96e06eaba228",
+      "scripts/solid/transform.ts": "281fdbd71b10e613d9080e0494320161e51cfaf9a1c7b9966707eba0dd24ef1c",
+      "tests/native/accessibility-platform.ts": "22b691daa30a6dc03c30c5aa4e0167ce63d88e720acade2ec86f61ff77bcc057",
+      "tests/native/accessibility.ts": "a6c89eb802b07dc61647cbc140ba14432cc0da274f3d0fd3baa79ac70c8abc0a",
+      "tests/native/app-menu.ts": "913d5de8db8089fe757e885713895d2e47740e0d3de0078befe03e0bff1179fc",
+      "tests/native/clipboard-macos.ts": "a44f851dd096033b3d94682dff5c6bfeaffed09a0d3015de615262b7df56addc",
+      "tests/native/context-menus.ts": "e2a25a6e6170315e4e2cbb763209fb1ce664314b62ea6920ab57c4883e2bbbda",
+      "tests/native/display-os.ts": "cff883cc3cb99cc5ced856986c7ad5c0c52d34d6fde9327da1b226ae10b59ee6",
+      "tests/native/display-platform.ts": "3d9048d2c89171452b748ba19cb477ea225f505709200d981e24916b972e51ad",
+      "tests/native/display-uuid.ts": "e9f343126cdc965067826ab11e0beea0d3642d07a8b8f12859d903c28960b786",
+      "tests/native/drag-drop.ts": "57db63230cc9c6a38e0d15ec383b2a8eef9c0993004ca4176915cd19c05e1af8",
+      "tests/native/drag-source.ts": "aad039554fdf6ec08c94a05d130d93d8f852a69f6f3711ab2d35cfe6d10d7c51",
+      "tests/native/drop-adapter.ts": "0d550563f4124fe976681379b278f4a9606d0e6e0b11b0fdf1507480b342eacb",
+      "tests/native/file-dialogs-macos.ts": "01265b0650c6d0803810a2c5bf1bd06dd069bc2f7aee63eb69a26c83e72e2297",
+      "tests/native/filesystem-grants.ts": "f40ff37770ba0432a57f35a28df0fd18c4c47b35d341a227042f91d13e91533b",
+      "tests/native/global-shortcuts-macos.ts": "61d85e9326cdb64605ae0ef1f923aa9c51cb41c603ed66b249a27dead45c1eb0",
+      "tests/native/input-states-platform.ts": "45146c9ca904d1341f4df36e95bb101b0127109c2ea714d7fa61f0a5b976af6b",
+      "tests/native/layout-style-compare.ts": "3388a6203c2468a8c61b1d730123b23f2aca353f2f42f615ec3528d2db678fce",
+      "tests/native/layout-style-scene.ts": "432c16209221d47b192b784a2ac38efd6fd5702e8b0ef8560701dad0240e5561",
+      "tests/native/layout-style.ts": "2581a0e1d3458436deb6a54e0e0fbf6395c00a57c5b8b95f358b125c6927c0e1",
+      "tests/native/macos-accessibility-oracle.m": "84aebdacfc83d9a680fbcecd8637de86ca8c5fd875839ad78bfdcbc9744e7621",
+      "tests/native/macos-alert-oracle.m": "a187ba30a02a893aa3a562937baf7174bdc8ce11b7be8810ee877fc3eecb33dc",
+      "tests/native/macos-context-menu-oracle.m": "3eb1db6c5a1b4ca5d58ca3a30ec60e333c34fe2a8610b9e9783a66ac24a0c4a0",
+      "tests/native/macos-display-oracle.m": "6cf228076080594e30597c2411279ccf96bdbb7081834a8a8a671e51f760c983",
+      "tests/native/macos-drag-source.m": "2e50fee0dc32237ebf0e8c7c5ec8f6b99468d1c6b98c3dc62a39e1a70a23f556",
+      "tests/native/macos-file-panel-oracle.m": "3cb88343fcd4a0c3056e3b09163ccc40d5fbdd93dcabcc1efef98c0d39a0f415",
+      "tests/native/macos-hot-key-oracle.m": "602e1f79c545fc50ea8b345e328d504286e7bf9d3686c4e433ce4aa8625a7c34",
+      "tests/native/macos-menu-oracle.m": "446b66f7040b0dc60b941ef01f6c1a50a746826e7ccd73f5f1581578791c24c8",
+      "tests/native/macos-popup-oracle.m": "0500f39a89529a409c908fd220169f0a28227413bc248d6df621fefc24929e32",
+      "tests/native/macos-window-input.ts": "db85f18cc3f543567704dc6a910a15cd9cb18b10a79c0516a3c1f015617bbd95",
+      "tests/native/notifications-macos.ts": "4c11ec68c159e0ce8908cf18df653a8616be2b269ce38a67e5b8115bf4d34c4c",
+      "tests/native/overlays.ts": "4aad52389ecea9ccadcd7524c7295d7feb5af1ef8038426484fcaf6d8c39c362",
+      "tests/native/png.ts": "14773f7a9b209c9a87f31310bf0832aa8a744f1ddc7d1f6ed33e6e7e55e3b2ff",
+      "tests/native/popups-macos.ts": "d3b4afa4568bc24e4b94588fde8842fa521736f435eb3a8e254a215caeebc49d",
+      "tests/native/processes.ts": "51592378e15971043227cc9e4e1fa942e09ec9b183e94cccfefefcdcbf89a48e",
+      "tests/native/react-drag-drop.tsx": "72369e7ba5ae2e7b7dd11733d2d4a03038a0e16d69d9b78904b2a31fe645af34",
+      "tests/native/react-layout-style.tsx": "88e9a8937a78ef4bf560bc7f0ec919dceebf856401ade9bbb7622df1ed884218",
+      "tests/native/solid-drag-drop.tsx": "8c1047f4361870457e1d1c0149df9ca657f11e419bad4f9ba669a58d61869794",
+      "tests/native/solid-layout-style.tsx": "8f3c8d92450743c82f4faecc591fc29ddf99bab664ef79406e24dd8854f501ea",
+      "tests/native/task-dialogs.ts": "babed9a8e284a2a6417d7a109c61feeee625b3bbe8b9d67ad951d4f19bfdf4ab",
+      "tests/native/windows-drag-source.cs": "f7d853d7d57aabf9ec03449e31146cd548e050f21a29643de3d888fcb6c20088",
+      "toolchain.json": "00c3f707aae8abe9ca75cd2e162f5e1c7c34362a03675da39afead60d856066a",
+      "tsconfig.json": "8d8121ab905345fe75ff994fc40706f683dfc120699ca48269e85b90a82197a7"
+    }
+  },
+  "host": {
+    "sha256": "522306f8c4d8fa973f44f27efacd44cd1ecd6af941c2e4c0e3d1cf98b17c156e",
+    "bytes": 9858816
+  },
+  "packages": {
+    "layout-style": {
+      "manifestSha256": "60d74ef02f7d2b13b9b138d709231fd8129a26e3a8b5bd997c477bc2140c1267",
+      "application": {
+        "file": "layout-style",
+        "bytes": 56826722,
+        "sha256": "4a3a0207becbf5a75d840c360d3b54ab11875f41e0d030bc876d34adcbb3ab77",
+        "inspection": {
+          "format": "macho",
+          "payloadOffset": 51036168,
+          "payloadBytes": 5030130,
+          "flags": 16764,
+          "hasCompiledProgram": true
+        },
+        "runtimeFeatures": {
+          "format": "macho64-le",
+          "section": {
+            "name": "__TEXT,__bun_features",
+            "offset": 49667928,
+            "bytes": 536
+          },
+          "rawRecordHex": "42554e464541540000000000a1090000385636ffffffffff0100000100000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000010101010101010101010101000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+          "trimmedProgramFeatures": false,
+          "removedRangeCount": 2465,
+          "jit": "unused",
+          "interpreter": "present",
+          "imageCompiler": "unused",
+          "jitRemovedRanges": {
+            "count": 238,
+            "virtualBytes": 13827978
+          }
+        }
+      },
+      "sources": 291
+    },
+    "solid-layout-style": {
+      "manifestSha256": "1df5d4cdaa4830fdc3155323b6a4c7175246001bfeffc9ba4afc8eb864eb516a",
+      "application": {
+        "file": "solid-layout-style",
+        "bytes": 57800930,
+        "sha256": "6de0301d825aa5666c83e1b64d970b7dac088799bbce1a474c4b8dcbb1d74bfc",
+        "inspection": {
+          "format": "macho",
+          "payloadOffset": 51036168,
+          "payloadBytes": 5996790,
+          "flags": 16764,
+          "hasCompiledProgram": true
+        },
+        "runtimeFeatures": {
+          "format": "macho64-le",
+          "section": {
+            "name": "__TEXT,__bun_features",
+            "offset": 49667928,
+            "bytes": 536
+          },
+          "rawRecordHex": "42554e464541540000000000a1090000385636ffffffffff0100000100000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000010101010101010101010101000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+          "trimmedProgramFeatures": false,
+          "removedRangeCount": 2465,
+          "jit": "unused",
+          "interpreter": "present",
+          "imageCompiler": "unused",
+          "jitRemovedRanges": {
+            "count": 238,
+            "virtualBytes": 13827978
+          }
+        },
+        "developmentModule": {
+          "file": "development/application.js",
+          "bytes": 348270,
+          "sha256": "8e6de5be0c2430698ca8109d8a701bbbf601dcc07b0a9e37c875c1739110cee7",
+          "transformCommand": [
+            "/Users/runner/work/_temp/bun-native-bun/bun",
+            "/Users/runner/work/bun-native/bun-native/scripts/solid-build.ts",
+            "/Users/runner/work/bun-native/bun-native/tests/native/solid-layout-style.tsx",
+            "/Users/runner/work/_temp/bun-native-platform-evidence/solid-layout-style-package/development"
+          ],
+          "buildMs": 505.30041600000004
+        }
+      },
+      "sources": 308
+    },
+    "react-layout-style": {
+      "manifestSha256": "19f55717271805fae48e16d0bbc3164437b76d0be5b557dab0aa8cedd577c629",
+      "application": {
+        "file": "react-layout-style",
+        "bytes": 58725602,
+        "sha256": "e115c353f6d3508a146d4c4289540aec1870e2af263f5f776db3e3ca23ebb065",
+        "inspection": {
+          "format": "macho",
+          "payloadOffset": 51036168,
+          "payloadBytes": 6914294,
+          "flags": 16764,
+          "hasCompiledProgram": true
+        },
+        "runtimeFeatures": {
+          "format": "macho64-le",
+          "section": {
+            "name": "__TEXT,__bun_features",
+            "offset": 49667928,
+            "bytes": 536
+          },
+          "rawRecordHex": "42554e464541540000000000a1090000385636ffffffffff0100000100000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000010101010101010101010101000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+          "trimmedProgramFeatures": false,
+          "removedRangeCount": 2465,
+          "jit": "unused",
+          "interpreter": "present",
+          "imageCompiler": "unused",
+          "jitRemovedRanges": {
+            "count": 238,
+            "virtualBytes": 13827978
+          }
+        },
+        "developmentModule": {
+          "file": "development/application.js",
+          "bytes": 330698,
+          "sha256": "a4cfcacc6ecd20863afc851fdc8949a256d59513d9ff76e7ed8a0d229ac089b6",
+          "transformCommand": [
+            "/Users/runner/work/_temp/bun-native-bun/bun",
+            "build",
+            "--no-script",
+            "--production",
+            "--define",
+            "process.env.NODE_ENV=\"production\"",
+            "--target=bun",
+            "--format=esm",
+            "--sourcemap=external",
+            "/Users/runner/work/bun-native/bun-native/tests/native/react-layout-style.tsx",
+            "--outdir",
+            "/Users/runner/work/_temp/bun-native-platform-evidence/react-layout-style-package/development",
+            "--entry-naming=application.js"
+          ],
+          "buildMs": 33.25220800000001
+        }
+      },
+      "sources": 309
+    },
+    "overlays": {
+      "manifestSha256": "26efa307f7c67f71e35a6506a24a7bdc0dd0490f3f9200788623d86eb27e1218",
+      "application": {
+        "file": "overlays",
+        "bytes": 57668834,
+        "sha256": "01ca5a0d6046541d76e2e156b8cbb0e120610d70872f1d02f34dfd81b1d0bde2",
+        "inspection": {
+          "format": "macho",
+          "payloadOffset": 51036168,
+          "payloadBytes": 5865702,
+          "flags": 16764,
+          "hasCompiledProgram": true
+        },
+        "runtimeFeatures": {
+          "format": "macho64-le",
+          "section": {
+            "name": "__TEXT,__bun_features",
+            "offset": 49667928,
+            "bytes": 536
+          },
+          "rawRecordHex": "42554e464541540000000000a1090000385636ffffffffff0100000100000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000010101010101010101010101000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+          "trimmedProgramFeatures": false,
+          "removedRangeCount": 2465,
+          "jit": "unused",
+          "interpreter": "present",
+          "imageCompiler": "unused",
+          "jitRemovedRanges": {
+            "count": 238,
+            "virtualBytes": 13827978
+          }
+        }
+      },
+      "sources": 290
+    },
+    "accessibility": {
+      "manifestSha256": "63806fcc6f5fe696a6806b073ed3f59ec927e9bcc2ca90a2bf2619b7dbbd58d6",
+      "application": {
+        "file": "accessibility",
+        "bytes": 57553250,
+        "sha256": "dce3e5a4f7acc0b173885f6139e75c570b11d246899fbfd253577fd931b6adb6",
+        "inspection": {
+          "format": "macho",
+          "payloadOffset": 51036168,
+          "payloadBytes": 5751029,
+          "flags": 16764,
+          "hasCompiledProgram": true
+        },
+        "runtimeFeatures": {
+          "format": "macho64-le",
+          "section": {
+            "name": "__TEXT,__bun_features",
+            "offset": 49667928,
+            "bytes": 536
+          },
+          "rawRecordHex": "42554e464541540000000000a1090000385636ffffffffff0100000100000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000010101010101010101010101000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+          "trimmedProgramFeatures": false,
+          "removedRangeCount": 2465,
+          "jit": "unused",
+          "interpreter": "present",
+          "imageCompiler": "unused",
+          "jitRemovedRanges": {
+            "count": 238,
+            "virtualBytes": 13827978
+          }
+        }
+      },
+      "sources": 290
+    },
+    "accessibility-platform": {
+      "manifestSha256": "63a08bf81a779f2f493e67ab35257161806b8a6854ea87a803b328d241cccff8",
+      "application": {
+        "file": "accessibility-platform",
+        "bytes": 56463458,
+        "sha256": "2f930898782408adc4b21083c0b5ddd5d2aabfb8781425fa2b47dc9838d1a34f",
+        "inspection": {
+          "format": "macho",
+          "payloadOffset": 51036168,
+          "payloadBytes": 4669712,
+          "flags": 16764,
+          "hasCompiledProgram": true
+        },
+        "runtimeFeatures": {
+          "format": "macho64-le",
+          "section": {
+            "name": "__TEXT,__bun_features",
+            "offset": 49667928,
+            "bytes": 536
+          },
+          "rawRecordHex": "42554e464541540000000000a1090000385636ffffffffff0100000100000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000010101010101010101010101000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+          "trimmedProgramFeatures": false,
+          "removedRangeCount": 2465,
+          "jit": "unused",
+          "interpreter": "present",
+          "imageCompiler": "unused",
+          "jitRemovedRanges": {
+            "count": 238,
+            "virtualBytes": 13827978
+          }
+        }
+      },
+      "sources": 286
+    },
+    "input-states-platform": {
+      "manifestSha256": "e68343a898e2f3f077b08e07e9ba5368004a72a172e3a6a4930ea53a391db187",
+      "application": {
+        "file": "input-states-platform",
+        "bytes": 56694626,
+        "sha256": "28e3621012058a48b3df43cd8239de8c64fc75b84950b6d1d6d977073c470d6a",
+        "inspection": {
+          "format": "macho",
+          "payloadOffset": 51036168,
+          "payloadBytes": 4899085,
+          "flags": 16764,
+          "hasCompiledProgram": true
+        },
+        "runtimeFeatures": {
+          "format": "macho64-le",
+          "section": {
+            "name": "__TEXT,__bun_features",
+            "offset": 49667928,
+            "bytes": 536
+          },
+          "rawRecordHex": "42554e464541540000000000a1090000385636ffffffffff0100000100000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000010101010101010101010101000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+          "trimmedProgramFeatures": false,
+          "removedRangeCount": 2465,
+          "jit": "unused",
+          "interpreter": "present",
+          "imageCompiler": "unused",
+          "jitRemovedRanges": {
+            "count": 238,
+            "virtualBytes": 13827978
+          }
+        }
+      },
+      "sources": 290
+    },
+    "app-menu": {
+      "manifestSha256": "3a8ac5bdf1839f1b1c49875b85933b8ba1e10db35a6d62bee250255ed929056d",
+      "application": {
+        "file": "app-menu",
+        "bytes": 56265314,
+        "sha256": "4b40bf16a1657b432be0f37d4ad63f755601df61cb9a4a2bc34931e570483b2f",
+        "inspection": {
+          "format": "macho",
+          "payloadOffset": 51036168,
+          "payloadBytes": 4473062,
+          "flags": 16764,
+          "hasCompiledProgram": true
+        },
+        "runtimeFeatures": {
+          "format": "macho64-le",
+          "section": {
+            "name": "__TEXT,__bun_features",
+            "offset": 49667928,
+            "bytes": 536
+          },
+          "rawRecordHex": "42554e464541540000000000a1090000385636ffffffffff0100000100000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000010101010101010101010101000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+          "trimmedProgramFeatures": false,
+          "removedRangeCount": 2465,
+          "jit": "unused",
+          "interpreter": "present",
+          "imageCompiler": "unused",
+          "jitRemovedRanges": {
+            "count": 238,
+            "virtualBytes": 13827978
+          }
+        }
+      },
+      "sources": 286
+    },
+    "display-platform": {
+      "manifestSha256": "27b929405782c47ec5c55743e079ce1d0156b652349afc2097876ba88f1a7fab",
+      "application": {
+        "file": "display-platform",
+        "bytes": 57289058,
+        "sha256": "a2f7e1503e8b26fbbc02bd67386127e442946380f9b21c9151193cdecb701c9a",
+        "inspection": {
+          "format": "macho",
+          "payloadOffset": 51036168,
+          "payloadBytes": 5488894,
+          "flags": 16764,
+          "hasCompiledProgram": true
+        },
+        "runtimeFeatures": {
+          "format": "macho64-le",
+          "section": {
+            "name": "__TEXT,__bun_features",
+            "offset": 49667928,
+            "bytes": 536
+          },
+          "rawRecordHex": "42554e464541540000000000a1090000385636ffffffffff0100000100000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000010101010101010101010101000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+          "trimmedProgramFeatures": false,
+          "removedRangeCount": 2465,
+          "jit": "unused",
+          "interpreter": "present",
+          "imageCompiler": "unused",
+          "jitRemovedRanges": {
+            "count": 238,
+            "virtualBytes": 13827978
+          }
+        }
+      },
+      "sources": 288
+    },
+    "filesystem-grants": {
+      "manifestSha256": "71a8d0d1aeb5e80a3082faadd9ae97fab08610105006a2021fd07a5f247ab313",
+      "application": {
+        "file": "filesystem-grants",
+        "bytes": 56265314,
+        "sha256": "a0f79b98af174f5be20c01f7a0dfb059128f0b4e0573b55d104ee3288f54d9c1",
+        "inspection": {
+          "format": "macho",
+          "payloadOffset": 51036168,
+          "payloadBytes": 4473089,
+          "flags": 16764,
+          "hasCompiledProgram": true
+        },
+        "runtimeFeatures": {
+          "format": "macho64-le",
+          "section": {
+            "name": "__TEXT,__bun_features",
+            "offset": 49667928,
+            "bytes": 536
+          },
+          "rawRecordHex": "42554e464541540000000000a1090000385636ffffffffff0100000100000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000010101010101010101010101000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+          "trimmedProgramFeatures": false,
+          "removedRangeCount": 2465,
+          "jit": "unused",
+          "interpreter": "present",
+          "imageCompiler": "unused",
+          "jitRemovedRanges": {
+            "count": 238,
+            "virtualBytes": 13827978
+          }
+        }
+      },
+      "sources": 286
+    },
+    "processes": {
+      "manifestSha256": "03207801023269fe1fc6255a2bbe220427faefee29e5806ee36f99d93fc3bd65",
+      "application": {
+        "file": "processes",
+        "bytes": 56413922,
+        "sha256": "a1ba41ce2221750a54e3189a380a66f5f94bf0ae8ca367c4ac51a75497a60f22",
+        "inspection": {
+          "format": "macho",
+          "payloadOffset": 51036168,
+          "payloadBytes": 4620521,
+          "flags": 16764,
+          "hasCompiledProgram": true
+        },
+        "runtimeFeatures": {
+          "format": "macho64-le",
+          "section": {
+            "name": "__TEXT,__bun_features",
+            "offset": 49667928,
+            "bytes": 536
+          },
+          "rawRecordHex": "42554e464541540000000000a1090000385636ffffffffff0100000100000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000010101010101010101010101000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+          "trimmedProgramFeatures": false,
+          "removedRangeCount": 2465,
+          "jit": "unused",
+          "interpreter": "present",
+          "imageCompiler": "unused",
+          "jitRemovedRanges": {
+            "count": 238,
+            "virtualBytes": 13827978
+          }
+        }
+      },
+      "sources": 287
+    },
+    "drag-drop": {
+      "manifestSha256": "14ca67417087da94b4ab7c9ee3bc33e8f0f53a7cd6a5f34509518b5a8c95d935",
+      "application": {
+        "file": "drag-drop",
+        "bytes": 56546018,
+        "sha256": "c092ceec121463aa58b269734c2ae0dfcb5f0124c197328db08ffe5540956163",
+        "inspection": {
+          "format": "macho",
+          "payloadOffset": 51036168,
+          "payloadBytes": 4751593,
+          "flags": 16764,
+          "hasCompiledProgram": true
+        },
+        "runtimeFeatures": {
+          "format": "macho64-le",
+          "section": {
+            "name": "__TEXT,__bun_features",
+            "offset": 49667928,
+            "bytes": 536
+          },
+          "rawRecordHex": "42554e464541540000000000a1090000385636ffffffffff0100000100000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000010101010101010101010101000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+          "trimmedProgramFeatures": false,
+          "removedRangeCount": 2465,
+          "jit": "unused",
+          "interpreter": "present",
+          "imageCompiler": "unused",
+          "jitRemovedRanges": {
+            "count": 238,
+            "virtualBytes": 13827978
+          }
+        }
+      },
+      "sources": 290
+    },
+    "solid-drag-drop": {
+      "manifestSha256": "03a3930ccc9d2738880c3ee52da9f7830c226dd947271053fcea33d823ea1660",
+      "application": {
+        "file": "solid-drag-drop",
+        "bytes": 57421154,
+        "sha256": "d99f4383453350e555f4a967390b24b61e34aad8f8ba2af7a3cbd6201d401379",
+        "inspection": {
+          "format": "macho",
+          "payloadOffset": 51036168,
+          "payloadBytes": 5619955,
+          "flags": 16764,
+          "hasCompiledProgram": true
+        },
+        "runtimeFeatures": {
+          "format": "macho64-le",
+          "section": {
+            "name": "__TEXT,__bun_features",
+            "offset": 49667928,
+            "bytes": 536
+          },
+          "rawRecordHex": "42554e464541540000000000a1090000385636ffffffffff0100000100000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000010101010101010101010101000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+          "trimmedProgramFeatures": false,
+          "removedRangeCount": 2465,
+          "jit": "unused",
+          "interpreter": "present",
+          "imageCompiler": "unused",
+          "jitRemovedRanges": {
+            "count": 238,
+            "virtualBytes": 13827978
+          }
+        },
+        "developmentModule": {
+          "file": "development/application.js",
+          "bytes": 324392,
+          "sha256": "55c4e47a0d338d893a11d6448d64f91b1c5d201eb81210bd89e8267493a86b96",
+          "transformCommand": [
+            "/Users/runner/work/_temp/bun-native-bun/bun",
+            "/Users/runner/work/bun-native/bun-native/scripts/solid-build.ts",
+            "/Users/runner/work/bun-native/bun-native/tests/native/solid-drag-drop.tsx",
+            "/Users/runner/work/_temp/bun-native-platform-evidence/solid-drag-drop-package/development"
+          ],
+          "buildMs": 685.449583
+        }
+      },
+      "sources": 308
+    },
+    "react-drag-drop": {
+      "manifestSha256": "3b376ef2bebe88510f8e424f54aebb12d28b5a2f023d83f3e72d34164e2e10e2",
+      "application": {
+        "file": "react-drag-drop",
+        "bytes": 58477922,
+        "sha256": "6df779c8eb1ed92bc16e5a7617f036eaae2682663c57e2f516705b46ab1bc8c0",
+        "inspection": {
+          "format": "macho",
+          "payloadOffset": 51036168,
+          "payloadBytes": 6668531,
+          "flags": 16764,
+          "hasCompiledProgram": true
+        },
+        "runtimeFeatures": {
+          "format": "macho64-le",
+          "section": {
+            "name": "__TEXT,__bun_features",
+            "offset": 49667928,
+            "bytes": 536
+          },
+          "rawRecordHex": "42554e464541540000000000a1090000385636ffffffffff0100000100000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000010101010101010101010101000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+          "trimmedProgramFeatures": false,
+          "removedRangeCount": 2465,
+          "jit": "unused",
+          "interpreter": "present",
+          "imageCompiler": "unused",
+          "jitRemovedRanges": {
+            "count": 238,
+            "virtualBytes": 13827978
+          }
+        },
+        "developmentModule": {
+          "file": "development/application.js",
+          "bytes": 318437,
+          "sha256": "00a09a7f11c0c1a1a0a1953fd59d3553ff0a0bab8f42d5295862f7af0cbddd1e",
+          "transformCommand": [
+            "/Users/runner/work/_temp/bun-native-bun/bun",
+            "build",
+            "--no-script",
+            "--production",
+            "--define",
+            "process.env.NODE_ENV=\"production\"",
+            "--target=bun",
+            "--format=esm",
+            "--sourcemap=external",
+            "/Users/runner/work/bun-native/bun-native/tests/native/react-drag-drop.tsx",
+            "--outdir",
+            "/Users/runner/work/_temp/bun-native-platform-evidence/react-drag-drop-package/development",
+            "--entry-naming=application.js"
+          ],
+          "buildMs": 64.114417
+        }
+      },
+      "sources": 309
+    }
+  },
+  "features": [
+    {
+      "capabilities": ["split_v1", "style_decoration_v1"],
+      "oracle": "CoreGraphics pointer, wheel and key input, Accessibility window resize, screencapture pixels and the host paint evidence; one tree and geometry across core, Solid and React",
+      "status": "passed",
+      "reports": [
+        {
+          "path": "layout-development-layout-style/layout-style-core.json",
+          "status": "passed",
+          "bytes": 35455,
+          "sha256": "a37f97649ad1c8c459a2587d5ad87c68d8dc0dfa1157a7e48ef2b1f993c5d71b",
+          "fields": {
+            "platform": "darwin",
+            "adapter": "core",
+            "mode": "development"
+          },
+          "outcomes": [
+            "splitRatio",
+            "paneClipping",
+            "focusOrder",
+            "paneScroll",
+            "dividerDrag",
+            "themeSwitch",
+            "declaredRatio",
+            "resize",
+            "ownershipReleased"
+          ]
+        },
+        {
+          "path": "layout-aot-layout-style/layout-style-core.json",
+          "status": "passed",
+          "bytes": 35447,
+          "sha256": "27fe9f2a8423d2416655e676218be15ddd6a314282e0a6fda68ae5671f4e3ea1",
+          "fields": {
+            "platform": "darwin",
+            "adapter": "core",
+            "mode": "aot"
+          },
+          "outcomes": [
+            "splitRatio",
+            "paneClipping",
+            "focusOrder",
+            "paneScroll",
+            "dividerDrag",
+            "themeSwitch",
+            "declaredRatio",
+            "resize",
+            "ownershipReleased"
+          ]
+        },
+        {
+          "path": "layout-development-solid-layout-style/layout-style-solid.json",
+          "status": "passed",
+          "bytes": 35456,
+          "sha256": "de83b7d5bff5abbd4ab4281ddb9b1586233aa323cde36b3c53aef4c5ca7afc65",
+          "fields": {
+            "platform": "darwin",
+            "adapter": "solid",
+            "mode": "development"
+          },
+          "outcomes": [
+            "splitRatio",
+            "paneClipping",
+            "focusOrder",
+            "paneScroll",
+            "dividerDrag",
+            "themeSwitch",
+            "declaredRatio",
+            "resize",
+            "ownershipReleased"
+          ]
+        },
+        {
+          "path": "layout-aot-solid-layout-style/layout-style-solid.json",
+          "status": "passed",
+          "bytes": 35448,
+          "sha256": "57751c1d29563ef52be45cd2d7195d98c171c177aa643f1563c80d2fd323ddd4",
+          "fields": {
+            "platform": "darwin",
+            "adapter": "solid",
+            "mode": "aot"
+          },
+          "outcomes": [
+            "splitRatio",
+            "paneClipping",
+            "focusOrder",
+            "paneScroll",
+            "dividerDrag",
+            "themeSwitch",
+            "declaredRatio",
+            "resize",
+            "ownershipReleased"
+          ]
+        },
+        {
+          "path": "layout-development-react-layout-style/layout-style-react.json",
+          "status": "passed",
+          "bytes": 35456,
+          "sha256": "09cd03410b5d66b970028cbfa719aeb4f19ebd5afe56109e25c8c3e7e72a74b6",
+          "fields": {
+            "platform": "darwin",
+            "adapter": "react",
+            "mode": "development"
+          },
+          "outcomes": [
+            "splitRatio",
+            "paneClipping",
+            "focusOrder",
+            "paneScroll",
+            "dividerDrag",
+            "themeSwitch",
+            "declaredRatio",
+            "resize",
+            "ownershipReleased"
+          ]
+        },
+        {
+          "path": "layout-aot-react-layout-style/layout-style-react.json",
+          "status": "passed",
+          "bytes": 35448,
+          "sha256": "d52a4bc08721917c9a7d6bc7b7bdb2ea83328647ea9fb533990d7f35e008edad",
+          "fields": {
+            "platform": "darwin",
+            "adapter": "react",
+            "mode": "aot"
+          },
+          "outcomes": [
+            "splitRatio",
+            "paneClipping",
+            "focusOrder",
+            "paneScroll",
+            "dividerDrag",
+            "themeSwitch",
+            "declaredRatio",
+            "resize",
+            "ownershipReleased"
+          ]
+        },
+        {
+          "path": "layout-style-comparison/report.json",
+          "status": "passed",
+          "bytes": 225,
+          "sha256": "6848db73679206a45b89a7a37f2684733275c352c3abd7a20a5958e50d745132",
+          "fields": {
+            "status": "identical"
+          }
+        }
+      ],
+      "packages": ["layout-style", "solid-layout-style", "react-layout-style"]
+    },
+    {
+      "capabilities": [
+        "overlays_v1",
+        "scroll_anchor_v1",
+        "focus_v1",
+        "scroll_control_v1",
+        "overlay_keyboard_v1"
+      ],
+      "oracle": "CoreGraphics key, click and wheel input; screencapture pixels; host paint evidence",
+      "status": "passed",
+      "reports": [
+        {
+          "path": "overlays-development/overlays.json",
+          "status": "passed",
+          "bytes": 21479,
+          "sha256": "faa7b622217033994f7a403c969b121d85d062880c89dbb153d05c6b90c5dc10",
+          "fields": {
+            "platform": "darwin",
+            "mode": "development"
+          },
+          "outcomes": [
+            "editorSelection",
+            "modalFocusTrap",
+            "backdropBlocksPointer",
+            "nestedModalEscape",
+            "focusAndSelectionRestored",
+            "anchoredPopoverZOrder",
+            "controlLessModalEscape",
+            "scrollAnchorUnderStreaming",
+            "menuArrowNavigation",
+            "menuTypeAhead",
+            "visibleFocusRing",
+            "menuActivationAndReturn",
+            "programmaticFocusRevealsTarget",
+            "programmaticScroll",
+            "tabFocusRevealsTarget",
+            "ownershipReleased"
+          ]
+        },
+        {
+          "path": "overlays-aot/overlays.json",
+          "status": "passed",
+          "bytes": 21471,
+          "sha256": "20a439eaa7c82a9929604027a643c9b7d6e42bd5caff245de2caf896012f224e",
+          "fields": {
+            "platform": "darwin",
+            "mode": "aot"
+          },
+          "outcomes": [
+            "editorSelection",
+            "modalFocusTrap",
+            "backdropBlocksPointer",
+            "nestedModalEscape",
+            "focusAndSelectionRestored",
+            "anchoredPopoverZOrder",
+            "controlLessModalEscape",
+            "scrollAnchorUnderStreaming",
+            "menuArrowNavigation",
+            "menuTypeAhead",
+            "visibleFocusRing",
+            "menuActivationAndReturn",
+            "programmaticFocusRevealsTarget",
+            "programmaticScroll",
+            "tabFocusRevealsTarget",
+            "ownershipReleased"
+          ]
+        }
+      ],
+      "packages": ["overlays"]
+    },
+    {
+      "capabilities": ["accessibility_v1", "split_resize_v1"],
+      "oracle": "AXUIElement tree and requests (macos-accessibility-oracle.m), CoreGraphics key and drag input, screencapture focus-ring pixels",
+      "status": "passed",
+      "reports": [
+        {
+          "path": "accessibility-development/result.json",
+          "status": "passed",
+          "bytes": 11016,
+          "sha256": "8c3f25c625e1c1aaf9d4f64834bd67dc0966a0ede8a48ad9d90a766725a30f66",
+          "fields": {
+            "status": "passed",
+            "platform": "darwin",
+            "mode": "development"
+          },
+          "outcomes": [
+            "initialTree",
+            "characterBounds",
+            "assistiveActions",
+            "tabOrder",
+            "focusRing",
+            "keyboardSteps",
+            "pointerDrag",
+            "dialogTree",
+            "modalDialog"
+          ]
+        },
+        {
+          "path": "accessibility-aot/result.json",
+          "status": "passed",
+          "bytes": 11008,
+          "sha256": "e0e9991d5a5c07191867e35a410e8431d4f2aa34c0ee7a0de27591e6074c4def",
+          "fields": {
+            "status": "passed",
+            "platform": "darwin",
+            "mode": "aot"
+          },
+          "outcomes": [
+            "initialTree",
+            "characterBounds",
+            "assistiveActions",
+            "tabOrder",
+            "focusRing",
+            "keyboardSteps",
+            "pointerDrag",
+            "dialogTree",
+            "modalDialog"
+          ]
+        },
+        {
+          "path": "accessibility-platform-development/result.json",
+          "status": "passed",
+          "bytes": 2699,
+          "sha256": "228fcb1476d561477b56014242bd7ef510fc7f4c34b9b669143c71af21847c50",
+          "fields": {
+            "status": "passed",
+            "platform": "darwin",
+            "mode": "development"
+          }
+        },
+        {
+          "path": "accessibility-platform-aot/result.json",
+          "status": "passed",
+          "bytes": 2691,
+          "sha256": "e16e64d04f253ad4d10cc65481aa3cefb5322856ca7929d200d49d10a43a2b01",
+          "fields": {
+            "status": "passed",
+            "platform": "darwin",
+            "mode": "aot"
+          }
+        }
+      ],
+      "packages": ["accessibility", "accessibility-platform"]
+    },
+    {
+      "capabilities": ["input_states_v1"],
+      "oracle": "CoreGraphics key input; pbpaste; AXUIElement enabled/focusable/focused states",
+      "status": "passed",
+      "reports": [
+        {
+          "path": "input-states-platform-development/result.json",
+          "status": "passed",
+          "bytes": 8975,
+          "sha256": "da2252a696e882f277aabed2dc60b7dc7bb4c530cd6cc113e97f137e5956aeec",
+          "fields": {
+            "status": "passed",
+            "platform": "darwin",
+            "mode": "development"
+          },
+          "outcomes": [
+            "initialFocus",
+            "accessibilityStates",
+            "focusOrder",
+            "selectionClipboard",
+            "disabledState"
+          ]
+        },
+        {
+          "path": "input-states-platform-aot/result.json",
+          "status": "passed",
+          "bytes": 8967,
+          "sha256": "00d0ee306c50bf1327fc120ad3f5f8b26f4e002f6b940f910a5b06af293d2d82",
+          "fields": {
+            "status": "passed",
+            "platform": "darwin",
+            "mode": "aot"
+          },
+          "outcomes": [
+            "initialFocus",
+            "accessibilityStates",
+            "focusOrder",
+            "selectionClipboard",
+            "disabledState"
+          ]
+        }
+      ],
+      "packages": ["input-states-platform"]
+    },
+    {
+      "capabilities": ["app_menu_v1"],
+      "oracle": "AXMenuBar dump and AXPress (macos-menu-oracle.m)",
+      "status": "passed",
+      "reports": [
+        {
+          "path": "app-menu-development/app-menu.json",
+          "status": "passed",
+          "bytes": 23560,
+          "sha256": "9a3a101fca134a02484bebb9b555f5249c014bb8a07c89a0230462d0c0e21127",
+          "fields": {
+            "status": "verified",
+            "platform": "darwin",
+            "mode": "development"
+          },
+          "outcomes": [
+            "deniedByDefault",
+            "firstBarRead",
+            "selectionsDelivered",
+            "replacementRevokes",
+            "clearRemoves",
+            "shutdownRevokes"
+          ]
+        },
+        {
+          "path": "app-menu-aot/app-menu.json",
+          "status": "passed",
+          "bytes": 23552,
+          "sha256": "57c96d520e1b1b09bc1a4193bd93ff6e37013ad001ab1be44a3ef6d69df10a24",
+          "fields": {
+            "status": "verified",
+            "platform": "darwin",
+            "mode": "aot"
+          },
+          "outcomes": [
+            "deniedByDefault",
+            "firstBarRead",
+            "selectionsDelivered",
+            "replacementRevokes",
+            "clearRemoves",
+            "shutdownRevokes"
+          ]
+        }
+      ],
+      "packages": ["app-menu"]
+    },
+    {
+      "capabilities": ["task_dialogs_v1"],
+      "oracle": "Accessibility NSAlert sheet oracle (macos-alert-oracle.m)",
+      "status": "passed",
+      "reports": [
+        {
+          "path": "alert-sheets/task-dialogs.json",
+          "status": "passed",
+          "bytes": 866,
+          "sha256": "f8a0cd2a8f3061c459ccd7114c6c91ef78b62d717bdde8ae32cad9573cad72aa",
+          "fields": {
+            "platform": "darwin",
+            "failed": false
+          },
+          "outcomes": [
+            "shownTextAndButtons",
+            "buttonChosen",
+            "escapeIsCancelButton",
+            "escapeWithoutCancelButtonIgnored",
+            "returnIsDefaultButton",
+            "escapeIgnoredAndAbortCloses",
+            "queuedInOrder",
+            "confirmTrue",
+            "ownerCloseEndsDialog",
+            "shutdownEndsDialog"
+          ]
+        }
+      ],
+      "packages": []
+    },
+    {
+      "capabilities": ["context_menus_v1"],
+      "oracle": "Accessibility NSMenu oracle (macos-context-menu-oracle.m)",
+      "status": "passed",
+      "reports": [
+        {
+          "path": "context-menus/context-menus.json",
+          "status": "passed",
+          "bytes": 1857,
+          "sha256": "ee3b026eb612c5a24751dc0fcf9a88c69de7a2aded09090ecacfa5c3d40c5cfa",
+          "fields": {
+            "platform": "darwin",
+            "failed": false
+          },
+          "outcomes": [
+            "shownItems",
+            "itemChosen",
+            "nestedChosen",
+            "escapeDismisses",
+            "abortCloses",
+            "ownerCloseEndsMenu",
+            "shutdownEndsMenu"
+          ]
+        }
+      ],
+      "packages": []
+    },
+    {
+      "capabilities": ["display_details_v1"],
+      "oracle": "NSScreen/CoreGraphics display oracle (macos-display-oracle.m), JXA NSScreen",
+      "status": "passed",
+      "reports": [
+        {
+          "path": "display-platform-development/display-platform.json",
+          "status": "passed",
+          "bytes": 16551,
+          "sha256": "95bbccbd47d28b6a4aabb4a838658154e7ef5394d004046c835f075f20a47d39",
+          "fields": {
+            "platform": "darwin",
+            "mode": "development"
+          },
+          "outcomes": ["osDisplays", "denied", "snapshot", "revocation", "shutdown"]
+        },
+        {
+          "path": "display-platform-aot/display-platform.json",
+          "status": "passed",
+          "bytes": 17514,
+          "sha256": "ff4e5d1cd2bd3e2a6e17abf4796fa6f47cba83868ba99d118a8598a4ddc87237",
+          "fields": {
+            "platform": "darwin",
+            "mode": "aot"
+          },
+          "outcomes": ["osDisplays", "denied", "snapshot", "revocation", "shutdown"]
+        }
+      ],
+      "packages": ["display-platform"]
+    },
+    {
+      "capabilities": ["filesystem_grants_v1"],
+      "oracle": "node:fs on a private temporary tree",
+      "status": "passed",
+      "reports": [
+        {
+          "path": "filesystem-grants-development/filesystem-grants.json",
+          "status": "passed",
+          "bytes": 1396,
+          "sha256": "20424dba371ba0c08078715ef864ddbd486b6a95abcbdcdd023b6f910cf9e27d",
+          "fields": {
+            "platform": "darwin",
+            "backend": "openat_walk",
+            "mode": "development"
+          }
+        },
+        {
+          "path": "filesystem-grants-aot/filesystem-grants.json",
+          "status": "passed",
+          "bytes": 1388,
+          "sha256": "89648ecdbdd9a0d3defd1be9c8acf6e39a2aceb913c18005626d78d5ce522c34",
+          "fields": {
+            "platform": "darwin",
+            "backend": "openat_walk",
+            "mode": "aot"
+          }
+        }
+      ],
+      "packages": ["filesystem-grants"]
+    },
+    {
+      "capabilities": ["processes_v1"],
+      "oracle": "real /bin/sh children; process groups through ps",
+      "status": "passed",
+      "reports": [
+        {
+          "path": "processes-development/processes.json",
+          "status": "passed",
+          "bytes": 2226,
+          "sha256": "344869d156c2d8ae0710d2aa2e9ed3f31ecea7aa4e728b11db2fe9eaaca0fb3c",
+          "fields": {
+            "backend": "posix",
+            "mode": "development"
+          }
+        },
+        {
+          "path": "processes-aot/processes.json",
+          "status": "passed",
+          "bytes": 2218,
+          "sha256": "af70700e89d7b9566c0fe59c73be26d2a06d5ef552eacc39611ceb1de7deb6a5",
+          "fields": {
+            "backend": "posix",
+            "mode": "aot"
+          }
+        }
+      ],
+      "packages": ["processes"]
+    },
+    {
+      "capabilities": ["drag_drop_files_v1"],
+      "oracle": "an independent AppKit NSDraggingSession source process (macos-drag-source.m)",
+      "status": "passed",
+      "reports": [
+        {
+          "path": "drag-drop-development/drag-drop.json",
+          "status": "passed",
+          "bytes": 2323,
+          "sha256": "f56fe1233741eb0b66af1af6fac36882aba826f41eb1753d513d562766239f36",
+          "fields": {
+            "platform": "darwin",
+            "backend": "appkit",
+            "mode": "development"
+          }
+        },
+        {
+          "path": "solid-drag-drop-development/solid-drag-drop.json",
+          "status": "passed",
+          "bytes": 690,
+          "sha256": "b0cd2b2272c8913d7ab783a9a3c4c37f8f0a9e879d7c1f6b199a05f9d271f502",
+          "fields": {
+            "status": "passed",
+            "backend": "appkit",
+            "mode": "development"
+          }
+        },
+        {
+          "path": "react-drag-drop-development/react-drag-drop.json",
+          "status": "passed",
+          "bytes": 690,
+          "sha256": "42326da86e7c4e8ea5c4a7f5734e95c8c347a9272c9379521fa61f444acf2e16",
+          "fields": {
+            "status": "passed",
+            "backend": "appkit",
+            "mode": "development"
+          }
+        },
+        {
+          "path": "drag-drop-aot/drag-drop.json",
+          "status": "passed",
+          "bytes": 2315,
+          "sha256": "d2c9bd20c4a95459d7c14cb251df73bf56089c86ac8d32f92b1544c1c646760f",
+          "fields": {
+            "platform": "darwin",
+            "backend": "appkit",
+            "mode": "aot"
+          }
+        },
+        {
+          "path": "solid-drag-drop-aot/solid-drag-drop.json",
+          "status": "passed",
+          "bytes": 682,
+          "sha256": "c88dae58a44a3e88ae067e2821db5bc410ff4fbe092c778ab9de35576d460e73",
+          "fields": {
+            "status": "passed",
+            "backend": "appkit",
+            "mode": "aot"
+          }
+        },
+        {
+          "path": "react-drag-drop-aot/react-drag-drop.json",
+          "status": "passed",
+          "bytes": 682,
+          "sha256": "071eb17c015f696b870f94bc75c97506eb641e1f8c766c5bbb47b7b88c05dc8c",
+          "fields": {
+            "status": "passed",
+            "backend": "appkit",
+            "mode": "aot"
+          }
+        }
+      ],
+      "packages": ["drag-drop", "solid-drag-drop", "react-drag-drop"]
+    }
+  ],
+  "failures": []
+}
