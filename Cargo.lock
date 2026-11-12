@@ -626,6 +626,7 @@ dependencies = [
  "futures",
  "futures-lite",
  "gpui",
+ "gpui_macos",
  "gpui_platform",
  "log",
  "pty-process",
@@ -637,6 +638,7 @@ dependencies = [
  "wayland-protocols-misc",
  "wayland-protocols-wlr",
  "x11rb",
+ "xkbcommon",
  "zbus",
 ]
 
@@ -651,6 +653,8 @@ dependencies = [
  "objc2-foundation 0.3.2",
  "objc2-metal 0.3.2",
  "objc2-quartz-core 0.3.2",
+ "objc2-uniform-type-identifiers",
+ "objc2-user-notifications",
  "raw-window-handle",
 ]
 
@@ -1922,7 +1926,6 @@ dependencies = [
 [[package]]
 name = "gpui_macos"
 version = "0.1.0"
-source = "git+https://github.com/zed-industries/zed?rev=ba63a022c9a22ca66d68ef2a8f0bb9b5b0a9984d#ba63a022c9a22ca66d68ef2a8f0bb9b5b0a9984d"
 dependencies = [
  "accesskit",
  "accesskit_macos",

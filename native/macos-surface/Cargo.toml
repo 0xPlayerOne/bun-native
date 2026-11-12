@@ -15,11 +15,16 @@ objc2-core-foundation = { version = "=0.3.2", default-features = false, features
 objc2-foundation = { version = "=0.3.2", default-features = false, features = [
   "std",
   "block2",
+  "NSArray",
+  "NSBundle",
+  "NSError",
   "NSGeometry",
   "NSNotification",
   "NSOperation",
   "NSRunLoop",
+  "NSSet",
   "NSString",
+  "NSURL",
 ] }
 objc2-metal = { version = "=0.3.2", default-features = false, features = ["std", "MTLDevice"] }
 objc2-app-kit = { version = "=0.3.2", default-features = false, features = [
@@ -31,12 +36,21 @@ objc2-app-kit = { version = "=0.3.2", default-features = false, features = [
   "NSControl",
   "NSCell",
   "NSEvent",
+  "NSGraphics",
   "NSMenu",
   "NSMenuItem",
+  "NSOpenPanel",
+  "NSPanel",
+  "NSPasteboard",
   "NSResponder",
+  "NSSavePanel",
+  "NSScreen",
   "NSView",
   "NSWindow",
+  # NSWindow::backingScaleFactor returns a CGFloat (popup placement).
+  "objc2-core-foundation",
   "objc2-quartz-core",
+  "objc2-uniform-type-identifiers",
 ] }
 objc2-quartz-core = { version = "=0.3.2", default-features = false, features = [
   "std",
@@ -44,6 +58,26 @@ objc2-quartz-core = { version = "=0.3.2", default-features = false, features = [
   "CAMetalLayer",
   "objc2-core-foundation",
   "objc2-metal",
+] }
+# Already locked through GPUI's macOS backend: the content types a file
+# panel filters by (`UTType` from a file name extension).
+objc2-uniform-type-identifiers = { version = "=0.3.2", default-features = false, features = [
+  "std",
+  "UTType",
+] }
+# Already locked through GPUI's macOS backend: plain-text notifications
+# through UNUserNotificationCenter.
+objc2-user-notifications = { version = "=0.3.2", default-features = false, features = [
+  "std",
+  "block2",
+  "UNNotification",
+  "UNNotificationAction",
+  "UNNotificationCategory",
+  "UNNotificationContent",
+  "UNNotificationRequest",
+  "UNNotificationResponse",
+  "UNNotificationTrigger",
+  "UNUserNotificationCenter",
 ] }
 raw-window-handle = "=0.6.2"
 

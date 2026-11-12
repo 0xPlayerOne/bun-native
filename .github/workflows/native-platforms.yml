@@ -320,6 +320,7 @@ jobs:
             Write-Output "::notice title=Notarization skipped::$(Get-Content -LiteralPath $record -TotalCount 1)"
           }
       - name: Install the signed template from its installer and confirm its health (#249)
+        id: signed-install
         if: ${{ matrix.shard == 1 && (!cancelled() && steps.signed-template.outcome == 'success') }}
         timeout-minutes: 8
         run: |
@@ -700,6 +701,8 @@ jobs:
           xcrun clang -fobjc-arc -Wall -Wextra -Werror -framework AppKit -framework ApplicationServices `
             tests/native/macos-menu-oracle.m -o $oracle
           if ($LASTEXITCODE -ne 0) { throw 'The independent Accessibility menu oracle did not compile' }
+          $trust = & $oracle trusted | ConvertFrom-Json
+          if (-not $trust.trusted) { throw 'The runner does not trust the menu oracle for Accessibility' }
           $env:BUN_NATIVE_MACOS_MENU_ORACLE = $oracle
           $package = Join-Path $env:NATIVE_EVIDENCE 'app-menu-package'
           bun experiments/aot-gpui/build-window.ts --entry app-menu `
@@ -721,8 +724,9 @@ jobs:
             if ($report.platform -ne 'darwin' -or $report.mode -ne $mode) {
               throw "macOS $mode application menu evidence does not name its platform and mode"
             }
+            # The bar's contents and selections must be read and pressed through the oracle.
             if ($report.status -ne 'verified') {
-              Write-Output "::warning::macOS $mode menu bar contents and selections are unverified: $($report.oracle)"
+              throw "macOS $mode menu bar contents and selections are unverified: $($report.oracle)"
             }
           }
       - name: macOS and Windows development and AOT accessibility through AX and UI Automation (#241)
@@ -761,14 +765,179 @@ jobs:
               throw "${{ runner.os }} $mode accessibility evidence does not record a pass"
             }
           }
-      # EXPERIMENTAL (#241): the first hosted runs of a real screen reader and a
-      # real OS input method on these images. Each step reports failure in its
-      # own outcome but does not fail the job until it has passed on hosted
-      # runners; it does not replace or relax the AX/UI Automation step above.
-      - name: Experimental macOS VoiceOver and Windows NVDA speech in development and AOT (#241)
+      # M1 (#222, #241): advertised macOS capabilities exercised on macOS by the
+      # Linux fixtures' own macOS branches, with a real native window, real
+      # CoreGraphics input (BUN_NATIVE_PLATFORM_HELPER) and independent macOS
+      # oracles (AXUIElement, screencapture pixels, pbpaste).
+      - name: macOS development and AOT overlays, modal focus, keyboard menus and scrolling (#222)
+        if: ${{ matrix.shard == 2 && (runner.os == 'macOS' && !cancelled() && steps.native-build.outcome == 'success') }}
+        timeout-minutes: 6
+        run: |
+          $package = Join-Path $env:NATIVE_EVIDENCE 'overlays-package'
+          bun experiments/aot-gpui/build-window.ts --entry overlays `
+            --source $env:GITHUB_WORKSPACE --host $env:BUN_NATIVE_HOST `
+            --host-profile release --outdir $package
+          if ($LASTEXITCODE -ne 0) { throw 'The overlay AOT compiler or inspection failed' }
+          $manifest = Get-Content -Raw (Join-Path $package 'manifest.json') | ConvertFrom-Json
+          if ($manifest.application.inspection.hasCompiledProgram -ne $true -or `
+              $manifest.application.runtimeFeatures.jit -eq 'present') {
+            throw 'The overlay fixture lacks genuine compiled-program/JIT-removal evidence'
+          }
+          foreach ($mode in @('development', 'aot')) {
+            $evidence = Join-Path $env:NATIVE_EVIDENCE "overlays-$mode"
+            New-Item -ItemType Directory $evidence | Out-Null
+            $env:BUN_NATIVE_OVERLAY_EVIDENCE = $evidence
+            $env:BUN_NATIVE_OVERLAY_MODE = $mode
+            $env:BUN_NATIVE_EVIDENCE_LOG = Join-Path $evidence 'native-evidence.jsonl'
+            $env:BUN_NATIVE_EVIDENCE_NONCE = python3 -c 'import secrets; print(secrets.token_hex(16))'
+            # Record the Metal renderer's dropped-frame errors beside the
+            # layout records, to tell an unpainted frame from a dropped one.
+            $env:BUN_NATIVE_STARTUP_LOG = '1'
+            $env:BUN_NATIVE_STARTUP_TRACE = '1'
+            if ($mode -eq 'development') {
+              bun tests/native/overlays.ts 2>&1 | Tee-Object -FilePath (Join-Path $evidence 'run.log')
+            } else {
+              & (Join-Path $package $manifest.application.file) 2>&1 |
+                Tee-Object -FilePath (Join-Path $evidence 'run.log')
+            }
+            $overlaysExit = $LASTEXITCODE
+            Remove-Item Env:BUN_NATIVE_STARTUP_LOG, Env:BUN_NATIVE_STARTUP_TRACE
+            Select-String -Path $env:BUN_NATIVE_EVIDENCE_LOG -SimpleMatch '"gpui_apple::metal_renderer"' |
+              ForEach-Object { Write-Host "Metal renderer ($mode): $($_.Line)" }
+            if ($overlaysExit -ne 0) { throw "macOS $mode overlays were not verified" }
+            $report = Get-Content -Raw (Join-Path $evidence 'overlays.json') | ConvertFrom-Json
+            if ($report.platform -ne 'darwin' -or $report.mode -ne $mode) {
+              throw "macOS $mode overlay evidence does not name its platform and mode"
+            }
+          }
+      - name: macOS shared layout, split panes and theme tokens through core, Solid and React in development and AOT (#222)
+        if: ${{ matrix.shard == 2 && (runner.os == 'macOS' && !cancelled() && steps.native-build.outcome == 'success') }}
+        timeout-minutes: 10
+        run: |
+          $reports = @()
+          foreach ($entry in @('layout-style', 'solid-layout-style', 'react-layout-style')) {
+            $package = Join-Path $env:NATIVE_EVIDENCE "$entry-package"
+            bun experiments/aot-gpui/build-window.ts --entry $entry `
+              --source $env:GITHUB_WORKSPACE --host $env:BUN_NATIVE_HOST `
+              --host-profile release --outdir $package
+            if ($LASTEXITCODE -ne 0) { throw "The $entry AOT compiler or inspection failed" }
+            $manifest = Get-Content -Raw (Join-Path $package 'manifest.json') | ConvertFrom-Json
+            if ($manifest.application.inspection.hasCompiledProgram -ne $true -or `
+                $manifest.application.runtimeFeatures.jit -eq 'present') {
+              throw "The $entry fixture lacks genuine compiled-program/JIT-removal evidence"
+            }
+            foreach ($mode in @('development', 'aot')) {
+              [string[]]$command = if ($mode -eq 'aot') {
+                @((Join-Path $package $manifest.application.file))
+              } elseif ($entry -eq 'layout-style') {
+                @('bun', 'tests/native/layout-style.ts')
+              } else {
+                @('bun', (Join-Path $package 'development/application.js'))
+              }
+              $evidence = Join-Path $env:NATIVE_EVIDENCE "layout-$mode-$entry"
+              New-Item -ItemType Directory $evidence | Out-Null
+              $env:BUN_NATIVE_LAYOUT_EVIDENCE = $evidence
+              $env:BUN_NATIVE_LAYOUT_MODE = $mode
+              $env:BUN_NATIVE_EVIDENCE_LOG = Join-Path $evidence 'native-evidence.jsonl'
+              $env:BUN_NATIVE_EVIDENCE_NONCE = python3 -c 'import secrets; print(secrets.token_hex(16))'
+              # Record the Metal renderer's dropped frames and each paint's
+              # presentation path beside the layout records, as for overlays.
+              $env:BUN_NATIVE_STARTUP_LOG = '1'
+              $env:BUN_NATIVE_STARTUP_TRACE = '1'
+              if ($command.Count -gt 1) {
+                & $command[0] $command[1..($command.Count - 1)] 2>&1 |
+                  Tee-Object -FilePath (Join-Path $evidence 'run.log')
+              } else {
+                & $command[0] 2>&1 | Tee-Object -FilePath (Join-Path $evidence 'run.log')
+              }
+              $layoutExit = $LASTEXITCODE
+              Remove-Item Env:BUN_NATIVE_STARTUP_LOG, Env:BUN_NATIVE_STARTUP_TRACE
+              Select-String -Path $env:BUN_NATIVE_EVIDENCE_LOG -SimpleMatch '"gpui_apple::metal_renderer"' |
+                ForEach-Object { Write-Host "Metal renderer ($entry $mode): $($_.Line)" }
+              if ($layoutExit -ne 0) { throw "macOS $entry $mode layout and style were not verified" }
+              $reports += @(Get-ChildItem -LiteralPath $evidence -Filter 'layout-style-*.json' | ForEach-Object FullName)
+            }
+          }
+          if ($reports.Count -ne 6) { throw "Expected six layout-style reports, found $($reports.Count)" }
+          # Every adapter and mode must commit one element tree and paint it at one geometry.
+          $comparison = Join-Path $env:NATIVE_EVIDENCE 'layout-style-comparison'
+          New-Item -ItemType Directory $comparison | Out-Null
+          bun tests/native/layout-style-compare.ts @reports |
+            Tee-Object -FilePath (Join-Path $comparison 'report.json')
+          if ($LASTEXITCODE -ne 0) { throw 'macOS adapters or modes committed different layout trees or geometry' }
+      - name: macOS development and AOT accessibility roles, keyboard and pointer split divider (#241)
+        if: ${{ matrix.shard == 2 && (runner.os == 'macOS' && !cancelled() && steps.native-build.outcome == 'success') }}
+        timeout-minutes: 6
+        run: |
+          $oracle = Join-Path $env:NATIVE_EVIDENCE 'macos-accessibility-roles-oracle'
+          xcrun clang -fobjc-arc -Wall -Wextra -Werror -framework AppKit -framework ApplicationServices `
+            tests/native/macos-accessibility-oracle.m -o $oracle
+          if ($LASTEXITCODE -ne 0) { throw 'The independent Accessibility client did not compile' }
+          $env:BUN_NATIVE_A11Y_ORACLE = $oracle
+          $package = Join-Path $env:NATIVE_EVIDENCE 'accessibility-package'
+          bun experiments/aot-gpui/build-window.ts --entry accessibility `
+            --source $env:GITHUB_WORKSPACE --host $env:BUN_NATIVE_HOST `
+            --host-profile release --outdir $package
+          if ($LASTEXITCODE -ne 0) { throw 'The accessibility-role AOT compiler or inspection failed' }
+          $manifest = Get-Content -Raw (Join-Path $package 'manifest.json') | ConvertFrom-Json
+          foreach ($mode in @('development', 'aot')) {
+            $evidence = Join-Path $env:NATIVE_EVIDENCE "accessibility-$mode"
+            New-Item -ItemType Directory $evidence | Out-Null
+            $env:BUN_NATIVE_A11Y_EVIDENCE = $evidence
+            $env:BUN_NATIVE_A11Y_MODE = $mode
+            if ($mode -eq 'development') {
+              bun tests/native/accessibility.ts 2>&1 | Tee-Object -FilePath (Join-Path $evidence 'run.log')
+            } else {
+              & (Join-Path $package $manifest.application.file) 2>&1 |
+                Tee-Object -FilePath (Join-Path $evidence 'run.log')
+            }
+            if ($LASTEXITCODE -ne 0) { throw "macOS $mode accessibility roles and split divider failed" }
+            $report = Get-Content -Raw (Join-Path $evidence 'result.json') | ConvertFrom-Json
+            if ($report.status -ne 'passed' -or $report.platform -ne 'darwin' -or $report.mode -ne $mode) {
+              throw "macOS $mode accessibility-role evidence does not record a pass"
+            }
+          }
+      - name: macOS development and AOT read-only and disabled inputs (#241)
+        if: ${{ matrix.shard == 2 && (runner.os == 'macOS' && !cancelled() && steps.native-build.outcome == 'success') }}
+        timeout-minutes: 6
+        run: |
+          $oracle = Join-Path $env:NATIVE_EVIDENCE 'macos-input-states-oracle'
+          xcrun clang -fobjc-arc -Wall -Wextra -Werror -framework AppKit -framework ApplicationServices `
+            tests/native/macos-accessibility-oracle.m -o $oracle
+          if ($LASTEXITCODE -ne 0) { throw 'The independent Accessibility client did not compile' }
+          $env:BUN_NATIVE_A11Y_ORACLE = $oracle
+          $package = Join-Path $env:NATIVE_EVIDENCE 'input-states-platform-package'
+          bun experiments/aot-gpui/build-window.ts --entry input-states-platform `
+            --source $env:GITHUB_WORKSPACE --host $env:BUN_NATIVE_HOST `
+            --host-profile release --outdir $package
+          if ($LASTEXITCODE -ne 0) { throw 'The input-state AOT compiler or inspection failed' }
+          $manifest = Get-Content -Raw (Join-Path $package 'manifest.json') | ConvertFrom-Json
+          foreach ($mode in @('development', 'aot')) {
+            $evidence = Join-Path $env:NATIVE_EVIDENCE "input-states-platform-$mode"
+            New-Item -ItemType Directory $evidence | Out-Null
+            $env:BUN_NATIVE_INPUT_STATES_EVIDENCE = $evidence
+            $env:BUN_NATIVE_INPUT_STATES_MODE = $mode
+            if ($mode -eq 'development') {
+              bun tests/native/input-states-platform.ts 2>&1 | Tee-Object -FilePath (Join-Path $evidence 'run.log')
+            } else {
+              & (Join-Path $package $manifest.application.file) 2>&1 |
+                Tee-Object -FilePath (Join-Path $evidence 'run.log')
+            }
+            if ($LASTEXITCODE -ne 0) { throw "macOS $mode read-only and disabled inputs failed" }
+            $report = Get-Content -Raw (Join-Path $evidence 'result.json') | ConvertFrom-Json
+            if ($report.status -ne 'passed' -or $report.platform -ne 'darwin' -or $report.mode -ne $mode) {
+              throw "macOS $mode input-state evidence does not record a pass"
+            }
+          }
+      # A real screen reader and a real OS input method (#241). macOS gates: both
+      # passed on hosted macOS after the focus routing fix (runs 43087027363 and
+      # 43093920340). Windows stays experimental until it passes there (#629);
+      # its failure is reported in the step outcome without failing the job.
+      # Neither replaces or relaxes the AX/UI Automation step above.
+      - name: macOS VoiceOver and experimental Windows NVDA speech in development and AOT (#241)
         id: screen-reader
         if: ${{ matrix.shard == 2 && (!cancelled() && steps.native-build.outcome == 'success') }}
-        continue-on-error: true
+        continue-on-error: ${{ runner.os == 'Windows' }}
         timeout-minutes: 15
         run: |
           if ($IsMacOS) {
@@ -843,10 +1012,10 @@ jobs:
             }
             $global:LASTEXITCODE = 0
           }
-      - name: Experimental macOS and Windows Korean input method composition in development and AOT (#241)
+      - name: macOS and experimental Windows Korean input method composition in development and AOT (#241)
         id: ime-platform
         if: ${{ matrix.shard == 2 && (!cancelled() && steps.native-build.outcome == 'success') }}
-        continue-on-error: true
+        continue-on-error: ${{ runner.os == 'Windows' }}
         timeout-minutes: 15
         run: |
           if ($IsMacOS) {
@@ -900,8 +1069,8 @@ jobs:
               throw "${{ runner.os }} $mode IME evidence does not record a pass"
             }
           }
-      - name: Report experimental screen-reader and IME outcomes (#241)
-        if: ${{ matrix.shard == 2 && !cancelled() && steps.native-build.outcome == 'success' }}
+      - name: Report experimental Windows screen-reader and IME outcomes (#241)
+        if: ${{ matrix.shard == 2 && runner.os == 'Windows' && !cancelled() && steps.native-build.outcome == 'success' }}
         run: |
           foreach ($pair in @(@('screen reader', '${{ steps.screen-reader.outcome }}'), @('IME', '${{ steps.ime-platform.outcome }}'))) {
             if ($pair[1] -ne 'success') {
@@ -1063,6 +1232,96 @@ jobs:
             }
           }
           if ($failures.Count -gt 0) { throw ($failures -join '; ') }
+      - name: macOS clipboard text through the general pasteboard (pbcopy/pbpaste oracle)
+        if: ${{ matrix.shard == 1 && runner.os == 'macOS' && !cancelled() && steps.native-build.outcome == 'success' }}
+        timeout-minutes: 4
+        run: |
+          $evidence = Join-Path $env:NATIVE_EVIDENCE 'clipboard-macos'
+          New-Item -ItemType Directory $evidence | Out-Null
+          $env:BUN_NATIVE_CLIPBOARD_EVIDENCE = $evidence
+          bun tests/native/clipboard-macos.ts 2>&1 | Tee-Object -FilePath (Join-Path $evidence 'run.log')
+          if ($LASTEXITCODE -ne 0) { throw 'macOS pasteboard clipboard text was not verified' }
+      - name: macOS global shortcuts through Carbon hot keys (independent Event Manager oracle)
+        if: ${{ matrix.shard == 1 && runner.os == 'macOS' && !cancelled() && steps.native-build.outcome == 'success' }}
+        timeout-minutes: 4
+        run: |
+          $oracle = Join-Path $env:NATIVE_EVIDENCE 'macos-hot-key-oracle'
+          xcrun clang -fobjc-arc -Wall -Wextra -Werror -framework AppKit -framework ApplicationServices -framework Carbon `
+            tests/native/macos-hot-key-oracle.m -o $oracle
+          if ($LASTEXITCODE -ne 0) { throw 'The independent hot key oracle did not compile' }
+          $trust = & $oracle trusted | ConvertFrom-Json
+          if (-not $trust.trusted) { throw 'The runner does not let the hot key oracle post events' }
+          $evidence = Join-Path $env:NATIVE_EVIDENCE 'global-shortcuts-macos'
+          New-Item -ItemType Directory $evidence | Out-Null
+          $env:BUN_NATIVE_SHORTCUT_EVIDENCE = $evidence
+          $env:BUN_NATIVE_HOT_KEY_ORACLE = $oracle
+          bun tests/native/global-shortcuts-macos.ts 2>&1 | Tee-Object -FilePath (Join-Path $evidence 'run.log')
+          if ($LASTEXITCODE -ne 0) { throw 'macOS global shortcuts were not verified' }
+      - name: macOS file dialogs through NSOpenPanel and NSSavePanel sheets (Accessibility oracle)
+        if: ${{ matrix.shard == 1 && runner.os == 'macOS' && !cancelled() && steps.native-build.outcome == 'success' }}
+        timeout-minutes: 6
+        run: |
+          $oracle = Join-Path $env:NATIVE_EVIDENCE 'macos-file-panel-oracle'
+          xcrun clang -fobjc-arc -Wall -Wextra -Werror -framework AppKit -framework ApplicationServices `
+            tests/native/macos-file-panel-oracle.m -o $oracle
+          if ($LASTEXITCODE -ne 0) { throw 'The independent Accessibility file panel oracle did not compile' }
+          $trust = & $oracle trusted | ConvertFrom-Json
+          if (-not $trust.trusted) { throw 'The runner does not trust the file panel oracle for Accessibility' }
+          # A save panel hides a known extension in its name field unless all
+          # filename extensions are shown; the fixture reads the whole name.
+          defaults write -g AppleShowAllExtensions -bool true
+          if ($LASTEXITCODE -ne 0) { throw 'Cannot show all filename extensions' }
+          $evidence = Join-Path $env:NATIVE_EVIDENCE 'file-dialogs-macos'
+          New-Item -ItemType Directory $evidence | Out-Null
+          $env:BUN_NATIVE_FILE_DIALOG_EVIDENCE = $evidence
+          $env:BUN_NATIVE_FILE_PANEL_ORACLE = $oracle
+          bun tests/native/file-dialogs-macos.ts 2>&1 | Tee-Object -FilePath (Join-Path $evidence 'run.log')
+          if ($LASTEXITCODE -ne 0) { throw 'macOS file dialogs were not verified' }
+      - name: macOS popup windows as owned child panels (WindowServer and Accessibility oracle)
+        if: ${{ matrix.shard == 1 && runner.os == 'macOS' && !cancelled() && steps.native-build.outcome == 'success' }}
+        timeout-minutes: 6
+        run: |
+          $oracle = Join-Path $env:NATIVE_EVIDENCE 'macos-popup-oracle'
+          xcrun clang -fobjc-arc -Wall -Wextra -Werror -framework AppKit -framework CoreGraphics -framework ApplicationServices `
+            tests/native/macos-popup-oracle.m -o $oracle
+          if ($LASTEXITCODE -ne 0) { throw 'The independent popup window oracle did not compile' }
+          $trust = & $oracle trusted | ConvertFrom-Json
+          if (-not $trust.trusted) { throw 'The runner does not trust the popup oracle for Accessibility' }
+          $evidence = Join-Path $env:NATIVE_EVIDENCE 'popups-macos'
+          New-Item -ItemType Directory $evidence | Out-Null
+          $env:BUN_NATIVE_POPUP_EVIDENCE = $evidence
+          $env:BUN_NATIVE_POPUP_ORACLE = $oracle
+          $env:BUN_NATIVE_EVIDENCE_LOG = Join-Path $evidence 'native-evidence.jsonl'
+          $env:BUN_NATIVE_EVIDENCE_NONCE = -join ((1..16) | ForEach-Object { '{0:x2}' -f (Get-Random -Maximum 256) })
+          bun tests/native/popups-macos.ts 2>&1 | Tee-Object -FilePath (Join-Path $evidence 'run.log')
+          if ($LASTEXITCODE -ne 0) { throw 'macOS popup windows were not verified' }
+      # Packaged macOS applications run their host from BunNativeHost.app, so the
+      # notification check uses the installed, signed template's host as the
+      # bundled one. An unanswered OS notification prompt can stay on screen
+      # after the host exits, so this is the shard's last service step.
+      - name: macOS user notifications from the bare host and the installed template's bundled host
+        if: ${{ matrix.shard == 1 && runner.os == 'macOS' && !cancelled() && steps.native-build.outcome == 'success' && steps.signed-install.outcome == 'success' }}
+        timeout-minutes: 4
+        run: |
+          $install = Get-Content -Raw -LiteralPath (Join-Path $env:NATIVE_EVIDENCE 'signed-template/install-smoke.json') | ConvertFrom-Json
+          if (-not $install.installedHost.executable) { throw 'The signed template install recorded no bundled host' }
+          $evidence = Join-Path $env:NATIVE_EVIDENCE 'notifications-macos'
+          New-Item -ItemType Directory $evidence | Out-Null
+          $env:BUN_NATIVE_NOTIFICATION_EVIDENCE = $evidence
+          $env:BUN_NATIVE_BUNDLED_HOST = $install.installedHost.executable
+          bun tests/native/notifications-macos.ts 2>&1 | Tee-Object -FilePath (Join-Path $evidence 'run.log')
+          if ($LASTEXITCODE -ne 0) { throw 'macOS user notifications were not verified' }
+      # M2: one source-bound record of every macOS feature this shard ran, read
+      # from the gating steps' own reports and bound to this checkout, its AOT
+      # packages and the release host. Missing or failed evidence fails here.
+      - name: Record source-bound macOS feature evidence
+        if: ${{ runner.os == 'macOS' && !cancelled() && steps.native-build.outcome == 'success' }}
+        timeout-minutes: 3
+        run: |
+          bun scripts/quality/macos-feature-evidence.ts --evidence $env:NATIVE_EVIDENCE --shard ${{ matrix.shard }} `
+            --source $env:GITHUB_WORKSPACE --host $env:BUN_NATIVE_HOST `
+            --output (Join-Path $env:NATIVE_EVIDENCE 'macos-feature-record.json')
+          if ($LASTEXITCODE -ne 0) { throw 'The macOS feature evidence is incomplete or not bound to this source' }
       - name: Development and AOT macOS Solid and React workspace references (#248, #250)
         if: ${{ matrix.shard == 1 && (runner.os == 'macOS' && !cancelled() && steps.native-build.outcome == 'success') }}
         timeout-minutes: 12
@@ -1287,5 +1546,11 @@ jobs:
             !${{ runner.temp }}/bun-native-platform-evidence/solid-drag-drop-package/solid-drag-drop.exe
             !${{ runner.temp }}/bun-native-platform-evidence/react-drag-drop-package/react-drag-drop
             !${{ runner.temp }}/bun-native-platform-evidence/react-drag-drop-package/react-drag-drop.exe
+            !${{ runner.temp }}/bun-native-platform-evidence/overlays-package/overlays
+            !${{ runner.temp }}/bun-native-platform-evidence/layout-style-package/layout-style
+            !${{ runner.temp }}/bun-native-platform-evidence/solid-layout-style-package/solid-layout-style
+            !${{ runner.temp }}/bun-native-platform-evidence/react-layout-style-package/react-layout-style
+            !${{ runner.temp }}/bun-native-platform-evidence/accessibility-package/accessibility
+            !${{ runner.temp }}/bun-native-platform-evidence/input-states-platform-package/input-states-platform
           if-no-files-found: error
           retention-days: 14

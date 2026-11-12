@@ -112,7 +112,7 @@ bun run native build apps/my-app \
 
 Use `--host-profile dev` if you supplied a development host. The declaration is recorded provenance; it does not inspect the binary's optimization level.
 
-The output contains the AOT `application`, its adjacent `bun-native-host`, a manifest with executable hashes and compiler inspections, and the bundled source plus compiler logs. Keep the two executables together. On the matching native desktop, launch:
+The output contains the AOT `application`, its adjacent `bun-native-host` (on macOS inside `BunNativeHost.app`, so the host can post notifications), a manifest with executable hashes and compiler inspections, and the bundled source plus compiler logs. Keep the two executables together. On the matching native desktop, launch:
 
 ```sh
 .bun-native/my-app-package/application

@@ -20,6 +20,7 @@ const everywhere: Capability[] = [
   'input_states_v1',
   'split_resize_v1',
   'accessibility_v1',
+  'accessibility_lists_v1',
 ]
 const advertised: Record<'linux' | 'macos' | 'windows', Capability[]> = {
   linux: [
@@ -42,6 +43,12 @@ const advertised: Record<'linux' | 'macos' | 'windows', Capability[]> = {
     'processes_v1',
     'drag_drop_files_v1',
     'app_menu_v1',
+    'popup_windows_v1',
+    'clipboard_text_v1',
+    'global_shortcuts_v1',
+    'file_dialogs_v1',
+    // Only a host running from an application bundle advertises this.
+    'notifications_v1',
   ],
   windows: [
     ...everywhere,
@@ -87,6 +94,11 @@ const filesBackend =
       ? 'ntcreatefile_walk'
       : 'openat2'
 const processBackend = process.platform === 'win32' ? 'windows_job' : 'posix'
+const macOS = process.platform === 'darwin'
+const clipboardBackend = macOS ? 'appkit' : 'x11'
+const shortcutsBackend = macOS ? 'carbon' : 'x11'
+const fileDialogsBackend = macOS ? 'appkit' : 'xdg_desktop_portal'
+const notificationsBackend = macOS ? 'user_notifications' : 'freedesktop'
 
 function availability(record: Readonly<Record<string, unknown>>): unknown {
   return record['availability']
@@ -108,13 +120,19 @@ describe('public service records for each platform advertisement', () => {
       read: 'allow',
       write: 'deny',
       scope: 'owned_window',
-      backend: 'x11',
+      backend: clipboardBackend,
     })
-    expect(services.globalShortcuts).toMatchObject({ permission: 'allow', backend: 'x11' })
-    expect(services.notifications).toMatchObject({ permission: 'allow', backend: 'freedesktop' })
+    expect(services.globalShortcuts).toMatchObject({
+      permission: 'allow',
+      backend: shortcutsBackend,
+    })
+    expect(services.notifications).toMatchObject({
+      permission: 'allow',
+      backend: notificationsBackend,
+    })
     expect(services.fileDialogs).toMatchObject({
       permission: 'allow',
-      backend: 'xdg_desktop_portal',
+      backend: fileDialogsBackend,
     })
     expect(services.dragDrop).toEqual({
       availability: 'available',
@@ -157,7 +175,7 @@ describe('public service records for each platform advertisement', () => {
     })
   })
 
-  test('macOS adds display details and changes and keeps grants, processes and drops', () => {
+  test('macOS adds display details and changes and keeps grants, processes, drops, clipboard, shortcuts, file dialogs and notifications', () => {
     const services = serviceCapabilities(allowed, advertised.macos)
     expect(services.windowDisplay).toMatchObject({
       details: 'available',
@@ -166,13 +184,36 @@ describe('public service records for each platform advertisement', () => {
     })
     for (const record of [services.filesystemGrants, services.ptyProcess, services.dragDrop])
       expect(availability(record)).toBe('available')
-    for (const record of [
-      services.clipboardText,
-      services.globalShortcuts,
-      services.notifications,
-      services.fileDialogs,
-    ])
-      expect<unknown>(record).toEqual(unsupported)
+    expect(services.clipboardText).toEqual({
+      availability: 'available',
+      read: 'allow',
+      write: 'deny',
+      scope: 'owned_window',
+      backend: clipboardBackend,
+    })
+    expect(services.globalShortcuts).toEqual({
+      availability: 'available',
+      permission: 'allow',
+      scope: 'owned_window',
+      backend: shortcutsBackend,
+    })
+    expect(services.fileDialogs).toEqual({
+      availability: 'available',
+      permission: 'allow',
+      scope: 'owned_window',
+      backend: fileDialogsBackend,
+    })
+    expect(services.notifications).toEqual({
+      availability: 'available',
+      permission: 'allow',
+      scope: 'owned_window',
+      backend: notificationsBackend,
+    })
+  })
+
+  test('a macOS host outside an application bundle offers no notifications', () => {
+    const bare = advertised.macos.filter((capability) => capability !== 'notifications_v1')
+    expect<unknown>(serviceCapabilities(allowed, bare).notifications).toEqual(unsupported)
   })
 
   test('Windows offers display details and changes, grants, processes and file drops', () => {

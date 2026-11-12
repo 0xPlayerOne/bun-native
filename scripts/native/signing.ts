@@ -235,20 +235,34 @@ export function verifySignature(
   return { file: path, kind: 'windows-authenticode', ...details }
 }
 
-/** Sign one file in place, then verify it. `entitled` adds the Bun entitlements on macOS. */
+/**
+ * The application bundle whose main executable `path` is, on macOS. codesign seals a
+ * bundle's Info.plist and resources only when it is given the bundle, so such an
+ * executable is signed and verified through its bundle.
+ */
+export function enclosingBundle(path: string): string | undefined {
+  const match = /^(.+\.app)[\\/]Contents[\\/]MacOS[\\/][^\\/]+$/.exec(path)
+  return match?.[1]
+}
+
+/**
+ * Sign one file in place, then verify it. `entitled` adds the Bun entitlements on macOS.
+ * On macOS the main executable of an application bundle is signed as that bundle.
+ */
 export async function signFile(
   identity: SigningIdentity,
   path: string,
   runner: Runner,
   entitled = false
 ): Promise<{ unsigned: FileDigest; signed: FileDigest; verification: SignatureVerification }> {
+  const code = (identity.platform === 'darwin' && enclosingBundle(path)) || path
   const unsigned = await fileDigest(path)
   const timestamped =
     identity.platform === 'darwin'
       ? identity.timestamp && identity.identity !== '-'
       : !!identity.timestampUrl
-  withRetries(runner, signCommand(identity, path, entitled), timestamped ? 3 : 1, 'Code signing')
-  const verification = verifySignature(identity.platform, path, runner, {
+  withRetries(runner, signCommand(identity, code, entitled), timestamped ? 3 : 1, 'Code signing')
+  const verification = verifySignature(identity.platform, code, runner, {
     requireTimestamp: timestamped,
     ...(identity.platform === 'win32' ? { signtool: identity.signtool } : {}),
   })
@@ -431,7 +445,12 @@ export async function verifyTree(
     : [{ absolute: target, name: target.split(sep).pop()! }]
   if (files.length === 0) throw new Error(`No native executables to verify in ${path}`)
   return files.map(({ absolute, name }) => ({
-    ...verifySignature(platform, absolute, runner, options),
+    ...verifySignature(
+      platform,
+      (platform === 'darwin' && enclosingBundle(absolute)) || absolute,
+      runner,
+      options
+    ),
     file: name,
   }))
 }

@@ -68,7 +68,12 @@ fn split_and_decoration_contract_matches_javascript() {
         ];
         for style in styles {
             assert!(style.uses_decoration());
-            assert!(Element::Box { style }.validate().is_err());
+            assert!(Element::Box {
+                accessibility: Default::default(),
+                style
+            }
+            .validate()
+            .is_err());
         }
         for (ratio, min_size) in [(value, 0.), (0.5, value)] {
             let split = Element::Split {
@@ -96,6 +101,7 @@ fn split() -> Element {
 }
 fn text() -> Element {
     Element::Text {
+        accessible_live: None,
         text: "pane".into(),
         style: Style::default(),
     }
@@ -180,6 +186,7 @@ fn a_split_owns_at_most_two_panes_and_keeps_its_children_on_set() {
     assert_eq!(leaf_parent.code, ErrorCode::InvalidState);
     assert_eq!(
         Element::Box {
+            accessibility: Default::default(),
             style: Style::default()
         }
         .max_children(),

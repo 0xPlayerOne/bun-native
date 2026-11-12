@@ -16,7 +16,10 @@ use std::time::Duration;
 pub(crate) mod app_menu;
 #[cfg(target_os = "linux")]
 pub(crate) mod clipboard;
-#[cfg(not(target_os = "linux"))]
+#[cfg(target_os = "macos")]
+#[path = "services/clipboard_macos.rs"]
+pub(crate) mod clipboard;
+#[cfg(not(any(target_os = "linux", target_os = "macos")))]
 #[path = "services/clipboard_unavailable.rs"]
 pub(crate) mod clipboard;
 #[cfg(any(windows, target_os = "macos", test))]
@@ -29,9 +32,14 @@ pub(crate) mod context_menus;
 pub(crate) mod drops;
 #[cfg(target_os = "linux")]
 pub(crate) mod file_dialogs;
-#[cfg(not(target_os = "linux"))]
+#[cfg(target_os = "macos")]
+#[path = "services/file_dialogs_macos.rs"]
+pub(crate) mod file_dialogs;
+#[cfg(not(any(target_os = "linux", target_os = "macos")))]
 #[path = "services/file_dialogs_unavailable.rs"]
 pub(crate) mod file_dialogs;
+#[cfg(any(target_os = "macos", test))]
+pub(crate) mod file_panel_model;
 #[cfg(any(target_os = "linux", target_os = "macos", windows))]
 pub(crate) mod files;
 #[cfg(not(any(target_os = "linux", target_os = "macos", windows)))]
@@ -39,7 +47,10 @@ pub(crate) mod files;
 pub(crate) mod files;
 #[cfg(target_os = "linux")]
 pub(crate) mod notifications;
-#[cfg(not(target_os = "linux"))]
+#[cfg(target_os = "macos")]
+#[path = "services/notifications_macos.rs"]
+pub(crate) mod notifications;
+#[cfg(not(any(target_os = "linux", target_os = "macos")))]
 #[path = "services/notifications_unavailable.rs"]
 pub(crate) mod notifications;
 #[cfg(any(target_os = "linux", target_os = "macos", windows))]
@@ -47,9 +58,16 @@ pub(crate) mod processes;
 #[cfg(not(any(target_os = "linux", target_os = "macos", windows)))]
 #[path = "services/processes_unavailable.rs"]
 pub(crate) mod processes;
+#[cfg(any(target_os = "macos", test))]
+pub(crate) mod report_pump;
+#[cfg(target_os = "linux")]
+mod session_bus;
 #[cfg(target_os = "linux")]
 pub(crate) mod shortcuts;
-#[cfg(not(target_os = "linux"))]
+#[cfg(target_os = "macos")]
+#[path = "services/shortcuts_macos.rs"]
+pub(crate) mod shortcuts;
+#[cfg(not(any(target_os = "linux", target_os = "macos")))]
 #[path = "services/shortcuts_unavailable.rs"]
 pub(crate) mod shortcuts;
 #[cfg(any(windows, target_os = "macos", test))]
@@ -88,7 +106,7 @@ pub(crate) fn display_changes(cx: &App) -> bool {
     cfg!(any(target_os = "macos", target_os = "windows")) || wayland(cx)
 }
 
-fn wayland(cx: &App) -> bool {
+pub(crate) fn wayland(cx: &App) -> bool {
     cfg!(target_os = "linux") && cx.compositor_name() == "Wayland"
 }
 

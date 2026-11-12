@@ -4,14 +4,16 @@
  * `.zip` or `.tar.gz`, verify every native executable's OS signature (with
  * `--expect-signed`), run the image's own install script, install a second update as a
  * pending release with the bundled updater, start the installed verifying launcher and wait
- * until the application's own health report is committed, then stop it. The evidence JSON
- * records every step. A display is required on Linux (Xvfb in CI).
+ * until the application's own health report is committed, then stop it. On macOS it also
+ * requires the installed host to run from an application bundle with an identifier, the
+ * only kind of process macOS serves user notifications, and records that host's path
+ * (`installedHost`) for the notification check. The evidence JSON records every step. A display is required on Linux (Xvfb in CI).
  */
 import { existsSync, readdirSync, readFileSync } from 'node:fs'
 import { mkdir, writeFile } from 'node:fs/promises'
 import { join, resolve } from 'node:path'
 import { parseArgs } from 'node:util'
-import { findSigntool, runCommand, verifyTree } from '../native/signing.ts'
+import { enclosingBundle, findSigntool, runCommand, verifyTree } from '../native/signing.ts'
 
 const { values } = parseArgs({
   args: process.argv.slice(2),
@@ -174,7 +176,7 @@ try {
   )
   const state = () =>
     JSON.parse(readFileSync(join(root, 'state.json'), 'utf8')) as {
-      current: { version: string }
+      current: { version: string; directory: string }
       health: unknown
     }
   if (state().health === null) throw new Error('The second update is not pending')
@@ -198,6 +200,28 @@ try {
     await Bun.sleep(200)
   }
   step(`The application confirmed ${state().current.version} through the verifying launcher`)
+  if (platform === 'darwin') {
+    const executable = join(root, state().current.directory, build.host.file)
+    const bundle = enclosingBundle(executable)
+    if (!bundle) throw new Error(`The installed host ${executable} is not in an application bundle`)
+    const identifier = run(
+      [
+        'plutil',
+        '-extract',
+        'CFBundleIdentifier',
+        'raw',
+        '-o',
+        '-',
+        join(bundle, 'Contents', 'Info.plist'),
+      ],
+      'Reading the host bundle identifier'
+    ).trim()
+    if (!identifier) throw new Error(`${bundle} has no bundle identifier`)
+    const running = run(['pgrep', '-f', executable], 'Finding the running bundled host').trim()
+    if (!running) throw new Error(`No host runs from ${executable}`)
+    evidence['installedHost'] = { executable, bundle, identifier, running: running.split('\n') }
+    step(`The installed host runs from ${bundle} as ${identifier}`)
+  }
   if (windows) {
     // The launcher's children (application and host) are stopped with it.
     run(['taskkill', '/T', '/F', '/PID', String(app.pid)], 'Stopping the application')

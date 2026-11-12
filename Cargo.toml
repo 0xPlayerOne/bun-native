@@ -33,3 +33,6 @@ strip = "debuginfo"
 
 [patch."https://github.com/gfx-rs/wgpu"]
 wgpu-hal = { path = "native/vendor/wgpu-hal" }
+
+[patch."https://github.com/zed-industries/zed"]
+gpui_macos = { path = "native/vendor/gpui_macos" }

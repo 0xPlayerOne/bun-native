@@ -278,6 +278,7 @@ impl Session {
                 }
                 capabilities.push(Capability::SplitResizeV1);
                 capabilities.push(Capability::AccessibilityV1);
+                capabilities.push(Capability::AccessibilityListsV1);
                 self.events.send(
                     Event::Ready {
                         protocol: PROTOCOL_VERSION,
@@ -569,7 +570,11 @@ impl Session {
         let events = self.events.clone();
         let drops = self.drops.clone();
         let evidence = self.evidence.clone();
-        let bounds = Bounds::centered(None, size(px(width as f32), px(height as f32)), cx);
+        let bounds = whole_point_origin(Bounds::centered(
+            None,
+            size(px(width as f32), px(height as f32)),
+            cx,
+        ));
         self.evidence.startup("open_window_enter", id, window_id);
         let result = cx.open_window(
             WindowOptions {
@@ -1337,5 +1342,30 @@ fn flush_and_quit(events: EventSink, final_event: Event, cx: &mut App) {
             })
             .detach(),
         None => cx.quit(),
+    }
+}
+
+/// Centering on a work area with an odd height (or width) leaves a half-point
+/// origin. AppKit aligns a window's content rectangle to whole backing pixels
+/// by growing it outward, so on a 1x display a requested 420-point-high
+/// window opened with a 421-point viewport (hosted run 43110442504). Whole
+/// points keep the requested content size on every platform.
+fn whole_point_origin(mut bounds: Bounds<gpui::Pixels>) -> Bounds<gpui::Pixels> {
+    bounds.origin.x = bounds.origin.x.floor();
+    bounds.origin.y = bounds.origin.y.floor();
+    bounds
+}
+
+#[cfg(test)]
+mod window_origin_tests {
+    use super::whole_point_origin;
+    use gpui::{Bounds, point, px, size};
+
+    #[test]
+    fn a_half_point_centered_origin_becomes_whole_and_keeps_the_size() {
+        let centered = Bounds::new(point(px(272.), px(170.5)), size(px(480.), px(420.)));
+        let whole = whole_point_origin(centered);
+        assert_eq!(whole.origin, point(px(272.), px(170.)));
+        assert_eq!(whole.size, size(px(480.), px(420.)));
     }
 }

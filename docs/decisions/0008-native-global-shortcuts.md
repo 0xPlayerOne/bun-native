@@ -73,5 +73,18 @@ activation naming an unallocated registration is a protocol violation.
   without a window.
 - Keyboard map changes after registration are not tracked. A remapped key keeps
   its original keycode grab until it is unregistered.
-- macOS, Windows, Wayland and remote X11 report
+- Windows, Wayland and remote X11 report
   `{ availability: 'unavailable', reason: 'unsupported_platform' }`.
+
+## macOS addendum (2026-11-11)
+
+macOS advertises `global_shortcuts_v1` with backend `carbon`. Each
+registration is an exclusive Carbon `RegisterEventHotKey` on the main thread,
+not a `CGEventTap`: a hot key needs no Accessibility or Input Monitoring
+permission, sees no other typing, and the Event Manager itself refuses a
+combination another process holds exclusively (`eventHotKeyExistsErr`, mapped
+to `conflict`). Keys resolve through the current keyboard layout at
+registration; the protocol, grant, ownership and late-delivery rules above are
+unchanged. The hosted macOS check is described in
+[native services](../native-services.md#macos-carbon-hot-keys); it has not yet
+run.

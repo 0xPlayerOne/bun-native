@@ -5,7 +5,7 @@ import { createApplication, type SplitResizeEvent } from '@bun-native/core'
 import { render } from '@bun-native/react'
 import { createElement, setProperty, snapshot } from '../../packages/renderer/src/nodes.ts'
 
-test('accessibleLabel validates and reaches only splits and overlays', () => {
+test('accessibleLabel validates and reaches splits and overlays', () => {
   const split = createElement('split')
   setProperty(split, 'accessibleLabel', 'Sidebar')
   expect(snapshot(split).get(split)?.element).toEqual({
@@ -22,7 +22,7 @@ test('accessibleLabel validates and reaches only splits and overlays', () => {
   })
   for (const [node, value] of [
     [split, 3],
-    [createElement('box'), 'Group'],
+    [createElement('text'), 'Name'],
     [createElement('button'), 'Name'],
   ] as const)
     expect(() => setProperty(node, 'accessibleLabel', value)).toThrow(TypeError)

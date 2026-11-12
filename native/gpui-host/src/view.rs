@@ -84,10 +84,21 @@ impl NativeView {
         cx: &mut Context<Self>,
     ) -> Self {
         let owned_window = window.window_handle();
+        #[cfg(target_os = "linux")]
+        key_forwarding::start(cx);
         let view = cx.weak_entity();
         let keyboard = cx.intercept_keystrokes(move |event, window, cx| {
             if window.window_handle() == owned_window {
                 let _ = view.update(cx, |view, cx| {
+                    // GPUI draws a dirty window before dispatching a key, and
+                    // that draw presents nothing: mark where it happened.
+                    #[cfg(target_os = "macos")]
+                    view.evidence.surface_presentation(
+                        "key_dispatched",
+                        view.window_id,
+                        &view.state.borrow().tree,
+                        window,
+                    );
                     view.key(&event.keystroke, true, window, cx);
                     view.type_ahead(&event.keystroke, window, cx);
                 });
@@ -278,10 +289,25 @@ impl NativeView {
                 .expect("an owned macOS GPUI window exposes its native view");
             bun_native_macos_surface::invalidate(handle)
                 .expect("GPUI updates its backed surface on the AppKit owner thread");
+            // That display pass presents with presentsWithTransaction, at
+            // once, while a frame queued just before it through the command
+            // queue may still be in flight and land after it: hosted macOS
+            // then kept the older frame on screen while the window sat idle
+            // (run 43125006334: "helX" shown, the popover frame drawn 7 ms
+            // later never). Redraw once more on the next frame so the last
+            // present of every update is queue-ordered after the others.
+            window.on_next_frame(|window, _| window.refresh());
+            let state = self.state.borrow();
             self.evidence.frame_schedule(
                 "layer_invalidated",
                 self.window_id,
-                self.state.borrow().tree.revision(),
+                state.tree.revision(),
+            );
+            self.evidence.surface_presentation(
+                "layer_invalidated",
+                self.window_id,
+                &state.tree,
+                window,
             );
         }
     }
@@ -384,11 +410,14 @@ impl NativeView {
                 &drop_scope,
                 cx,
             ),
-            NativeElement::Text { .. } => accessibility::states(
+            NativeElement::Text {
+                accessible_live, ..
+            } => accessibility::live_states(
                 // AccessKit names labels from their value.
                 base.role(Role::Label).aria_value(self.label(node_id)),
                 false,
                 hidden,
+                *accessible_live,
             )
             .child(self.label(node_id))
             .into_any_element(),
@@ -604,6 +633,8 @@ impl Render for NativeView {
                         #[cfg(target_os = "macos")]
                         frame_keeper.painted(window_id, &evidence, window);
                         let state = paint_state.borrow();
+                        #[cfg(target_os = "macos")]
+                        evidence.surface_presentation("painted", window_id, &state.tree, window);
                         evidence.frame(window_id, &state.tree, render_started);
                         evidence.painted(
                             window_id,
@@ -704,6 +735,8 @@ mod accessibility;
 mod frame_keeper;
 mod index;
 mod interactions;
+#[cfg(target_os = "linux")]
+mod key_forwarding;
 mod keyboard;
 mod overlays;
 mod popups;

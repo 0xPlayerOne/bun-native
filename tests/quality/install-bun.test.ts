@@ -2,12 +2,18 @@ import { afterEach, expect, test } from 'bun:test'
 import assert from 'node:assert/strict'
 import { createHash } from 'node:crypto'
 import { spawnSync } from 'node:child_process'
+import { writeFileSync } from 'node:fs'
 import { mkdtemp, rm } from 'node:fs/promises'
 import { join, resolve } from 'node:path'
 import { tmpdir } from 'node:os'
 import { pathToFileURL } from 'node:url'
-import { downloadPinnedArchive, MAX_ARCHIVE_BYTES } from '../../scripts/install-bun/download.mjs'
+import {
+  downloadPinnedArchive,
+  MAX_ARCHIVE_BYTES,
+  validatePackagePin,
+} from '../../scripts/install-bun/download.mjs'
 import toolchain from '../../toolchain.json'
+import bridgePairsToolchain from '../../benchmarks/bridge-pairs-toolchain.json'
 
 const payload = Buffer.from('pinned archive fixture')
 const archive = {
@@ -402,6 +408,100 @@ syncBuiltinESMExports();
   expect(result.stdout).not.toContain('ghs_subprocess_fixture')
   expect(JSON.parse(result.stdout).revision).toBe(toolchain.bun.cliRevision)
   expect(JSON.parse(result.stdout).downloadedIntegrity).toBeNull()
+})
+
+async function runInstallerAgainstExistingFixture(
+  extraArgs: (directory: string) => string[],
+  reportedRevision: string
+) {
+  const directory = await mkdtemp(join(tmpdir(), 'bun-native-installer-manifest-'))
+  temporary.push(directory)
+  const destination = join(directory, 'installed')
+  await Bun.write(
+    join(destination, process.platform === 'win32' ? 'bun.exe' : 'bun'),
+    'This fixture intercepts subprocess creation; it is not an executable.'
+  )
+  const preload = join(directory, 'guard.mjs')
+  await Bun.write(
+    preload,
+    `import childProcess from 'node:child_process';
+import { syncBuiltinESMExports } from 'node:module';
+childProcess.spawnSync = () => ({ status: 0, stdout: ${JSON.stringify(reportedRevision)}, stderr: '' });
+globalThis.fetch = () => { throw new Error('Existing install must not download'); };
+syncBuiltinESMExports();
+`
+  )
+  return spawnSync(
+    'node',
+    [
+      '--import',
+      pathToFileURL(preload).href,
+      resolve(import.meta.dir, '../../scripts/install-bun.mjs'),
+      '--destination',
+      destination,
+      ...extraArgs(directory),
+    ],
+    { encoding: 'utf8', timeout: 10_000, env: { ...process.env, GITHUB_PATH: '' } }
+  )
+}
+
+test('the historical bridge-pairs pin is the exact npm build of the BN1 Bun revision', () => {
+  const { bun } = bridgePairsToolchain
+  expect(bridgePairsToolchain.schemaVersion).toBe(2)
+  expect(bun.distribution).toBe('npm')
+  expect(bun.revision).toBe('da867c60bf0bcbf9d6d36994f8ca0efa42075115')
+  expect(bun.cliRevision).toBe(`${bun.version}+${bun.revision.slice(0, 9)}`)
+  expect(Object.keys(bun.packages)).toEqual(['linux-x64'])
+  const pin = bun.packages['linux-x64']
+  expect(validatePackagePin(pin).href).toBe(pin.url)
+  expect(pin.version.endsWith(`+${bun.revision.slice(0, 7)}`)).toBe(true)
+})
+
+test('--manifest installs and verifies against the named pin instead of the repository pin', async () => {
+  // The checked-in pin is linux-x64 only (the workflow's runner). Key the same
+  // pin under this test's target so the option is exercised on every OS.
+  const { bun } = bridgePairsToolchain
+  const historical = bun.cliRevision
+  const accepted = await runInstallerAgainstExistingFixture((directory) => {
+    const manifest = join(directory, 'historical-toolchain.json')
+    const packages = { [`${process.platform}-${process.arch}`]: bun.packages['linux-x64'] }
+    writeFileSync(manifest, JSON.stringify({ ...bridgePairsToolchain, bun: { ...bun, packages } }))
+    return ['--manifest', manifest]
+  }, historical)
+  expect(accepted.error).toBeUndefined()
+  expect(accepted.stderr).toBe('')
+  expect(accepted.status).toBe(0)
+  expect(JSON.parse(accepted.stdout)).toMatchObject({
+    revision: historical,
+    reusedExisting: true,
+    packageVersion: bridgePairsToolchain.bun.packages['linux-x64'].version,
+  })
+  // The same historical binary does not satisfy the default repository pin.
+  const rejected = await runInstallerAgainstExistingFixture(() => [], historical)
+  expect(rejected.status).not.toBe(0)
+  expect(rejected.stderr).toContain(
+    `Bun revision mismatch: expected ${toolchain.bun.cliRevision}, got ${historical}`
+  )
+})
+
+test.each([
+  ['a relative manifest path', () => ['--manifest', 'toolchain.json']],
+  ['a misspelled option', (directory: string) => ['--manfest', join(directory, 'x.json')]],
+  ['a missing manifest path', () => ['--manifest']],
+])('the installer rejects %s with its usage', async (_name, extra) => {
+  const result = await runInstallerAgainstExistingFixture(extra, toolchain.bun.cliRevision)
+  expect(result.status).not.toBe(0)
+  expect(result.stderr).toContain('Usage: node scripts/install-bun.mjs --destination')
+})
+
+test('a manifest without the npm distribution is refused before any install', async () => {
+  const result = await runInstallerAgainstExistingFixture((directory) => {
+    const path = join(directory, 'legacy.json')
+    writeFileSync(path, JSON.stringify({ schemaVersion: 1, bun: {} }))
+    return ['--manifest', path]
+  }, toolchain.bun.cliRevision)
+  expect(result.status).not.toBe(0)
+  expect(result.stderr).toContain('Expected the explicit npm Bun distribution manifest')
 })
 
 test('one deadline subscription covers every fragment of the complete download', () => {
