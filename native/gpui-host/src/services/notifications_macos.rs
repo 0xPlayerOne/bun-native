@@ -6,8 +6,13 @@
 //! decides delivery. The center reports posts, activations and dismissals on
 //! its own threads; they are queued to a GPUI task and matched by request
 //! identifier, so an activation for a withdrawn notification is never
-//! published. The first post of a bundle waits for the user's answer to the
-//! OS permission prompt; withdrawal, owner close and shutdown do not wait.
+//! published. Every post asks for authorization first, and the first post of
+//! a bundle shows the OS permission prompt. A post is answered within
+//! [`POST_BOUND`]: one still waiting for the user's answer then rejects with
+//! `operation_timed_out`, and a later grant adds nothing. A request the host
+//! leaves unanswered past the client's request timeout (five seconds by
+//! default) would end the whole session. Withdrawal, owner close and shutdown
+//! do not wait.
 
 use crate::channel::EventSink;
 use crate::services::report_pump::{self, ReportLink};
@@ -19,8 +24,15 @@ use gpui::{App, Task};
 use std::cell::{Cell, RefCell};
 use std::collections::BTreeMap;
 use std::rc::Rc;
+use std::time::Duration;
 
 type Failure = (ErrorCode, &'static str);
+
+/// How long a post waits for authorization and the center's addition, as a
+/// Linux post waits for the notification server.
+const POST_BOUND: Duration = Duration::from_secs(2);
+const POST_TIMED_OUT: &str = "notification authorization did not finish within two seconds; \
+the OS permission prompt may be waiting for the user";
 
 /// Center reports waiting for the UI. Posts are bounded by the live limit;
 /// activations beyond the rest are dropped, as on Linux.
@@ -99,7 +111,41 @@ impl Notifications {
         if let Some(center) = &*self.0.center.borrow() {
             center.post(&identifier, &title, &body);
         }
+        let service = Rc::downgrade(&self.0);
+        cx.spawn(async move |cx| {
+            cx.background_executor().timer(POST_BOUND).await;
+            if let Some(inner) = service.upgrade() {
+                cx.update(|cx| Notifications(inner).expire(notification, id, cx));
+            }
+        })
+        .detach();
         Ok(())
+    }
+
+    /// The bound passed: a post still waiting for authorization or its
+    /// addition is rejected. A grant or addition that completes later finds
+    /// no entry and is withdrawn (see [`Self::report`]).
+    fn expire(&self, notification: NotificationId, id: RequestId, cx: &mut App) {
+        let expired = {
+            let mut entries = self.0.entries.borrow_mut();
+            let posting = entries
+                .get(&notification)
+                .is_some_and(|entry| still_posting(&entry.state, id));
+            if posting {
+                entries.remove(&notification);
+            }
+            posting
+        };
+        if expired {
+            self.0.events.send(
+                Event::Error {
+                    id: Some(id),
+                    code: ErrorCode::OperationTimedOut,
+                    message: POST_TIMED_OUT.into(),
+                },
+                cx,
+            );
+        }
     }
 
     fn connect(&self, cx: &mut App) -> Result<(), Failure> {
@@ -352,6 +398,11 @@ impl Notifications {
     }
 }
 
+/// Whether an entry is still the post `id` started.
+fn still_posting(state: &State, id: RequestId) -> bool {
+    matches!(state, State::Posting(posting) if *posting == id)
+}
+
 /// Unique per host process and notification, so a later host never matches
 /// an earlier host's delivered notification.
 fn identifier(process: u32, notification: NotificationId) -> String {
@@ -446,6 +497,14 @@ mod tests {
             post_failure(PostFailure::Failed).0,
             ErrorCode::NativeFailure
         );
+    }
+
+    #[test]
+    fn only_the_same_unanswered_post_expires() {
+        let request = |value: u64| RequestId::try_from(value).unwrap();
+        assert!(still_posting(&State::Posting(request(3)), request(3)));
+        assert!(!still_posting(&State::Posting(request(4)), request(3)));
+        assert!(!still_posting(&State::Live, request(3)));
     }
 
     #[test]

@@ -14,13 +14,14 @@
  *   - `posted`: alerts were already allowed; the handle is live and withdraws.
  *   - `denied`: alerts are not allowed; the post rejects `permission_denied`
  *     with the OS-denial message, not the launch-policy one.
- *   - `awaiting_authorization`: the prompt is unanswered; closing the owner
- *     rejects the post with `invalid_handle` and nothing is delivered.
+ *   - `awaiting_authorization`: the prompt is unanswered; the host answers
+ *     the post within its two-second bound with `operation_timed_out`, before
+ *     the runtime's request timeout, and nothing is delivered.
  * Delivery to Notification Center, activation and dismissal by a user are not
  * observed: no independent process can read another application's
  * notifications, and nothing answers the prompt.
  */
-import { createApplication, NativeServiceError, NativeStateError } from '@bun-native/core'
+import { createApplication, NativeServiceError } from '@bun-native/core'
 import assert from 'node:assert/strict'
 import { statSync, writeFileSync } from 'node:fs'
 import { isAbsolute, join } from 'node:path'
@@ -122,31 +123,23 @@ try {
       const pending = window.postNotification(content, (event) => {
         events.push(event.type)
       })
-      const settled = await Promise.race([
-        pending.then(
-          (notification) => ({ kind: 'posted' as const, notification }),
-          (error: unknown) => ({ kind: 'rejected' as const, error })
-        ),
-        Bun.sleep(8_000).then(() => ({ kind: 'pending' as const })),
-      ])
+      // The runtime's request timeout bounds this wait; the host answers first.
+      const settled = await pending.then(
+        (notification) => ({ kind: 'posted' as const, notification }),
+        (error: unknown) => ({ kind: 'rejected' as const, error })
+      )
       if (settled.kind === 'posted') {
         assert.equal(settled.notification.activatable, true)
         await settled.notification.withdraw()
         assert.equal(settled.notification.active, false)
         record('authorization', 'posted')
-      } else if (settled.kind === 'rejected') {
-        assert(
-          serviceError('permission_denied', /not allowed/u)(settled.error),
-          `unexpected rejection: ${String(settled.error)}`
-        )
+      } else if (serviceError('permission_denied', /not allowed/u)(settled.error)) {
         record('authorization', 'denied')
       } else {
-        const revoked = assert.rejects(
-          pending,
-          (error: unknown) => error instanceof NativeStateError && error.code === 'invalid_handle'
+        assert(
+          serviceError('operation_timed_out', /permission prompt/u)(settled.error),
+          `unexpected rejection: ${String(settled.error)}`
         )
-        await window.close()
-        await revoked
         record('authorization', 'awaiting_authorization')
       }
       assert.deepEqual(events, [])

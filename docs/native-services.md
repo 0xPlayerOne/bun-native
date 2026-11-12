@@ -695,10 +695,15 @@ packaged and installed application gets notifications. A host started from
 anywhere else, such as `native dev` with a bare `--host`, does not.
 
 Every post first asks for alert authorization. The first request for a bundle
-shows the OS permission prompt and the post stays pending until the user
-answers; a denied answer rejects with `permission_denied` ("the user has not
-allowed notifications for this application"), which callers can tell from the
-launch-policy denial by its message. Notifications use one category with no
+shows the OS permission prompt. A post is answered within two seconds, as on
+Linux: while the prompt still waits for the user it rejects with
+`operation_timed_out`, the prompt stays on screen, and a grant that arrives
+later adds nothing, so the application posts again once the user has answered.
+A request the host left unanswered past the client's request timeout (five
+seconds by default) would end the whole session. A denied answer rejects with
+`permission_denied` ("the user has not allowed notifications for this
+application"), which callers can tell from the launch-policy denial by its
+message. Notifications use one category with no
 actions and a dismissal callback, so `activatable` is always true, clicking
 reports the default action as `notification_activated`, and a user dismissal
 ends the handle with reason `dismissed`. Expiry is not reported by the OS.
@@ -719,7 +724,8 @@ installed release, whose identifier, signature and running host that install
 step checks), which must advertise the service, deny an ungranted post with
 the launch-policy message, and end a granted post in exactly one of three
 recorded ways: posted and withdrawn, denied by the OS, or still awaiting the
-unanswered permission prompt and rejected with `invalid_handle` on owner close.
+unanswered permission prompt and rejected with `operation_timed_out` within
+the bound.
 Nothing answers the prompt on a hosted runner, and no independent process can
 read another application's delivered notifications, so delivery, activation and
 user dismissal are not observed. It is pending its first hosted run.

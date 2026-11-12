@@ -91,8 +91,11 @@ naming an unallocated notification is a protocol violation.
 macOS advertises `notifications_v1` with backend `user_notifications` only when
 the host runs from an `.app` bundle with an identifier, because
 `UNUserNotificationCenter` aborts any other process. Each post asks for alert
-authorization first, so the first post of a bundle waits for the user's answer
-to the OS prompt and a refusal is `permission_denied`. There is no expiry
+authorization first, so the first post of a bundle shows the OS prompt and a
+refusal is `permission_denied`. A post is answered within two seconds, as on
+Linux: one still waiting for the user then rejects with `operation_timed_out`
+and a later grant adds nothing, because a request left unanswered past the
+client's request timeout ends the whole session. There is no expiry
 report and no named action; activation and user dismissal arrive through the
 center's delegate and are matched by request identifier in the UI-thread
 registry, so the ownership rules above are unchanged. The hosted macOS check is
