@@ -309,12 +309,8 @@ impl NativeView {
             let state = self.state.borrow();
             self.evidence
                 .frame_schedule(phase, self.window_id, state.tree.revision());
-            self.evidence.surface_presentation(
-                phase,
-                self.window_id,
-                &state.tree,
-                window,
-            );
+            self.evidence
+                .surface_presentation(phase, self.window_id, &state.tree, window);
         }
     }
 
