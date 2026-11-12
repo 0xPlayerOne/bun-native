@@ -86,7 +86,11 @@ The [Bun pin comparison](evidence/cli-watch-bun-pin-comparison-2026-11-06.json) 
 
 The native watch scenario below supplies separate input, paint and repeated-cycle evidence when its hosted run passes. [#243](https://github.com/0xPlayerOne/bun-native/issues/243) also tracks qualification on the other supported platforms, matched performance measurements and any finer-grained reload strategy.
 
-No app command invokes Cargo, downloads a host, installs dependencies or changes toolchain pins. With the pinned Bun, installed dependency tree and supplied host already present, these commands operate offline. Building a native host from source remains a separate framework-contributor task documented in [getting started](getting-started.md).
+No app command invokes Cargo, installs dependencies or changes toolchain pins, and only the released-host commands below download anything. With the pinned Bun, installed dependency tree and supplied host already present, these commands operate offline. Building a native host from source remains a separate framework-contributor task documented in [getting started](getting-started.md).
+
+### Released hosts
+
+`bun run native host install` downloads the release host for this checkout's version (the root `package.json`) and the current OS and CPU, from the version's GitHub release ([release host archives](releasing.md#release-host-archives)). It checks the archive against the release's `SHA256SUMS`, accepts only an archive with a single `bun-native-host` member, checks the executable header, and installs it under `.bun-native/hosts/v<version>/<platform>-<arch>/`. It prints the host path. Later calls reuse the installed host; `--force` downloads it again and `--version x.y.z` selects another release. Passing `--host auto` to `dev`, `build` or `doctor` does the same and uses the result. Released hosts exist for `linux-x64`, `linux-arm64`, `darwin-arm64` and `darwin-x64`; other targets need a host built from source. The checksum shows only that the bytes match the release asset. The host is unsigned, and the Linux x64 archive is the only one with build provenance (`gh attestation verify`). `BUN_NATIVE_HOST_RELEASE_URL` replaces the GitHub release base for mirrors and tests.
 
 ## Produce an AOT application
 

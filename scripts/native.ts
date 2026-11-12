@@ -11,20 +11,38 @@ const usage = `Bun Native application tooling
 
   bun run native create apps/my-app [--framework solid|react] [--language typescript|javascript]
   bun scripts/native.ts create /path/to/my-app --packages /path/to/package-set/manifest.json
-  bun run native dev apps/my-app --host /absolute/path/to/bun-native-host [--watch]
-  bun run native build apps/my-app --host /absolute/path/to/bun-native-host --host-profile dev|release [--outdir directory] [--bundle-id reverse.dns.id]
+  bun run native dev apps/my-app --host /absolute/path/to/bun-native-host|auto [--watch]
+  bun run native build apps/my-app --host /absolute/path/to/bun-native-host|auto --host-profile dev|release [--outdir directory] [--bundle-id reverse.dns.id]
   bun run native check apps/my-app
   bun run native format apps/my-app [--check]
   bun run native lint apps/my-app
-  bun run native doctor [apps/my-app] [--host /absolute/path/to/bun-native-host]
+  bun run native doctor [apps/my-app] [--host /absolute/path/to/bun-native-host|auto]
+  bun run native host install [--version x.y.z] [--force]
 
 Projects use checkout dependencies unless --packages selects a standalone local package set.
-Standalone scripts use their own installed CLI. Native hosts must be supplied explicitly.
+Standalone scripts use their own installed CLI. Native hosts are supplied explicitly: an absolute path,
+or auto for this checkout version's released host (linux-x64, linux-arm64, darwin-arm64, darwin-x64).
 dev starts once; --watch remounts the app after edits and resets state. build produces unsigned same-platform AOT artifacts.
 check runs Bun's built-in type checker, formatter check and the pinned oxlint; format applies the formatter.
 lint runs only the pinned oxlint, never on vendored packages or generated output.
 doctor reports Bun, platform, host-header and project compatibility without launching anything.
-No command downloads a host or runs Cargo. See docs/developer-tooling.md.`
+host install and --host auto download the unsigned release host once, check it against the release's
+SHA256SUMS and reuse it from .bun-native/hosts. No other command downloads a host; none runs Cargo.
+See docs/developer-tooling.md.`
+
+async function resolveHost(value: string | undefined): Promise<string> {
+  if (value !== 'auto') return prebuiltHost(value)
+  const { installReleaseHost } = await import('./native/host-download.ts')
+  return installReleaseHost({ version: await checkoutVersion(), cache: hostCache })
+}
+
+const hostCache = join(repository, '.bun-native', 'hosts')
+
+async function checkoutVersion(): Promise<string> {
+  const manifest: { version?: unknown } = await Bun.file(join(repository, 'package.json')).json()
+  if (typeof manifest.version !== 'string') throw new Error('The checkout has no workspace version')
+  return manifest.version
+}
 
 async function main(args: string[]): Promise<void> {
   if (args.length === 0 || (args.length === 1 && ['--help', '-h'].includes(args[0]!))) {
@@ -97,6 +115,24 @@ async function main(args: string[]): Promise<void> {
     }
     return
   }
+  if (command === 'host') {
+    const { values, positionals } = parseArgs({
+      args: rest,
+      allowPositionals: true,
+      strict: true,
+      options: { version: { type: 'string' }, force: { type: 'boolean' } },
+    })
+    if (positionals.length !== 1 || positionals[0] !== 'install')
+      throw new Error('Usage: bun run native host install [--version x.y.z] [--force]')
+    const { installReleaseHost } = await import('./native/host-download.ts')
+    const host = await installReleaseHost({
+      version: values.version ?? (await checkoutVersion()),
+      cache: hostCache,
+      force: values.force === true,
+    })
+    console.log(host)
+    return
+  }
   if (command === 'doctor') {
     const { values, positionals } = parseArgs({
       args: rest,
@@ -106,7 +142,8 @@ async function main(args: string[]): Promise<void> {
     })
     if (positionals.length > 1) throw new Error('doctor accepts at most one project directory')
     const { diagnose } = await import('./native/doctor.ts')
-    const results = await diagnose(repository, { host: values.host, project: positionals[0] })
+    const host = values.host === 'auto' ? await resolveHost('auto') : values.host
+    const results = await diagnose(repository, { host, project: positionals[0] })
     for (const result of results)
       console.log(`${result.status.padEnd(7)} ${result.name}: ${result.detail}`)
     if (results.some((result) => result.status === 'failed')) process.exitCode = 1
@@ -127,7 +164,7 @@ async function main(args: string[]): Promise<void> {
     options,
   })
   if (positionals.length !== 1) throw new Error(`${command} requires exactly one project directory`)
-  const host = await prebuiltHost(typeof values['host'] === 'string' ? values['host'] : undefined)
+  const host = await resolveHost(typeof values['host'] === 'string' ? values['host'] : undefined)
   const project = await readProject(repository, positionals[0]!)
   if (command === 'dev' && values.watch) {
     const { watchProject } = await import('./native/watch.ts')

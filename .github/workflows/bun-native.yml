@@ -313,6 +313,12 @@ jobs:
       WINDOWS_CODESIGN_PFX_BASE64: ${{ secrets.WINDOWS_CODESIGN_PFX_BASE64 }}
       WINDOWS_CODESIGN_PFX_PASSWORD: ${{ secrets.WINDOWS_CODESIGN_PFX_PASSWORD }}
 
+  native-architectures:
+    name: Native Linux ARM64 and macOS x64
+    needs: changes
+    if: vars.CI_BILLING_PAUSED == 'false' && (github.event_name != 'pull_request' || github.event.pull_request.draft == false) && needs.changes.outputs.docs-only != 'true'
+    uses: ./.github/workflows/native-architectures.yml
+
   security:
     name: Security
     if: vars.CI_BILLING_PAUSED == 'false' && (github.event_name != 'pull_request' || github.event.pull_request.draft == false)
@@ -346,7 +352,8 @@ jobs:
   gate:
     # This exact check context is required by the existing protected-main ruleset.
     name: Validation / Gate
-    needs: [changes, source, protocol, native, native-platforms, security, codeql]
+    needs:
+      [changes, source, protocol, native, native-platforms, native-architectures, security, codeql]
     # Never skip: GitHub counts a skipped required check as passing, so a
     # draft-stage run would let auto-merge fire the moment a PR is marked
     # ready, before the ready-stage implementation jobs exist. A draft run
@@ -368,8 +375,8 @@ jobs:
           RESULTS: ${{ toJSON(needs) }}
           DOCS_ONLY: ${{ needs.changes.outputs.docs-only == 'true' }}
         run: |
-          # Only a docs-only pull request may skip the two GPUI suites; any other skip fails.
-          node -e 'const jobs=JSON.parse(process.env.RESULTS); const docsOnly=process.env.DOCS_ONLY==="true"; const skippable=new Set(["native","native-platforms"]); const failed=Object.entries(jobs).filter(([name,job])=>job.result!=="success"&&!(docsOnly&&skippable.has(name)&&job.result==="skipped")); if(failed.length){console.error(failed);process.exit(1)} if(docsOnly) console.log("Docs-only pull request: GPUI suites skipped.")'
+          # Only a docs-only pull request may skip the GPUI suites; any other skip fails.
+          node -e 'const jobs=JSON.parse(process.env.RESULTS); const docsOnly=process.env.DOCS_ONLY==="true"; const skippable=new Set(["native","native-platforms","native-architectures"]); const failed=Object.entries(jobs).filter(([name,job])=>job.result!=="success"&&!(docsOnly&&skippable.has(name)&&job.result==="skipped")); if(failed.length){console.error(failed);process.exit(1)} if(docsOnly) console.log("Docs-only pull request: GPUI suites skipped.")'
       - name: Require a real CodeQL analysis for every language
         if: github.event_name != 'pull_request' || github.event.pull_request.draft == false
         env:

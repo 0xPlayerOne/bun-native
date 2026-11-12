@@ -78,7 +78,7 @@ describe('documented shell commands', () => {
   test('the CLI usage lists its subcommands', () => {
     expect(usage.exitCode).toBe(0)
     expect([...subcommands].sort()).toEqual(
-      ['build', 'check', 'create', 'dev', 'doctor', 'format', 'lint'].sort()
+      ['build', 'check', 'create', 'dev', 'doctor', 'format', 'host', 'lint'].sort()
     )
   })
 

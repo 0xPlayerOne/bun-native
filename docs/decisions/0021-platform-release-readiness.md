@@ -131,6 +131,22 @@ differs, this section governs.
   [#637](https://github.com/0xPlayerOne/bun-native/issues/637). All GUI evidence
   above comes from hosted VMs.
 
+### Second architectures (2026-11-12)
+
+- **Linux ARM64 and macOS x64** gain a gating Validation lane,
+  [Native Linux ARM64 and macOS x64](../../.github/workflows/native-architectures.yml),
+  on GitHub-hosted `ubuntu-24.04-arm` and `macos-15-intel` runners. Each lane
+  builds and tests the release host, runs a development and an inspected AOT
+  window (Linux: the public API input and lifecycle session under Xvfb; macOS:
+  the platform paint and lifecycle smoke on Metal), creates, checks and
+  AOT-builds all four templates, and keeps the host archive that the release
+  attaches ([releasing](../releasing.md#release-host-archives)). That makes
+  both **observed** platforms; they are not supported until the full Linux and
+  macOS suites run there too.
+- Version releases attach the release host for Linux x64 and ARM64 and macOS
+  ARM64 and x64, and publish the `@bun-native` packages to npm with trusted
+  publishing ([releasing](../releasing.md#npm-packages)).
+
 ## Implementation consequences
 
 - `0013-release-readiness` stays the record of the preview scope; this record is its per-platform
