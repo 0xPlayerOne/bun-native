@@ -22,7 +22,7 @@ import { createApplication, NativeServiceError, NativeStateError } from '@bun-na
 import assert from 'node:assert/strict'
 import { existsSync, mkdtempSync, realpathSync, rmSync, statSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
-import { isAbsolute, join } from 'node:path'
+import { basename, dirname, isAbsolute, join } from 'node:path'
 
 const output = process.env['BUN_NATIVE_FILE_DIALOG_EVIDENCE']
 const host = process.env['BUN_NATIVE_HOST']
@@ -177,7 +177,12 @@ try {
       assert(sheet.fields.includes(name), `${name} missing from fields ${sheet.fields.join(', ')}`)
       await ui('invoke', title, 'Export')
       const result = await pending
-      assert.deepEqual(result, { kind: 'selected', path: join(folder, name) })
+      // NSSavePanel reports the folder's unresolved path (/var for
+      // /private/var), as the open panel does above; compare the location.
+      assert(result.kind === 'selected', `unexpected save result ${JSON.stringify(result)}`)
+      assert.deepEqual(Object.keys(result).sort(), ['kind', 'path'])
+      assert.equal(basename(result.path), name)
+      assert.equal(realpathSync(dirname(result.path)), folder)
       assert.equal(existsSync(join(folder, name)), false)
       await ui('absent', title)
       record('saveSelected', { fields: sheet.fields })
