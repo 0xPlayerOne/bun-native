@@ -8,6 +8,9 @@
 //! layer, the same deferred display pass that external commits already use:
 //! GPUI then draws the pending frame and attaches a fresh display link.
 //! A wheel event that changes nothing costs at most one such pass per delay.
+//! Under the `CVDisplayLink` (see `frame_pacing`), which never pauses and on
+//! which a synchronous display pass ended the frames shown, the keeper only
+//! refreshes the window for the next display-link frame.
 
 use crate::evidence::Evidence;
 use bun_native_protocol::WindowId;
@@ -57,6 +60,11 @@ impl FrameKeeper {
                     return;
                 }
                 let _ = cx.update(|window, _| {
+                    if !crate::frame_pacing::invalidates_layer() {
+                        window.refresh();
+                        evidence.scroll_frame_recovery(window_id, paints);
+                        return;
+                    }
                     let handle = raw_window_handle::HasWindowHandle::window_handle(window)
                         .expect("an owned macOS GPUI window exposes its native view");
                     bun_native_macos_surface::invalidate(handle)

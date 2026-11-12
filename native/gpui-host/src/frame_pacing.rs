@@ -46,6 +46,20 @@ impl FrameSource {
         }
     }
 
+    /// Whether the host dirties the backing layer so AppKit's deferred
+    /// `displayLayer:` pass draws external commits.
+    ///
+    /// Only the `CAMetalDisplayLink` pauses while idle and needs that pass. The
+    /// `CVDisplayLink` keeps ticking and draws any refreshed window on its next
+    /// frame. On the paravirtual device a `displayLayer:` pass while the window
+    /// was visible was the last frame shown: main run 43152733468 (overlays,
+    /// development) painted revision 2 in that synchronous pass 2 ms after the
+    /// invalidation and never painted again, so the modal dialog stayed off
+    /// screen; the Solid dark theme ended the same way.
+    pub(crate) fn invalidates_layer(self) -> bool {
+        self == Self::MetalDisplayLink
+    }
+
     pub(crate) fn name(self) -> &'static str {
         match self {
             Self::MetalDisplayLink => "CAMetalDisplayLink",
@@ -74,6 +88,14 @@ pub(crate) fn chosen() -> Option<FrameSource> {
     CHOSEN.get().copied()
 }
 
+/// Whether external commits dirty the backing layer, see
+/// [`FrameSource::invalidates_layer`]. GPUI's default applies until
+/// [`configure`] runs.
+#[cfg(target_os = "macos")]
+pub(crate) fn invalidates_layer() -> bool {
+    chosen().is_none_or(FrameSource::invalidates_layer)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -96,6 +118,8 @@ mod tests {
                 "{name:?}"
             );
         }
+        assert!(FrameSource::MetalDisplayLink.invalidates_layer());
+        assert!(!FrameSource::CvDisplayLink.invalidates_layer());
         assert_eq!(FrameSource::CvDisplayLink.name(), "CVDisplayLink");
         assert_eq!(FrameSource::MetalDisplayLink.name(), "CAMetalDisplayLink");
     }
