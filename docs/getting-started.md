@@ -44,7 +44,7 @@ On macOS and Windows, `bun run native:build` also builds the host from source, w
 
 Either host is experimental and unsigned and needs the platform libraries described in the native host README. The [Native Platforms workflow](../.github/workflows/native-platforms.yml) likewise retains an `unsigned-native-host.tar.gz` for its `macos-15` and `windows-2022` release builds, in the `native-platform-<OS>-<arch>-<sha>` artifact beside `native-sha256.txt` (14-day retention). Using those archives outside their CI runs is not exercised either.
 
-To check a candidate host without launching it, run `bun run native doctor --host "$BUN_NATIVE_PREBUILT_HOST"`. Like `dev` and `build`, it accepts only an absolute path to a readable executable whose header matches the current OS and CPU. A matching header does not prove the file is a Bun Native host. The shared runtime checks the protocol when the app launches. Creation and source checks run with Bun; packaging copies the supplied host. No CLI command downloads a host or runs Cargo.
+To check a candidate host without launching it, run `bun run native doctor --host "$BUN_NATIVE_PREBUILT_HOST"`. Like `dev` and `build`, it accepts only an absolute path to a readable executable whose header matches the current OS and CPU. A matching header does not prove the file is a Bun Native host. The shared runtime checks the protocol when the app launches. Creation and source checks run with Bun; packaging copies the supplied host. No CLI command runs Cargo. Only `bun run native host install` and `--host auto` download a host: the unsigned release host for the checkout's version, checked against the release's `SHA256SUMS` ([released hosts](developer-tooling.md#released-hosts)).
 
 ## 3. Create and check an app
 

@@ -124,6 +124,50 @@ These need credentials that only the repository owner can obtain; the repository
 
 Linux provenance needs none of these.
 
+## Release host archives
+
+Every version release carries the unsigned release host for each released
+platform, so an application can run against a host that matches its packages
+without building one. The [release workflow](../.github/workflows/release.yml)'s
+`Attach release host archives` job runs after Release Please creates a release.
+It downloads the four `native-host-<OS>-<arch>` artifacts from the exact
+Validation run it releases from: Linux x64 from [Native Linux](../.github/workflows/native-linux.yml),
+macOS ARM64 from [Native macOS and Windows](../.github/workflows/native-platforms.yml),
+and Linux ARM64 and macOS x64 from [Native Linux ARM64 and macOS x64](../.github/workflows/native-architectures.yml).
+It checks each archive against the digest its build job recorded and attaches it
+as `bun-native-host-<platform>-<arch>.tar.gz` (`linux-x64`, `linux-arm64`,
+`darwin-arm64`, `darwin-x64`), with a `SHA256SUMS` file. A missing archive or a
+digest mismatch fails the job. Windows is deferred ([ADR 0021](decisions/0021-platform-release-readiness.md)).
+
+The Linux x64 archive is the one whose keyless provenance the release workflow
+verified ([above](#linux-keyless-build-provenance)), so `gh attestation verify`
+works on the downloaded asset. The other three carry no attestation yet, and no
+archive carries an OS code signature: macOS hosts are unsigned until a Developer
+ID exists. `bun run native host install` and `--host auto`
+([developer tooling](developer-tooling.md#released-hosts)) download these assets.
+
+## npm packages
+
+The same release publishes the seven `@bun-native` packages (`cli`, `core`,
+`protocol`, `react`, `renderer`, `runtime`, `solid`) to npm, all at the
+workspace version. The `Publish @bun-native packages to npm` job checks out the
+release tag, produces the verified [local package set](standalone-projects.md)
+with [`scripts/package-native.ts`](../scripts/package-native.ts), and turns it into
+public packages with [`scripts/registry-packages.ts`](../scripts/registry-packages.ts).
+That script changes only `package.json` (no `private`, the release version, the
+same version for every `@bun-native` dependency, repository metadata and
+`publishConfig`) and the README. It then publishes dependencies before
+dependents and skips any version already on npm, so a re-run after a partial
+publish completes the set.
+
+Publishing uses npm **trusted publishing**: npm exchanges the job's GitHub OIDC
+token for a short-lived credential, and every package gets npm provenance. No npm
+token is stored anywhere. Each package needs a trusted publisher on npmjs.com
+with organization or user `0xPlayerOne`, repository `bun-native`, workflow
+filename `release.yml`, no environment, and direct `npm publish` allowed. npm
+requires a package to exist before a trusted publisher can be added, so each
+name was first published once by the owner as a `0.0.0-bootstrap.0` placeholder.
+
 ## Configuring release identities (owner steps)
 
 Nothing in the repository changes when these are added. Store each value as a repository secret (**Settings → Secrets and variables → Actions → New repository secret**, or `gh secret set NAME --repo 0xPlayerOne/bun-native`). [`bun-native.yml`](../.github/workflows/bun-native.yml) passes them to Native Platforms, which uses them for pushes and manual runs, never for pull requests.

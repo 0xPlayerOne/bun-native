@@ -1,0 +1,300 @@
+name: Native Architectures
+
+# The second CPU architecture of each released OS: Linux ARM64 and macOS x64.
+# Native Linux and Native macOS and Windows qualify the primary architectures
+# (Linux x64, macOS ARM64) in full. These lanes prove that the same pinned
+# Bun AOT compiler and GPUI host build, paint, take input and shut down on the
+# other architecture, and they retain the release host archive for each one.
+on:
+  workflow_call:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: native-architectures-${{ github.event_name }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  linux-arm64:
+    name: Linux ARM64 GPUI release, development and AOT window
+    if: vars.CI_BILLING_PAUSED == 'false' && (github.event_name != 'pull_request' || github.event.pull_request.draft == false)
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 60
+    env:
+      CARGO_INCREMENTAL: 0
+      BUN_NATIVE_HOST_PROFILE: release
+      PYTHONDONTWRITEBYTECODE: 1
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Prepare evidence directory
+        run: |
+          mkdir "$RUNNER_TEMP/native-evidence"
+          echo "NATIVE_EVIDENCE=$RUNNER_TEMP/native-evidence" >> "$GITHUB_ENV"
+      - name: Install checksum-pinned Bun compiler
+        run: node scripts/install-bun.mjs --destination "$RUNNER_TEMP/bun-native-bun"
+      - name: Install pinned Rust toolchain
+        run: rustup show active-toolchain
+      - name: Install native build and isolated X11 prerequisites
+        timeout-minutes: 25
+        uses: ./.github/actions/linux-native-prerequisites
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ~/.bun/install/cache
+            ~/.cargo/registry/index
+            ~/.cargo/registry/cache
+            ~/.cargo/git/db
+          key: gpui-downloads-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('toolchain.json', 'bun.lock', 'rust-toolchain.toml', 'Cargo.lock') }}
+      - run: bun install --frozen-lockfile
+      - name: Restore release dependency build outputs
+        id: target-cache
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            target/release/build
+            target/release/deps
+            target/release/.fingerprint
+          key: native-release-target-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('rust-toolchain.toml', 'Cargo.lock', 'Cargo.toml', 'native/vendor/**') }}
+          restore-keys: ${{ github.event_name == 'pull_request' && format('native-release-target-{0}-{1}-', runner.os, runner.arch) || '' }}
+      - name: Record source and actual target tools
+        run: |
+          {
+            git rev-parse HEAD
+            uname -a
+            bun --revision
+            rustc --version --verbose
+            cargo --version
+            dpkg-query -W libvulkan1 mesa-vulkan-drivers xvfb openbox xdotool
+          } | tee "$NATIVE_EVIDENCE/toolchain.txt"
+      - name: Keep the runner's Cargo home path out of native binaries
+        run: printf 'CARGO_ENCODED_RUSTFLAGS=--remap-path-prefix=%s=/cargo\n' "${CARGO_HOME:-$HOME/.cargo}" >> "$GITHUB_ENV"
+      - name: Build native executable
+        id: native-build
+        run: |
+          { time -p cargo build --locked --release -p bun-native-host --bin bun-native-host; } 2>&1 | tee "$NATIVE_EVIDENCE/build.log"
+          sha256sum target/release/bun-native-host > "$NATIVE_EVIDENCE/binary-sha256.txt"
+          stat --format='%s bytes' target/release/bun-native-host > "$NATIVE_EVIDENCE/binary-size.txt"
+      - name: Test actual native host
+        run: cargo test --locked --release -p bun-native-host
+      - name: Save release dependency build outputs from protected main
+        if: ${{ success() && github.event_name == 'push' && github.ref == 'refs/heads/main' && steps.target-cache.outputs.cache-hit != 'true' }}
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            target/release/build
+            target/release/deps
+            target/release/.fingerprint
+          key: native-release-target-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('rust-toolchain.toml', 'Cargo.lock', 'Cargo.toml', 'native/vendor/**') }}
+      - name: Read the software GPU driver into the page cache
+        timeout-minutes: 2
+        run: python3 scripts/quality/warm-gpu-driver.py --output "$NATIVE_EVIDENCE/gpu-driver-warmup.json"
+      - name: Development public API input, stale revision and window lifecycle
+        env:
+          BUN_NATIVE_HOST: ${{ github.workspace }}/target/release/bun-native-host
+        run: |
+          xvfb-run --auto-servernum --server-args='-screen 0 1280x800x24 -nolisten tcp' \
+            dbus-run-session -- bash scripts/quality/native-linux-session.sh \
+            "$NATIVE_EVIDENCE/development" development bun examples/native-window/main.ts
+      - name: Compile and inspect the actual AOT entry
+        run: |
+          bun experiments/aot-gpui/build-window.ts \
+            --source "$GITHUB_WORKSPACE" \
+            --host "$GITHUB_WORKSPACE/target/release/bun-native-host" \
+            --entry native-window --host-profile release --outdir "$NATIVE_EVIDENCE/package"
+      - name: AOT public API pointer, text, keyboard, paint and close
+        env:
+          BUN_NATIVE_HOST: ${{ runner.temp }}/native-evidence/package/bun-native-host
+        run: |
+          xvfb-run --auto-servernum --server-args='-screen 0 1280x800x24 -nolisten tcp' \
+            dbus-run-session -- bash scripts/quality/native-linux-session.sh \
+            "$NATIVE_EVIDENCE/aot" aot "$NATIVE_EVIDENCE/package/native-window"
+      - name: Generated Solid and React templates through create, check and inspected AOT build
+        run: |
+          python3 tests/native/cli-templates.py prepare \
+            --output "$RUNNER_TEMP/cli-templates" --bun "$(command -v bun)" \
+            --host "$GITHUB_WORKSPACE/target/release/bun-native-host"
+      - name: Retain the unsigned native host archive
+        id: host-archive
+        run: |
+          sha256sum --check "$NATIVE_EVIDENCE/binary-sha256.txt"
+          mkdir "$RUNNER_TEMP/native-host"
+          archive="$RUNNER_TEMP/native-host/unsigned-native-host.tar.gz"
+          SOURCE_DATE_EPOCH="$(git log -1 --format=%ct)" \
+            bun scripts/native/host-archive.ts --output "$archive" target/release/bun-native-host
+          (cd "$RUNNER_TEMP/native-host" && sha256sum unsigned-native-host.tar.gz > unsigned-native-host.tar.gz.sha256)
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: native-host-${{ runner.os }}-${{ runner.arch }}
+          path: ${{ runner.temp }}/native-host/
+          if-no-files-found: error
+          retention-days: 30
+      - name: Retain native evidence even after failure
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: ${{ !cancelled() }}
+        with:
+          name: native-linux-${{ runner.arch }}-evidence
+          path: |
+            ${{ runner.temp }}/native-evidence/
+            !${{ runner.temp }}/native-evidence/package/native-window
+          if-no-files-found: error
+          retention-days: 14
+
+  macos-x64:
+    name: macOS x64 GPUI release, development and AOT window
+    if: vars.CI_BILLING_PAUSED == 'false' && (github.event_name != 'pull_request' || github.event.pull_request.draft == false)
+    runs-on: macos-15-intel
+    timeout-minutes: 60
+    defaults:
+      run:
+        shell: pwsh
+    env:
+      CARGO_INCREMENTAL: 0
+      BUN_NATIVE_HOST_PROFILE: release
+      PYTHONDONTWRITEBYTECODE: 1
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Prepare bounded evidence location
+        run: |
+          $evidence = Join-Path $env:RUNNER_TEMP 'bun-native-platform-evidence'
+          New-Item -ItemType Directory $evidence | Out-Null
+          "NATIVE_EVIDENCE=$evidence" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+      - name: Install checksum-pinned Bun compiler
+        run: node scripts/install-bun.mjs --destination (Join-Path $env:RUNNER_TEMP 'bun-native-bun')
+      - name: Install pinned Rust toolchain
+        run: rustup show active-toolchain
+      - name: Verify Xcode and precompiled Metal tools
+        timeout-minutes: 10
+        run: |
+          xcodebuild -version | Tee-Object -FilePath (Join-Path $env:NATIVE_EVIDENCE 'xcode.txt')
+          if ($LASTEXITCODE -ne 0) { throw 'A complete Xcode toolchain is required' }
+          xcrun --sdk macosx metal --version
+          if ($LASTEXITCODE -ne 0) {
+            xcodebuild -downloadComponent MetalToolchain
+            if ($LASTEXITCODE -ne 0) { throw 'The hosted Xcode Metal component could not be installed' }
+          }
+          xcrun --sdk macosx metal --version | Tee-Object -FilePath (Join-Path $env:NATIVE_EVIDENCE 'metal-version.txt')
+          if ($LASTEXITCODE -ne 0) { throw 'GPUI requires the Xcode Metal compiler' }
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ~/.bun/install/cache
+            ~/.cargo/registry/index
+            ~/.cargo/registry/cache
+            ~/.cargo/git/db
+          key: gpui-downloads-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('toolchain.json', 'bun.lock', 'rust-toolchain.toml', 'Cargo.lock') }}
+      - run: bun install --frozen-lockfile
+      - name: Restore release dependency build outputs
+        id: target-cache
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            target/release/build
+            target/release/deps
+            target/release/.fingerprint
+          key: native-release-target-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('rust-toolchain.toml', 'Cargo.lock', 'Cargo.toml', 'native/vendor/**') }}
+          restore-keys: ${{ github.event_name == 'pull_request' && format('native-release-target-{0}-{1}-', runner.os, runner.arch) || '' }}
+      - name: Record source and actual target tools
+        run: |
+          & {
+            git rev-parse HEAD
+            [Runtime.InteropServices.RuntimeInformation]::OSDescription
+            [Runtime.InteropServices.RuntimeInformation]::OSArchitecture.ToString()
+            bun --revision
+            rustc --version --verbose
+            cargo --version
+          } | Tee-Object -FilePath (Join-Path $env:NATIVE_EVIDENCE 'toolchain.txt')
+      - name: Keep the runner's Cargo home path out of native binaries
+        run: |
+          $cargoHome = if ($env:CARGO_HOME) { $env:CARGO_HOME } else { Join-Path $HOME '.cargo' }
+          "CARGO_ENCODED_RUSTFLAGS=--remap-path-prefix=$cargoHome=/cargo" |
+            Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+      - name: Build the genuine target-platform GPUI executable
+        id: native-build
+        run: |
+          cargo build --locked --release -p bun-native-host 2>&1 |
+            Tee-Object -FilePath (Join-Path $env:NATIVE_EVIDENCE 'native-build.log')
+          if ($LASTEXITCODE -ne 0) { throw "Native build failed: $LASTEXITCODE" }
+          $hostPath = (Resolve-Path 'target/release/bun-native-host').Path
+          "BUN_NATIVE_HOST=$hostPath" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+          Get-FileHash -Algorithm SHA256 $hostPath |
+            Format-List | Out-File (Join-Path $env:NATIVE_EVIDENCE 'native-sha256.txt')
+      - name: Test actual platform host
+        run: |
+          cargo test --locked --release -p bun-native-host
+          if ($LASTEXITCODE -ne 0) { throw 'Native host tests failed' }
+      - name: Save release dependency build outputs from protected main
+        if: ${{ success() && github.event_name == 'push' && github.ref == 'refs/heads/main' && steps.target-cache.outputs.cache-hit != 'true' }}
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            target/release/build
+            target/release/deps
+            target/release/.fingerprint
+          key: native-release-target-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('rust-toolchain.toml', 'Cargo.lock', 'Cargo.toml', 'native/vendor/**') }}
+      - name: Development actual native paint and lifecycle
+        timeout-minutes: 3
+        run: |
+          python3 scripts/quality/native-platform-smoke.py `
+            --output (Join-Path $env:NATIVE_EVIDENCE 'development') `
+            --mode development --host-profile release --require-metal-device -- bun tests/native/platform-smoke.ts
+          if ($LASTEXITCODE -ne 0) { throw 'Development native paint/lifecycle was not verified' }
+      - name: Compile and inspect the exact native fixture through Bun AOT
+        run: |
+          $package = Join-Path $env:NATIVE_EVIDENCE 'aot-package'
+          bun experiments/aot-gpui/build-window.ts --entry platform-smoke `
+            --source $env:GITHUB_WORKSPACE --host $env:BUN_NATIVE_HOST `
+            --host-profile release --outdir $package
+          if ($LASTEXITCODE -ne 0) { throw 'The genuine AOT compiler or inspection failed' }
+          $manifest = Get-Content -Raw (Join-Path $package 'manifest.json') | ConvertFrom-Json
+          if ($manifest.application.inspection.hasCompiledProgram -ne $true -or `
+              !$manifest.application.runtimeFeatures -or `
+              $manifest.application.runtimeFeatures.jit -eq 'present' -or `
+              $manifest.application.runtimeFeatures.jitRemovedRanges.count -le 0) {
+            throw 'Actual AOT compiled-program and JIT-removal evidence is required on this target'
+          }
+      - name: AOT actual native paint and lifecycle
+        timeout-minutes: 3
+        run: |
+          python3 scripts/quality/native-platform-smoke.py `
+            --output (Join-Path $env:NATIVE_EVIDENCE 'aot') `
+            --mode aot --host-profile release --require-metal-device -- `
+            (Join-Path $env:NATIVE_EVIDENCE 'aot-package/platform-smoke')
+          if ($LASTEXITCODE -ne 0) { throw 'AOT native paint/lifecycle was not verified' }
+      - name: Generated Solid and React templates through create, check and inspected AOT build
+        timeout-minutes: 8
+        run: |
+          python3 tests/native/cli-templates.py prepare `
+            --output (Join-Path $env:RUNNER_TEMP 'cli-templates') --bun (Get-Command bun).Source --host $env:BUN_NATIVE_HOST
+          if ($LASTEXITCODE -ne 0) { throw 'A generated template did not create, check or build through inspected AOT' }
+      - name: Retain the unsigned native host archive
+        run: |
+          $directory = Join-Path $env:RUNNER_TEMP 'native-host'
+          New-Item -ItemType Directory $directory | Out-Null
+          $archive = Join-Path $directory 'unsigned-native-host.tar.gz'
+          $env:SOURCE_DATE_EPOCH = git log -1 --format=%ct
+          bun scripts/native/host-archive.ts --output $archive 'target/release/bun-native-host'
+          if ($LASTEXITCODE -ne 0) { throw 'Native host archive failed' }
+          $hash = (Get-FileHash -Algorithm SHA256 $archive).Hash.ToLowerInvariant()
+          "$hash  unsigned-native-host.tar.gz`n" | Out-File -NoNewline -Encoding ascii "$archive.sha256"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: native-host-${{ runner.os }}-${{ runner.arch }}
+          path: ${{ runner.temp }}/native-host/
+          if-no-files-found: error
+          retention-days: 30
+      - name: Retain native evidence even after failure
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: ${{ !cancelled() }}
+        with:
+          name: native-platform-${{ runner.os }}-${{ runner.arch }}-${{ github.sha }}
+          path: |
+            ${{ runner.temp }}/bun-native-platform-evidence/
+            !${{ runner.temp }}/bun-native-platform-evidence/aot-package/platform-smoke
+          if-no-files-found: error
+          retention-days: 14

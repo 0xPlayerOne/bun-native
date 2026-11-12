@@ -41,7 +41,8 @@ describe('scripts/native.ts command parsing', () => {
       expect(result.stderr).toBe('')
       expect(result.stdout.startsWith(header)).toBe(true)
       for (const command of ['create', 'dev', 'build']) expect(result.stdout).toContain(command)
-      expect(result.stdout).toContain('No command downloads a host or runs Cargo.')
+      expect(result.stdout).toContain('No other command downloads a host; none runs Cargo.')
+      expect(result.stdout).toContain('host install')
     }
   })
 
