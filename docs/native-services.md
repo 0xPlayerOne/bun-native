@@ -624,7 +624,10 @@ development mode with an independent oracle,
 [`macos-hot-key-oracle.m`](../tests/native/macos-hot-key-oracle.m), that does
 not link GPUI. It requires default denial with the combination still free at
 the Event Manager, delivery of a combination posted through
-`CGEventPost(kCGHIDEventTap)` while Finder is frontmost, the oracle's own
+`CGEventPost(kCGHIDEventTap)` while the oracle itself is frontmost (it
+activates through a real click on its own window, because cooperative
+activation since macOS 14 ignores an inactive process's request to activate
+another application), the oracle's own
 exclusive registration refused while the host holds the combination, `conflict`
 for both an in-session duplicate and a combination the oracle holds, and the
 combination free again after unregistration, owner close and shutdown. It is

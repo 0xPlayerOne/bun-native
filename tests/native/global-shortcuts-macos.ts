@@ -3,7 +3,10 @@
  * independent oracle (macos-hot-key-oracle.m) never links GPUI: it asks the
  * Carbon Event Manager whether a combination is held exclusively by another
  * process, holds combinations itself, and posts real key combinations through
- * CGEventPost(kCGHIDEventTap) while Finder, not the host, is frontmost.
+ * CGEventPost(kCGHIDEventTap) while it, not the host, is the frontmost
+ * application. It becomes frontmost through a real click on a window of its
+ * own: since macOS 14 activation is cooperative, and an inactive process
+ * cannot activate another application, such as Finder, while the host is active.
  *
  * The oracle names keys by virtual key code. The codes below are the ANSI
  * positions of k, j, l and m, which is what the host resolves those names to
@@ -77,10 +80,12 @@ async function probe(key: keyof typeof CODE): Promise<number> {
 }
 
 async function press(key: keyof typeof CODE): Promise<unknown> {
+  const hostProcess = await hostPid()
   const result = JSON.parse(
-    await run([oracle!, 'press', String(CODE[key]), MODIFIERS, String(await hostPid())])
-  ) as { frontmost: string; frontmostPid: number }
-  assert.equal(result.frontmost, 'com.apple.finder')
+    await run([oracle!, 'press', String(CODE[key]), MODIFIERS, String(hostProcess)])
+  ) as { frontmostPid: number; oraclePid: number }
+  assert.equal(result.frontmostPid, result.oraclePid, 'the oracle is frontmost while typing')
+  assert.notEqual(result.frontmostPid, hostProcess)
   return result
 }
 
@@ -175,7 +180,7 @@ try {
   const front = await press('k')
   await waitFor(() => events.length === 1, 'global shortcut delivery')
   assert.equal(events[0]!.shortcut, k)
-  record('deliveredWhileFinderFrontmost', { front, deliveries: events.length })
+  record('deliveredWhileOtherAppFrontmost', { front, deliveries: events.length })
 
   // 3. An in-session duplicate is an explicit conflict.
   await assert.rejects(

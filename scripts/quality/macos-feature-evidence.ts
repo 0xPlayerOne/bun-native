@@ -287,7 +287,7 @@ export const FEATURES: Feature[] = [
     reports: [
       service('global-shortcuts-macos/global-shortcuts-macos.json', [
         'defaultDenial',
-        'deliveredWhileFinderFrontmost',
+        'deliveredWhileOtherAppFrontmost',
         'inSessionDuplicateConflict',
         'externalConflictMapped',
         'unregisterReleases',
