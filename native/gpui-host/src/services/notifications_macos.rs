@@ -123,8 +123,8 @@ impl Notifications {
     }
 
     /// The bound passed: a post still waiting for authorization or its
-    /// addition is rejected. A grant or addition that completes later finds
-    /// no entry and is withdrawn (see [`Self::report`]).
+    /// addition is rejected and its native post cancelled: a later grant
+    /// adds nothing and a later addition is withdrawn as it lands.
     fn expire(&self, notification: NotificationId, id: RequestId, cx: &mut App) {
         let expired = {
             let mut entries = self.0.entries.borrow_mut();
@@ -132,11 +132,15 @@ impl Notifications {
                 .get(&notification)
                 .is_some_and(|entry| still_posting(&entry.state, id));
             if posting {
-                entries.remove(&notification);
+                entries.remove(&notification)
+            } else {
+                None
             }
-            posting
         };
-        if expired {
+        if let Some(entry) = expired {
+            // Cancel the native post itself: a late grant adds nothing and a
+            // late addition is withdrawn by the center, not after a report.
+            self.cancel_identifier(&entry.identifier);
             self.0.events.send(
                 Event::Error {
                     id: Some(id),
@@ -285,6 +289,12 @@ impl Notifications {
         }
     }
 
+    fn cancel_identifier(&self, identifier: &str) {
+        if let Some(center) = &*self.0.center.borrow() {
+            center.cancel(identifier);
+        }
+    }
+
     fn withdraw_identifier(&self, identifier: &str) {
         if let Some(center) = &*self.0.center.borrow() {
             center.withdraw(identifier);
@@ -357,15 +367,19 @@ impl Notifications {
                 continue;
             };
             match entry.state {
-                // A post that completes later is withdrawn then.
-                State::Posting(id) => self.0.events.send(
-                    Event::Error {
-                        id: Some(id),
-                        code,
-                        message: message.into(),
-                    },
-                    cx,
-                ),
+                // The native post is cancelled: it adds nothing, or its
+                // addition is withdrawn as soon as it lands.
+                State::Posting(id) => {
+                    self.cancel_identifier(&entry.identifier);
+                    self.0.events.send(
+                        Event::Error {
+                            id: Some(id),
+                            code,
+                            message: message.into(),
+                        },
+                        cx,
+                    )
+                }
                 State::Live => self.withdraw_identifier(&entry.identifier),
             }
         }

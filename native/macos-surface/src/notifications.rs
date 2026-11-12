@@ -156,21 +156,34 @@ impl Delegate {
 enum Addition {
     /// The center is open: report it; its owner settles it.
     Report,
-    /// The center closed while it was in flight: remove it now.
+    /// The center closed, or its owner cancelled this post, while it was in
+    /// flight: remove it now.
     Withdraw,
 }
 
 /// Shared by a [`Center`] and every completion handler of its posts. Each
 /// decision is made under one lock, so a completion either runs before close
-/// (and close withdraws what it reported) or after it (and withdraws itself).
+/// or [`PostGate::cancel`] (which then withdraw what it reported) or after
+/// them (and adds nothing, or withdraws itself).
 #[derive(Default)]
 struct PostGate(Mutex<GateState>);
 
 #[derive(Default)]
 struct GateState {
     closed: bool,
+    /// Posts whose authorization or addition has not completed.
+    in_flight: BTreeSet<String>,
+    /// In-flight posts their owner gave up on: added nothing, or withdrawn.
+    cancelled: BTreeSet<String>,
     /// Reported additions whose owner has not settled them yet.
     unsettled: BTreeSet<String>,
+}
+
+impl GateState {
+    fn finish(&mut self, identifier: &str) {
+        self.in_flight.remove(identifier);
+        self.cancelled.remove(identifier);
+    }
 }
 
 impl PostGate {
@@ -181,19 +194,51 @@ impl PostGate {
             .unwrap_or_else(|poisoned| poisoned.into_inner())
     }
 
-    /// Whether an authorized post may still be added.
-    fn may_add(&self) -> bool {
-        !self.state().closed
+    /// A post was sent to the center.
+    fn begin(&self, identifier: &str) {
+        self.state().in_flight.insert(identifier.to_owned());
+    }
+
+    /// Whether an authorized post may still be added. A refused post is
+    /// finished: no completion follows.
+    fn may_add(&self, identifier: &str) -> bool {
+        let mut state = self.state();
+        if state.closed || state.cancelled.contains(identifier) {
+            state.finish(identifier);
+            return false;
+        }
+        true
     }
 
     /// A successful addition completed.
     fn added(&self, identifier: &str) -> Addition {
         let mut state = self.state();
-        if state.closed {
+        let cancelled = state.cancelled.contains(identifier);
+        state.finish(identifier);
+        if state.closed || cancelled {
             return Addition::Withdraw;
         }
         state.unsettled.insert(identifier.to_owned());
         Addition::Report
+    }
+
+    /// Authorization was refused or the addition failed: nothing was added.
+    fn failed(&self, identifier: &str) {
+        self.state().finish(identifier);
+    }
+
+    /// The owner gave up on a post that has not reached it (a timeout or a
+    /// revoked owner). An in-flight post adds nothing or withdraws its own
+    /// addition; returns whether one already reported must be removed now.
+    fn cancel(&self, identifier: &str) -> bool {
+        let mut state = self.state();
+        if state.unsettled.remove(identifier) {
+            return true;
+        }
+        if state.in_flight.contains(identifier) {
+            state.cancelled.insert(identifier.to_owned());
+        }
+        false
     }
 
     /// The owner took responsibility for a reported addition.
@@ -270,6 +315,7 @@ impl Center {
         let center = self.center.clone();
         let sink = self.sink.clone();
         let gate = self.gate.clone();
+        gate.begin(identifier);
         let (identifier, title, body) = (identifier.to_owned(), title.to_owned(), body.to_owned());
         let authorized = RcBlock::new(move |granted: Bool, error: *mut NSError| {
             let posted = |result| {
@@ -279,11 +325,13 @@ impl Center {
                 })
             };
             if let Err(failure) = authorization(granted.as_bool(), !error.is_null()) {
+                gate.failed(&identifier);
                 posted(Err(failure));
                 return;
             }
-            // Closed while the prompt was open: nothing owns the post.
-            if !gate.may_add() {
+            // Closed or cancelled while the prompt was open: nothing owns
+            // the post, so nothing is added.
+            if !gate.may_add(&identifier) {
                 return;
             }
             let content = UNMutableNotificationContent::new();
@@ -307,6 +355,7 @@ impl Center {
                         }
                     }
                 } else {
+                    gate.failed(&identifier);
                     Err(PostFailure::Failed)
                 };
                 sink(CenterEvent::Posted {
@@ -327,6 +376,16 @@ impl Center {
     /// withdraws it itself when it must.
     pub fn settle(&self, identifier: &str) {
         self.gate.settle(identifier);
+    }
+
+    /// The owner gave up on this post before receiving its outcome (it timed
+    /// out or its owner was revoked) while the center stays open. A late
+    /// authorization adds nothing, a late addition is withdrawn at once, and
+    /// one already reported is withdrawn now.
+    pub fn cancel(&self, identifier: &str) {
+        if self.gate.cancel(identifier) {
+            remove(&self.center, &[identifier.to_owned()]);
+        }
     }
 
     /// Refuse every post still in flight and withdraw the reported posts the
@@ -380,13 +439,14 @@ mod tests {
     fn a_post_pending_at_close_is_never_added_or_is_withdrawn() {
         // post pending -> close -> late authorization: nothing is added.
         let gate = PostGate::default();
-        assert!(gate.may_add());
+        gate.begin("a");
         assert!(gate.close().is_empty());
-        assert!(!gate.may_add());
+        assert!(!gate.may_add("a"));
         // post pending -> authorized -> close -> late addition succeeds: it
         // is withdrawn, not reported.
         let gate = PostGate::default();
-        assert!(gate.may_add());
+        gate.begin("a");
+        assert!(gate.may_add("a"));
         assert!(gate.close().is_empty());
         assert_eq!(gate.added("a"), Addition::Withdraw);
         assert!(gate.close().is_empty(), "a withdrawn addition is not kept");
@@ -397,12 +457,67 @@ mod tests {
         // The addition is reported, then the owner stops before receiving
         // it: close returns it for withdrawal.
         let gate = PostGate::default();
+        for identifier in ["a", "b"] {
+            gate.begin(identifier);
+            assert!(gate.may_add(identifier));
+        }
         assert_eq!(gate.added("a"), Addition::Report);
         assert_eq!(gate.added("b"), Addition::Report);
         // The owner received and settled "b"; it withdraws it itself.
         gate.settle("b");
         assert_eq!(gate.close(), ["a".to_owned()]);
         assert_eq!(gate.added("c"), Addition::Withdraw);
+    }
+
+    fn idle(gate: &PostGate) -> bool {
+        let state = gate.state();
+        state.in_flight.is_empty() && state.cancelled.is_empty() && state.unsettled.is_empty()
+    }
+
+    #[test]
+    fn a_post_cancelled_before_its_grant_is_never_added_while_others_post() {
+        // post -> expiry (the center stays open) -> late grant: no add.
+        let gate = PostGate::default();
+        gate.begin("expired");
+        gate.begin("live");
+        assert!(!gate.cancel("expired"), "nothing was added yet");
+        assert!(!gate.may_add("expired"));
+        // An unrelated post on the same open center still completes.
+        assert!(gate.may_add("live"));
+        assert_eq!(gate.added("live"), Addition::Report);
+        gate.settle("live");
+        assert!(idle(&gate), "a cancelled post leaves nothing behind");
+    }
+
+    #[test]
+    fn a_post_cancelled_during_its_addition_is_withdrawn_when_it_lands() {
+        // expiry during add -> late success: immediate withdrawal.
+        let gate = PostGate::default();
+        gate.begin("a");
+        assert!(gate.may_add("a"));
+        assert!(!gate.cancel("a"));
+        assert_eq!(gate.added("a"), Addition::Withdraw);
+        assert!(idle(&gate));
+        // A reported addition the owner had not received yet is removed by
+        // the cancel itself.
+        gate.begin("b");
+        assert!(gate.may_add("b"));
+        assert_eq!(gate.added("b"), Addition::Report);
+        assert!(gate.cancel("b"));
+        assert!(idle(&gate));
+    }
+
+    #[test]
+    fn failures_and_cancels_of_finished_posts_keep_nothing() {
+        let gate = PostGate::default();
+        gate.begin("denied");
+        gate.failed("denied");
+        assert!(!gate.cancel("denied"));
+        gate.begin("refused");
+        assert!(gate.may_add("refused"));
+        gate.failed("refused");
+        assert!(!gate.cancel("refused"));
+        assert!(idle(&gate));
     }
 
     #[test]
