@@ -1,15 +1,16 @@
 # Framework audit and optimization record (#260)
 
-This record tracks the repository-wide audit in
-[#260](https://github.com/0xPlayerOne/bun-native/issues/260), which stays open
-until its acceptance criteria and dependencies are met. It links each problem
-that was removed or measured, and it names the backlog that remains and why. It
+This record summarizes the repository-wide audit documented in
+[#260](https://github.com/0xPlayerOne/bun-native/issues/260), closed on
+November 12, 2026 after its hygiene, profiling and release-scope evidence was
+reconciled. Closure does not qualify the separate upstream, Windows,
+physical-hardware or owner-held credential limits linked below. The record
 summarizes evidence recorded elsewhere and makes no new performance claim.
 
 ## Hygiene
 
-These checks run in CI on every pull request, so hygiene is enforced continuously
-and not checked once:
+Ready-PR validation runs these checks, rather than relying on a one-time audit.
+Draft validation stops before implementation and CodeQL checks execute:
 
 | Check                                     | What it rejects                                                        |
 | ----------------------------------------- | ---------------------------------------------------------------------- |
@@ -155,18 +156,22 @@ AOT runtime source to confirm the cache.
 
 ## What limits release scope
 
-These are tracked honestly as open and are not CI work:
+The repo-wide audit #260 is closed. Remaining limits belong to these **open**
+follow-up issues; a supported preview is not equivalent to signed distribution
+or physical-hardware qualification:
 
-| Limit                                          | Why it is open                                                                                                                                                        | Issue      |
-| ---------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------- |
-| macOS and Windows code signing, notarization   | owner-only: Apple Developer ID and Windows certificate                                                                                                                | #249, #223 |
-| Windows screen reader and OS IME composition   | Orca, IBus Hangul, VoiceOver and macOS Korean composition gate CI; NVDA speech and the Windows Korean IME still fail                                                  | #241, #629 |
-| Physical multi-monitor hardware                | headless sway outputs, two Xvfb screens and a macOS virtual display cover the semantics in CI; EDID monitors, cables, GPU outputs and Windows mixed DPI need hardware | #299       |
-| Babel 8                                        | no Solid preset release supports it yet                                                                                                                               | #316       |
-| Hosted first-window deadline                   | not recurred since November 6 ([below](#first-window-deadline-296))                                                                                                   | #296       |
-| Windows disposal retention                     | Windows support waits on it                                                                                                                                           | #629       |
-| Physical GPU, Windows and real-Mac performance | hosted runners use software or paravirtual GPUs                                                                                                                       | #244       |
-| Release-readiness decision                     | per-platform draft in [ADR 0021](decisions/0021-platform-release-readiness.md) (proposed)                                                                             | #245       |
+| Limit                                | Evidence boundary                                                                                                                                     | Open issue                                                                                                                 |
+| ------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| Owner-held release credentials       | macOS Developer ID/notarization, Windows code signing, and an application update-signing key are not available                                        | [#636](https://github.com/0xPlayerOne/bun-native/issues/636)                                                               |
+| Windows qualification                | Disposed-probe retention remains unresolved under the unchanged comparison assertion; NVDA, Korean IME, mixed DPI, and Windows packaging are deferred | [#629](https://github.com/0xPlayerOne/bun-native/issues/629), [#638](https://github.com/0xPlayerOne/bun-native/issues/638) |
+| Physical hardware                    | Hosted runners use virtual displays, synthetic input and software/paravirtual GPUs; EDID, GPU presentation and physical devices remain untested       | [#637](https://github.com/0xPlayerOne/bun-native/issues/637)                                                               |
+| Upstream runtime and renderer limits | Babel 8/Solid, pinned GPUI display/Wayland behavior, AccessKit mapping and Bun/JSC retention depend on upstream changes                               | [#635](https://github.com/0xPlayerOne/bun-native/issues/635)                                                               |
+
+Per-platform release support is decided in the **accepted**
+[ADR 0021](decisions/0021-platform-release-readiness.md#acceptance-2026-11-12):
+Linux x64 X11 is release-ready, macOS ARM64 is a supported preview without
+notarization, and Windows remains deferred. The older proposed-state table in
+that ADR is historical; its acceptance section governs.
 
 ## First-window deadline (#296)
 
@@ -189,6 +194,11 @@ Checked on 2026-11-11 with read-only `gh api` calls:
 So it has **not recurred** since the November 5 reproductions recorded on the
 issue. No code was changed for it; the bounded startup trace stays in place for
 the next occurrence.
+
+**Later disposition (November 12):** [#296](https://github.com/0xPlayerOne/bun-native/issues/296)
+was closed after the documented clean hosted runs and the Lavapipe/LLVM
+first-touch warm-up mitigation (#442). The dated scan above remains a
+historical observation, not an assertion that #296 is currently open.
 
 ## For a fresh agent
 
