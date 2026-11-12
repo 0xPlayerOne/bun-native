@@ -160,12 +160,12 @@ The repo-wide audit #260 is closed. Remaining limits belong to these **open**
 follow-up issues; a supported preview is not equivalent to signed distribution
 or physical-hardware qualification:
 
-| Limit | Evidence boundary | Open issue |
-| ----- | ----------------- | ---------- |
-| Owner-held release credentials | macOS Developer ID/notarization, Windows code signing, and an application update-signing key are not available | [#636](https://github.com/0xPlayerOne/bun-native/issues/636) |
-| Windows qualification | Disposed-probe retention remains unresolved under the unchanged comparison assertion; NVDA, Korean IME, mixed DPI, and Windows packaging are deferred | [#629](https://github.com/0xPlayerOne/bun-native/issues/629), [#638](https://github.com/0xPlayerOne/bun-native/issues/638) |
-| Physical hardware | Hosted runners use virtual displays, synthetic input and software/paravirtual GPUs; EDID, GPU presentation and physical devices remain untested | [#637](https://github.com/0xPlayerOne/bun-native/issues/637) |
-| Upstream runtime and renderer limits | Babel 8/Solid, pinned GPUI display/Wayland behavior, AccessKit mapping and Bun/JSC retention depend on upstream changes | [#635](https://github.com/0xPlayerOne/bun-native/issues/635) |
+| Limit                                | Evidence boundary                                                                                                                                     | Open issue                                                                                                                 |
+| ------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| Owner-held release credentials       | macOS Developer ID/notarization, Windows code signing, and an application update-signing key are not available                                        | [#636](https://github.com/0xPlayerOne/bun-native/issues/636)                                                               |
+| Windows qualification                | Disposed-probe retention remains unresolved under the unchanged comparison assertion; NVDA, Korean IME, mixed DPI, and Windows packaging are deferred | [#629](https://github.com/0xPlayerOne/bun-native/issues/629), [#638](https://github.com/0xPlayerOne/bun-native/issues/638) |
+| Physical hardware                    | Hosted runners use virtual displays, synthetic input and software/paravirtual GPUs; EDID, GPU presentation and physical devices remain untested       | [#637](https://github.com/0xPlayerOne/bun-native/issues/637)                                                               |
+| Upstream runtime and renderer limits | Babel 8/Solid, pinned GPUI display/Wayland behavior, AccessKit mapping and Bun/JSC retention depend on upstream changes                               | [#635](https://github.com/0xPlayerOne/bun-native/issues/635)                                                               |
 
 Per-platform release support is decided in the **accepted**
 [ADR 0021](decisions/0021-platform-release-readiness.md#acceptance-2026-11-12):
