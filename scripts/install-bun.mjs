@@ -19,22 +19,31 @@ import { downloadPinnedArchive, validatePackagePin } from './install-bun/downloa
 import { extractPinnedExecutable } from './install-bun/archive.mjs'
 import { createHash } from 'node:crypto'
 
-// Node bootstraps Bun so a clean hosted runner does not need another Bun version.
-const manifest = JSON.parse(readFileSync(new URL('../toolchain.json', import.meta.url), 'utf8'))
 // Public npm archives need no credential. Never inherit a formerly scoped token.
 delete process.env.BUN_NATIVE_GITHUB_TOKEN
-if (manifest.schemaVersion !== 2 || manifest.bun.distribution !== 'npm')
-  throw new Error('Expected the explicit npm Bun distribution manifest')
+const usage =
+  'Usage: node scripts/install-bun.mjs --destination <absolute directory> [--manifest <absolute toolchain.json>]'
 const args = process.argv.slice(2)
 const destination = args[1]
+const manifestPath = args.length === 4 ? args[3] : undefined
 if (
-  args.length !== 2 ||
+  (args.length !== 2 && args.length !== 4) ||
   args[0] !== '--destination' ||
   typeof destination !== 'string' ||
-  !isAbsolute(destination)
+  !isAbsolute(destination) ||
+  (args.length === 4 &&
+    (args[2] !== '--manifest' || typeof manifestPath !== 'string' || !isAbsolute(manifestPath)))
 ) {
-  throw new Error('Usage: node scripts/install-bun.mjs --destination <absolute directory>')
+  throw new Error(usage)
 }
+// Node bootstraps Bun so a clean hosted runner does not need another Bun version.
+// The repository pin is the default; a workflow that rebuilds a historical
+// revision names that revision's checked-in npm pin instead (#631).
+const manifest = JSON.parse(
+  readFileSync(manifestPath ?? new URL('../toolchain.json', import.meta.url), 'utf8')
+)
+if (manifest.schemaVersion !== 2 || manifest.bun?.distribution !== 'npm')
+  throw new Error('Expected the explicit npm Bun distribution manifest')
 const target = `${process.platform}-${process.arch}`
 const archive = manifest.bun.packages[target]
 if (!archive) throw new Error(`No pinned Bun package for ${target}`)

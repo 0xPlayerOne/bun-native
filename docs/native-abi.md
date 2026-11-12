@@ -42,7 +42,7 @@ does not advertise them. The optional `focus_v1` and `scroll_control_v1`
 capabilities add the `focus`, `scroll_to` and `scroll_into_view` batch
 operations, and `overlay_keyboard_v1` adds the overlay `autofocus` and
 `navigation` fields, under the same contract and local rejection rule. The optional
-`popup_windows_v1` capability, advertised only for a local X11 session, adds
+`popup_windows_v1` capability, advertised for a local X11 session and on macOS, adds
 the overlay field `surface: "window"` and the routed `dismiss` event described
 in [popup windows](native-overlays.md#popup-windows-beyond-the-parent-window).
 

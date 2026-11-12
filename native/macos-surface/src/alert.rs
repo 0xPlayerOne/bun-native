@@ -90,7 +90,7 @@ pub fn ended(buttons: usize, response: NSModalResponse) -> AlertEnd {
 
 /// The window an alert sheet attaches to.
 #[derive(Clone, Debug)]
-pub struct AlertOwner(Retained<NSWindow>);
+pub struct AlertOwner(pub(crate) Retained<NSWindow>);
 
 /// The `NSWindow` of a borrowed GPUI view.
 #[allow(unsafe_code)] // The same reviewed borrowed-view dereference as the surface access.

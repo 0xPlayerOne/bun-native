@@ -8,7 +8,7 @@ export type DependencyLock = {
   packages: Record<string, LockedPackage>
 }
 type ArchiveInfo = { dependencies?: Record<string, string>; bin?: Record<string, string> }
-export type LocalArchiveLock = {
+type LocalArchiveLock = {
   packages: Record<string, [string, ArchiveInfo, string]>
   overrides: Record<string, string>
 }

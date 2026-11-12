@@ -6,6 +6,12 @@
  * node identity is needed to observe the result. Each run writes a
  * structural snapshot that `layout-style-compare.ts` compares across
  * adapters and native scale factors.
+ *
+ * On macOS the same scene runs in the hosted runner's GUI session with
+ * CoreGraphics input and an Accessibility window resize through the bounded
+ * SDK helper, and `screencapture` pixels of the owned window
+ * (tests/native/macos-window-input.ts). The native scale factor is the
+ * display's backing scale, read independently from the capture.
  */
 import {
   createApplication,
@@ -18,6 +24,7 @@ import type { RenderRoot } from '@bun-native/renderer'
 import assert from 'node:assert/strict'
 import { readFileSync, statSync, writeFileSync } from 'node:fs'
 import { isAbsolute, join } from 'node:path'
+import { MacWindow, type Point } from './macos-window-input.ts'
 
 export type SceneState = { theme: 'light' | 'dark'; ratio: number }
 export const initialScene: SceneState = { theme: 'light', ratio: 0.5 }
@@ -27,7 +34,7 @@ const tokens = {
   radii: { md: 6 },
   fontSizes: { body: 18, lg: 22 },
 } as const
-export const themes = {
+const themes = {
   light: defineTheme({
     ...tokens,
     colors: {
@@ -172,21 +179,25 @@ export async function qualifyLayoutStyle(
   // not observe later process.env mutation.
   const evidenceLog = process.env['BUN_NATIVE_EVIDENCE_LOG'] ?? ''
   const nonce = process.env['BUN_NATIVE_EVIDENCE_NONCE'] ?? ''
-  const scale = Number(process.env['GPUI_X11_SCALE_FACTOR'] ?? '1')
+  const mac = process.platform === 'darwin'
+  let scale = Number(process.env['GPUI_X11_SCALE_FACTOR'] ?? '1')
   if (
     !output ||
     !isAbsolute(output) ||
     !statSync(output).isDirectory() ||
     !executable ||
     (mode !== 'development' && mode !== 'aot') ||
-    !process.env['DISPLAY'] ||
-    process.env['WAYLAND_DISPLAY'] ||
+    (mac
+      ? !process.env['BUN_NATIVE_PLATFORM_HELPER'] || process.env['GPUI_X11_SCALE_FACTOR']
+      : !process.env['DISPLAY'] || process.env['WAYLAND_DISPLAY']) ||
     !isAbsolute(evidenceLog) ||
     !/^[0-9a-f]{32}$/.test(nonce) ||
     (scale !== 1 && scale !== 2)
   )
     throw new Error(
-      'An isolated X11 display, evidence directory and log, nonce, host, mode and scale 1 or 2 are required'
+      mac
+        ? 'macOS needs an evidence directory and log, nonce, host, mode and the OS input helper'
+        : 'An isolated X11 display, evidence directory and log, nonce, host, mode and scale 1 or 2 are required'
     )
 
   const started = performance.now()
@@ -291,15 +302,29 @@ export async function qualifyLayoutStyle(
   }
 
   let windowId = ''
+  let macWindow: MacWindow | undefined
   const at = ([x, y]: [number, number]) => [
     String(Math.round(x * scale)),
     String(Math.round(y * scale)),
   ]
   const centre = ([x, y, width, height]: Rect): [number, number] => [x + width / 2, y + height / 2]
-  const click = (point: [number, number], button = '1') =>
-    run(['xdotool', 'mousemove', '--window', windowId, ...at(point), 'click', button])
-  const press = (...keys: string[]) => run(['xdotool', 'key', '--clearmodifiers', ...keys])
+  const click = async (point: [number, number], button: '1' | '4' | '5' = '1') => {
+    if (macWindow) await macWindow.click([Math.round(point[0]), Math.round(point[1])], button)
+    else await run(['xdotool', 'mousemove', '--window', windowId, ...at(point), 'click', button])
+  }
+  const press = async (...keys: string[]) => {
+    if (macWindow) await macWindow.press(...keys)
+    else await run(['xdotool', 'key', '--clearmodifiers', ...keys])
+  }
   async function drag(from: [number, number], to: [number, number]) {
+    if (macWindow) {
+      const path: Point[] = [0, 1, 2, 3, 4].map((step) => [
+        Math.round(from[0] + ((to[0] - from[0]) * step) / 4),
+        Math.round(from[1] + ((to[1] - from[1]) * step) / 4),
+      ])
+      await macWindow.drag(path)
+      return
+    }
     await run(['xdotool', 'mousemove', '--window', windowId, ...at(from), 'mousedown', '1'])
     for (let step = 1; step <= 4; step++) {
       const point: [number, number] = [
@@ -314,6 +339,10 @@ export async function qualifyLayoutStyle(
   /** Capture the owned window and read displayed pixels as 0xRRGGBB. */
   async function capture(name: string, points: [number, number][]) {
     const file = join(output!, `${adapter}-${name}.png`)
+    if (macWindow) {
+      const shot = await macWindow.capture(file)
+      return { size: shot.size, pixels: points.map((point) => shot.pixel(point)) }
+    }
     await run(['import', '-window', windowId, file])
     const size = (await run(['identify', '-format', '%w %h', file])).split(' ').map(Number)
     const pixels: number[] = []
@@ -335,12 +364,22 @@ export async function qualifyLayoutStyle(
     for (;;) {
       const result = await capture(name, [[4, 4], ...points])
       if (result.pixels[0] === surface) return { size: result.size, pixels: result.pixels.slice(1) }
-      if (performance.now() > until)
-        throw new Error(name + ' never displayed its surface: ' + result.pixels[0]!.toString(16))
+      if (performance.now() > until) {
+        let detail = ''
+        if (macWindow) {
+          const file = join(output!, `${adapter}-${name}.png`)
+          const stale = await macWindow.staleCapture(file, [[4, 4]])
+          detail = ` (window ${stale.window[0]}, display ${stale.display[0]})`
+        }
+        throw new Error(
+          name + ' never displayed its surface: ' + result.pixels[0]!.toString(16) + detail
+        )
+      }
       await Bun.sleep(50)
     }
   }
   async function resize(width: number, height: number) {
+    if (macWindow) return macWindow.resize(width, height)
     await run([
       'xdotool',
       'windowsize',
@@ -365,6 +404,15 @@ export async function qualifyLayoutStyle(
     }
 
     const initial = await painted(window, (entry) => entry.layout.nodes.length > 10)
+    if (mac) {
+      // The display's backing scale, measured from a capture of the window.
+      macWindow = await MacWindow.open(TITLE, executable, () => {
+        const latest = records<Layout>('layout').at(-1)
+        return latest ? latest.layout.viewport : [WIDTH, HEIGHT]
+      })
+      scale = (await macWindow.capture(join(output, `${adapter}-scale.png`))).scale
+      assert.ok(scale === 1 || scale === 2, 'a 1x or 2x backing scale: ' + scale)
+    }
     assert.equal(initial.layout.scale_factor, scale, 'native scale factor')
     const id = await waitFor(() => {
       try {
@@ -395,12 +443,14 @@ export async function qualifyLayoutStyle(
       [id.b1, 'B1'],
       [id.done, 'Done'],
     ])
-    const windows = (await run(['xdotool', 'search', '--sync', '--name', '^' + TITLE + '$'])).split(
-      '\n'
-    )
-    assert.equal(windows.length, 1, 'exactly one owned window named ' + TITLE)
-    windowId = windows[0]!
-    await run(['xdotool', 'windowactivate', '--sync', windowId])
+    if (!mac) {
+      const windows = (
+        await run(['xdotool', 'search', '--sync', '--name', '^' + TITLE + '$'])
+      ).split('\n')
+      assert.equal(windows.length, 1, 'exactly one owned window named ' + TITLE)
+      windowId = windows[0]!
+      await run(['xdotool', 'windowactivate', '--sync', windowId])
+    }
     const first = await painted(window, (entry) => entry.layout.viewport[0] === WIDTH)
     snapshots['initial'] = structure(first)
 
@@ -550,10 +600,16 @@ export async function qualifyLayoutStyle(
         adapter,
         mode,
         scale,
+        platform: process.platform,
         bun: process.versions.bun,
         revision: Bun.revision,
-        display: 'isolated Xvfb with openbox',
-        input: 'XTEST via xdotool',
+        display: mac
+          ? 'hosted macOS GUI session; screencapture of the owned window'
+          : 'isolated Xvfb with openbox',
+        input: mac
+          ? 'CoreGraphics and Accessibility resize through scripts/quality/native-platform-macos.m'
+          : 'XTEST via xdotool',
+        ...(macWindow ? { osInput: macWindow.log } : {}),
         geometry: 'nonce-tagged native paint evidence',
         outcomes,
         snapshots,

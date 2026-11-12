@@ -36,7 +36,7 @@ describe('owned global shortcuts (headless real subprocess)', () => {
             availability: 'available',
             permission,
             scope: 'owned_window',
-            backend: 'x11',
+            backend: process.platform === 'darwin' ? 'carbon' : 'x11',
           })
           expect(Object.isFrozen(app.serviceCapabilities.globalShortcuts)).toBe(true)
         },

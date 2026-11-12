@@ -529,13 +529,29 @@ impl EntityInputHandler for TextInput {
         &mut self,
         range_utf16: Range<usize>,
         _bounds: Bounds<Pixels>,
-        _window: &mut Window,
+        window: &mut Window,
         _cx: &mut Context<Self>,
     ) -> Option<Bounds<Pixels>> {
         let range = self.range_from_utf16(&range_utf16);
-        self.last_paint
-            .as_ref()?
-            .bounds_for_range(&self.content, range)
+        let paint = self.last_paint.as_ref()?;
+        if let Some(bounds) = paint.bounds_for_range(&self.content, range.clone()) {
+            return Some(bounds);
+        }
+        // The text changed after the last paint (an input method's preedit or
+        // commit): lay it out as the next paint will.
+        let run = gpui::TextRun {
+            len: self.content.len(),
+            font: paint.font.clone(),
+            color: gpui::Hsla::default(),
+            background_color: None,
+            underline: None,
+            strikethrough: None,
+        };
+        let line =
+            window
+                .text_system()
+                .shape_line(self.content.clone(), paint.font_size, &[run], None);
+        Some(paint.projected_bounds_for_range(&line, self.selection.cursor(), range))
     }
 
     fn selection_bounds_for_range(

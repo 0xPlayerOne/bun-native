@@ -187,8 +187,11 @@ def process_image(pid):
 class ProcessAudit:
     """Retain immutable PID/start-tick ownership and sample remount overlap."""
 
-    def __init__(self, app, host, bun):
+    def __init__(self, app, host, bun, generations=102):
         self.app, self.host, self.bun = app, str(host), str(bun)
+        # Each remount adds an app and a host; the default fits 101 edits.
+        self.observed_limit = max(512, 4 * generations + 64)
+        self.change_limit = max(2048, 16 * generations + 416)
         root = DRIVER.process_table().get(app.pid)
         if root is None:
             raise RuntimeError("Cannot anchor the launched watch process identity")
@@ -215,8 +218,8 @@ class ProcessAudit:
                     rows = self.ownership.rows(table)
                     if (
                         len(rows) > 128
-                        or len(self.observed) > 512
-                        or len(self.changes) > 2048
+                        or len(self.observed) > self.observed_limit
+                        or len(self.changes) > self.change_limit
                     ):
                         raise RuntimeError("Watch process evidence exceeded its bound")
                     for row in rows:

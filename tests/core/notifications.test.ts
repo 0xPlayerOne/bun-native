@@ -36,7 +36,7 @@ describe('owned desktop notifications (headless real subprocess)', () => {
             availability: 'available',
             permission,
             scope: 'owned_window',
-            backend: 'freedesktop',
+            backend: process.platform === 'darwin' ? 'user_notifications' : 'freedesktop',
           })
           expect(Object.isFrozen(app.serviceCapabilities.notifications)).toBe(true)
         },

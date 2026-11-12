@@ -37,7 +37,11 @@ xvfb-run --auto-servernum --server-args='-screen 0 1280x800x24 -nolisten tcp' \
   --binary "$PWD/target/release/examples/workload-baseline" --output "$out" --trials 5
 ```
 
-On macOS run it without the display session. Options: `--trials 3..30`,
+On macOS and Windows run it without the display session. On Windows the process
+tree's working set and CPU time come from
+[`windows-processes.ts`](../comparison/windows-processes.ts) (final
+`GetProcessTimes` user plus kernel time instead of `wait4`), and the recorded load
+is the CPU busy share over 250 ms. Options: `--trials 3..30`,
 `--iterations`, `--rotations`, `--mounts`, `--rows` (same bounds as the shared
 workload), `--rss-interval-ms` and `--paint-samples 0..1000`. The runner launches one
 `first` process, reported separately, then `--trials` measured processes, never

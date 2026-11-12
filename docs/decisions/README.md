@@ -39,7 +39,7 @@ Two records share number 0013. [Release readiness](0013-release-readiness.md)
 landed first, in #483, and [owned OS file dialogs](0013-native-file-dialogs.md)
 followed in #481. The files keep their names, so existing links stay valid.
 Cite either record by its file name, not by "ADR 0013" alone. The highest
-number is 0018 and there is no 0016, so the next new record is 0019.
+number is 0021 and there is no 0016, so the next new record is 0022.
 
 ## Current decisions
 
@@ -70,3 +70,4 @@ number is 0018 and there is no 0016, so the next new record is 0019.
 ## Release scope
 
 - [0013 — Release readiness and supported scope](0013-release-readiness.md) (the first 0013)
+- [0021 — Release readiness by platform: Linux and macOS first, Windows waiting](0021-platform-release-readiness.md) (proposed)

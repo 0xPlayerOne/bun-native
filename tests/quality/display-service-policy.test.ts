@@ -1,12 +1,16 @@
 import { expect, test } from 'bun:test'
 import type { ServiceCapabilities } from '@bun-native/core'
-import { assertDisplayServicePolicy } from '../native/display-service-policy.ts'
+import {
+  assertDisplayServicePolicy,
+  platformClipboardBackend,
+} from '../native/display-service-policy.ts'
 
 const windowDisplay = {
   availability: 'available',
   permission: 'allow',
   scope: 'owned_window',
   details: 'unavailable',
+  identity: 'unavailable',
   changes: 'unavailable',
 } as const satisfies ServiceCapabilities['windowDisplay']
 const clipboardText = {
@@ -14,7 +18,7 @@ const clipboardText = {
   read: 'deny',
   write: 'deny',
   scope: 'owned_window',
-  backend: 'x11',
+  backend: platformClipboardBackend,
 } as const satisfies ServiceCapabilities['clipboardText']
 const unavailable = {
   availability: 'unavailable',
@@ -72,4 +76,22 @@ test('the display fixture rejects incomplete or extra unavailable metadata', () 
 test('the display fixture rejects unknown supported clipboard metadata', () => {
   const extra = { ...clipboardText, implicitGrant: true }
   expect(() => assertDisplayServicePolicy({ windowDisplay, clipboardText: extra })).toThrow()
+})
+
+test('the expected clipboard backend follows the platform and can be named explicitly', () => {
+  expect(platformClipboardBackend).toBe(process.platform === 'darwin' ? 'appkit' : 'x11')
+  const appkit = { ...clipboardText, backend: 'appkit' } as const
+  const x11 = { ...clipboardText, backend: 'x11' } as const
+  expect(() =>
+    assertDisplayServicePolicy({ windowDisplay, clipboardText: appkit }, 'appkit')
+  ).not.toThrow()
+  expect(() =>
+    assertDisplayServicePolicy({ windowDisplay, clipboardText: x11 }, 'x11')
+  ).not.toThrow()
+  expect(() =>
+    assertDisplayServicePolicy({ windowDisplay, clipboardText: appkit }, 'x11')
+  ).toThrow()
+  expect(() =>
+    assertDisplayServicePolicy({ windowDisplay, clipboardText: x11 }, 'appkit')
+  ).toThrow()
 })

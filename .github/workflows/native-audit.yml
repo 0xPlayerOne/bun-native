@@ -20,11 +20,31 @@ jobs:
     # No caller-controlled source or runtime ref is accepted.
     # The caller must grant everything a nested job requests, or GitHub
     # rejects the workflow and the schedule never fires (#620): the changes
-    # job reads pull requests, CodeQL uploads results, the Gate reads jobs.
+    # job reads pull requests, CodeQL uploads results, the Gate reads jobs, and
+    # Native Linux requests (but on a schedule never uses) attestation signing.
     permissions:
       actions: read
+      attestations: write
       contents: read
+      id-token: write
       packages: read
       pull-requests: read
       security-events: write
     uses: ./.github/workflows/bun-native.yml
+
+  babel8-watch:
+    name: Babel 8 preset watch (#316)
+    if: github.ref == 'refs/heads/main' && vars.CI_BILLING_PAUSED == 'false'
+    # Read-only upstream check: reports whether a published Solid preset
+    # declares Babel 8 support. It never changes pins and only fails when the
+    # registry cannot be read.
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Install checksum-pinned Bun compiler
+        run: node scripts/install-bun.mjs --destination "$RUNNER_TEMP/bun-native-bun"
+      - name: Check babel-preset-solid peer ranges
+        run: bun scripts/quality/babel8-readiness.ts >> "$GITHUB_STEP_SUMMARY"

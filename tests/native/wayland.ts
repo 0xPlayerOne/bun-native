@@ -10,13 +10,17 @@
 import {
   createApplication,
   NativeServiceError,
+  onSplitResize,
   UnsupportedFeatureError,
   type NativeApplication,
+  type NativeNode,
   type NativeWindow,
+  type SplitResizeEvent,
 } from '@bun-native/core'
 import assert from 'node:assert/strict'
 import { mkdirSync, readFileSync, statSync, writeFileSync } from 'node:fs'
 import { isAbsolute, join, resolve } from 'node:path'
+import { waylandOutputUuid } from './display-uuid.ts'
 
 const output = process.env['BUN_NATIVE_WAYLAND_EVIDENCE']
 const mode = process.env['BUN_NATIVE_WAYLAND_MODE']
@@ -338,8 +342,11 @@ async function capabilities(app: NativeApplication, window: NativeWindow) {
     availability: 'available',
     permission: 'allow',
     scope: 'owned_window',
+    // No work area; identity and changes are qualified on two outputs in
+    // display-wayland.ts (#299).
     details: 'unavailable',
-    changes: 'unavailable',
+    identity: 'available',
+    changes: 'available',
   })
   for (const capability of [
     'clipboard_text_v1',
@@ -603,6 +610,12 @@ async function qualify(app: NativeApplication) {
   )
   await waitFor(() => window.input(ui.field).value === 'ab', 'the reset input')
   origin = (await mapped(TITLE)).rect
+  // The first preedit needs GPUI's input handler for the field, which its
+  // next painted frame installs, and an input method that has seen every
+  // `done` (#630). GPUI enables text input at the end of that frame, so a
+  // fresh activation follows the handler. The AT click left the button
+  // focused, so the method is first deactivated, then the click reactivates it.
+  await pointer.send('ime-inactive')
   await clickAt(...center(origin, field), origin)
   await pointer.send('ime-active')
   const imeValues: string[] = []
@@ -701,6 +714,7 @@ async function qualify(app: NativeApplication) {
   assert.deepEqual(snapshot, {
     bounds: active[0]!.rect,
     scaleFactor: active[0]!.scale,
+    displayId: waylandOutputUuid(active[0]!.name),
   })
   const { name, rect, scale } = active[0]!
   record('displaySnapshot', { snapshot, compositor: { name, rect, scale } })
@@ -737,6 +751,8 @@ async function qualify(app: NativeApplication) {
   await unmapped(DIALOG)
   record('fileDialog', { shell: dialog.shell, parent: 'none', abort: true, compositorClose: true })
 
+  await accessibilityRows(app)
+
   // 8. The compositor closes the window (xdg_toplevel.close); the host
   // reports it and the view is unmapped.
   await command(TITLE, 'kill')
@@ -744,6 +760,340 @@ async function qualify(app: NativeApplication) {
   await assert.rejects(window.displaySnapshot(), /closed/i)
   await unmapped(TITLE)
   record('compositorClose', { closed: true })
+}
+
+/**
+ * 7b. The accessibility roles, the keyboard split divider and the modal dialog
+ * on Wayland, in their own window: what tests/native/accessibility.ts checks
+ * on X11, read by the same independent AT-SPI client, with keys from the
+ * compositor (wtype) and AT requests over the session bus.
+ */
+async function accessibilityRows(app: NativeApplication) {
+  const title = 'Bun Native Wayland accessibility'
+  const MIN_PANE = 100
+  const PANES = 600 - 6
+  const window = await app.openWindow({ title, width: 640, height: 480 })
+  const nodes = await window.batch((batch) => {
+    batch.set(window.root, { kind: 'box', style: { direction: 'column', background: 0xffffff } })
+    const add = <N extends NativeNode>(
+      parent: NativeNode<'box' | 'split' | 'overlay'>,
+      node: N
+    ) => {
+      batch.append(parent, node)
+      return node
+    }
+    add(
+      window.root,
+      batch.create({ kind: 'text', text: 'Accessibility on Wayland', style: { height: 28 } })
+    )
+    const list = add(
+      window.root,
+      batch.create({ kind: 'box', style: { overflow: 'scroll_y', height: 60 } })
+    )
+    for (const index of [1, 2, 3])
+      add(
+        add(list, batch.create({ kind: 'box', style: { height: 24 } })),
+        batch.create({ kind: 'text', text: 'Item ' + index })
+      )
+    const split = add(
+      window.root,
+      batch.create({
+        kind: 'split',
+        ratio: 0.4,
+        min_size: MIN_PANE,
+        accessible_label: 'Sidebar',
+        style: { width: 600, height: 160, flex_shrink: 0 },
+      })
+    )
+    const leading = add(split, batch.create({ kind: 'box', style: { width: 'fill' } }))
+    add(leading, batch.create({ kind: 'button', text: 'Leading action' }))
+    const trailing = add(split, batch.create({ kind: 'box', style: { width: 'fill' } }))
+    const search = add(
+      trailing,
+      batch.create({ kind: 'input', value: 'typed', style: { height: 40 } })
+    )
+    add(trailing, batch.create({ kind: 'button', text: 'Disabled action', disabled: true }))
+    const open = add(
+      window.root,
+      batch.create({ kind: 'button', text: 'Open dialog', style: { height: 40 } })
+    )
+    return { split, search, open }
+  })
+  const focus: string[] = []
+  const names = new Map<NativeNode, string>([
+    [nodes.split, 'divider'],
+    [nodes.search, 'search'],
+    [nodes.open, 'open'],
+  ])
+  window.on(window.root, 'focus', (event) => void focus.push(names.get(event.node) ?? 'other'))
+  const resizes: SplitResizeEvent[] = []
+  onSplitResize(window, nodes.split, (event) => void resizes.push(event))
+  let dialog:
+    | {
+        overlay: NativeNode<'overlay'>
+        confirm: NativeNode<'button'>
+        cancel: NativeNode<'button'>
+      }
+    | undefined
+  window.onClick(nodes.open, async () => {
+    dialog = await window.batch((batch) => {
+      const overlay = batch.create({
+        kind: 'overlay',
+        modal: true,
+        accessible_label: 'Confirm dialog',
+        style: { padding: 24, gap: 8, background: 0xf4f5f7 },
+      })
+      batch.append(window.root, overlay)
+      batch.append(overlay, batch.create({ kind: 'text', text: 'Discard changes?' }))
+      const confirm = batch.create({ kind: 'button', text: 'Confirm' })
+      const cancel = batch.create({ kind: 'button', text: 'Cancel' })
+      batch.append(overlay, confirm)
+      batch.append(overlay, cancel)
+      return { overlay, confirm, cancel }
+    })
+    names.set(dialog.confirm, 'confirm')
+    names.set(dialog.cancel, 'cancel')
+    window.onClick(dialog.cancel, () =>
+      window.batch((batch) => {
+        batch.remove(dialog!.overlay)
+        dialog = undefined
+      })
+    )
+  })
+  await mapped(title, OPEN_BOUND_MS)
+  await command(title, 'focus')
+  await waitFor(() => focus.includes('search'), 'initial input focus in the accessibility window')
+
+  type Accessible = {
+    role: string
+    name: string
+    states: string[]
+    depth: number
+    value?: { current: number; minimum: number; maximum: number }
+    attributes?: { setsize?: string; posinset?: string }
+  }
+  type AtspiEvent = {
+    type: string
+    source: { role?: string; name?: string; defunct?: boolean }
+    data: unknown
+    current?: number
+  }
+  // An independent AT-SPI event listener for the whole section: value
+  // changes, the dialog's appearance and live announcements, as a screen
+  // reader receives them on Wayland.
+  const watcher = Bun.spawn([atspiPython, '-I', probe, 'watch', '120'], {
+    stdin: 'pipe',
+    stdout: 'pipe',
+    stderr: 'inherit',
+  })
+  const events: AtspiEvent[] = []
+  let watching = false
+  const reading = (async () => {
+    let buffered = ''
+    const decoder = new TextDecoder()
+    for await (const chunk of watcher.stdout) {
+      buffered += decoder.decode(chunk, { stream: true })
+      let newline = buffered.indexOf('\n')
+      while (newline >= 0) {
+        const line = JSON.parse(buffered.slice(0, newline)) as AtspiEvent | { ready: true }
+        buffered = buffered.slice(newline + 1)
+        if ('ready' in line) watching = true
+        else events.push(line)
+        newline = buffered.indexOf('\n')
+      }
+    }
+  })()
+  await waitFor(() => watching, 'the AT-SPI event listener')
+  const dump = async (check: (tree: Accessible[]) => boolean, label: string) => {
+    const until = performance.now() + 5_000
+    for (;;) {
+      const tree = (
+        JSON.parse(await run([atspiPython, '-I', probe, 'dump', title])) as { roles: Accessible[] }
+      ).roles
+      if (check(tree)) return tree
+      if (performance.now() > until)
+        throw new Error('Timed out waiting for AT-SPI ' + label + ': ' + JSON.stringify(tree))
+      await Bun.sleep(50)
+    }
+  }
+  const find = (tree: Accessible[], role: string, name: string) =>
+    tree.find((node) => node.role === role && node.name === name)
+  const separator = (tree: Accessible[]) => find(tree, 'separator', 'Sidebar')
+  const near = (actual: number | undefined, expected: number) =>
+    actual !== undefined && Math.abs(actual - expected) < 1e-3
+
+  // Every element kind's role, name and states.
+  const initial = await dump(
+    (tree) =>
+      separator(tree) !== undefined &&
+      tree.some((node) => node.role === 'entry' && node.states.includes('focused')),
+    'the initial accessibility tree'
+  )
+  const roles = [...new Set(initial.map((node) => node.role))].sort()
+  assert.deepEqual(roles, ['entry', 'label', 'panel', 'push-button', 'separator'])
+  const panel = initial.find((node) => node.role === 'panel')!
+  assert.deepEqual(
+    initial
+      .filter((node) => node.depth > panel.depth && node.role === 'label')
+      .map((node) => node.name)
+      .slice(0, 3),
+    ['Item 1', 'Item 2', 'Item 3'],
+    'the scrolling box is a panel holding its items'
+  )
+  const divider = separator(initial)!
+  assert.ok(divider.states.includes('focusable') && divider.states.includes('vertical'))
+  assert.ok(near(divider.value?.current, 40), 'the divider value is the ratio in percent')
+  assert.ok(near(divider.value?.minimum, (MIN_PANE / PANES) * 100))
+  assert.ok(near(divider.value?.maximum, (1 - MIN_PANE / PANES) * 100))
+  assert.ok(!find(initial, 'push-button', 'Disabled action')!.states.includes('focusable'))
+  assert.ok(find(initial, 'push-button', 'Leading action')!.states.includes('focusable'))
+  assert.ok(!initial.some((node) => node.role === 'dialog'))
+
+  // Keyboard: Shift+Tab from the input reaches the divider between its panes,
+  // and Right/End change both its split_resize ratio and its AT-SPI value.
+  focus.length = 0
+  await run(['wtype', '-M', 'shift', '-k', 'Tab', '-m', 'shift'])
+  await waitFor(() => focus.at(-1) === 'divider', 'divider focus by Shift+Tab')
+  await dump((tree) => separator(tree)?.states.includes('focused') === true, 'AT-SPI divider focus')
+  const step = async (name: string, ratio: number) => {
+    const count = resizes.length
+    await key(name)
+    await waitFor(() => resizes.length === count + 1, name + ' on the divider')
+    assert.equal(resizes.at(-1)!.source, 'keyboard')
+    assert.ok(Math.abs(resizes.at(-1)!.ratio - ratio) < 1e-9, name + ' ratio')
+    await dump((tree) => near(separator(tree)?.value?.current, ratio * 100), name + ' value')
+  }
+  await step('Right', 0.41)
+  await step('End', 1 - MIN_PANE / PANES)
+  // An AT value request is one keyboard resize, clamped to min_size.
+  const requested = resizes.length
+  await run([atspiPython, '-I', probe, 'act', title, 'separator', 'Sidebar', 'value', '1'])
+  await waitFor(() => resizes.length === requested + 1, 'the AT divider value')
+  assert.ok(Math.abs(resizes.at(-1)!.ratio - MIN_PANE / PANES) < 1e-9, 'clamped to min_size')
+
+  // The modal dialog: opened by keyboard, named, modal, holding its content,
+  // with nothing beneath it exposed, Tab kept inside, and the tree returning
+  // when it closes.
+  await run([atspiPython, '-I', probe, 'act', title, 'push-button', 'Open dialog', 'focus'])
+  await waitFor(() => focus.at(-1) === 'open', 'Open dialog focus by AT request')
+  await key('space')
+  await waitFor(() => focus.at(-1) === 'confirm', 'the dialog takes focus')
+  const opened = await dump(
+    (tree) => find(tree, 'push-button', 'Confirm')?.states.includes('focused') === true,
+    'the open dialog'
+  )
+  const dialogNode = find(opened, 'dialog', 'Confirm dialog')
+  assert.ok(dialogNode, 'a dialog named by accessible_label')
+  assert.ok(dialogNode.states.includes('modal'), 'with the modal state')
+  const inside = opened
+    .filter((node) => node.depth > dialogNode.depth)
+    .map((node) => node.role + ':' + node.name)
+  assert.deepEqual(inside, ['label:Discard changes?', 'push-button:Confirm', 'push-button:Cancel'])
+  assert.equal(opened.length, inside.length + 1, 'nothing beneath the modal dialog is exposed')
+  focus.length = 0
+  for (let index = 0; index < 3; index += 1) await key('Tab')
+  await waitFor(() => focus.length === 3, 'Tab inside the dialog')
+  assert.deepEqual(focus, ['cancel', 'confirm', 'cancel'])
+  await key('space')
+  await waitFor(() => dialog === undefined && focus.at(-1) === 'open', 'the dialog closed')
+  const closed = await dump(
+    (tree) =>
+      !tree.some((node) => node.role === 'dialog') &&
+      find(tree, 'push-button', 'Open dialog')?.states.includes('focused') === true,
+    'the closed dialog'
+  )
+  assert.deepEqual([...new Set(closed.map((node) => node.role))].sort(), roles)
+
+  // accessibility_lists_v1: a windowed list's set size, positions and
+  // selection, and a live text node announced when it appears and changes.
+  const listed = await window.batch((batch) => {
+    const list = batch.create({
+      kind: 'box',
+      accessible_role: 'list',
+      accessible_label: 'Messages',
+      accessible_set_size: 10_000,
+      style: { direction: 'row', gap: 4, height: 30, flex_shrink: 0 },
+    })
+    batch.append(window.root, list)
+    for (const position of [4_998, 4_999, 5_000]) {
+      const item = batch.create({
+        kind: 'box',
+        accessible_role: 'list_item',
+        accessible_position: position,
+        accessible_selected: position === 4_999,
+      })
+      batch.append(list, item)
+      batch.append(item, batch.create({ kind: 'text', text: 'Message ' + position }))
+    }
+    const status = batch.create({ kind: 'text', text: 'Idle', accessible_live: 'polite' })
+    batch.append(window.root, status)
+    return { status }
+  })
+  const listTree = await dump(
+    (tree) => tree.filter((node) => node.role === 'list-item').length === 3,
+    'the list'
+  )
+  const list = find(listTree, 'list', 'Messages')!
+  const items = listTree
+    .filter((node) => node.role === 'list-item' && node.depth === list.depth + 1)
+    .map((node) => ({
+      position: Number(node.attributes?.posinset),
+      setSize: Number(node.attributes?.setsize),
+      selected: node.states.includes('selected'),
+    }))
+  assert.deepEqual(items, [
+    { position: 4_998, setSize: 10_000, selected: false },
+    { position: 4_999, setSize: 10_000, selected: true },
+    { position: 5_000, setSize: 10_000, selected: false },
+  ])
+  for (const text of ['Streaming one', 'Streaming one two']) {
+    await window.batch((batch) =>
+      batch.set(listed.status, { kind: 'text', text, accessible_live: 'polite' })
+    )
+    await dump((tree) => find(tree, 'label', text) !== undefined, 'live ' + text)
+  }
+  await Bun.sleep(300)
+  void watcher.stdin.end()
+  await watcher.exited
+  await reading
+  const live = events.filter((event) => !event.source.defunct)
+  const values = live
+    .filter(
+      (event) =>
+        event.type === 'object:property-change:accessible-value' &&
+        event.source.role === 'separator'
+    )
+    .map((event) => Math.round(Number(event.current) * 1000) / 1000)
+  const expectedValues = [41, 83.165, 16.835]
+  assert.deepEqual(
+    values,
+    expectedValues,
+    'each keyboard step and the AT request announced the new divider value'
+  )
+  assert.ok(
+    live.some(
+      (event) =>
+        event.type.startsWith('object:children-changed:add') &&
+        (event.data as { role?: string } | null)?.role === 'dialog' &&
+        (event.data as { name?: string } | null)?.name === 'Confirm dialog'
+    ),
+    'the dialog was announced as a new child'
+  )
+  const announcements = live
+    .filter((event) => event.type === 'object:announcement')
+    .map((event) => event.data)
+  assert.deepEqual(announcements, ['Idle', 'Streaming one', 'Streaming one two'])
+  record('accessibilityRows', {
+    list: items,
+    values,
+    announcements,
+    roles,
+    divider: divider.value,
+    ratios: resizes.map(({ ratio, source }) => ({ ratio, source })),
+    dialog: { states: dialogNode.states, inside },
+  })
+  await window.close()
+  await unmapped(title)
 }
 
 mkdirSync(join(output, 'portal'), { recursive: true })
@@ -754,6 +1104,11 @@ const dunst = Bun.spawn(['dunst'], {
 const portal = await startPortal(join(output, 'portal'))
 pointer = new PointerPeer()
 assert.equal(await pointer.line(), 'ready')
+// The seat's input method exists before any window, so sway relays every
+// zwp_text_input_v3 enable and disable to it (#630). Without one, sway ignores
+// an enable, and wlroots takes GPUI's next enable as a commit of an already
+// enabled input, so the method is never activated.
+await pointer.query('ime-state')
 // A keyboard that lives for the whole run. Each typing wtype adds and removes
 // its own virtual keyboard; without a lasting one the seat's keyboard
 // capability would appear with it, and its first key would race the client's

@@ -52,6 +52,7 @@ Machine-readable [evidence records](evidence/) retain raw results cited by these
 ## Code quality and project operations
 
 - [Engineering quality and optimization](engineering-quality.md) — required audits every PR, every phase and before release
+- [Framework audit and optimization record](framework-audit.md) — hygiene checks, measured optimizations and rejected candidates, and what still limits release scope (#260)
 - [Provenance](provenance.md) — licensing, copied code and attribution
 - [Security and crash qualification matrix](qualification-matrix.md) — native fault, malformed payload, version mismatch and offline cases with their deciding tests
 - [Real-machine validation runbook](real-machine-validation.md) — setup, permissions, commands and pass conditions for the Windows and macOS cases that need a physical machine, with what has not run

@@ -20,7 +20,7 @@ const VARIANTS: readonly ButtonVariant[] = [
 ]
 
 /** Deterministic reply tokens; one per tick, so every run streams the same text. */
-export const REPLY = ['Native', ' rows', ' keep', ' their', ' identity', ' while', ' streaming.']
+const REPLY = ['Native', ' rows', ' keep', ' their', ' identity', ' while', ' streaming.']
 
 const SEED: readonly OpenedMessage[] = [
   {

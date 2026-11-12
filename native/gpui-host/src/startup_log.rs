@@ -14,10 +14,14 @@ const MAX_RECORDS: usize = 64;
 const MAX_RECORD_BYTES: usize = 2048;
 const MAX_TOTAL_BYTES: usize = 65_536;
 const MAX_MESSAGE_BYTES: usize = 512;
-const TARGETS: [&str; 3] = [
+/// The macOS Metal renderer logs each frame it drops (for example one drawn
+/// outside its display link's update), which a pixel read cannot tell apart
+/// from a frame that was never painted.
+const TARGETS: [&str; 4] = [
     "gpui_linux::linux::x11::window",
     "gpui_wgpu::wgpu_context",
     "gpui_wgpu::wgpu_renderer",
+    "gpui_apple::metal_renderer",
 ];
 /// HAL instance construction, captured at debug level so the one-time Vulkan
 /// loader and EGL display setup inside GPU instance creation can be told apart.

@@ -36,6 +36,7 @@ function ConversationPane(props: {
   state: () => WorkspaceState
   palette: () => Palette
   controller: WorkspaceController
+  onComposer?: ((node: SolidNode) => void) | undefined
 }): JSX.Element {
   // A conversation switch creates a new input owner with revision zero; its
   // stored draft is separate from the previous input's native edit authority.
@@ -170,6 +171,7 @@ function ConversationPane(props: {
         <input
           ref={(node) => {
             composer = node
+            props.onComposer?.(node)
           }}
           value={draft()}
           placeholder="Write a local prompt"
@@ -326,6 +328,11 @@ export function Workspace(
     schedule?: ReplyScheduler
     /** Qualification only: drive the same component's actions without OS input. */
     onController?: (controller: WorkspaceController) => void
+    /**
+     * Qualification only: each mounted conversation's composer, so a
+     * long-session fixture can focus it and type through real OS input.
+     */
+    onComposer?: (node: SolidNode) => void
     /** A live shell for the details pane. Without one, the pane says no shell runs. */
     terminal?: TerminalSession
   } = {}
@@ -419,7 +426,13 @@ export function Workspace(
         </box>
         <Show when={state().selectedId} keyed>
           {(id: number) => (
-            <ConversationPane id={id} state={state} palette={palette} controller={controller} />
+            <ConversationPane
+              id={id}
+              state={state}
+              palette={palette}
+              controller={controller}
+              onComposer={props.onComposer}
+            />
           )}
         </Show>
         <Show when={state().details}>

@@ -1,10 +1,25 @@
 //! Private borrowed macOS surface access, without timers, input posting or device selection,
 //! the window-owned alert sheets of OS message dialogs ([`alert`]) and OS context
-//! menus ([`context_menu`]).
+//! menus ([`context_menu`]), plain text on the general pasteboard
+//! ([`pasteboard`]), OS-wide Carbon hot keys ([`hot_keys`]), window-owned
+//! open and save panel sheets ([`file_panel`]), user notifications
+//! ([`notifications`]), placement of owned popup panels ([`popup`]), and the
+//! two pieces that let assistive technology follow keyboard focus into a GPUI
+//! window's AccessKit tree: routing AppKit's focus and hit-test queries to the
+//! adapter ([`focus_route`]) and the repeated key-window notification that
+//! keeps the adapter's focus state current ([`key_status`]).
 #![cfg(target_os = "macos")]
 
 pub mod alert;
 pub mod context_menu;
+pub mod file_panel;
+pub mod focus_route;
+pub mod hot_keys;
+pub mod key_status;
+pub mod notifications;
+pub mod pasteboard;
+pub mod popup;
+pub mod presentation;
 
 use objc2::MainThreadMarker;
 use objc2::rc::Retained;
@@ -23,6 +38,10 @@ pub enum SurfaceError {
     MissingDevice,
     MissingWindow,
     InvalidAlert,
+    MissingAccessibility,
+    PasteboardRefused,
+    InvalidPanel,
+    NotBundled,
 }
 
 impl fmt::Display for SurfaceError {
@@ -35,6 +54,12 @@ impl fmt::Display for SurfaceError {
             Self::MissingDevice => "native Metal layer has no assigned device",
             Self::MissingWindow => "native view is not in a window",
             Self::InvalidAlert => "alert needs 1 to 4 buttons and at most one button per key",
+            Self::MissingAccessibility => {
+                "native view or window class already defines the accessibility focus methods"
+            }
+            Self::PasteboardRefused => "the pasteboard refused the plain-text write",
+            Self::InvalidPanel => "a file panel filter names no content type",
+            Self::NotBundled => "user notifications require an application bundle",
         })
     }
 }
@@ -68,6 +93,12 @@ fn backing_layer(handle: WindowHandle<'_>) -> Result<Retained<CALayer>, SurfaceE
 pub fn invalidate(handle: WindowHandle<'_>) -> Result<(), SurfaceError> {
     backing_layer(handle)?.setNeedsDisplay();
     Ok(())
+}
+
+/// The name of the system's default Metal device, or `None` when there is
+/// none. This creates no layer, queue or window; GPUI chooses its own device.
+pub fn system_metal_device_name() -> Option<String> {
+    objc2_metal::MTLCreateSystemDefaultDevice().map(|device| device.name().to_string())
 }
 
 /// Copied identity of the device actually assigned to the borrowed native layer.

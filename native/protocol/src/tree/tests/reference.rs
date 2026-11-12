@@ -50,6 +50,7 @@ impl Model {
     pub(super) fn new(root_id: NodeId) -> Self {
         let root = Node {
             element: Element::Box {
+                accessibility: Default::default(),
                 style: Default::default(),
             },
             parent: None,

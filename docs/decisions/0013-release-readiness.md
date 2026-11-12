@@ -176,6 +176,54 @@ text input and accessibility, and signing, installers and update trust
 [#247](https://github.com/0xPlayerOne/bun-native/issues/247),
 [#249](https://github.com/0xPlayerOne/bun-native/issues/249)).
 
+## Revision for the November 11 close-out (2026-11-11)
+
+Re-evaluated with [#628](https://github.com/0xPlayerOne/bun-native/pull/628).
+**The decision is unchanged:** Bun Native remains an experimental developer
+preview. Nothing below moves a row into the supported scope; the changes move
+rows within _observed, not supported_ and narrow the blockers to steps that need
+the owner's identities, physical machines or upstream releases.
+
+- **Signing and installers** ([#249](https://github.com/0xPlayerOne/bun-native/issues/249),
+  [#223](https://github.com/0xPlayerOne/bun-native/issues/223)). Hosted `macos-15`
+  and `windows-2022` sign the generated template with a throwaway identity
+  (hardened-runtime `codesign`; `signtool` with an RFC 3161 timestamp), build a
+  `.dmg` or `.zip`, install it through its own script and confirm the signed
+  application's health through the installed verifying launcher. Notarization is
+  wired and skips without Apple credentials. No Developer ID or public
+  Authenticode signature, notarization, Gatekeeper or SmartScreen result exists;
+  the owner steps are in [releasing](../releasing.md).
+- **Templates on macOS and Windows** ([#254](https://github.com/0xPlayerOne/bun-native/issues/254)).
+  All four templates open, take one OS click and close cleanly in development
+  and AOT on both hosted runners, and Ctrl-C (SIGINT) exits 0 on macOS. Hosted
+  VMs, not physical machines.
+- **Displays** ([#299](https://github.com/0xPlayerOne/bun-native/issues/299)).
+  Wayland display changes are advertised and qualified on two headless sway
+  outputs with mixed integer scales and hotplug; a removed output now fails
+  closed instead of reporting a stale scale. X11 monitor changes are limited by
+  the pinned GPUI backend; macOS and Windows migration and hotplug need a
+  two-monitor machine.
+- **Accessibility and input methods** ([#241](https://github.com/0xPlayerOne/bun-native/issues/241)).
+  Orca speech for focus, typing, selection and a modal dialog gates Native Linux
+  in development and AOT, after a host fix for content re-exposed under a closed
+  modal. macOS Korean composition passes on hosted CI as a non-gating step.
+  VoiceOver, NVDA and Windows Korean composition still fail there and remain
+  experimental ([native text](../native-text.md#screen-reader-speech)).
+- **Performance** ([#244](https://github.com/0xPlayerOne/bun-native/issues/244)).
+  The comparison now runs on hosted macOS and Windows. Windows exposed disposed
+  view retention in React and intermittently Solid AOT
+  ([#629](https://github.com/0xPlayerOne/bun-native/issues/629)), which blocks any
+  Windows support claim.
+
+Still blocking a wider release: [#296](https://github.com/0xPlayerOne/bun-native/issues/296)
+(not reproduced since November 6; trace in place),
+[#629](https://github.com/0xPlayerOne/bun-native/issues/629), VoiceOver and NVDA
+speech and Windows IME under [#241](https://github.com/0xPlayerOne/bun-native/issues/241),
+release identities under [#249](https://github.com/0xPlayerOne/bun-native/issues/249),
+physical-machine runs, and Babel 8 for the Solid compiler, which no published
+preset supports yet ([#316](https://github.com/0xPlayerOne/bun-native/issues/316);
+a weekly audit job reports when one does).
+
 ## Risks, unsupported cases and follow-up
 
 Revisit this decision when any blocking risk closes with linked evidence, when

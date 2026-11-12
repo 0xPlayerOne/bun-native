@@ -19,8 +19,27 @@ export namespace JSX {
     }
   type TextContent = { text?: string; children?: ReactNode }
   export interface IntrinsicElements {
-    box: Base<'box'> & { children?: ReactNode }
-    text: Base<'text'> & TextContent
+    /**
+     * Requires `accessibility_lists_v1` for the accessible members. A list's
+     * `accessibleSetSize` counts every item, mounted or not; an item's
+     * `accessiblePosition` is its 1-based place in that full set.
+     */
+    box: Base<'box'> & { children?: ReactNode } & {
+      accessibleRole?: 'list' | 'list_item'
+      /** Only with `accessibleRole`. */
+      accessibleLabel?: string
+      /** Only on a `list`. */
+      accessibleSetSize?: number
+      /** Only on a `list_item`; 1-based. */
+      accessiblePosition?: number
+      /** Only on a `list_item`. */
+      accessibleSelected?: boolean
+    }
+    text: Base<'text'> &
+      TextContent & {
+        /** Requires `accessibility_lists_v1`: announce the text when it appears and changes. */
+        accessibleLive?: 'polite' | 'assertive'
+      }
     button: Base<'button'> & TextContent & { disabled?: boolean }
     input: Base<'input'> & {
       value?: string | InputState

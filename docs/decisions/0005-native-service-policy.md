@@ -108,6 +108,35 @@ no new permission or wire command exists; the host observes a window only
 when that grant is present, and drops the observation with the window. The
 core rejects either from a host that did not advertise it. Linux keeps the
 two-field snapshot. Native acceptance is the hosted macOS/Windows workflow run
-only ([contract](../native-services.md#macos-and-windows-display-semantics-299));
-window migration, hotplug and mixed DPI remain unverified there because the
-hosted runners have one virtual display.
+only ([contract](../native-services.md#macos-and-windows-display-semantics-299)).
+The hosted runners have one display; on macOS a separate step adds a
+CoreGraphics virtual display for window migration, mixed DPI and display
+removal ([contract](../native-services.md#macos-virtual-second-display-299)),
+while on Windows they stay unverified.
+
+### Display identity (#299)
+
+The display identifier was first part of `display_details_v1`. GPUI's Wayland
+backend names each output (v5 of its `wl_output.name`) but has no work area,
+so the identifier moved to its own optional `display_identity_v1` capability
+(`serviceCapabilities.windowDisplay.identity`), advertised on macOS, Windows
+and when GPUI's compositor is Wayland. `display_details_v1` now carries only
+the work area. Like the others it sits under the `window_display` grant and
+did not change the protocol version; the core rejects an identity from a host
+that did not advertise it. X11 advertises neither: its display is the X screen
+and its UUID is all zeros.
+
+### Linux Wayland (#299)
+
+GPUI's Wayland backend reports a window's move between outputs and output
+connection, removal and reconfiguration, so the host also advertises
+`display_changes_v1` when GPUI's compositor is Wayland, chosen at runtime
+because one Linux build serves both backends. `display_details_v1` stays
+macOS/Windows only: Wayland has no client-visible work area. Because the
+pinned backend keeps a removed output as a window's display when the
+compositor sends no `wl_surface.leave`, the host treats a window whose display
+was removed as disconnected until GPUI reports a move elsewhere: its snapshot
+fails closed and no change is reported. Two headless sway outputs of different
+scale exercise migration, mixed scale, reconfiguration and hotplug
+([contract](../native-services.md#wayland-display-changes-299)); physical
+monitors remain unverified.

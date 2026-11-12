@@ -88,36 +88,69 @@ with its XIM server and the Hangul engine, XTEST keys, and the host launched wit
 composes it into a syllable, that the engine's own Backspace undoes only the last
 jamo, and that Space commits the syllable before a new one starts. It qualifies
 the XIM preedit path of the pinned GPUI with one engine; it is not coverage of
-CJK candidate windows or of every engine.
+every engine.
+
+The same fixture then checks candidate selection and the caret position an
+input method places its candidate window at. An independent IBus panel,
+[`ibus-panel-probe.py`](../tests/native/ibus-panel-probe.py), takes the panel
+role that `ibus-ui-gtk3` has on a desktop and records what the daemon relays to
+it. The caret position (XIM spot location, translated to screen pixels by the
+daemon) must lie on the input and move right as the composition grows. The
+engine's Hanja key (F9) on the composing `가` must open a candidate list of Han
+characters in the panel with the first highlighted. Down must highlight the
+second candidate, and Return must replace the syllable with it and close the
+list. The next key must then start a new syllable. Observed locally in
+development and inspected AOT: candidates `可, 家, 加, …` (9 per page), `家`
+selected, values `가 家` and `가 家ㄱ`. The panel probe draws nothing, so the
+drawing of a candidate window by a desktop panel is not covered.
+
+That check found a host defect. GPUI reads the caret rectangle for XIM right
+after it applies a preedit, before the next frame paints it (and Wayland text
+input does the same). The host answered `bounds_for_range` only from the last
+paint, which showed the old text, so it returned nothing. GPUI then sent no spot
+location, and IBus placed every candidate window at the window's bottom-left
+corner (`(0, 160)` relative to the window, on every relay, before the fix).
+The host now lays the changed text out the way the next paint will: the same
+font, viewport and scroll rule
+(`InputPaint::projected_bounds_for_range`, unit-tested in
+`native/gpui-host/src/input/viewport/tests.rs`). macOS reads the same method
+for `firstRectForCharacterRange:`. That path has not been run on macOS.
 The Wayland column comes from `tests/native/wayland.ts` on headless sway
 ([native platforms](native-platforms.md#linux-wayland)) at output scales 1 and
 2; it covers basic entry, grapheme Backspace, Hebrew, Tab order, IME
 composition through a test input method and the accessibility rows marked
 there. Sway 1.9 has no input popup surfaces, so the IME cursor rectangle GPUI
 sets is never relayed to an input method and stays unverified on Wayland.
+Before the host projected the caret for changed text (below), GPUI had no
+rectangle to send while composing. It now sets one and commits its text input
+after each preedit, and the compositor answers that commit with another
+`done`. The test input method (`wayland-input-peer`) therefore reads every
+pending event before each of its own commits, as a real input method does. Its
+commits otherwise carried a stale serial, and wlroots dropped the cancelling
+empty preedit.
 
-| Area                                                                                | Linux X11 (Xvfb)                                                                                                                                                                                                                                                                                                                                                                                                 | Linux Wayland                                                                                                                                                                            | macOS                                                                                                                                           | Windows                                                                                                                                                              |
-| ----------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| OS-typed text entry (ASCII and `é`) and Enter activation                            | **Observed**                                                                                                                                                                                                                                                                                                                                                                                                     | **Observed** (headless sway, `zwp_virtual_keyboard_v1`)                                                                                                                                  | Not run in this suite; see [native platforms](native-platforms.md)                                                                              | Not run in this suite; see [native platforms](native-platforms.md)                                                                                                   |
-| Grapheme caret/Backspace/Delete (combining marks, ZWJ family, flag)                 | **Observed** through OS keys; unit-tested                                                                                                                                                                                                                                                                                                                                                                        | **Observed** Backspace over a combining mark and a ZWJ family (scales 1 and 2)                                                                                                           | Not run (same host code)                                                                                                                        | Not run (same host code)                                                                                                                                             |
-| OS-typed Hebrew (RTL) committed in logical order; RTL Backspace                     | **Observed**                                                                                                                                                                                                                                                                                                                                                                                                     | **Observed** (logical order, Backspace)                                                                                                                                                  | Not run                                                                                                                                         | Not run                                                                                                                                                              |
-| Bidirectional display: Hebrew after Latin text, Arabic joining                      | **Observed**: AT-SPI character extents from the painted glyphs put Hebrew right to left after the Latin run, each box over glyph ink; Arabic سلام is painted with joined forms and the lam-alef ligature (narrower than the same letters split by ZERO WIDTH NON-JOINER, ink across the seen-lam joint, a blank column when split). Scales 1 and 2. The caret's visual position in mixed text is **not verified** | Not run                                                                                                                                                                                  | Not run                                                                                                                                         | Not run                                                                                                                                                              |
-| Dead-key composition: preedit `´` marked, then `é` committed; cancelled sequence    | **Observed** (xkbcommon compose, `us intl`, `LC_CTYPE=C.UTF-8`)                                                                                                                                                                                                                                                                                                                                                  | Not run                                                                                                                                                                                  | Not run                                                                                                                                         | Not run                                                                                                                                                              |
-| IME composition through a real engine (IBus Hangul over XIM)                        | **Observed** (`tests/native/ime.ts`: preedit, syllable composition, engine Backspace, commit by Space)                                                                                                                                                                                                                                                                                                           | **Observed** with a test input method, not a real engine: `zwp_input_method_v2` preedit, in-place replacement, commit and cancel reach `zwp_text_input_v3` through sway (scales 1 and 2) | Not run                                                                                                                                         | Not run                                                                                                                                                              |
-| Candidate windows, CJK candidate selection, Fcitx, other engines                    | **Not run**: Hangul has no candidate list                                                                                                                                                                                                                                                                                                                                                                        | Not run (`zwp_text_input_v3`)                                                                                                                                                            | Not run                                                                                                                                         | Not run                                                                                                                                                              |
-| Selection + copy/cut/paste through the X11 CLIPBOARD (checked with `xclip`)         | **Observed**                                                                                                                                                                                                                                                                                                                                                                                                     | Not run                                                                                                                                                                                  | Not run                                                                                                                                         | Not run                                                                                                                                                              |
-| Read-only: focusable, copyable, every edit path rejected                            | **Observed**                                                                                                                                                                                                                                                                                                                                                                                                     | Not run                                                                                                                                                                                  | Not run                                                                                                                                         | Not run                                                                                                                                                              |
-| Disabled: skipped by Tab, no edits, blur on disable, focusable again on re-enable   | **Observed**                                                                                                                                                                                                                                                                                                                                                                                                     | Not run                                                                                                                                                                                  | Not run                                                                                                                                         | Not run                                                                                                                                                              |
-| Keyboard-only Tab/Shift+Tab order with wrap, Space activation                       | **Observed**                                                                                                                                                                                                                                                                                                                                                                                                     | **Observed** (Tab to the button, Space activation, Shift+Tab back)                                                                                                                       | Not run                                                                                                                                         | Not run                                                                                                                                                              |
-| Scale factor 2: snapshot `scaleFactor` and physical window size, editing unchanged  | **Observed** (`GPUI_X11_SCALE_FACTOR=2`)                                                                                                                                                                                                                                                                                                                                                                         | Snapshot `scaleFactor: 2` and typing observed (sway output scale 2); physical buffer size not checked                                                                                    | Not run (Retina)                                                                                                                                | Not run (per-monitor DPI)                                                                                                                                            |
-| Accessibility tree read by an independent client                                    | **Observed** (AT-SPI): roles, names, values, caret, character bounds, focus, read-only/disabled states                                                                                                                                                                                                                                                                                                           | **Observed** (AT-SPI on headless sway, scales 1 and 2): entry, button and label roles, character bounds in physical pixels                                                               | **Observed** (AXUIElement, hosted macos-15): roles, names, values, divider limits (a read-only field still reports AXValue settable, see below) | **Observed** (UI Automation, hosted windows-2022): control types, names, values, divider limits, read-only (the divider's RangeValue is always read-only, see below) |
-| Assistive-technology requests: caret/selection, value, press, focus, divider value  | **Observed** (AT-SPI): caret and selection moves that later OS typing lands at, press, grab_focus, divider value with min_size clamp                                                                                                                                                                                                                                                                             | **Observed** (AT-SPI): caret move that compositor typing lands at, grab_focus, press                                                                                                     | **Observed** (AX): AXValue text (and rejected on read-only), AXSelectedTextRange, AXPress, AXFocused, divider AXValue and AXIncrement           | **Observed** (UIA): ValuePattern.SetValue (and rejected on read-only), Invoke, SetFocus; divider RangeValue.SetValue **unsupported** (refused by the client)         |
-| Content beneath an open modal dialog hidden from assistive technology               | **Observed** (AT-SPI)                                                                                                                                                                                                                                                                                                                                                                                            | Not run                                                                                                                                                                                  | **Observed** (AX)                                                                                                                               | **Observed** (UIA)                                                                                                                                                   |
-| Roles of every element kind, modal dialog, split divider value (`accessibility.ts`) | **Observed** at scale 1, development and AOT (see below)                                                                                                                                                                                                                                                                                                                                                         | Not run                                                                                                                                                                                  | **Observed** in `accessibility-platform.ts`, development and AOT                                                                                | **Observed** in `accessibility-platform.ts`, development and AOT                                                                                                     |
-| Screen reader speech (Orca, VoiceOver, Narrator/NVDA)                               | **Not run**                                                                                                                                                                                                                                                                                                                                                                                                      | Not run                                                                                                                                                                                  | Not run                                                                                                                                         | Not run                                                                                                                                                              |
-| Physical keyboard, physical display DPI, GPU                                        | **Not run** (software Vulkan, XTEST)                                                                                                                                                                                                                                                                                                                                                                             | Not run (software Vulkan, virtual keyboard)                                                                                                                                              | Not run                                                                                                                                         | Not run                                                                                                                                                              |
-| Programmatic focus from application code (`focus_v1`)                               | **Observed** in `tests/native/overlays.ts`, not in this fixture                                                                                                                                                                                                                                                                                                                                                  | Not run                                                                                                                                                                                  | Not run                                                                                                                                         | Not run                                                                                                                                                              |
-| Multi-line text input                                                               | Unsupported                                                                                                                                                                                                                                                                                                                                                                                                      | Unsupported                                                                                                                                                                              | Unsupported                                                                                                                                     | Unsupported                                                                                                                                                          |
+| Area                                                                                  | Linux X11 (Xvfb)                                                                                                                                                                                                                                                                                                                                                                                                 | Linux Wayland                                                                                                                                                                                                                                                     | macOS                                                                                                                                                                                                                                  | Windows                                                                                                                                                                 |
+| ------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| OS-typed text entry (ASCII and `é`) and Enter activation                              | **Observed**                                                                                                                                                                                                                                                                                                                                                                                                     | **Observed** (headless sway, `zwp_virtual_keyboard_v1`)                                                                                                                                                                                                           | Not run in this suite; see [native platforms](native-platforms.md)                                                                                                                                                                     | Not run in this suite; see [native platforms](native-platforms.md)                                                                                                      |
+| Grapheme caret/Backspace/Delete (combining marks, ZWJ family, flag)                   | **Observed** through OS keys; unit-tested                                                                                                                                                                                                                                                                                                                                                                        | **Observed** Backspace over a combining mark and a ZWJ family (scales 1 and 2)                                                                                                                                                                                    | Not run (same host code)                                                                                                                                                                                                               | Not run (same host code)                                                                                                                                                |
+| OS-typed Hebrew (RTL) committed in logical order; RTL Backspace                       | **Observed**                                                                                                                                                                                                                                                                                                                                                                                                     | **Observed** (logical order, Backspace)                                                                                                                                                                                                                           | Not run                                                                                                                                                                                                                                | Not run                                                                                                                                                                 |
+| Bidirectional display: Hebrew after Latin text, Arabic joining                        | **Observed**: AT-SPI character extents from the painted glyphs put Hebrew right to left after the Latin run, each box over glyph ink; Arabic سلام is painted with joined forms and the lam-alef ligature (narrower than the same letters split by ZERO WIDTH NON-JOINER, ink across the seen-lam joint, a blank column when split). Scales 1 and 2. The caret's visual position in mixed text is **not verified** | Not run                                                                                                                                                                                                                                                           | Not run                                                                                                                                                                                                                                | Not run                                                                                                                                                                 |
+| Dead-key composition: preedit `´` marked, then `é` committed; cancelled sequence      | **Observed** (xkbcommon compose, `us intl`, `LC_CTYPE=C.UTF-8`)                                                                                                                                                                                                                                                                                                                                                  | Not run                                                                                                                                                                                                                                                           | Not run                                                                                                                                                                                                                                | Not run                                                                                                                                                                 |
+| IME composition through a real engine (IBus Hangul over XIM; OS Korean input methods) | **Observed** (`tests/native/ime.ts`: preedit, syllable composition, engine Backspace, commit by Space)                                                                                                                                                                                                                                                                                                           | **Observed** with a test input method, not a real engine: `zwp_input_method_v2` preedit, in-place replacement, commit and cancel reach `zwp_text_input_v3` through sway (scales 1 and 2)                                                                          | **Gating, passed on hosted CI** (runs 42938725505, 43087027363 and 43093920340, development and AOT): `tests/native/ime-platform.ts`, the bundled 2-Set Korean input source selected through Text Input Sources before the host starts | **Experimental, failed on two hosted runs**: `tests/native/ime-platform.ts`, the Microsoft Korean IME switched on with `WM_INPUTLANGCHANGEREQUEST` and `WM_IME_CONTROL` |
+| Candidate windows, CJK candidate selection, Fcitx, other engines                      | **Observed** (`ime.ts`): Hanja candidate list in an independent IBus panel, highlight moved, selection commits; caret position relayed on the input. Fcitx, other engines and a drawn candidate window not run                                                                                                                                                                                                   | Not run (`zwp_text_input_v3`)                                                                                                                                                                                                                                     | Not run                                                                                                                                                                                                                                | Not run                                                                                                                                                                 |
+| Selection + copy/cut/paste through the X11 CLIPBOARD (checked with `xclip`)           | **Observed**                                                                                                                                                                                                                                                                                                                                                                                                     | Not run                                                                                                                                                                                                                                                           | Not run                                                                                                                                                                                                                                | Not run                                                                                                                                                                 |
+| Read-only: focusable, copyable, every edit path rejected                              | **Observed**                                                                                                                                                                                                                                                                                                                                                                                                     | Not run                                                                                                                                                                                                                                                           | Not run                                                                                                                                                                                                                                | Not run                                                                                                                                                                 |
+| Disabled: skipped by Tab, no edits, blur on disable, focusable again on re-enable     | **Observed**                                                                                                                                                                                                                                                                                                                                                                                                     | Not run                                                                                                                                                                                                                                                           | Not run                                                                                                                                                                                                                                | Not run                                                                                                                                                                 |
+| Keyboard-only Tab/Shift+Tab order with wrap, Space activation                         | **Observed**                                                                                                                                                                                                                                                                                                                                                                                                     | **Observed** (Tab to the button, Space activation, Shift+Tab back)                                                                                                                                                                                                | Not run                                                                                                                                                                                                                                | Not run                                                                                                                                                                 |
+| Scale factor 2: snapshot `scaleFactor` and physical window size, editing unchanged    | **Observed** (`GPUI_X11_SCALE_FACTOR=2`)                                                                                                                                                                                                                                                                                                                                                                         | Snapshot `scaleFactor: 2` and typing observed (sway output scale 2); physical buffer size not checked                                                                                                                                                             | Not run (Retina)                                                                                                                                                                                                                       | Not run (per-monitor DPI)                                                                                                                                               |
+| Accessibility tree read by an independent client                                      | **Observed** (AT-SPI): roles, names, values, caret, character bounds, focus, read-only/disabled states                                                                                                                                                                                                                                                                                                           | **Observed** (AT-SPI on headless sway, scales 1 and 2): every element kind's role, name and states, character bounds in physical pixels                                                                                                                           | **Observed** (AXUIElement, hosted macos-15): roles, names, values, divider limits (a read-only field still reports AXValue settable, see below)                                                                                        | **Observed** (UI Automation, hosted windows-2022): control types, names, values, divider limits, read-only (the divider's RangeValue is always read-only, see below)    |
+| Assistive-technology requests: caret/selection, value, press, focus, divider value    | **Observed** (AT-SPI): caret and selection moves that later OS typing lands at, press, grab_focus, divider value with min_size clamp                                                                                                                                                                                                                                                                             | **Observed** (AT-SPI): caret move that compositor typing lands at, grab_focus, press, divider value with min_size clamp                                                                                                                                           | **Observed** (AX): AXValue text (and rejected on read-only), AXSelectedTextRange, AXPress, AXFocused, divider AXValue and AXIncrement                                                                                                  | **Observed** (UIA): ValuePattern.SetValue (and rejected on read-only), Invoke, SetFocus; divider RangeValue.SetValue **unsupported** (refused by the client)            |
+| Content beneath an open modal dialog hidden from assistive technology                 | **Observed** (AT-SPI)                                                                                                                                                                                                                                                                                                                                                                                            | **Observed** (AT-SPI, scales 1 and 2)                                                                                                                                                                                                                             | **Observed** (AX)                                                                                                                                                                                                                      | **Observed** (UIA)                                                                                                                                                      |
+| Roles of every element kind, modal dialog, split divider value (`accessibility.ts`)   | **Observed** at scales 1 and 2, development and AOT (see below)                                                                                                                                                                                                                                                                                                                                                  | **Observed** at scales 1 and 2, development and AOT (`wayland.ts`): roles, divider value and limits, wtype Right/End, modal dialog tree and Tab cycle, list set size/position/selection, value, dialog and live announcements                                     | **Observed** in `accessibility-platform.ts`, development and AOT                                                                                                                                                                       | **Observed** in `accessibility-platform.ts`, development and AOT                                                                                                        |
+| Screen reader speech (Orca, VoiceOver, NVDA, Narrator)                                | **Observed** with Orca 46.1 (`tests/native/screen-reader.ts`, development and AOT): exact phrases for focus, role, name, read-only state, typed value, caret characters, selection, deletion, a modal dialog and a split divider; see [screen reader speech](#screen-reader-speech)                                                                                                                              | **Observed** with Orca 46.1 (development and AOT): focus, role, name, read-only state, dialog, divider, list and live phrases, key echo and caret characters through the host's key forwarding; no Where Am I (see [screen reader speech](#screen-reader-speech)) | **Gating, passed** (development and AOT, Validation runs 43087027363 and 43093920340): VoiceOver through its AppleScript `last phrase`, after the focus routing fix (see [screen reader speech](#screen-reader-speech))                | **Experimental, failed on two hosted runs**: NVDA 2024.4.2 IO-level speech log. Narrator: not run (no automation interface used)                                        |
+| Physical keyboard, physical display DPI, GPU                                          | **Not run** (software Vulkan, XTEST)                                                                                                                                                                                                                                                                                                                                                                             | Not run (software Vulkan, virtual keyboard)                                                                                                                                                                                                                       | Not run                                                                                                                                                                                                                                | Not run                                                                                                                                                                 |
+| Programmatic focus from application code (`focus_v1`)                                 | **Observed** in `tests/native/overlays.ts`, not in this fixture                                                                                                                                                                                                                                                                                                                                                  | Not run                                                                                                                                                                                                                                                           | Not run                                                                                                                                                                                                                                | Not run                                                                                                                                                                 |
+| Multi-line text input                                                                 | Unsupported                                                                                                                                                                                                                                                                                                                                                                                                      | Unsupported                                                                                                                                                                                                                                                       | Unsupported                                                                                                                                                                                                                            | Unsupported                                                                                                                                                             |
 
 AT-SPI states follow AccessKit 0.24's mapping. A read-only or disabled entry is
 reported `read-only` and without `enabled` or `sensitive`. The two differ only in
@@ -139,21 +172,32 @@ before sending to a host without the capability; Solid and React spell it
 Other kinds take no label: text and buttons are named by their text, and a box
 or input label is not implemented.
 
-| Element                       | AccessKit role → AT-SPI role (AccessKit 0.24)  | Name                                 | States and value                                                                                                              |
-| ----------------------------- | ---------------------------------------------- | ------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------- |
-| `box` (not scrolling)         | none: layout only, children move to the parent | —                                    | —                                                                                                                             |
-| `box` with scrolling overflow | `ScrollView` → `panel`                         | none                                 | contains its children                                                                                                         |
-| `text`                        | `Label` → `label`                              | the text                             | —                                                                                                                             |
-| `button`                      | `Button` → `push-button`                       | the label                            | `focusable` when enabled; a disabled button is only not focusable (see below); no `checkable`/`checked` state                 |
-| `input`                       | `TextInput` → `entry`                          | none (the placeholder is not a name) | as in the matrix above                                                                                                        |
-| `split` divider               | `Splitter` → `separator`                       | `accessible_label`                   | `focusable`, `focused`; `vertical` (row) or `horizontal` (column); Value interface: ratio × 100, `min_size` limits as min/max |
-| `overlay`                     | `Dialog` → `dialog`                            | `accessible_label`                   | `modal` when `modal: true`; AccessKit adds `active` while it is the active dialog; contains its children                      |
+| Element                               | AccessKit role → AT-SPI role (AccessKit 0.24)  | Name                                 | States and value                                                                                                               |
+| ------------------------------------- | ---------------------------------------------- | ------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------ |
+| `box` (not scrolling)                 | none: layout only, children move to the parent | —                                    | —                                                                                                                              |
+| `box` with scrolling overflow         | `ScrollView` → `panel`                         | none                                 | contains its children                                                                                                          |
+| `box`, `accessible_role: 'list'`      | `List` → `list`                                | `accessible_label`                   | `accessible_set_size` as AccessKit `size_of_set`, read by AT-SPI clients as each item's `setsize` attribute                    |
+| `box`, `accessible_role: 'list_item'` | `ListItem` → `list-item`                       | `accessible_label`                   | `accessible_position` (1-based) as the `posinset` attribute; `selectable`, and `selected` when `accessible_selected` is true   |
+| `text`                                | `Label` → `label`                              | the text                             | with `accessible_live`, AccessKit `Live` polite or assertive: an `object:announcement` of the text when it appears and changes |
+| `button`                              | `Button` → `push-button`                       | the label                            | `focusable` when enabled; a disabled button is only not focusable (see below); no `checkable`/`checked` state                  |
+| `input`                               | `TextInput` → `entry`                          | none (the placeholder is not a name) | as in the matrix above                                                                                                         |
+| `split` divider                       | `Splitter` → `separator`                       | `accessible_label`                   | `focusable`, `focused`; `vertical` (row) or `horizontal` (column); Value interface: ratio × 100, `min_size` limits as min/max  |
+| `overlay`                             | `Dialog` → `dialog`                            | `accessible_label`                   | `modal` when `modal: true`; AccessKit adds `active` while it is the active dialog; contains its children                       |
 
 The split itself has no node; only its divider does. Popup window overlays
-(`surface: 'window'`) are given the same dialog role in their popup window, but
-that tree is **not run** by any client. There is no list or list-item role:
-[streaming lists](native-lists.md) are application-level boxes, so their rows
-appear as their text and controls only.
+(`surface: 'window'`) are given the same dialog role in their popup window
+(see **Popup windows** below).
+
+**Lists (`accessibility_lists_v1`).** A box may declare `accessible_role`
+`list` or `list_item`, with an optional `accessible_label`; a list may declare
+`accessible_set_size` and an item `accessible_position` (1 to 2,147,483,647)
+and `accessible_selected`. Each member is rejected on any other kind or role,
+and a box without a role stays layout only. A text node may declare
+`accessible_live: 'polite' | 'assertive'`. A windowed list follows what native
+toolkits do for virtualized views: only mounted rows have nodes, and the
+list's set size and each mounted item's position describe the whole
+collection, so assistive technology knows its full extent. The
+[streaming list](native-lists.md) fixtures declare them for every row.
 
 **Before this change** (measured with the same AT-SPI probe against the
 protocol-11 host from `main` on a scene with every kind and an open modal
@@ -164,7 +208,7 @@ disabled button differed from an enabled one only by the missing `focusable`.
 
 **Verified** by [`tests/native/accessibility.ts`](../tests/native/accessibility.ts)
 (Native Linux CI, development and inspected AOT, Xvfb + openbox + DBus at X11
-scale 1, `at-spi2-core` registry, PyGObject `Atspi` 2.0 client
+scales 1 and 2, `at-spi2-core` registry, PyGObject `Atspi` 2.0 client
 [`atspi-probe.py`](../tests/native/atspi-probe.py), XTEST input): the role, name,
 states and nesting above for every kind; the separator's value 40 at ratio 0.4
 and its minimum/maximum from `min_size`; Tab and Shift+Tab reaching the divider
@@ -179,7 +223,11 @@ staying inside it, and focus and the tree returning after it closes. The same
 run checks the entry's character extents, and AT-SPI requests: a caret offset
 and then a selection, each confirmed by OS typing landing there; a button's
 click action; `grab_focus`; and the divider's `set_current_value`, clamped to
-`min_size`, as keyboard `split_resize` events. `tests/native/text-input.ts`
+`min_size`, as keyboard `split_resize` events. At scale 2 the same
+run checks every OS coordinate, capture pixel and drag position in device
+pixels, the window at twice its logical size, and the divider's AT-SPI window
+extents at twice its painted logical bounds (`[475, 176, 12, 320]` against
+`[238, 88, 6, 160]` at scale 1). `tests/native/text-input.ts`
 reads the Hebrew entry's extents as the bidirectional display oracle.
 
 **Modal dialogs.** While a modal overlay is open, every node that is neither
@@ -188,6 +236,21 @@ inside it nor on its route is marked hidden (AccessKit `hidden`, as for
 and its content, and it all returns when the dialog closes. Before this
 change the content beneath stayed exposed, `showing` and `focusable`; only
 keyboard and pointer input were trapped.
+
+The content returns as **new** accessible nodes. AccessKit 0.24's AT-SPI
+adapter marks every node it removes `defunct` and never clears that state when
+a node with the same id comes back, and libatspi keeps the cached state. Orca
+46.1 then ignored every focus change beneath a closed dialog: after Cancel,
+neither the returned focus nor later Tab presses were spoken (measured with the
+release host built from main, SHA-256 `ac894d24…`; Orca's debug log reads
+`Ignoring defunct object: [push button: 'Open dialog']`). The view now folds a
+counter into every element id, and the counter changes whenever a modal layer
+stops being the active one
+([`overlays.rs`](../native/gpui-host/src/view/overlays.rs)
+`Overlays::exposure`), so the re-exposed content gets fresh AccessKit node
+ids. Element state that GPUI keys by element id (hover and similar transient
+state) starts over at that moment; focus, scroll offsets and input contents
+live in host entities and are unaffected.
 
 **Measured AccessKit 0.24 limits, not worked around:** a disabled button is
 still reported `enabled` and `sensitive` on AT-SPI (AccessKit maps disabled
@@ -200,11 +263,67 @@ read-only text field still reports `AXValue` as settable; the host rejects
 the request without an `input` event. The macOS and Windows clients
 record the platform's enabled flag for it without asserting it.
 
-**Not verified:** screen reader speech or navigation (Orca, VoiceOver,
-Narrator, NVDA); on Wayland, the modal, divider and element-role rows
-(only entry, button and label are checked there, at scales 1 and 2); X11
-accessibility at scale 2; announcements of value or
-dialog changes; and the popup window tree.
+**Announcements.** The same run starts an independent AT-SPI event listener
+(`atspi-probe.py watch`) before the divider steps and asserts, from the host's
+live nodes, one `object:property-change:accessible-value` event on the
+`Sidebar` separator per keyboard step carrying its new value (41, 51, 50, the
+`min_size` limits, in order), one for the drag's final value, and an
+`object:children-changed:add` for a dialog named `Confirm dialog` when the
+modal opens, after which `Confirm` is focused. Orca speaks the dialog and a
+re-announced splitter on these events (see
+[screen reader speech](#screen-reader-speech)).
+
+**Popup windows.** A popup window overlay (`surface: 'window'`,
+`popup_windows_v1`) is read through its own OS window, titled
+`Bun Native popup`: its tree is exactly one dialog named by
+`accessible_label`, not `modal`, holding the overlay's label and button; none
+of those nodes appear in the parent window's tree; and an AT-SPI click on the
+popup's button reaches Bun as one `click`.
+
+**Wayland.** [`tests/native/wayland.ts`](../tests/native/wayland.ts) opens a
+second window on headless sway (scales 1 and 2, development and AOT) and
+checks with the same AT-SPI client: every role above, the scrolling panel's
+children, the disabled button not focusable, the divider's value 40 and
+`min_size` limits, Shift+Tab to the divider and wtype Right and End each
+changing its `split_resize` ratio and AT-SPI value, an AT value request
+clamped to `min_size`, and the modal dialog's name, `modal` state, nested
+content, nothing beneath it exposed, its Tab cycle and the tree after it
+closes. GPUI's Wayland window reports no screen position to AccessKit
+(`a11y_update_window_bounds` is a no-op in
+`crates/gpui_linux/src/linux/wayland/window.rs:2278-2280` at zed `ba63a022`),
+so only character bounds relative to the window are checked there. The same
+window then carries a three-item `list` (set size 10,000, positions
+4998–5000, one selected) whose AT-SPI items report those `posinset`,
+`setsize` and `selected` values, and a live text node; an independent AT-SPI
+listener running through the whole section records exactly one
+`accessible-value` event per divider change (41, 83.165, then 16.835 for the
+AT request), the `children-changed:add` of the `Confirm dialog`, and exactly
+the announcements `Idle`, `Streaming one` and `Streaming one two`.
+
+**Lists, verified** by the same run (X11, scales 1 and 2, development and
+AOT) in a second window: a `list` named `Messages` with set size 10,000 holding
+five mounted `list_item` boxes at positions 4996–5000. The AT-SPI tree has
+exactly those five `list-item` children, each with `posinset` equal to its
+position, `setsize` 10000, `selectable`, `selected` only on the declared item,
+and its label nested inside. After the window shifts by one row (the first
+item removed, item 5001 appended) the tree holds 4997–5001 and the set size is
+unchanged, and moving `accessible_selected` moves the `selected` state. An
+independent AT-SPI listener records exactly three `object:announcement`
+events, `Idle` when the live text appears and then `Streaming one` and
+`Streaming one two`, and none for an ordinary text change. Orca's speech for
+the same structures is under [screen reader speech](#screen-reader-speech).
+
+**Not verified:** screen reader speech on macOS and Windows (see
+[screen reader speech](#screen-reader-speech) for Orca); list roles and live
+regions on macOS and Windows (AccessKit maps them, no client has read them);
+and popup windows on Wayland. The host implements popup windows (`surface:
+'window'`) only on X11 and does not advertise `popup_windows_v1` on Wayland
+([overlays](native-overlays.md)), so there is no Wayland popup tree to read.
+This is a host gap, not a GPUI limit: GPUI opens parent-anchored `xdg_popup`
+windows on Wayland (`WindowKind::AnchoredPopup`,
+`crates/gpui_linux/src/linux/wayland/client.rs:1299` and
+`crates/gpui_linux/src/linux/wayland/window.rs:210` at zed `ba63a02`), each
+with its own AccessKit adapter (`window.rs:2256` `a11y_init`).
 
 **Verified on macOS and Windows** by
 [`tests/native/accessibility-platform.ts`](../tests/native/accessibility-platform.ts)
@@ -222,6 +341,303 @@ request read back as `AXSelectedTextRange`; press as a click; focus; on macOS
 the divider's value, its `min_size` clamp and `AXIncrement`, each one keyboard
 `split_resize`, and on Windows the refused read-only RangeValue; and an AT-opened modal dialog that hides everything
 beneath it until it closes.
+
+## Screen reader speech
+
+[`tests/native/screen-reader.ts`](../tests/native/screen-reader.ts) runs a real
+screen reader against the host while real OS keys drive the application, and
+checks what the screen reader decided to say. Every focus step also waits for
+the matching public Bun `focus` event, and typing for the matching `input`
+event, so a phrase only counts after the host really changed state.
+
+**Linux X11, Orca: Observed** locally (Ubuntu 24.04, `orca` 46.1-1ubuntu1,
+`speech-dispatcher` 0.12.0~rc2-2build3) in development and inspected AOT;
+Native Linux CI shard 2 runs the same step and gates on it; it passed in development and AOT in Validation runs 43087027363 and 43093920340. Orca runs
+inside the isolated Xvfb, openbox and AT-SPI session with its own preferences
+directory. It speaks through a private `speech-dispatcher` whose only output
+module is `sd_generic` running `printf '%s\n' '$DATA' >> spoken.txt` (the
+ALSA `null` device satisfies the module's audio initialization), so
+`spoken.txt` holds exactly the text Orca sent to the synthesizer. Orca's
+`--debug-file` log is kept beside it. Keys come from XTEST. The fixture
+asserts these phrases, in order, among everything said for each step:
+
+| Action (XTEST)                        | Host event                 | Orca phrases                                                     |
+| ------------------------------------- | -------------------------- | ---------------------------------------------------------------- |
+| Window opens with the input focused   | `focus` search             | `entry typed.`                                                   |
+| Tab                                   | `focus` button             | `Leading action push button.`                                    |
+| Tab                                   | `focus` read-only          | `read only entry Fixed.`                                         |
+| Tab (skips the disabled button)       | `focus` button             | `Open dialog push button.`                                       |
+| Tab (wraps)                           | `focus` search             | `entry typed.`                                                   |
+| End, then type `x`                    | `input` `typedx`           | `x` (key echo)                                                   |
+| KP_Enter (Orca "Where Am I")          | none                       | `entry typedx.`                                                  |
+| Left, Home, Right                     | none                       | `x`, `t`, `y` (the character at the caret)                       |
+| Shift+End                             | none                       | `ypedx`, `selected`                                              |
+| Backspace                             | `input` `t`                | `Selection deleted.`                                             |
+| Shift+Tab (wraps backwards)           | `focus` button             | `Open dialog push button.`                                       |
+| Space                                 | `focus` Confirm            | `Confirm dialog dialog Discard changes?`, `Confirm push button.` |
+| Tab inside the dialog                 | `focus` Cancel             | `Cancel push button.`                                            |
+| Space on Cancel (dialog closes)       | `focus` button             | `Open dialog push button.`                                       |
+| Tab, Tab                              | `focus` search, button     | `entry t.`, `Leading action push button.`                        |
+| Shift+Tab, Shift+Tab (wraps)          | `focus` search, divider    | `entry t.`, `vertical splitter Sidebar.`                         |
+| Right, End on the divider             | `split_resize` 0.41, limit | `vertical splitter` each time                                    |
+| KP_Enter on the divider               | none                       | `vertical splitter Sidebar.`                                     |
+| Tab into a list row's button          | `focus` Reply 4998         | `Messages.`, `List with 3 items.`, `Reply 4998 push button.`     |
+| Tab                                   | `focus` Reply 4999         | `Reply 4999 push button.`                                        |
+| Live text appears, then changes twice | none                       | `Idle`, `Streaming one`, `Streaming one two`                     |
+
+No phrase may mention `Disabled action`. Observed locally with the host rebuilt
+from this change and the final fixture: five consecutive development runs
+passed; of seven AOT runs, six passed and one failed at the first step (see the
+`get_role_name` limit below). An earlier fixture registered its focus listeners
+per control after the batch that created them, and one of three development
+runs missed the initial focus event that way even though Orca had already said
+`entry typed.`; the fixture now listens on the root before any control exists.
+The release host built from main (SHA-256
+`ac894d24…`) passes every step up to the dialog and then fails at "Space on
+Cancel" (observed only `space`): the defunct-node defect described under
+[modal dialogs](#accessibility-roles-accessibility_v1). Orca also says the
+window title (`Bun Native screen reader qualification frame.`) when the window
+activates. That phrase is recorded but not asserted, because whether it is
+spoken depends on whether the window manager activates the window before or
+after AccessKit registers.
+
+Measured limits:
+
+- The input's placeholder is not its accessible name, so Orca says
+  `entry typed.` and does not name the field. Inputs take no label (see the
+  role table above).
+- Orca says `Confirm dialog dialog …` because the overlay's
+  `accessible_label` is `Confirm dialog`; the role word is Orca's.
+- A disabled button is never reached by Tab, so its disabled state is not
+  spoken in this scenario. Orca's flat review is not driven.
+- Orca's event loop can block for about 15 s on its first `get_role_name` call
+  to a newly registered application (`Did not receive a reply`, then
+  `The process appears to be hung`) and then catch up. In the isolated session
+  the first host launch D-Bus-activates `xdg-desktop-portal`, and that
+  registration triggered it during development, so the fixture starts both
+  portals before Orca, as a desktop session would have them running. It was
+  still seen once afterwards, on the host's own application object, in one of
+  the seven AOT runs above: the first step's 10 s limit expired before Orca
+  spoke. In every other run the host's window and focus were spoken within
+  about 100 ms of launch. The cause on the host side has not been isolated, and
+  the step can fail on CI the same way.
+- Orca says `List with 3 items.` for a list whose set size is 10,000, and
+  never a row's position. Orca 46's default (non-web) script counts list-item
+  children (`orca/speech_generator.py` `_generateNumberOfChildren`, lines
+  1589-1596) and a control's siblings (`orca/script_utilities.py`
+  `getPositionAndSetSize`, lines 3249-3296); only its web scripts read the
+  AT-SPI `setsize` and `posinset` attributes, which the host does expose (see
+  [lists, verified](#accessibility-roles-accessibility_v1)). The list rows
+  are not focusable, so a row's own position is never spoken either.
+- Orca never speaks the divider's value. It re-announces the focused
+  separator on every AT-SPI value change, but Orca 46.1's separator format
+  (`orca/formatting.py`, `Atspi.Role.SEPARATOR`: `'focused': 'roleName +
+  availability'`) has no value field, so only `vertical splitter` is said.
+  The value change itself is asserted by
+  [`accessibility.ts`](../tests/native/accessibility.ts) (below).
+- Braille, Orca's browse modes, non-default speech settings and the physical
+  audio path are not run.
+
+**Linux Wayland, Orca: Observed** locally in development and inspected AOT
+with the same fixture on the owned headless sway session
+(`scripts/quality/native-wayland-session.sh`), keys from one lasting virtual
+keyboard (`wayland-input-peer`; a `wtype` run per key adds and removes a seat
+device, and sway then moves keyboard focus away from the window and back, which
+makes Orca re-present the window), and the host
+a native Wayland client with no `DISPLAY`. Native Linux CI shard 2 runs it in
+the same step after each X11 run. Orca 46.1 itself exits without an X display
+(`orca_modifier_manager.py` runs `xkbcomp $DISPLAY` while loading settings;
+GNOME and KDE give it XWayland's), so the fixture gives Orca alone a private
+Xvfb. Every focus, role, name, read-only, dialog and divider phrase in the
+table above is asserted as on X11, and so are the key echo (`x`) and the
+characters at a moved caret. With `WAYLAND_DISPLAY` set libatspi gives Orca
+its legacy key device, which hears only keys an application forwards to the
+AT-SPI registry's `DeviceEventController`, as GTK 3's ATK bridge does;
+AccessKit forwards none, so before this change Orca's debug log had no
+`KEYBOARD EVENT` on Wayland and echoed nothing. The host now forwards every
+key it receives on Wayland while `org.a11y.Status` reports a screen reader or
+assistive technology enabled
+([`key_forwarding.rs`](../native/gpui-host/src/view/key_forwarding.rs)):
+`NotifyListenersSync` with the X keysym, the US-layout keycode, X modifier
+bits and the typed text. As GTK does, the host waits for the registry's
+reply (bounded to 250 ms) before it handles the key: Orca judges a caret
+move by the key that caused it, and when the key was forwarded without
+waiting, AccessKit's caret event reached Orca first and Orca spoke nothing
+for Left in three of three development runs. The registry
+reads the event as `(uinnisb)` (16-bit keycode and modifiers), as libatspi
+sends it, and rejects the `(uiuuisb)` its introspection data declares. Limits:
+
+- Orca's Where Am I (KP_Enter) is not driven on Wayland. GPUI hands the host
+  no hardware keycode and reports keypad keys as their main-keyboard names
+  (`crates/gpui_linux/src/linux/platform.rs:1461` `keystroke_from_xkb`, the
+  `is_keypad_key` branch at line 1537, zed `ba63a02`; `KeyDownEvent` in
+  `crates/gpui/src/interactive.rs:25` carries only the `Keystroke`), so the
+  forwarded key is `Return` and Orca's KP_Enter binding, matched by keycode,
+  does not fire. For the same reason keycodes assume the US layout.
+- A key Orca consumes as one of its own commands still reaches the
+  application (GTK 3 drops it). Modifier-only presses are not forwarded (GPUI reports them as modifier
+  changes, not keys).
+
+**macOS, VoiceOver: gating, passed. Windows, NVDA: experimental, failing
+(#629).** The Native Platforms step `macOS VoiceOver and experimental Windows
+NVDA speech in development and AOT (#241)` runs the same scenario (without the
+"Where Am I" step on macOS). On macOS it gates the job: every step was spoken
+in development and AOT in Validation runs 43087027363 (#632) and 43093920340
+(main), after the focus routing fix below. On Windows it keeps
+`continue-on-error` and reports its outcome in a warning and the job summary
+until it has passed there. It does not replace or relax the AX and UI
+Automation step.
+
+The history below records how the macOS cause was found.
+
+The first hosted run (Native Platforms run 42936020446, shard 2) failed on
+both systems at the first step, and the fixture has changed since without a
+hosted run:
+
+- macOS 15.8.2: VoiceOver started (`_SCRStartup returned 0`) and answered
+  AppleScript. On activation it said
+  `application Bun Native screen reader qualification window Screen reader qualification`
+  and `You are currently on a text element.`: its cursor went to the first
+  element, the text, not to the input that had keyboard focus, so the expected
+  `typed` and `edit text` phrase never came. The first macOS step was then
+  changed to expect that exact window phrase. Since the cause was found (see
+  below), it expects the focused input's name and role again, as on the other
+  systems.
+- windows-2022: NVDA 2024.4.2 started and said
+  `Bun Native screen reader qualification window`, then the runner's own
+  console took the foreground. The input controller could not bring the window
+  back: PowerShell passed `""` instead of a null class name to `FindWindowW`,
+  so no window matched. The controller now passes the null from C#. NVDA's
+  `LangChangeCommand ('en')` was also read as the spoken word `en`; the parser
+  now keeps only the sequence's own strings.
+
+The second hosted run (run 42938725505, with those changes) failed at the
+same first step on both systems:
+
+- macOS: VoiceOver said the same window phrase with ` has keyboard focus`
+  appended, then `You are currently on a text element.` again. The step was
+  changed to accept either of the two recorded phrases, until the third run.
+- windows-2022: the window stayed in front this time. NVDA said
+  `Bun Native screen reader qualification window` twice within 130 ms of
+  starting and nothing more in the next 15 s, although Bun had reported focus on
+  the input. In the UI Automation step of the same run, that input reports
+  `HasKeyboardFocus`. NVDA never announced the focused edit field when the
+  window was activated. A native Windows application gets that announcement,
+  so this is treated as a host or AccessKit gap. It is not fixed, and its cause
+  has not been isolated.
+
+Both runs stopped at the first step, so nothing is yet known about the later
+steps on either system. A step whose phrase is missing is now recorded under
+`missed` in `utterances.json` and the scenario continues. The run still fails
+at the end if any phrase was missing.
+
+The third macOS run (Validation run 42962662996, macOS 15.8.2, SIP disabled,
+TCC granted, VoiceOver answering AppleScript) ran every step in development.
+Every Bun `focus` and `input` event arrived. VoiceOver announced the window on
+activation and then said nothing for the remaining 15 steps. A dispatched run
+(42989336392) added the AX oracle's `focused` command and found the cause on
+the host side: the application's `AXFocusedUIElement`, the attribute VoiceOver
+follows, was the `AXWindow`, not the focused input. Re-sending
+`windowDidBecomeKey:` to GPUI's window delegate did not change that.
+
+Cause, from the pinned sources. GPUI creates its AccessKit adapter with
+`accesskit_macos::SubclassingAdapter::for_window`
+(`gpui_macos/src/window.rs`, `a11y_init`). That call dynamically subclasses the
+window's content view and overrides `accessibilityFocusedUIElement` and
+`accessibilityHitTest:` there (`accesskit_macos` 0.26.3 `subclass.rs`,
+`for_window` and `new_internal`). GPUI's own `GPUIView` is not the content
+view. `MacWindow::open` adds it as a subview of the default content view and
+makes it the window's first responder (`addSubview:` followed by
+`makeFirstResponder:`). AppKit resolves the focused element through the key
+window's first responder. That is `GPUIView`, which inherits `NSView`'s answer,
+its nearest unignored ancestor (the window), and never asks AccessKit. A
+second, smaller gap is that the adapter starts out believing its view is
+unfocused (`Adapter::new(view, false, …)`). GPUI updates that only from
+`windowDidBecomeKey:` and `windowDidResignKey:`, and the window became key in
+`open`, before the adapter existed. While the adapter believes it is
+unfocused, `focus()` returns nil.
+
+Fix (macOS only; passed on hosted CI in the runs above):
+[`focus_route.rs`](../native/macos-surface/src/focus_route.rs) adds
+`accessibilityFocusedUIElement` to the GPUI view's and window's classes, and
+`accessibilityHitTest:` to the view's class. Each forwards to the AccessKit
+subclass of the content view and falls back to the inherited answer when
+AccessKit has none. The window's hit test is left alone because it also covers
+the title bar. [`key_status.rs`](../native/macos-surface/src/key_status.rs)
+again re-sends `windowDidBecomeKey:` once the adapter exists, only while the
+window is the key window of the active application.
+[`accessibility-platform.ts`](../tests/native/accessibility-platform.ts) (a
+gating step) now asserts that the application's `AXFocusedUIElement` is the
+focused input, for the first window and for a second window opened while the
+application is active. It also asserts that the AX hit test at the input's
+centre returns the input. The screen-reader fixture checks the same attribute
+after every focus step before it judges VoiceOver.
+
+- macOS: [`macos-voiceover-setup.sh`](../scripts/quality/macos-voiceover-setup.sh)
+  repeats what `@guidepup/setup` 0.29.3 does for CI: VoiceOver
+  `SCREnableAppleScript`, the
+  `/private/var/db/Accessibility/.VoiceOverAppleScriptEnabled` marker, and TCC
+  rows for Accessibility, event posting and Apple Events to VoiceOver and
+  System Events. It refuses to run outside a GitHub-hosted runner, and it needs
+  System Integrity Protection disabled, as it is on those images. VoiceOver is
+  started with the private `_ScreenReaderStart` call that Command-F5 makes, and
+  its `content of last phrase` is polled through AppleScript. Keys come from
+  [`macos-input-oracle.m`](../tests/native/macos-input-oracle.m)
+  (`CGEventPost`, only while the host is frontmost). Each step must produce a
+  phrase containing the control's name and `button`, or `edit text` or
+  `text field` for inputs. Polling sees only the last phrase, so a phrase
+  replaced within one poll interval is not recorded.
+- Windows: NV Access's signed NVDA 2024.4.2 launcher is pinned by SHA-256
+  `b66bbc3d87f11140fe9493ca22955c401c0b09abd0bf3c9d49260807986d4f05`. The hash
+  was computed from the file downloaded on 2026-11-11, because NV Access
+  publishes no checksum file beside it. The step also requires a valid
+  Authenticode signature. It unpacks the launcher with 7-Zip and runs its
+  `nvda_noUIAccess.exe` with `--minimal --disable-addons`, a private
+  configuration that selects the silence synthesizer, and `--log-level=12`.
+  NVDA logs each sequence as `Speaking [...]` before it reaches the
+  synthesizer, and
+  [`screen-reader-speech.ts`](../tests/native/screen-reader-speech.ts) turns
+  those records into phrases. Keys come from
+  [`windows-input-oracle.ps1`](../tests/native/windows-input-oracle.ps1)
+  (`SendInput`), and "Where Am I" is NVDA+Tab. Each step must produce a phrase
+  containing the name and `button` or `edit`.
+- Narrator offers no automation interface that this suite uses, and it is not
+  run.
+
+**OS input methods: macOS gating and passing; Windows experimental and has
+not passed (#629).**
+[`tests/native/ime-platform.ts`](../tests/native/ime-platform.ts) repeats the
+Linux Hangul sequence (`ㄱ`, `가`, `갈`, Backspace `가`, Space `가 `, `가 ㄱ`,
+`가 가`) with the operating system's own Korean input method. On macOS that is
+the bundled `com.apple.inputmethod.Korean.2SetKorean` source, enabled and
+selected through Text Input Sources and restored afterwards. On Windows it is
+the Microsoft Korean IME, switched on in the host window with
+`WM_INPUTLANGCHANGEREQUEST` and `IMC_SETOPENSTATUS`/`IMC_SETCONVERSIONMODE`, or
+with the Hangul key if the mode request does not take. The step records whether
+windows-2022 has the Korean IME and installs `Language.Basic~~~ko-KR~0.0.1.0`
+when it does not. Japanese or Chinese conversion with a candidate window is not
+attempted. The step `macOS and experimental Windows Korean input method
+composition in development and AOT (#241)` gates on macOS, where it passed in
+development and AOT in runs 42938725505, 43087027363 and 43093920340. On
+Windows it keeps the screen-reader step's non-gating status.
+
+In the first hosted run (run 42936020446), macOS selected the 2-Set Korean
+mode (the helper read it back as selected) while the host was frontmost, but
+`r` still arrived as `r`, not `ㄱ`. The fixture now selects the mode before the
+host starts and checks the selection again from a fresh process with the host
+in front. On Windows the step failed before any input: `Get-WinUserLanguageList`
+cannot marshal its arguments under PowerShell 7, so the image record now asks
+Windows PowerShell. Whether windows-2022 has the Korean IME is still unknown.
+
+In the second hosted run (run 42938725505), macOS passed in development and
+AOT. On windows-2022 the Korean TIP and the `00000412` layout are present
+(`Language.Basic~~~ko-KR` is `NotPresent` and was not needed). The window
+switched to `04120412`, and IMM then reported the IME open in Hangul
+conversion mode. Even so, `r` from `SendInput` arrived as `r`, not `ㄱ`. IMM
+also reported Hangul mode before the switch, while the layout was still US
+English, so its conversion mode may not show the TSF Korean IME's real state.
+The cause is unknown. The fixture now records the IMM state again when a step
+fails. The Windows step stays experimental.
 
 ## Observed run notes
 
@@ -252,6 +668,22 @@ BUN_NATIVE_ATSPI_PYTHON=/usr/bin/python3 \
 `$out/result.json` records each outcome, and `$out/atspi-tree.json` records the
 accessible subtree. The AOT entry is `text-input` in
 `experiments/aot-gpui/build-window.ts`.
+
+The IBus scenario needs `ibus` and `ibus-hangul`. `BUN_NATIVE_IBUS_PYTHON`
+names a Python whose `gi` module loads the IBus typelib (the AOT entry is
+`ime`):
+
+```sh
+mkdir -p .bun-native/ime && out=$(mktemp -d "$PWD/.bun-native/ime/run.XXXXXX")
+BUN_NATIVE_HOST="$PWD/target/release/bun-native-host" \
+BUN_NATIVE_TEXT_EVIDENCE="$out" BUN_NATIVE_TEXT_MODE=development \
+BUN_NATIVE_IBUS_PYTHON=/usr/bin/python3 \
+  xvfb-run --auto-servernum --server-args='-screen 0 1280x1024x24 -nolisten tcp' \
+  dbus-run-session -- bash scripts/quality/native-linux-session.sh "$out/session" -- \
+  env LC_CTYPE=C.UTF-8 bun tests/native/ime.ts
+```
+
+It writes `result.json` and every panel request in `panel-events.json`.
 
 The accessibility-role scenario runs the same way at scale 1:
 
@@ -286,3 +718,17 @@ it needs the Accessibility permission. The run writes `result.json` and every
 platform dump in `platform-trees.json`. `BUN_NATIVE_ATSPI_PYTHON` must name a Python
 whose `gi` module loads (on the local Debian image only `python3.12` did). The
 AOT entry is `accessibility`.
+
+To capture what Orca says (Linux, with `orca` and `speech-dispatcher`
+installed), run the fixture below. It writes `spoken.txt`, `orca-debug.log`,
+`utterances.json` and `result.json` to the evidence directory.
+
+```sh
+mkdir -p .bun-native/sr && out=$(mktemp -d "$PWD/.bun-native/sr/run.XXXXXX")
+BUN_NATIVE_HOST="$PWD/target/release/bun-native-host" \
+BUN_NATIVE_SR_EVIDENCE="$out" BUN_NATIVE_SR_MODE=development \
+BUN_NATIVE_ATSPI_PYTHON=/usr/bin/python3 \
+  xvfb-run --auto-servernum --server-args='-screen 0 1280x1024x24 -nolisten tcp' \
+  dbus-run-session -- bash scripts/quality/native-linux-session.sh "$out/session" -- \
+  bun tests/native/screen-reader.ts
+```

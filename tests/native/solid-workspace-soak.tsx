@@ -1,8 +1,8 @@
 import { createApplication } from '@bun-native/core'
-import { render, type RenderRoot } from '@bun-native/solid'
+import { focusNode, render, type RenderRoot, type SolidNode } from '@bun-native/solid'
 import { heapStats } from 'bun:jsc'
 import assert from 'node:assert/strict'
-import { readdirSync, readFileSync, realpathSync, writeFileSync } from 'node:fs'
+import { readFileSync, writeFileSync } from 'node:fs'
 import { arch, platform, release } from 'node:os'
 import { isAbsolute, join, resolve } from 'node:path'
 import { Workspace } from '../../examples/solid-workspace/app.tsx'
@@ -14,6 +14,15 @@ import {
   type WorkspaceOwnership,
   type WorkspaceState,
 } from '../../examples/solid-workspace/model.ts'
+import { openOsInput } from './workspace-os-input.ts'
+import {
+  ownedHost,
+  processSample,
+  sessionConfig,
+  writeStringCensus,
+  SessionRecorder,
+  waitUntil,
+} from './workspace-session.ts'
 
 /**
  * Long-session ownership fixture for the unchanged Solid workspace (#250).
@@ -27,8 +36,15 @@ import {
  * Every round returns to the mounted workspace shape, so native nodes,
  * listeners and public resources must equal the mounted baseline exactly.
  * Memory samples are recorded observations of this single run; they are not a
- * leak-freedom, latency or capacity claim. There is no OS input here: the
- * separate solid-workspace scenario covers real X11 interaction and OS close.
+ * leak-freedom, latency or capacity claim. There is no OS input in the fixed
+ * plan: the separate solid-workspace scenario covers real X11 interaction and
+ * OS close.
+ *
+ * With BUN_NATIVE_SOAK_SECONDS (see workspace-session.ts) the same round runs
+ * until that wall time passes, samples on a wall-clock interval, can pace each
+ * reply update and, with BUN_NATIVE_SOAK_OS_INPUT=1, types each round's first
+ * prompt into the focused composer and sends it with Return through X11, and
+ * wheels the full history down and up.
  */
 const host = process.env['BUN_NATIVE_HOST']
 const peer = process.env['BUN_NATIVE_WORKSPACE_TEST_PEER']
@@ -36,8 +52,10 @@ const directory = process.env['BUN_NATIVE_DIAGNOSTICS_DIR']
 const native = peer === undefined
 if (native && (!host || !directory || !isAbsolute(directory)))
   throw new Error('Set BUN_NATIVE_HOST and an absolute BUN_NATIVE_DIAGNOSTICS_DIR')
+const session = sessionConfig(native)
 const ROUNDS = native ? 60 : 3
 const SAMPLE_EVERY = native ? 10 : 1
+const TITLE = 'Bun Native Solid Workspace Soak'
 const SENDS_PER_ROUND = MAX_MESSAGES / 2
 const CHUNKS_PER_REPLY = 8
 
@@ -52,6 +70,9 @@ let scheduledTimers = 0
 let cancelledTimers = 0
 let ignoredStaleCallbacks = 0
 let actions = 0
+let composer: SolidNode | undefined
+let typedPrompts = 0
+const recorder = new SessionRecorder(native ? directory : undefined)
 
 // Fixture-owned reply clock: at most one timer, cancellation is observable.
 const schedule: ReplyScheduler = (callback) => {
@@ -65,35 +86,12 @@ const schedule: ReplyScheduler = (callback) => {
   }
 }
 
-function hostProcess(): number | undefined {
-  if (!native || platform() !== 'linux') return undefined
-  const expected = realpathSync(executable)
-  for (const task of readdirSync(`/proc/${process.pid}/task`)) {
-    let children: string
-    try {
-      children = readFileSync(`/proc/${process.pid}/task/${task}/children`, 'utf8')
-    } catch {
-      continue
-    }
-    for (const child of children.split(' ').filter(Boolean)) {
-      try {
-        if (realpathSync(`/proc/${child}/exe`) === expected) return Number(child)
-      } catch {}
-    }
-  }
-  return undefined
-}
-
-function residentKiB(pid: number | undefined): number | null {
-  if (pid === undefined) return null
-  const match = /^VmRSS:\s+(\d+) kB$/m.exec(readFileSync(`/proc/${pid}/status`, 'utf8'))
-  return match ? Number(match[1]) : null
-}
-
 const started = performance.now()
 const samples: Array<Record<string, unknown>> = []
 const roundDurationsMs: number[] = []
 let hostPid: number | undefined
+let lastSample = 0
+let lastRound = -1
 
 async function sample(round: number) {
   // Sparse measurement only: collect, then count observed live cells.
@@ -101,21 +99,36 @@ async function sample(round: number) {
   Bun.gc(true)
   await Bun.sleep(0)
   const statistics = heapStats()
-  samples.push({
+  const hostProcess = processSample(hostPid)
+  const elapsedMs = performance.now() - started
+  lastSample = elapsedMs
+  const row = recorder.record({
     round,
-    elapsedMs: performance.now() - started,
+    elapsedMs,
     commits: root!.diagnostics.commits,
+    actions,
     heapSize: statistics.heapSize,
     objectCount: statistics.objectCount,
     protectedObjectCount: statistics.protectedObjectCount,
     bunRssBytes: process.memoryUsage().rss,
-    hostRssKiB: residentKiB(hostPid),
+    hostRssKiB: hostProcess?.rssKiB ?? null,
+    host: hostProcess,
+    app: processSample(native ? process.pid : undefined),
+    rootNodes: root!.diagnostics.nodes,
+    rootListeners: root!.diagnostics.listeners,
+    application: app.diagnostics,
+    localWork: controller?.ownership,
+    ...(session?.census ? { objectTypeCounts: statistics.objectTypeCounts } : {}),
   })
+  if (session?.census) writeStringCensus(directory!, round)
+  // A long session keeps its samples on disk, not in the heap it samples.
+  if (session) lastRound = round
+  else samples.push(row)
 }
 
 try {
   const window = await app.openWindow({
-    title: 'Bun Native Solid Workspace Soak',
+    title: TITLE,
     width: 1120,
     height: 760,
   })
@@ -125,6 +138,9 @@ try {
         schedule={schedule}
         onController={(owned) => {
           controller = owned
+        }}
+        onComposer={(node) => {
+          composer = node
         }}
         onDispose={(state, released) => {
           disposedState = state
@@ -137,8 +153,9 @@ try {
   )
   await root.ready
   await root.flush()
-  hostPid = hostProcess()
-  if (native && platform() === 'linux') assert(hostPid, 'The owned native host must be observable')
+  hostPid = native ? ownedHost(executable) : undefined
+  if (native && (platform() === 'linux' || platform() === 'darwin'))
+    assert(hostPid, 'The owned native host must be observable')
   const workspace = controller!
   assert(workspace, 'The component must expose its controller to this fixture')
   const initial = workspace.state
@@ -148,15 +165,22 @@ try {
     application: app.diagnostics,
   }
 
+  const input = session?.osInput
+    ? await openOsInput(TITLE, hostPid!, executable, [1120, 760])
+    : undefined
+
   async function act(action: () => void) {
+    const begun = performance.now()
     action()
     actions++
     await root!.flush()
     assert.equal(root!.diagnostics.pending, false)
+    recorder.ack(performance.now() - begun)
   }
 
   async function tick(count: number) {
     for (let index = 0; index < count; index++) {
+      if (session?.paceMs) await Bun.sleep(session.paceMs)
       const callback = pending
       assert(callback, 'A streaming reply must own one scheduled update')
       pending = undefined
@@ -181,7 +205,39 @@ try {
   const initialShape = shape(initial)
   await sample(0)
 
-  for (let round = 1; round <= ROUNDS; round++) {
+  // Real X11 typing into the focused composer, then Return through the app's
+  // own key handler; the same model accounting as a controller send.
+  async function typePrompt(prompt: string): Promise<boolean> {
+    const typing = input!
+    assert(composer, 'The mounted conversation must expose its composer')
+    await focusNode(composer)
+    typing.activate()
+    const draft = () => selectedConversation(workspace.state).draft
+    const typed = performance.now()
+    typing.type(prompt)
+    await waitUntil(() => draft() === prompt, 'the typed prompt in the conversation draft')
+    recorder.input(performance.now() - typed)
+    const sent = performance.now()
+    const before = selectedConversation(workspace.state).messages.length
+    typing.key('Return')
+    await waitUntil(
+      () => selectedConversation(workspace.state).messages.length === before + 2,
+      'the Return-submitted prompt'
+    )
+    recorder.input(performance.now() - sent)
+    await root!.flush()
+    const messages = selectedConversation(workspace.state).messages
+    assert.equal(messages.at(-2)?.body, prompt)
+    assert.equal(messages.at(-1)?.status, 'streaming')
+    assert.equal(draft(), '')
+    typedPrompts++
+    actions += 2
+    return true
+  }
+
+  let round = 0
+  while (session ? performance.now() - started < session.seconds * 1000 : round < ROUNDS) {
+    round++
     const roundStarted = performance.now()
     await act(() => workspace.create())
     const id = workspace.state.selectedId
@@ -189,9 +245,11 @@ try {
     for (let send = 0; send < SENDS_PER_ROUND; send++) {
       const prompt = `Round ${round} prompt ${send}`
       let accepted = false
-      await act(() => {
-        accepted = workspace.send(prompt)
-      })
+      if (input && send === 0) accepted = await typePrompt(prompt)
+      else
+        await act(() => {
+          accepted = workspace.send(prompt)
+        })
       assert(accepted, 'A bounded prompt must start one reply')
       const messages = () => selectedConversation(workspace.state).messages
       switch (send % 4) {
@@ -231,6 +289,14 @@ try {
     const conversation = selectedConversation(workspace.state)
     assert.equal(conversation.id, id)
     assert.equal(conversation.messages.length, MAX_MESSAGES)
+    if (input) {
+      // Inside the history's scroll viewport (layout of the solid-workspace
+      // scenario at this window size), which the full history overflows. The
+      // scroll itself is not asserted here.
+      input.wheel(560, 380, 5, 12)
+      input.wheel(560, 380, 4, 12)
+      await root.flush()
+    }
     let rejected = true
     await act(() => {
       rejected = !workspace.send('Beyond the history limit')
@@ -259,12 +325,23 @@ try {
       cancelledReplies: (round * SENDS_PER_ROUND) / 2,
     })
     assert.equal(pending, undefined)
-    roundDurationsMs.push(performance.now() - roundStarted)
-    if (round % SAMPLE_EVERY === 0) await sample(round)
+    if (session) recorder.round(performance.now() - roundStarted)
+    else roundDurationsMs.push(performance.now() - roundStarted)
+    if (session) {
+      if (performance.now() - started - lastSample >= session.sampleSeconds * 1000)
+        await sample(round)
+    } else if (round % SAMPLE_EVERY === 0) await sample(round)
   }
+  const rounds = round
+  if (session && lastRound !== rounds) await sample(rounds)
+  if (session) {
+    samples.push(...recorder.readSamples())
+    roundDurationsMs.push(...recorder.readRounds())
+  }
+  if (input) assert.equal(typedPrompts, rounds)
 
-  const replies = ROUNDS * SENDS_PER_ROUND
-  assert.equal(scheduledTimers, (ROUNDS * SENDS_PER_ROUND * (8 + 8 + 4 + 3)) / 4)
+  const replies = rounds * SENDS_PER_ROUND
+  assert.equal(scheduledTimers, (rounds * SENDS_PER_ROUND * (8 + 8 + 4 + 3)) / 4)
   assert.equal(cancelledTimers, replies / 2)
   const commits = root.diagnostics.commits
   const mutations = root.diagnostics.mutations
@@ -287,7 +364,8 @@ try {
   if (hostPid !== undefined) {
     let exited = false
     try {
-      readFileSync(`/proc/${hostPid}/status`)
+      if (platform() === 'darwin') process.kill(hostPid, 0)
+      else readFileSync(`/proc/${hostPid}/status`)
     } catch {
       exited = true
     }
@@ -297,12 +375,14 @@ try {
     schemaVersion: 1,
     status: 'passed',
     scenario: 'solid-workspace-soak',
-    scope: native
-      ? 'Actual native host; fixture-driven component actions with native acknowledgements; no OS input or paint assertion'
-      : 'Headless public adapter and owned protocol peer; no native rendering',
+    scope: !native
+      ? 'Headless public adapter and owned protocol peer; no native rendering'
+      : input
+        ? 'Actual native host; fixture-driven component actions with native acknowledgements plus one X11-typed, Return-submitted prompt and unasserted history wheel input per round; no paint assertion'
+        : 'Actual native host; fixture-driven component actions with native acknowledgements; no OS input or paint assertion',
     system: { platform: platform(), architecture: arch(), release: release() },
     bun: { version: Bun.version, revision: Bun.revision },
-    rounds: ROUNDS,
+    rounds,
     replies,
     completedReplies: replies / 2,
     cancelledReplies: replies / 2,
@@ -315,6 +395,14 @@ try {
     elapsedMs: performance.now() - started,
     roundDurationsMs,
     samples,
+    ...(session && {
+      session: {
+        ...session,
+        ackMs: recorder.ackTotal.summary(),
+        inputToStateMs: recorder.inputTotal.summary(),
+        osInput: input ? { typedPrompts, ...input.counts } : null,
+      },
+    }),
     final: { application: app.diagnostics, localWork: ownership },
   }
   if (native) writeFileSync(join(directory!, 'soak-result.json'), JSON.stringify(report, null, 2))

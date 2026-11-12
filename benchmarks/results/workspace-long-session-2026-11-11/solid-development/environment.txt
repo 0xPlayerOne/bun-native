@@ -1,0 +1,12 @@
+framework=solid
+mode=development
+seconds=1800
+host=/home/user/soak-wt/target/release/bun-native-host
+hostSha256=414c7c08de947f9f0ee80c1dbb5d50348f100efcd3fc21f6ba056852bdb41932
+bun=1.4.4-canary.1+b1007f117
+kernel=Linux 6.18.44-fc-v378
+cpus=4
+cpuModel=Intel(R) Xeon(R) Processor @ 2.30GHz
+started=2026-11-11T01:47:17Z
+finished=2026-11-11T02:17:21Z
+fixtureExit=0

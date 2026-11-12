@@ -2,7 +2,7 @@ import toolchain from '../../toolchain.json'
 import { prebuiltHost } from './host.ts'
 import { readProject } from './project.ts'
 
-export type Diagnosis = { name: string; status: 'ok' | 'failed' | 'skipped'; detail: string }
+type Diagnosis = { name: string; status: 'ok' | 'failed' | 'skipped'; detail: string }
 
 const message = (error: unknown) => (error instanceof Error ? error.message : String(error))
 
