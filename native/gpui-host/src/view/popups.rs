@@ -165,6 +165,11 @@ impl NativeView {
     /// Called after every commit: open entries for new popup surfaces, resize
     /// changed ones, and close the windows of popups that left the tree.
     pub(super) fn reconcile_popups(&mut self, cx: &mut Context<Self>) {
+        // A window that has never shown a popup needs no placement backend,
+        // so the X11 connection opens on the first popup, not the first batch.
+        if self.index.popups.is_empty() && self.popups.live.is_empty() {
+            return;
+        }
         if !self.popups.enabled(cx) {
             return;
         }
