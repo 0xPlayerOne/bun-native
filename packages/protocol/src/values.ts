@@ -1,7 +1,6 @@
 import { ProtocolError } from './framing.ts'
+import { MAX_TEXT_BYTES } from './wire-schema.ts'
 
-export const MAX_TEXT_BYTES = 16_384
-export const MAX_TITLE_BYTES = 256
 const encoder = new TextEncoder()
 
 export function object(value: unknown): Record<string, unknown> {
@@ -60,4 +59,10 @@ export function string(value: unknown, field: string, limit = MAX_TEXT_BYTES): s
   if (!value.isWellFormed()) throw new ProtocolError(field + ' contains an unpaired surrogate')
   if (value.includes('\0')) throw new ProtocolError(field + ' contains a NUL character')
   return value
+}
+
+/** One of a value list's members, compared by identity. */
+export function choice<T extends string>(value: unknown, field: string, values: readonly T[]): T {
+  for (const candidate of values) if (candidate === value) return candidate
+  throw new ProtocolError(field + ' must be one of ' + values.join(', '))
 }

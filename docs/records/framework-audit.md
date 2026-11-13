@@ -17,6 +17,7 @@ Draft validation stops before implementation and CodeQL checks execute:
 | `check:health`                            | unreachable modules and internal-only exports                             |
 | `check:boundaries`                        | package imports that cross the documented layering                        |
 | `check:duplicates`                        | duplicate dependency versions                                             |
+| `check:schema`                            | generated wire tables that differ from the checked-in schema              |
 | dead-reference and doc-link quality tests | stale paths, missing link targets, docs/API drift (`../api-reference.md`) |
 | `oxlint --deny-warnings`, `bun --check`   | lint and type errors in packages, scripts, tests, examples, benchmarks    |
 | `cargo clippy -D warnings`, `ruff`        | Rust and Python warnings                                                  |

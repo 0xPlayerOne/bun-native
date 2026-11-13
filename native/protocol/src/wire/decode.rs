@@ -3,7 +3,10 @@
 //! `#[serde(tag = "...")]` buffers each tagged value into serde's private
 //! `Content` tree and then replays it, and `Operation` nests `Element`, so every
 //! created node paid for two buffered copies of its object and style. These
-//! visitors read each member once, straight into the target. The accepted
+//! visitors read each member once, straight into the target. Member names,
+//! variant tags and which variant accepts which member come from the generated
+//! tables in `schema.rs`, so a member the schema adds must be read here before
+//! this compiles. The accepted
 //! language is the derived one: the tag may appear in any position, unknown
 //! members, duplicate members, `null` for a present member and members that
 //! belong to another variant are all rejected, and absent members take the same
@@ -11,6 +14,10 @@
 //! depend on it. The `derived_oracle` tests keep the derived definitions and
 //! compare both decoders on a corpus.
 
+use super::schema::{
+    ElementKind, ElementMember, OperationKind, OperationMember, ELEMENT_KINDS, ELEMENT_MEMBERS,
+    OPERATION_KINDS, OPERATION_MEMBERS,
+};
 use super::{
     half, safe_integer, safe_u32, safe_usize, AccessibleRole, BoxAccessibility, Element, Live,
     NodeId, Operation, OverlayAnchor, OverlayNavigation, OverlaySurface, Style,
@@ -50,19 +57,6 @@ where
 
 fn required<T, E: de::Error>(value: Option<T>, name: &'static str) -> Result<T, E> {
     value.ok_or_else(|| de::Error::missing_field(name))
-}
-
-/// Rejects a member that the chosen variant does not define.
-fn reject<T, E: de::Error>(
-    present: &Option<T>,
-    name: &'static str,
-    expected: &'static [&'static str],
-) -> Result<(), E> {
-    if present.is_some() {
-        Err(de::Error::unknown_field(name, expected))
-    } else {
-        Ok(())
-    }
 }
 
 struct SafeUsize(usize);
@@ -152,100 +146,22 @@ fn key<'de, A: MapAccess<'de>, R>(
     map.next_key_seed(Seed(f))
 }
 
-#[derive(Clone, Copy)]
-enum ElementKind {
-    Box,
-    Text,
-    Button,
-    Input,
-    Split,
-    Overlay,
-}
-
-fn element_kind(name: &str) -> Option<ElementKind> {
-    Some(match name {
-        "box" => ElementKind::Box,
-        "text" => ElementKind::Text,
-        "button" => ElementKind::Button,
-        "input" => ElementKind::Input,
-        "split" => ElementKind::Split,
-        "overlay" => ElementKind::Overlay,
-        _ => return None,
-    })
-}
-
-const ELEMENT_KINDS: &[&str] = &["box", "text", "button", "input", "split", "overlay"];
-const ELEMENT_FIELDS: &[&str] = &[
-    "kind",
-    "style",
-    "text",
-    "disabled",
-    "value",
-    "placeholder",
-    "read_only",
-    "ratio",
-    "min_size",
-    "anchor",
-    "modal",
-    "autofocus",
-    "navigation",
-    "surface",
-    "accessible_label",
-    "accessible_role",
-    "accessible_set_size",
-    "accessible_position",
-    "accessible_selected",
-    "accessible_live",
-];
-
-#[derive(Clone, Copy)]
-enum ElementField {
-    Kind,
-    Style,
-    Text,
-    Disabled,
-    Value,
-    Placeholder,
-    ReadOnly,
-    Ratio,
-    MinSize,
-    Anchor,
-    Modal,
-    Autofocus,
-    Navigation,
-    Surface,
-    AccessibleLabel,
-    AccessibleRole,
-    AccessibleSetSize,
-    AccessiblePosition,
-    AccessibleSelected,
-    AccessibleLive,
-}
-
-fn element_field(name: &str) -> Option<ElementField> {
-    Some(match name {
-        "kind" => ElementField::Kind,
-        "style" => ElementField::Style,
-        "text" => ElementField::Text,
-        "disabled" => ElementField::Disabled,
-        "value" => ElementField::Value,
-        "placeholder" => ElementField::Placeholder,
-        "read_only" => ElementField::ReadOnly,
-        "ratio" => ElementField::Ratio,
-        "min_size" => ElementField::MinSize,
-        "anchor" => ElementField::Anchor,
-        "modal" => ElementField::Modal,
-        "autofocus" => ElementField::Autofocus,
-        "navigation" => ElementField::Navigation,
-        "surface" => ElementField::Surface,
-        "accessible_label" => ElementField::AccessibleLabel,
-        "accessible_role" => ElementField::AccessibleRole,
-        "accessible_set_size" => ElementField::AccessibleSetSize,
-        "accessible_position" => ElementField::AccessiblePosition,
-        "accessible_selected" => ElementField::AccessibleSelected,
-        "accessible_live" => ElementField::AccessibleLive,
-        _ => return None,
-    })
+/// Rejects the first member `present` holds that `allowed` does not, naming
+/// it with the members the chosen variant accepts.
+fn foreign<E: de::Error>(
+    present: u32,
+    allowed: u32,
+    names: &'static [&'static str],
+    expected: &'static [&'static str],
+) -> Result<(), E> {
+    let extra = present & !allowed;
+    if extra == 0 {
+        return Ok(());
+    }
+    Err(de::Error::unknown_field(
+        names[extra.trailing_zeros() as usize],
+        expected,
+    ))
 }
 
 impl<'de> Deserialize<'de> for Element {
@@ -258,8 +174,8 @@ impl<'de> Deserialize<'de> for Element {
                 formatter.write_str("an element object")
             }
 
-            #[allow(clippy::too_many_lines)]
             fn visit_map<A: MapAccess<'de>>(self, mut map: A) -> Result<Element, A::Error> {
+                let mut present = 0;
                 let mut kind = None;
                 let mut style: Option<Style> = None;
                 let mut text: Option<String> = None;
@@ -280,300 +196,117 @@ impl<'de> Deserialize<'de> for Element {
                 let mut accessible_position: Option<SafeU32> = None;
                 let mut accessible_selected: Option<bool> = None;
                 let mut accessible_live: Option<Live> = None;
-                while let Some(field) = key(&mut map, element_field)? {
-                    let Some(field) = field else {
+                while let Some(member) = key(&mut map, ElementMember::from_name)? {
+                    let Some(member) = member else {
                         // Any unread member of an unknown name is an error, so
                         // nothing is skipped without being looked at.
                         return Err(de::Error::custom(format_args!(
                             "unknown field, expected one of {}",
-                            ELEMENT_FIELDS.join(", ")
+                            ELEMENT_MEMBERS.join(", ")
                         )));
                     };
-                    match field {
-                        ElementField::Kind => {
-                            tag_of(&mut map, &mut kind, "kind", element_kind, ELEMENT_KINDS)?;
+                    present |= member.bit();
+                    let map = &mut map;
+                    match member {
+                        ElementMember::Kind => {
+                            tag_of(
+                                map,
+                                &mut kind,
+                                "kind",
+                                ElementKind::from_name,
+                                ELEMENT_KINDS,
+                            )?;
                         }
-                        ElementField::Style => once(&mut style, "style", &mut map)?,
-                        ElementField::Text => once(&mut text, "text", &mut map)?,
-                        ElementField::Disabled => once(&mut disabled, "disabled", &mut map)?,
-                        ElementField::Value => once(&mut value, "value", &mut map)?,
-                        ElementField::Placeholder => {
-                            once(&mut placeholder, "placeholder", &mut map)?;
+                        ElementMember::Style => once(&mut style, "style", map)?,
+                        ElementMember::Text => once(&mut text, "text", map)?,
+                        ElementMember::Disabled => once(&mut disabled, "disabled", map)?,
+                        ElementMember::Value => once(&mut value, "value", map)?,
+                        ElementMember::Placeholder => once(&mut placeholder, "placeholder", map)?,
+                        ElementMember::ReadOnly => once(&mut read_only, "read_only", map)?,
+                        ElementMember::Ratio => once(&mut ratio, "ratio", map)?,
+                        ElementMember::MinSize => once(&mut min_size, "min_size", map)?,
+                        ElementMember::Anchor => once(&mut anchor, "anchor", map)?,
+                        ElementMember::Modal => once(&mut modal, "modal", map)?,
+                        ElementMember::Autofocus => once(&mut autofocus, "autofocus", map)?,
+                        ElementMember::Navigation => once(&mut navigation, "navigation", map)?,
+                        ElementMember::Surface => once(&mut surface, "surface", map)?,
+                        ElementMember::AccessibleLabel => {
+                            once(&mut accessible_label, "accessible_label", map)?;
                         }
-                        ElementField::ReadOnly => once(&mut read_only, "read_only", &mut map)?,
-                        ElementField::Ratio => once(&mut ratio, "ratio", &mut map)?,
-                        ElementField::MinSize => once(&mut min_size, "min_size", &mut map)?,
-                        ElementField::Anchor => once(&mut anchor, "anchor", &mut map)?,
-                        ElementField::Modal => once(&mut modal, "modal", &mut map)?,
-                        ElementField::Autofocus => once(&mut autofocus, "autofocus", &mut map)?,
-                        ElementField::Navigation => {
-                            once(&mut navigation, "navigation", &mut map)?;
+                        ElementMember::AccessibleRole => {
+                            once(&mut accessible_role, "accessible_role", map)?;
                         }
-                        ElementField::Surface => once(&mut surface, "surface", &mut map)?,
-                        ElementField::AccessibleLabel => {
-                            once(&mut accessible_label, "accessible_label", &mut map)?;
+                        ElementMember::AccessibleSetSize => {
+                            once(&mut accessible_set_size, "accessible_set_size", map)?;
                         }
-                        ElementField::AccessibleRole => {
-                            once(&mut accessible_role, "accessible_role", &mut map)?;
+                        ElementMember::AccessiblePosition => {
+                            once(&mut accessible_position, "accessible_position", map)?;
                         }
-                        ElementField::AccessibleSetSize => {
-                            once(&mut accessible_set_size, "accessible_set_size", &mut map)?;
+                        ElementMember::AccessibleSelected => {
+                            once(&mut accessible_selected, "accessible_selected", map)?;
                         }
-                        ElementField::AccessiblePosition => {
-                            once(&mut accessible_position, "accessible_position", &mut map)?;
-                        }
-                        ElementField::AccessibleSelected => {
-                            once(&mut accessible_selected, "accessible_selected", &mut map)?;
-                        }
-                        ElementField::AccessibleLive => {
-                            once(&mut accessible_live, "accessible_live", &mut map)?;
+                        ElementMember::AccessibleLive => {
+                            once(&mut accessible_live, "accessible_live", map)?;
                         }
                     }
                 }
                 let kind: ElementKind = required(kind, "kind")?;
-                // Only boxes carry the list members and only text carries
-                // `accessible_live`; every other kind rejects them by name.
-                let list_members = |own: &'static [&'static str]| -> Result<(), A::Error> {
-                    reject(&accessible_role, "accessible_role", own)?;
-                    reject(&accessible_set_size, "accessible_set_size", own)?;
-                    reject(&accessible_position, "accessible_position", own)?;
-                    reject(&accessible_selected, "accessible_selected", own)
-                };
-                let style_out = style.take().unwrap_or_default();
-                match kind {
-                    ElementKind::Box => {
-                        let own = &[
-                            "kind",
-                            "accessible_role",
-                            "accessible_label",
-                            "accessible_set_size",
-                            "accessible_position",
-                            "accessible_selected",
-                            "style",
-                        ];
-                        reject(&text, "text", own)?;
-                        reject(&value, "value", own)?;
-                        reject(&placeholder, "placeholder", own)?;
-                        reject(&disabled, "disabled", own)?;
-                        reject(&read_only, "read_only", own)?;
-                        reject(&ratio, "ratio", own)?;
-                        reject(&min_size, "min_size", own)?;
-                        reject(&anchor, "anchor", own)?;
-                        reject(&modal, "modal", own)?;
-                        reject(&autofocus, "autofocus", own)?;
-                        reject(&navigation, "navigation", own)?;
-                        reject(&surface, "surface", own)?;
-                        reject(&accessible_live, "accessible_live", own)?;
-                        Ok(Element::Box {
-                            accessibility: BoxAccessibility {
-                                accessible_role,
-                                accessible_label,
-                                accessible_set_size: accessible_set_size.map(|size| size.0),
-                                accessible_position: accessible_position.map(|position| position.0),
-                                accessible_selected,
-                            },
-                            style: style_out,
-                        })
-                    }
-                    ElementKind::Text => {
-                        let own = &["kind", "text", "accessible_live", "style"];
-                        list_members(own)?;
-                        reject(&value, "value", own)?;
-                        reject(&placeholder, "placeholder", own)?;
-                        reject(&disabled, "disabled", own)?;
-                        reject(&read_only, "read_only", own)?;
-                        reject(&ratio, "ratio", own)?;
-                        reject(&min_size, "min_size", own)?;
-                        reject(&anchor, "anchor", own)?;
-                        reject(&modal, "modal", own)?;
-                        reject(&autofocus, "autofocus", own)?;
-                        reject(&navigation, "navigation", own)?;
-                        reject(&surface, "surface", own)?;
-                        reject(&accessible_label, "accessible_label", own)?;
-                        Ok(Element::Text {
-                            text: required(text, "text")?,
-                            accessible_live,
-                            style: style_out,
-                        })
-                    }
-                    ElementKind::Button => {
-                        let own = &["kind", "text", "disabled", "style"];
-                        list_members(own)?;
-                        reject(&accessible_live, "accessible_live", own)?;
-                        reject(&value, "value", own)?;
-                        reject(&placeholder, "placeholder", own)?;
-                        reject(&read_only, "read_only", own)?;
-                        reject(&ratio, "ratio", own)?;
-                        reject(&min_size, "min_size", own)?;
-                        reject(&anchor, "anchor", own)?;
-                        reject(&modal, "modal", own)?;
-                        reject(&autofocus, "autofocus", own)?;
-                        reject(&navigation, "navigation", own)?;
-                        reject(&surface, "surface", own)?;
-                        reject(&accessible_label, "accessible_label", own)?;
-                        Ok(Element::Button {
-                            text: required(text, "text")?,
-                            disabled: disabled.unwrap_or_default(),
-                            style: style_out,
-                        })
-                    }
-                    ElementKind::Input => {
-                        let own = &[
-                            "kind",
-                            "value",
-                            "placeholder",
-                            "disabled",
-                            "read_only",
-                            "style",
-                        ];
-                        list_members(own)?;
-                        reject(&accessible_live, "accessible_live", own)?;
-                        reject(&text, "text", own)?;
-                        reject(&ratio, "ratio", own)?;
-                        reject(&min_size, "min_size", own)?;
-                        reject(&anchor, "anchor", own)?;
-                        reject(&modal, "modal", own)?;
-                        reject(&autofocus, "autofocus", own)?;
-                        reject(&navigation, "navigation", own)?;
-                        reject(&surface, "surface", own)?;
-                        reject(&accessible_label, "accessible_label", own)?;
-                        Ok(Element::Input {
-                            value: required(value, "value")?,
-                            placeholder: placeholder.unwrap_or_default(),
-                            disabled: disabled.unwrap_or_default(),
-                            read_only: read_only.unwrap_or_default(),
-                            style: style_out,
-                        })
-                    }
-                    ElementKind::Split => {
-                        let own = &["kind", "ratio", "min_size", "accessible_label", "style"];
-                        list_members(own)?;
-                        reject(&accessible_live, "accessible_live", own)?;
-                        reject(&text, "text", own)?;
-                        reject(&value, "value", own)?;
-                        reject(&placeholder, "placeholder", own)?;
-                        reject(&disabled, "disabled", own)?;
-                        reject(&read_only, "read_only", own)?;
-                        reject(&anchor, "anchor", own)?;
-                        reject(&modal, "modal", own)?;
-                        reject(&autofocus, "autofocus", own)?;
-                        reject(&navigation, "navigation", own)?;
-                        reject(&surface, "surface", own)?;
-                        Ok(Element::Split {
-                            ratio: ratio.unwrap_or_else(half),
-                            min_size: min_size.unwrap_or_default(),
+                // One mask test replaces a check per member another kind owns.
+                foreign(
+                    present,
+                    kind.members(),
+                    ELEMENT_MEMBERS,
+                    kind.member_names(),
+                )?;
+                let style = style.unwrap_or_default();
+                Ok(match kind {
+                    ElementKind::Box => Element::Box {
+                        accessibility: BoxAccessibility {
+                            accessible_role,
                             accessible_label,
-                            style: style_out,
-                        })
-                    }
-                    ElementKind::Overlay => {
-                        let own = &[
-                            "kind",
-                            "anchor",
-                            "modal",
-                            "autofocus",
-                            "navigation",
-                            "surface",
-                            "accessible_label",
-                            "style",
-                        ];
-                        list_members(own)?;
-                        reject(&accessible_live, "accessible_live", own)?;
-                        reject(&text, "text", own)?;
-                        reject(&value, "value", own)?;
-                        reject(&placeholder, "placeholder", own)?;
-                        reject(&disabled, "disabled", own)?;
-                        reject(&read_only, "read_only", own)?;
-                        reject(&ratio, "ratio", own)?;
-                        reject(&min_size, "min_size", own)?;
-                        Ok(Element::Overlay {
-                            anchor: anchor.unwrap_or_default(),
-                            modal: modal.unwrap_or_default(),
-                            autofocus: autofocus.unwrap_or_default(),
-                            navigation: navigation.unwrap_or_default(),
-                            surface: surface.unwrap_or_default(),
-                            accessible_label,
-                            style: style_out,
-                        })
-                    }
-                }
+                            accessible_set_size: accessible_set_size.map(|size| size.0),
+                            accessible_position: accessible_position.map(|position| position.0),
+                            accessible_selected,
+                        },
+                        style,
+                    },
+                    ElementKind::Text => Element::Text {
+                        text: required(text, "text")?,
+                        accessible_live,
+                        style,
+                    },
+                    ElementKind::Button => Element::Button {
+                        text: required(text, "text")?,
+                        disabled: disabled.unwrap_or_default(),
+                        style,
+                    },
+                    ElementKind::Input => Element::Input {
+                        value: required(value, "value")?,
+                        placeholder: placeholder.unwrap_or_default(),
+                        disabled: disabled.unwrap_or_default(),
+                        read_only: read_only.unwrap_or_default(),
+                        style,
+                    },
+                    ElementKind::Split => Element::Split {
+                        ratio: ratio.unwrap_or_else(half),
+                        min_size: min_size.unwrap_or_default(),
+                        accessible_label,
+                        style,
+                    },
+                    ElementKind::Overlay => Element::Overlay {
+                        anchor: anchor.unwrap_or_default(),
+                        modal: modal.unwrap_or_default(),
+                        autofocus: autofocus.unwrap_or_default(),
+                        navigation: navigation.unwrap_or_default(),
+                        surface: surface.unwrap_or_default(),
+                        accessible_label,
+                        style,
+                    },
+                })
             }
         }
         deserializer.deserialize_map(ElementVisitor)
     }
-}
-
-#[derive(Clone, Copy)]
-enum OperationKind {
-    Create,
-    Set,
-    Insert,
-    Delete,
-    Focus,
-    ScrollTo,
-    ScrollIntoView,
-}
-
-fn operation_kind(name: &str) -> Option<OperationKind> {
-    Some(match name {
-        "create" => OperationKind::Create,
-        "set" => OperationKind::Set,
-        "insert" => OperationKind::Insert,
-        "delete" => OperationKind::Delete,
-        "focus" => OperationKind::Focus,
-        "scroll_to" => OperationKind::ScrollTo,
-        "scroll_into_view" => OperationKind::ScrollIntoView,
-        _ => return None,
-    })
-}
-
-const OPERATION_KINDS: &[&str] = &[
-    "create",
-    "set",
-    "insert",
-    "delete",
-    "focus",
-    "scroll_to",
-    "scroll_into_view",
-];
-const OPERATION_FIELDS: &[&str] = &[
-    "type",
-    "node_id",
-    "element",
-    "expected_input_revision",
-    "parent_id",
-    "child_id",
-    "index",
-    "x",
-    "y",
-];
-
-#[derive(Clone, Copy)]
-enum OperationField {
-    Type,
-    NodeId,
-    Element,
-    ExpectedInputRevision,
-    ParentId,
-    ChildId,
-    Index,
-    X,
-    Y,
-}
-
-fn operation_field(name: &str) -> Option<OperationField> {
-    Some(match name {
-        "type" => OperationField::Type,
-        "node_id" => OperationField::NodeId,
-        "element" => OperationField::Element,
-        "expected_input_revision" => OperationField::ExpectedInputRevision,
-        "parent_id" => OperationField::ParentId,
-        "child_id" => OperationField::ChildId,
-        "index" => OperationField::Index,
-        "x" => OperationField::X,
-        "y" => OperationField::Y,
-        _ => return None,
-    })
 }
 
 impl<'de> Deserialize<'de> for Operation {
@@ -587,6 +320,7 @@ impl<'de> Deserialize<'de> for Operation {
             }
 
             fn visit_map<A: MapAccess<'de>>(self, mut map: A) -> Result<Operation, A::Error> {
+                let mut present = 0;
                 let mut kind = None;
                 let mut node_id: Option<NodeId> = None;
                 let mut element: Option<Element> = None;
@@ -596,109 +330,77 @@ impl<'de> Deserialize<'de> for Operation {
                 let mut index: Option<usize> = None;
                 let mut x: Option<f64> = None;
                 let mut y: Option<f64> = None;
-                while let Some(field) = key(&mut map, operation_field)? {
-                    let Some(field) = field else {
+                while let Some(member) = key(&mut map, OperationMember::from_name)? {
+                    let Some(member) = member else {
                         return Err(de::Error::custom(format_args!(
                             "unknown field, expected one of {}",
-                            OPERATION_FIELDS.join(", ")
+                            OPERATION_MEMBERS.join(", ")
                         )));
                     };
-                    match field {
-                        OperationField::Type => {
-                            tag_of(&mut map, &mut kind, "type", operation_kind, OPERATION_KINDS)?;
-                        }
-                        OperationField::NodeId => once(&mut node_id, "node_id", &mut map)?,
-                        OperationField::Element => once(&mut element, "element", &mut map)?,
-                        OperationField::ExpectedInputRevision => once_with(
+                    present |= member.bit();
+                    let map = &mut map;
+                    match member {
+                        OperationMember::Type => tag_of(
+                            map,
+                            &mut kind,
+                            "type",
+                            OperationKind::from_name,
+                            OPERATION_KINDS,
+                        )?,
+                        OperationMember::NodeId => once(&mut node_id, "node_id", map)?,
+                        OperationMember::Element => once(&mut element, "element", map)?,
+                        OperationMember::ExpectedInputRevision => once_with(
                             &mut revision,
                             "expected_input_revision",
-                            &mut map,
+                            map,
                             |wrapped: SafeRevision| wrapped.0,
                         )?,
-                        OperationField::ParentId => once(&mut parent_id, "parent_id", &mut map)?,
-                        OperationField::ChildId => once(&mut child_id, "child_id", &mut map)?,
-                        OperationField::Index => {
-                            once_with(&mut index, "index", &mut map, |wrapped: SafeUsize| {
-                                wrapped.0
-                            })?;
+                        OperationMember::ParentId => once(&mut parent_id, "parent_id", map)?,
+                        OperationMember::ChildId => once(&mut child_id, "child_id", map)?,
+                        OperationMember::Index => {
+                            once_with(&mut index, "index", map, |wrapped: SafeUsize| wrapped.0)?;
                         }
-                        OperationField::X => once(&mut x, "x", &mut map)?,
-                        OperationField::Y => once(&mut y, "y", &mut map)?,
+                        OperationMember::X => once(&mut x, "x", map)?,
+                        OperationMember::Y => once(&mut y, "y", map)?,
                     }
                 }
                 let kind: OperationKind = required(kind, "type")?;
-                match kind {
-                    OperationKind::Create => {
-                        let own = &["type", "node_id", "element"];
-                        reject(&revision, "expected_input_revision", own)?;
-                        reject(&parent_id, "parent_id", own)?;
-                        reject(&child_id, "child_id", own)?;
-                        reject(&index, "index", own)?;
-                        reject(&x, "x", own)?;
-                        reject(&y, "y", own)?;
-                        Ok(Operation::Create {
-                            node_id: required(node_id, "node_id")?,
-                            element: required(element, "element")?,
-                        })
-                    }
-                    OperationKind::Set => {
-                        let own = &["type", "node_id", "element", "expected_input_revision"];
-                        reject(&parent_id, "parent_id", own)?;
-                        reject(&child_id, "child_id", own)?;
-                        reject(&index, "index", own)?;
-                        reject(&x, "x", own)?;
-                        reject(&y, "y", own)?;
-                        Ok(Operation::Set {
-                            node_id: required(node_id, "node_id")?,
-                            element: required(element, "element")?,
-                            expected_input_revision: revision,
-                        })
-                    }
-                    OperationKind::Insert => {
-                        let own = &["type", "parent_id", "child_id", "index"];
-                        reject(&node_id, "node_id", own)?;
-                        reject(&element, "element", own)?;
-                        reject(&revision, "expected_input_revision", own)?;
-                        reject(&x, "x", own)?;
-                        reject(&y, "y", own)?;
-                        Ok(Operation::Insert {
-                            parent_id: required(parent_id, "parent_id")?,
-                            child_id: required(child_id, "child_id")?,
-                            index: required(index, "index")?,
-                        })
-                    }
-                    OperationKind::Delete
-                    | OperationKind::Focus
-                    | OperationKind::ScrollIntoView => {
-                        let own = &["type", "node_id"];
-                        reject(&element, "element", own)?;
-                        reject(&revision, "expected_input_revision", own)?;
-                        reject(&parent_id, "parent_id", own)?;
-                        reject(&child_id, "child_id", own)?;
-                        reject(&index, "index", own)?;
-                        reject(&x, "x", own)?;
-                        reject(&y, "y", own)?;
-                        let node_id = required(node_id, "node_id")?;
-                        Ok(match kind {
-                            OperationKind::Delete => Operation::Delete { node_id },
-                            OperationKind::Focus => Operation::Focus { node_id },
-                            _ => Operation::ScrollIntoView { node_id },
-                        })
-                    }
-                    OperationKind::ScrollTo => {
-                        let own = &["type", "node_id", "x", "y"];
-                        reject(&element, "element", own)?;
-                        reject(&revision, "expected_input_revision", own)?;
-                        reject(&parent_id, "parent_id", own)?;
-                        reject(&child_id, "child_id", own)?;
-                        reject(&index, "index", own)?;
-                        Ok(Operation::ScrollTo {
-                            node_id: required(node_id, "node_id")?,
-                            x,
-                            y,
-                        })
-                    }
-                }
+                foreign(
+                    present,
+                    kind.members(),
+                    OPERATION_MEMBERS,
+                    kind.member_names(),
+                )?;
+                Ok(match kind {
+                    OperationKind::Create => Operation::Create {
+                        node_id: required(node_id, "node_id")?,
+                        element: required(element, "element")?,
+                    },
+                    OperationKind::Set => Operation::Set {
+                        node_id: required(node_id, "node_id")?,
+                        element: required(element, "element")?,
+                        expected_input_revision: revision,
+                    },
+                    OperationKind::Insert => Operation::Insert {
+                        parent_id: required(parent_id, "parent_id")?,
+                        child_id: required(child_id, "child_id")?,
+                        index: required(index, "index")?,
+                    },
+                    OperationKind::Delete => Operation::Delete {
+                        node_id: required(node_id, "node_id")?,
+                    },
+                    OperationKind::Focus => Operation::Focus {
+                        node_id: required(node_id, "node_id")?,
+                    },
+                    OperationKind::ScrollTo => Operation::ScrollTo {
+                        node_id: required(node_id, "node_id")?,
+                        x,
+                        y,
+                    },
+                    OperationKind::ScrollIntoView => Operation::ScrollIntoView {
+                        node_id: required(node_id, "node_id")?,
+                    },
+                })
             }
         }
         deserializer.deserialize_map(OperationVisitor)

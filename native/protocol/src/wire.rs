@@ -4,35 +4,15 @@ use serde::{de, Deserialize, Deserializer, Serialize};
 use std::fmt;
 
 mod decode;
+#[rustfmt::skip]
+mod schema;
+
+pub use schema::*;
 #[cfg(test)]
 mod oracle_tests;
 
-pub const PROTOCOL_VERSION: u32 = 12;
 pub const MAX_ID: u64 = 9_007_199_254_740_991;
-/// Largest command frame (Bun to host) in UTF-8 JSON bytes, excluding the
-/// newline. One transaction is one batch, so this bounds a full-window mount:
-/// at most `MAX_OPERATIONS` operations plus `MAX_TEXT_BYTES_PER_WINDOW` of
-/// text, which JSON escaping can double. The reader decodes off the UI thread
-/// and returns its buffer to `RETAINED_FRAME_BYTES` after a larger frame.
-pub const MAX_FRAME_BYTES: usize = 16_777_216;
-/// Largest event frame (host to Bun). Events carry at most one text value or
-/// one bounded service result, never a tree.
-pub const MAX_EVENT_FRAME_BYTES: usize = 65_536;
-pub const MAX_TEXT_BYTES: usize = 16_384;
-pub const MAX_TEXT_BYTES_PER_WINDOW: usize = 4_194_304;
-pub const MAX_TITLE_BYTES: usize = 256;
-/// Operations in one batch: four per node of a full window, which covers a
-/// whole-window replacement (deletes, creates, inserts and sets) in one batch.
-pub const MAX_OPERATIONS: usize = 16_384;
-pub const MAX_NODES_PER_WINDOW: usize = 4_096;
 pub(crate) const BATCH_SIZE_MESSAGE: &str = "batch must have between 1 and 16384 operations";
-pub const MAX_WINDOWS: usize = 16;
-pub const MAX_DEPTH: usize = 64;
-/// Overlays nested inside overlays, the outermost counting as one. GPUI
-/// processes each nested deferred layer in its own bounded prepaint round.
-pub const MAX_OVERLAY_DEPTH: usize = 8;
-/// Largest programmatic scroll offset, in logical pixels from the content start.
-pub const MAX_SCROLL_OFFSET: f64 = 1_000_000.;
 
 macro_rules! identifier {
     ($name:ident) => {
@@ -135,77 +115,10 @@ fn non_null_color<'de, D: Deserializer<'de>>(deserializer: D) -> Result<Option<u
     safe_u32(deserializer).map(Some)
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "snake_case")]
-pub enum Direction {
-    Row,
-    Column,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "snake_case")]
-pub enum AlignItems {
-    Start,
-    Center,
-    End,
-    Stretch,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "snake_case")]
-pub enum JustifyContent {
-    Start,
-    Center,
-    End,
-    SpaceBetween,
-    SpaceAround,
-    SpaceEvenly,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "snake_case")]
-pub enum Overflow {
-    Visible,
-    Hidden,
-    ScrollX,
-    ScrollY,
-    Scroll,
-}
-
 impl Overflow {
     pub fn scrolls(self) -> bool {
         matches!(self, Self::ScrollX | Self::ScrollY | Self::Scroll)
     }
-}
-
-/// Which edge a vertical scroll viewport keeps visible as its content changes.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "snake_case")]
-pub enum ScrollAnchor {
-    Start,
-    End,
-}
-
-/// Where an overlay's layer is placed.
-#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "snake_case")]
-pub enum OverlayAnchor {
-    /// A layer covering the whole window viewport, blocking pointer input beneath it.
-    #[default]
-    Window,
-    /// A content-sized layer below its parent's bottom-left corner, kept inside the window.
-    Parent,
-}
-
-/// How arrow keys move focus among an overlay's own controls.
-#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "snake_case")]
-pub enum OverlayNavigation {
-    /// Only Tab and Shift-Tab move focus.
-    #[default]
-    Tab,
-    /// Up/Down/Home/End move a roving focus and printable keys type ahead.
-    Menu,
 }
 
 impl OverlayNavigation {
@@ -216,18 +129,6 @@ impl OverlayNavigation {
 
 fn is_false(value: &bool) -> bool {
     !*value
-}
-
-/// What an overlay paints into. A `window` surface is an owned OS popup
-/// window: it may extend beyond its parent window and is kept on the display.
-#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "snake_case")]
-pub enum OverlaySurface {
-    /// A deferred GPUI layer inside the parent window.
-    #[default]
-    Layer,
-    /// An owned popup window placed below its parent node in screen coordinates.
-    Window,
 }
 
 impl OverlaySurface {
@@ -255,164 +156,6 @@ where
     T: Deserialize<'de>,
 {
     T::deserialize(deserializer).map(Some)
-}
-
-#[derive(Debug, Default, Clone, PartialEq, Serialize, Deserialize)]
-#[serde(deny_unknown_fields)]
-pub struct Style {
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "non_null"
-    )]
-    pub direction: Option<Direction>,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "non_null"
-    )]
-    pub gap: Option<f64>,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "non_null"
-    )]
-    pub padding: Option<f64>,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "non_null"
-    )]
-    pub width: Option<Dimension>,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "non_null"
-    )]
-    pub height: Option<Dimension>,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "non_null"
-    )]
-    pub min_width: Option<f64>,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "non_null"
-    )]
-    pub max_width: Option<f64>,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "non_null"
-    )]
-    pub min_height: Option<f64>,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "non_null"
-    )]
-    pub max_height: Option<f64>,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "non_null"
-    )]
-    pub flex_grow: Option<f64>,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "non_null"
-    )]
-    pub flex_shrink: Option<f64>,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "non_null"
-    )]
-    pub align_items: Option<AlignItems>,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "non_null"
-    )]
-    pub justify_content: Option<JustifyContent>,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "non_null"
-    )]
-    pub overflow: Option<Overflow>,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "non_null"
-    )]
-    pub scroll_anchor: Option<ScrollAnchor>,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "non_null_color"
-    )]
-    pub background: Option<u32>,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "non_null_color"
-    )]
-    pub color: Option<u32>,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "non_null"
-    )]
-    pub font_size: Option<f64>,
-    /// `style_decoration_v1`: one uniform border, in logical pixels.
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "non_null"
-    )]
-    pub border_width: Option<f64>,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "non_null_color"
-    )]
-    pub border_color: Option<u32>,
-    /// `style_decoration_v1`: one radius for all four corners.
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "non_null"
-    )]
-    pub corner_radius: Option<f64>,
-    /// `style_decoration_v1`: multiplies this element and its descendants.
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "non_null"
-    )]
-    pub opacity: Option<f64>,
-    /// `style_decoration_v1`: an inherited 100-900 weight in steps of 100.
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "non_null"
-    )]
-    pub font_weight: Option<f64>,
-}
-
-impl Style {
-    /// Fields an older host rejects as unknown; gated by `style_decoration_v1`.
-    pub fn uses_decoration(&self) -> bool {
-        self.border_width.is_some()
-            || self.border_color.is_some()
-            || self.corner_radius.is_some()
-            || self.opacity.is_some()
-            || self.font_weight.is_some()
-    }
 }
 
 fn half() -> f64 {
@@ -487,29 +230,6 @@ pub enum Element {
         accessible_label: Option<String>,
         style: Style,
     },
-}
-
-/// Main-axis thickness of a split divider, in logical pixels.
-pub const SPLIT_DIVIDER: f64 = 6.;
-
-/// The largest `accessible_set_size` and `accessible_position`.
-pub const MAX_ACCESSIBLE_SET_SIZE: u32 = i32::MAX as u32;
-
-/// `accessibility_lists_v1`: the role a box may declare. A box without one is
-/// layout only and has no accessible node.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "snake_case")]
-pub enum AccessibleRole {
-    List,
-    ListItem,
-}
-
-/// `accessibility_lists_v1`: how urgently a live text node is announced.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "snake_case")]
-pub enum Live {
-    Polite,
-    Assertive,
 }
 
 /// `accessibility_lists_v1` members of a box. A list's `accessible_set_size`
@@ -810,175 +530,6 @@ pub enum Command {
     Shutdown {
         id: RequestId,
     },
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "snake_case")]
-pub enum ErrorCode {
-    InvalidCommand,
-    VersionMismatch,
-    InvalidState,
-    InvalidHandle,
-    StaleRevision,
-    LimitExceeded,
-    NativeFailure,
-    PermissionDenied,
-    ServiceUnavailable,
-    Cancelled,
-    OperationTimedOut,
-    PayloadTooLarge,
-    Conflict,
-    NotFound,
-    AlreadyExists,
-    PathDenied,
-    WrongKind,
-    NotEmpty,
-    AccessDenied,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "snake_case")]
-pub enum Capability {
-    Tree,
-    InputRevisions,
-    LayoutV1,
-    InteractionsV1,
-    WindowDisplayV1,
-    ClipboardTextV1,
-    GlobalShortcutsV1,
-    NotificationsV1,
-    FilesystemGrantsV1,
-    ProcessesV1,
-    SplitV1,
-    StyleDecorationV1,
-    /// Snapshots carry the display's work area (macOS, Windows).
-    DisplayDetailsV1,
-    /// Owned windows report `display_changed` (macOS, Windows, Linux Wayland).
-    DisplayChangesV1,
-    FileDialogsV1,
-    OverlaysV1,
-    ScrollAnchorV1,
-    FocusV1,
-    ScrollControlV1,
-    OverlayKeyboardV1,
-    PopupWindowsV1,
-    DragDropFilesV1,
-    InputStatesV1,
-    /// A native application menu bar (macOS).
-    AppMenuV1,
-    /// Owned OS message dialogs (Windows task dialogs, macOS alert sheets).
-    TaskDialogsV1,
-    /// OS context menus at a window point (macOS `NSMenu`, Windows popup menus).
-    ContextMenusV1,
-    /// The split divider is a keyboard Tab stop and reports `split_resize`.
-    SplitResizeV1,
-    /// Every element kind has an accessibility role, and overlays and splits
-    /// accept an `accessible_label`.
-    AccessibilityV1,
-    /// Boxes accept list and list-item roles with set size, position and
-    /// selection, and text nodes accept `accessible_live`.
-    AccessibilityListsV1,
-    /// Snapshots carry the platform display UUID when the backend names the
-    /// display (macOS, Windows, Linux Wayland).
-    DisplayIdentityV1,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(deny_unknown_fields)]
-pub struct Limits {
-    pub max_frame_bytes: usize,
-    pub max_operations: usize,
-    pub max_nodes_per_window: usize,
-    pub max_windows: usize,
-    pub max_depth: usize,
-    pub max_text_bytes: usize,
-    pub max_text_bytes_per_window: usize,
-    pub max_clipboard_bytes: usize,
-    pub max_service_requests: usize,
-    pub max_global_shortcuts: usize,
-    pub max_notifications: usize,
-    pub max_file_grants: usize,
-    pub max_file_chunk_bytes: usize,
-    pub max_processes: usize,
-    pub max_drop_targets: usize,
-    pub max_drop_items: usize,
-}
-
-impl Default for Limits {
-    fn default() -> Self {
-        Self {
-            max_frame_bytes: MAX_FRAME_BYTES,
-            max_operations: MAX_OPERATIONS,
-            max_nodes_per_window: MAX_NODES_PER_WINDOW,
-            max_windows: MAX_WINDOWS,
-            max_depth: MAX_DEPTH,
-            max_text_bytes: MAX_TEXT_BYTES,
-            max_text_bytes_per_window: MAX_TEXT_BYTES_PER_WINDOW,
-            max_clipboard_bytes: crate::MAX_CLIPBOARD_BYTES,
-            max_service_requests: crate::MAX_SERVICE_REQUESTS,
-            max_global_shortcuts: crate::MAX_GLOBAL_SHORTCUTS,
-            max_notifications: crate::MAX_NOTIFICATIONS,
-            max_file_grants: crate::MAX_FILE_GRANTS,
-            max_file_chunk_bytes: crate::MAX_FILE_CHUNK_BYTES,
-            max_processes: crate::MAX_PROCESSES,
-            max_drop_targets: crate::MAX_DROP_TARGETS,
-            max_drop_items: crate::MAX_DROP_ITEMS,
-        }
-    }
-}
-
-impl Limits {
-    /// Advertised limits may only narrow the protocol defaults, never widen or
-    /// disable a resource (the TypeScript reader bounds each to `1..=default`).
-    pub fn validate(&self) -> Result<(), &'static str> {
-        let Self {
-            max_frame_bytes,
-            max_operations,
-            max_nodes_per_window,
-            max_windows,
-            max_depth,
-            max_text_bytes,
-            max_text_bytes_per_window,
-            max_clipboard_bytes,
-            max_service_requests,
-            max_global_shortcuts,
-            max_notifications,
-            max_file_grants,
-            max_file_chunk_bytes,
-            max_processes,
-            max_drop_targets,
-            max_drop_items,
-        } = *self;
-        let defaults = Self::default();
-        let pairs = [
-            (max_frame_bytes, defaults.max_frame_bytes),
-            (max_operations, defaults.max_operations),
-            (max_nodes_per_window, defaults.max_nodes_per_window),
-            (max_windows, defaults.max_windows),
-            (max_depth, defaults.max_depth),
-            (max_text_bytes, defaults.max_text_bytes),
-            (
-                max_text_bytes_per_window,
-                defaults.max_text_bytes_per_window,
-            ),
-            (max_clipboard_bytes, defaults.max_clipboard_bytes),
-            (max_service_requests, defaults.max_service_requests),
-            (max_global_shortcuts, defaults.max_global_shortcuts),
-            (max_notifications, defaults.max_notifications),
-            (max_file_grants, defaults.max_file_grants),
-            (max_file_chunk_bytes, defaults.max_file_chunk_bytes),
-            (max_processes, defaults.max_processes),
-            (max_drop_targets, defaults.max_drop_targets),
-            (max_drop_items, defaults.max_drop_items),
-        ];
-        if pairs
-            .into_iter()
-            .any(|(value, default)| value == 0 || value > default)
-        {
-            return Err("ready limits must be between 1 and the protocol default");
-        }
-        Ok(())
-    }
 }
 
 impl Command {
@@ -1297,41 +848,9 @@ impl Element {
 }
 
 impl Style {
+    /// The schema's per-field bounds, then the rules between fields.
     pub fn validate(&self) -> Result<(), &'static str> {
-        for value in [self.gap, self.padding].into_iter().flatten() {
-            bounded(
-                value,
-                0.,
-                4_096.,
-                "gap and padding must be between 0 and 4096 pixels",
-            )?;
-        }
-        for dimension in [self.width, self.height].into_iter().flatten() {
-            if let Dimension::Pixels(value) = dimension {
-                bounded(
-                    value,
-                    0.,
-                    16_384.,
-                    "dimensions must be between 0 and 16384 pixels",
-                )?;
-            }
-        }
-        for value in [
-            self.min_width,
-            self.max_width,
-            self.min_height,
-            self.max_height,
-        ]
-        .into_iter()
-        .flatten()
-        {
-            bounded(
-                value,
-                0.,
-                16_384.,
-                "size constraints must be between 0 and 16384 pixels",
-            )?;
-        }
+        self.validate_fields()?;
         for (minimum, maximum) in [
             (self.min_width, self.max_width),
             (self.min_height, self.max_height),
@@ -1343,58 +862,10 @@ impl Style {
                 return Err("minimum size must not exceed maximum size");
             }
         }
-        for value in [self.flex_grow, self.flex_shrink].into_iter().flatten() {
-            bounded(value, 0., 1_000., "flex factors must be between 0 and 1000")?;
-        }
         if self.scroll_anchor.is_some()
             && !matches!(self.overflow, Some(Overflow::ScrollY | Overflow::Scroll))
         {
             return Err("scroll_anchor requires vertical scrolling overflow");
-        }
-        if let Some(value) = self.font_size {
-            bounded(
-                value,
-                1.,
-                512.,
-                "font_size must be between 1 and 512 pixels",
-            )?;
-        }
-        if let Some(value) = self.border_width {
-            bounded(
-                value,
-                0.,
-                64.,
-                "border_width must be between 0 and 64 pixels",
-            )?;
-        }
-        if let Some(value) = self.corner_radius {
-            bounded(
-                value,
-                0.,
-                4_096.,
-                "corner_radius must be between 0 and 4096 pixels",
-            )?;
-        }
-        if let Some(value) = self.opacity {
-            bounded(value, 0., 1., "opacity must be between 0 and 1")?;
-        }
-        if let Some(value) = self.font_weight {
-            bounded(
-                value,
-                100.,
-                900.,
-                "font_weight must be 100-900 in steps of 100",
-            )?;
-            if value % 100. != 0. {
-                return Err("font_weight must be 100-900 in steps of 100");
-            }
-        }
-        if [self.background, self.color, self.border_color]
-            .into_iter()
-            .flatten()
-            .any(|value| value > 0xff_ffff)
-        {
-            return Err("colors must be unsigned 24-bit RGB values");
         }
         Ok(())
     }

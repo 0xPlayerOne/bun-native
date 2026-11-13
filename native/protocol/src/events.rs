@@ -1,14 +1,13 @@
 //! Native event payloads carry the committed ownership route, never callbacks.
 
 use crate::{
-    validate_text, Capability, ClipboardText, DialogId, DisplaySnapshot, ErrorCode, EventSequence,
-    FileDialogResult, Limits, NodeId, NotificationDismissal, NotificationId, RequestId,
-    ServicePolicy, ShortcutId, WindowId, MAX_DEPTH, MAX_ID,
+    validate_text, Capability, ClipboardText, DialogId, DismissReason, DisplaySnapshot, ErrorCode,
+    EventSequence, FileDialogResult, Limits, NodeId, NotificationDismissal, NotificationId,
+    PointerButton, RequestId, ResizeSource, ServicePolicy, ShortcutId, WindowId, MAX_DEPTH, MAX_ID,
+    MAX_KEY_BYTES, MAX_POINTER_COORDINATE,
 };
 use serde::{Deserialize, Serialize};
 
-pub const MAX_KEY_BYTES: usize = 256;
-pub const MAX_POINTER_COORDINATE: f64 = 1_048_576.;
 pub const MAX_EVENT_PATH_NODES: usize = MAX_DEPTH + 1;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -19,32 +18,6 @@ pub struct KeyModifiers {
     pub shift: bool,
     pub platform: bool,
     pub function: bool,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "snake_case")]
-pub enum PointerButton {
-    Left,
-    Right,
-    Middle,
-    Back,
-    Forward,
-}
-
-/// Why the host requests a popup dismissal.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "snake_case")]
-pub enum DismissReason {
-    /// The popup's parent window stopped being the active window.
-    WindowBlur,
-}
-
-/// What moved a split divider (`split_resize_v1`).
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "snake_case")]
-pub enum ResizeSource {
-    Pointer,
-    Keyboard,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]

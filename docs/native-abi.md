@@ -46,10 +46,19 @@ operations, and `overlay_keyboard_v1` adds the overlay `autofocus` and
 the overlay field `surface: "window"` and the routed `dismiss` event described
 in [popup windows](native-overlays.md#popup-windows-beyond-the-parent-window).
 
-The authoritative schemas and validators are
+The protocol's shared names and bounds have one source,
+[`packages/protocol/schema/wire.json`](../packages/protocol/schema/wire.json):
+the version, constants and `ready` limits, every enum, each style field's type
+and range, and the members of every element kind, operation, command and event.
+`bun run generate:schema` writes it into
+[`wire-schema.ts`](../packages/protocol/src/wire-schema.ts) and
+[`wire/schema.rs`](../native/protocol/src/wire/schema.rs), and
+`bun run check:schema` (also a test) fails while either is stale. Rust tests
+compare the derived command and event types with the schema, and a type test
+does the same for the TypeScript unions. The validators that interpret it are
 [`packages/protocol/src/messages.ts`](../packages/protocol/src/messages.ts),
-[`elements.ts`](../packages/protocol/src/elements.ts), and
-[`native/protocol/src/wire.rs`](../native/protocol/src/wire.rs), and
+[`elements.ts`](../packages/protocol/src/elements.ts),
+[`native/protocol/src/wire.rs`](../native/protocol/src/wire.rs) and
 [`events.rs`](../native/protocol/src/events.rs). The
 [Rust model](../native/protocol/src/tree.rs) independently validates mutations.
 This document explains their ownership and ordering rules; it is not a second

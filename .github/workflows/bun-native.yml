@@ -99,6 +99,7 @@ jobs:
           bun run check:boundaries
           bun run check:health
           bun run check:duplicates
+          bun run check:schema
           bun run build
       - name: Code-health summary
         if: ${{ !cancelled() }}

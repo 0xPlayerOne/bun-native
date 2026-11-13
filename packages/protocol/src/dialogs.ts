@@ -1,18 +1,16 @@
 import { ProtocolError } from './framing.ts'
 import { fields, keys, object, string } from './values.ts'
-
-/** Live file dialogs per session. Each window owns at most one at a time. */
-export const MAX_FILE_DIALOGS = 16
-export const MAX_DIALOG_TITLE_BYTES = 256
-export const MAX_DIALOG_LABEL_BYTES = 64
-export const MAX_DIALOG_PATH_BYTES = 4_096
-export const MAX_DIALOG_NAME_BYTES = 255
-export const MAX_DIALOG_FILTERS = 16
-export const MAX_DIALOG_FILTER_PATTERNS = 16
-export const MAX_DIALOG_FILTER_NAME_BYTES = 128
-export const MAX_DIALOG_PATTERN_BYTES = 64
-/** Selected paths in one result. The whole result must also fit one frame. */
-export const MAX_DIALOG_PATHS = 256
+import {
+  MAX_DIALOG_FILTERS,
+  MAX_DIALOG_FILTER_NAME_BYTES,
+  MAX_DIALOG_FILTER_PATTERNS,
+  MAX_DIALOG_LABEL_BYTES,
+  MAX_DIALOG_NAME_BYTES,
+  MAX_DIALOG_PATHS,
+  MAX_DIALOG_PATH_BYTES,
+  MAX_DIALOG_PATTERN_BYTES,
+  MAX_DIALOG_TITLE_BYTES,
+} from './wire-schema.ts'
 
 export const FILE_DIALOG_MODES = Object.freeze([
   'open_file',
