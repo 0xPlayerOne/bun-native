@@ -18,6 +18,7 @@
 # nonce per run. In SESSION_COMMAND the word {app} becomes the run's
 # application command; without a SESSION_COMMAND the application runs directly.
 set -euo pipefail
+# Empty arrays use ${a[@]+"${a[@]}"}: bash 3.2 (macOS) treats them as unset under -u.
 
 usage() {
   sed -n '5,20p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//' >&2
@@ -77,7 +78,7 @@ for mode in $modes; do
       ;;
   esac
   nonce=''
-  if [[ "${environment_templates[*]} ${session_template[*]}" == *'{nonce}'* ]]; then
+  if [[ "${environment_templates[*]-} ${session_template[*]}" == *'{nonce}'* ]]; then
     nonce=$(python3 -c 'import secrets; print(secrets.token_hex(16))')
   fi
   evidence=''
@@ -90,7 +91,7 @@ for mode in $modes; do
   }
   evidence="$NATIVE_EVIDENCE/$(expand "$evidence_template")"
   environment=()
-  for pair in "${environment_templates[@]}"; do
+  for pair in ${environment_templates[@]+"${environment_templates[@]}"}; do
     environment+=("$(expand "$pair")")
   done
   command=()
@@ -101,7 +102,7 @@ for mode in $modes; do
       command+=("$(expand "$word")")
     fi
   done
-  run=(env "${environment[@]}" bash "$here/native-x11-session.sh" "${screens[@]}"
+  run=(env ${environment[@]+"${environment[@]}"} bash "$here/native-x11-session.sh" ${screens[@]+"${screens[@]}"}
     "$evidence-session" -- "${command[@]}")
   if (( run_log )); then
     mkdir "$evidence"
@@ -109,7 +110,7 @@ for mode in $modes; do
   else
     "${run[@]}"
   fi
-  for file in "${required[@]}"; do
+  for file in ${required[@]+"${required[@]}"}; do
     if [[ ! -s "$evidence/$file" ]]; then
       echo "::error::The $mode run of $entry left no $evidence/$file" >&2
       exit 1
