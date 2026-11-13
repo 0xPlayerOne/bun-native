@@ -75,7 +75,7 @@ Linux x64 with Xvfb and llvmpipe only.
 | [`solid/`](solid/README.md)                                                                  | Shared core/Solid/React workload and the matched core/Solid runner |
 | [`adapters/`](adapters/README.md)                                                            | Headless React workspace mount/update micro benchmark              |
 | [`protocol/`](protocol/README.md)                                                            | Protocol command/event encode and decode micro benchmark           |
-| [`core/`](core/README.md)                                                                    | Core event delivery fan-out micro benchmark                        |
+| [`core/`](core/README.md)                                                                    | Core event delivery and commit path micro benchmarks               |
 | [`retention/`](retention/README.md)                                                          | Fixed-checkpoint retention research                                |
 | [`native-allocations/`](native-allocations/README.md)                                        | Selected native allocation diagnostic                              |
 | [`results/`](results/README.md), [`evidence/`](evidence/README.md)                           | Retained hosted and local result records                           |

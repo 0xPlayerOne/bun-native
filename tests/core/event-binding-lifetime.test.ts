@@ -42,7 +42,7 @@ for (const reason of ['unsubscribe', 'replace', 'remove-node', 'clear'] as const
       bindings.register(1, node, 'click', () => {
         calls += 10
       })
-    else if (reason === 'remove-node') bindings.retain(new Map())
+    else if (reason === 'remove-node') bindings.forget(new Set([1]))
     else bindings.clear()
     expect(binding.controller.signal.aborted).toBe(true)
     expect(observed).toBeUndefined()
@@ -57,6 +57,29 @@ for (const reason of ['unsubscribe', 'replace', 'remove-node', 'clear'] as const
     }
     bindings.clear()
   })
+
+test('forgetting removed nodes touches only their bindings and plans', () => {
+  let changes = 0
+  const bindings = new EventBindings(() => {
+    changes++
+  })
+  const other = Object.freeze({ kind: 'button' }) as NativeNode<'button'>
+  bindings.register(1, node, 'click', () => {})
+  bindings.register(2, other, 'click', () => {})
+  const plan = prepare(bindings)
+  const before = changes
+  // No removal, or removed nodes without bindings or plans, change nothing.
+  bindings.forget(new Set())
+  bindings.forget(new Set([3]))
+  expect(changes).toBe(before)
+  expect(bindings.size).toBe(2)
+  bindings.forget(new Set([1]))
+  expect(changes).toBe(before + 1)
+  expect(bindings.size).toBe(1)
+  expect(plan.cancellation.signal.aborted).toBe(true)
+  bindings.release(plan)
+  bindings.clear()
+})
 
 test('an abort handler can replace a replacement without reviving old callback ownership', async () => {
   const bindings = new EventBindings(() => {})

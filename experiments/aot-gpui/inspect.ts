@@ -8,14 +8,15 @@ const offsetsSize = 32
 const moduleRecordSize = 52
 const compiledProgramFlag = 1 << 14
 
-export function inspectBunExecutable(path: string): {
+/** Inspect an executable by path, or bytes a caller already read. */
+export function inspectBunExecutable(source: string | Buffer): {
   format: 'elf' | 'macho' | 'pe'
   payloadOffset: number
   payloadBytes: number
   flags: number
   hasCompiledProgram: boolean
 } {
-  const bytes = readFileSync(path)
+  const bytes = typeof source === 'string' ? readFileSync(source) : source
   const magic = bytes.length >= 4 ? bytes.readUInt32LE(0) : 0
   const format =
     magic === 0x464c457f

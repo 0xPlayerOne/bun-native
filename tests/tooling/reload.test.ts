@@ -414,17 +414,16 @@ describe('development remounts (real Bun processes and headless protocol peer, n
     let hold = false
     let held = false
     let scanSignal: AbortSignal | undefined
-    let stream: fs.ReadStream | undefined
+    let entryRead = false
     const delayed = Promise.withResolvers<void>()
-    const read = fs.createReadStream
-    const reading = spyOn(fs, 'createReadStream').mockImplementation((filename, options) => {
-      const result = read(filename, options)
-      if (hold && filename === project.entry) {
-        stream = result
-        result.once('close', () => events.push('stream-closed'))
+    const file = Bun.file
+    const reading = spyOn(Bun, 'file').mockImplementation(((filename: string) => {
+      if (hold && filename === project.entry && !entryRead) {
+        entryRead = true
+        events.push('entry-read')
       }
-      return result
-    })
+      return file(filename)
+    }) as typeof Bun.file)
     const fingerprint = inputs.projectFingerprint
     const scanning = spyOn(inputs, 'projectFingerprint').mockImplementation(
       async (directory, signal) => {
@@ -434,8 +433,8 @@ describe('development remounts (real Bun processes and headless protocol peer, n
           held = true
           events.push('scan-held')
           try {
-            // Hold only the result boundary after the real file scan closes its
-            // stream. Active stream cancellation is tested in watch-inputs.test.
+            // Hold only the result boundary after the real file scan has read
+            // every input. In-flight cancellation is tested in watch-inputs.test.
             await delayed.promise
           } finally {
             events.push('scan-settled')
@@ -465,7 +464,7 @@ describe('development remounts (real Bun processes and headless protocol peer, n
             original.replaceAll('Bun Native React', 'Pending source scan')
           )
           await until(() => held, 'real source scan held before settlement')
-          expect(stream?.closed).toBe(true)
+          expect(entryRead).toBe(true)
           process.emit('SIGTERM')
           await until(
             () => scanSignal?.aborted === true && process.listenerCount('SIGTERM') === signals,
@@ -490,7 +489,7 @@ describe('development remounts (real Bun processes and headless protocol peer, n
           expect(isAlive(ready.pid)).toBe(false)
           expect(existsSync(dirname(dirname(ready.bundle)))).toBe(false)
           expect(errors).toEqual([])
-          expect(events).toEqual(['stream-closed', 'scan-held', 'scan-settled', 'watch-finished'])
+          expect(events).toEqual(['entry-read', 'scan-held', 'scan-settled', 'watch-finished'])
           assertJoined(lifetimes().slice(start), 1)
         } finally {
           delayed.resolve()

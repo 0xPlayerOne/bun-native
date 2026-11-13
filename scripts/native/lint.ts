@@ -38,6 +38,6 @@ export function lintArguments(project: Project): string[] {
   return args
 }
 
-export function lintProject(project: Project): QualityStep {
-  return { name: 'lint', ...runQualityStep(project, lintArguments(project)) }
+export async function lintProject(project: Project): Promise<QualityStep> {
+  return { name: 'lint', ...(await runQualityStep(project, lintArguments(project))) }
 }

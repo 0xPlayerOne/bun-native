@@ -56,6 +56,8 @@ describe('AOT compiler wrapper (controlled compiler and inspector results)', () 
   test('rejects outputs without a compiled program or with the JIT compiler retained', () => {
     mkdirSync(join(directory, 'inspected-compile'))
     const output = join(directory, 'inspected-compile', 'application')
+    // The controlled compiler "writes" inert bytes; the inspectors below decide.
+    writeFileSync(output, 'inert executable bytes')
     const spawn = spyOn(Bun, 'spawnSync').mockImplementation(
       () => ({ exitCode: 0, stdout: Buffer.alloc(0), stderr: Buffer.alloc(0) }) as never
     )

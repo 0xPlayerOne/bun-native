@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs'
 import { isAbsolute } from 'node:path'
 import { parseArgs } from 'node:util'
+import { commandRunner, type Runner } from '../native/process.ts'
 import { sha256 } from './host-reproducibility.ts'
 
 /**
@@ -29,17 +30,9 @@ export type ProvenancePolicy = {
   sourceDigest: string
 }
 
-type Command = { exitCode: number; stdout: string; stderr: string }
-export type Runner = (command: string[]) => Command
+export type { Runner } from '../native/process.ts'
 
-export const runCommand: Runner = (command) => {
-  const result = Bun.spawnSync(command, { stdout: 'pipe', stderr: 'pipe', timeout: 300_000 })
-  return {
-    exitCode: result.exitCode ?? 1,
-    stdout: result.stdout.toString(),
-    stderr: result.stderr.toString(),
-  }
-}
+export const runCommand: Runner = commandRunner(300_000)
 
 export function verifyCommand(policy: ProvenancePolicy): string[] {
   return [

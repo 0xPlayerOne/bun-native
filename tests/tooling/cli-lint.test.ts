@@ -109,13 +109,13 @@ describe('native lint (real pinned oxlint)', () => {
       writeFileSync(join(project, 'legacy.js'), 'export var legacy = 1\n')
       const loaded = await readProject(repository, project)
       expect(lintArguments(loaded)).toContain(templateLinterConfig)
-      expect(lintProject(loaded).exitCode).toBe(0)
+      expect((await lintProject(loaded)).exitCode).toBe(0)
       writeFileSync(
         join(project, '.oxlintrc.json'),
         JSON.stringify({ rules: { 'no-var': 'error' } }) + '\n'
       )
       expect(lintArguments(loaded)).not.toContain(templateLinterConfig)
-      const step = lintProject(loaded)
+      const step = await lintProject(loaded)
       expect(step.exitCode).toBe(1)
       expect(step.output).toContain('legacy.js:1:8:')
       expect(step.output).toContain('eslint(no-var)')
@@ -142,8 +142,8 @@ describe('native lint (real pinned oxlint)', () => {
       }
       expect(lintArguments(unpackaged)).not.toContain('vendor/**')
       expect(lintArguments(standalone)).toContain('vendor/**')
-      expect(lintProject(standalone)).toMatchObject({ name: 'lint', exitCode: 0, output: '' })
-      const linted = lintProject(unpackaged)
+      expect(await lintProject(standalone)).toMatchObject({ name: 'lint', exitCode: 0, output: '' })
+      const linted = await lintProject(unpackaged)
       expect(linted.exitCode).toBe(1)
       expect(linted.output).toContain('vendor/bun-native/bad.ts:2:3:')
     } finally {

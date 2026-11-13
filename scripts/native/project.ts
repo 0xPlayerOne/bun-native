@@ -1,9 +1,9 @@
 import { mkdir, realpath, rm, stat, writeFile } from 'node:fs/promises'
 import { basename, dirname, isAbsolute, join, relative, resolve, sep } from 'node:path'
 import { inside } from './paths.ts'
-import { readPackageSet, verifyInstalledPackages } from './package-set.ts'
-import { fileDigest, type FileDigest } from './artifact.ts'
-import { copyPackageSet, standaloneFiles } from './standalone.ts'
+import type { FileDigest } from './artifact.ts'
+// Package-set modules (archive parsing, gzip, lock checks) load only for standalone
+// projects; checkout projects never need them.
 
 export type Framework = 'solid' | 'react'
 export type Language = 'typescript' | 'javascript'
@@ -123,7 +123,10 @@ export async function createProject(
   language: Language,
   packages?: string
 ): Promise<string> {
-  const set = packages === undefined ? undefined : await readPackageSet(packages)
+  const set =
+    packages === undefined
+      ? undefined
+      : await (await import('./package-set.ts')).readPackageSet(packages)
   const root = await realpath(repository)
   const directory = resolve(destination)
   if (!set && !inside(root, directory))
@@ -188,6 +191,7 @@ export async function createProject(
       [entry]: template(framework, language),
     }
     if (set) {
+      const { copyPackageSet, standaloneFiles } = await import('./standalone.ts')
       Object.assign(files, standaloneFiles(set, framework, entry, basename(directory)))
       await copyPackageSet(set, directory)
     }
@@ -200,7 +204,20 @@ export async function createProject(
   }
 }
 
-export async function readProject(repository: string, path: string): Promise<Project> {
+export type ReadProjectOptions = {
+  /**
+   * `full` (the default) re-verifies a standalone package set completely. `stamp`
+   * accepts the last full verification while no verified path changed; see
+   * package-stamp.ts. Use it only for commands that never ship an artifact.
+   */
+  verification?: 'full' | 'stamp'
+}
+
+export async function readProject(
+  repository: string,
+  path: string,
+  options: ReadProjectOptions = {}
+): Promise<Project> {
   const root = await realpath(repository)
   const directory = await realpath(path)
   const value: unknown = await Bun.file(join(directory, 'bun-native.json')).json()
@@ -229,22 +246,14 @@ export async function readProject(repository: string, path: string): Promise<Pro
     const manifestPath = await realpath(join(directory, config['packageSet']))
     if (!inside(directory, manifestPath))
       throw new Error('Project packageSet resolves outside the project')
-    const set = await readPackageSet(manifestPath)
-    await verifyInstalledPackages(
+    const { verifyStandalone } = await import('./package-stamp.ts')
+    const packageSet = await verifyStandalone(
       directory,
-      set.manifest,
+      manifestPath,
       config['framework'],
-      relative(directory, set.directory).split(sep).join('/')
+      options.verification === 'stamp'
     )
-    return {
-      directory,
-      framework: config['framework'],
-      entry,
-      packageSet: {
-        source: { commit: set.manifest.source.commit, tree: set.manifest.source.tree },
-        manifest: await fileDigest(manifestPath),
-      },
-    }
+    return { directory, framework: config['framework'], entry, packageSet }
   }
   if (!inside(root, directory)) throw new Error('Project must be inside this Bun Native checkout')
   return { directory, framework: config['framework'], entry }

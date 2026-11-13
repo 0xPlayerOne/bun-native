@@ -3,6 +3,7 @@ import { existsSync, readdirSync } from 'node:fs'
 import { lstat, open, readdir, readFile, rename, writeFile } from 'node:fs/promises'
 import { join, resolve, sep } from 'node:path'
 import { fileDigest, type FileDigest } from './artifact.ts'
+import { commandRunner, type Command, type Runner } from './process.ts'
 import { parseUpdateManifest, type UpdateManifest } from './update-manifest.ts'
 
 /**
@@ -14,17 +15,9 @@ import { parseUpdateManifest, type UpdateManifest } from './update-manifest.ts'
  * module never reads key material. Every command goes through a `Runner`, which lets the
  * argument construction and manifest rewriting be tested where the tools do not exist.
  */
-export type Command = { exitCode: number; stdout: string; stderr: string }
-export type Runner = (command: string[]) => Command
+export type { Command, Runner } from './process.ts'
 
-export const runCommand: Runner = (command) => {
-  const result = Bun.spawnSync(command, { stdout: 'pipe', stderr: 'pipe', timeout: 900_000 })
-  return {
-    exitCode: result.exitCode ?? 1,
-    stdout: result.stdout.toString(),
-    stderr: result.stderr.toString(),
-  }
-}
+export const runCommand: Runner = commandRunner(900_000)
 
 export type SigningIdentity =
   | {

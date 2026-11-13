@@ -218,8 +218,9 @@ function overlappingMappings(table: Section[], start: bigint, length: bigint): S
   )
 }
 
-export function inspectBunRuntime(path: string) {
-  const bytes = readFileSync(path)
+/** Inspect an executable by path, or bytes a caller already read. */
+export function inspectBunRuntime(source: string | Buffer) {
+  const bytes = typeof source === 'string' ? readFileSync(source) : source
   const { format, name, table } = imageSections(bytes)
   const candidates = table.filter((section) => section.name === name)
   const section = candidates[0]

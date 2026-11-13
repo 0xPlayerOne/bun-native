@@ -198,13 +198,67 @@ export async function checkSourceHealth(root: string): Promise<string[]> {
   return errors.sort()
 }
 
+/** Directories whose modules may import repository scripts; tests count as consumers. */
+const scriptConsumers = ['scripts', 'tests', 'benchmarks', 'experiments', 'examples']
+
+/**
+ * Value exports of `scripts/**` that no other module imports. Scripts have many
+ * entry points (package.json, workflows, Python harnesses), so this checks only
+ * exports: a value used solely inside its own module should not be exported.
+ */
+export async function checkScriptExports(root: string): Promise<string[]> {
+  const files = new Set<string>()
+  for (const directory of scriptConsumers) {
+    for (const file of await sourceFiles(resolve(root, directory)).catch(() => []))
+      if (!file.split(sep).includes('node_modules')) files.add(file)
+  }
+  const scripts = resolve(root, 'scripts') + sep
+  const ignored: string[] = []
+  const sources = new Map<string, Source>()
+  await Promise.all(
+    [...files].map(async (file) => {
+      const text = await Bun.file(file).text()
+      // Outside scripts/, only a module that names a scripts/ path can import one.
+      if (file.startsWith(scripts) || text.includes('scripts/'))
+        sources.set(file, inspectSource(file, text, files, root, ignored))
+    })
+  )
+  // Edges to modules that were not parsed cannot reach a script export.
+  for (const source of sources.values())
+    source.edges = source.edges.filter((edge) => sources.has(edge.target))
+  const visible = exportedNames(sources)
+  const imported = new Map<string, Set<string>>()
+  for (const [file, source] of sources)
+    for (const edge of source.edges) {
+      if (edge.target === file) continue
+      const names = imported.get(edge.target) ?? new Set<string>()
+      for (const name of edge.names === 'all' || edge.names === 'star'
+        ? visible.get(edge.target)!
+        : edge.names)
+        names.add(name)
+      imported.set(edge.target, names)
+    }
+  const errors: string[] = []
+  for (const [file, source] of sources) {
+    if (!file.startsWith(scripts)) continue
+    for (const name of source.values)
+      if (!imported.get(file)?.has(name))
+        errors.push(`${portable(relative(root, file))}: unused script export ${name}`)
+  }
+  return errors.sort()
+}
+
 if (import.meta.main) {
-  const errors = await checkSourceHealth(resolve(import.meta.dir, '../..'))
+  const root = resolve(import.meta.dir, '../..')
+  const errors = [...(await checkSourceHealth(root)), ...(await checkScriptExports(root))]
   if (errors.length) {
     console.error(errors.join('\n'))
     console.error(
       'Remove stale source/exports or connect the intended public entry; rerun bun run check:health'
     )
     process.exitCode = 1
-  } else console.log('Production package source reachability and internal value exports verified')
+  } else
+    console.log(
+      'Production package source reachability, internal value exports and script exports verified'
+    )
 }

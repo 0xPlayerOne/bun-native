@@ -13,7 +13,11 @@
         "version": "1.4.4-canary.20261105.1+b1007f1",
         "url": "https://registry.npmjs.org/@oven/bun-linux-x64/-/bun-linux-x64-1.4.4-canary.20261105.1.tgz",
         "integrity": "sha512-eJqVFA3brmF4UPBynqjPbQEKvId1TvdThVuYUmtP4J/VVs42iKOd6M7mfp4DnRd4sOqY7FClDaPf04J4tun5Gw==",
-        "unpackedSize": 140680988
+        "unpackedSize": 140680988,
+        "executable": {
+          "bytes": 140680448,
+          "sha256": "8f55345e8a878f2b4f9b233184ffa424fdd67667fa70c16b1f11a1ae8387e9ab"
+        }
       },
       "linux-arm64": {
         "name": "@oven/bun-linux-aarch64",

@@ -1,5 +1,4 @@
 import { expect, spyOn, test } from 'bun:test'
-import * as fs from 'node:fs'
 import { mkdirSync, mkdtempSync, renameSync, rmSync, symlinkSync, writeFileSync } from 'node:fs'
 import * as promises from 'node:fs/promises'
 import { tmpdir } from 'node:os'
@@ -77,11 +76,11 @@ test('a file removed after enumeration is absent; later recreation has a new fin
     const empty = await projectFingerprint(path)
     const source = join(path, 'main.ts')
     writeFileSync(source, 'export const value = 1\n')
-    const read = fs.createReadStream
-    const observed = spyOn(fs, 'createReadStream').mockImplementation((filename, options) => {
+    const file = Bun.file
+    const observed = spyOn(Bun, 'file').mockImplementation(((filename: string) => {
       if (filename === source) rmSync(source)
-      return read(filename, options)
-    })
+      return file(filename)
+    }) as typeof Bun.file)
     try {
       expect(await projectFingerprint(path)).toBe(empty)
     } finally {
@@ -115,22 +114,25 @@ test('a vanished directory is absent, while unrelated IO failures propagate', as
   })
 })
 
-test('cancelling an in-flight source stream joins its destruction and rejects the snapshot', async () => {
+test('cancelling during the concurrent reads rejects the snapshot', async () => {
   await fixture(async (path) => {
-    writeFileSync(join(path, 'main.ts'), Buffer.alloc(256 * 1024, 'a'))
+    for (const name of ['a.ts', 'b.ts', 'c.ts'])
+      writeFileSync(join(path, name), Buffer.alloc(256 * 1024, 'a'))
     const controller = new AbortController()
-    const read = fs.createReadStream
-    let stream: fs.ReadStream | undefined
-    const observed = spyOn(fs, 'createReadStream').mockImplementation((filename, options) => {
-      stream = read(filename, options)
-      stream.once('data', () => controller.abort())
-      return stream
-    })
+    const file = Bun.file
+    let reads = 0
+    const observed = spyOn(Bun, 'file').mockImplementation(((filename: string) => {
+      reads += 1
+      controller.abort()
+      return file(filename)
+    }) as typeof Bun.file)
     try {
       await expect(projectFingerprint(path, controller.signal)).rejects.toThrow()
-      expect(stream?.destroyed).toBe(true)
-      expect(stream?.closed).toBe(true)
+      expect(reads).toBeGreaterThan(0)
+      reads = 0
+      // An already cancelled scan reads nothing.
       await expect(projectFingerprint(path, controller.signal)).rejects.toThrow()
+      expect(reads).toBe(0)
     } finally {
       observed.mockRestore()
     }

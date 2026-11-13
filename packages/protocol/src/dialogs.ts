@@ -1,5 +1,5 @@
 import { ProtocolError } from './framing.ts'
-import { keys, object, string } from './values.ts'
+import { fields, keys, object, string } from './values.ts'
 
 /** Live file dialogs per session. Each window owns at most one at a time. */
 export const MAX_FILE_DIALOGS = 16
@@ -56,9 +56,11 @@ function parseDialogPath(value: unknown, field = 'dialog path'): string {
   return path
 }
 
+const FILTER_KEYS = fields('name', 'patterns')
+
 function filter(value: unknown): FileFilter {
   const data = object(value)
-  keys(data, ['name', 'patterns'])
+  keys(data, FILTER_KEYS)
   const patterns = data['patterns']
   if (
     !Array.isArray(patterns) ||
@@ -74,9 +76,18 @@ function filter(value: unknown): FileFilter {
   }
 }
 
+const FILE_DIALOG_OPTIONS_KEYS = fields(
+  'mode',
+  'title',
+  'accept_label',
+  'folder',
+  'name',
+  'filters'
+)
+
 export function parseFileDialogOptions(value: unknown): FileDialogOptions {
   const data = object(value)
-  keys(data, ['mode', 'title', 'accept_label', 'folder', 'name', 'filters'])
+  keys(data, FILE_DIALOG_OPTIONS_KEYS)
   const mode = FILE_DIALOG_MODES.find((candidate) => candidate === data['mode'])
   if (!mode) throw new ProtocolError('Unknown file dialog mode')
   const options: FileDialogOptions = {
@@ -104,21 +115,25 @@ export function parseFileDialogOptions(value: unknown): FileDialogOptions {
   return options
 }
 
+const FILE_DIALOG_RESULT_SELECTED_KEYS = fields('kind', 'paths')
+const FILE_DIALOG_RESULT_CANCELLED_KEYS = fields('kind')
+const FILE_DIALOG_RESULT_FAILED_KEYS = fields('kind', 'code')
+
 export function parseFileDialogResult(value: unknown): FileDialogResult {
   const data = object(value)
   switch (data['kind']) {
     case 'selected': {
-      keys(data, ['kind', 'paths'])
+      keys(data, FILE_DIALOG_RESULT_SELECTED_KEYS)
       const paths = data['paths']
       if (!Array.isArray(paths) || paths.length < 1 || paths.length > MAX_DIALOG_PATHS)
         throw new ProtocolError('A dialog selection holds between 1 and 256 paths')
       return { kind: 'selected', paths: paths.map((path) => parseDialogPath(path)) }
     }
     case 'cancelled':
-      keys(data, ['kind'])
+      keys(data, FILE_DIALOG_RESULT_CANCELLED_KEYS)
       return { kind: 'cancelled' }
     case 'failed': {
-      keys(data, ['kind', 'code'])
+      keys(data, FILE_DIALOG_RESULT_FAILED_KEYS)
       const code = (['native_failure', 'payload_too_large'] as const).find(
         (candidate) => candidate === data['code']
       )

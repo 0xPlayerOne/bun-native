@@ -1,20 +1,19 @@
-import type {
-  KeyModifiers,
-  MessageDialogOptions as WireMessageDialogOptions,
+import {
+  MAX_MESSAGE_DIALOG_BUTTONS,
+  MAX_MESSAGE_DIALOG_DETAIL_BYTES as MAX_DETAIL_BYTES,
+  MAX_MESSAGE_DIALOG_ID_BYTES as MAX_ID_BYTES,
+  MAX_MESSAGE_DIALOG_LABEL_BYTES as MAX_LABEL_BYTES,
+  MAX_MESSAGE_DIALOG_MESSAGE_BYTES as MAX_MESSAGE_BYTES,
+  MAX_MESSAGE_DIALOG_TITLE_BYTES as MAX_TITLE_BYTES,
+  type KeyModifiers,
+  type MessageDialogOptions as WireMessageDialogOptions,
 } from '@bun-native/protocol'
 import { NativeServiceError } from './services.ts'
 import { defaultTheme } from './theme.ts'
 import { NativeStateError, type NativeBatch, type NativeNode, type NativeWindow } from './types.ts'
 
-/** Buttons in one message dialog. */
-const MAX_MESSAGE_DIALOG_BUTTONS = 4
 /** Dialogs one window holds at a time: the shown one plus those queued behind it. */
 const MAX_MESSAGE_DIALOGS_PER_WINDOW = 8
-const MAX_TITLE_BYTES = 256
-const MAX_MESSAGE_BYTES = 2_048
-const MAX_DETAIL_BYTES = 4_096
-const MAX_LABEL_BYTES = 64
-const MAX_ID_BYTES = 64
 
 export interface MessageDialogButton {
   /** Returned in the result. 1-64 UTF-8 bytes without control characters, unique per dialog. */

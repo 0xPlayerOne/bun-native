@@ -46,7 +46,7 @@ async function marker(window_id: number, value: string, tree: PeerTree): Promise
     await click(window_id, ids[1])
   } else if (value.startsWith('edge:burst:')) {
     const count = Number(value.slice('edge:burst:'.length))
-    if (![2, 4, 63, 64].includes(count) || ids[0] === undefined)
+    if (![2, 4, 63, 64, 1000].includes(count) || ids[0] === undefined)
       throw new Error('Invalid bounded test burst')
     for (let index = 0; index < count; index++) await click(window_id, ids[0])
   } else if (value === 'edge:input') {

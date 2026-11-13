@@ -1,8 +1,8 @@
 import { expect, test } from 'bun:test'
-import { stableChildren as flags } from '../../packages/renderer/src/order.ts'
+import { stableChildren as flags } from '@bun-native/core/order'
 
 /** The flagged desired children, as a set. */
-function stableChildren<T extends object>(current: readonly T[], desired: readonly T[]): Set<T> {
+function stableChildren<T>(current: readonly T[], desired: readonly T[]): Set<T> {
   const flagged = flags(current, desired)
   expect(flagged.length).toBe(desired.length)
   return new Set(desired.filter((_, index) => flagged[index] === 1))
@@ -86,4 +86,11 @@ test('keyed ordering stays maximal with added, removed and shared end children',
       current.filter((node) => stable.has(node))
     )
   }
+})
+
+test('native node identities keep the same longest run as renderer nodes', () => {
+  // The staged commit planner orders numeric identities with the same search.
+  const stable = stableChildren([1, 2, 3, 4, 5, 6], [7, 1, 4, 2, 5, 6, 3])
+  expect(stable.size).toBe(longestSubsequence([1, 2, 3, 4, 5, 6], [7, 1, 4, 2, 5, 6, 3]))
+  expect([...stable]).toEqual([1, 2, 5, 6])
 })

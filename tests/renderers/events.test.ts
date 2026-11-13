@@ -367,3 +367,37 @@ describe('shared event props over the actual public-core subprocess contract', (
       expect(app.diagnostics.nodes).toBe(2)
     }, 'events-peer.ts'))
 })
+
+test('serialized handlers take a full callback queue behind a pending acknowledgement', () =>
+  withApp(async (app) => {
+    const window = await app.openWindow({ title: 'Renderer click burst' })
+    const { button, marker } = await controls(window)
+    const label = createElement('text')
+    setProperty(label, 'text', 'clicks: 0')
+    // Each handler changes the tree and waits for its acknowledgement, which
+    // the peer sends only after the whole burst: one active click plus a full
+    // application callback queue. A larger backlog behind an unacknowledged
+    // commit stays bounded by that queue.
+    let clicks = 0
+    setProperty(button, 'onClick', () => {
+      clicks += 1
+      setProperty(label, 'text', 'clicks: ' + clicks)
+    })
+    const root = createRenderRoot(window, ({ container }) => {
+      insertNode(container, button)
+      insertNode(container, label)
+    })
+    await root.ready
+    const burst = 129
+    await window.batch((batch) =>
+      batch.set(marker, {
+        kind: 'text',
+        text: 'event:' + JSON.stringify({ type: 'click', target: 'target', count: burst }),
+      })
+    )
+    await until(() => clicks === burst)
+    await root.flush()
+    expect(root.diagnostics.commits).toBe(1 + burst)
+    expect(app.diagnostics.queuedCallbacks).toBe(0)
+    await root.dispose()
+  }, 'events-peer.ts'))

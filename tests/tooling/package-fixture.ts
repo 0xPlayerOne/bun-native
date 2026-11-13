@@ -3,7 +3,11 @@ import { mkdir, mkdtemp, realpath, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { dirname, join, resolve } from 'node:path'
 import toolchain from '../../toolchain.json'
-import { consumerDefinitions, materializedManifests } from '../../scripts/native/package-source.ts'
+import {
+  cliSourceClosure,
+  consumerDefinitions,
+  materializedManifests,
+} from '../../scripts/native/package-source.ts'
 import { requiredPackages, type PackageSet } from '../../scripts/native/package-set.ts'
 import type { FileDigest } from '../../scripts/native/artifact.ts'
 
@@ -14,14 +18,19 @@ export const fixtureDigest = (text: string | Uint8Array): FileDigest => ({
 })
 export const fixtureJSON = (value: unknown) => JSON.stringify(value, null, 2) + '\n'
 
-/** Inert module/archive bytes for source contract tests; not an installation. */
+/**
+ * Inert module/archive bytes for source contract tests; not an installation.
+ * With `cli`, the @bun-native/cli package carries the real CLI source closure under
+ * `src/`, as package-native.ts packs it, so a test can run the CLI the way a consumer does.
+ */
 export async function packageFixture(
   exercise: (fixture: {
     directory: string
     manifest: string
     set: PackageSet
     contents: Record<string, Record<string, string>>
-  }) => Promise<void>
+  }) => Promise<void>,
+  options: { cli?: boolean } = {}
 ): Promise<void> {
   let directory = await mkdtemp(join(tmpdir(), 'bun-native-package-unit-'))
   try {
@@ -68,6 +77,9 @@ export async function packageFixture(
           'export {} // inert fixture; never imported\n',
         ])
       )
+      if (options.cli && name === '@bun-native/cli')
+        for (const path of (await cliSourceClosure(repository)).files)
+          files[`src/${path}`] = await Bun.file(join(repository, path)).text()
       Object.assign(files, {
         'package.json': fixtureJSON(manifest),
         LICENSE: 'fixture license',

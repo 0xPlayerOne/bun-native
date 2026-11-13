@@ -44,7 +44,13 @@ not prevent a native focus change, text edit or button activation. There is no
 Callbacks execute globally in native event order, with one active callback and
 at most 128 waiting event plans. Ingestion proceeds separately while a listener
 awaits: new input state, acknowledgements and native close still update owned
-state. Unsubscribe, replacement, deletion and close revoke the relevant
+state. A burst larger than either 128-entry queue (one pipe read can hold
+hundreds of frames) pauses ingestion for event-loop turns while callbacks keep
+completing; the application fails only when a full queue makes no progress for a
+whole turn, such as behind a listener that never settles. A listener that waits
+for a native acknowledgement, as every framework renderer listener waits for its
+own commit, holds the queue for that round trip, so at most 128 further events
+can arrive before it. Unsubscribe, replacement, deletion and close revoke the relevant
 registration and discard its queued delivery. Deleting an event's target also
 cancels its active dispatch, including an awaiting ancestor callback; that
 cancellation does not revoke the ancestor's still-live registration signal.

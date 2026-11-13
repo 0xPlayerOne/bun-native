@@ -8,7 +8,7 @@ import {
   type NativeWindow,
 } from '@bun-native/core'
 import type { Node, Snapshot } from './nodes.ts'
-import { stableChildren } from './order.ts'
+import { stableChildren } from '@bun-native/core/order'
 
 export type Counts = { create: number; set: number; insert: number; remove: number }
 export type Committed = Snapshot & { handle: NativeNode }

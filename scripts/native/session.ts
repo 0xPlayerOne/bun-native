@@ -230,7 +230,10 @@ export class DevSession {
   }
 
   private async replace(changedAt: number): Promise<RemountReport> {
-    const project = await readProject(this.repository, this.projectDirectory)
+    // Remounts reuse the verification stamp; any change to a verified path re-verifies fully.
+    const project = await readProject(this.repository, this.projectDirectory, {
+      verification: 'stamp',
+    })
     const directory = await mkdtemp(join(this.temporaryDirectory, 'generation-'))
     let owner: OwnedProcess | undefined
     const start = performance.now()

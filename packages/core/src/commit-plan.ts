@@ -1,3 +1,4 @@
+import { stableChildren } from './order.ts'
 import type { Element, Limits, Operation } from '@bun-native/protocol'
 import type { NodeState, Transaction } from './tree.ts'
 import { NativeStateError } from './types.ts'
@@ -60,29 +61,6 @@ function frames(units: readonly Operation[][], limits: Readonly<Limits>): Operat
   }
   if (current.length) result.push(current)
   return result
-}
-
-/** The longest subsequence of `target` already in `current` order. */
-function stableChildren(current: readonly number[], target: readonly number[]): Set<number> {
-  const positions = new Map(current.map((id, index) => [id, index]))
-  const tails: { id: number; position: number }[] = []
-  const preceding = new Map<number, number | undefined>()
-  for (const id of target) {
-    const position = positions.get(id)
-    if (position === undefined) continue
-    let start = 0
-    let end = tails.length
-    while (start < end) {
-      const middle = (start + end) >>> 1
-      if (tails[middle]!.position < position) start = middle + 1
-      else end = middle
-    }
-    preceding.set(id, tails[start - 1]?.id)
-    tails[start] = { id, position }
-  }
-  const stable = new Set<number>()
-  for (let id = tails.at(-1)?.id; id !== undefined; id = preceding.get(id)) stable.add(id)
-  return stable
 }
 
 export function planStagedCommit(
@@ -167,7 +145,7 @@ export function planStagedCommit(
     let anchor: number | undefined
     for (let index = target.length - 1; index >= 0; index -= 1) {
       const child = target[index]!
-      if (!stable.has(child)) {
+      if (!stable[index]) {
         const previous = children.get(parents.get(child)!)!
         previous.splice(previous.indexOf(child), 1)
         const before = anchor === undefined ? current.length : current.indexOf(anchor)

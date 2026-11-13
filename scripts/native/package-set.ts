@@ -1,4 +1,3 @@
-import { createHash } from 'node:crypto'
 import { readdir, realpath, stat } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
 import { isDeepStrictEqual } from 'node:util'
@@ -11,7 +10,7 @@ import {
   type DependencyLock,
 } from './package-lock.ts'
 import { inside, packageArchivePath, packagePath } from './paths.ts'
-import { fileDigest, type FileDigest } from './artifact.ts'
+import { fileDigest, sha256, type FileDigest } from './artifact.ts'
 import { verifyPackageArchive } from './package-archive.ts'
 
 export const packageNames = [
@@ -160,7 +159,7 @@ function packageManifest(
   if (
     !isDeepStrictEqual(contents['package.json'], {
       bytes: Buffer.byteLength(text),
-      sha256: createHash('sha256').update(text).digest('hex'),
+      sha256: sha256(text),
     })
   )
     throw new Error(`Package manifest digest mismatch: ${name}`)
@@ -302,6 +301,12 @@ async function containedFile(directory: string, path: string): Promise<string> {
   return target
 }
 
+/** Run checks concurrently, but report the first failure in their listed order. */
+async function settledInOrder(tasks: Promise<void>[]): Promise<void> {
+  for (const result of await Promise.allSettled(tasks))
+    if (result.status === 'rejected') throw result.reason
+}
+
 export async function readPackageSet(path: string): Promise<ReadPackageSet> {
   if (Bun.revision !== toolchain.bun.revision)
     throw new Error('Use the pinned Bun for this package set')
@@ -311,12 +316,14 @@ export async function readPackageSet(path: string): Promise<ReadPackageSet> {
   const manifest = parsePackageSet(JSON.parse(text))
   if (text !== JSON.stringify(manifest, null, 2) + '\n')
     throw new Error('Package-set manifest must use its original canonical JSON encoding')
-  for (const [name, pkg] of Object.entries(manifest.packages)) {
-    const file = await containedFile(directory, pkg.archive.file)
-    if (!isDeepStrictEqual(await fileDigest(file), digest(pkg.archive)))
-      throw new Error(`Package archive digest mismatch: ${name}`)
-    await verifyPackageArchive(file, pkg.files)
-  }
+  await settledInOrder(
+    Object.entries(manifest.packages).map(async ([name, pkg]) => {
+      const file = await containedFile(directory, pkg.archive.file)
+      if (!isDeepStrictEqual(await fileDigest(file), digest(pkg.archive)))
+        throw new Error(`Package archive digest mismatch: ${name}`)
+      await verifyPackageArchive(file, pkg.files)
+    })
+  )
   return { directory, manifest, text }
 }
 
@@ -362,7 +369,7 @@ export async function verifyInstalledPackages(
       ...pkg.files,
       '.bun-tag': {
         bytes: Buffer.byteLength(tag),
-        sha256: createHash('sha256').update(tag).digest('hex'),
+        sha256: sha256(tag),
       },
     }
     const expected = Object.keys(installedFiles).sort()
@@ -385,11 +392,13 @@ export async function verifyInstalledPackages(
     await visit(root, '')
     if (!isDeepStrictEqual(inventory.sort(), expected))
       throw new Error(`Installed package file inventory differs: ${name}`)
-    for (const [path, expected] of Object.entries(installedFiles)) {
-      const file = await containedFile(root, path)
-      if (!isDeepStrictEqual(await fileDigest(file), expected))
-        throw new Error(`Installed package digest mismatch: ${name}/${path}`)
-    }
+    await settledInOrder(
+      Object.entries(installedFiles).map(async ([path, expected]) => {
+        const file = await containedFile(root, path)
+        if (!isDeepStrictEqual(await fileDigest(file), expected))
+          throw new Error(`Installed package digest mismatch: ${name}/${path}`)
+      })
+    )
   }
   for (const name of required) {
     const root = locations.get(name)!

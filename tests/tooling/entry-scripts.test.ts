@@ -123,32 +123,6 @@ describe('scripts/package-native.ts argument contract', () => {
   })
 })
 
-describe('scripts/quality/standalone-lock-control.ts argument contract', () => {
-  const usage =
-    'Error: Usage: standalone-lock-control.ts --input ABSOLUTE_RETAINED_COHORT --prior ABSOLUTE_C16_FAILED_CONTROL --outdir ABSOLUTE_NEW_DIRECTORY\n'
-
-  test('requires three absolute directories before platform, compiler or git checks', () => {
-    for (const args of [
-      [],
-      ['--input', '/input', '--prior', '/prior'],
-      ['--input', '/input', '--prior', 'prior', '--outdir', '/outdir'],
-      ['--input', 'input', '--prior', '/prior', '--outdir', '/outdir'],
-      ['--input', '/input', '--prior', '/prior', '--outdir', 'outdir'],
-    ]) {
-      const result = bun('quality/standalone-lock-control.ts', ...args)
-      expect(result.code).toBe(1)
-      expect(result.stdout).toBe('')
-      expect(result.stderr).toBe(usage)
-    }
-  })
-
-  test('rejects unknown options', () => {
-    const result = bun('quality/standalone-lock-control.ts', '--bogus', 'value')
-    expect(result.code).toBe(1)
-    expect(result.stderr).toContain("Unknown option '--bogus'")
-  })
-})
-
 describe('scripts/quality/standalone-package-inspect.ts preconditions', () => {
   const usage = 'Usage: standalone-package-inspect.ts ABSOLUTE_PROJECT lock|imports'
 

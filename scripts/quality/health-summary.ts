@@ -3,7 +3,7 @@ import { resolve } from 'node:path'
 import { checkBoundaries } from './boundaries.ts'
 import { findDeadReferences } from './dead-references.ts'
 import { checkDuplicates } from './duplicate-dependencies.ts'
-import { checkSourceHealth } from './source-health.ts'
+import { checkScriptExports, checkSourceHealth } from './source-health.ts'
 
 /**
  * Concise code-health summary for CI (#259): one row per check with its
@@ -22,7 +22,7 @@ export type Check = {
   run: (root: string) => Promise<string[]> | string[]
 }
 
-export const CHECKS: Check[] = [
+const CHECKS: Check[] = [
   {
     name: 'Package boundaries and runtime dependencies',
     command: 'bun run check:boundaries',
@@ -31,7 +31,7 @@ export const CHECKS: Check[] = [
   {
     name: 'Unreachable source and unused internal exports',
     command: 'bun run check:health',
-    run: checkSourceHealth,
+    run: async (root) => [...(await checkSourceHealth(root)), ...(await checkScriptExports(root))],
   },
   {
     name: 'Duplicate dependency versions',
