@@ -236,6 +236,23 @@ jobs:
               --env 'BUN_NATIVE_A11Y_EVIDENCE={evidence}' --env 'BUN_NATIVE_A11Y_MODE={mode}' \
               -- env "GPUI_X11_SCALE_FACTOR=$scale" '{app}'
           done
+      - name: Development X11 viewport culling keeps Tab order, scrolling, paint and the AT-SPI tree at scale 1 and 2
+        if: matrix.shard == 2
+        timeout-minutes: 3
+        env:
+          BUN_NATIVE_HOST: ${{ github.workspace }}/target/release/bun-native-host
+          BUN_NATIVE_ATSPI_PYTHON: /usr/bin/python3
+        run: |
+          for scale in 1 2; do
+            evidence="$NATIVE_EVIDENCE/culled-list-scale$scale"
+            mkdir "$evidence"
+            BUN_NATIVE_A11Y_EVIDENCE="$evidence" BUN_NATIVE_PHASE_TRACE="$evidence/trace.json" \
+              xvfb-run --auto-servernum --server-args='-screen 0 1280x1024x24 -nolisten tcp' \
+              dbus-run-session -- bash scripts/quality/native-linux-session.sh \
+              "$evidence-session" -- env GPUI_X11_SCALE_FACTOR="$scale" \
+              bun tests/native/culled-list.ts 2>&1 | tee "$evidence/run.log"
+            test -s "$evidence/result.json"
+          done
       - name: Development and AOT Orca screen-reader speech through speech-dispatcher on X11 and Wayland (#241)
         if: matrix.shard == 2
         timeout-minutes: 6

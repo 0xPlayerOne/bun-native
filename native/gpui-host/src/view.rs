@@ -11,9 +11,10 @@ use bun_native_protocol::{
     ScrollAnchor, Tree, ViewRequest, WindowId,
 };
 use gpui::{
-    AnyElement, AnyWindowHandle, App, Context, Div, ElementId, Entity, ExternalPaths, FocusHandle,
-    Focusable, KeyBinding, MouseButton, Pixels, Role, ScrollHandle, SharedString, Size, Stateful,
-    Subscription, WeakEntity, Window, actions, canvas, deferred, div, point, prelude::*, px, rgb,
+    AnyElement, AnyWindowHandle, App, Bounds, Context, Div, ElementId, Entity, ExternalPaths,
+    FocusHandle, Focusable, KeyBinding, MouseButton, Pixels, Role, ScrollHandle, SharedString,
+    Size, Stateful, Subscription, WeakEntity, Window, actions, canvas, deferred, div, point,
+    prelude::*, px, rgb,
 };
 use std::cell::{Cell, RefCell};
 use std::collections::{BTreeMap, BTreeSet};
@@ -60,6 +61,10 @@ pub(crate) struct NativeView {
     /// Viewports with a pending programmatic scroll this frame; their end
     /// anchor does not re-pin them before GPUI resolves the request.
     held_scrolls: RefCell<BTreeSet<NodeId>>,
+    /// Viewports scrolling a child into view this frame: the offset is only
+    /// known after their prepaint, so they cull nothing until then.
+    revealing: RefCell<BTreeSet<NodeId>>,
+    culling: Culling,
     popups: Popups,
     weak: WeakEntity<NativeView>,
     window_handle: AnyWindowHandle,
@@ -132,6 +137,8 @@ impl NativeView {
             overlays: Overlays::default(),
             type_ahead: TypeAhead::default(),
             held_scrolls: RefCell::default(),
+            revealing: RefCell::default(),
+            culling: Culling::default(),
             popups: Popups::default(),
             weak: cx.weak_entity(),
             window_handle: window.window_handle(),
@@ -166,6 +173,13 @@ impl NativeView {
         // holds its properties. Sorted by ID, like the index it is read from.
         let changed: Vec<(NodeId, Node)> = {
             let state = self.state.borrow();
+            state.tree.diff_nodes(&previous, |id, before, after| {
+                if let Some(after) = after {
+                    let restyled = before
+                        .is_none_or(|before| !std::ptr::eq(before.element(), after.element()));
+                    self.culling.changed(&state.tree, id, restyled);
+                }
+            });
             self.index
                 .sync(&previous, &state.tree)
                 .into_iter()
@@ -384,6 +398,81 @@ impl NativeView {
             .clone()
     }
 
+    /// A node's accessible role, name and states: everything the
+    /// accessibility tree reads from its element, and nothing it paints.
+    fn semantics(
+        &self,
+        node_id: NodeId,
+        node: &Node,
+        base: Stateful<Div>,
+        hidden: bool,
+    ) -> Stateful<Div> {
+        let base = accessibility::container(base, node.element(), hidden);
+        match node.element() {
+            NativeElement::Text {
+                accessible_live, ..
+            } => accessibility::live_states(
+                // AccessKit names labels from their value.
+                base.role(Role::Label).aria_value(self.label(node_id)),
+                false,
+                hidden,
+                *accessible_live,
+            ),
+            NativeElement::Button { disabled, .. } => accessibility::states(
+                base.role(Role::Button).aria_label(self.label(node_id)),
+                *disabled,
+                hidden,
+            ),
+            _ => base,
+        }
+    }
+
+    /// A culled node's accessible stand-in: an empty element with the node's
+    /// element id, role, name and states and, for an enabled button, its
+    /// focus handle and click action, holding its children's stand-ins. A
+    /// culled child takes its measured place; its descendants collapse onto
+    /// its origin. Nothing is shaped, styled or painted.
+    fn skeleton(
+        &self,
+        tree: &Tree,
+        node_id: NodeId,
+        modal: ModalScope,
+        measured: Option<Bounds<Pixels>>,
+        cx: &mut Context<Self>,
+    ) -> Stateful<Div> {
+        let node = tree
+            .node(node_id)
+            .expect("validated tree contains every child");
+        let base = div().absolute();
+        let base = match measured {
+            Some(bounds) => base
+                .left(bounds.origin.x)
+                .top(bounds.origin.y)
+                .w(bounds.size.width)
+                .h(bounds.size.height),
+            // Inside its culled ancestor's box, out of its flow.
+            None => base.top_0().left_0().size(px(0.)),
+        };
+        let mut skeleton = self.semantics(node_id, node, base.id(node_id.get()), modal.hidden());
+        if let NativeElement::Button {
+            disabled: false, ..
+        } = node.element()
+        {
+            let focus = self
+                .buttons
+                .get(&node_id)
+                .expect("button reconciled before render");
+            skeleton = skeleton
+                .track_focus(focus)
+                .on_click(cx.listener(move |view, _, _, cx| view.click(node_id, cx)));
+        }
+        skeleton.children(
+            node.children()
+                .iter()
+                .map(|child| self.skeleton(tree, *child, modal.child(*child), None, cx)),
+        )
+    }
+
     #[allow(clippy::too_many_arguments)]
     fn render_node(
         &self,
@@ -393,6 +482,7 @@ impl NativeView {
         pointer: &PointerFrame,
         drop_scope: &DropScope,
         modal: ModalScope,
+        viewport: Viewport,
         cx: &mut Context<Self>,
     ) -> AnyElement {
         let node = tree
@@ -405,6 +495,13 @@ impl NativeView {
         {
             base = layout.children(base, node.children(), 0, self.scrolls.get(&node_id));
         }
+        let scroll = self.scrolls.get(&node_id);
+        let inner = viewport.enter(
+            scroll,
+            self.revealing.borrow().contains(&node_id),
+            scroll.is_some_and(|handle| self.pinned_to_end(node_id, node, handle)),
+        );
+        let (mut base, plan) = inner.plan(tree, node_id, node, scroll.is_some(), base);
         pointer.target(&mut base, node_id);
         let mut base = base.id(node_id.get());
         style::element(base.style(), node.element(), node_id == tree.root_id());
@@ -413,10 +510,21 @@ impl NativeView {
             base = drop_target(base, chain, &self.drops);
         }
         let hidden = modal.hidden();
-        let base = accessibility::container(base, node.element(), hidden);
+        let base = self.semantics(node_id, node, base, hidden);
         match node.element() {
             NativeElement::Box { .. } => self
-                .container(tree, node_id, base, layout, pointer, &drop_scope, modal, cx)
+                .container(
+                    tree,
+                    node_id,
+                    base,
+                    layout,
+                    pointer,
+                    &drop_scope,
+                    modal,
+                    inner,
+                    plan,
+                    cx,
+                )
                 .into_any_element(),
             NativeElement::Overlay {
                 surface: OverlaySurface::Window,
@@ -428,7 +536,18 @@ impl NativeView {
                 // Occlusion keeps pointer input from reaching anything beneath
                 // the layer; a window layer is itself the modal backdrop.
                 let content = self
-                    .container(tree, node_id, base, layout, pointer, &drop_scope, modal, cx)
+                    .container(
+                        tree,
+                        node_id,
+                        base,
+                        layout,
+                        pointer,
+                        &drop_scope,
+                        modal,
+                        inner.layer(),
+                        None,
+                        cx,
+                    )
                     .occlude();
                 self.overlay_layer(node_id, *anchor, content, self.viewport)
             }
@@ -446,26 +565,12 @@ impl NativeView {
                 pointer,
                 &drop_scope,
                 modal,
+                inner,
                 cx,
             ),
-            NativeElement::Text {
-                accessible_live, ..
-            } => accessibility::live_states(
-                // AccessKit names labels from their value.
-                base.role(Role::Label).aria_value(self.label(node_id)),
-                false,
-                hidden,
-                *accessible_live,
-            )
-            .child(self.label(node_id))
-            .into_any_element(),
+            NativeElement::Text { .. } => base.child(self.label(node_id)).into_any_element(),
             NativeElement::Button { disabled, .. } => {
-                let mut button = accessibility::states(
-                    base.role(Role::Button).aria_label(self.label(node_id)),
-                    *disabled,
-                    hidden,
-                )
-                .child(self.label(node_id));
+                let mut button = base.child(self.label(node_id));
                 if !disabled {
                     let focus = self
                         .buttons
@@ -510,6 +615,8 @@ impl NativeView {
         pointer: &PointerFrame,
         drop_scope: &DropScope,
         modal: ModalScope,
+        viewport: Viewport,
+        plan: Option<Plan>,
         cx: &mut Context<Self>,
     ) -> Stateful<Div> {
         let node = tree
@@ -517,27 +624,100 @@ impl NativeView {
             .expect("validated tree contains every container");
         let mut container = base;
         if let Some(handle) = self.scrolls.get(&node_id) {
-            // A viewport already showing its end stays there as content or
-            // the viewport changes; a user scroll away from the end releases it.
-            if node.element().style().scroll_anchor == Some(ScrollAnchor::End)
-                && !self.held_scrolls.borrow().contains(&node_id)
-                && handle.offset().y <= -handle.max_offset().y + px(1.)
-            {
+            if self.pinned_to_end(node_id, node, handle) {
                 handle.scroll_to_bottom();
             }
             container = container.track_scroll(handle);
         }
-        container.children(node.children().iter().map(|child| {
+        let children = node.children();
+        let render = |child: NodeId, cx: &mut Context<Self>| {
             self.render_node(
                 tree,
-                *child,
+                child,
                 layout,
                 pointer,
                 drop_scope,
-                modal.child(*child),
+                modal.child(child),
+                viewport,
                 cx,
             )
-        }))
+        };
+        let Some(plan) = plan else {
+            return container.children(children.iter().map(|child| render(*child, cx)));
+        };
+        let mut elements = Vec::with_capacity(plan.slots.len());
+        for slot in &plan.slots {
+            match slot {
+                Slot::Child(index) => elements.push(render(children[*index], cx)),
+                Slot::Run(run) => {
+                    elements.push(self.culled_run(tree, children, run, modal, plan.accessible, cx))
+                }
+            }
+        }
+        container.children(elements)
+    }
+
+    /// Culled children (`view/culling.rs`) as one empty box of their extent.
+    /// It keeps the Tab stop of every enabled button in them and, while
+    /// assistive technology reads the window, every node's accessible node
+    /// at its child's measured place.
+    fn culled_run(
+        &self,
+        tree: &Tree,
+        children: &[NodeId],
+        run: &culling::Run,
+        modal: ModalScope,
+        accessible: bool,
+        cx: &mut Context<Self>,
+    ) -> AnyElement {
+        let mut element = div()
+            .flex_none()
+            .relative()
+            .w(run.size.width)
+            .h(run.size.height);
+        for (child, (offset, measured)) in children[run.children.clone()].iter().zip(&run.places) {
+            if accessible {
+                let origin = if run.row {
+                    point(*offset, px(0.))
+                } else {
+                    point(px(0.), *offset)
+                };
+                element = element.child(self.skeleton(
+                    tree,
+                    *child,
+                    modal.child(*child),
+                    Some(Bounds::new(origin, *measured)),
+                    cx,
+                ));
+                continue;
+            }
+            let mut pending = vec![*child];
+            while let Some(id) = pending.pop() {
+                let Some(node) = tree.node(id) else {
+                    continue;
+                };
+                if let NativeElement::Button {
+                    disabled: false, ..
+                } = node.element()
+                {
+                    let focus = self
+                        .buttons
+                        .get(&id)
+                        .expect("button reconciled before render");
+                    element = element.child(div().absolute().size(px(0.)).track_focus(focus));
+                }
+                pending.extend(node.children().iter().rev());
+            }
+        }
+        element.into_any_element()
+    }
+
+    /// A viewport already showing its end stays there as content or the
+    /// viewport changes; a user scroll away from the end releases it.
+    fn pinned_to_end(&self, node_id: NodeId, node: &Node, handle: &ScrollHandle) -> bool {
+        node.element().style().scroll_anchor == Some(ScrollAnchor::End)
+            && !self.held_scrolls.borrow().contains(&node_id)
+            && handle.offset().y <= -handle.max_offset().y + px(1.)
     }
 }
 
@@ -593,6 +773,23 @@ impl Render for NativeView {
         let pointer = PointerFrame::default();
         let pressed = self.pressed.clone();
         let modal_route = self.modal_route(&state.tree);
+        // Layout evidence records every rendered node's bounds.
+        let cull = layout.as_ref().is_none_or(|layout| !layout.captures())
+            && state.tree.nodes().len() > culling::MIN_CULLED_CHILDREN;
+        let focused = self.focused_control(window, cx);
+        let frame = self.culling.frame(
+            &state.tree,
+            cull,
+            window.is_a11y_active(),
+            window.scale_factor(),
+            focused
+                .into_iter()
+                .chain(self.inputs.keys().copied())
+                .chain(self.index.splits.iter().copied())
+                .chain(self.index.overlays.iter().copied())
+                .chain(drop_scope.nodes()),
+            cx.weak_entity(),
+        );
         let body = self.render_node(
             &state.tree,
             state.tree.root_id(),
@@ -600,12 +797,15 @@ impl Render for NativeView {
             &pointer,
             &drop_scope,
             ModalScope::of(&state.tree, &modal_route, state.tree.root_id()),
+            Viewport::of(&frame),
             cx,
         );
+        let culled = self.culling.finish(frame);
         // Requests issued before this frame resolve in its prepaint.
         self.held_scrolls.borrow_mut().clear();
+        self.revealing.borrow_mut().clear();
         let phase_frame = phase_started.and_then(|started| {
-            crate::phases::render(self.window_id, started, state.tree.nodes().count())
+            crate::phases::render(self.window_id, started, state.tree.nodes().count(), culled)
         });
         let view = cx.weak_entity();
         let evidence = self.evidence.clone();
@@ -762,6 +962,11 @@ impl DropScope {
         }
     }
 
+    /// The nodes registered as drop targets.
+    fn nodes(&self) -> impl Iterator<Item = NodeId> + '_ {
+        self.targets.keys().copied()
+    }
+
     /// This node's own target and its ancestors, when it is a target.
     fn target(&self) -> Option<Rc<[DropTargetId]>> {
         self.own.then(|| self.chain.clone())
@@ -787,6 +992,7 @@ fn drop_target(
 }
 
 mod accessibility;
+mod culling;
 #[cfg(target_os = "macos")]
 mod frame_keeper;
 mod index;
@@ -799,6 +1005,7 @@ mod popups;
 mod split;
 
 use accessibility::ModalScope;
+use culling::{Culling, Plan, Slot, Viewport};
 use index::NodeIndex;
 use interactions::{PointerFrame, PressedButtons};
 use keyboard::{MenuMove, TypeAhead};
