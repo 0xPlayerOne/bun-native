@@ -119,6 +119,7 @@ as Solid. Each native element accepts these handlers and their capture variants:
 | `onPointerUp`, `onPointerUpCapture`     | Button, logical window coordinates `x`/`y`, modifiers |
 | `onFocus`, `onFocusCapture`             | Native focus gained                                   |
 | `onBlur`, `onBlurCapture`               | Native focus lost                                     |
+| `onDismiss`, `onDismissCapture`         | Popup window overlay lost parent focus: `reason`      |
 
 The core routes the native ancestry through capture, target and bubble phases.
 `event.node` remains the native target; `currentTarget` identifies the current

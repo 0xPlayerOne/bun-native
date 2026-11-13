@@ -132,6 +132,7 @@ owns the propagation route and callback lifetime.
 | `onPointerUp`, `onPointerUpCapture`     | `button`, window-logical `x`/`y`, modifiers    |
 | `onFocus`, `onFocusCapture`             | Actual native focus notification               |
 | `onBlur`, `onBlurCapture`               | Actual native focus loss                       |
+| `onDismiss`, `onDismissCapture`         | Popup overlay lost parent focus: `reason`      |
 
 The shared envelope provides `type`, native `sequence`, `treeRevision`, target
 `node`, `currentTarget`, immutable root-to-target `path`, `phase`, and an abort
