@@ -40,6 +40,7 @@ struct Frame {
     nodes: usize,
     /// Children rendered as placeholders (`view/culling.rs`).
     culled: usize,
+    cached: usize,
 }
 
 struct Trace {
@@ -158,12 +159,7 @@ pub(crate) fn batch(id: RequestId, window_id: WindowId, operations: usize, times
 }
 
 /// Record one root render. Returns the frame index for its paint callback.
-pub(crate) fn render(
-    window_id: WindowId,
-    started: Instant,
-    nodes: usize,
-    culled: usize,
-) -> Option<usize> {
+pub(crate) fn render(window_id: WindowId, started: Instant, nodes: usize) -> Option<usize> {
     TRACE.with(|trace| {
         let mut trace = trace.borrow_mut();
         let trace = trace.as_mut()?;
@@ -178,7 +174,8 @@ pub(crate) fn render(
             render: duration(started, Instant::now()),
             paint_end: None,
             nodes,
-            culled,
+            culled: 0,
+            cached: 0,
         };
         trace.frames.push(record);
         Some(trace.frames.len() - 1)
@@ -201,7 +198,10 @@ pub(crate) fn drag(step: DragStep) {
     });
 }
 
-pub(crate) fn painted(frame: usize) {
+/// Record the end of a frame's paint, the children it culled, including
+/// those of views GPUI laid out after the root render, and the cached views
+/// GPUI replayed without rendering them.
+pub(crate) fn painted(frame: usize, culled: usize, cached: usize) {
     TRACE.with(|trace| {
         let mut trace = trace.borrow_mut();
         let Some(trace) = trace.as_mut() else {
@@ -212,6 +212,8 @@ pub(crate) fn painted(frame: usize) {
             && record.paint_end.is_none()
         {
             record.paint_end = Some(end.saturating_sub(record.started));
+            record.culled = culled;
+            record.cached = cached;
         }
     });
 }
@@ -251,7 +253,8 @@ pub(crate) fn write() {
                 frame.render,
                 frame.paint_end,
                 frame.nodes,
-                frame.culled
+                frame.culled,
+                frame.cached
             ])
         })
         .collect();
@@ -261,7 +264,7 @@ pub(crate) fn write() {
         "batchColumns": ["id", "windowId", "operations", "startedNanos", "prepareNanos",
             "applyNanos", "replyEnqueueNanos", "rendersBefore"],
         "frameColumns": ["windowId", "startedNanos", "renderNanos", "renderToPaintNanos", "nodes",
-            "culledNodes"],
+            "culledNodes", "cachedViews"],
         "renders": trace.renders,
         "droppedBatches": trace.dropped_batches,
         "droppedFrames": trace.dropped_frames,
@@ -290,8 +293,8 @@ mod tests {
         // Tests never install a trace; every hook must be inert.
         assert!(!enabled());
         assert!(now().is_none());
-        assert!(render(WindowId::try_from(1).unwrap(), Instant::now(), 1, 0).is_none());
-        painted(0);
+        assert!(render(WindowId::try_from(1).unwrap(), Instant::now(), 1).is_none());
+        painted(0, 0, 0);
         drag(DragStep::Active);
         write();
         assert!(!enabled());
@@ -386,17 +389,17 @@ mod tests {
             1,
             times(origin, 1_000),
         );
-        let frame = render(window, origin, 1001, 7).unwrap();
+        let frame = render(window, origin, 1001).unwrap();
         assert_eq!(frame, 0);
-        painted(frame);
+        painted(frame, 7, 5);
         let first_paint = paint_end(frame).unwrap();
         // Only the first paint callback after a render ends its frame.
         std::thread::sleep(std::time::Duration::from_millis(1));
-        painted(frame);
+        painted(frame, 8, 6);
         assert_eq!(paint_end(frame), Some(first_paint));
         // An unknown frame index is ignored.
-        painted(99);
-        let unpainted = render(WindowId::try_from(2).unwrap(), origin, 3, 0).unwrap();
+        painted(99, 0, 0);
+        let unpainted = render(WindowId::try_from(2).unwrap(), origin, 3).unwrap();
         assert_eq!(unpainted, 1);
         batch(
             RequestId::try_from(8).unwrap(),
@@ -439,6 +442,7 @@ mod tests {
         assert_eq!(frames[0][1], 0);
         assert_eq!(frames[0][4], 1001);
         assert_eq!(frames[0][5], 7);
+        assert_eq!(frames[0][6], 5);
         let render_nanos = frames[0][2].as_u64().unwrap();
         let paint_nanos = frames[0][3].as_u64().unwrap();
         assert!(paint_nanos >= render_nanos);
@@ -447,6 +451,7 @@ mod tests {
         assert!(frames[1][3].is_null());
         assert_eq!(frames[1][4], 3);
         assert_eq!(frames[1][5], 0);
+        assert_eq!(frames[1][6], 0);
 
         // Later writes do nothing and leave the file intact.
         write();
@@ -462,10 +467,10 @@ mod tests {
             batch(id, window, 1, times(origin, 1));
         }
         for _ in 0..MAX_FRAMES {
-            assert!(render(window, origin, 1, 0).is_some());
+            assert!(render(window, origin, 1).is_some());
         }
-        assert!(render(window, origin, 1, 0).is_none());
-        assert!(render(window, origin, 1, 0).is_none());
+        assert!(render(window, origin, 1).is_none());
+        assert!(render(window, origin, 1).is_none());
         TRACE.with(|trace| {
             let trace = trace.borrow();
             let trace = trace.as_ref().unwrap();

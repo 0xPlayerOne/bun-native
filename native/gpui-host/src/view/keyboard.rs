@@ -156,7 +156,7 @@ impl NativeView {
     /// view (an input's own element).
     pub(crate) fn reveal_control(&mut self, id: NodeId, cx: &mut Context<Self>) {
         self.reveal(id);
-        cx.notify();
+        self.invalidate(cx);
     }
 
     /// Scroll each scrolling ancestor inside the node's own layer so the
@@ -274,7 +274,7 @@ impl NativeView {
                 for (handle, offset) in &moves {
                     handle.set_offset(*offset);
                 }
-                let _ = view.update(cx, |_, cx| cx.notify());
+                let _ = view.update(cx, |view, cx| view.invalidate(cx));
             });
         }))
     }
