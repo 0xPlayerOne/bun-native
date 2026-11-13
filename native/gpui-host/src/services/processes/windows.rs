@@ -37,7 +37,7 @@
 //!   `CreateProcessW` starts the child in that directory's final path, so the
 //!   path cannot be redirected through anything a grant can reach.
 
-use super::{Control, Failure, Job, MAX_PENDING_INPUT, Message, State};
+use super::{Chunk, Control, Failure, Job, MAX_PENDING_INPUT, Message, State};
 use crate::services::files::working_directory;
 use async_channel::Sender;
 use bun_native_protocol::{
@@ -509,7 +509,11 @@ fn read(
         drop(state);
         if !discard
             && messages
-                .send_blocking(Message::Output(process, stream, buffer[..length].to_vec()))
+                .send_blocking(Message::Output(
+                    process,
+                    stream,
+                    Chunk::encode(&buffer[..length]),
+                ))
                 .is_err()
         {
             discard = true;
@@ -650,7 +654,7 @@ mod tests {
             match started.messages.recv_blocking().unwrap() {
                 Message::Spawned(_, result) => assert!(result.is_ok(), "{result:?}"),
                 Message::Output(_, stream, data) => {
-                    output.push((stream, data));
+                    output.push((stream, data.bytes()));
                     acknowledge(&started.control);
                 }
                 Message::Exited(_, exit) => break exit,
@@ -785,7 +789,7 @@ mod tests {
         while chunks < MAX_PROCESS_OUTPUT_CREDIT {
             if let Message::Output(_, _, data) = started.messages.recv_blocking().unwrap() {
                 chunks += 1;
-                held += data.len();
+                held += data.bytes().len();
             }
         }
         std::thread::sleep(Duration::from_millis(100));
