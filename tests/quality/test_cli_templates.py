@@ -1,6 +1,5 @@
 """Headless provenance and native-oracle checks, not GUI acceptance."""
 
-import importlib.util
 import json
 import os
 import sys
@@ -9,10 +8,7 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-SCRIPT = Path(__file__).resolve().parents[1] / "native/cli-templates.py"
-SPEC = importlib.util.spec_from_file_location("cli_templates", SCRIPT)
-SCENARIO = importlib.util.module_from_spec(SPEC)
-SPEC.loader.exec_module(SCENARIO)
+from scripts.quality.native_harness import cli_templates as SCENARIO
 
 
 class TemplateScenarioTests(unittest.TestCase):

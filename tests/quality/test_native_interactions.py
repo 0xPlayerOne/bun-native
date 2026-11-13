@@ -1,16 +1,12 @@
 """Evidence route negatives; these tests do not stand in for native OS input."""
 
 import copy
-import importlib.util
 import unittest
 from pathlib import Path
 
+from scripts.quality.native_harness import native_interactions_scenario as INTERACTIONS
+
 ROOT = Path(__file__).resolve().parents[2]
-SPEC = importlib.util.spec_from_file_location(
-    "native_interactions", ROOT / "scripts/quality/native-interactions-scenario.py"
-)
-INTERACTIONS = importlib.util.module_from_spec(SPEC)
-SPEC.loader.exec_module(INTERACTIONS)
 
 
 def records():

@@ -1,6 +1,5 @@
 """Inert ownership/file controls; never install, compile or launch a consumer."""
 
-import importlib.util
 import json
 import os
 import subprocess
@@ -12,12 +11,9 @@ from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import patch
 
+from scripts.quality.native_harness import cli_standalone as SCENARIO
+
 ROOT = Path(__file__).resolve().parents[2]
-SPEC = importlib.util.spec_from_file_location(
-    "cli_standalone", ROOT / "tests/native/cli-standalone.py"
-)
-SCENARIO = importlib.util.module_from_spec(SPEC)
-SPEC.loader.exec_module(SCENARIO)
 
 
 class StandaloneOwnershipTests(unittest.TestCase):

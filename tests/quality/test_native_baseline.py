@@ -1,6 +1,5 @@
 """Baseline provenance and subprocess safety; no fixture is claimed as AOT/native."""
 
-import importlib.util
 import json
 import os
 import platform
@@ -13,10 +12,10 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-SCRIPT = Path(__file__).resolve().parents[2] / "benchmarks/native-baseline.py"
-SPEC = importlib.util.spec_from_file_location("native_baseline", SCRIPT)
-BASELINE = importlib.util.module_from_spec(SPEC)
-SPEC.loader.exec_module(BASELINE)
+from scripts.quality.native_harness import native_baseline as BASELINE
+
+ROOT = Path(__file__).resolve().parents[2]
+SCRIPT = ROOT / "benchmarks/native-baseline.py"
 
 
 class ProvenanceTests(unittest.TestCase):
@@ -410,14 +409,13 @@ class ProvenanceTests(unittest.TestCase):
         BASELINE.NATIVE_INPUT.enable_subreaper()
         log = Path(self.temporary.name) / "trial.log"
         code = """
-import importlib.util
 import os
 from pathlib import Path
 import sys
 
-spec = importlib.util.spec_from_file_location("baseline", sys.argv[1])
-baseline = importlib.util.module_from_spec(spec)
-spec.loader.exec_module(baseline)
+sys.path.insert(0, sys.argv[1])
+from scripts.quality.native_harness import native_baseline as baseline
+
 try:
     baseline.run_trial(
         [sys.executable, "-c", "import os,time; print(os.getpid(),flush=True); time.sleep(30)"],
@@ -429,7 +427,7 @@ except InterruptedError as error:
 raise SystemExit("Cancellation did not interrupt the running trial")
 """
         supervisor = subprocess.Popen(
-            [sys.executable, "-c", code, str(SCRIPT), str(log)],
+            [sys.executable, "-c", code, str(ROOT), str(log)],
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             text=True,

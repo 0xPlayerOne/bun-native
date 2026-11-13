@@ -12,6 +12,7 @@ on:
       - benchmarks/bridge-pairs-toolchain.json
       - benchmarks/BRIDGE_PAIRS.md
       - benchmarks/native-baseline.py
+      - scripts/quality/native_harness/**
       - scripts/install-bun.mjs
       - scripts/install-bun/**
       - tests/quality/test_bridge_pairs.py

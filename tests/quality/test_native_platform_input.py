@@ -1,6 +1,5 @@
 """OS input adapter guards. No helper, X11 session or native host is executed."""
 
-import importlib.util
 import json
 import os
 import subprocess
@@ -9,12 +8,9 @@ import unittest
 from pathlib import Path
 from unittest.mock import Mock, patch
 
+from scripts.quality.native_harness import native_platform_input as INPUT
+
 ROOT = Path(__file__).resolve().parents[2]
-SPEC = importlib.util.spec_from_file_location(
-    "native_platform_input", ROOT / "scripts/quality/native-platform-input.py"
-)
-INPUT = importlib.util.module_from_spec(SPEC)
-SPEC.loader.exec_module(INPUT)
 
 
 def layout(bounds=(10, 20, 100, 40), clip=(0, 0, 640, 480), viewport=(640, 480)):

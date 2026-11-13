@@ -1,7 +1,6 @@
 """Native evidence must fingerprint local dependency build inputs, including assets."""
 
 import hashlib
-import importlib.util
 import sys
 import unittest
 from pathlib import Path
@@ -26,13 +25,13 @@ class NativeVendorInputs(unittest.TestCase):
         self.assertIn(
             ROOT / "native/vendor/wgpu-hal/src/gles/shaders/clear.frag", expected
         )
-        for name in ("native-diagnostics-linux", "native-allocation-linux"):
-            with self.subTest(runner=name):
-                spec = importlib.util.spec_from_file_location(
-                    name.replace("-", "_"), ROOT / f"scripts/quality/{name}.py"
-                )
-                module = importlib.util.module_from_spec(spec)
-                spec.loader.exec_module(module)
+        from scripts.quality.native_harness import (  # Linux-only imports
+            native_allocation_linux,
+            native_diagnostics_linux,
+        )
+
+        for module in (native_diagnostics_linux, native_allocation_linux):
+            with self.subTest(runner=module.__name__):
                 snapshot = module.source_snapshot()
                 missing = {
                     str(path.relative_to(ROOT)) for path in expected

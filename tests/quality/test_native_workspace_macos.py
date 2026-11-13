@@ -1,22 +1,14 @@
 """The macOS workspace driver's X11-word translation. No helper or host runs."""
 
-import importlib.util
 import json
 import unittest
 from pathlib import Path
 from unittest.mock import Mock, patch
 
+from scripts.quality.native_harness import native_platform_input as INPUT
+from scripts.quality.native_harness import native_workspace_macos as DRIVER
+
 ROOT = Path(__file__).resolve().parents[2]
-SPEC = importlib.util.spec_from_file_location(
-    "native_workspace_macos", ROOT / "scripts/quality/native-workspace-macos.py"
-)
-DRIVER = importlib.util.module_from_spec(SPEC)
-SPEC.loader.exec_module(DRIVER)
-INPUT_SPEC = importlib.util.spec_from_file_location(
-    "native_platform_input", ROOT / "scripts/quality/native-platform-input.py"
-)
-INPUT = importlib.util.module_from_spec(INPUT_SPEC)
-INPUT_SPEC.loader.exec_module(INPUT)
 
 
 def state(front=42):

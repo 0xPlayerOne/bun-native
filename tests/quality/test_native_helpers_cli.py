@@ -1,7 +1,6 @@
 """Pure helpers of the native CLI qualification scripts; no process is launched."""
 
 import hashlib
-import importlib.util
 import json
 import os
 import sys
@@ -10,20 +9,12 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
+from scripts.quality.native_harness import cli_owned_exec as OWNED_EXEC
+from scripts.quality.native_harness import cli_standalone as STANDALONE
+from scripts.quality.native_harness import cli_templates as TEMPLATES
+
 ROOT = Path(__file__).resolve().parents[2]
 NATIVE = ROOT / "tests" / "native"
-
-
-def load(name, filename):
-    spec = importlib.util.spec_from_file_location(name, NATIVE / filename)
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
-    return module
-
-
-STANDALONE = load("native_helpers_cli_standalone", "cli-standalone.py")
-TEMPLATES = load("native_helpers_cli_templates", "cli-templates.py")
-OWNED_EXEC = load("native_helpers_cli_owned_exec", "cli-owned-exec.py")
 
 
 class Executed(Exception):

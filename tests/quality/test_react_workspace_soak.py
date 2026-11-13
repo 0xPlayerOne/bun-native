@@ -1,7 +1,6 @@
 """Negative report controls only; these records are not native GUI evidence."""
 
 import copy
-import importlib.util
 import json
 import subprocess
 import sys
@@ -9,12 +8,9 @@ import tempfile
 import unittest
 from pathlib import Path
 
+from scripts.quality.native_harness import native_react_workspace_soak as SOAK
+
 ROOT = Path(__file__).resolve().parents[2]
-SPEC = importlib.util.spec_from_file_location(
-    "react_workspace_soak", ROOT / "scripts/quality/native-react-workspace-soak.py"
-)
-SOAK = importlib.util.module_from_spec(SPEC)
-SPEC.loader.exec_module(SOAK)
 
 
 def report():

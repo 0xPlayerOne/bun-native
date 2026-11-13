@@ -69,13 +69,10 @@ fi
 # Share fixture expectations with the repeated baseline and allocation runner.
 snapshot() {
   python3 - "$mode" "$@" <<'PY'
-import importlib.util
 import json
 import sys
 
-spec = importlib.util.spec_from_file_location("native_input_linux", "scripts/quality/native-input-linux.py")
-driver = importlib.util.module_from_spec(spec)
-spec.loader.exec_module(driver)
+from scripts.quality.native_harness import native_input_linux as driver
 if sys.argv[1] in ("javascript", "aot-javascript"):
     state = driver.javascript_fixture_paint(int(sys.argv[2]), sys.argv[3], sys.argv[4], int(sys.argv[5]))
 elif sys.argv[1] in ("services", "aot-services", "solid-services", "aot-solid-services", "react-services", "aot-react-services"):

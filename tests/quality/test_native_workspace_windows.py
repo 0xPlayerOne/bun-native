@@ -3,7 +3,6 @@
 No Win32 call, helper or host runs: the owned-window controller is a mock.
 """
 
-import importlib.util
 import struct
 import tempfile
 import unittest
@@ -11,12 +10,9 @@ import zlib
 from pathlib import Path
 from unittest.mock import Mock, patch
 
+from scripts.quality.native_harness import native_workspace_windows as DRIVER
+
 ROOT = Path(__file__).resolve().parents[2]
-SPEC = importlib.util.spec_from_file_location(
-    "native_workspace_windows", ROOT / "scripts/quality/native-workspace-windows.py"
-)
-DRIVER = importlib.util.module_from_spec(SPEC)
-SPEC.loader.exec_module(DRIVER)
 
 
 def state(window="99"):

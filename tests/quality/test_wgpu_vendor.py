@@ -1,19 +1,15 @@
 """Mechanical provenance checks for the real vendored HAL and corruption controls."""
 
 import hashlib
-import importlib.util
 import json
 import shutil
 import tempfile
 import unittest
 from pathlib import Path
 
+from scripts.quality.native_harness import verify_wgpu_vendor as VENDOR
+
 ROOT = Path(__file__).resolve().parents[2]
-SPEC = importlib.util.spec_from_file_location(
-    "wgpu_vendor", ROOT / "scripts/quality/verify-wgpu-vendor.py"
-)
-VENDOR = importlib.util.module_from_spec(SPEC)
-SPEC.loader.exec_module(VENDOR)
 PACKAGE = ROOT / "native/vendor/wgpu-hal"
 
 

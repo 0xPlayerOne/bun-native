@@ -237,7 +237,7 @@ export class MacWindow {
 
   /**
    * Printable ASCII in one helper call, every character a Unicode key event
-   * `delayMs` apart, as native-platform-input.py `type_printable` types into
+   * `delayMs` apart, as native_harness/native_platform_input.py `type_printable` types into
    * the workspace references' inputs. For text entry, where the inserted
    * characters matter and not the keys' names.
    */

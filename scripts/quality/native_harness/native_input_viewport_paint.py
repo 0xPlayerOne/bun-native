@@ -1,15 +1,10 @@
 """Complete native tree/paint geometry and independent screenshot predicates."""
 
-import importlib.util
 import math
 import subprocess
-from pathlib import Path
 
-SPEC = importlib.util.spec_from_file_location(
-    "viewport_tree", Path(__file__).with_name("native-solid-workspace-paint.py")
-)
-TREE = importlib.util.module_from_spec(SPEC)
-SPEC.loader.exec_module(TREE)
+from . import native_solid_workspace_paint as TREE
+
 INITIAL_VALUE = " " * 96 + "TAIL"
 
 
