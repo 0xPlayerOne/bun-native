@@ -524,6 +524,35 @@ fn preflight_shares_child_lists_until_a_batch_reorders_them() {
 }
 
 #[test]
+fn node_diff_reports_set_and_restructured_nodes_and_parents() {
+    let tree = populated();
+    let changed = |before: &Tree, after: &Tree| {
+        let mut ids = Vec::new();
+        after.diff_nodes(before, |node, _, _| ids.push(node.get()));
+        ids
+    };
+    let edited = tree
+        .prepare(1, vec![set(3, text("b"), None)], 4)
+        .unwrap()
+        .tree;
+    // An element write alone: the parent's child list is still shared.
+    assert_eq!(changed(&tree, &edited), [3]);
+    let moved = edited.prepare(2, vec![insert(2, 3, 1)], 4).unwrap().tree;
+    // A move rewrites the parent's child list, not any element.
+    assert_eq!(changed(&edited, &moved), [2]);
+    let created = moved
+        .prepare(3, vec![create(5, text("c")), insert(1, 5, 1)], 4)
+        .unwrap()
+        .tree;
+    assert_eq!(changed(&moved, &created), [1, 5]);
+    let deleted = created.prepare(4, vec![delete(2)], 5).unwrap().tree;
+    assert_eq!(changed(&created, &deleted), [1, 2, 3, 4]);
+    assert_eq!(deleted.parent(id(5)), Some(id(1)));
+    assert_eq!(deleted.parent(id(1)), None);
+    assert_eq!(deleted.parent(id(3)), None);
+}
+
+#[test]
 fn incremental_validation_keeps_depth_before_detachment_precedence() {
     let chain = |from: u64, under: u64, length: u64| {
         (from..from + length).flat_map(move |node| {

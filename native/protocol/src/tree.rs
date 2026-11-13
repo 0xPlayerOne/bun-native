@@ -174,6 +174,29 @@ impl Tree {
         );
     }
 
+    /// `diff_elements` that also visits nodes whose child list is a different
+    /// allocation: the nodes a batch created, set, deleted, or inserted into,
+    /// moved within or removed from, so every node whose own layout input
+    /// changed. Still found without visiting the shared rest.
+    pub fn diff_nodes<'a>(
+        &'a self,
+        previous: &'a Tree,
+        mut visit: impl FnMut(NodeId, Option<&'a Node>, Option<&'a Node>),
+    ) {
+        self.nodes.diff(
+            &previous.nodes,
+            &|old, new| {
+                Arc::ptr_eq(&old.element, &new.element) && Arc::ptr_eq(&old.children, &new.children)
+            },
+            &mut visit,
+        );
+    }
+
+    /// The node's parent; `None` for the root and for a node not in the tree.
+    pub fn parent(&self, id: NodeId) -> Option<NodeId> {
+        self.nodes.get(id)?.parent
+    }
+
     /// Snapshot the committed root-to-target route before an event leaves the
     /// UI thread. A later move must not rewrite an already-emitted event path.
     pub fn path(&self, target: NodeId) -> Option<Vec<NodeId>> {
