@@ -128,7 +128,8 @@ fn only_children_on_whole_pixels_hold() {
         accessible_label: None,
         style: Style::default(),
     };
-    assert!(!Sizing::of_children(true, true, true, true, &split).whole);
+    // A split's panes refine it from their snapped sizes (`view/split.rs`).
+    assert!(Sizing::of_children(true, true, true, true, &split).whole);
     assert!(!Sizing::NONE.holds(&content));
 }
 

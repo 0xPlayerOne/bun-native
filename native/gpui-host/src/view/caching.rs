@@ -89,9 +89,9 @@ impl Sizing {
         element: &NativeElement,
     ) -> Self {
         let style = element.style();
+        // A split's panes refine this (`view/split.rs`).
         let whole = whole
             && fixed
-            && !matches!(element, NativeElement::Split { .. })
             && style.align_items != Some(bun_native_protocol::AlignItems::Center)
             && style.justify_content.is_none_or(|justify| {
                 matches!(
@@ -286,6 +286,11 @@ impl Caching {
     /// The next frame renders every boundary.
     pub(super) fn invalidate(&self) {
         self.stale.set(true);
+    }
+
+    /// What [`Self::invalidate`] sets, for a listener later in the frame.
+    pub(super) fn stale(&self) -> Rc<Cell<bool>> {
+        self.stale.clone()
     }
 
     /// Records one node a committed batch changed, from `Tree::diff_nodes`.
