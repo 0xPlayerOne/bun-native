@@ -1,18 +1,14 @@
 """Pure process-ownership guards for the macOS native fault driver (#247)."""
 
-import importlib.util
 import os
 import sys
 import unittest
 from pathlib import Path
 from unittest import mock
 
+from scripts.quality.native_harness import native_fault_macos as FAULT
+
 ROOT = Path(__file__).resolve().parents[2]
-SPEC = importlib.util.spec_from_file_location(
-    "native_fault_macos", ROOT / "scripts/quality/native-fault-macos.py"
-)
-FAULT = importlib.util.module_from_spec(SPEC)
-SPEC.loader.exec_module(FAULT)
 
 
 def row(pid, ppid, executable="/bin/x", state="S", started="Fri Nov 6 00:00:00 2026"):

@@ -1,16 +1,12 @@
 """Negative oracle controls only; these records are not native GUI evidence."""
 
 import copy
-import importlib.util
 import unittest
 from pathlib import Path
 
+from scripts.quality.native_harness import native_solid_workspace_paint as PAINT
+
 ROOT = Path(__file__).resolve().parents[2]
-SPEC = importlib.util.spec_from_file_location(
-    "solid_workspace_paint", ROOT / "scripts/quality/native-solid-workspace-paint.py"
-)
-PAINT = importlib.util.module_from_spec(SPEC)
-SPEC.loader.exec_module(PAINT)
 
 
 def state():

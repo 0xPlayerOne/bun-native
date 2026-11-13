@@ -1,5 +1,5 @@
 import { ProtocolError } from './framing.ts'
-import { fields, keys, object, string } from './values.ts'
+import { keys, object, string } from './values.ts'
 import {
   MAX_DIALOG_FILTERS,
   MAX_DIALOG_FILTER_NAME_BYTES,
@@ -10,6 +10,7 @@ import {
   MAX_DIALOG_PATH_BYTES,
   MAX_DIALOG_PATTERN_BYTES,
   MAX_DIALOG_TITLE_BYTES,
+  PAYLOAD_KEYS,
 } from './wire-schema.ts'
 
 export const FILE_DIALOG_MODES = Object.freeze([
@@ -54,11 +55,9 @@ function parseDialogPath(value: unknown, field = 'dialog path'): string {
   return path
 }
 
-const FILTER_KEYS = fields('name', 'patterns')
-
 function filter(value: unknown): FileFilter {
   const data = object(value)
-  keys(data, FILTER_KEYS)
+  keys(data, PAYLOAD_KEYS.file_filter)
   const patterns = data['patterns']
   if (
     !Array.isArray(patterns) ||
@@ -74,18 +73,9 @@ function filter(value: unknown): FileFilter {
   }
 }
 
-const FILE_DIALOG_OPTIONS_KEYS = fields(
-  'mode',
-  'title',
-  'accept_label',
-  'folder',
-  'name',
-  'filters'
-)
-
 export function parseFileDialogOptions(value: unknown): FileDialogOptions {
   const data = object(value)
-  keys(data, FILE_DIALOG_OPTIONS_KEYS)
+  keys(data, PAYLOAD_KEYS.file_dialog_options)
   const mode = FILE_DIALOG_MODES.find((candidate) => candidate === data['mode'])
   if (!mode) throw new ProtocolError('Unknown file dialog mode')
   const options: FileDialogOptions = {
@@ -113,25 +103,21 @@ export function parseFileDialogOptions(value: unknown): FileDialogOptions {
   return options
 }
 
-const FILE_DIALOG_RESULT_SELECTED_KEYS = fields('kind', 'paths')
-const FILE_DIALOG_RESULT_CANCELLED_KEYS = fields('kind')
-const FILE_DIALOG_RESULT_FAILED_KEYS = fields('kind', 'code')
-
 export function parseFileDialogResult(value: unknown): FileDialogResult {
   const data = object(value)
   switch (data['kind']) {
     case 'selected': {
-      keys(data, FILE_DIALOG_RESULT_SELECTED_KEYS)
+      keys(data, PAYLOAD_KEYS.file_dialog_result.selected)
       const paths = data['paths']
       if (!Array.isArray(paths) || paths.length < 1 || paths.length > MAX_DIALOG_PATHS)
         throw new ProtocolError('A dialog selection holds between 1 and 256 paths')
       return { kind: 'selected', paths: paths.map((path) => parseDialogPath(path)) }
     }
     case 'cancelled':
-      keys(data, FILE_DIALOG_RESULT_CANCELLED_KEYS)
+      keys(data, PAYLOAD_KEYS.file_dialog_result.cancelled)
       return { kind: 'cancelled' }
     case 'failed': {
-      keys(data, FILE_DIALOG_RESULT_FAILED_KEYS)
+      keys(data, PAYLOAD_KEYS.file_dialog_result.failed)
       const code = (['native_failure', 'payload_too_large'] as const).find(
         (candidate) => candidate === data['code']
       )

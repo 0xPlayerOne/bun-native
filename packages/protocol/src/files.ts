@@ -1,5 +1,5 @@
 import { ProtocolError } from './framing.ts'
-import { fields, integer, keys, object, string } from './values.ts'
+import { integer, keys, object, string } from './values.ts'
 import {
   MAX_DIRECTORY_ENTRIES,
   MAX_FILESYSTEM_ROOTS,
@@ -7,7 +7,9 @@ import {
   MAX_FILE_NAME_BYTES,
   MAX_FILE_PATH_BYTES,
   MAX_FILE_PATH_COMPONENTS,
+  MAX_ROOT_ID_BYTES,
   MAX_ROOT_PATH_BYTES,
+  PAYLOAD_KEYS,
 } from './wire-schema.ts'
 
 const MAX_FILE_CHUNK_BASE64 = Math.ceil(MAX_FILE_CHUNK_BYTES / 3) * 4
@@ -46,10 +48,12 @@ export type FileResult =
   | { kind: 'written'; bytes: number }
   | { kind: 'done' }
 
+const ROOT_ID = new RegExp(`^[a-z][a-z0-9_-]{0,${MAX_ROOT_ID_BYTES - 1}}$`)
+
 export function parseRootId(value: unknown): string {
-  if (typeof value !== 'string' || !/^[a-z][a-z0-9_-]{0,31}$/.test(value))
+  if (typeof value !== 'string' || !ROOT_ID.test(value))
     throw new ProtocolError(
-      'Filesystem root ID must be 1-32 lowercase ASCII letters, digits, "-" or "_", starting with a letter'
+      `Filesystem root ID must be 1-${MAX_ROOT_ID_BYTES} lowercase ASCII letters, digits, "-" or "_", starting with a letter`
     )
   return value
 }
@@ -88,11 +92,9 @@ export function parseFileAccess(value: unknown): FileAccess {
   return value as FileAccess
 }
 
-const ROOT_KEYS = fields('id', 'path', 'access')
-
 function root(value: unknown): FilesystemRoot {
   const data = object(value)
-  keys(data, ROOT_KEYS)
+  keys(data, PAYLOAD_KEYS.filesystem_root)
   return {
     id: parseRootId(data['id']),
     path: parseRootPath(data['path']),
@@ -161,11 +163,6 @@ export function parseChunk(value: unknown): string {
 const WRITE_MODES: readonly WriteMode[] = ['create', 'truncate', 'append']
 const FILE_KINDS: readonly FileKind[] = ['file', 'directory', 'symlink', 'other']
 
-const FILE_OPERATION_STAT_KEYS = fields('kind')
-const FILE_OPERATION_LIST_KEYS = fields('kind', 'after')
-const FILE_OPERATION_READ_KEYS = fields('kind', 'offset', 'length')
-const FILE_OPERATION_WRITE_KEYS = fields('kind', 'mode', 'data')
-
 export function parseFileOperation(value: unknown, path: string): FileOperation {
   const data = object(value)
   const writes = ['write', 'create_directory', 'remove'].includes(data['kind'] as string)
@@ -175,15 +172,15 @@ export function parseFileOperation(value: unknown, path: string): FileOperation 
     case 'stat':
     case 'create_directory':
     case 'remove':
-      keys(data, FILE_OPERATION_STAT_KEYS)
+      keys(data, PAYLOAD_KEYS.file_operation.stat)
       return { kind: data['kind'] }
     case 'list':
-      keys(data, FILE_OPERATION_LIST_KEYS)
+      keys(data, PAYLOAD_KEYS.file_operation.list)
       return 'after' in data
         ? { kind: 'list', after: parseFileName(data['after']) }
         : { kind: 'list' }
     case 'read':
-      keys(data, FILE_OPERATION_READ_KEYS)
+      keys(data, PAYLOAD_KEYS.file_operation.read)
       return {
         kind: 'read',
         offset: integer(
@@ -195,7 +192,7 @@ export function parseFileOperation(value: unknown, path: string): FileOperation 
         length: integer(data['length'], 'file read length', 1, MAX_FILE_CHUNK_BYTES),
       }
     case 'write': {
-      keys(data, FILE_OPERATION_WRITE_KEYS)
+      keys(data, PAYLOAD_KEYS.file_operation.write)
       const mode = WRITE_MODES.find((item) => item === data['mode'])
       if (!mode) throw new ProtocolError('Unknown file write mode')
       return { kind: 'write', mode, data: parseChunk(data['data']) }
@@ -219,18 +216,11 @@ function compareBytes(left: string, right: string): number {
   return a.length - b.length
 }
 
-const FILE_RESULT_STAT_KEYS = fields('kind', 'file_kind', 'size', 'modified_ms')
-const FILE_RESULT_LIST_KEYS = fields('kind', 'entries', 'complete', 'omitted')
-const FILE_LIST_ENTRY_KEYS = fields('name', 'kind')
-const FILE_RESULT_READ_KEYS = fields('kind', 'data', 'end_of_file')
-const FILE_RESULT_WRITTEN_KEYS = fields('kind', 'bytes')
-const FILE_RESULT_DONE_KEYS = fields('kind')
-
 export function parseFileResult(value: unknown): FileResult {
   const data = object(value)
   switch (data['kind']) {
     case 'stat':
-      keys(data, FILE_RESULT_STAT_KEYS)
+      keys(data, PAYLOAD_KEYS.file_result.stat)
       return {
         kind: 'stat',
         file_kind: fileKind(data['file_kind']),
@@ -242,13 +232,13 @@ export function parseFileResult(value: unknown): FileResult {
         ),
       }
     case 'list': {
-      keys(data, FILE_RESULT_LIST_KEYS)
+      keys(data, PAYLOAD_KEYS.file_result.list)
       const entries = data['entries']
       if (!Array.isArray(entries) || entries.length > MAX_DIRECTORY_ENTRIES)
         throw new ProtocolError('Directory page exceeds ' + MAX_DIRECTORY_ENTRIES + ' entries')
       const parsed = entries.map((entry) => {
         const item = object(entry)
-        keys(item, FILE_LIST_ENTRY_KEYS)
+        keys(item, PAYLOAD_KEYS.directory_entry)
         return { name: parseFileName(item['name']), kind: fileKind(item['kind']) }
       })
       for (let index = 1; index < parsed.length; index++)
@@ -264,18 +254,18 @@ export function parseFileResult(value: unknown): FileResult {
       }
     }
     case 'read':
-      keys(data, FILE_RESULT_READ_KEYS)
+      keys(data, PAYLOAD_KEYS.file_result.read)
       if (typeof data['end_of_file'] !== 'boolean')
         throw new ProtocolError('File end-of-file flag must be a boolean')
       return { kind: 'read', data: parseChunk(data['data']), end_of_file: data['end_of_file'] }
     case 'written':
-      keys(data, FILE_RESULT_WRITTEN_KEYS)
+      keys(data, PAYLOAD_KEYS.file_result.written)
       return {
         kind: 'written',
         bytes: integer(data['bytes'], 'written bytes', 0, MAX_FILE_CHUNK_BYTES),
       }
     case 'done':
-      keys(data, FILE_RESULT_DONE_KEYS)
+      keys(data, PAYLOAD_KEYS.file_result.done)
       return { kind: 'done' }
     default:
       throw new ProtocolError('Unknown file result')

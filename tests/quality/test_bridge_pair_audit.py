@@ -1,6 +1,5 @@
 """Offline evidence integrity controls; no native execution or performance claim."""
 
-import importlib.util
 import stat
 import tempfile
 import unittest
@@ -10,10 +9,7 @@ from copy import deepcopy
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
-SCRIPT = Path(__file__).resolve().parents[2] / "benchmarks/audit-bridge-pairs.py"
-SPEC = importlib.util.spec_from_file_location("bridge_pair_audit", SCRIPT)
-AUDIT = importlib.util.module_from_spec(SPEC)
-SPEC.loader.exec_module(AUDIT)
+from scripts.quality.native_harness import audit_bridge_pairs as AUDIT
 
 
 class ArchiveTests(unittest.TestCase):

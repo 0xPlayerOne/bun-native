@@ -1,7 +1,6 @@
 """Headless driver safety tests. These do not verify a native window or input."""
 
 import copy
-import importlib.util
 import io
 import json
 import os
@@ -14,10 +13,9 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
+from scripts.quality.native_harness import native_input_linux as DRIVER
+
 SCRIPT = Path(__file__).resolve().parents[2] / "scripts/quality/native-input-linux.py"
-SPEC = importlib.util.spec_from_file_location("native_input_linux", SCRIPT)
-DRIVER = importlib.util.module_from_spec(SPEC)
-SPEC.loader.exec_module(DRIVER)
 
 
 class EvidenceTests(unittest.TestCase):

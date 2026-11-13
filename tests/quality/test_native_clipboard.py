@@ -1,24 +1,13 @@
 """Clipboard evidence negatives; these do not substitute for actual X11 transfers."""
 
 import copy
-import importlib.util
 import unittest
 from pathlib import Path
 
+from scripts.quality.native_harness import native_clipboard_scenario as CLIPBOARD
+from scripts.quality.native_harness import native_input_linux as DRIVER
+
 ROOT = Path(__file__).resolve().parents[2]
-
-
-def module(name, filename):
-    spec = importlib.util.spec_from_file_location(
-        name, ROOT / "scripts/quality" / filename
-    )
-    loaded = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(loaded)
-    return loaded
-
-
-CLIPBOARD = module("clipboard_scenario", "native-clipboard-scenario.py")
-DRIVER = module("clipboard_input_driver", "native-input-linux.py")
 
 
 class ClipboardEvidenceTests(unittest.TestCase):

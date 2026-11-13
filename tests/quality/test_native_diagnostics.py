@@ -1,7 +1,6 @@
 """Real-process signal-target guards; these are not native GUI tests."""
 
 import hashlib
-import importlib.util
 import json
 import os
 import re
@@ -13,12 +12,9 @@ import unittest
 from pathlib import Path
 from unittest.mock import Mock, patch
 
+from scripts.quality.native_harness import native_diagnostics_linux as DIAGNOSTICS
+
 ROOT = Path(__file__).resolve().parents[2]
-SPEC = importlib.util.spec_from_file_location(
-    "native_diagnostics", ROOT / "scripts/quality/native-diagnostics-linux.py"
-)
-DIAGNOSTICS = importlib.util.module_from_spec(SPEC)
-SPEC.loader.exec_module(DIAGNOSTICS)
 DRIVER = DIAGNOSTICS.DRIVER
 
 
@@ -201,17 +197,18 @@ class DiagnosticsHelperTests(unittest.TestCase):
 
     def test_every_scenario_name_is_unique_and_has_a_scenario_source(self):
         self.assertEqual(len(set(DIAGNOSTICS.SCENARIOS)), len(DIAGNOSTICS.SCENARIOS))
-        sources = set(DIAGNOSTICS.source_snapshot.__code__.co_consts)
+        sources = DIAGNOSTICS.source_snapshot()
         for module in (
-            "native-layout-scenario.py",
-            "native-interactions-scenario.py",
-            "native-clipboard-scenario.py",
-            "native-react-workspace-scenario.py",
-            "native-solid-workspace-scenario.py",
-            "native-input-viewport-scenario.py",
+            DIAGNOSTICS.LAYOUT,
+            DIAGNOSTICS.INTERACTIONS,
+            DIAGNOSTICS.CLIPBOARD,
+            DIAGNOSTICS.WORKSPACE,
+            DIAGNOSTICS.SOLID_WORKSPACE,
+            DIAGNOSTICS.INPUT_VIEWPORT,
         ):
-            with self.subTest(module):
-                self.assertIn(f"scripts/quality/{module}", sources)
+            relative = Path(module.__file__).resolve().relative_to(ROOT).as_posix()
+            with self.subTest(relative):
+                self.assertIn(relative, sources)
 
 
 class SchedulingEvidenceBudgetTests(unittest.TestCase):

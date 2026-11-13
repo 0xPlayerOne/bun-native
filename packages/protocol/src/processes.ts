@@ -1,6 +1,6 @@
 import { ProtocolError } from './framing.ts'
 import { parseChunk, parseFilePath, parseRootId, parseRootPath } from './files.ts'
-import { fields, id, integer, keys, object } from './values.ts'
+import { id, integer, keys, object } from './values.ts'
 import {
   MAX_PROCESS_ARGS,
   MAX_PROCESS_ARG_BYTES,
@@ -15,6 +15,7 @@ import {
   MAX_TERMINAL_DIMENSION,
   MIN_PROCESS_MEMORY_BYTES,
   MIN_PROCESS_OPEN_FILES,
+  PAYLOAD_KEYS,
 } from './wire-schema.ts'
 
 const PROCESS_ARGUMENT = '--bun-native-process='
@@ -48,11 +49,9 @@ const LIMIT_BOUNDS = {
   open_files: [MIN_PROCESS_OPEN_FILES, MAX_PROCESS_OPEN_FILES],
 } as const
 
-const PROCESS_LIMITS_KEYS = fields(...LIMIT_NAMES)
-
 function parseProcessLimits(value: unknown): ProcessLimits {
   const data = object(value)
-  keys(data, PROCESS_LIMITS_KEYS)
+  keys(data, PAYLOAD_KEYS.process_limits)
   const limits: ProcessLimits = {}
   for (const name of LIMIT_NAMES)
     if (name in data) {
@@ -105,11 +104,9 @@ export type ProcessSignal = (typeof PROCESS_SIGNALS)[number]
 export type ProcessStream = 'stdout' | 'stderr' | 'terminal'
 export type ProcessExit = { code: number } | { signal: number }
 
-const EXECUTABLE_KEYS = fields('id', 'executable', 'limits')
-
 function executable(value: unknown): ProcessExecutable {
   const data = object(value)
-  keys(data, EXECUTABLE_KEYS)
+  keys(data, PAYLOAD_KEYS.process_executable)
   const path = parseRootPath(data['executable'])
   // `/` and `X:\` are the only normalized paths ending in a separator.
   if (path.endsWith('/') || path.endsWith('\\'))
@@ -173,11 +170,9 @@ function plain(value: unknown, limit: number, field: string): string {
   return value
 }
 
-const TERMINAL_SIZE_KEYS = fields('columns', 'rows')
-
 export function parseTerminalSize(value: unknown): TerminalSize {
   const data = object(value)
-  keys(data, TERMINAL_SIZE_KEYS)
+  keys(data, PAYLOAD_KEYS.terminal_size)
   return {
     columns: integer(data['columns'], 'terminal columns', 1, MAX_TERMINAL_DIMENSION),
     rows: integer(data['rows'], 'terminal rows', 1, MAX_TERMINAL_DIMENSION),
@@ -192,12 +187,9 @@ function parseEnvName(value: string): string {
   return value
 }
 
-const PROCESS_LAUNCH_KEYS = fields('executable', 'args', 'env', 'cwd', 'terminal')
-const PROCESS_CWD_KEYS = fields('grant_id', 'path')
-
 export function parseProcessLaunch(value: unknown): ProcessLaunch {
   const data = object(value)
-  keys(data, PROCESS_LAUNCH_KEYS)
+  keys(data, PAYLOAD_KEYS.process_launch)
   const args = data['args']
   if (!Array.isArray(args) || args.length > MAX_PROCESS_ARGS)
     throw new ProtocolError('Process arguments must be an array of at most ' + MAX_PROCESS_ARGS)
@@ -225,7 +217,7 @@ export function parseProcessLaunch(value: unknown): ProcessLaunch {
   }
   if ('cwd' in data) {
     const cwd = object(data['cwd'])
-    keys(cwd, PROCESS_CWD_KEYS)
+    keys(cwd, PAYLOAD_KEYS.process_directory)
     launch.cwd = { grant_id: id(cwd['grant_id']), path: parseFilePath(cwd['path']) }
   }
   if ('terminal' in data) launch.terminal = parseTerminalSize(data['terminal'])
@@ -250,11 +242,9 @@ export function parseProcessOutput(value: unknown): string {
   return data
 }
 
-const PROCESS_EXIT_KEYS = fields('code', 'signal')
-
 export function parseProcessExit(value: unknown): ProcessExit {
   const data = object(value)
-  keys(data, PROCESS_EXIT_KEYS)
+  keys(data, PAYLOAD_KEYS.process_exit)
   if ('code' in data && !('signal' in data))
     return { code: integer(data['code'], 'exit code', 0, 255) }
   if ('signal' in data && !('code' in data))

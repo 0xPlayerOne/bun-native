@@ -1,6 +1,5 @@
 """Headless allocation-runner boundaries, not native GUI/profiler qualification."""
 
-import importlib.util
 import json
 import os
 import shutil
@@ -14,11 +13,10 @@ import warnings
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
-SCRIPT = ROOT / "scripts/quality/native-allocation-linux.py"
-SPEC = importlib.util.spec_from_file_location("native_allocation", SCRIPT)
-ALLOCATION = importlib.util.module_from_spec(SPEC) if sys.platform == "linux" else None
-if ALLOCATION is not None:
-    SPEC.loader.exec_module(ALLOCATION)
+if sys.platform == "linux":
+    from scripts.quality.native_harness import native_allocation_linux as ALLOCATION
+else:
+    ALLOCATION = None
 
 
 @unittest.skipUnless(sys.platform == "linux", "Linux allocation-runner limits")
@@ -104,9 +102,8 @@ class AllocationLimitsTests(unittest.TestCase):
 
     def test_postprocessor_preserves_a_stricter_inherited_file_limit(self):
         code = (
-            "import importlib.util, resource; "
-            f"s=importlib.util.spec_from_file_location('allocation', {str(SCRIPT)!r}); "
-            "m=importlib.util.module_from_spec(s); s.loader.exec_module(m); "
+            f"import resource, sys; sys.path.insert(0, {str(ROOT)!r}); "
+            "from scripts.quality.native_harness import native_allocation_linux as m; "
             "resource.setrlimit(resource.RLIMIT_FSIZE, (1024, 1024)); "
             "m.limit_file_output(); "
             "assert resource.getrlimit(resource.RLIMIT_FSIZE) == (1024,1024); "

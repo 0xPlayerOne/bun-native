@@ -9,11 +9,6 @@ export function object(value: unknown): Record<string, unknown> {
   return value as Record<string, unknown>
 }
 
-/** A message's accepted property names, hoisted to module scope so validation allocates nothing. */
-export function fields(...names: readonly string[]): ReadonlySet<string> {
-  return new Set(names)
-}
-
 /** Reject own enumerable properties outside `allowed`; inherited keys are ignored. */
 export function keys(value: Record<string, unknown>, allowed: ReadonlySet<string>): void {
   for (const key of Object.keys(value))

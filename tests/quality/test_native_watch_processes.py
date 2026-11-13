@@ -1,6 +1,5 @@
 """Watch ownership and pipe-capture bounds. No process, GUI or GPU is started."""
 
-import importlib.util
 import io
 import json
 import os
@@ -11,12 +10,9 @@ import unittest
 from pathlib import Path
 from unittest.mock import Mock, patch
 
+from scripts.quality.native_harness import native_watch_processes as PROCESS
+
 ROOT = Path(__file__).resolve().parents[2]
-SPEC = importlib.util.spec_from_file_location(
-    "native_watch_processes", ROOT / "scripts/quality/native-watch-processes.py"
-)
-PROCESS = importlib.util.module_from_spec(SPEC)
-SPEC.loader.exec_module(PROCESS)
 
 
 def row(pid, parent, started, state="S", rss=0):

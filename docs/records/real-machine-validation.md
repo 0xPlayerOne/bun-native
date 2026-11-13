@@ -162,8 +162,8 @@ instrument injects one; that stays open.
 
 ## macOS workspace references (#248, #250)
 
-The Linux scenarios ([Solid](../../scripts/quality/native-solid-workspace-scenario.py)
-and [React](../../scripts/quality/native-react-workspace-scenario.py)) run unchanged
+The Linux scenarios ([Solid](../../scripts/quality/native_harness/native_solid_workspace_scenario.py)
+and [React](../../scripts/quality/native_harness/native_react_workspace_scenario.py)) run unchanged
 on macOS through [`native-workspace-macos.py`](../../scripts/quality/native-workspace-macos.py).
 It maps their X11 command words to the SDK helper's owned-window actions:
 

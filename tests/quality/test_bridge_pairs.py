@@ -1,6 +1,5 @@
 """Metadata, trial design and real process guards; these tests do not render GPUI."""
 
-import importlib.util
 import json
 import signal
 import subprocess
@@ -12,10 +11,9 @@ from copy import deepcopy
 from pathlib import Path
 from unittest.mock import patch
 
-SCRIPT = Path(__file__).resolve().parents[2] / "benchmarks/bridge-pairs.py"
-SPEC = importlib.util.spec_from_file_location("bridge_pairs", SCRIPT)
-PAIRS = importlib.util.module_from_spec(SPEC)
-SPEC.loader.exec_module(PAIRS)
+from scripts.quality.native_harness import bridge_pairs as PAIRS
+
+ROOT = Path(__file__).resolve().parents[2]
 
 
 class PlanTests(unittest.TestCase):
@@ -257,7 +255,7 @@ class MetadataTests(unittest.TestCase):
 
     def test_wrong_historical_commit_rejected_without_native_execution(self):
         with self.assertRaisesRegex(ValueError, "exact recorded merge"):
-            PAIRS.source_identity(SCRIPT.parents[1], "bn1")
+            PAIRS.source_identity(ROOT, "bn1")
 
     def test_a_result_cannot_masquerade_as_another_mode_or_omit_event_drain(self):
         files = self.manifest["source"]["files"]
@@ -390,9 +388,9 @@ class ProcessTests(unittest.TestCase):
 
     def test_sigterm_cleans_the_owned_child_and_writes_failure_before_exit(self):
         code = """
-import importlib.util, pathlib, sys
-spec=importlib.util.spec_from_file_location('pairs',sys.argv[1])
-pairs=importlib.util.module_from_spec(spec);spec.loader.exec_module(pairs)
+import pathlib, sys
+sys.path.insert(0, sys.argv[1])
+from scripts.quality.native_harness import bridge_pairs as pairs
 pairs.DRIVER.enable_subreaper()
 try:
     pairs.run_owned([sys.executable,'-c',"import os,time;print(os.getpid(),flush=True);time.sleep(30)"],pathlib.Path(sys.argv[2]),pathlib.Path(sys.argv[2])/'cancelled',20)
@@ -400,7 +398,7 @@ except InterruptedError:
     raise SystemExit(42)
 """
         controller = subprocess.Popen(
-            [sys.executable, "-c", code, str(SCRIPT), str(self.output)],
+            [sys.executable, "-c", code, str(ROOT), str(self.output)],
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             start_new_session=True,

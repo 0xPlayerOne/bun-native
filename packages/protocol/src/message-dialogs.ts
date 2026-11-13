@@ -1,5 +1,5 @@
 import { ProtocolError } from './framing.ts'
-import { fields, keys, object, string } from './values.ts'
+import { keys, object, string } from './values.ts'
 import {
   MAX_MESSAGE_DIALOG_BUTTONS,
   MAX_MESSAGE_DIALOG_DETAIL_BYTES,
@@ -7,6 +7,7 @@ import {
   MAX_MESSAGE_DIALOG_LABEL_BYTES,
   MAX_MESSAGE_DIALOG_MESSAGE_BYTES,
   MAX_MESSAGE_DIALOG_TITLE_BYTES,
+  PAYLOAD_KEYS,
 } from './wire-schema.ts'
 
 export interface MessageDialogButton {
@@ -38,11 +39,9 @@ function text(value: unknown, field: string, limit: number, block: boolean): str
   return result
 }
 
-const BUTTON_KEYS = fields('id', 'label')
-
 function button(value: unknown): MessageDialogButton {
   const data = object(value)
-  keys(data, BUTTON_KEYS)
+  keys(data, PAYLOAD_KEYS.message_dialog_button)
   return {
     id: text(data['id'], 'message dialog button id', MAX_MESSAGE_DIALOG_ID_BYTES, false),
     label: text(
@@ -54,19 +53,9 @@ function button(value: unknown): MessageDialogButton {
   }
 }
 
-const MESSAGE_DIALOG_OPTIONS_KEYS = fields(
-  'title',
-  'message',
-  'detail',
-  'buttons',
-  'default_button',
-  'cancel_button',
-  'dismissible'
-)
-
 export function parseMessageDialogOptions(value: unknown): MessageDialogOptions {
   const data = object(value)
-  keys(data, MESSAGE_DIALOG_OPTIONS_KEYS)
+  keys(data, PAYLOAD_KEYS.message_dialog_options)
   const list = data['buttons']
   if (!Array.isArray(list) || list.length < 1 || list.length > MAX_MESSAGE_DIALOG_BUTTONS)
     throw new ProtocolError('A message dialog needs between 1 and 4 buttons')
@@ -107,24 +96,20 @@ export function parseMessageDialogOptions(value: unknown): MessageDialogOptions 
   return options
 }
 
-const MESSAGE_DIALOG_RESULT_BUTTON_KEYS = fields('kind', 'id')
-const MESSAGE_DIALOG_RESULT_DISMISSED_KEYS = fields('kind')
-const MESSAGE_DIALOG_RESULT_FAILED_KEYS = fields('kind')
-
 export function parseMessageDialogResult(value: unknown): MessageDialogResult {
   const data = object(value)
   switch (data['kind']) {
     case 'button':
-      keys(data, MESSAGE_DIALOG_RESULT_BUTTON_KEYS)
+      keys(data, PAYLOAD_KEYS.message_dialog_result.button)
       return {
         kind: 'button',
         id: text(data['id'], 'message dialog result id', MAX_MESSAGE_DIALOG_ID_BYTES, false),
       }
     case 'dismissed':
-      keys(data, MESSAGE_DIALOG_RESULT_DISMISSED_KEYS)
+      keys(data, PAYLOAD_KEYS.message_dialog_result.dismissed)
       return { kind: 'dismissed' }
     case 'failed':
-      keys(data, MESSAGE_DIALOG_RESULT_FAILED_KEYS)
+      keys(data, PAYLOAD_KEYS.message_dialog_result.failed)
       return { kind: 'failed' }
     default:
       throw new ProtocolError('Unknown message dialog result')

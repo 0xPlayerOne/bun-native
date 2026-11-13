@@ -1,17 +1,13 @@
 """Pure host-control guards for the Windows native fault driver (#247)."""
 
-import importlib.util
 import re
 import unittest
 from pathlib import Path
 from unittest import mock
 
+from scripts.quality.native_harness import native_fault_windows as FAULT
+
 ROOT = Path(__file__).resolve().parents[2]
-SPEC = importlib.util.spec_from_file_location(
-    "native_fault_windows", ROOT / "scripts/quality/native-fault-windows.py"
-)
-FAULT = importlib.util.module_from_spec(SPEC)
-SPEC.loader.exec_module(FAULT)
 
 HOST = {"pid": 42, "created": "1000", "image": "C:\\host\\bun-native-gpui.exe"}
 

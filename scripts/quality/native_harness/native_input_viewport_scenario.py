@@ -1,15 +1,9 @@
 """One bounded actual-OS viewport flow through either public framework adapter."""
 
-import importlib.util
 import json
 import math
-from pathlib import Path
 
-SPEC = importlib.util.spec_from_file_location(
-    "input_viewport_paint", Path(__file__).with_name("native-input-viewport-paint.py")
-)
-PAINT = importlib.util.module_from_spec(SPEC)
-SPEC.loader.exec_module(PAINT)
+from . import native_input_viewport_paint as PAINT
 
 
 def run(

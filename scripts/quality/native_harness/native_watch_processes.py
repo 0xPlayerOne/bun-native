@@ -1,6 +1,5 @@
 """Bounded pipe capture and immutable process ownership for native watch evidence."""
 
-import importlib.util
 import json
 import os
 import subprocess
@@ -8,11 +7,7 @@ import threading
 import time
 from pathlib import Path
 
-SPEC = importlib.util.spec_from_file_location(
-    "native_input_linux", Path(__file__).with_name("native-input-linux.py")
-)
-DRIVER = importlib.util.module_from_spec(SPEC)
-SPEC.loader.exec_module(DRIVER)
+from . import native_input_linux as DRIVER
 
 
 def require_identity(table, identity):

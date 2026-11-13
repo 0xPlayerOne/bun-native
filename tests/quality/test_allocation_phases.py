@@ -1,6 +1,5 @@
 """Fixed-region patch/attestation guards and actual owned-process cleanup."""
 
-import importlib.util
 import io
 import json
 import sys
@@ -11,15 +10,10 @@ from copy import deepcopy
 from pathlib import Path
 from unittest.mock import patch
 
+from scripts.quality.native_harness import allocation_phases as PHASES
+from scripts.quality.native_harness import native_allocation_control as CONTROL
+
 ROOT = Path(__file__).resolve().parents[2]
-SPEC = importlib.util.spec_from_file_location(
-    "allocation_phases", ROOT / "benchmarks/allocation-phases.py"
-)
-PHASES = importlib.util.module_from_spec(SPEC)
-SPEC.loader.exec_module(PHASES)
-CONTROL = PHASES.load(
-    "allocation_control", ROOT / "benchmarks/native-allocation-control.py"
-)
 
 
 class ControlFailureTests(unittest.TestCase):

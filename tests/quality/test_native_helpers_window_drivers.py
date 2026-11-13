@@ -5,7 +5,6 @@ owned input driver. The tests replace ``os.execv`` so no native host, display
 or input driver is ever launched.
 """
 
-import importlib.util
 import io
 import json
 import os
@@ -15,22 +14,16 @@ from contextlib import redirect_stderr
 from pathlib import Path
 from unittest.mock import patch
 
+from scripts.quality.native_harness import react_behavior as BEHAVIOR
+from scripts.quality.native_harness import react_window as REACT_WINDOW
+from scripts.quality.native_harness import renderer_interactions as RENDERER
+from scripts.quality.native_harness import solid_window as SOLID_WINDOW
+
 ROOT = Path(__file__).resolve().parents[2]
 NATIVE = ROOT / "tests" / "native"
 DRIVER = ROOT / "scripts" / "quality" / "native-input-linux.py"
 
 
-def load(name, filename):
-    spec = importlib.util.spec_from_file_location(name, NATIVE / filename)
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
-    return module
-
-
-REACT_WINDOW = load("native_react_window", "react-window.py")
-SOLID_WINDOW = load("native_solid_window", "solid-window.py")
-RENDERER = load("native_renderer_interactions", "renderer-interactions.py")
-BEHAVIOR = load("native_react_behavior", "react-behavior.py")
 ENV_KEYS = (
     "BUN_NATIVE_REACT_BEHAVIOR",
     "BUN_NATIVE_RENDERER_EVENT_SCENARIO",

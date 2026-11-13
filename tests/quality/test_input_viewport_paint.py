@@ -1,17 +1,13 @@
 """Deterministic oracle controls; synthetic pixels are not native GUI evidence."""
 
 import copy
-import importlib.util
 import json
 import unittest
 from pathlib import Path
 
+from scripts.quality.native_harness import native_input_viewport_paint as PAINT
+
 ROOT = Path(__file__).resolve().parents[2]
-SPEC = importlib.util.spec_from_file_location(
-    "input_viewport_paint", ROOT / "scripts/quality/native-input-viewport-paint.py"
-)
-PAINT = importlib.util.module_from_spec(SPEC)
-SPEC.loader.exec_module(PAINT)
 
 
 def observation():

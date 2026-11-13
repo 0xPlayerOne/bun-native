@@ -3,12 +3,10 @@
 use crate::{
     validate_text, Capability, ClipboardText, DialogId, DismissReason, DisplaySnapshot, ErrorCode,
     EventSequence, FileDialogResult, Limits, NodeId, NotificationDismissal, NotificationId,
-    PointerButton, RequestId, ResizeSource, ServicePolicy, ShortcutId, WindowId, MAX_DEPTH, MAX_ID,
-    MAX_KEY_BYTES, MAX_POINTER_COORDINATE,
+    PointerButton, RequestId, ResizeSource, ServicePolicy, ShortcutId, WindowId,
+    MAX_EVENT_PATH_NODES, MAX_ID, MAX_KEY_BYTES, MAX_POINTER_COORDINATE,
 };
 use serde::{Deserialize, Serialize};
-
-pub const MAX_EVENT_PATH_NODES: usize = MAX_DEPTH + 1;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]

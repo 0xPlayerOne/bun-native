@@ -1,26 +1,13 @@
 """Missing scenario records fail with diagnostics, never a bare StopIteration."""
 
-import importlib.util
 import unittest
 from pathlib import Path
 from unittest import mock
 
+from scripts.quality.native_harness import native_input_viewport_scenario as VIEWPORT
+from scripts.quality.native_harness import native_react_workspace_scenario as WORKSPACE
+
 ROOT = Path(__file__).resolve().parents[2]
-
-
-def load(name, path):
-    spec = importlib.util.spec_from_file_location(name, ROOT / path)
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
-    return module
-
-
-VIEWPORT = load(
-    "input_viewport_scenario", "scripts/quality/native-input-viewport-scenario.py"
-)
-WORKSPACE = load(
-    "react_workspace_scenario", "scripts/quality/native-react-workspace-scenario.py"
-)
 
 
 def never(*_arguments, **_keywords):

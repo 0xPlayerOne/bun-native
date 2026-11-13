@@ -244,13 +244,11 @@ jobs:
           BUN_NATIVE_ATSPI_PYTHON: /usr/bin/python3
         run: |
           for scale in 1 2; do
-            evidence="$NATIVE_EVIDENCE/culled-list-scale$scale"
-            mkdir "$evidence"
-            BUN_NATIVE_A11Y_EVIDENCE="$evidence" BUN_NATIVE_PHASE_TRACE="$evidence/trace.json" \
-              bash scripts/quality/native-x11-session.sh --screen 1280x1024x24 \
-              "$evidence-session" -- env GPUI_X11_SCALE_FACTOR="$scale" \
-              bun tests/native/culled-list.ts 2>&1 | tee "$evidence/run.log"
-            test -s "$evidence/result.json"
+            bash scripts/quality/native-linux-dev-aot.sh --modes development --entry culled-list \
+              --dev 'bun tests/native/culled-list.ts' --evidence "culled-list-scale$scale" \
+              --run-log --require result.json --screen 1280x1024x24 \
+              --env 'BUN_NATIVE_A11Y_EVIDENCE={evidence}' --env 'BUN_NATIVE_PHASE_TRACE={evidence}/trace.json' \
+              -- env "GPUI_X11_SCALE_FACTOR=$scale" '{app}'
           done
       - name: Development and AOT Orca screen-reader speech through speech-dispatcher on X11 and Wayland (#241)
         if: matrix.shard == 2
@@ -267,22 +265,18 @@ jobs:
           # a file; XTEST keys (X11) or one virtual keyboard on headless sway (Wayland)
           # move focus, edit text, open a modal dialog and move a divider.
           for mode in development aot; do
-            command=(bun tests/native/screen-reader.ts)
-            if [[ "$mode" == aot ]]; then
-              command=("$NATIVE_EVIDENCE/screen-reader-package/screen-reader")
-            fi
-            evidence="$NATIVE_EVIDENCE/screen-reader-$mode"
-            mkdir "$evidence"
-            BUN_NATIVE_SR_EVIDENCE="$evidence" BUN_NATIVE_SR_MODE="$mode" \
-              bash scripts/quality/native-x11-session.sh --screen 1280x1024x24 \
-              "$evidence-session" -- "${command[@]}" 2>&1 | tee "$evidence/run.log"
-            test -s "$evidence/result.json"
-            evidence="$NATIVE_EVIDENCE/screen-reader-wayland-$mode"
-            mkdir "$evidence"
-            BUN_NATIVE_SR_EVIDENCE="$evidence" BUN_NATIVE_SR_MODE="$mode" \
-              dbus-run-session -- bash scripts/quality/native-wayland-session.sh \
-              "$evidence-session" "${command[@]}" 2>&1 | tee "$evidence/run.log"
-            test -s "$evidence/result.json"
+            for session in x11 wayland; do
+              evidence='screen-reader-{mode}'
+              screen=(--screen 1280x1024x24)
+              if [[ "$session" == wayland ]]; then
+                evidence='screen-reader-wayland-{mode}'
+                screen=()
+              fi
+              bash scripts/quality/native-linux-dev-aot.sh --session "$session" --modes "$mode" \
+                --entry screen-reader --dev 'bun tests/native/screen-reader.ts' --evidence "$evidence" \
+                --run-log --require result.json "${screen[@]}" \
+                --env 'BUN_NATIVE_SR_EVIDENCE={evidence}' --env 'BUN_NATIVE_SR_MODE={mode}'
+            done
           done
       - name: Development and AOT freedesktop notifications
         if: matrix.shard == 2
@@ -384,22 +378,18 @@ jobs:
           # The system Python carries PyGObject and the Atspi typelib.
           BUN_NATIVE_ATSPI_PYTHON: /usr/bin/python3
         run: |
-          for run in development-scale-1 aot-scale-1 development-scale-2; do
-            mode=${run%%-*}
-            scale=${run##*-}
-            command=(bun tests/native/wayland.ts)
-            if [[ "$mode" == aot ]]; then
-              command=("$NATIVE_EVIDENCE/wayland-package/wayland")
+          for scale in 1 2; do
+            modes='development aot'
+            if [[ "$scale" == 2 ]]; then
+              modes=development
             fi
-            evidence="$NATIVE_EVIDENCE/wayland-$run"
-            mkdir "$evidence"
-            BUN_NATIVE_WAYLAND_EVIDENCE="$evidence" BUN_NATIVE_WAYLAND_MODE="$mode" \
-              BUN_NATIVE_TEST_SCALE_FACTOR="$scale" \
-              BUN_NATIVE_EVIDENCE_LOG="$evidence/native-evidence.jsonl" \
-              BUN_NATIVE_EVIDENCE_NONCE="$(python3 -c 'import secrets; print(secrets.token_hex(16))')" \
-              dbus-run-session -- bash scripts/quality/native-wayland-session.sh \
-              "$evidence-session" "${command[@]}" 2>&1 | tee "$evidence/run.log"
-            test -s "$evidence/wayland.json"
+            bash scripts/quality/native-linux-dev-aot.sh --session wayland --modes "$modes" \
+              --entry wayland --dev 'bun tests/native/wayland.ts' --evidence "wayland-{mode}-scale-$scale" \
+              --run-log --require wayland.json \
+              --env 'BUN_NATIVE_WAYLAND_EVIDENCE={evidence}' --env 'BUN_NATIVE_WAYLAND_MODE={mode}' \
+              --env "BUN_NATIVE_TEST_SCALE_FACTOR=$scale" \
+              --env 'BUN_NATIVE_EVIDENCE_LOG={evidence}/native-evidence.jsonl' \
+              --env 'BUN_NATIVE_EVIDENCE_NONCE={nonce}'
           done
       # Two headless sway outputs of different scale (#299): window migration,
       # output reconfiguration (integer and fractional scale), output identity
@@ -410,19 +400,10 @@ jobs:
         env:
           BUN_NATIVE_HOST: ${{ github.workspace }}/target/release/bun-native-host
         run: |
-          for mode in development aot; do
-            command=(bun tests/native/display-wayland.ts)
-            if [[ "$mode" == aot ]]; then
-              command=("$NATIVE_EVIDENCE/display-wayland-package/display-wayland")
-            fi
-            evidence="$NATIVE_EVIDENCE/display-wayland-$mode"
-            mkdir "$evidence"
-            BUN_NATIVE_DISPLAY_EVIDENCE="$evidence" BUN_NATIVE_DISPLAY_MODE="$mode" \
-              BUN_NATIVE_WAYLAND_OUTPUTS=2 \
-              dbus-run-session -- bash scripts/quality/native-wayland-session.sh \
-              "$evidence-session" "${command[@]}" 2>&1 | tee "$evidence/run.log"
-            test -s "$evidence/display-wayland.json"
-          done
+          bash scripts/quality/native-linux-dev-aot.sh --session wayland --entry display-wayland \
+            --dev 'bun tests/native/display-wayland.ts' --evidence 'display-wayland-{mode}' \
+            --run-log --require display-wayland.json --env BUN_NATIVE_WAYLAND_OUTPUTS=2 \
+            --env 'BUN_NATIVE_DISPLAY_EVIDENCE={evidence}' --env 'BUN_NATIVE_DISPLAY_MODE={mode}'
       - name: Development and AOT X11 drag and drop through core, Solid and React
         if: matrix.shard == 2
         timeout-minutes: 6
@@ -751,18 +732,11 @@ jobs:
             --source "$GITHUB_WORKSPACE" \
             --host "$BUN_NATIVE_HOST" --host-profile release \
             --entry solid-workspace-soak --outdir "$NATIVE_EVIDENCE/solid-workspace-soak-package"
-          for mode in development aot; do
-            command=(bun "$NATIVE_EVIDENCE/solid-workspace-soak-package/development/application.js")
-            if [[ "$mode" == aot ]]; then
-              command=("$NATIVE_EVIDENCE/solid-workspace-soak-package/solid-workspace-soak")
-            fi
-            evidence="$NATIVE_EVIDENCE/diagnostics-$mode-solid-workspace-soak"
-            mkdir "$evidence"
-            BUN_NATIVE_DIAGNOSTICS_DIR="$evidence" \
-              bash scripts/quality/native-x11-session.sh \
-              "$evidence-session" -- timeout 150s "${command[@]}" 2>&1 | tee "$evidence/fixture.log"
-            python3 scripts/quality/native-solid-workspace-soak.py "$evidence/soak-result.json"
-          done
+          bash scripts/quality/native-linux-dev-aot.sh --entry solid-workspace-soak \
+            --evidence 'diagnostics-{mode}-solid-workspace-soak' --log fixture.log \
+            --env 'BUN_NATIVE_DIAGNOSTICS_DIR={evidence}' \
+            --check 'python3 scripts/quality/native-solid-workspace-soak.py {evidence}/soak-result.json' \
+            -- timeout 150s '{app}'
       # A bounded wall-clock session of the same round with real X11 typing,
       # Return and wheel input each round (#250), timed apart from the
       # ownership check above so that check keeps its own deadline.
@@ -787,18 +761,11 @@ jobs:
             --source "$GITHUB_WORKSPACE" \
             --host "$BUN_NATIVE_HOST" --host-profile release \
             --entry react-workspace-soak --outdir "$NATIVE_EVIDENCE/react-workspace-soak-package"
-          for mode in development aot; do
-            command=(bun "$NATIVE_EVIDENCE/react-workspace-soak-package/development/application.js")
-            if [[ "$mode" == aot ]]; then
-              command=("$NATIVE_EVIDENCE/react-workspace-soak-package/react-workspace-soak")
-            fi
-            evidence="$NATIVE_EVIDENCE/diagnostics-$mode-react-workspace-soak"
-            mkdir "$evidence"
-            BUN_NATIVE_DIAGNOSTICS_DIR="$evidence" \
-              bash scripts/quality/native-x11-session.sh \
-              "$evidence-session" -- timeout 150s "${command[@]}" 2>&1 | tee "$evidence/fixture.log"
-            python3 scripts/quality/native-react-workspace-soak.py "$evidence/soak-result.json"
-          done
+          bash scripts/quality/native-linux-dev-aot.sh --entry react-workspace-soak \
+            --evidence 'diagnostics-{mode}-react-workspace-soak' --log fixture.log \
+            --env 'BUN_NATIVE_DIAGNOSTICS_DIR={evidence}' \
+            --check 'python3 scripts/quality/native-react-workspace-soak.py {evidence}/soak-result.json' \
+            -- timeout 150s '{app}'
       # A bounded wall-clock session of the same round with real X11 typing,
       # Return and wheel input each round (#248), timed apart from the
       # ownership check above so that check keeps its own deadline.

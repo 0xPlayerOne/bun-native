@@ -1,17 +1,13 @@
 """Checks for the hosted software-GPU driver page-cache warmup (#296)."""
 
-import importlib.util
 import json
 import tempfile
 import unittest
 from pathlib import Path
 
+from scripts.quality.native_harness import warm_gpu_driver as WARMUP
+
 ROOT = Path(__file__).resolve().parents[2]
-SPEC = importlib.util.spec_from_file_location(
-    "gpu_driver_warmup", ROOT / "scripts/quality/warm-gpu-driver.py"
-)
-WARMUP = importlib.util.module_from_spec(SPEC)
-SPEC.loader.exec_module(WARMUP)
 
 
 class GpuDriverWarmup(unittest.TestCase):

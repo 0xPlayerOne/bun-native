@@ -1,15 +1,11 @@
 """Guards for the retained watch-run summary; no app or native host is run."""
 
-import importlib.util
 import unittest
 from pathlib import Path
 
+from scripts.quality.native_harness import watch_run_summary as SUMMARY
+
 ROOT = Path(__file__).resolve().parents[2]
-SPEC = importlib.util.spec_from_file_location(
-    "watch_run_summary", ROOT / "scripts/quality/watch-run-summary.py"
-)
-SUMMARY = importlib.util.module_from_spec(SPEC)
-SPEC.loader.exec_module(SUMMARY)
 
 
 def row(index, ready=None, controller=100):

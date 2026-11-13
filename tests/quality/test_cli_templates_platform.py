@@ -1,15 +1,12 @@
 """Headless checks of the template desktop driver's evidence rules, not GUI acceptance."""
 
-import importlib.util
 import json
 import tempfile
 import unittest
 from pathlib import Path
 
-SCRIPT = Path(__file__).resolve().parents[1] / "native/cli-templates-platform.py"
-SPEC = importlib.util.spec_from_file_location("cli_templates_platform", SCRIPT)
-DRIVER = importlib.util.module_from_spec(SPEC)
-SPEC.loader.exec_module(DRIVER)
+from scripts.quality.native_harness import cli_templates_platform as DRIVER
+
 TEMPLATES = DRIVER.TEMPLATES
 
 

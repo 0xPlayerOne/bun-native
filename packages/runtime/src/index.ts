@@ -42,76 +42,73 @@ type WithoutId<T> = T extends { id: number }
     ? Omit<T, 'id' | 'operations'> & { operations: O | OperationList }
     : Omit<T, 'id'>
   : never
-export type WindowCommand = WithoutId<
-  Extract<
-    Command,
-    {
-      type:
-        | 'open'
-        | 'batch'
-        | 'close'
-        | 'display_snapshot'
-        | 'clipboard_read'
-        | 'clipboard_write'
-        | 'register_global_shortcut'
-        | 'unregister_global_shortcut'
-        | 'post_notification'
-        | 'withdraw_notification'
-        | 'open_file_grant'
-        | 'close_file_grant'
-        | 'file_request'
-        | 'spawn_process'
-        | 'write_process'
-        | 'close_process_input'
-        | 'resize_process'
-        | 'signal_process'
-        | 'acknowledge_process_output'
-        | 'release_process'
-        | 'show_file_dialog'
-        | 'close_file_dialog'
-        | 'show_message_dialog'
-        | 'close_message_dialog'
-        | 'show_context_menu'
-        | 'close_context_menu'
-        | 'register_drop_target'
-        | 'unregister_drop_target'
-        | 'resolve_dropped_item'
-        | 'set_app_menu'
-    }
-  >
->
-export type HostResponse = Extract<
-  NativeEvent,
-  {
-    type:
-      | 'ack'
-      | 'opened'
-      | 'applied'
-      | 'display_snapshot'
-      | 'clipboard_text'
-      | 'clipboard_written'
-      | 'global_shortcut_registered'
-      | 'global_shortcut_unregistered'
-      | 'notification_posted'
-      | 'notification_withdrawn'
-      | 'file_grant_opened'
-      | 'file_grant_closed'
-      | 'file_result'
-      | 'process_spawned'
-      | 'process_updated'
-      | 'process_released'
-      | 'file_dialog_opened'
-      | 'file_dialog_closed'
-      | 'message_dialog_opened'
-      | 'message_dialog_closed'
-      | 'context_menu_opened'
-      | 'context_menu_closed'
-      | 'drop_target_registered'
-      | 'drop_target_unregistered'
-      | 'dropped_item_resolved'
-      | 'app_menu_set'
+export type WindowCommand = WithoutId<Exclude<Command, { type: 'hello' | 'shutdown' }>>
+
+type Field<C extends Command['type']> = Exclude<keyof Extract<Command, { type: C }>, 'type' | 'id'>
+
+/**
+ * Each command's one response type and the request fields the response must echo. `open`,
+ * `batch` and `file_request` also check the revision or result they answer (`matchesResponse`).
+ */
+const RESPONSES = {
+  hello: { type: 'ack', echoes: [] },
+  shutdown: { type: 'ack', echoes: [] },
+  open: { type: 'opened', echoes: ['window_id', 'root_id'] },
+  batch: { type: 'applied', echoes: ['window_id'] },
+  close: { type: 'ack', echoes: [] },
+  display_snapshot: { type: 'display_snapshot', echoes: ['window_id'] },
+  clipboard_read: { type: 'clipboard_text', echoes: ['window_id'] },
+  clipboard_write: { type: 'clipboard_written', echoes: ['window_id'] },
+  register_global_shortcut: {
+    type: 'global_shortcut_registered',
+    echoes: ['window_id', 'shortcut_id'],
+  },
+  unregister_global_shortcut: {
+    type: 'global_shortcut_unregistered',
+    echoes: ['window_id', 'shortcut_id'],
+  },
+  post_notification: { type: 'notification_posted', echoes: ['window_id', 'notification_id'] },
+  withdraw_notification: {
+    type: 'notification_withdrawn',
+    echoes: ['window_id', 'notification_id'],
+  },
+  open_file_grant: { type: 'file_grant_opened', echoes: ['window_id', 'grant_id'] },
+  close_file_grant: { type: 'file_grant_closed', echoes: ['window_id', 'grant_id'] },
+  file_request: { type: 'file_result', echoes: ['window_id', 'grant_id'] },
+  spawn_process: { type: 'process_spawned', echoes: ['window_id', 'process_id'] },
+  write_process: { type: 'process_updated', echoes: ['window_id', 'process_id'] },
+  close_process_input: { type: 'process_updated', echoes: ['window_id', 'process_id'] },
+  resize_process: { type: 'process_updated', echoes: ['window_id', 'process_id'] },
+  signal_process: { type: 'process_updated', echoes: ['window_id', 'process_id'] },
+  acknowledge_process_output: { type: 'process_updated', echoes: ['window_id', 'process_id'] },
+  release_process: { type: 'process_released', echoes: ['window_id', 'process_id'] },
+  show_file_dialog: { type: 'file_dialog_opened', echoes: ['window_id', 'dialog_id'] },
+  close_file_dialog: { type: 'file_dialog_closed', echoes: ['window_id', 'dialog_id'] },
+  show_message_dialog: { type: 'message_dialog_opened', echoes: ['window_id', 'dialog_id'] },
+  close_message_dialog: { type: 'message_dialog_closed', echoes: ['window_id', 'dialog_id'] },
+  show_context_menu: { type: 'context_menu_opened', echoes: ['window_id', 'menu_id'] },
+  close_context_menu: { type: 'context_menu_closed', echoes: ['window_id', 'menu_id'] },
+  register_drop_target: { type: 'drop_target_registered', echoes: ['window_id', 'target_id'] },
+  unregister_drop_target: {
+    type: 'drop_target_unregistered',
+    echoes: ['window_id', 'target_id'],
+  },
+  resolve_dropped_item: {
+    type: 'dropped_item_resolved',
+    echoes: ['window_id', 'target_id', 'drop_id', 'item', 'root'],
+  },
+  set_app_menu: { type: 'app_menu_set', echoes: ['menu_id'] },
+} as const satisfies {
+  [C in Command['type']]: {
+    type: NativeEvent['type']
+    echoes: readonly Field<C>[]
   }
->
+}
+type ResponseType<C extends Command['type']> = (typeof RESPONSES)[C]['type']
+export type HostResponse = Extract<NativeEvent, { type: ResponseType<Command['type']> }>
+const RESPONSE_TYPES: ReadonlySet<string> = new Set(
+  Object.values(RESPONSES).map((response) => response.type)
+)
 
 export interface ProcessLimitPermissions {
   /** CPU seconds before the child is stopped (SIGXCPU on POSIX). */
@@ -313,6 +310,10 @@ function samePolicy(left: Readonly<ServicePolicy>, right: Readonly<ServicePolicy
   )
 }
 
+function isResponse(event: NativeEvent): event is HostResponse {
+  return RESPONSE_TYPES.has(event.type)
+}
+
 type Pending = {
   command: Command
   resolve: (response: HostResponse) => void
@@ -462,95 +463,9 @@ export class NativeHost implements AsyncIterable<HostEvent> {
   }
 
   /** Resolves after the native UI thread acknowledges the operation. */
-  send(
-    command: Extract<WindowCommand, { type: 'open' }>
-  ): Promise<Extract<HostResponse, { type: 'opened' }>>
-  send(
-    command: Extract<WindowCommand, { type: 'batch' }>
-  ): Promise<Extract<HostResponse, { type: 'applied' }>>
-  send(
-    command: Extract<WindowCommand, { type: 'close' }>
-  ): Promise<Extract<HostResponse, { type: 'ack' }>>
-  send(
-    command: Extract<WindowCommand, { type: 'display_snapshot' }>
-  ): Promise<Extract<HostResponse, { type: 'display_snapshot' }>>
-  send(
-    command: Extract<WindowCommand, { type: 'clipboard_read' }>
-  ): Promise<Extract<HostResponse, { type: 'clipboard_text' }>>
-  send(
-    command: Extract<WindowCommand, { type: 'clipboard_write' }>
-  ): Promise<Extract<HostResponse, { type: 'clipboard_written' }>>
-  send(
-    command: Extract<WindowCommand, { type: 'register_global_shortcut' }>
-  ): Promise<Extract<HostResponse, { type: 'global_shortcut_registered' }>>
-  send(
-    command: Extract<WindowCommand, { type: 'unregister_global_shortcut' }>
-  ): Promise<Extract<HostResponse, { type: 'global_shortcut_unregistered' }>>
-  send(
-    command: Extract<WindowCommand, { type: 'post_notification' }>
-  ): Promise<Extract<HostResponse, { type: 'notification_posted' }>>
-  send(
-    command: Extract<WindowCommand, { type: 'withdraw_notification' }>
-  ): Promise<Extract<HostResponse, { type: 'notification_withdrawn' }>>
-  send(
-    command: Extract<WindowCommand, { type: 'open_file_grant' }>
-  ): Promise<Extract<HostResponse, { type: 'file_grant_opened' }>>
-  send(
-    command: Extract<WindowCommand, { type: 'close_file_grant' }>
-  ): Promise<Extract<HostResponse, { type: 'file_grant_closed' }>>
-  send(
-    command: Extract<WindowCommand, { type: 'file_request' }>
-  ): Promise<Extract<HostResponse, { type: 'file_result' }>>
-  send(
-    command: Extract<WindowCommand, { type: 'spawn_process' }>
-  ): Promise<Extract<HostResponse, { type: 'process_spawned' }>>
-  send(
-    command: Extract<WindowCommand, { type: 'release_process' }>
-  ): Promise<Extract<HostResponse, { type: 'process_released' }>>
-  send(
-    command: Extract<
-      WindowCommand,
-      {
-        type:
-          | 'write_process'
-          | 'close_process_input'
-          | 'resize_process'
-          | 'signal_process'
-          | 'acknowledge_process_output'
-      }
-    >
-  ): Promise<Extract<HostResponse, { type: 'process_updated' }>>
-  send(
-    command: Extract<WindowCommand, { type: 'show_file_dialog' }>
-  ): Promise<Extract<HostResponse, { type: 'file_dialog_opened' }>>
-  send(
-    command: Extract<WindowCommand, { type: 'close_file_dialog' }>
-  ): Promise<Extract<HostResponse, { type: 'file_dialog_closed' }>>
-  send(
-    command: Extract<WindowCommand, { type: 'show_message_dialog' }>
-  ): Promise<Extract<HostResponse, { type: 'message_dialog_opened' }>>
-  send(
-    command: Extract<WindowCommand, { type: 'close_message_dialog' }>
-  ): Promise<Extract<HostResponse, { type: 'message_dialog_closed' }>>
-  send(
-    command: Extract<WindowCommand, { type: 'show_context_menu' }>
-  ): Promise<Extract<HostResponse, { type: 'context_menu_opened' }>>
-  send(
-    command: Extract<WindowCommand, { type: 'close_context_menu' }>
-  ): Promise<Extract<HostResponse, { type: 'context_menu_closed' }>>
-  send(
-    command: Extract<WindowCommand, { type: 'register_drop_target' }>
-  ): Promise<Extract<HostResponse, { type: 'drop_target_registered' }>>
-  send(
-    command: Extract<WindowCommand, { type: 'unregister_drop_target' }>
-  ): Promise<Extract<HostResponse, { type: 'drop_target_unregistered' }>>
-  send(
-    command: Extract<WindowCommand, { type: 'resolve_dropped_item' }>
-  ): Promise<Extract<HostResponse, { type: 'dropped_item_resolved' }>>
-  send(
-    command: Extract<WindowCommand, { type: 'set_app_menu' }>
-  ): Promise<Extract<HostResponse, { type: 'app_menu_set' }>>
-  send(command: WindowCommand): Promise<HostResponse>
+  send<C extends WindowCommand>(
+    command: C
+  ): Promise<Extract<HostResponse, { type: ResponseType<C['type']> }>>
   send(command: WindowCommand): Promise<HostResponse> {
     if (this.phase !== 'running') return Promise.reject(this.closedError())
     return this.request(command)
@@ -849,35 +764,7 @@ export class NativeHost implements AsyncIterable<HostEvent> {
       this.ready = true
       return
     }
-    if (
-      event.type === 'ack' ||
-      event.type === 'opened' ||
-      event.type === 'applied' ||
-      event.type === 'display_snapshot' ||
-      event.type === 'clipboard_text' ||
-      event.type === 'clipboard_written' ||
-      event.type === 'global_shortcut_registered' ||
-      event.type === 'global_shortcut_unregistered' ||
-      event.type === 'notification_posted' ||
-      event.type === 'notification_withdrawn' ||
-      event.type === 'file_grant_opened' ||
-      event.type === 'file_grant_closed' ||
-      event.type === 'file_result' ||
-      event.type === 'process_spawned' ||
-      event.type === 'process_updated' ||
-      event.type === 'process_released' ||
-      event.type === 'file_dialog_opened' ||
-      event.type === 'file_dialog_closed' ||
-      event.type === 'message_dialog_opened' ||
-      event.type === 'message_dialog_closed' ||
-      event.type === 'context_menu_opened' ||
-      event.type === 'context_menu_closed' ||
-      event.type === 'drop_target_registered' ||
-      event.type === 'drop_target_unregistered' ||
-      event.type === 'dropped_item_resolved' ||
-      event.type === 'app_menu_set' ||
-      event.type === 'error'
-    ) {
+    if (event.type === 'error' || isResponse(event)) {
       if (event.type === 'error' && event.id === undefined)
         throw new ProtocolError(`Native ${event.code}: ${event.message}`)
       const requestId = event.id
@@ -909,142 +796,17 @@ export class NativeHost implements AsyncIterable<HostEvent> {
   }
 
   private matchesResponse(command: Command, response: HostResponse): boolean {
-    switch (command.type) {
-      case 'display_snapshot':
-        return response.type === 'display_snapshot' && response.window_id === command.window_id
-      case 'clipboard_read':
-        return response.type === 'clipboard_text' && response.window_id === command.window_id
-      case 'clipboard_write':
-        return response.type === 'clipboard_written' && response.window_id === command.window_id
-      case 'register_global_shortcut':
-        return (
-          response.type === 'global_shortcut_registered' &&
-          response.window_id === command.window_id &&
-          response.shortcut_id === command.shortcut_id
-        )
-      case 'unregister_global_shortcut':
-        return (
-          response.type === 'global_shortcut_unregistered' &&
-          response.window_id === command.window_id &&
-          response.shortcut_id === command.shortcut_id
-        )
-      case 'post_notification':
-        return (
-          response.type === 'notification_posted' &&
-          response.window_id === command.window_id &&
-          response.notification_id === command.notification_id
-        )
-      case 'withdraw_notification':
-        return (
-          response.type === 'notification_withdrawn' &&
-          response.window_id === command.window_id &&
-          response.notification_id === command.notification_id
-        )
-      case 'open_file_grant':
-      case 'close_file_grant':
-        return (
-          response.type ===
-            (command.type === 'open_file_grant' ? 'file_grant_opened' : 'file_grant_closed') &&
-          response.window_id === command.window_id &&
-          response.grant_id === command.grant_id
-        )
-      case 'file_request':
-        return (
-          response.type === 'file_result' &&
-          response.window_id === command.window_id &&
-          response.grant_id === command.grant_id &&
-          fileResultAnswers(command.operation, response.result)
-        )
-      case 'spawn_process':
-      case 'write_process':
-      case 'close_process_input':
-      case 'resize_process':
-      case 'signal_process':
-      case 'acknowledge_process_output':
-      case 'release_process':
-        return (
-          response.type ===
-            (command.type === 'spawn_process'
-              ? 'process_spawned'
-              : command.type === 'release_process'
-                ? 'process_released'
-                : 'process_updated') &&
-          response.window_id === command.window_id &&
-          response.process_id === command.process_id
-        )
-      case 'show_file_dialog':
-        return (
-          response.type === 'file_dialog_opened' &&
-          response.window_id === command.window_id &&
-          response.dialog_id === command.dialog_id
-        )
-      case 'close_file_dialog':
-        return (
-          response.type === 'file_dialog_closed' &&
-          response.window_id === command.window_id &&
-          response.dialog_id === command.dialog_id
-        )
-      case 'show_message_dialog':
-        return (
-          response.type === 'message_dialog_opened' &&
-          response.window_id === command.window_id &&
-          response.dialog_id === command.dialog_id
-        )
-      case 'close_message_dialog':
-        return (
-          response.type === 'message_dialog_closed' &&
-          response.window_id === command.window_id &&
-          response.dialog_id === command.dialog_id
-        )
-      case 'show_context_menu':
-      case 'close_context_menu':
-        return (
-          response.type ===
-            (command.type === 'show_context_menu'
-              ? 'context_menu_opened'
-              : 'context_menu_closed') &&
-          response.window_id === command.window_id &&
-          response.menu_id === command.menu_id
-        )
-      case 'register_drop_target':
-      case 'unregister_drop_target':
-        return (
-          response.type ===
-            (command.type === 'register_drop_target'
-              ? 'drop_target_registered'
-              : 'drop_target_unregistered') &&
-          response.window_id === command.window_id &&
-          response.target_id === command.target_id
-        )
-      case 'resolve_dropped_item':
-        return (
-          response.type === 'dropped_item_resolved' &&
-          response.window_id === command.window_id &&
-          response.target_id === command.target_id &&
-          response.drop_id === command.drop_id &&
-          response.item === command.item &&
-          response.root === command.root
-        )
-      case 'set_app_menu':
-        return response.type === 'app_menu_set' && response.menu_id === command.menu_id
-      case 'open':
-        return (
-          response.type === 'opened' &&
-          response.window_id === command.window_id &&
-          response.root_id === command.root_id &&
-          response.tree_revision === 0
-        )
-      case 'batch':
-        return (
-          response.type === 'applied' &&
-          response.window_id === command.window_id &&
-          response.tree_revision === command.base_revision + 1
-        )
-      case 'hello':
-      case 'close':
-      case 'shutdown':
-        return response.type === 'ack'
-    }
+    const expected = RESPONSES[command.type]
+    if (response.type !== expected.type) return false
+    const request = command as unknown as Readonly<Record<string, unknown>>
+    const answer = response as unknown as Readonly<Record<string, unknown>>
+    if (!expected.echoes.every((field: string) => answer[field] === request[field])) return false
+    if (command.type === 'open' && response.type === 'opened') return response.tree_revision === 0
+    if (command.type === 'batch' && response.type === 'applied')
+      return response.tree_revision === command.base_revision + 1
+    if (command.type === 'file_request' && response.type === 'file_result')
+      return fileResultAnswers(command.operation, response.result)
+    return true
   }
 
   private closedError(): Error {

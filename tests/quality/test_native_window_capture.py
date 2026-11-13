@@ -1,6 +1,5 @@
 """In-process X11 window capture: encoding, bound and exclusivity, without a display."""
 
-import importlib.util
 import struct
 import tempfile
 import threading
@@ -10,12 +9,7 @@ import zlib
 from pathlib import Path
 from unittest.mock import patch
 
-SCRIPT = (
-    Path(__file__).resolve().parents[2] / "scripts/quality/native-window-capture.py"
-)
-SPEC = importlib.util.spec_from_file_location("native_window_capture", SCRIPT)
-CAPTURE = importlib.util.module_from_spec(SPEC)
-SPEC.loader.exec_module(CAPTURE)
+from scripts.quality.native_harness import native_window_capture as CAPTURE
 
 
 def decode(png):

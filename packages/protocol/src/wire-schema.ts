@@ -23,7 +23,12 @@ export const MAX_OPERATIONS = 16_384
 export const MAX_NODES_PER_WINDOW = 4_096
 const MAX_WINDOWS = 16
 /** Tree edges from a window root to its deepest node. */
-export const MAX_DEPTH = 64
+const MAX_DEPTH = 64
+/**
+ * Node identities in a routed event path: the target and each ancestor up to the window root, so
+ * `MAX_DEPTH + 1`.
+ */
+export const MAX_EVENT_PATH_NODES = 65
 /**
  * Overlays nested inside overlays, the outermost counting as one. The host lays out each nested
  * layer in its own bounded prepaint round.
@@ -39,6 +44,8 @@ export const MAX_ACCESSIBLE_SET_SIZE = 2_147_483_647
 export const MAX_KEY_BYTES = 256
 /** Largest pointer or context menu coordinate magnitude, in logical pixels. */
 export const MAX_POINTER_COORDINATE = 1_048_576
+/** Largest display origin magnitude and display size, in logical pixels. */
+export const MAX_DISPLAY_COORDINATE = 1_048_576
 /** Worst-case JSON escaping still leaves room within the event frame. */
 export const MAX_CLIPBOARD_BYTES = 8_192
 const MAX_SERVICE_REQUESTS = 8
@@ -47,6 +54,11 @@ export const MAX_NOTIFICATIONS = 32
 export const MAX_NOTIFICATION_TITLE_BYTES = 256
 export const MAX_NOTIFICATION_BODY_BYTES = 2_048
 export const MAX_FILESYSTEM_ROOTS = 8
+/**
+ * Filesystem root and process executable identifiers: lowercase ASCII letters, digits, `-` and `_`,
+ * starting with a letter.
+ */
+export const MAX_ROOT_ID_BYTES = 32
 export const MAX_FILE_GRANTS = 32
 export const MAX_ROOT_PATH_BYTES = 4_096
 export const MAX_FILE_PATH_BYTES = 1_024
@@ -103,6 +115,8 @@ export const MAX_APP_MENU_ENTRIES = 128
 /** A top-level menu is depth 1; submenus nest at most two levels below it. */
 export const MAX_APP_MENU_DEPTH = 3
 export const MAX_APP_MENU_LABEL_BYTES = 64
+/** An application menu item identifier, `[A-Za-z0-9._:-]`. */
+export const MAX_APP_MENU_ITEM_ID_BYTES = 64
 
 export interface Limits {
   max_frame_bytes: number
@@ -656,3 +670,120 @@ export const EVENT_KEYS = Object.freeze({
 
 /** Members of a key or pointer event's `modifiers`. */
 export const MODIFIER_KEYS = new Set(['control', 'alt', 'shift', 'platform', 'function'] as const)
+
+/** Named menu shortcut keys besides letters, digits and function keys. */
+export const APP_MENU_NAMED_KEYS = Object.freeze([
+  'enter',
+  'escape',
+  'tab',
+  'space',
+  'backspace',
+  'delete',
+  'up',
+  'down',
+  'left',
+  'right',
+  'home',
+  'end',
+  'pageup',
+  'pagedown',
+] as const)
+/** Punctuation menu shortcut keys. */
+export const APP_MENU_PUNCTUATION_KEYS = Object.freeze([
+  ',',
+  '.',
+  '/',
+  ';',
+  "'",
+  '[',
+  ']',
+  '-',
+  '=',
+  '`',
+  '\\',
+] as const)
+
+/** Members of each nested payload object; each variant of a tagged one includes the tag. */
+export const PAYLOAD_KEYS = Object.freeze({
+  filesystem_root: new Set(['id', 'path', 'access'] as const),
+  file_operation: Object.freeze({
+    stat: new Set(['kind'] as const),
+    list: new Set(['kind', 'after'] as const),
+    read: new Set(['kind', 'offset', 'length'] as const),
+    write: new Set(['kind', 'mode', 'data'] as const),
+    create_directory: new Set(['kind'] as const),
+    remove: new Set(['kind'] as const),
+  }),
+  file_result: Object.freeze({
+    stat: new Set(['kind', 'file_kind', 'size', 'modified_ms'] as const),
+    list: new Set(['kind', 'entries', 'complete', 'omitted'] as const),
+    read: new Set(['kind', 'data', 'end_of_file'] as const),
+    written: new Set(['kind', 'bytes'] as const),
+    done: new Set(['kind'] as const),
+  }),
+  directory_entry: new Set(['name', 'kind'] as const),
+  process_limits: new Set(['cpu_seconds', 'memory_bytes', 'open_files'] as const),
+  process_executable: new Set(['id', 'executable', 'limits'] as const),
+  process_launch: new Set(['executable', 'args', 'env', 'cwd', 'terminal'] as const),
+  process_directory: new Set(['grant_id', 'path'] as const),
+  terminal_size: new Set(['columns', 'rows'] as const),
+  process_exit: new Set(['code', 'signal'] as const),
+  app_menu: new Set(['title', 'items'] as const),
+  app_menu_entry: Object.freeze({
+    item: new Set(['kind', 'id', 'label', 'shortcut', 'enabled', 'checked'] as const),
+    separator: new Set(['kind'] as const),
+    submenu: new Set(['kind', 'label', 'enabled', 'items'] as const),
+  }),
+  menu_shortcut: new Set(['key', 'modifiers'] as const),
+  menu_shortcut_modifiers: new Set(['control', 'alt', 'shift', 'platform'] as const),
+  file_dialog_options: new Set([
+    'mode',
+    'title',
+    'accept_label',
+    'folder',
+    'name',
+    'filters',
+  ] as const),
+  file_filter: new Set(['name', 'patterns'] as const),
+  file_dialog_result: Object.freeze({
+    selected: new Set(['kind', 'paths'] as const),
+    cancelled: new Set(['kind'] as const),
+    failed: new Set(['kind', 'code'] as const),
+  }),
+  message_dialog_options: new Set([
+    'title',
+    'message',
+    'detail',
+    'buttons',
+    'default_button',
+    'cancel_button',
+    'dismissible',
+  ] as const),
+  message_dialog_button: new Set(['id', 'label'] as const),
+  message_dialog_result: Object.freeze({
+    button: new Set(['kind', 'id'] as const),
+    dismissed: new Set(['kind'] as const),
+    failed: new Set(['kind'] as const),
+  }),
+  service_policy: new Set([
+    'window_display',
+    'clipboard_read',
+    'clipboard_write',
+    'global_shortcuts',
+    'notifications',
+    'drag_drop',
+    'filesystem_roots',
+    'processes',
+    'file_dialogs',
+    'app_menu',
+    'task_dialogs',
+  ] as const),
+  shortcut_modifiers: new Set(['control', 'alt', 'shift', 'platform'] as const),
+  clipboard_text: Object.freeze({
+    empty: new Set(['kind'] as const),
+    text: new Set(['kind', 'text'] as const),
+  }),
+  display_snapshot: new Set(['bounds', 'scale_factor', 'visible_bounds', 'display_uuid'] as const),
+  display_bounds: new Set(['x', 'y', 'width', 'height'] as const),
+  dropped_item: new Set(['name'] as const),
+})

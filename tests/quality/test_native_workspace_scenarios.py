@@ -5,29 +5,18 @@ X11 session, screenshot tool, GPU or native host is started, and none of these
 tests claims native rendering.
 """
 
-import importlib.util
 import json
 import tempfile
 import unittest
 from pathlib import Path
 from unittest.mock import Mock, patch
 
+from scripts.quality.native_harness import native_input_viewport_scenario as VIEWPORT
+from scripts.quality.native_harness import native_layout_scenario as LAYOUT
+from scripts.quality.native_harness import native_react_workspace_scenario as REACT
+from scripts.quality.native_harness import native_solid_workspace_scenario as SOLID
+
 ROOT = Path(__file__).resolve().parents[2]
-
-
-def load(name, filename):
-    spec = importlib.util.spec_from_file_location(
-        name, ROOT / "scripts/quality" / filename
-    )
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
-    return module
-
-
-LAYOUT = load("native_layout", "native-layout-scenario.py")
-REACT = load("native_react_workspace", "native-react-workspace-scenario.py")
-SOLID = load("native_solid_workspace", "native-solid-workspace-scenario.py")
-VIEWPORT = load("native_input_viewport", "native-input-viewport-scenario.py")
 
 
 class Timeout(RuntimeError):

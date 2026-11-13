@@ -4,7 +4,6 @@
 every case compares the two. These tests start no native window.
 """
 
-import importlib.util
 import json
 import os
 import signal
@@ -13,10 +12,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-SCRIPT = Path(__file__).resolve().parents[2] / "scripts/quality/native-input-linux.py"
-SPEC = importlib.util.spec_from_file_location("native_input_linux_log", SCRIPT)
-DRIVER = importlib.util.module_from_spec(SPEC)
-SPEC.loader.exec_module(DRIVER)
+from scripts.quality.native_harness import native_input_linux as DRIVER
 
 
 def record(index, nonce="run"):

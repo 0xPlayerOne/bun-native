@@ -1,41 +1,15 @@
 import { ProtocolError } from './framing.ts'
-import { fields, keys, object, string } from './values.ts'
+import { keys, object, string } from './values.ts'
 import {
+  APP_MENU_NAMED_KEYS,
+  APP_MENU_PUNCTUATION_KEYS,
   MAX_APP_MENUS,
   MAX_APP_MENU_DEPTH,
   MAX_APP_MENU_ENTRIES,
+  MAX_APP_MENU_ITEM_ID_BYTES,
   MAX_APP_MENU_LABEL_BYTES,
+  PAYLOAD_KEYS,
 } from './wire-schema.ts'
-
-const APP_MENU_NAMED_KEYS = Object.freeze([
-  'enter',
-  'escape',
-  'tab',
-  'space',
-  'backspace',
-  'delete',
-  'up',
-  'down',
-  'left',
-  'right',
-  'home',
-  'end',
-  'pageup',
-  'pagedown',
-] as const)
-const APP_MENU_PUNCTUATION_KEYS = Object.freeze([
-  ',',
-  '.',
-  '/',
-  ';',
-  "'",
-  '[',
-  ']',
-  '-',
-  '=',
-  '`',
-  '\\',
-] as const)
 
 /** The closed key set of a menu shortcut. */
 export const APP_MENU_KEYS = Object.freeze([
@@ -75,13 +49,13 @@ export interface AppMenu {
   items: AppMenuEntry[]
 }
 
-const ITEM_ID = /^[A-Za-z0-9._:-]{1,64}$/
+const ITEM_ID = new RegExp(`^[A-Za-z0-9._:-]{1,${MAX_APP_MENU_ITEM_ID_BYTES}}$`)
 
-/** `[A-Za-z0-9._:-]`, 1-64 bytes: an application identifier, never a native name. */
+/** `[A-Za-z0-9._:-]`, 1 to `MAX_APP_MENU_ITEM_ID_BYTES` bytes: an application identifier, never a native name. */
 export function parseAppMenuItemId(value: unknown): string {
   if (typeof value !== 'string' || !ITEM_ID.test(value))
     throw new ProtocolError(
-      "Menu item id must be 1-64 bytes of letters, digits, '.', '_', ':' or '-'"
+      `Menu item id must be 1-${MAX_APP_MENU_ITEM_ID_BYTES} bytes of letters, digits, '.', '_', ':' or '-'`
     )
   return value
 }
@@ -101,17 +75,14 @@ function flag(data: Record<string, unknown>, key: string): boolean {
 
 const isFunctionKey = (key: string) => /^f([1-9]|1[0-2])$/.test(key)
 
-const MENU_SHORTCUT_KEYS = fields('key', 'modifiers')
-const MENU_MODIFIER_KEYS = fields('control', 'alt', 'shift', 'platform')
-
 function parseMenuShortcut(value: unknown): MenuShortcut {
   const data = object(value)
-  keys(data, MENU_SHORTCUT_KEYS)
+  keys(data, PAYLOAD_KEYS.menu_shortcut)
   const key = data['key']
   if (typeof key !== 'string' || !APP_MENU_KEYS.includes(key))
     throw new ProtocolError('Menu shortcut key is not in the closed key set')
   const raw = object(data['modifiers'])
-  keys(raw, MENU_MODIFIER_KEYS)
+  keys(raw, PAYLOAD_KEYS.menu_shortcut_modifiers)
   const modifiers = {
     control: flag(raw, 'control'),
     alt: flag(raw, 'alt'),
@@ -132,10 +103,6 @@ interface Census {
   shortcuts: Set<string>
 }
 
-const ENTRIES_ITEM_KEYS = fields('kind', 'id', 'label', 'shortcut', 'enabled', 'checked')
-const ENTRIES_SEPARATOR_KEYS = fields('kind')
-const ENTRIES_SUBMENU_KEYS = fields('kind', 'label', 'enabled', 'items')
-
 function entries(value: unknown, depth: number, census: Census): AppMenuEntry[] {
   if (!Array.isArray(value) || !value.length)
     throw new ProtocolError('A menu or submenu needs at least one entry')
@@ -145,7 +112,7 @@ function entries(value: unknown, depth: number, census: Census): AppMenuEntry[] 
     const data = object(raw)
     switch (data['kind']) {
       case 'item': {
-        keys(data, ENTRIES_ITEM_KEYS)
+        keys(data, PAYLOAD_KEYS.app_menu_entry.item)
         const id = parseAppMenuItemId(data['id'])
         if (census.ids.has(id))
           throw new ProtocolError('Menu item ids must be unique in a menu bar')
@@ -168,10 +135,10 @@ function entries(value: unknown, depth: number, census: Census): AppMenuEntry[] 
         return entry
       }
       case 'separator':
-        keys(data, ENTRIES_SEPARATOR_KEYS)
+        keys(data, PAYLOAD_KEYS.app_menu_entry.separator)
         return { kind: 'separator' }
       case 'submenu': {
-        keys(data, ENTRIES_SUBMENU_KEYS)
+        keys(data, PAYLOAD_KEYS.app_menu_entry.submenu)
         const text = label(data['label'], 'menu label')
         const enabled = flag(data, 'enabled')
         if (depth >= MAX_APP_MENU_DEPTH)
@@ -197,8 +164,6 @@ export function parseContextMenuItems(value: unknown): AppMenuEntry[] {
   return entries(value, 1, { entries: 0, ids: new Set(), shortcuts: new Set() })
 }
 
-const APP_MENUS_KEYS = fields('title', 'items')
-
 /** An empty bar is valid: it removes the application's menus. */
 export function parseAppMenus(value: unknown): AppMenu[] {
   if (!Array.isArray(value) || value.length > MAX_APP_MENUS)
@@ -206,7 +171,7 @@ export function parseAppMenus(value: unknown): AppMenu[] {
   const census: Census = { entries: 0, ids: new Set(), shortcuts: new Set() }
   return value.map((raw) => {
     const data = object(raw)
-    keys(data, APP_MENUS_KEYS)
+    keys(data, PAYLOAD_KEYS.app_menu)
     return {
       title: label(data['title'], 'menu title'),
       items: entries(data['items'], 1, census),

@@ -1,11 +1,13 @@
 import { ProtocolError } from './framing.ts'
-import { fields, keys, number, object, string } from './values.ts'
+import { keys, number, object, string } from './values.ts'
 import { parseFilesystemRoots, type FilesystemRoot } from './files.ts'
 import { parseProcessExecutables, type ProcessExecutable } from './processes.ts'
 import {
   MAX_CLIPBOARD_BYTES,
+  MAX_DISPLAY_COORDINATE,
   MAX_NOTIFICATION_BODY_BYTES,
   MAX_NOTIFICATION_TITLE_BYTES,
+  PAYLOAD_KEYS,
 } from './wire-schema.ts'
 
 export interface ServicePolicy {
@@ -50,11 +52,9 @@ export interface ShortcutModifiers {
   platform: boolean
 }
 
-const SHORTCUT_MODIFIERS_KEYS = fields('control', 'alt', 'shift', 'platform')
-
 export function parseShortcutModifiers(value: unknown): ShortcutModifiers {
   const data = object(value)
-  keys(data, SHORTCUT_MODIFIERS_KEYS)
+  keys(data, PAYLOAD_KEYS.shortcut_modifiers)
   const flag = (key: keyof ShortcutModifiers) => {
     if (typeof data[key] !== 'boolean')
       throw new ProtocolError('Global shortcut modifiers must state each modifier explicitly')
@@ -102,16 +102,13 @@ export function parseNotificationDismissal(value: unknown): NotificationDismissa
 
 export type ClipboardText = { kind: 'empty' } | { kind: 'text'; text: string }
 
-const CLIPBOARD_TEXT_EMPTY_KEYS = fields('kind')
-const CLIPBOARD_TEXT_READ_KEYS = fields('kind', 'text')
-
 export function parseClipboardText(value: unknown): ClipboardText {
   const data = object(value)
   if (data['kind'] === 'empty') {
-    keys(data, CLIPBOARD_TEXT_EMPTY_KEYS)
+    keys(data, PAYLOAD_KEYS.clipboard_text.empty)
     return { kind: 'empty' }
   }
-  keys(data, CLIPBOARD_TEXT_READ_KEYS)
+  keys(data, PAYLOAD_KEYS.clipboard_text.text)
   if (data['kind'] !== 'text') throw new ProtocolError('Unknown clipboard text result')
   return { kind: 'text', text: string(data['text'], 'clipboard text', MAX_CLIPBOARD_BYTES) }
 }
@@ -134,36 +131,20 @@ export interface DisplaySnapshot {
 
 const DISPLAY_UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
 
-const DISPLAY_BOUNDS_KEYS = fields('x', 'y', 'width', 'height')
-
 function displayBounds(value: unknown, name: string): DisplayBounds {
   const bounds = object(value)
-  keys(bounds, DISPLAY_BOUNDS_KEYS)
+  keys(bounds, PAYLOAD_KEYS.display_bounds)
   return {
-    x: number(bounds['x'], name + ' x', -1_048_576, 1_048_576),
-    y: number(bounds['y'], name + ' y', -1_048_576, 1_048_576),
-    width: number(bounds['width'], name + ' width', Number.MIN_VALUE, 1_048_576),
-    height: number(bounds['height'], name + ' height', Number.MIN_VALUE, 1_048_576),
+    x: number(bounds['x'], name + ' x', -MAX_DISPLAY_COORDINATE, MAX_DISPLAY_COORDINATE),
+    y: number(bounds['y'], name + ' y', -MAX_DISPLAY_COORDINATE, MAX_DISPLAY_COORDINATE),
+    width: number(bounds['width'], name + ' width', Number.MIN_VALUE, MAX_DISPLAY_COORDINATE),
+    height: number(bounds['height'], name + ' height', Number.MIN_VALUE, MAX_DISPLAY_COORDINATE),
   }
 }
 
-const SERVICE_POLICY_KEYS = fields(
-  'window_display',
-  'clipboard_read',
-  'clipboard_write',
-  'global_shortcuts',
-  'notifications',
-  'drag_drop',
-  'filesystem_roots',
-  'processes',
-  'file_dialogs',
-  'app_menu',
-  'task_dialogs'
-)
-
 export function parseServicePolicy(value: unknown): ServicePolicy {
   const data = object(value)
-  keys(data, SERVICE_POLICY_KEYS)
+  keys(data, PAYLOAD_KEYS.service_policy)
   const grant = (key: keyof ServicePolicy) => {
     if (typeof data[key] !== 'boolean')
       throw new ProtocolError('Native service policy must explicitly grant or deny each operation')
@@ -184,11 +165,9 @@ export function parseServicePolicy(value: unknown): ServicePolicy {
   }
 }
 
-const DISPLAY_SNAPSHOT_KEYS = fields('bounds', 'scale_factor', 'visible_bounds', 'display_uuid')
-
 export function parseDisplaySnapshot(value: unknown): DisplaySnapshot {
   const data = object(value)
-  keys(data, DISPLAY_SNAPSHOT_KEYS)
+  keys(data, PAYLOAD_KEYS.display_snapshot)
   const snapshot: DisplaySnapshot = {
     bounds: displayBounds(data['bounds'], 'display'),
     scale_factor: number(data['scale_factor'], 'display scale factor', 0.125, 16),

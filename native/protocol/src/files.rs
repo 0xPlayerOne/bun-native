@@ -3,11 +3,10 @@
 
 use crate::{
     MAX_DIRECTORY_ENTRIES, MAX_FILESYSTEM_ROOTS, MAX_FILE_CHUNK_BYTES, MAX_FILE_NAME_BYTES,
-    MAX_FILE_PATH_BYTES, MAX_FILE_PATH_COMPONENTS, MAX_ROOT_PATH_BYTES,
+    MAX_FILE_PATH_BYTES, MAX_FILE_PATH_COMPONENTS, MAX_ROOT_ID_BYTES, MAX_ROOT_PATH_BYTES,
 };
 use serde::{Deserialize, Serialize};
 
-pub const MAX_ROOT_ID_BYTES: usize = 32;
 /// Canonical padded base64 length of the largest chunk.
 pub const MAX_FILE_CHUNK_BASE64: usize = MAX_FILE_CHUNK_BYTES.div_ceil(3) * 4;
 /// Largest byte offset a read or stat reports: JavaScript's safe integer range.

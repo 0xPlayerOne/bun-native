@@ -18,9 +18,10 @@ let bin = ''
 let scripts = ''
 
 // Stand-ins record what each layer received: xvfb-run its server arguments,
-// dbus-run-session its command, and native-linux-session.sh its arguments and
-// the environment a step set. Only the session layer is replaced; the two
-// scripts under test are the repository's own.
+// dbus-run-session its command, and native-linux-session.sh or
+// native-wayland-session.sh its arguments and the environment a step set. Only
+// the session layer is replaced; the two scripts under test are the
+// repository's own.
 beforeAll(() => {
   work = mkdtempSync(join(tmpdir(), 'bun-native-dev-aot-'))
   bin = join(work, 'bin')
@@ -45,18 +46,25 @@ beforeAll(() => {
   record('dbus-run-session', '[[ $1 == -- ]] && shift\nexec "$@"')
   for (const name of ['native-x11-session.sh', 'native-linux-dev-aot.sh'])
     copyFileSync(join(root, 'scripts/quality', name), join(scripts, name))
-  writeFileSync(
-    join(scripts, 'native-linux-session.sh'),
-    [
-      'set -euo pipefail',
-      'printf "session" >> "$CALLS"',
-      'printf " [%s]" "$@" >> "$CALLS"',
-      'printf " env[%s]" "${STEP_EVIDENCE:-}" "${STEP_MODE:-}" "${STEP_NONCE:-}" >> "$CALLS"',
-      'printf "\\n" >> "$CALLS"',
-      'shift 2',
-      'printf "ran %s\\n" "$*"',
-      'if [[ -n "${STEP_EVIDENCE:-}" ]]; then printf "{}" > "$STEP_EVIDENCE/result.json"; fi',
-    ].join('\n')
+  const session = (name: string, label: string, skip: number) =>
+    writeFileSync(
+      join(scripts, name),
+      [
+        'set -euo pipefail',
+        `printf "${label}" >> "$CALLS"`,
+        'printf " [%s]" "$@" >> "$CALLS"',
+        'printf " env[%s]" "${STEP_EVIDENCE:-}" "${STEP_MODE:-}" "${STEP_NONCE:-}" >> "$CALLS"',
+        'printf "\\n" >> "$CALLS"',
+        `shift ${skip}`,
+        'printf "ran %s\\n" "$*"',
+        'if [[ -n "${STEP_EVIDENCE:-}" ]]; then printf "{}" > "$STEP_EVIDENCE/result.json"; fi',
+      ].join('\n')
+    )
+  session('native-linux-session.sh', 'session', 2)
+  session('native-wayland-session.sh', 'wayland', 1)
+  record(
+    'check',
+    'printf "check" >> "$CALLS"\nprintf " [%s]" "$@" >> "$CALLS"\nprintf "\\n" >> "$CALLS"'
   )
 })
 
@@ -184,12 +192,59 @@ test('dev/AOT fails a run that leaves no required evidence, and rejects unknown 
   ).toBe(2)
 })
 
-test('native workflows start every X11 session through the shared wrapper', () => {
+test('dev/AOT runs Wayland sessions under DBus, tees a named log and checks each run', () => {
+  const { result, lines, evidence } = run('native-linux-dev-aot.sh', [
+    '--session',
+    'wayland',
+    '--entry',
+    'display-wayland',
+    '--dev',
+    'bun tests/native/display-wayland.ts',
+    '--evidence',
+    'display-wayland-{mode}',
+    '--log',
+    'fixture.log',
+    '--require',
+    'result.json',
+    '--check',
+    'check {mode} {evidence}/result.json',
+    '--env',
+    'STEP_EVIDENCE={evidence}',
+    '--env',
+    'STEP_MODE={mode}',
+  ])
+  expect(result.exitCode).toBe(0)
+  expect(lines).toEqual([
+    'wayland [$E/display-wayland-development-session] [bun] [tests/native/display-wayland.ts] env[$E/display-wayland-development] env[development] env[]',
+    'check [development] [$E/display-wayland-development/result.json]',
+    'wayland [$E/display-wayland-aot-session] [$E/display-wayland-package/display-wayland] env[$E/display-wayland-aot] env[aot] env[]',
+    'check [aot] [$E/display-wayland-aot/result.json]',
+  ])
+  expect(readFileSync(join(evidence, 'display-wayland-aot/fixture.log'), 'utf8')).toContain('ran ')
+  expect(
+    run('native-linux-dev-aot.sh', [
+      '--session',
+      'wayland',
+      '--screen',
+      '1x1x24',
+      '--entry',
+      'x',
+      '--evidence',
+      'x',
+    ]).result.exitCode
+  ).toBe(2)
+  expect(
+    run('native-linux-dev-aot.sh', ['--session', 'mir', '--entry', 'x', '--evidence', 'x']).result
+      .exitCode
+  ).toBe(2)
+})
+
+test('native workflows start every X11 and Wayland session through the shared wrappers', () => {
   const workflows = join(root, '.github/workflows')
   const inline = readdirSync(workflows)
     .filter((name) => name.endsWith('.yml'))
     .filter((name) =>
-      /xvfb-run|dbus-run-session -- bash scripts\/quality\/native-linux-session/.test(
+      /xvfb-run|dbus-run-session -- bash scripts\/quality\/native-(linux|wayland)-session/.test(
         readFileSync(join(workflows, name), 'utf8')
       )
     )

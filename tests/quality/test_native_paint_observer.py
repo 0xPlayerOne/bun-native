@@ -3,7 +3,6 @@
 import copy
 import errno
 import hashlib
-import importlib.util
 import json
 import os
 import select
@@ -16,12 +15,10 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-SCRIPT = (
-    Path(__file__).resolve().parents[2] / "scripts/quality/native-paint-observer.py"
-)
-SPEC = importlib.util.spec_from_file_location("native_paint_observer", SCRIPT)
-OBSERVER = importlib.util.module_from_spec(SPEC)
-SPEC.loader.exec_module(OBSERVER)
+from scripts.quality.native_harness import native_paint_observer as OBSERVER
+
+ROOT = Path(__file__).resolve().parents[2]
+
 EXPECTED = {
     "type": "rendered",
     "stage": "native-paint",
@@ -396,8 +393,9 @@ class PaintObservationTests(unittest.TestCase):
     def test_sigterm_interrupts_and_joins_a_real_blocked_reader_process(self):
         report = self.path.with_suffix(".cleanup.json")
         script = (
-            "import importlib.util,json,os,pathlib,signal,sys,time\n"
-            "spec=importlib.util.spec_from_file_location('observer',sys.argv[1]); module=importlib.util.module_from_spec(spec); spec.loader.exec_module(module)\n"
+            "import json,os,pathlib,signal,sys,time\n"
+            "sys.path.insert(0,sys.argv[1])\n"
+            "from scripts.quality.native_harness import native_paint_observer as module\n"
             "def stop(*args): raise InterruptedError('cancelled')\n"
             "signal.signal(signal.SIGTERM,stop)\n"
             "baseline=len(list(pathlib.Path('/proc/self/fd').iterdir()))\n"
@@ -413,7 +411,7 @@ class PaintObservationTests(unittest.TestCase):
                 sys.executable,
                 "-c",
                 script,
-                str(SCRIPT),
+                str(ROOT),
                 str(self.path),
                 json.dumps(EXPECTED),
                 str(report),

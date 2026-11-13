@@ -1,15 +1,11 @@
 """Geometry guard negatives. These unit tests do not claim native rendering."""
 
-import importlib.util
 import unittest
 from pathlib import Path
 
+from scripts.quality.native_harness import native_layout_scenario as LAYOUT
+
 ROOT = Path(__file__).resolve().parents[2]
-SPEC = importlib.util.spec_from_file_location(
-    "native_layout", ROOT / "scripts/quality/native-layout-scenario.py"
-)
-LAYOUT = importlib.util.module_from_spec(SPEC)
-SPEC.loader.exec_module(LAYOUT)
 
 
 class LayoutPointerBoundsTests(unittest.TestCase):
