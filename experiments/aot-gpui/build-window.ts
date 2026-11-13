@@ -14,6 +14,7 @@ import { isAbsolute, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { parseArgs } from 'node:util'
 import { compileApplication } from './compile'
+import { bundleApplication } from '../../scripts/native/bundle.ts'
 import { nativeSourcePaths } from './native-sources'
 import { sharedWorkloadSources } from '../../benchmarks/solid/sources'
 import toolchain from '../../toolchain.json'
@@ -289,7 +290,7 @@ async function sourceHashes() {
     for (const path of [
       'packages/solid/package.json',
       'packages/renderer/package.json',
-      'scripts/solid-build.ts',
+      'scripts/native/bundle.ts',
       'scripts/solid/transform.ts',
       'scripts/solid/preset.d.ts',
     ])
@@ -302,6 +303,7 @@ async function sourceHashes() {
   if (reactEntry) {
     sources.add('packages/react/package.json')
     sources.add('packages/renderer/package.json')
+    sources.add('scripts/native/bundle.ts')
     for await (const path of new Bun.Glob('packages/{react,renderer}/src/**/*.{ts,tsx}').scan({
       cwd: source,
     }))
@@ -379,44 +381,35 @@ const sourceCommit = command('source-revision', ['git', 'rev-parse', 'HEAD'])
 const sourceChanges = command('source-status', ['git', 'status', '--porcelain'])
 const buildSources = await sourceHashes()
 let compileInput = entrypoint
+let compileDirectory = source
 let developmentModule:
-  | { file: string; bytes: number; sha256: string; transformCommand: string[]; buildMs: number }
+  | { file: string; bytes: number; sha256: string; bundler: string; buildMs: number }
   | undefined
 if (solidEntry || reactEntry) {
-  const developmentDirectory = join(outdir, 'development')
-  mkdirSync(developmentDirectory)
-  compileInput = join(developmentDirectory, 'application.js')
-  const transformCommand = solidEntry
-    ? [process.execPath, join(source, 'scripts/solid-build.ts'), entrypoint, developmentDirectory]
-    : [
-        process.execPath,
-        'build',
-        '--no-script',
-        '--production',
-        '--define',
-        'process.env.NODE_ENV="production"',
-        '--target=bun',
-        '--format=esm',
-        '--sourcemap=external',
-        entrypoint,
-        '--outdir',
-        developmentDirectory,
-        '--entry-naming=application.js',
-      ]
-  const transformStart = performance.now()
-  command(solidEntry ? 'transform-solid' : 'transform-react', transformCommand)
+  // The same in-process bundler configuration as `native dev` and `native build`.
+  const bundleStart = performance.now()
+  await bundleApplication({
+    framework: solidEntry ? 'solid' : 'react',
+    entry: entrypoint,
+    outdir: join(outdir, 'development'),
+    cwd: source,
+  })
+  // Compile the module from the output directory, as `native build` compiles its
+  // launcher, so the executable does not depend on where that directory is.
+  compileInput = 'development/application.js'
+  compileDirectory = outdir
   developmentModule = {
-    file: 'development/application.js',
-    ...(await artifact(compileInput)),
-    transformCommand,
-    buildMs: performance.now() - transformStart,
+    file: compileInput,
+    ...(await artifact(join(outdir, compileInput))),
+    bundler: 'scripts/native/bundle.ts',
+    buildMs: performance.now() - bundleStart,
   }
 }
 
 const { compileCommand, buildMs, inspection, runtimeFeatures } = compileApplication(
   compileInput,
   application,
-  source,
+  compileDirectory,
   values.trim
 )
 if (bundledHost) {
@@ -440,7 +433,10 @@ if (process.platform !== 'win32') {
 
 if (JSON.stringify(buildSources) !== JSON.stringify(await sourceHashes()))
   throw new Error('Application or native source changed during the AOT build')
-if (developmentModule && (await artifact(compileInput)).sha256 !== developmentModule.sha256)
+if (
+  developmentModule &&
+  (await artifact(join(outdir, developmentModule.file))).sha256 !== developmentModule.sha256
+)
   throw new Error('The generated development module changed during AOT compilation')
 const launchHost = bundledHost ? '<absolute-output-directory>/bun-native-host' + suffix : host
 const manifest = {

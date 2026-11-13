@@ -1,0 +1,102 @@
+import type { BuildConfig, BunPlugin } from 'bun'
+import { mkdir, realpath, stat } from 'node:fs/promises'
+import { join, resolve, sep } from 'node:path'
+
+export type Framework = 'solid' | 'react'
+
+/**
+ * The one bundler configuration for a Bun Native application module. `native dev`,
+ * `native build`, the CI fixtures and the benchmarks all bundle through it, so CI
+ * qualifies the bytes users build. The module is not minified: `native dev` runs it
+ * as is (readable stacks), and the AOT compiler's `--production` minifies the
+ * compiled program anyway.
+ */
+export function bundleConfig(
+  framework: Framework,
+  entry: string,
+  outdir: string,
+  plugins: BunPlugin[] = []
+): BuildConfig & { outdir: string } {
+  return {
+    entrypoints: [entry],
+    outdir,
+    naming: 'application.js',
+    target: 'bun',
+    format: 'esm',
+    define: { 'process.env.NODE_ENV': '"production"' },
+    sourcemap: 'external',
+    metafile: true,
+    plugins,
+    // Solid's universal renderer is selected through the `browser` export condition;
+    // React uses its automatic JSX runtime from the adapter.
+    ...(framework === 'solid'
+      ? { conditions: ['browser'] }
+      : { jsx: { runtime: 'automatic', importSource: '@bun-native/react' } }),
+  }
+}
+
+/** Solid's universal JSX transform as a bundler plugin; Babel loads only for Solid builds. */
+async function solidPlugin(): Promise<BunPlugin> {
+  const { transformSolid } = await import('../solid/transform.ts')
+  return {
+    name: 'solid-native-universal',
+    setup(build) {
+      build.onLoad({ filter: /\.[jt]sx$/ }, async ({ path }) => ({
+        contents: transformSolid(await Bun.file(path).text(), path),
+        loader: 'ts',
+      }))
+    },
+  }
+}
+
+export type Bundle = {
+  /** The absolute path of `application.js`; its source map is next to it. */
+  module: string
+  /** Every module the bundle read, relative to `cwd`, `/`-separated and sorted (from the metafile). */
+  inputs: string[]
+}
+
+/**
+ * Bundle one application entry into `outdir/application.js`.
+ *
+ * Bun.build names each module in its `// path` comments relative to the process
+ * working directory, so the bundle runs with the working directory set to `cwd` (the
+ * project, or the checkout for fixtures) and equal sources give equal bytes from any
+ * caller directory.
+ */
+export async function bundleApplication(options: {
+  framework: Framework
+  entry: string
+  outdir: string
+  cwd: string
+  plugins?: BunPlugin[]
+}): Promise<Bundle> {
+  const entry = await realpath(options.entry)
+  if (!(await stat(entry)).isFile() || !/\.[jt]sx?$/.test(entry))
+    throw new Error(
+      `${options.framework === 'solid' ? 'Solid' : 'React'} entry must be a TypeScript/JavaScript source file`
+    )
+  const outdir = resolve(options.outdir)
+  await mkdir(outdir, { recursive: true })
+  const plugins =
+    options.plugins ?? (options.framework === 'solid' ? [await solidPlugin()] : undefined)
+  const previous = process.cwd()
+  process.chdir(options.cwd)
+  let result: Awaited<ReturnType<typeof Bun.build>>
+  try {
+    result = await Bun.build(bundleConfig(options.framework, entry, outdir, plugins))
+  } finally {
+    process.chdir(previous)
+  }
+  if (!result.success)
+    throw new AggregateError(
+      result.logs,
+      `${options.framework === 'solid' ? 'Solid' : 'React'} native build failed`
+    )
+  return {
+    module: join(outdir, 'application.js'),
+    inputs: Object.keys(result.metafile?.inputs ?? {})
+      .map((path) => path.split(sep).join('/'))
+      .sort(),
+  }
+}

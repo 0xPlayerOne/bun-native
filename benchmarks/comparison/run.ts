@@ -14,7 +14,7 @@ import {
 import { arch, cpus, platform, release, totalmem } from 'node:os'
 import { isAbsolute, join, resolve } from 'node:path'
 import { parseArgs } from 'node:util'
-import { buildSolid } from '../../scripts/solid-build.ts'
+import { bundleApplication } from '../../scripts/native/bundle.ts'
 import { inspectBunExecutable } from '../../experiments/aot-gpui/inspect.ts'
 import { inspectBunRuntime } from '../../experiments/aot-gpui/inspect-runtime.ts'
 import { count, expectedNodes, INPUT_LABEL, WINDOW_TITLE } from '../solid/workload.ts'
@@ -145,7 +145,7 @@ async function sourceFiles() {
     'bunfig.toml',
     '.bun-version',
     'toolchain.json',
-    'scripts/solid-build.ts',
+    'scripts/native/bundle.ts',
     'scripts/solid/transform.ts',
     'experiments/aot-gpui/inspect.ts',
     'experiments/aot-gpui/inspect-runtime.ts',
@@ -672,23 +672,13 @@ try {
     const buildTimes: number[] = []
     for (const directory of [developmentDirectory, rebuildDirectory]) {
       const start = performance.now()
-      if (adapter === 'react')
-        command(`${adapter}-bundle-${buildTimes.length}`, [
-          process.execPath,
-          'build',
-          '--no-script',
-          '--production',
-          '--define',
-          'process.env.NODE_ENV="production"',
-          '--target=bun',
-          '--format=esm',
-          '--sourcemap=external',
-          entry,
-          '--outdir',
-          directory,
-          '--entry-naming=application.js',
-        ])
-      else await buildSolid(entry, directory)
+      // The same in-process bundler configuration as `native dev` and `native build`.
+      await bundleApplication({
+        framework: adapter === 'react' ? 'react' : 'solid',
+        entry,
+        outdir: directory,
+        cwd: source,
+      })
       buildTimes.push(performance.now() - start)
     }
     const module = join(developmentDirectory, 'application.js')

@@ -34,7 +34,7 @@ describe('package export/import materialization (source reads only)', () => {
       'scripts/native/inputs.ts',
       'scripts/native/package-set.ts',
       'scripts/native/package-lock.ts',
-      'scripts/solid-build.ts',
+      'scripts/native/bundle.ts',
       'scripts/solid/transform.ts',
       'experiments/aot-gpui/compile.ts',
       'experiments/aot-gpui/inspect.ts',

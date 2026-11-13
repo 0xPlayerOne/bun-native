@@ -21,6 +21,7 @@ import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
 import { join, resolve } from 'node:path'
 import { parseArgs } from 'node:util'
 import { bundleProject } from '../../scripts/native/build.ts'
+import { bundleConfig } from '../../scripts/native/bundle.ts'
 import { createProject, readProject, type Project } from '../../scripts/native/project.ts'
 import { transformSolid } from '../../scripts/solid/transform.ts'
 
@@ -46,26 +47,18 @@ function quantile(sorted: number[], q: number): number {
   return sorted[Math.min(sorted.length - 1, Math.floor(sorted.length * q))]!
 }
 
-/** Same Bun.build settings as `scripts/solid-build.ts`, with precompiled module contents. */
+/** The shared Solid bundler configuration, with precompiled module contents. */
 async function bundleCompiled(project: Project, outdir: string, contents: string): Promise<string> {
-  const result = await Bun.build({
-    entrypoints: [project.entry],
-    outdir,
-    naming: 'application.js',
-    target: 'bun',
-    format: 'esm',
-    conditions: ['browser'],
-    define: { 'process.env.NODE_ENV': '"production"' },
-    sourcemap: 'external',
-    plugins: [
+  const result = await Bun.build(
+    bundleConfig('solid', project.entry, outdir, [
       {
         name: 'precompiled-solid',
         setup(build) {
           build.onLoad({ filter: /\.[jt]sx$/ }, () => ({ contents, loader: 'ts' }))
         },
       },
-    ],
-  })
+    ])
+  )
   if (!result.success) throw new AggregateError(result.logs, 'Precompiled Solid build failed')
   return join(outdir, 'application.js')
 }

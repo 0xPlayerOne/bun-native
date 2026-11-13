@@ -3,49 +3,20 @@ import { chmod, copyFile, mkdir, readFile, readdir, writeFile } from 'node:fs/pr
 import { dirname, isAbsolute, join, relative, resolve } from 'node:path'
 import { compileApplication } from '../../experiments/aot-gpui/compile.ts'
 import type { Project } from './project.ts'
+import { bundleApplication } from './bundle.ts'
 import { cachedFileDigest, fileDigest, sha256 } from './artifact.ts'
 import { userCache } from './context.ts'
 import toolchain from '../../toolchain.json'
 
-/**
- * Bun.build names each module in its `// path` comments relative to the process
- * working directory, so bundling from another cwd changed the module bytes. Anchor
- * it to the project for the bundle's duration; every path used here is absolute.
- */
-async function inProjectDirectory<T>(project: Project, bundle: () => Promise<T>): Promise<T> {
-  const previous = process.cwd()
-  process.chdir(project.directory)
-  try {
-    return await bundle()
-  } finally {
-    process.chdir(previous)
-  }
-}
-
+/** Bundle a project's entry into `outdir/application.js` with the shared configuration. */
 export async function bundleProject(project: Project, outdir: string): Promise<string> {
-  const destination = resolve(outdir)
-  return inProjectDirectory(project, () => bundleFromProject(project, destination))
-}
-
-async function bundleFromProject(project: Project, outdir: string): Promise<string> {
-  if (project.framework === 'solid') {
-    // Only Solid needs the Babel universal transform; React builds skip loading it.
-    const { buildSolid } = await import('../solid-build.ts')
-    return buildSolid(project.entry, outdir)
-  }
-  await mkdir(outdir, { recursive: true })
-  const result = await Bun.build({
-    entrypoints: [project.entry],
+  const { module } = await bundleApplication({
+    framework: project.framework,
+    entry: project.entry,
     outdir,
-    naming: 'application.js',
-    target: 'bun',
-    format: 'esm',
-    jsx: { runtime: 'automatic', importSource: '@bun-native/react' },
-    define: { 'process.env.NODE_ENV': '"production"' },
-    sourcemap: 'external',
+    cwd: project.directory,
   })
-  if (!result.success) throw new AggregateError(result.logs, 'React native build failed')
-  return join(outdir, 'application.js')
+  return module
 }
 
 /** The application bundle that holds the host in a macOS build. */
