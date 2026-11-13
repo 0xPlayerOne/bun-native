@@ -13,7 +13,7 @@ import { arch, platform, release } from 'node:os'
 import { isAbsolute, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { parseArgs } from 'node:util'
-import { compileApplication } from './compile'
+import { compileApplication } from '../../scripts/native/compile.ts'
 import { bundleApplication, moduleInputs } from '../../scripts/native/bundle.ts'
 import {
   fixtureInventory,

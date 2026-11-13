@@ -6,7 +6,7 @@ Measured on main `3863459`, pinned Bun `1.4.4-canary.1+da867c60b`, the release h
 
 ## Not the DFG tier
 
-The AOT executables have no JIT tiers. `experiments/aot-gpui/compile.ts` and `benchmarks/solid/run.ts` verify `runtimeFeatures.jit = unused` with 27 JIT ranges removed. A hot-function probe reports one DFG compile in a JIT standalone (`bun build --compile`) and zero in an AOT build, even with `BUN_JSC_useJIT=1`. AOT executables do read `BUN_JSC_*` options (`maxPerThreadStackUsage` changes their recursion limit), so `BUN_JSC_useDFGJIT=0` has nothing to disable there. The [DFG result](settled-collection.md) explains only the development-mode positives.
+The AOT executables have no JIT tiers. `scripts/native/compile.ts` and `benchmarks/solid/run.ts` verify `runtimeFeatures.jit = unused` with 27 JIT ranges removed. A hot-function probe reports one DFG compile in a JIT standalone (`bun build --compile`) and zero in an AOT build, even with `BUN_JSC_useJIT=1`. AOT executables do read `BUN_JSC_*` options (`maxPerThreadStackUsage` changes their recursion limit), so `BUN_JSC_useDFGJIT=0` has nothing to disable there. The [DFG result](settled-collection.md) explains only the development-mode positives.
 
 ## Positive rates
 

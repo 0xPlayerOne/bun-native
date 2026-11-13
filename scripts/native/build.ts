@@ -1,7 +1,7 @@
 import { constants } from 'node:fs'
 import { chmod, copyFile, mkdir, readFile, readdir, writeFile } from 'node:fs/promises'
 import { dirname, isAbsolute, join, relative, resolve } from 'node:path'
-import { compileApplication } from '../../experiments/aot-gpui/compile.ts'
+import { compileApplication } from './compile.ts'
 import type { Project } from './project.ts'
 import { bundleApplication } from './bundle.ts'
 import { cachedFileDigest, fileDigest, sha256 } from './artifact.ts'

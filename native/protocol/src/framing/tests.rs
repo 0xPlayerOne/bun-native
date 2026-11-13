@@ -621,3 +621,116 @@ fn batch_fast_path_decodes_exactly_what_the_general_path_does() {
         }
     }
 }
+
+#[test]
+fn base64_payload_events_encode_exactly_as_serde_json() {
+    use crate::{FileGrantId, FileResult, ProcessId, ProcessStream, MAX_FILE_CHUNK_BASE64};
+    const ALPHABET: &str = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+    // The longest payload validation accepts: a full chunk ends in `==`.
+    let longest = format!(
+        "{}AA==",
+        &ALPHABET.repeat(MAX_FILE_CHUNK_BASE64 / ALPHABET.len() + 1)[..MAX_FILE_CHUNK_BASE64 - 4]
+    );
+    let payloads = ["AA==", "AAA=", "AAAA", "+/+/", ALPHABET, longest.as_str()];
+    let mut events = Vec::new();
+    for data in payloads {
+        for safe in [1, MAX_ID] {
+            for stream in [
+                ProcessStream::Stdout,
+                ProcessStream::Stderr,
+                ProcessStream::Terminal,
+            ] {
+                events.push(Event::ProcessOutput {
+                    sequence: EventSequence::try_from(safe).unwrap(),
+                    window_id: WindowId::try_from(safe).unwrap(),
+                    process_id: ProcessId::try_from(safe).unwrap(),
+                    chunk: safe,
+                    stream,
+                    data: data.to_owned(),
+                });
+            }
+            for end_of_file in [false, true] {
+                events.push(Event::FileResult {
+                    id: RequestId::try_from(safe).unwrap(),
+                    window_id: WindowId::try_from(safe).unwrap(),
+                    grant_id: FileGrantId::try_from(safe).unwrap(),
+                    result: FileResult::Read {
+                        data: data.to_owned(),
+                        end_of_file,
+                    },
+                });
+            }
+        }
+    }
+    // A read at the end of a file is empty.
+    events.push(Event::FileResult {
+        id: RequestId::try_from(1).unwrap(),
+        window_id: WindowId::try_from(1).unwrap(),
+        grant_id: FileGrantId::try_from(1).unwrap(),
+        result: FileResult::Read {
+            data: String::new(),
+            end_of_file: true,
+        },
+    });
+    // Other events keep the general encoder and reuse the same buffer.
+    events.push(Event::Error {
+        id: None,
+        code: ErrorCode::InvalidCommand,
+        message: "\"data\":\"\"".to_owned(),
+    });
+    let mut writer = EventWriter::default();
+    for event in &events {
+        let mut bytes = Vec::new();
+        writer.write(&mut bytes, event).unwrap();
+        let mut expected = serde_json::to_vec(event).unwrap();
+        expected.push(b'\n');
+        assert_eq!(bytes, expected);
+        let line = std::str::from_utf8(&bytes).unwrap();
+        assert_eq!(&serde_json::from_str::<Event>(line).unwrap(), event);
+    }
+}
+
+#[test]
+fn invalid_base64_payload_events_write_nothing() {
+    use crate::{FileGrantId, FileResult, ProcessId, ProcessStream};
+    // Each payload would need escaping, or is not padded standard base64;
+    // output chunks are also nonempty.
+    for (data, read_too) in [
+        ("", false),
+        ("AA\"=", true),
+        ("AA\\=", true),
+        ("AA\n=", true),
+        ("AAA", true),
+        ("AA-_", true),
+        ("A===", true),
+    ] {
+        let output = Event::ProcessOutput {
+            sequence: EventSequence::try_from(1).unwrap(),
+            window_id: WindowId::try_from(1).unwrap(),
+            process_id: ProcessId::try_from(1).unwrap(),
+            chunk: 1,
+            stream: ProcessStream::Stdout,
+            data: data.to_owned(),
+        };
+        let read = Event::FileResult {
+            id: RequestId::try_from(1).unwrap(),
+            window_id: WindowId::try_from(1).unwrap(),
+            grant_id: FileGrantId::try_from(1).unwrap(),
+            result: FileResult::Read {
+                data: data.to_owned(),
+                end_of_file: true,
+            },
+        };
+        for event in [Some(output), read_too.then_some(read)]
+            .into_iter()
+            .flatten()
+        {
+            let mut bytes = Vec::new();
+            assert!(matches!(
+                write_event(&mut bytes, &event),
+                Err(ProtocolError::InvalidEvent(_))
+            ));
+            assert!(bytes.is_empty());
+        }
+    }
+}

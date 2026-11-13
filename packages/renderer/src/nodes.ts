@@ -118,6 +118,15 @@ export class Node implements RendererNode {
   index = 0
   /** Children before this position have current `index` hints. */
   indexed = 0
+  /**
+   * The owning render root's acknowledged record and native handle, kept on
+   * the node rather than in root-level maps. Only that root writes them: it
+   * publishes them after native acknowledgement and clears them when a commit
+   * removes the node or the root finishes, so nothing reachable from a
+   * removed or disposed node retains committed state.
+   */
+  committed: Snapshot | undefined
+  handle: NativeNode | undefined
 
   constructor(readonly kind: Element['kind'] | 'text-node') {}
 

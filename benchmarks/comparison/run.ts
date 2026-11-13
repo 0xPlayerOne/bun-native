@@ -15,8 +15,8 @@ import { arch, cpus, platform, release, totalmem } from 'node:os'
 import { isAbsolute, join, resolve } from 'node:path'
 import { parseArgs } from 'node:util'
 import { bundleApplication } from '../../scripts/native/bundle.ts'
-import { inspectBunExecutable } from '../../experiments/aot-gpui/inspect.ts'
-import { inspectBunRuntime } from '../../experiments/aot-gpui/inspect-runtime.ts'
+import { inspectBunExecutable } from '../../scripts/native/inspect.ts'
+import { inspectBunRuntime } from '../../scripts/native/inspect-runtime.ts'
 import { count, expectedNodes, INPUT_LABEL, WINDOW_TITLE } from '../solid/workload.ts'
 import { sharedWorkloadSources } from '../solid/sources.ts'
 import {
@@ -146,8 +146,8 @@ async function sourceFiles() {
     '.bun-version',
     'toolchain.json',
     'scripts/native/bundle.ts',
-    'experiments/aot-gpui/inspect.ts',
-    'experiments/aot-gpui/inspect-runtime.ts',
+    'scripts/native/inspect.ts',
+    'scripts/native/inspect-runtime.ts',
   ])
   const globs = [
     'packages/{core,protocol,runtime,renderer,solid,react}/package.json',

@@ -67,7 +67,7 @@ Repeated unmount testing found a real ownership defect: subscribing separately t
 
 ### Reproduce the native scenarios
 
-Build either `examples/solid-counter/main.tsx` or `tests/native/solid-input-intent.tsx` with `bun scripts/solid-build.ts ENTRY ABSOLUTE_OUTPUT_DIRECTORY`, then compile that same generated `application.js` using `bun compile --no-script --production --explain=json`. Inspect the actual executable with the existing `inspectBunExecutable` and `inspectBunRuntime` functions in `experiments/aot-gpui`; a declared driver mode alone does not establish AOT or JIT omission.
+Build either `examples/solid-counter/main.tsx` or `tests/native/solid-input-intent.tsx` with `bun scripts/solid-build.ts ENTRY ABSOLUTE_OUTPUT_DIRECTORY`, then compile that same generated `application.js` using `bun compile --no-script --production --explain=json`. Inspect the actual executable with the existing `inspectBunExecutable` and `inspectBunRuntime` functions in `scripts/native`; a declared driver mode alone does not establish AOT or JIT omission.
 
 With the pinned toolchain and the prerequisites in the native Linux workflow, this runs the compiled input-intent fixture:
 

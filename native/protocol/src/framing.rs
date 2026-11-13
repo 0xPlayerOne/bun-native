@@ -1,7 +1,7 @@
 use crate::wire::safe_integer;
 use crate::{
-    Command, Event, Operation, RequestId, ValidCommand, WindowId, MAX_EVENT_FRAME_BYTES,
-    MAX_FRAME_BYTES,
+    Command, Event, FileResult, Operation, RequestId, ValidCommand, WindowId,
+    MAX_EVENT_FRAME_BYTES, MAX_FRAME_BYTES,
 };
 use serde::{de, Deserialize, Deserializer};
 use std::fmt;
@@ -204,7 +204,7 @@ impl EventWriter {
     pub fn write(&mut self, sink: &mut impl Write, event: &Event) -> Result<(), ProtocolError> {
         event.validate().map_err(ProtocolError::InvalidEvent)?;
         self.buffer.clear();
-        let encoded = serde_json::to_writer(&mut self.buffer, event);
+        let encoded = encode_event(&mut self.buffer, event);
         if encoded.is_err() || self.buffer.len() > MAX_EVENT_FRAME_BYTES {
             // Keep retained capacity bounded by one frame after a rejected event.
             self.buffer.clear();
@@ -215,6 +215,81 @@ impl EventWriter {
         self.buffer.push(b'\n');
         sink.write_all(&self.buffer).map_err(ProtocolError::Io)?;
         sink.flush().map_err(ProtocolError::Io)
+    }
+}
+
+/// Encodes an event that passed [`Event::validate`] exactly as
+/// `serde_json::to_writer` does.
+///
+/// Process output and file read events carry up to 21,848 bytes of base64,
+/// which serde_json's string escaping scans one byte at a time: about 8% of
+/// the host's CPU while it streams process output. Validation has already
+/// proved those payloads padded standard base64, and no base64 byte is escaped
+/// in JSON, so the event is encoded with an empty payload and the payload is
+/// copied between its quotes unchanged.
+fn encode_event(buffer: &mut Vec<u8>, event: &Event) -> serde_json::Result<()> {
+    const EMPTY: &[u8] = br#""data":"""#;
+    let Some((data, hollow)) = hollow_base64(event) else {
+        return serde_json::to_writer(buffer, event);
+    };
+    serde_json::to_writer(&mut *buffer, &hollow)?;
+    // Every other member of these events is a number, a boolean or an enum
+    // spelling, so the only empty `data` member is the payload's.
+    let Some(start) = buffer
+        .windows(EMPTY.len())
+        .rposition(|window| window == EMPTY)
+    else {
+        buffer.clear();
+        return serde_json::to_writer(buffer, event);
+    };
+    // Append the payload, then rotate the few bytes after its opening quote
+    // behind it.
+    let at = start + EMPTY.len() - 1;
+    let closing = buffer.len() - at;
+    buffer.extend_from_slice(data.as_bytes());
+    buffer[at..].rotate_left(closing);
+    Ok(())
+}
+
+/// A validated event's base64 payload, and the same event with it empty.
+fn hollow_base64(event: &Event) -> Option<(&str, Event)> {
+    match event {
+        Event::ProcessOutput {
+            sequence,
+            window_id,
+            process_id,
+            chunk,
+            stream,
+            data,
+        } => Some((
+            data,
+            Event::ProcessOutput {
+                sequence: *sequence,
+                window_id: *window_id,
+                process_id: *process_id,
+                chunk: *chunk,
+                stream: *stream,
+                data: String::new(),
+            },
+        )),
+        Event::FileResult {
+            id,
+            window_id,
+            grant_id,
+            result: FileResult::Read { data, end_of_file },
+        } => Some((
+            data,
+            Event::FileResult {
+                id: *id,
+                window_id: *window_id,
+                grant_id: *grant_id,
+                result: FileResult::Read {
+                    data: String::new(),
+                    end_of_file: *end_of_file,
+                },
+            },
+        )),
+        _ => None,
     }
 }
 
