@@ -10,11 +10,15 @@ import {
 } from 'node:fs/promises'
 import { writeFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { crc32, gunzipSync, inflateRawSync } from 'node:zlib'
+import { crc32, deflateRawSync, gunzipSync, gzipSync, inflateRawSync } from 'node:zlib'
 import toolchain from '../../toolchain.json'
 import { fileDigest } from '../../scripts/native/artifact.ts'
 import { createBundle } from '../../scripts/native/installer.ts'
-import { createInstaller, zipArchive } from '../../scripts/native/installer-image.ts'
+import {
+  createInstaller,
+  INSTALLER_COMPRESSION_LEVEL,
+  zipArchive,
+} from '../../scripts/native/installer-image.ts'
 import { createUpdateManifest, signUpdate } from '../../scripts/native/update-manifest.ts'
 import { cleanup, keys, repository, requirements, temporary } from './update-fixture.ts'
 
@@ -27,11 +31,12 @@ const exe = windows ? '.exe' : ''
 async function bundleFor(
   os: 'linux' | 'darwin' | 'win32',
   trust: 'ed25519' | 'unsigned-experimental' = 'ed25519',
-  tools = true
+  tools = true,
+  application: string | Uint8Array = 'application\n'
 ) {
   const build = await temporary()
   const suffix = os === 'win32' ? '.exe' : ''
-  await writeFile(join(build, `application${suffix}`), 'application\n', { mode: 0o755 })
+  await writeFile(join(build, `application${suffix}`), application, { mode: 0o755 })
   await writeFile(join(build, `bun-native-host${suffix}`), 'host\n', { mode: 0o755 })
   await mkdir(join(build, 'development'))
   await writeFile(join(build, 'development/application.js'), 'console.log(1)\n')
@@ -187,6 +192,28 @@ describe('installer images', () => {
     expect(
       (await createInstaller(directory, again, { format: 'zip', name: 'Example App' })).digest
     ).toEqual(record.digest)
+  })
+
+  test('images compress at level 6, which differs from level 9 on executable bytes', async () => {
+    expect(INSTALLER_COMPRESSION_LEVEL).toBe(6)
+    // Two MiB of a real executable: enough for the zlib levels to choose differently.
+    const executable = (await readFile(process.execPath)).subarray(0, 2 * 1024 * 1024)
+    const { directory, out } = await bundleFor('linux', 'ed25519', true, executable)
+    const archive = await readFile(
+      (await createInstaller(directory, out, { format: 'tar.gz', name: 'Example App' })).file
+    )
+    const gzip = (level: number) => {
+      const bytes = gzipSync(gunzipSync(archive), { level })
+      bytes[9] = 0xff // the writer's fixed OS byte
+      return bytes
+    }
+    expect(archive.equals(gzip(6))).toBe(true)
+    expect(archive.equals(gzip(9))).toBe(false)
+    expect(deflateRawSync(executable, { level: 6 }).length).toBeGreaterThan(
+      deflateRawSync(executable, { level: 9 }).length
+    )
+    const zip = zipArchive([{ name: 'application', data: executable, mode: 0o755 }])
+    expect(zip.includes(deflateRawSync(executable, { level: 6 }))).toBe(true)
   })
 
   test('zip writer output is a standard archive', async () => {
