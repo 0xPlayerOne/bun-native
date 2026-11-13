@@ -1,12 +1,26 @@
-import { describe, expect, test } from 'bun:test'
-import { existsSync } from 'node:fs'
+import { afterAll, beforeAll, describe, expect, test } from 'bun:test'
+import { existsSync, mkdtempSync, rmSync } from 'node:fs'
+import { tmpdir } from 'node:os'
 import { mkdir, readFile, rename, rm, stat, symlink, utimes, writeFile } from 'node:fs/promises'
 import { join, resolve } from 'node:path'
+import { stampFile } from '../../scripts/native/package-stamp.ts'
 import { createProject, readProject } from '../../scripts/native/project.ts'
 import { installedFixture, packageFixture } from './package-fixture.ts'
 
 const repository = resolve(import.meta.dir, '../..')
 const stamped = { verification: 'stamp' } as const
+
+// Stamps live in the user cache; keep this suite's out of the real one.
+const savedCache = process.env['XDG_CACHE_HOME']
+const cacheHome = mkdtempSync(join(tmpdir(), 'bun-native-stamp-cache-'))
+beforeAll(() => {
+  process.env['XDG_CACHE_HOME'] = cacheHome
+})
+afterAll(() => {
+  if (savedCache === undefined) delete process.env['XDG_CACHE_HOME']
+  else process.env['XDG_CACHE_HOME'] = savedCache
+  rmSync(cacheHome, { recursive: true, force: true })
+})
 
 /**
  * Rewrite a file with same-length bytes and restore its exact timestamps, as a
@@ -32,7 +46,7 @@ async function sameSizeEdit(path: string): Promise<void> {
 
 /** Mark the stamp so a hit is observable: only a stamp hit can report this commit. */
 async function markStamp(project: string): Promise<void> {
-  const file = join(project, '.bun-native/verified.json')
+  const file = stampFile(project)
   const stamp = await Bun.file(file).json()
   stamp.source.commit = 'stamp-hit'
   await writeFile(file, JSON.stringify(stamp))
@@ -48,10 +62,10 @@ describe('standalone verification stamp (inert installed package fixture)', () =
       await createProject(repository, project, 'solid', 'typescript', manifest)
       await installedFixture(project, set, 'solid', contents)
       const full = await readProject(repository, project)
-      expect(existsSync(join(project, '.bun-native/verified.json'))).toBe(false)
+      expect(existsSync(stampFile(project))).toBe(false)
       const first = await readProject(repository, project, stamped)
       expect(first).toEqual(full)
-      expect(existsSync(join(project, '.bun-native/verified.json'))).toBe(true)
+      expect(existsSync(stampFile(project))).toBe(true)
       await markStamp(project)
       expect(await hit(project)).toBe(true)
       // Full verification never consults the stamp.
@@ -128,7 +142,7 @@ describe('standalone verification stamp (inert installed package fixture)', () =
       await markStamp(project)
 
       // A stamp for another framework, a corrupt stamp or a missing one is a miss.
-      const file = join(project, '.bun-native/verified.json')
+      const file = stampFile(project)
       const stamp = await Bun.file(file).json()
       await writeFile(file, JSON.stringify({ ...stamp, framework: 'react' }))
       expect(await hit(project)).toBe(false)

@@ -1,5 +1,5 @@
 import { homedir } from 'node:os'
-import { basename, dirname, join, sep } from 'node:path'
+import { basename, dirname, join } from 'node:path'
 
 /**
  * Where this CLI runs from, computed once per invocation.
@@ -9,9 +9,8 @@ import { basename, dirname, join, sep } from 'node:path'
  *   `.bun-native/hosts`.
  * - `package`: the installed `@bun-native/cli`, whose sources live under `src/`.
  *   The version is the package's own manifest. Released hosts are cached in the
- *   consumer project's `.bun-native/hosts` (the directory that owns the outermost
- *   `node_modules`), never inside the digest-verified CLI package. A CLI run from
- *   outside any `node_modules` (the package-set bootstrap) uses the user cache.
+ *   per-user cache, never inside the digest-verified CLI package and never in the
+ *   consumer project, whose `.bun-native/` holds only `dev` modules.
  */
 export type CliContext = {
   mode: 'checkout' | 'package'
@@ -33,8 +32,11 @@ async function manifest(path: string): Promise<{ name?: unknown; version?: unkno
   return (await file.exists()) ? file.json() : undefined
 }
 
-/** The per-user cache for hosts that have no owning project. */
-export function userHostCache(
+/**
+ * The per-user cache for state the CLI keeps between runs (released hosts,
+ * verification stamps, the compiler digest). Projects stay free of it.
+ */
+export function userCache(
   environment: Environment = process.env,
   platform: NodeJS.Platform = process.platform,
   home: string = homedir()
@@ -46,14 +48,16 @@ export function userHostCache(
       : platform === 'win32'
         ? environment['LOCALAPPDATA'] || join(home, 'AppData', 'Local')
         : join(home, '.cache'))
-  return join(base, 'bun-native', 'hosts')
+  return join(base, 'bun-native')
 }
 
-/** The consumer project that installed `packageRoot`, or undefined outside `node_modules`. */
-export function owningProject(packageRoot: string): string | undefined {
-  const parts = packageRoot.split(sep)
-  const index = parts.indexOf('node_modules')
-  return index > 0 ? parts.slice(0, index).join(sep) || sep : undefined
+/** Released hosts of an installed CLI. */
+export function userHostCache(
+  environment: Environment = process.env,
+  platform: NodeJS.Platform = process.platform,
+  home: string = homedir()
+): string {
+  return join(userCache(environment, platform, home), 'hosts')
 }
 
 export async function cliContext(
@@ -64,12 +68,11 @@ export async function cliContext(
   const installed =
     basename(root) === 'src' ? await manifest(join(packageRoot, 'package.json')) : undefined
   if (installed?.name === '@bun-native/cli') {
-    const project = owningProject(packageRoot)
     return {
       mode: 'package',
       root,
       version: typeof installed.version === 'string' ? installed.version : undefined,
-      hostCache: project ? join(project, '.bun-native', 'hosts') : userHostCache(environment),
+      hostCache: userHostCache(environment),
       command: packageCommand,
     }
   }

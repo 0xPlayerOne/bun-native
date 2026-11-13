@@ -28,7 +28,7 @@ check runs Bun's built-in type checker, formatter check and the pinned oxlint; f
 lint runs only the pinned oxlint, never on vendored packages or generated output.
 doctor reports Bun, platform, host-header and project compatibility without launching anything.
 host install and --host auto download the unsigned release host once, check it against the release's
-SHA256SUMS and reuse it from the checkout's or project's .bun-native/hosts. No other command downloads a host; none runs Cargo.
+SHA256SUMS and reuse it from the checkout's .bun-native/hosts or the user cache. No other command downloads a host; none runs Cargo.
 See docs/developer-tooling.md.`
 
 async function resolveHost(context: CliContext, value: string | undefined): Promise<string> {

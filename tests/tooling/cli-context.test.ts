@@ -6,12 +6,8 @@ import { tmpdir } from 'node:os'
 import { join, resolve, sep } from 'node:path'
 import { hostArchive } from '../../scripts/native/host-archive.ts'
 import { releaseHostAsset, type ReleaseHostTarget } from '../../scripts/native/host-download.ts'
-import {
-  cliContext,
-  owningProject,
-  releaseVersion,
-  userHostCache,
-} from '../../scripts/native/context.ts'
+import { cliContext, releaseVersion, userHostCache } from '../../scripts/native/context.ts'
+import { stampFile } from '../../scripts/native/package-stamp.ts'
 import { createProject } from '../../scripts/native/project.ts'
 import { hostHeader } from './host-fixture.ts'
 import { installedFixture, packageFixture } from './package-fixture.ts'
@@ -37,7 +33,7 @@ describe('CLI context', () => {
     })
   })
 
-  test('an installed CLI reads its own manifest and caches hosts in the consumer project', async () => {
+  test('an installed CLI reads its own manifest and caches hosts in the user cache', async () => {
     const project = join(directory, 'consumer')
     const cli = join(project, 'node_modules', '@bun-native', 'cli')
     await mkdir(join(cli, 'src'), { recursive: true })
@@ -45,15 +41,12 @@ describe('CLI context', () => {
       join(cli, 'package.json'),
       JSON.stringify({ name: '@bun-native/cli', version: '7.8.9' })
     )
-    const context = await cliContext(join(cli, 'src'))
+    const context = await cliContext(join(cli, 'src'), { XDG_CACHE_HOME: join(directory, 'xdg') })
     expect(context.mode).toBe('package')
     expect(context.version).toBe('7.8.9')
-    expect(context.hostCache).toBe(join(project, '.bun-native', 'hosts'))
+    // Never the project: its .bun-native/ holds only dev modules.
+    expect(context.hostCache).toBe(join(directory, 'xdg', 'bun-native', 'hosts'))
     expect(context.command).toContain('./node_modules/@bun-native/cli/src/scripts/native.ts')
-    // An isolated-linker store path still belongs to the outermost project.
-    expect(owningProject(join(project, 'node_modules', '.bun', 'x', 'node_modules', 'y'))).toBe(
-      project
-    )
   })
 
   test('a package-set bootstrap CLI uses the user cache, never its own directory', async () => {
@@ -65,7 +58,6 @@ describe('CLI context', () => {
     )
     const context = await cliContext(join(cli, 'src'), { XDG_CACHE_HOME: join(directory, 'xdg') })
     expect(context.hostCache).toBe(join(directory, 'xdg', 'bun-native', 'hosts'))
-    expect(owningProject(cli)).toBeUndefined()
     await writeFile(join(cli, 'package.json'), JSON.stringify({ name: '@bun-native/cli' }))
     const unversioned = await cliContext(join(cli, 'src'))
     expect(() => releaseVersion(unversioned)).toThrow('pass host install --version')
@@ -125,6 +117,7 @@ describe.skipIf(!supported)('packaged CLI released host (consumer layout)', () =
       await packageFixture(
         async ({ directory, manifest, set, contents }) => {
           const project = join(directory, 'consumer')
+          const cacheHome = join(directory, 'user-cache')
           await createProject(repository, project, 'solid', 'typescript', manifest)
           await installedFixture(project, set, 'solid', contents)
           // Asynchronous: the release server runs in this process.
@@ -138,7 +131,11 @@ describe.skipIf(!supported)('packaged CLI released host (consumer layout)', () =
               ],
               {
                 cwd: project,
-                env: { ...process.env, BUN_NATIVE_HOST_RELEASE_URL: server.url.href },
+                env: {
+                  ...process.env,
+                  BUN_NATIVE_HOST_RELEASE_URL: server.url.href,
+                  XDG_CACHE_HOME: cacheHome,
+                },
                 stdout: 'pipe',
                 stderr: 'pipe',
                 timeout: 30_000,
@@ -154,8 +151,8 @@ describe.skipIf(!supported)('packaged CLI released host (consumer layout)', () =
             return output
           }
           const installed = join(
-            project,
-            '.bun-native',
+            cacheHome,
+            'bun-native',
             'hosts',
             `v${workspace.version}`,
             target,
@@ -167,10 +164,12 @@ describe.skipIf(!supported)('packaged CLI released host (consumer layout)', () =
           expect(await run('doctor', '--host', 'auto', '.')).toMatch(
             /ok\s+host: .*\n.*ok\s+project: solid project .* with verified installed package set/
           )
-          expect(requests).toHaveLength(2) // reused from the project cache
+          expect(requests).toHaveLength(2) // reused from the user cache
           expect(await run('format', '.', '--check')).toContain('format: passed')
           // The second light command reuses the verification stamp the first one left.
-          expect(existsSync(join(project, '.bun-native', 'verified.json'))).toBe(true)
+          expect(existsSync(stampFile(project, { XDG_CACHE_HOME: cacheHome }))).toBe(true)
+          // The project keeps no CLI state: .bun-native/ is only for dev modules.
+          expect(existsSync(join(project, '.bun-native'))).toBe(false)
           expect(await run('format', '.', '--check')).toContain('format: passed')
           const cli = join(project, 'node_modules', '@bun-native', 'cli')
           expect(existsSync(join(cli, '.bun-native'))).toBe(false)

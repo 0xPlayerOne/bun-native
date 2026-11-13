@@ -3,7 +3,8 @@ import { chmod, copyFile, mkdir, readFile, readdir, writeFile } from 'node:fs/pr
 import { dirname, isAbsolute, join, relative, resolve } from 'node:path'
 import { compileApplication } from '../../experiments/aot-gpui/compile.ts'
 import type { Project } from './project.ts'
-import { cachedFileDigest, fileDigest } from './artifact.ts'
+import { cachedFileDigest, fileDigest, sha256 } from './artifact.ts'
+import { userCache } from './context.ts'
 import toolchain from '../../toolchain.json'
 
 /**
@@ -190,7 +191,7 @@ export async function buildProject(
         revision: Bun.revision,
         executable: await cachedFileDigest(
           process.execPath,
-          join(project.directory, '.bun-native', 'compiler-digest.json')
+          join(userCache(), 'compiler', `${sha256(process.execPath).slice(0, 32)}.json`)
         ),
       },
       ...inspected,

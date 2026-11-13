@@ -3,6 +3,7 @@ import { dirname, join, relative, resolve, sep } from 'node:path'
 import { isDeepStrictEqual } from 'node:util'
 import toolchain from '../../toolchain.json'
 import { sha256, type FileDigest } from './artifact.ts'
+import { userCache } from './context.ts'
 
 /**
  * A verified standalone package set, as `readProject` reports it.
@@ -36,7 +37,11 @@ type Stamp = {
   entries: Record<string, string>
 }
 
-const stampFile = (directory: string) => join(directory, '.bun-native', 'verified.json')
+/** One stamp per project directory, in the user cache so the project stays clean. */
+export const stampFile = (
+  directory: string,
+  environment: Record<string, string | undefined> = process.env
+) => join(userCache(environment), 'verified', `${sha256(resolve(directory)).slice(0, 32)}.json`)
 
 // The modules whose rules decide verification; changing them invalidates every stamp.
 const verifier = [
