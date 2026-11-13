@@ -62,3 +62,34 @@ test('overlay surface properties validate and reach the popup element', () => {
   ] as const)
     expect(() => setProperty(node, name, value)).toThrow(TypeError)
 })
+
+test('captures share the stored style copy; only scrolling members force a leaf rebuild', () => {
+  const box = createElement('box')
+  const label = createElement('text')
+  const scroll = createElement('text')
+  insertNode(box, label)
+  insertNode(box, scroll)
+  const style = { padding: 4, background: 0x102030 }
+  setProperty(box, 'style', style)
+  setProperty(label, 'style', style)
+  // An explicit undefined member is omitted, as it is from the wire.
+  setProperty(scroll, 'style', { color: 0x202020, overflow: undefined })
+  const first = snapshot(box)
+  // The caller's object was copied when set, so a later mutation reaches no capture.
+  style.padding = 99
+  expect(first.get(box)?.element).toEqual({
+    kind: 'box',
+    style: { padding: 4, background: 0x102030 },
+  })
+  expect(first.get(label)?.element).toEqual({
+    kind: 'text',
+    text: '',
+    style: { padding: 4, background: 0x102030 },
+  })
+  expect(first.get(scroll)?.element.style).toStrictEqual({ color: 0x202020 })
+  // A leaf without scrolling members and a box share the one stored copy across captures.
+  const labelStyle = first.get(label)!.element.style
+  expect(labelStyle).toBe(label.properties.style)
+  setProperty(label, 'text', 'Changed')
+  expect(snapshot(box).get(label)?.element.style).toBe(labelStyle)
+})

@@ -11,6 +11,10 @@
     "src/linux/x11/window.rs"
   ],
   "added": ["src/linux/accesskit_delta.rs"],
+  "patches": {
+    "credentials-feature.patch": "d2c84038d1d2d1e78f29811c1bdfc923ef2429c7a9dc88d157ac9a7e93bd119d",
+    "accesskit-delta.patch": "686a85332197d935cb4f325bdc5aa3ff442aee9c73b2f598be1ddeb64e5283c9"
+  },
   "files": {
     "Cargo.toml": {
       "bytes": 3345,

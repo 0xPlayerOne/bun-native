@@ -24,7 +24,7 @@ Upstream: the same sharing fits `WgpuContext` (it already shares device and queu
 
 `Cargo.toml.upstream` and `workspace.toml.upstream` preserve both original manifests. The standalone `Cargo.toml` expands their inherited metadata and dependencies and keeps target conditions, optional flags and default-feature settings unchanged. The sibling zed crates (`gpui`, `gpui_util`, `collections`) keep the original Git URL and exact revision, and `wgpu` the same gfx-rs revision (still patched by `native/vendor/wgpu-hal`). The crate has its own workspace boundary.
 
-`upstream.json` records the byte size and SHA-256 of every upstream file and of zed's workspace manifest. Every file outside `src/wgpu_renderer.rs` and `Cargo.toml` is byte-identical to upstream. Reversing the patch on the vendored `src` reproduces upstream exactly:
+`upstream.json` records the byte size and SHA-256 of every upstream file and of zed's workspace manifest, and the SHA-256 of each patch in the order it applies. `tests/quality/test_gpui_vendor.py` checks the inventory, every hash and the reversed patches on every quality test run. Every file outside `src/wgpu_renderer.rs` and `Cargo.toml` is byte-identical to upstream. Reversing the patch on the vendored `src` reproduces upstream exactly:
 
 ```sh
 work=$(mktemp -d) && cp -r native/vendor/gpui_wgpu/src "$work/" &&

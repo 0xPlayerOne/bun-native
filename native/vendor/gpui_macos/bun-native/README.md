@@ -38,7 +38,7 @@ With a running link never stopped and restarted around a synchronous draw, the f
 
 `Cargo.toml.upstream` and `workspace.toml.upstream` preserve both original manifests. The standalone `Cargo.toml` expands their inherited metadata and dependencies. It unions inherited and local features and keeps target conditions, optional flags and default-feature settings. The five sibling zed crates (`gpui`, `gpui_apple`, `gpui_util`, `collections`, `scheduler`) keep the original Git URL and exact revision. The crate has its own workspace boundary.
 
-`upstream.json` records the byte size and SHA-256 of every upstream file and of zed's workspace manifest. Every file outside the three patched ones and `Cargo.toml` is byte-identical to upstream. Reversing both patches, newest first, on the vendored `src` reproduces upstream exactly:
+`upstream.json` records the byte size and SHA-256 of every upstream file and of zed's workspace manifest, and the SHA-256 of each patch in the order it applies. `tests/quality/test_gpui_vendor.py` checks the inventory, every hash and the reversed patches on every quality test run. Every file outside the three patched ones and `Cargo.toml` is byte-identical to upstream. Reversing both patches, newest first, on the vendored `src` reproduces upstream exactly:
 
 ```sh
 work=$(mktemp -d) && cp -r native/vendor/gpui_macos/src "$work/" &&

@@ -18,7 +18,7 @@ import {
   type Owner,
   type Snapshot,
 } from './nodes.ts'
-import { commitNativeTree, type Committed, type Counts } from './native-tree.ts'
+import { commitNativeTree, type Counts } from './native-tree.ts'
 import { observeInput } from './input-intent.ts'
 import { watchWindow } from './window-lifetime.ts'
 import {
@@ -83,7 +83,9 @@ class Root implements RenderRoot, Owner {
   private rejectClosed!: (error: Error) => void
   private disposeFramework: (() => void) | undefined
   private unwatch: (() => void) | undefined
-  private committed = new Map<Node, Committed>()
+  /** Acknowledged captures, and the native handle of each committed node. */
+  private readonly committed = new Map<Node, Snapshot>()
+  private readonly handles = new Map<Node, NativeNode>()
   private readonly registrations = new Map<Node, Map<EventProperty, Registration>>()
   private operation: Promise<void> | undefined
   private version = 0
@@ -191,31 +193,31 @@ class Root implements RenderRoot, Owner {
     node: Node,
     listener: (event: DropTargetEvent) => void | Promise<void>
   ): Promise<NativeDropTarget> {
-    const state = this.committed.get(node)
-    if (this.phase !== 'active' || !state)
+    const handle = this.handles.get(node)
+    if (this.phase !== 'active' || !handle)
       return Promise.reject(
         new NativeStateError('invalid_handle', 'Node is unmounted or not yet committed')
       )
     // The native target is revoked when a later commit removes this node.
-    return this.window.registerDropTarget(state.handle, listener)
+    return this.window.registerDropTarget(handle, listener)
   }
 
   input(node: Node): InputState {
-    const state = this.committed.get(node)
-    if (this.phase !== 'active' || !state || state.handle.kind !== 'input')
+    const handle = this.handles.get(node)
+    if (this.phase !== 'active' || !handle || handle.kind !== 'input')
       throw new NativeStateError(
         'invalid_handle',
         'Input is unmounted or has no committed native handle'
       )
-    return this.window.input(state.handle as NativeNode<'input'>)
+    return this.window.input(handle as NativeNode<'input'>)
   }
 
   async request(node: Node, send: (batch: NativeBatch, handle: NativeNode) => void): Promise<void> {
     await this.flush()
-    const state = this.committed.get(node)
-    if (this.phase !== 'active' || !state)
+    const handle = this.handles.get(node)
+    if (this.phase !== 'active' || !handle)
       throw new NativeStateError('invalid_handle', 'Node is unmounted or has no committed handle')
-    await this.window.batch((batch) => send(batch, state.handle))
+    await this.window.batch((batch) => send(batch, handle))
   }
 
   private start(): void {
@@ -298,6 +300,7 @@ class Root implements RenderRoot, Owner {
     this.unwatch?.()
     this.unwatch = undefined
     this.committed.clear()
+    this.handles.clear()
     this.root.children.length = 0
     invalidate(this.root)
     if (this.failure) this.rejectClosed(this.failure)
@@ -305,9 +308,9 @@ class Root implements RenderRoot, Owner {
   }
 
   private async cleanup(): Promise<void> {
-    const root = this.committed.get(this.root)
+    const root = this.handles.get(this.root)
     if (root && !this.windowEnded) {
-      await this.window.batch((batch) => batch.remove(root.handle))
+      await this.window.batch((batch) => batch.remove(root))
       this.mutations.remove += 1
       this.commits += 1
     }
@@ -315,16 +318,21 @@ class Root implements RenderRoot, Owner {
   }
 
   private async commit(changes: ReadonlyMap<Node, Snapshot>): Promise<void> {
-    const { updates, removed, counts } = await commitNativeTree(
+    const { created, removed, counts } = await commitNativeTree(
       this.window,
       this.root,
       this.committed,
+      this.handles,
       changes
     )
     if (this.windowEnded) return
     // Publish in place only after acknowledgement; unchanged records stay shared.
-    for (const node of removed) this.committed.delete(node)
-    for (const [node, state] of updates) this.committed.set(node, state)
+    for (const node of removed) {
+      this.committed.delete(node)
+      this.handles.delete(node)
+    }
+    for (const [node, state] of changes) this.committed.set(node, state)
+    for (const [node, handle] of created) this.handles.set(node, handle)
     if (Object.values(counts).some((count) => count > 0)) this.commits += 1
     for (const field of ['create', 'set', 'insert', 'remove'] as const)
       this.mutations[field] += counts[field]
@@ -334,23 +342,28 @@ class Root implements RenderRoot, Owner {
     // and every unchanged record's registrations were reconciled when it was
     // published, so only removed and changed nodes need reconciliation.
     for (const node of removed) this.revoke(node)
-    for (const [node, state] of updates) {
+    for (const [node, state] of changes) {
       if (node.owner !== this) {
         this.revoke(node)
         continue
       }
-      for (const [name, registration] of this.registrations.get(node) ?? [])
-        if (
-          this.adapter
-            ? state.events[name] === undefined
-            : state.events[name] !== registration.listener
-        )
-          this.revoke(node, name)
-      for (const [name, listener] of Object.entries(state.events)) {
-        if (!isEventProperty(name) || !listener || this.registrations.get(node)?.has(name)) continue
+      const registrations = this.registrations.get(node)
+      if (registrations)
+        for (const [name, registration] of registrations)
+          if (
+            this.adapter
+              ? state.events[name] === undefined
+              : state.events[name] !== registration.listener
+          )
+            this.revoke(node, name)
+      // Most changed nodes have no handlers: iterating allocates nothing then.
+      for (const name in state.events) {
+        if (!isEventProperty(name)) continue
+        const listener = state.events[name]
+        if (!listener || this.registrations.get(node)?.has(name)) continue
         const binding = eventProperties[name]
         const unsubscribe = this.window.on(
-          state.handle,
+          this.handles.get(node)!,
           binding.type,
           async (event) => {
             if (node.owner !== this) return

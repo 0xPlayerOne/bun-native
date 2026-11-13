@@ -223,3 +223,27 @@ fn launch_paths_are_posix_or_windows_drive_paths_shared_with_typescript() {
         assert!(validate_root_path(path).is_err(), "{path:?}");
     }
 }
+
+#[test]
+fn chunks_accept_exactly_the_standard_base64_alphabet_at_every_position() {
+    use crate::{validate_chunk, MAX_FILE_CHUNK_BASE64};
+    let digit = |byte: u8| byte.is_ascii_alphanumeric() || byte == b'+' || byte == b'/';
+    // Positions inside the first 64-byte block, inside a later block and in
+    // the remainder after the last whole block, up to the longest unpadded
+    // chunk.
+    for length in [8, 128, 132, MAX_FILE_CHUNK_BASE64 - 4] {
+        for position in [0, length / 2, length - 3] {
+            for byte in 0..=u8::MAX {
+                let mut data = vec![b'A'; length];
+                data[position] = byte;
+                let accepted =
+                    std::str::from_utf8(&data).is_ok_and(|data| validate_chunk(data).is_ok());
+                let expected = digit(byte) || (byte == b'=' && position >= length - 2);
+                assert_eq!(
+                    accepted, expected,
+                    "byte {byte:#04x} at {position} of {length}"
+                );
+            }
+        }
+    }
+}
