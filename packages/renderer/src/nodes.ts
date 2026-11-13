@@ -493,7 +493,12 @@ export type Snapshot = Readonly<{
   inputIntent: InputIntent | undefined
 }>
 
-function leafStyle(style: Style): NonNullable<Extract<Element, { kind: 'text' }>['style']> {
+type LeafStyle = NonNullable<Extract<Element, { kind: 'text' }>['style']>
+
+function leafStyle(style: Style): LeafStyle {
+  // The stored style is the renderer's own copy and is replaced, never
+  // mutated, so a style without scrolling members is shared as it is.
+  if (!('overflow' in style) && !('scroll_anchor' in style)) return style as LeafStyle
   const { overflow, scroll_anchor, ...rest } = style
   if (
     scroll_anchor !== undefined ||
@@ -583,7 +588,7 @@ function build(node: Node, parent: Node | undefined): Snapshot {
       ...(props.accessibleSelected === undefined
         ? {}
         : { accessible_selected: props.accessibleSelected }),
-      ...(props.style ? { style: { ...props.style } } : {}),
+      ...(props.style ? { style: props.style } : {}),
     } as Element
   else if (node.kind === 'split')
     // Core validation rejects gap and alignment on a split.
@@ -605,7 +610,7 @@ function build(node: Node, parent: Node | undefined): Snapshot {
       ...(props.navigation === undefined ? {} : { navigation: props.navigation }),
       ...(props.surface === undefined ? {} : { surface: props.surface }),
       ...(props.accessibleLabel === undefined ? {} : { accessible_label: props.accessibleLabel }),
-      ...(props.style ? { style: { ...props.style } } : {}),
+      ...(props.style ? { style: props.style } : {}),
     } as Element
   else if (node.kind === 'input')
     element = {

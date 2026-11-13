@@ -54,3 +54,22 @@ them). `theme` still spends ~6 ms in the renderer recapturing ~4,000 changed
 nodes, and `mount` ~20 ms for ~7,100 nodes; both are renderer snapshot/diff
 work. The renderer's own `setProperty` still invalidates on an equal style or
 text, which Solid effects that recreate a style object also pay.
+
+## Shared committed records
+
+A changed node's committed record was its capture copied with the native
+handle added, and every box re-copied its stored style into each capture. The
+renderer now keeps native handles in their own map and publishes the capture
+itself, a box and a leaf without scrolling members share the stored style copy
+(replaced, never mutated), and listener reconciliation skips nodes without
+handlers without allocating. [Raw records](raw/) `react-workspace-records-*`:
+pinned Bun `b1007f117`, five alternating processes each on a loaded 4 vCPU
+container, 1,000 rows; the median over the five per-process medians in µs.
+
+| Change   | before total | after total | before total − sync | after total − sync |
+| -------- | ------------ | ----------- | ------------------- | ------------------ |
+| `theme`  | 7,014        | 5,181       | 5,248               | 3,433              |
+| `filter` | 6,984        | 5,644       | 4,444               | 3,142              |
+| `select` | 1,376        | 1,348       | 102                 | 99                 |
+
+`mount` stayed within its process-to-process spread (13–25 ms either way).
