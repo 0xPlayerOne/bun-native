@@ -20,7 +20,8 @@ const usage = (cli: string) => `Bun Native application tooling
   ${cli} doctor [apps/my-app] [--host /absolute/path/to/bun-native-host|auto]
   ${cli} host install [--version x.y.z] [--force]
 
-Projects use checkout dependencies unless --packages selects a standalone local package set.
+In a checkout, projects use checkout dependencies; an npm-installed CLI creates projects on its own
+@bun-native release. --packages selects a standalone local package set instead.
 Standalone scripts use their own installed CLI. Native hosts are supplied explicitly: an absolute path,
 or auto for this CLI version's released host (linux-x64, linux-arm64, darwin-arm64, darwin-x64).
 dev starts once; --watch remounts the app after edits and resets state. build produces unsigned same-platform AOT artifacts.
@@ -64,17 +65,25 @@ async function main(args: string[]): Promise<void> {
       throw new Error('--framework must be solid or react')
     if (values.language !== 'typescript' && values.language !== 'javascript')
       throw new Error('--language must be typescript or javascript')
+    // An npm-installed CLI creates a project on the same registry release.
+    const registry =
+      values.packages === undefined && context.mode === 'package'
+        ? (await (await import('./native/registry-project.ts')).installedTemplates(repository))[
+            values.framework
+          ]
+        : undefined
     const { createProject } = await import('./native/project.ts')
     const path = await createProject(
       repository,
       positionals[0]!,
       values.framework,
       values.language,
-      values.packages
+      values.packages,
+      registry
     )
     console.log(`Created ${values.framework} ${values.language} project: ${path}`)
     console.log(
-      values.packages
+      values.packages || registry
         ? 'Follow the generated README to install the pinned dependencies, then run check and dev with a prebuilt host.'
         : 'Run its check script, then dev with --host pointing to a prebuilt native host.'
     )

@@ -1,4 +1,5 @@
 import toolchain from '../../toolchain.json'
+import { cliContext } from './context.ts'
 import { prebuiltHost } from './host.ts'
 
 type Diagnosis = { name: string; status: 'ok' | 'failed' | 'skipped'; detail: string }
@@ -59,7 +60,7 @@ export async function diagnose(
       results.push({
         name: 'project',
         status: 'ok',
-        detail: `${project.framework} project ${project.directory}${project.packageSet ? ' with verified installed package set' : ' in this checkout'}`,
+        detail: `${project.framework} project ${project.directory}${project.packageSet ? ' with verified installed package set' : (await cliContext(repository)).mode === 'package' ? ' with registry packages' : ' in this checkout'}`,
       })
     } catch (error) {
       results.push({ name: 'project', status: 'failed', detail: message(error) })

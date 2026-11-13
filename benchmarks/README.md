@@ -25,7 +25,7 @@ was matched against the recorded Git snapshot. These runs use a development
 profile GPUI host and llvmpipe software rendering. They do not establish a speedup,
 idle baseline, hardware result or release-size budget.
 
-The [integration report](../docs/bn0-integration.md) explains those measurements.
+The [integration report](../docs/records/bn0-integration.md) explains those measurements.
 The native harness accepts bounded idle sampling and reports observation times
 for window discovery, native paint, OS input and teardown. They are sampled
 process observations, not hardware frame-presentation timestamps. Repeated
@@ -46,7 +46,7 @@ claim of statistical speedup.
 The [October 31 hosted release capture](bn0/release-linux-x64-2026-10-31/README.md)
 preserves the original summary, all 12 per-trial reports, compiler diagnostics,
 linkage and build environment. Its native job passed; the historical whole
-workflow failed Windows protocol checks. The [BN0 audit](../docs/bn0-audit.md)
+workflow failed Windows protocol checks. The [BN0 audit](../docs/records/bn0-audit.md)
 explains that distinction, the later passing/merged native integration and the
 baseline PR's remaining checks and merge. Original
 JSON uses `.json.raw` so source formatting cannot alter artifact fingerprints.

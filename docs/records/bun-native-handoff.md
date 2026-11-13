@@ -20,12 +20,12 @@ production installers.
 BN1 is complete. The merged source in [#271](https://github.com/0xPlayerOne/bun-native/pull/271)
 replaces the fixed fixture with protocol 2, a bounded multi-window native tree,
 atomic mutations, independent input revisions and the public
-[`@bun-native/core`](../packages/core/README.md) TS/JS API. Both framework
+[`@bun-native/core`](../../packages/core/README.md) TS/JS API. Both framework
 consumers import this same contract. Their type fixtures are compile-only;
 actual framework renderers have separate acceptance.
 
 The initial shared layout increment introduced protocol 3 and `layout_v1`.
-Protocol 4 additionally required `interactions_v1`; the [event contract](native-events.md) records the shared native observation and propagation scope. Its [native layout contract](native-layout.md) records
+Protocol 4 additionally required `interactions_v1`; the [event contract](../native-events.md) records the shared native observation and propagation scope. Its [native layout contract](../native-layout.md) records
 the supported sizing, scrolling and focus behavior and its actual development/AOT
 qualification. Historical BN1 artifacts remain evidence for their original
 protocol-2 sources; old hosts fail negotiation with the current packages.
@@ -76,27 +76,27 @@ fallback remains in the active packages.
 3. Preserve the merged native layout/scroll/focus qualification in
    [#281](https://github.com/0xPlayerOne/bun-native/pull/281), Bun command
    controls in [#278](https://github.com/0xPlayerOne/bun-native/pull/278) and the
-   [checkout CLI](developer-tooling.md). Ordinary TS/JS edits reuse a prebuilt
+   [checkout CLI](../developer-tooling.md). Ordinary TS/JS edits reuse a prebuilt
    host and must not silently invoke Cargo.
-4. Preserve the default-denied [native services](native-services.md): display
-   snapshots, clipboard text ([ADR 0007](decisions/0007-native-clipboard.md)),
-   global shortcuts ([ADR 0008](decisions/0008-native-global-shortcuts.md)) and
-   notifications ([ADR 0009](decisions/0009-native-notifications.md)) and
-   filesystem grants ([ADR 0010](decisions/0010-filesystem-grants.md)). Their
+4. Preserve the default-denied [native services](../native-services.md): display
+   snapshots, clipboard text ([ADR 0007](../decisions/0007-native-clipboard.md)),
+   global shortcuts ([ADR 0008](../decisions/0008-native-global-shortcuts.md)) and
+   notifications ([ADR 0009](../decisions/0009-native-notifications.md)) and
+   filesystem grants ([ADR 0010](../decisions/0010-filesystem-grants.md)). Their
    qualification is Linux-only; continue platform qualification by issue
    dependencies.
 5. Preserve the experimental release tooling merged in
    [#483](https://github.com/0xPlayerOne/bun-native/pull/483): verified
-   [updates, rollback, launchers and uninstall](updates.md) (#249),
-   [reproducible build checks](reproducible-builds.md), the
-   [security and crash qualification matrix](qualification-matrix.md) (#247),
+   [updates, rollback, launchers and uninstall](../updates.md) (#249),
+   [reproducible build checks](../reproducible-builds.md), the
+   [security and crash qualification matrix](../qualification-matrix.md) (#247),
    the CLI `check`/`format`/`doctor` commands and the
-   [release-readiness ADR](decisions/0013-release-readiness.md). Outputs remain
+   [release-readiness ADR](../decisions/0013-release-readiness.md). Outputs remain
    unsigned; OS code signing, notarization and platform installers are open.
 
-The native ownership and current protocol schema are described in the [native ABI](native-abi.md),
-the [public API ADR](decisions/0004-public-api.md) and the
-[security ADR](decisions/0003-bridge-security.md). Inspect actual branch/PR/CI
+The native ownership and current protocol schema are described in the [native ABI](../native-abi.md),
+the [public API ADR](../decisions/0004-public-api.md) and the
+[security ADR](../decisions/0003-bridge-security.md). Inspect actual branch/PR/CI
 state before resuming; a draft implementation is not a completed milestone.
 
 ## Validation meaning
@@ -106,7 +106,7 @@ source, framing, ownership and dependency boundaries. `bun run build` emits JS
 modules and is not an AOT executable. Headless subprocess tests use explicitly
 simulated protocol peers; they cannot establish GPUI rendering or OS input.
 
-[The native fixture guide](../tests/native/README.md) and [testing](testing.md)
+[The native fixture guide](../../tests/native/README.md) and [testing](../testing.md)
 separate actual native input, native fault containment, paint traversal,
 process cleanup and AOT artifact inspection. Bounded ownership counts, weak
 references and heap observations are not long-running allocator/GPU leak proof.
@@ -117,6 +117,6 @@ executable bytes. Cache/power state is uncontrolled, observation intervals are
 polled, and precise physical input/frame latency remains unmeasured. Preserve
 these limitations when comparing results. Target-artifact issue #246 is closed;
 the hosted macOS/Windows lane and its limits are in
-[native platforms](native-platforms.md). BN5 #256 owns the remaining native
+[native platforms](../native-platforms.md). BN5 #256 owns the remaining native
 platform matrix; BN4 #241 owns horizontal input scrolling, IME and complete
 text/accessibility qualification.

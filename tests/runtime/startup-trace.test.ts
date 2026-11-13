@@ -104,8 +104,11 @@ test('a real unanswered open preserves its failed phase and bounded native stder
   )
   const failed = result.records.find((record) => record['phase'] === 'transport_failed')
   expect(failed?.['error']).toBe(result.failure?.message)
-  expect(String(failed?.['stderr_tail'])).toHaveLength(4_096)
-  expect(String(failed?.['stderr_tail'])).toContain('Owned diagnostic peer is waiting at open')
+  // The bounded capture is recorded redacted: its clipped first line is
+  // dropped and credential-shaped values are masked, as in exit diagnostics.
+  expect(String(failed?.['stderr_tail'])).toBe(
+    'api_key=[redacted]\nOwned diagnostic peer is waiting at open\n'
+  )
   expect(
     result.records.some(
       (record) => record['request_id'] === 2 && record['phase'] === 'stdin_flushed'

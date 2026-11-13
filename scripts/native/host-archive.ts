@@ -35,11 +35,14 @@ function octal(header: Buffer, offset: number, length: number, value: number): v
  * the build machine (mtime, owner ids and names, directory order, gzip header
  * time/OS) is fixed, so equal members and an equal epoch always produce an
  * identical archive on every runner. Names are portable relative paths of at most
- * 100 bytes; parent directories are implied, as GNU and BSD tar accept.
+ * 100 bytes; parent directories are implied, as GNU and BSD tar accept. Any
+ * `level` is equally reproducible: the bytes depend only on the members, the epoch,
+ * the level and the zlib build.
  */
 export function ustarGzip(
   members: { name: string; data: Uint8Array; mode: number }[],
-  mtime: number
+  mtime: number,
+  level = 9
 ): Buffer {
   const names = members.map(({ name }) => name)
   if (new Set(names).size !== names.length) throw new Error('Duplicate archive member')
@@ -69,7 +72,7 @@ export function ustarGzip(
   parts.push(Buffer.alloc(block * 2))
   const tar = Buffer.concat(parts)
   const padded = Buffer.concat([tar, Buffer.alloc((record - (tar.length % record)) % record)])
-  const archive = gzipSync(padded, { level: 9 })
+  const archive = gzipSync(padded, { level })
   // RFC 1952: MTIME is already zero and no name is stored; fix the zlib build's
   // OS byte so Linux, macOS and Windows produce the same header.
   if (archive[3] !== 0 || archive.readUInt32LE(4) !== 0)

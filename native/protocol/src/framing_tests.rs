@@ -2,7 +2,8 @@
 
 use super::{decode_command, decode_command_last_wins, EventWriter, ProtocolError};
 use crate::{
-    Command, CommandReader, Event, EventSequence, NodeId, WindowId, MAX_FRAME_BYTES, MAX_TEXT_BYTES,
+    Command, CommandReader, Event, EventSequence, NodeId, WindowId, MAX_EVENT_FRAME_BYTES,
+    MAX_FRAME_BYTES, MAX_TEXT_BYTES,
 };
 use serde_json::{json, Value};
 use std::fmt::Write as _;
@@ -202,17 +203,20 @@ fn nested_duplicate_keys_keep_last_member_semantics() {
 #[test]
 fn reader_reuses_its_frame_buffer_and_releases_it_when_done() {
     let mut reader = CommandReader::default();
-    let large = format!(
-        r#"{{"id":1,"type":"shutdown"}}{}"#,
-        " ".repeat(MAX_FRAME_BYTES - 100)
-    );
+    let frame = |padding: usize| {
+        format!(
+            r#"{{"id":1,"type":"shutdown"}}{}"#,
+            " ".repeat(padding - 100)
+        )
+    };
+    let large = frame(super::RETAINED_FRAME_BYTES);
     let mut source = Cursor::new(format!("{large}\n{{\"id\":2,\"type\":\"shutdown\"}}\n"));
     assert!(matches!(
         reader.read(&mut source),
         Ok(Some(Command::Shutdown { .. }))
     ));
     let capacity = reader.frame.capacity();
-    assert!((MAX_FRAME_BYTES - 100..=2 * MAX_FRAME_BYTES).contains(&capacity));
+    assert!((super::RETAINED_FRAME_BYTES - 100..=super::RETAINED_FRAME_BYTES).contains(&capacity));
     assert!(matches!(
         reader.read(&mut source),
         Ok(Some(Command::Shutdown { .. }))
@@ -224,6 +228,15 @@ fn reader_reuses_its_frame_buffer_and_releases_it_when_done() {
     );
     assert_eq!(reader.read(&mut source).unwrap(), None);
     assert_eq!(reader.frame.capacity(), 0);
+
+    // A maximum frame borrows its memory only while it is read.
+    let mut reader = CommandReader::default();
+    let mut source = Cursor::new(format!("{}\n", frame(MAX_FRAME_BYTES)));
+    assert!(matches!(
+        reader.read(&mut source),
+        Ok(Some(Command::Shutdown { .. }))
+    ));
+    assert!(reader.frame.capacity() <= super::RETAINED_FRAME_BYTES);
 }
 
 fn input(value: String) -> Event {
@@ -250,7 +263,7 @@ fn event_writer_matches_one_shot_frames_and_bounds_its_buffer() {
         super::write_event(&mut one_shot, &event).unwrap();
     }
     assert_eq!(reused, one_shot);
-    assert!(writer.buffer.capacity() <= 2 * MAX_FRAME_BYTES);
+    assert!(writer.buffer.capacity() <= 2 * MAX_EVENT_FRAME_BYTES);
 
     // Control characters escape to six bytes each, past the frame limit.
     let oversized = input("\u{1}".repeat(MAX_TEXT_BYTES));
@@ -260,7 +273,7 @@ fn event_writer_matches_one_shot_frames_and_bounds_its_buffer() {
         Err(ProtocolError::Oversized)
     ));
     assert!(sink.is_empty(), "a rejected event wrote a partial frame");
-    assert!(writer.buffer.capacity() <= MAX_FRAME_BYTES + 1);
+    assert!(writer.buffer.capacity() <= MAX_EVENT_FRAME_BYTES + 1);
     assert!(matches!(
         super::write_event(&mut sink, &oversized),
         Err(ProtocolError::Oversized)

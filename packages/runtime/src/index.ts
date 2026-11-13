@@ -6,6 +6,7 @@ import {
   processArguments,
   encodeFrame,
   FrameDecoder,
+  MAX_EVENT_FRAME_BYTES,
   parseCommand,
   parseEvent,
   PROTOCOL_VERSION,
@@ -428,6 +429,11 @@ export class NativeHost implements AsyncIterable<HostEvent> {
     }
   }
 
+  /** Whether the transport is still open (false once it failed or shut down). */
+  get running(): boolean {
+    return this.phase === 'running'
+  }
+
   get limits(): Readonly<Limits> {
     if (!this.negotiatedLimits) throw new ProtocolError('Native limits are not negotiated')
     return this.negotiatedLimits
@@ -663,7 +669,7 @@ export class NativeHost implements AsyncIterable<HostEvent> {
   }
 
   private async readStdout(): Promise<void> {
-    const decoder = new FrameDecoder()
+    const decoder = new FrameDecoder(MAX_EVENT_FRAME_BYTES)
     try {
       for (;;) {
         const { done, value } = await this.stdout.read()
@@ -790,7 +796,12 @@ export class NativeHost implements AsyncIterable<HostEvent> {
       clearTimeout(drainDeadline)
       this.cancelOutput()
       await Promise.allSettled(streams)
-      this.startupTrace?.finished(this.process.exitCode, this.stderrTail, this.process.pid)
+      this.startupTrace?.finished(
+        this.process.exitCode,
+        this.stderrTail,
+        this.stderrClipped,
+        this.process.pid
+      )
     }
   }
 
@@ -1033,7 +1044,7 @@ export class NativeHost implements AsyncIterable<HostEvent> {
   private fail(cause: unknown): void {
     if (this.failure) return
     this.failure = cause instanceof Error ? cause : new Error(String(cause))
-    this.startupTrace?.failure(this.failure, this.stderrTail, this.process.pid)
+    this.startupTrace?.failure(this.failure, this.stderrTail, this.stderrClipped, this.process.pid)
     this.phase = 'closed'
     for (const request of this.pending.values()) {
       clearTimeout(request.timer)

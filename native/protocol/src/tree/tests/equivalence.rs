@@ -253,7 +253,7 @@ fn random_batches_match_whole_graph_clone_preflight() {
         "set cannot change an element kind",
         "node is stale or is not owned by this window",
         "tree revision does not match",
-        "batch must have between 1 and 256 operations",
+        "batch must have between 1 and 16384 operations",
     ] {
         assert!(rejected.get(message) > Some(&5), "{message}: {rejected:?}");
     }

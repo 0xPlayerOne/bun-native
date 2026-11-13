@@ -549,10 +549,10 @@ describe('Solid universal adapter over the public core (headless subprocess)', (
       await root.dispose()
     }))
 
-  test('a keyed pane remount above the native batch limit commits as one Solid update', () =>
+  test('a large keyed pane remount commits as one Solid update', () =>
     withApp(async (app) => {
       const window = await app.openWindow({ title: 'Solid large remount' })
-      // Each row is three nodes, created and inserted: 60 rows exceed 256 operations.
+      // Each row is three nodes, created and inserted: over 360 operations.
       const pane = (name: string, count: number) => {
         const box = createElement('box')
         for (let index = 0; index < count; index += 1) {
@@ -571,7 +571,7 @@ describe('Solid universal adapter over the public core (headless subprocess)', (
       }, window)
       await root.ready
       const text = () => asNode(container).children[0]?.children[0]?.children[0]?.properties.text
-      // The initial mount is itself one commit above the batch limit.
+      // The initial mount is itself one commit.
       const mounted = root.diagnostics.nodes
       expect(mounted).toBeGreaterThan(60 * 3)
       expect(text()).toBe('A 0')
@@ -623,4 +623,27 @@ describe('Solid universal adapter over the public core (headless subprocess)', (
       'Solid native rendering requires Bun --conditions=browser (reactive Solid exports)'
     )
   })
+
+  test('an error in a later reactive update ends only its render root', () =>
+    withApp(async (app) => {
+      const window = await app.openWindow({ title: 'Solid reactive failure' })
+      const [value, setValue] = createSignal(0)
+      const failed = render(() => {
+        const node = createElement('text')
+        createEffect(() => {
+          if (value() === 1) throw new Error('Reactive update failed')
+          setProp(node, 'text', String(value()))
+        })
+        return node
+      }, window)
+      const sibling = render(() => label('Unaffected'), window)
+      await Promise.all([failed.ready, sibling.ready])
+      // The setter (usually a native listener) does not receive the error.
+      setValue(1)
+      await assert.rejects(failed.closed, /Reactive update failed/)
+      expect(app.diagnostics.windows).toBe(1)
+      await sibling.flush()
+      await sibling.dispose()
+      await window.close()
+    }))
 })

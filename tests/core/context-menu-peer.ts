@@ -102,6 +102,7 @@ for await (const chunk of Bun.stdin.stream())
         }
         if (mode === 'dismiss') await finish()
         if (mode === 'foreign-item') await finish('not-given')
+        if (mode === 'unallocated') await complete(window_id, menu_id + 1000, 'copy')
         break
       }
       case 'close_context_menu':

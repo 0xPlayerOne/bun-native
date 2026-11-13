@@ -2,6 +2,8 @@ import { mkdir, realpath, rm, stat, writeFile } from 'node:fs/promises'
 import { basename, dirname, isAbsolute, join, relative, resolve, sep } from 'node:path'
 import { inside } from './paths.ts'
 import type { FileDigest } from './artifact.ts'
+import { cliContext } from './context.ts'
+import type { RegistryTemplate } from './registry-project.ts'
 // Package-set modules (archive parsing, gzip, lock checks) load only for standalone
 // projects; checkout projects never need them.
 
@@ -121,15 +123,18 @@ export async function createProject(
   destination: string,
   framework: Framework,
   language: Language,
-  packages?: string
+  packages?: string,
+  registry?: RegistryTemplate
 ): Promise<string> {
   const set =
     packages === undefined
       ? undefined
       : await (await import('./package-set.ts')).readPackageSet(packages)
+  // A project with installed packages (a local set or the registry) lives anywhere.
+  const installed = set !== undefined || registry !== undefined
   const root = await realpath(repository)
   const directory = resolve(destination)
-  if (!set && !inside(root, directory))
+  if (!installed && !inside(root, directory))
     throw new Error('Create the project inside this Bun Native checkout')
   // Resolve existing parents before writing, so a symlink cannot escape the checkout.
   let ancestor = dirname(directory)
@@ -144,11 +149,11 @@ export async function createProject(
       ancestor = parent
     }
   }
-  if (!set && resolvedAncestor !== root && !inside(root, resolvedAncestor))
+  if (!installed && resolvedAncestor !== root && !inside(root, resolvedAncestor))
     throw new Error('Project parent resolves outside this Bun Native checkout')
   await mkdir(dirname(directory), { recursive: true })
   const parent = await realpath(dirname(directory))
-  if (!set && parent !== root && !inside(root, parent))
+  if (!installed && parent !== root && !inside(root, parent))
     throw new Error('Project parent resolves outside this Bun Native checkout')
   await mkdir(directory) // Existing directories, including empty ones, are never overwritten.
   try {
@@ -190,7 +195,10 @@ export async function createProject(
       'README.md': readme(basename(directory), framework, guide),
       [entry]: template(framework, language),
     }
-    if (set) {
+    if (registry) {
+      const { registryFiles } = await import('./registry-project.ts')
+      Object.assign(files, registryFiles(registry, framework, entry, basename(directory)))
+    } else if (set) {
       const { copyPackageSet, standaloneFiles } = await import('./standalone.ts')
       Object.assign(files, standaloneFiles(set, framework, entry, basename(directory)))
       await copyPackageSet(set, directory)
@@ -255,6 +263,9 @@ export async function readProject(
     )
     return { directory, framework: config['framework'], entry, packageSet }
   }
-  if (!inside(root, directory)) throw new Error('Project must be inside this Bun Native checkout')
+  // Without a package set, a project outside the checkout installs its packages from
+  // the registry; only an installed CLI (not a checkout's) serves such a project.
+  if (!inside(root, directory) && (await cliContext(root)).mode !== 'package')
+    throw new Error('Project must be inside this Bun Native checkout')
   return { directory, framework: config['framework'], entry }
 }

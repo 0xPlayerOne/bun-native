@@ -86,8 +86,9 @@ import {
   string,
 } from './values.ts'
 
-export const PROTOCOL_VERSION = 11
-export const MAX_OPERATIONS = 256
+export const PROTOCOL_VERSION = 12
+/** Four operations per node of a full window: a whole-window replacement fits one batch. */
+export const MAX_OPERATIONS = 16_384
 const MAX_NODES_PER_WINDOW = 4_096
 const MAX_WINDOWS = 16
 const MAX_DEPTH = 64

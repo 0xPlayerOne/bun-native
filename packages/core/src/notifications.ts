@@ -3,6 +3,7 @@ import {
   MAX_NOTIFICATION_TITLE_BYTES,
   type NotificationDismissal,
 } from '@bun-native/protocol'
+import { Registration } from './registration.ts'
 import type { Listener } from './types.ts'
 
 export interface NotificationOptions {
@@ -72,52 +73,34 @@ export function notificationRequest(options: NotificationOptions): { title: stri
   return { title, body }
 }
 
-/** Internal registry entry. Consumers only receive its frozen handle. */
-export class NotificationRegistration {
+/**
+ * Internal registry entry. Consumers only receive its frozen handle. `live`
+ * accepts activations; `deliverable` keeps a queued callback, including the
+ * final dismissal, runnable.
+ */
+export class NotificationRegistration extends Registration<NotificationEvent> {
   readonly handle: NativeNotification
-  readonly controller = new AbortController()
-  listener: Listener<NotificationEvent> | undefined
   activatable = false
-  private ended = false
-  private withdrawing: Promise<void> | undefined
 
   constructor(
-    readonly id: number,
-    readonly windowId: number,
+    id: number,
+    windowId: number,
     title: string,
     body: string,
     listener: Listener<NotificationEvent>,
     withdraw: (registration: NotificationRegistration) => Promise<void>
   ) {
-    this.listener = listener
+    super(id, windowId, listener)
     this.handle = publicHandle(this, title, body, withdraw)
   }
 
-  withdraw(withdraw: (registration: NotificationRegistration) => Promise<void>): Promise<void> {
-    this.withdrawing ??= this.ended ? Promise.resolve() : withdraw(this)
-    return this.withdrawing
-  }
-
-  /** Accepts activations. */
-  get live(): boolean {
-    return !this.ended
-  }
-
-  /** A queued callback, including the final dismissal, may still run. */
   get deliverable(): boolean {
     return this.listener !== undefined
   }
 
   /** The server removed it: no activation follows, but the dismissal is delivered. */
   end(): void {
-    this.ended = true
-  }
-
-  /** Synchronous local revocation; the server notification is closed separately. */
-  revoke(): void {
-    this.ended = true
-    this.listener = undefined
-    this.controller.abort()
+    this.released = true
   }
 }
 
@@ -136,6 +119,6 @@ function publicHandle(
     get active() {
       return registration.live
     },
-    withdraw: () => registration.withdraw(withdraw),
+    withdraw: () => registration.release(withdraw),
   })
 }

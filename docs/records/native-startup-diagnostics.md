@@ -13,7 +13,7 @@ failed with `Native open request 3 timed out` before running the added Solid
 scenarios. This is the **first** open: hello is request 1 and the expected invalid
 close is request 2. No previous window had been opened or closed.
 
-The [original evidence](../tests/native/evidence/open-timeout-linux.json) retains
+The [original evidence](../../tests/native/evidence/open-timeout-linux.json) retains
 the exact failure log, runner/toolchain metadata, host hashes and source
 comparison. The relevant native, runtime, protocol, Cargo and lifecycle sources
 are identical to the earlier passing hosted commit. The first artifact had no
@@ -92,7 +92,7 @@ omission, a deliberately unanswered open with retained stderr, bounded trace
 exhaustion, invalid nonce rejection and an unwritable log that preserves
 transport behavior. These tests do not establish native window behavior.
 
-The [final local native trace record](../tests/native/evidence/startup-trace-linux.json)
+The [final local native trace record](../../tests/native/evidence/startup-trace-linux.json)
 retains source hashes and both raw traces. One development run and one inspected
 Bun machine-code AOT run each passed five actual GPUI window cycles, all 35
 valid-open phase markers and exit zero against the same development-profile
@@ -103,7 +103,7 @@ diagnostic correctness checks, not release-host, input-latency or presentation
 measurements. The controlled hosted run remains necessary to investigate the
 original runner failure; a passing rerun alone will not explain or erase it.
 
-The subsequent [main-integration control](../tests/native/evidence/solid-main-integration-linux.json)
+The subsequent [main-integration control](../../tests/native/evidence/solid-main-integration-linux.json)
 uses main's newer serde, serde_json and unicode-segmentation pins with a separately
 built development host. Its current-source development and inspected AOT runs
 each pass the same five-window/35-marker assertions and a separate actual caret
@@ -180,7 +180,7 @@ installation record and actual X11 visual / selected-GPU records after its
 unchanged five successful window cycles. A passing diagnostic run does not
 explain the historical stall or close #296.
 
-The [first current-source controls](../tests/native/evidence/startup-log-linux.json)
+The [first current-source controls](../../tests/native/evidence/startup-log-linux.json)
 retain exact source and artifact hashes, raw logger/open-phase records and the
 complete-trace fingerprints. Logging-disabled development, logging-enabled
 development and an inspected Bun machine-code AOT executable each passed five
@@ -197,7 +197,7 @@ llvmpipe software Vulkan. The AOT application has compiled-program metadata and
 GPU, hosted release qualification, startup speed or cause of #296 is inferred
 from these successful diagnostic cases.
 
-The [hosted release record](../tests/native/evidence/startup-log-hosted-linux.json)
+The [hosted release record](../../tests/native/evidence/startup-log-hosted-linux.json)
 comes from run [41247548396](https://github.com/0xPlayerOne/bun-native/actions/runs/41247548396)
 at tested merge `744a08ffbbfc4b1b382796df18ed2c4d9808501f`. Its five-window
 development lifecycle passed and emitted 16 bounded logger records totaling

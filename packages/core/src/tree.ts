@@ -136,14 +136,6 @@ export function makeNode<E extends Element>(
   }
 }
 
-/**
- * One logical transaction may exceed a native batch (see commit-plan.ts), but
- * it stays bounded: a full-window mount needs a create and an insert per node.
- */
-function logicalOperationLimit(limits: Readonly<Limits>): number {
-  return 2 * limits.max_nodes_per_window + limits.max_operations
-}
-
 export function own(nodes: ReadonlyMap<number, NodeState>, handle: NativeNode): NodeState {
   const id = identities.get(handle)
   const node = id === undefined ? undefined : nodes.get(id)
@@ -303,7 +295,7 @@ export class Transaction implements NativeBatch {
   private check(): void {
     if (!this.active)
       throw new NativeStateError('invalid_state', 'Batch callback has already returned')
-    if (this.operations.length >= logicalOperationLimit(this.limits))
+    if (this.operations.length >= this.limits.max_operations)
       throw new NativeStateError('limit_exceeded', 'Batch operation limit exceeded')
   }
 
@@ -517,28 +509,6 @@ export class Transaction implements NativeBatch {
             'scrollTo requires a container scrolling on each given axis'
           )
       }
-    }
-  }
-
-  /**
-   * Give created nodes the identities in `identity` (old to new) before a
-   * staged commit (see commit-plan.ts). Their handles were never committed,
-   * and only this transaction's own copies can name a created node.
-   */
-  renumber(identity: ReadonlyMap<number, number>): void {
-    const { writes } = this.nodes
-    const map = (id: number) => identity.get(id) ?? id
-    const written = [...writes.values()]
-    for (const id of identity.keys()) writes.delete(id)
-    for (const node of written) {
-      const next = map(node.id)
-      if (next !== node.id) {
-        identities.set(node.handle, next)
-        node.id = next
-      }
-      if (node.parent !== undefined) node.parent = map(node.parent)
-      node.children = node.children.map(map)
-      writes.set(next, node)
     }
   }
 

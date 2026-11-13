@@ -80,13 +80,13 @@ grant, extend or change the policy.
 
 Each protocol replaced its predecessor without a compatibility decoder:
 protocol 7 added global shortcuts, 8 notifications, 9 `filesystem_roots`, 10
-`processes` and the current protocol 11 `drag_drop`. Readiness must include
+`processes` and 11 `drag_drop`; the current protocol 12 sends each transaction as one batch. Readiness must include
 `window_display_v1` alongside the other required rendering capabilities and a
 `service_policy` with explicit `window_display`, `clipboard_read`,
 `clipboard_write`, `global_shortcuts`, `notifications` and `drag_drop`
 booleans plus the `filesystem_roots` and `processes` lists. Display details,
 display identity, display changes and file dialogs are optional capabilities
-that kept protocol 11; `file_dialogs` is the only optional policy field. The runtime requires the
+that kept their protocol; `file_dialogs` is the only optional policy field. The runtime requires the
 reported policy to match its launch request exactly. Missing capabilities,
 missing policy, conflicting policy or an older protocol fail launch and clean
 up the child. Feature negotiation says what the host implements; permission

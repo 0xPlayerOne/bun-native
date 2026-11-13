@@ -18,10 +18,12 @@ function files(directory: string, prefix = ''): string[] {
 
 const sha256 = (path: string) => createHash('sha256').update(readFileSync(path)).digest('hex')
 
-// Two clean builds of equal sources from different checkout locations, process
-// working directories and times must produce byte-identical packaged outputs.
-// Only the declared diagnostics (logs and wall-clock timing) may differ.
-test('AOT builds of equal sources are byte-identical across locations and working directories', async () => {
+// Two clean builds of equal sources from different checkout locations, output
+// directories, process working directories and times must produce byte-identical
+// packaged outputs. Only the declared diagnostics (logs and wall-clock timing) may
+// differ. The second build names its own --outdir at the default's depth: source
+// map `sources` are relative to the map, so only the depth is part of the input.
+test('AOT builds of equal sources are byte-identical across locations, output and working directories', async () => {
   const cache = join(repository, '.bun-native')
   mkdirSync(cache, { recursive: true })
   const directory = mkdtempSync(join(cache, 'reproducible-'))
@@ -34,27 +36,37 @@ test('AOT builds of equal sources are byte-identical across locations and workin
     // /var -> /private/var symlink, so the relative path must be computed from the real path.
     const outside = realpathSync(mkdtempSync(join(tmpdir(), 'bun-native-build-cwd-')))
     const working = [repository, outside]
+    const outputs = [join(projects[0]!, 'dist'), join(projects[1]!, 'release-output')]
     try {
-      for (const [index, project] of projects.entries()) {
-        const result = Bun.spawnSync(
-          [
-            process.execPath,
-            cli,
-            'build',
-            relative(working[index]!, project),
-            '--host',
-            process.execPath,
-            '--host-profile',
-            'release',
-          ],
-          { cwd: working[index]!, stdout: 'pipe', stderr: 'pipe', timeout: 150_000 }
-        )
-        if (result.exitCode !== 0) throw new Error(result.stderr.toString())
-      }
+      // The builds are independent, so they compile concurrently.
+      await Promise.all(
+        projects.map(async (project, index) => {
+          const child = Bun.spawn(
+            [
+              process.execPath,
+              cli,
+              'build',
+              relative(working[index]!, project),
+              '--host',
+              process.execPath,
+              '--host-profile',
+              'release',
+              ...(index === 1 ? ['--outdir', outputs[1]!] : []),
+            ],
+            { cwd: working[index]!, stdout: 'pipe', stderr: 'pipe', timeout: 150_000 }
+          )
+          const [stderr, exitCode] = await Promise.all([
+            new Response(child.stderr).text(),
+            child.exited,
+            new Response(child.stdout).text(),
+          ])
+          if (exitCode !== 0) throw new Error(stderr)
+        })
+      )
     } finally {
       rmSync(working[1]!, { recursive: true, force: true })
     }
-    const [first, second] = projects.map((project) => join(project, 'dist'))
+    const [first, second] = outputs
     const manifest = JSON.parse(readFileSync(join(first!, 'manifest.json'), 'utf8'))
     const { deterministic, diagnostics } = manifest.reproducibility as Record<string, string[]>
     expect(files(first!).sort()).toEqual([...deterministic!, ...diagnostics!].sort())

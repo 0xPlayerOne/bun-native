@@ -11,7 +11,11 @@ modes against one explicit prebuilt GPUI host:
 | `react` | `benchmarks/solid/react.tsx`    | React reconciler, production build             |
 
 Each adapter is bundled once into a generated module (`development` mode runs it
-with `bun`) and that exact module is compiled with
+with `bun`) with the same in-process configuration as `native dev` and
+`native build` (`scripts/native/bundle.ts`, unminified for every adapter; React was
+minified by a spawned `bun build --production` before 2026-11-13, so earlier React
+results compared a minified module with unminified core and Solid ones), and that
+exact module is compiled with
 `bun compile --no-script --production --explain=json` (`aot` mode). The
 controller inspects the compiled-program flag and Linux JIT-omission records of
 the executable it launches. Development vs AOT therefore separates the

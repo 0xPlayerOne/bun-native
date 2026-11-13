@@ -14,8 +14,14 @@ import { isAbsolute, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { parseArgs } from 'node:util'
 import { compileApplication } from './compile'
-import { nativeSourcePaths } from './native-sources'
-import { sharedWorkloadSources } from '../../benchmarks/solid/sources'
+import { bundleApplication, moduleInputs } from '../../scripts/native/bundle.ts'
+import {
+  fixtureInventory,
+  fixtures,
+  isFixture,
+  unprofiled,
+  type Fixture,
+} from '../../scripts/quality/native-fixtures.ts'
 import toolchain from '../../toolchain.json'
 
 const { values } = parseArgs({
@@ -31,112 +37,15 @@ const { values } = parseArgs({
   strict: true,
   allowPositionals: false,
 })
-const entries = {
-  'native-window': 'examples/native-window/main.ts',
-  'input-race': 'tests/native/input-race.ts',
-  bridge: 'benchmarks/bridge.ts',
-  javascript: 'tests/native/javascript.js',
-  'core-lifecycle': 'tests/native/public-lifecycle.ts',
-  'event-throughput': 'tests/native/event-throughput.ts',
-  fault: 'tests/native/fault.ts',
-  scheduling: 'tests/native/scheduling.ts',
-  layout: 'tests/native/layout.ts',
-  'layout-style': 'tests/native/layout-style.ts',
-  interactions: 'tests/native/interactions.ts',
-  services: 'tests/native/services.ts',
-  'display-semantics': 'tests/native/display-semantics.ts',
-  'display-platform': 'tests/native/display-platform.ts',
-  'display-wayland': 'tests/native/display-wayland.ts',
-  'display-virtual-macos': 'tests/native/display-virtual-macos.ts',
-  clipboard: 'tests/native/clipboard.ts',
-  'global-shortcuts': 'tests/native/global-shortcuts.ts',
-  notifications: 'tests/native/notifications.ts',
-  'filesystem-grants': 'tests/native/filesystem-grants.ts',
-  'app-menu': 'tests/native/app-menu.ts',
-  processes: 'tests/native/processes.ts',
-  'file-dialogs': 'tests/native/file-dialogs.ts',
-  overlays: 'tests/native/overlays.ts',
-  'message-dialogs': 'tests/native/message-dialogs.ts',
-  popups: 'tests/native/popups.ts',
-  wayland: 'tests/native/wayland.ts',
-  'drag-drop': 'tests/native/drag-drop.ts',
-  'solid-drag-drop': 'tests/native/solid-drag-drop.tsx',
-  'react-drag-drop': 'tests/native/react-drag-drop.tsx',
-  'text-input': 'tests/native/text-input.ts',
-  ime: 'tests/native/ime.ts',
-  accessibility: 'tests/native/accessibility.ts',
-  'accessibility-platform': 'tests/native/accessibility-platform.ts',
-  'input-states-platform': 'tests/native/input-states-platform.ts',
-  'screen-reader': 'tests/native/screen-reader.ts',
-  'ime-platform': 'tests/native/ime-platform.ts',
-  'solid-services': 'tests/native/solid-services.tsx',
-  'react-services': 'tests/native/react-services.tsx',
-  'platform-smoke': 'tests/native/platform-smoke.ts',
-  'solid-platform': 'tests/native/solid-platform.tsx',
-  'react-platform': 'tests/native/react-platform.tsx',
-  solid: 'examples/solid-counter/main.tsx',
-  'solid-workspace': 'examples/solid-workspace/main.tsx',
-  'adea-components': 'examples/adea-components/main.tsx',
-  'solid-workspace-flow': 'tests/native/solid-workspace.tsx',
-  'solid-workspace-soak': 'tests/native/solid-workspace-soak.tsx',
-  'solid-workspace-terminal': 'tests/native/solid-workspace-terminal.tsx',
-  'solid-input-intent': 'tests/native/solid-input-intent.tsx',
-  'solid-interactions': 'tests/native/solid-interactions.tsx',
-  'solid-input-viewport': 'tests/native/solid-input-viewport.tsx',
-  'solid-streaming-list': 'tests/native/solid-streaming-list.tsx',
-  'solid-layout-style': 'tests/native/solid-layout-style.tsx',
-  react: 'examples/react-counter/main.tsx',
-  'react-workspace': 'examples/react-workspace/main.tsx',
-  'react-workspace-flow': 'tests/native/react-workspace.tsx',
-  'react-workspace-soak': 'tests/native/react-workspace-soak.tsx',
-  'react-workspace-terminal': 'tests/native/react-workspace-terminal.tsx',
-  'react-interactions': 'tests/native/react-interactions.tsx',
-  'react-input-viewport': 'tests/native/react-input-viewport.tsx',
-  'react-streaming-list': 'tests/native/react-streaming-list.tsx',
-  'react-layout-style': 'tests/native/react-layout-style.tsx',
-  'react-behavior': 'tests/native/react-behavior.tsx',
-  'react-workload': 'benchmarks/solid/react.tsx',
-} as const
-function isEntry(value: string | undefined): value is keyof typeof entries {
-  return typeof value === 'string' && Object.hasOwn(entries, value)
-}
 const entry = values.entry
-if (!isEntry(entry)) throw new Error('--entry must be one of: ' + Object.keys(entries).join(', '))
-const entryPath = entries[entry]
-const solidEntry =
-  entry === 'solid' ||
-  entry === 'solid-workspace' ||
-  entry === 'adea-components' ||
-  entry === 'solid-workspace-flow' ||
-  entry === 'solid-workspace-soak' ||
-  entry === 'solid-workspace-terminal' ||
-  entry === 'solid-input-intent' ||
-  entry === 'solid-interactions' ||
-  entry === 'solid-input-viewport' ||
-  entry === 'solid-streaming-list' ||
-  entry === 'solid-layout-style' ||
-  entry === 'solid-platform' ||
-  entry === 'solid-services' ||
-  entry === 'solid-drag-drop'
-const reactEntry =
-  entry === 'react' ||
-  entry === 'react-workspace' ||
-  entry === 'react-workspace-flow' ||
-  entry === 'react-workspace-soak' ||
-  entry === 'react-workspace-terminal' ||
-  entry === 'react-interactions' ||
-  entry === 'react-input-viewport' ||
-  entry === 'react-streaming-list' ||
-  entry === 'react-layout-style' ||
-  entry === 'react-behavior' ||
-  entry === 'react-services' ||
-  entry === 'react-platform' ||
-  entry === 'react-drag-drop' ||
-  entry === 'react-workload'
+if (!isFixture(entry))
+  throw new Error('--entry must be one of: ' + Object.keys(fixtures).join(', '))
+const fixture: Fixture = fixtures[entry]
+const entryPath = fixture.path
 if (!values.host || !values.outdir || !isAbsolute(values.host) || !isAbsolute(values.outdir)) {
   throw new Error(
     'Usage: bun experiments/aot-gpui/build-window.ts --host <absolute-native-host> --outdir <absolute-empty-directory> [--source <repository>] [--entry ' +
-      Object.keys(entries).join('|') +
+      Object.keys(fixtures).join('|') +
       ']'
   )
 }
@@ -147,43 +56,7 @@ const hostProfile = values['host-profile'] ?? 'unverified'
 if (!['dev', 'release', 'unverified'].includes(hostProfile)) {
   throw new Error('--host-profile must be dev or release when supplied')
 }
-if (
-  (entry === 'bridge' ||
-    entry === 'core-lifecycle' ||
-    entry === 'event-throughput' ||
-    entry === 'fault' ||
-    entry === 'scheduling' ||
-    entry === 'layout' ||
-    entry === 'layout-style' ||
-    entry === 'interactions' ||
-    entry === 'services' ||
-    entry === 'display-semantics' ||
-    entry === 'display-platform' ||
-    entry === 'display-wayland' ||
-    entry === 'display-virtual-macos' ||
-    entry === 'clipboard' ||
-    entry === 'global-shortcuts' ||
-    entry === 'notifications' ||
-    entry === 'filesystem-grants' ||
-    entry === 'app-menu' ||
-    entry === 'processes' ||
-    entry === 'file-dialogs' ||
-    entry === 'overlays' ||
-    entry === 'message-dialogs' ||
-    entry === 'popups' ||
-    entry === 'wayland' ||
-    entry === 'drag-drop' ||
-    entry === 'text-input' ||
-    entry === 'ime' ||
-    entry === 'accessibility' ||
-    entry === 'input-states-platform' ||
-    entry === 'screen-reader' ||
-    entry === 'ime-platform' ||
-    entry === 'platform-smoke' ||
-    solidEntry ||
-    reactEntry) &&
-  hostProfile === 'unverified'
-)
+if (!unprofiled.has(entry) && hostProfile === 'unverified')
   throw new Error('Native benchmarks require --host-profile dev or release')
 if (existsSync(outdir) && readdirSync(outdir).length > 0)
   throw new Error('Output directory must be empty')
@@ -225,198 +98,42 @@ async function artifact(path: string) {
   return { bytes: statSync(path).size, sha256: hash.digest('hex') }
 }
 
-async function sourceHashes() {
-  const workloadSources = new Map(
-    (entry === 'react-workload' ? await sharedWorkloadSources(source) : []).map((record) => [
-      record.path,
-      record,
-    ])
-  )
-  const sources = new Set([
-    entryPath,
-    'examples/native-window/main.ts',
-    'examples/native-window/content.ts',
-    'package.json',
-    'bun.lock',
-    'bunfig.toml',
-    'tsconfig.json',
-    'packages/core/package.json',
-    'packages/protocol/package.json',
-    'packages/runtime/package.json',
-    '.bun-version',
-    'rust-toolchain.toml',
-    'toolchain.json',
-    'Cargo.toml',
-    'Cargo.lock',
-    'native/gpui-host/Cargo.toml',
-    'native/protocol/Cargo.toml',
-    'experiments/aot-gpui/native-sources.ts',
-  ])
-  for await (const path of new Bun.Glob('packages/{core,protocol,runtime}/src/**/*.ts').scan({
-    cwd: source,
-  }))
-    sources.add(path)
-  if (entry === 'solid-input-viewport' || entry === 'react-input-viewport')
-    sources.add('tests/native/renderer-input-viewport.ts')
-  if (entry === 'solid-streaming-list' || entry === 'react-streaming-list')
-    for (const path of [
-      'tests/native/renderer-streaming-list.ts',
-      'tests/native/streaming-list-model.ts',
-      'benchmarks/streaming-list-fixture.ts',
-    ])
-      sources.add(path)
-  if (entry === 'layout-style' || entry === 'solid-layout-style' || entry === 'react-layout-style')
-    sources.add('tests/native/layout-style-scene.ts')
-  // The macOS branches drive the window through these and the SDK helper.
-  if (
-    entry === 'layout-style' ||
-    entry === 'solid-layout-style' ||
-    entry === 'react-layout-style' ||
-    entry === 'overlays' ||
-    entry === 'accessibility' ||
-    entry === 'input-states-platform' ||
-    entry === 'solid-workspace-terminal' ||
-    entry === 'react-workspace-terminal'
-  )
-    for (const path of [
-      'tests/native/macos-window-input.ts',
-      'tests/native/png.ts',
-      'scripts/quality/native-platform-macos.m',
-      'tests/native/macos-accessibility-oracle.m',
-    ])
-      sources.add(path)
-  if (solidEntry) {
-    for (const path of [
-      'packages/solid/package.json',
-      'packages/renderer/package.json',
-      'scripts/solid-build.ts',
-      'scripts/solid/transform.ts',
-      'scripts/solid/preset.d.ts',
-    ])
-      sources.add(path)
-    for await (const path of new Bun.Glob('packages/{solid,renderer}/src/**/*.ts').scan({
-      cwd: source,
-    }))
-      sources.add(path)
-  }
-  if (reactEntry) {
-    sources.add('packages/react/package.json')
-    sources.add('packages/renderer/package.json')
-    for await (const path of new Bun.Glob('packages/{react,renderer}/src/**/*.{ts,tsx}').scan({
-      cwd: source,
-    }))
-      sources.add(path)
-  }
-  if (entry === 'solid-platform' || entry === 'react-platform')
-    sources.add('tests/native/platform-adapter.ts')
-  if (entry === 'react-interactions') sources.add('tests/native/renderer-interactions.ts')
-  if (entry === 'solid-services' || entry === 'react-services')
-    sources.add('tests/native/services-adapter.ts')
-  if (entry === 'services' || entry === 'solid-services' || entry === 'react-services')
-    sources.add('tests/native/display-service-policy.ts')
-  if (entry === 'display-platform' || entry === 'display-wayland' || entry === 'wayland')
-    sources.add('tests/native/display-uuid.ts')
-  if (entry === 'display-platform' || entry === 'display-virtual-macos')
-    sources.add('tests/native/display-os.ts')
-  for (const path of workloadSources.keys()) sources.add(path)
-  if (entry === 'solid-workspace-soak' || entry === 'react-workspace-soak')
-    sources.add('tests/native/workspace-session.ts')
-  if (entry === 'solid-workspace-terminal' || entry === 'react-workspace-terminal')
-    sources.add('tests/native/workspace-terminal.ts')
-  if (
-    entry === 'solid-workspace' ||
-    entry === 'solid-workspace-flow' ||
-    entry === 'solid-workspace-soak' ||
-    entry === 'solid-workspace-terminal'
-  ) {
-    sources.add('examples/solid-workspace/app.tsx')
-    sources.add('examples/solid-workspace/model.ts')
-    sources.add('examples/shared/terminal.ts')
-  }
-  if (entry === 'processes') sources.add('examples/shared/terminal.ts')
-  if (entry === 'adea-components')
-    for (const path of [
-      'examples/adea-components/app.tsx',
-      'examples/adea-components/components.tsx',
-      'examples/adea-components/conversation.tsx',
-      'examples/adea-components/tokens.ts',
-      'examples/adea-components/types.ts',
-      'examples/adea-components/retained/keyed-rows.ts',
-      'examples/adea-components/retained/transcript-history.ts',
-    ])
-      sources.add(path)
-  if (
-    entry === 'react-workspace' ||
-    entry === 'react-workspace-flow' ||
-    entry === 'react-workspace-soak' ||
-    entry === 'react-workspace-terminal'
-  ) {
-    sources.add('examples/react-workspace/app.tsx')
-    sources.add('examples/shared/terminal.ts')
-    sources.add('examples/react-workspace/model.ts')
-  }
-  if (entry === 'clipboard') sources.add('native/gpui-host/examples/clipboard-peer.rs')
-  if (entry === 'drag-drop' || entry === 'solid-drag-drop' || entry === 'react-drag-drop') {
-    sources.add('tests/native/drag-source.ts')
-    sources.add('native/gpui-host/examples/xdnd-source.rs')
-    sources.add('tests/native/macos-drag-source.m')
-    sources.add('tests/native/windows-drag-source.cs')
-  }
-  if (entry === 'solid-drag-drop' || entry === 'react-drag-drop')
-    sources.add('tests/native/drop-adapter.ts')
-  for (const path of await nativeSourcePaths(source)) sources.add(path)
-  return Promise.all(
-    [...sources]
-      .sort()
-      .map(
-        async (path) =>
-          workloadSources.get(path) ?? { path, ...(await artifact(join(source, path))) }
-      )
-  )
-}
-
 const sourceCommit = command('source-revision', ['git', 'rev-parse', 'HEAD'])
 const sourceChanges = command('source-status', ['git', 'status', '--porcelain'])
-const buildSources = await sourceHashes()
 let compileInput = entrypoint
+let compileDirectory = source
 let developmentModule:
-  | { file: string; bytes: number; sha256: string; transformCommand: string[]; buildMs: number }
+  | { file: string; bytes: number; sha256: string; bundler: string; buildMs: number }
   | undefined
-if (solidEntry || reactEntry) {
-  const developmentDirectory = join(outdir, 'development')
-  mkdirSync(developmentDirectory)
-  compileInput = join(developmentDirectory, 'application.js')
-  const transformCommand = solidEntry
-    ? [process.execPath, join(source, 'scripts/solid-build.ts'), entrypoint, developmentDirectory]
-    : [
-        process.execPath,
-        'build',
-        '--no-script',
-        '--production',
-        '--define',
-        'process.env.NODE_ENV="production"',
-        '--target=bun',
-        '--format=esm',
-        '--sourcemap=external',
-        entrypoint,
-        '--outdir',
-        developmentDirectory,
-        '--entry-naming=application.js',
-      ]
-  const transformStart = performance.now()
-  command(solidEntry ? 'transform-solid' : 'transform-react', transformCommand)
+// The module inputs come from the bundler's metafile, so the inventory cannot miss an import.
+let modules: string[]
+if (fixture.framework) {
+  // The same in-process bundler configuration as `native dev` and `native build`.
+  const bundleStart = performance.now()
+  ;({ inputs: modules } = await bundleApplication({
+    framework: fixture.framework,
+    entry: entrypoint,
+    outdir: join(outdir, 'development'),
+    cwd: source,
+  }))
+  // Compile the module from the output directory, as `native build` compiles its
+  // launcher, so the executable does not depend on where that directory is.
+  compileInput = 'development/application.js'
+  compileDirectory = outdir
   developmentModule = {
-    file: 'development/application.js',
-    ...(await artifact(compileInput)),
-    transformCommand,
-    buildMs: performance.now() - transformStart,
+    file: compileInput,
+    ...(await artifact(join(outdir, compileInput))),
+    bundler: 'scripts/native/bundle.ts',
+    buildMs: performance.now() - bundleStart,
   }
-}
+} else modules = await moduleInputs(entrypoint, source)
+const sourceHashes = () => fixtureInventory(source, entry, modules)
+const buildSources = await sourceHashes()
 
 const { compileCommand, buildMs, inspection, runtimeFeatures } = compileApplication(
   compileInput,
   application,
-  source,
+  compileDirectory,
   values.trim
 )
 if (bundledHost) {
@@ -440,7 +157,10 @@ if (process.platform !== 'win32') {
 
 if (JSON.stringify(buildSources) !== JSON.stringify(await sourceHashes()))
   throw new Error('Application or native source changed during the AOT build')
-if (developmentModule && (await artifact(compileInput)).sha256 !== developmentModule.sha256)
+if (
+  developmentModule &&
+  (await artifact(join(outdir, developmentModule.file))).sha256 !== developmentModule.sha256
+)
   throw new Error('The generated development module changed during AOT compilation')
 const launchHost = bundledHost ? '<absolute-output-directory>/bun-native-host' + suffix : host
 const manifest = {

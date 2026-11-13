@@ -2,7 +2,7 @@
 
 [Issue #358](https://github.com/0xPlayerOne/bun-native/issues/358) tracks the
 public-core AOT lifecycle failure preserved in
-[the original evidence summary](../tests/native/evidence/public-lifecycle-aot-close-timeout.json).
+[the original evidence summary](../../tests/native/evidence/public-lifecycle-aot-close-timeout.json).
 The hosted application completed all 1,000 cycles and the full native paint at
 revision 3002, then did not exit within the existing five-second OS-close wait.
 The same-run development case and saved main AOT case exited about 36 ms after
