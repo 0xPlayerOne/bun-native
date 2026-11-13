@@ -310,7 +310,7 @@ and subsequent real input attempt remain hosted checks, not local successes.
 
 The host builds its `ready` capability list in
 [`session.rs`](../native/gpui-host/src/session.rs) from compile-time `cfg`
-selections and run-time probes. Protocol 11 needs the first five on every
+selections and run-time probes. Protocol 12 needs the first five on every
 target; every other row is an optional feature that core checks before use.
 Advertised means only that the host offers the feature. The **Qualification**
 column says what checks it natively. A step in the hosted

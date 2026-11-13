@@ -44,7 +44,7 @@ WebKit work that starts during the run.
 peak launcher-tree RSS 132 MB, peak WebKit helpers 89 MB (total 220 MB). Shipped:
 33.1 MB `.dmg`, 31.9 MB `.app.tar.zst`; the stable `.app` is about 32 MB when built
 and 93 MB after its first launch. Comparison with Bun Native on the same Mac is in
-[docs/macos-qualification.md](../../docs/macos-qualification.md).
+[docs/records/macos-qualification.md](../../docs/records/macos-qualification.md).
 
 Not measured: per-operation latency comparable to Bun Native, CPU/GPU use, input
 latency, the CEF renderer, other platforms.

@@ -2,7 +2,7 @@
 
 This directory preserves **20 original files, 340,931 bytes**, from GitHub Actions artifact `13034880706` for [run 41179568675](https://github.com/0xPlayerOne/bun-native/actions/runs/41179568675). The actual native job [124474016479](https://github.com/0xPlayerOne/bun-native/actions/runs/41179568675/job/124474016479) passed its release GPUI build, development/AOT input checks and all 12 baseline trials. **The overall historical workflow failed its Windows protocol job and aggregate Gate.** These records do not describe that workflow as successful.
 
-The subsequent Windows test correction and complete native-integration validation passed in [run 41180169500](https://github.com/0xPlayerOne/bun-native/actions/runs/41180169500), and [#266](https://github.com/0xPlayerOne/bun-native/pull/266) merged as `2c04f0ed991e8b5c5eecf56c9e07cbe3196e452c`. The [BN0 audit](../../../docs/bn0-audit.md) records the remaining #273 checks/merge and scope limitations. These historical files remain unchanged when later fixes or measurements land.
+The subsequent Windows test correction and complete native-integration validation passed in [run 41180169500](https://github.com/0xPlayerOne/bun-native/actions/runs/41180169500), and [#266](https://github.com/0xPlayerOne/bun-native/pull/266) merged as `2c04f0ed991e8b5c5eecf56c9e07cbe3196e452c`. The [BN0 audit](../../../docs/records/bn0-audit.md) records the remaining #273 checks/merge and scope limitations. These historical files remain unchanged when later fixes or measurements land.
 
 ## Provenance and retained files
 
@@ -68,7 +68,7 @@ One warm-up per mode runs the complete correctness scenario and is excluded from
 
 Nominal 100 ms polling limits observation precision. The retained approximately 109 ms input/event/paint observations include automation and polling delay; they are not native input-to-display latency. Paint callbacks are not GPU presentation. Page cache and power state were uncontrolled. RSS summation can count shared pages twice, and sampling can miss the true peak. With five measurements, nearest-rank observed p95 equals the maximum sample and does not establish a stable tail. These records establish no AOT speedup, credible regression, physical-GPU result or arbitrary performance threshold.
 
-Controlled cold-cache startup, time to interactive without the deliberate idle interval, CPU/GPU utilization, physical input/frame latency, long-duration leaks, reload and installed/download size remain unsupported by this baseline. [NATIVE_BASELINE.md](../../NATIVE_BASELINE.md) provides the reproducible recipe and full interpretation; [the audit](../../../docs/bn0-audit.md) assigns follow-up ownership.
+Controlled cold-cache startup, time to interactive without the deliberate idle interval, CPU/GPU utilization, physical input/frame latency, long-duration leaks, reload and installed/download size remain unsupported by this baseline. [NATIVE_BASELINE.md](../../NATIVE_BASELINE.md) provides the reproducible recipe and full interpretation; [the audit](../../../docs/records/bn0-audit.md) assigns follow-up ownership.
 
 ## Integrity verification
 

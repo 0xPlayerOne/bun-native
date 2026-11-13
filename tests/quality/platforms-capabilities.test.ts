@@ -225,7 +225,7 @@ describe('the current protocol version is stated consistently', () => {
     ['packages/core/README.md', /^Protocol (\d+) requires/m],
     ['docs/native-services.md', /the current protocol (\d+)/],
     ['docs/README.md', /through the current protocol (\d+)/],
-    ['docs/decisions/0004-public-api.md', /owned drop targets to protocol (\d+)/],
+    ['docs/decisions/0004-public-api.md', /one-batch transactions to protocol (\d+)/],
   ] as const)('%s names the current protocol', (path, pattern) => {
     expect(read(path).match(pattern)?.[1]).toBe(version)
   })

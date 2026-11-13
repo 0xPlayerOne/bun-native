@@ -3,6 +3,7 @@ import assert from 'node:assert/strict'
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
+import { solidBuildCommand } from '../../scripts/solid-build.ts'
 
 const repository = resolve(import.meta.dir, '../..')
 const builder = join(repository, 'scripts/solid-build.ts')
@@ -99,5 +100,21 @@ describe('Solid production module selection (actual pinned bundler, no native re
       )
       expect(solid.some((path) => /\/(dev|server)\.(c?js)$/.test(path))).toBe(false)
     })
+  }, 20_000)
+
+  test('the in-process command builds an absolute output directory and rejects bad usage', async () => {
+    const directory = mkdtempSync(join(tmpdir(), 'bun-native-solid-command-'))
+    try {
+      const entry = join(repository, 'examples/solid-counter/main.tsx')
+      const module = await solidBuildCommand([entry, directory])
+      expect(module.startsWith(directory)).toBe(true)
+      expect(sourcePaths(directory).some((path) => path.endsWith('/solid-js/dist/solid.js'))).toBe(
+        true
+      )
+      for (const args of [[], [entry], [entry, 'relative'], [entry, directory, 'extra']])
+        await expect(solidBuildCommand(args)).rejects.toThrow('Usage: bun scripts/solid-build.ts')
+    } finally {
+      rmSync(directory, { recursive: true, force: true })
+    }
   }, 20_000)
 })

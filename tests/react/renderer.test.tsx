@@ -200,10 +200,10 @@ describe('React reconciler over shared native core (headless subprocess)', () =>
       await assert.rejects(root.render(<text>Too late</text>), /React root is closed/)
     }))
 
-  test('a keyed pane remount above the native batch limit commits as one React update', () =>
+  test('a large keyed pane remount commits as one React update', () =>
     withApp(async (application) => {
       const window = await application.openWindow({ title: 'React large remount' })
-      // Each row is three nodes, created and inserted: 60 rows exceed 256 operations.
+      // Each row is three nodes, created and inserted: over 360 operations.
       function Pane({ name, count }: { name: string; count: number }) {
         return (
           <box>
@@ -235,7 +235,7 @@ describe('React reconciler over shared native core (headless subprocess)', () =>
       const root = render(<App />, window)
       await root.ready
       await root.flush()
-      // The initial mount is itself one commit above the batch limit.
+      // The initial mount is itself one commit.
       const mounted = root.diagnostics.nodes
       expect(mounted).toBeGreaterThan(60 * 3)
       const identity = first.current

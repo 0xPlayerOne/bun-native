@@ -6,16 +6,21 @@ export interface RootErrorOwner {
   report: ((error: unknown, info: Readonly<ErrorInfo>) => void) | undefined
 }
 
-function ignore(): void {}
-
 /** Created outside the Root constructor so callback scopes cannot capture its arguments. */
 export function createRootErrors(owner: RootErrorOwner) {
   return {
     uncaught(error: unknown): void {
       owner.terminate?.(error)
     },
-    caught: ignore,
-    transition: ignore,
+    /**
+     * An error a boundary handled is logged like React DOM's default instead
+     * of disappearing; it does not end the root.
+     */
+    caught(error: unknown): void {
+      if (owner.terminate) console.error(error)
+    },
+    /** React's default transition indicator: native views show none. */
+    transitionIndicator(): void {},
     recoverable(error: unknown, info: ErrorInfo): void {
       const report = owner.report
       if (!report) return

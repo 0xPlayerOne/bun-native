@@ -87,10 +87,3 @@ test('keyed ordering stays maximal with added, removed and shared end children',
     )
   }
 })
-
-test('native node identities keep the same longest run as renderer nodes', () => {
-  // The staged commit planner orders numeric identities with the same search.
-  const stable = stableChildren([1, 2, 3, 4, 5, 6], [7, 1, 4, 2, 5, 6, 3])
-  expect(stable.size).toBe(longestSubsequence([1, 2, 3, 4, 5, 6], [7, 1, 4, 2, 5, 6, 3]))
-  expect([...stable]).toEqual([1, 2, 5, 6])
-})

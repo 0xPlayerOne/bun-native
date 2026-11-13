@@ -119,6 +119,7 @@ as Solid. Each native element accepts these handlers and their capture variants:
 | `onPointerUp`, `onPointerUpCapture`     | Button, logical window coordinates `x`/`y`, modifiers |
 | `onFocus`, `onFocusCapture`             | Native focus gained                                   |
 | `onBlur`, `onBlurCapture`               | Native focus lost                                     |
+| `onDismiss`, `onDismissCapture`         | Popup window overlay lost parent focus: `reason`      |
 
 The core routes the native ancestry through capture, target and bubble phases.
 `event.node` remains the native target; `currentTarget` identifies the current
@@ -128,8 +129,8 @@ cancellation `signal`. Ancestor input handlers receive the same branded input
 observation contract as target handlers.
 
 All currently supported event families dispatch as discrete React updates.
-React retains one stable wrapper per node/type/phase and updates its latest
-committed callback on rerender. Updating a closure therefore preserves an active
+The shared renderer keeps one registration per node/type/phase for React and
+calls its latest committed callback. Updating a closure therefore preserves an active
 callback and queued events; removing one capture handler revokes only that
 registration, while independent target/bubble handlers remain active. Removing
 the node or closing its owner revokes all its registrations. Native ingestion,
@@ -190,7 +191,8 @@ callback receiving a frozen React error-info object. Its default is
 `console.error`. If the reporter itself throws, that error terminates only this
 root. Uncaught effect or ref-cleanup errors reject `dispose()` and `closed`
 after the shared cleanup path releases owned native resources. Handled React
-error boundaries retain their usable fallback and root.
+error boundaries retain their usable fallback and root; the handled error is
+logged with `console.error`, as React DOM does.
 
 Hydration, portals, host form actions, hidden Suspense/Activity subtrees, view
 transitions, fragment refs, DOM selectors and presentation-timing callbacks are not

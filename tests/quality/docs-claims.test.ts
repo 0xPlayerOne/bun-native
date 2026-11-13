@@ -2,6 +2,7 @@ import { describe, expect, test } from 'bun:test'
 import { existsSync, readdirSync, readFileSync } from 'node:fs'
 import { join, resolve } from 'node:path'
 import { trackedFiles } from '../../scripts/quality/doc-links.ts'
+import { fixtures } from '../../scripts/quality/native-fixtures.ts'
 
 // Docs, examples and release notes state measured facts (#254): a comparative
 // performance claim must cite a recorded measurement on the same line, and
@@ -58,7 +59,6 @@ describe('measured-claims rule', () => {
 })
 
 test('every example is exercised by a headless test or a native CI entry', () => {
-  const buildWindow = readFileSync(join(ROOT, 'experiments/aot-gpui/build-window.ts'), 'utf8')
   const nativeLinux = readFileSync(join(ROOT, '.github/workflows/native-linux.yml'), 'utf8')
   const testSources = readdirSync(join(ROOT, 'tests/examples'))
     .map((name) => readFileSync(join(ROOT, 'tests/examples', name), 'utf8'))
@@ -70,10 +70,10 @@ test('every example is exercised by a headless test or a native CI entry', () =>
   const uncovered = examples.filter((name) => {
     expect(existsSync(join(ROOT, 'examples', name, 'README.md'))).toBe(true)
     const headless = testSources.includes(`examples/${name}/`)
-    // A build-window entry that compiles this example and that native CI runs.
-    const entries = [
-      ...buildWindow.matchAll(new RegExp(`'?([\\w-]+)'?: 'examples/${name}/main\\.tsx?'`, 'g')),
-    ].map((match) => match[1]!)
+    // A native CI fixture (build-window entry) that compiles this example and that native CI runs.
+    const entries = Object.entries(fixtures)
+      .filter(([, fixture]) => /^examples\/([\w-]+)\/main\.tsx?$/.exec(fixture.path)?.[1] === name)
+      .map(([entry]) => entry)
     const native = entries.some((entry) =>
       new RegExp(`(?:^|[\\s"'])${entry}(?:[\\s"';]|$)`, 'm').test(nativeLinux)
     )

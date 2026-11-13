@@ -25,6 +25,9 @@ export const eventProperties = Object.freeze({
   /** Requires `split_resize_v1`; only a split is ever the target. */
   onSplitResize: binding('split_resize'),
   onSplitResizeCapture: binding('split_resize', true),
+  /** A popup window overlay (`surface: 'window'`) lost its parent window's focus. */
+  onDismiss: binding('dismiss'),
+  onDismissCapture: binding('dismiss', true),
 })
 
 export type EventProperty = keyof typeof eventProperties

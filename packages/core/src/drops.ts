@@ -1,4 +1,5 @@
 import type { DropRejection } from '@bun-native/protocol'
+import { Registration } from './registration.ts'
 import type { Listener, NativeNode } from './types.ts'
 
 /**
@@ -40,43 +41,26 @@ export interface NativeDropTarget {
 }
 
 /** Internal registry entry. Consumers only receive its frozen handle. */
-export class DropTargetRegistration {
+export class DropTargetRegistration extends Registration<DropTargetEvent> {
   readonly handle: NativeDropTarget
-  readonly controller = new AbortController()
-  listener: Listener<DropTargetEvent> | undefined
   /** The host retains paths only for the target's latest accepted drop. */
   latestDrop: number | undefined
-  private released = false
-  private releasing: Promise<void> | undefined
 
   constructor(
-    readonly id: number,
-    readonly windowId: number,
+    id: number,
+    windowId: number,
     readonly nodeId: number,
     node: NativeNode,
     listener: Listener<DropTargetEvent>,
     release: (registration: DropTargetRegistration) => Promise<void>
   ) {
-    this.listener = listener
+    super(id, windowId, listener)
     this.handle = publicHandle(this, node, release)
   }
 
-  release(release: (registration: DropTargetRegistration) => Promise<void>): Promise<void> {
-    this.releasing ??= this.released ? Promise.resolve() : release(this)
-    return this.releasing
-  }
-
-  get live(): boolean {
-    return !this.released
-  }
-
-  /** Synchronous local revocation; native removal happens separately. */
-  revoke(): void {
-    if (this.released) return
-    this.released = true
-    this.listener = undefined
+  override revoke(): void {
+    super.revoke()
     this.latestDrop = undefined
-    this.controller.abort()
   }
 }
 

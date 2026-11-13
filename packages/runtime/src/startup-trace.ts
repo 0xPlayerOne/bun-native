@@ -1,6 +1,7 @@
 import type { Command, NativeEvent } from '@bun-native/protocol'
 import { appendFileSync } from 'node:fs'
 import { isAbsolute } from 'node:path'
+import { redactDiagnostic } from './exit-diagnostic.ts'
 
 const MAX_RECORDS = 256
 
@@ -51,18 +52,27 @@ export class StartupTrace {
     })
   }
 
-  failure(error: Error, stderr: string, hostPid: number): void {
+  /** `stderr` is the bounded capture; it is recorded redacted, like exit diagnostics. */
+  failure(error: Error, stderr: string, clipped: boolean, hostPid: number): void {
     this.write(
       'transport_failed',
-      { host_pid: hostPid, error: error.message.slice(-1_024), stderr_tail: stderr },
+      {
+        host_pid: hostPid,
+        error: error.message.slice(-1_024),
+        stderr_tail: redactDiagnostic(stderr, clipped, process.env),
+      },
       true
     )
   }
 
-  finished(exitCode: number | null, stderr: string, hostPid: number): void {
+  finished(exitCode: number | null, stderr: string, clipped: boolean, hostPid: number): void {
     this.write(
       'transport_finished',
-      { host_pid: hostPid, exit_code: exitCode, stderr_tail: stderr },
+      {
+        host_pid: hostPid,
+        exit_code: exitCode,
+        stderr_tail: redactDiagnostic(stderr, clipped, process.env),
+      },
       true
     )
   }

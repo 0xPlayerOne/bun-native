@@ -2,7 +2,7 @@
 
 **Status:** experimental, recorded 2026-11-06 on one Apple M2 Max (macOS 27.2,
 Xcode 27.2, arm64) against `main` at `59cc47a`. It extends the hosted
-`macos-15` runs in [native platforms](native-platforms.md) with checks that need
+`macos-15` runs in [native platforms](../native-platforms.md) with checks that need
 a physical Mac or a second toolchain. It records passed, failed and **not run**
 cases for issues [#247](https://github.com/0xPlayerOne/bun-native/issues/247),
 [#223](https://github.com/0xPlayerOne/bun-native/issues/223),
@@ -18,8 +18,8 @@ reached a window. Every case that needs one is marked **not run**.
 
 ## Native fault containment (#247)
 
-[`native-fault-macos.py`](../scripts/quality/native-fault-macos.py) drives
-[`tests/native/fault.ts`](../tests/native/fault.ts) `host-crash` against the real
+[`native-fault-macos.py`](../../scripts/quality/native-fault-macos.py) drives
+[`tests/native/fault.ts`](../../tests/native/fault.ts) `host-crash` against the real
 release host. It stops the owned host with `SIGSTOP`, queues two batches behind
 it, kills it with `SIGKILL`, and requires one shared `NativeHostExitError`
 (`reason: signal`, `SIGKILL`), both queued batches rejected with that same
@@ -35,8 +35,8 @@ host's PID, start time and executable path before each signal.
 
 `native-platforms.yml` now runs the click variant in both modes on hosted macOS
 (step "Development and AOT native fault containment", which runs
-[`native-fault-windows.py`](../scripts/quality/native-fault-windows.py) on Windows), where posting
-works. [`test_native_platform_fault_macos.py`](../tests/quality/test_native_platform_fault_macos.py)
+[`native-fault-windows.py`](../../scripts/quality/native-fault-windows.py) on Windows), where posting
+works. [`test_native_platform_fault_macos.py`](../../tests/quality/test_native_platform_fault_macos.py)
 covers the driver's process-ownership guards.
 
 ## Hit-testing controls (#297)
@@ -46,18 +46,18 @@ The three AppKit/WindowServer controls described in
 and passed on this Mac: pointer-event and target-guard construction (11 window
 target controls), owned click-through and input-taking overlays, and a real
 cross-process foreign window. No input was posted. The record is
-[`platform-macos-hit-testing-physical-2026-11-06.json`](../tests/native/evidence/platform-macos-hit-testing-physical-2026-11-06.json),
+[`platform-macos-hit-testing-physical-2026-11-06.json`](../../tests/native/evidence/platform-macos-hit-testing-physical-2026-11-06.json),
 with source and helper hashes. It supersedes the stale hashes in the earlier
 record. It still does **not** show GPUI input delivery.
 
 ## Reproducible builds (#223)
 
-| Check                                                                                                                                                                                          | Result                                                                    |
-| ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------- |
-| Two clean AOT builds of the generated app ([`build-reproducibility.test.ts`](../tests/tooling/build-reproducibility.test.ts), [`host-archive.test.ts`](../tests/tooling/host-archive.test.ts)) | Passed on macOS arm64 (the ad-hoc Mach-O signature is deterministic here) |
-| Two clean release hosts, same commit, different source **and** target directories                                                                                                              | **Differ:** `293ed01f…` and `7b913ea8…` (9,238,912 bytes each)            |
-| Two clean release hosts, same commit, different source directories, same target directory                                                                                                      | **Identical:** `37ddecc…` both times                                      |
-| This Mac vs the hosted `macos-15` host at `6624d44` (Xcode 16.4, `/Users/runner/...`)                                                                                                          | Differ: `6fc23ade…` here, `540709e4…` hosted. Not a like-for-like pair    |
+| Check                                                                                                                                                                                                | Result                                                                    |
+| ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------- |
+| Two clean AOT builds of the generated app ([`build-reproducibility.test.ts`](../../tests/tooling/build-reproducibility.test.ts), [`host-archive.test.ts`](../../tests/tooling/host-archive.test.ts)) | Passed on macOS arm64 (the ad-hoc Mach-O signature is deterministic here) |
+| Two clean release hosts, same commit, different source **and** target directories                                                                                                                    | **Differ:** `293ed01f…` and `7b913ea8…` (9,238,912 bytes each)            |
+| Two clean release hosts, same commit, different source directories, same target directory                                                                                                            | **Identical:** `37ddecc…` both times                                      |
+| This Mac vs the hosted `macos-15` host at `6624d44` (Xcode 16.4, `/Users/runner/...`)                                                                                                                | Differ: `6fc23ade…` here, `540709e4…` hosted. Not a like-for-like pair    |
 
 Cause of the first difference: the `gpui_apple` build script compiles the Metal
 shaders from `$OUT_DIR`, and the absolute `…/build/gpui_apple-<hash>/out/shaders.metal`
@@ -71,19 +71,19 @@ both sides. Linux and Windows results are not affected.
 
 ## Equivalent-workload benchmark on hardware Metal (#244)
 
-[`benchmarks/comparison/run.ts`](../benchmarks/comparison/run.ts) now samples RSS
+[`benchmarks/comparison/run.ts`](../../benchmarks/comparison/run.ts) now samples RSS
 through `ps` and load through `sysctl` on macOS. One run, `--trials 5`, passed:
 6 first launches, 6 calibrations and 30 measured launches, none failed or
 retried, all six calibrations painting identical trees on the same `Apple M2 Max`
 Metal device. See the
-[record](../benchmarks/comparison/results/macos-arm64-m2max-metal-2026-11-06/README.md).
+[record](../../benchmarks/comparison/results/macos-arm64-m2max-metal-2026-11-06/README.md).
 
 The Mac was reached through Screen Sharing (a 4K virtual display), on AC power,
 with other load uncontrolled. The numbers describe this setup only.
 
 ### Electrobun system-WebView baseline
 
-[`benchmarks/electrobun/`](../benchmarks/electrobun/README.md) ports the same
+[`benchmarks/electrobun/`](../../benchmarks/electrobun/README.md) ports the same
 workload (label, button, 32 keyed rows; 1,000 updates, 100 coalesced groups,
 1,000 keyed rotations, 100 mount/update/dispose cycles) to a DOM in Electrobun
 2.0.6 using the macOS system WebKit. Five measured launches plus a first launch

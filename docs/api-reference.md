@@ -126,8 +126,8 @@ Every service is denied unless the application grants it, and a host that lacks 
 | `ProtocolError`            | class | A malformed or out-of-contract message, including a protocol version mismatch with the host.                  | [Native ABI](native-abi.md)                                                         |
 | `NativeCommandError`       | class | The host rejected a command; `code` and `requestId` identify it.                                              | [Lifetime and errors](../packages/core/README.md#lifetime-and-errors)               |
 | `NativeHostExitError`      | class | The host exited before shutdown.                                                                              | [Lifetime and errors](../packages/core/README.md#lifetime-and-errors)               |
-| `NativeHostExitDiagnostic` | type  | The bounded exit status and output kept with `NativeHostExitError`.                                           | [Native close diagnostics](native-close-diagnostics.md)                             |
-| `NativeHostExitReason`     | type  | Why the host exited.                                                                                          | [Native close diagnostics](native-close-diagnostics.md)                             |
+| `NativeHostExitDiagnostic` | type  | The bounded exit status and output kept with `NativeHostExitError`.                                           | [Native close diagnostics](records/native-close-diagnostics.md)                     |
+| `NativeHostExitReason`     | type  | Why the host exited.                                                                                          | [Native close diagnostics](records/native-close-diagnostics.md)                     |
 | `NativeServiceError`       | class | A service request that was denied, unavailable, cancelled or failed natively; `service` and `code` say which. | [Policy and capability contract](native-services.md#policy-and-capability-contract) |
 
 ## `@bun-native/solid`

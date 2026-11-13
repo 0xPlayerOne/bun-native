@@ -194,11 +194,12 @@ those behaviors; follow the [native fixture recipe](../../tests/native/README.md
 
 The Solid entries (`solid`, `solid-workspace`, `solid-workspace-flow`,
 `solid-workspace-soak`, `solid-workspace-terminal`, `solid-input-intent`, `solid-interactions`, `solid-input-viewport`,
-`solid-platform` and `solid-services`) first run the repository's pinned universal JSX transform,
-then compile that exact generated `development/application.js` with the same Bun
-machine-code AOT path and strict executable inspection. The generated module is
-also the development entry; the helper records its size, hash, transform command
-and transform duration under `application.developmentModule`. It checks that
+`solid-platform` and `solid-services`) first bundle with the repository's pinned universal JSX transform,
+in process and with the same configuration as `native dev` and `native build`
+(`scripts/native/bundle.ts`), then compile that exact generated `development/application.js` with the same Bun
+machine-code AOT path and strict executable inspection, from the output directory. The generated module is
+also the development entry; the helper records its size, hash, bundler module
+and bundle duration under `application.developmentModule`. It checks that
 module and all original Solid/shared-renderer/build sources stayed unchanged.
 The module and source map are retained with hosted evidence. No Cargo process is
 started, and `buildMs` remains AOT compiler duration, separate from transform time.
@@ -236,18 +237,18 @@ launching or compiling them does not satisfy their input, paint or cleanup gates
 The React entries (`react`, `react-workspace`, `react-workspace-flow`, `react-workspace-soak`, `react-workspace-terminal`,
 `react-interactions`, `react-input-viewport`, `react-behavior`,
 `react-services`, `react-platform` and `react-workload`) use the pinned Bun bundler to transform their explicit
-React JSX source into `development/application.js`. The helper invokes the built-in
-`build --no-script --production --target=bun --format=esm --sourcemap=external`,
-explicitly defines `process.env.NODE_ENV` as `"production"`, and uses an output
-directory with a fixed `application.js` entry name. This selects production React,
+React JSX source into `development/application.js`, in process and with the same
+configuration as `native dev` and `native build` (`scripts/native/bundle.ts`): ESM for
+Bun, an external source map, the React automatic JSX runtime from `@bun-native/react`,
+no minification, and `process.env.NODE_ENV` defined as `"production"`. This selects production React,
 reconciler and scheduler code regardless of the caller's environment. Both modes
 use that framework configuration: development means running the generated module
 through Bun, and AOT means running its machine-code executable. The helper supplies
 the exact module to `bun compile --no-script --production --explain=json`. No DOM transform,
 second native renderer or additional bundler dependency is introduced.
 
-Each manifest records the generated module's bytes, SHA-256, exact transform
-command and transform duration under `application.developmentModule`, separately
+Each manifest records the generated module's bytes, SHA-256, bundler module
+and bundle duration under `application.developmentModule`, separately
 from AOT compilation. Original source/configuration and generated-module hashes
 must remain unchanged across compilation. Source maps and generated modules are
 retained with hosted evidence. `tests/toolchain/commands.test.ts` proves that the

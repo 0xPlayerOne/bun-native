@@ -19,7 +19,7 @@ Per-platform capability details are in
 
 - [Architecture](architecture.md): packages, the native host, the event lifecycle, renderers and security boundaries.
 - [AOT and toolchain](toolchain.md): Bun compilation, native artifacts and versioning. [AOT executable inspection](aot-inspection.md) explains how compiled programs are checked.
-- [Native ABI](native-abi.md): the private host protocol. Versions 4 through the current protocol 11 added the interaction contract and the native services.
+- [Native ABI](native-abi.md): the private host protocol. Versions 4 through the current protocol 12 added the interaction contract and the native services.
 - [Layout](native-layout.md), [events](native-events.md) and [event subscription lifetime](event-subscription-lifetime.md).
 - [Text, focus and accessibility](native-text.md), [streaming lists](native-lists.md) and [overlays](native-overlays.md).
 - [Native services](native-services.md): display, clipboard, global shortcuts, notifications, filesystem grants, processes, dialogs, menus and drag and drop. Each is denied by default.
@@ -51,10 +51,10 @@ These are dated logs and executed plans. They are kept as written for
 provenance and are not updated to match current code. Machine-readable
 [evidence records](evidence/) hold the raw results they cite.
 
-- Milestone records: [BN0 audit](bn0-audit.md), [BN0 integration](bn0-integration.md), [BN1 audit](bn1-audit.md), [BN2 Solid integration](bn2-solid-integration.md), [implementation handoff](bun-native-handoff.md) and the [framework audit](framework-audit.md).
-- Executed plans: [portable framework qualification](platform-adapters-plan.md) (#399), [standalone local packages](standalone-packages-plan.md) (#388), [standalone lock correction](standalone-lock-parser-plan.md) and [installed-consumer qualification](standalone-native-plan.md) (#388).
-- Diagnostics: [first-window startup](native-startup-diagnostics.md), [OS close](native-close-diagnostics.md), [macOS input targets](macos-hit-testing.md) and [macOS qualification](macos-qualification.md).
-- [Real-machine validation runbook](real-machine-validation.md): the physical Windows and macOS cases and which have not run.
+- Milestone records: [BN0 audit](records/bn0-audit.md), [BN0 integration](records/bn0-integration.md), [BN1 audit](records/bn1-audit.md), [BN2 Solid integration](records/bn2-solid-integration.md), [implementation handoff](records/bun-native-handoff.md) and the [framework audit](records/framework-audit.md).
+- Executed plans: [portable framework qualification](records/platform-adapters-plan.md) (#399), [standalone local packages](records/standalone-packages-plan.md) (#388), [standalone lock correction](records/standalone-lock-parser-plan.md) and [installed-consumer qualification](records/standalone-native-plan.md) (#388).
+- Diagnostics: [first-window startup](records/native-startup-diagnostics.md), [OS close](records/native-close-diagnostics.md), [macOS input targets](records/macos-hit-testing.md) and [macOS qualification](records/macos-qualification.md).
+- [Real-machine validation runbook](records/real-machine-validation.md): the physical Windows and macOS cases and which have not run.
 
 New evidence should link its BN issue or PR with the compiler version, OS and
 CPU, build mode, source SHA, commands, failures and unsupported paths. Never

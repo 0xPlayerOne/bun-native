@@ -1,5 +1,5 @@
 {
-  "protocol": 11,
+  "protocol": 12,
   "capability": "context_menus_v1",
   "commands": [
     {

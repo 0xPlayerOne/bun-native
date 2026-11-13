@@ -1,16 +1,16 @@
-# Private native protocol 11
+# Private native protocol 12
 
 This crate defines the shared host wire contract and atomic tree model. Public
 application APIs live in TypeScript packages; applications and framework
-adapters do not depend on Rust, GPUI types or raw JSON commands. Protocol 11
+adapters do not depend on Rust, GPUI types or raw JSON commands. Protocol 12
 requires shared `layout_v1`, `interactions_v1` and `window_display_v1` contracts
 and replaces earlier protocols outright.
 Older hosts and applications must be rebuilt together; there is no fallback.
 
 ## Framing and errors
 
-Each direction is UTF-8 JSON followed by one LF. A payload is at most 65,536
-bytes excluding LF; CRLF is accepted as JSON trailing whitespace. Invalid UTF-8,
+Each direction is UTF-8 JSON followed by one LF. A command payload is at most
+16,777,216 bytes and an event payload at most 65,536 bytes, excluding LF; CRLF is accepted as JSON trailing whitespace. Invalid UTF-8,
 BOMs, empty lines, truncated EOF, invalid JSON, unknown fields and malformed
 commands poison the channel. The host emits a terminal `invalid_command` error
 when possible and exits. EOF is terminal even if a caller supplies a new reader.
@@ -94,7 +94,8 @@ can reject a window even when its requested size is within the wire bounds.
 
 ## Atomic tree batches
 
-`batch` provides `window_id`, `base_revision` and 1–256 operations. It succeeds
+`batch` provides `window_id`, `base_revision` and 1–16,384 operations: one
+public transaction, up to a whole-window replacement. It succeeds
 only if the base matches the current tree revision. The host validates a
 candidate tree and applies it synchronously on the UI thread, then returns
 `applied` with the next revision. Every successful batch advances the revision

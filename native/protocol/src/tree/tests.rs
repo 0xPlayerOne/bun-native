@@ -289,6 +289,41 @@ fn bounded_batches_and_depth_are_enforced() {
 }
 
 #[test]
+fn one_batch_mounts_and_replaces_a_full_window() {
+    // Protocol 12 sends a transaction as one batch: a whole window, then its
+    // replacement (delete every row, create and insert as many again, set
+    // each) must fit the operation limit.
+    assert_eq!(
+        crate::wire::BATCH_SIZE_MESSAGE,
+        format!("batch must have between 1 and {MAX_OPERATIONS} operations")
+    );
+    let rows = MAX_NODES_PER_WINDOW as u64 - 1;
+    let mount = |first: u64| -> Vec<Operation> {
+        (first..first + rows)
+            .flat_map(|node| {
+                [
+                    create(node, text("row")),
+                    insert(1, node, (node - first) as usize),
+                ]
+            })
+            .collect()
+    };
+    let prepared = Tree::new(id(1)).prepare(0, mount(2), 1).unwrap();
+    assert_eq!(prepared.tree.nodes().count(), MAX_NODES_PER_WINDOW);
+    let next = 2 + rows;
+    let mut replace: Vec<Operation> = (2..next).map(delete).collect();
+    replace.extend(mount(next));
+    replace.extend((next..next + rows).map(|node| set(node, text("set"), None)));
+    assert!(replace.len() <= MAX_OPERATIONS);
+    let replaced = prepared
+        .tree
+        .prepare(1, replace, prepared.last_node_id)
+        .unwrap();
+    assert_eq!(replaced.tree.nodes().count(), MAX_NODES_PER_WINDOW);
+    assert_eq!(replaced.metrics.operation_count, 4 * rows as usize);
+}
+
+#[test]
 fn window_node_limit_cannot_be_bypassed_across_batches() {
     let mut tree = Tree::new(id(1));
     let mut last_id = 1;

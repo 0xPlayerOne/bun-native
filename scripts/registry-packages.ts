@@ -1,7 +1,13 @@
 import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import { isAbsolute, join, relative, resolve } from 'node:path'
 import { parseArgs } from 'node:util'
-import { packageNames, readPackageSet, type PackageManifest } from './native/package-set.ts'
+import {
+  packageNames,
+  readPackageSet,
+  type PackageManifest,
+  type PackageSet,
+} from './native/package-set.ts'
+import { registryTemplates, type RegistryTemplates } from './native/registry-project.ts'
 
 /**
  * Turns a verified local package set (scripts/package-native.ts) into the
@@ -21,6 +27,7 @@ export type RegistryManifest = Omit<PackageManifest, 'private'> & {
   bugs: string
   peerDependencies?: Record<string, string>
   publishConfig: { access: 'public'; provenance: true }
+  bunNative?: { templates: RegistryTemplates }
 }
 
 /**
@@ -42,7 +49,11 @@ const descriptions: Record<string, string> = {
   '@bun-native/solid': 'SolidJS renderer for Bun Native desktop windows.',
 }
 
-export function registryManifest(manifest: PackageManifest, version: string): RegistryManifest {
+export function registryManifest(
+  manifest: PackageManifest,
+  version: string,
+  consumers?: PackageSet['consumers']
+): RegistryManifest {
   if (!/^\d+\.\d+\.\d+$/.test(version))
     throw new Error(`Registry version must be x.y.z: ${version}`)
   const description = descriptions[manifest.name]
@@ -68,6 +79,10 @@ export function registryManifest(manifest: PackageManifest, version: string): Re
     homepage: 'https://github.com/0xPlayerOne/bun-native#readme',
     bugs: 'https://github.com/0xPlayerOne/bun-native/issues',
     publishConfig: { access: 'public', provenance: true },
+    // The CLI creates projects on this release (`bun-native create` outside a checkout).
+    ...(manifest.name === '@bun-native/cli' && consumers
+      ? { bunNative: { templates: registryTemplates(consumers, version) } }
+      : {}),
   }
 }
 
@@ -131,7 +146,7 @@ export async function main(args: string[]): Promise<void> {
       }
     )
     if (tar.exitCode !== 0) throw new Error(`Unpacking ${name} failed: ${tar.stderr}`)
-    const published = registryManifest(manifests[name]!, root.version)
+    const published = registryManifest(manifests[name]!, root.version, manifest.consumers)
     await writeFile(join(directory, 'package.json'), JSON.stringify(published, null, 2) + '\n')
     await writeFile(
       join(directory, 'README.md'),

@@ -89,6 +89,14 @@ async function readBundle(bundle: string): Promise<UpdateManifest> {
   return manifest
 }
 
+/**
+ * zlib level for installer images. An image holds the AOT application plus the two
+ * compiled update tools (about 140 MB each); level 9 took 2.6 to 4 times as long as
+ * level 6 for 2.5 to 3 % smaller output on these executables. Release host archives
+ * (`hostArchive`, downloaded by every user, 30 MB) keep level 9.
+ */
+export const INSTALLER_COMPRESSION_LEVEL = 6
+
 async function members(
   root: string,
   prefix: string
@@ -119,7 +127,7 @@ export function zipArchive(entries: { name: string; data: Uint8Array; mode: numb
   let offset = 0
   for (const { name, data, mode } of [...entries].sort((a, b) => (a.name < b.name ? -1 : 1))) {
     const fileName = Buffer.from(name, 'utf8')
-    const compressed = deflateRawSync(data, { level: 9 })
+    const compressed = deflateRawSync(data, { level: INSTALLER_COMPRESSION_LEVEL })
     const checksum = crc32(data)
     const local = Buffer.alloc(30)
     local.writeUInt32LE(0x04034b50, 0)
@@ -265,7 +273,9 @@ export async function createInstaller(
       const entries = await members(staging, name)
       await writeFile(
         file,
-        options.format === 'zip' ? zipArchive(entries) : ustarGzip(entries, sourceDateEpoch()),
+        options.format === 'zip'
+          ? zipArchive(entries)
+          : ustarGzip(entries, sourceDateEpoch(), INSTALLER_COMPRESSION_LEVEL),
         { flag: 'wx' }
       )
     }

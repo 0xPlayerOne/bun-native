@@ -1,10 +1,10 @@
-# Native host protocol 11
+# Native host protocol 12
 
 This is the implemented private Bun-to-GPUI contract for BN1, shared native interactions and the initial BN4 layout primitives. Application code
 uses [`@bun-native/core`](../packages/core/README.md); Solid and React adapters
 must target that same public API. They do not import this transport or construct
-numeric handles. Protocols 1–10 are superseded without a compatibility fallback.
-Protocol 11 requires `tree`, `input_revisions`, `layout_v1`, `interactions_v1` and `window_display_v1`; missing features or
+numeric handles. Protocols 1–11 are superseded without a compatibility fallback.
+Protocol 12 requires `tree`, `input_revisions`, `layout_v1`, `interactions_v1` and `window_display_v1`; missing features or
 older versions fail launch before a window is opened. The [layout contract](native-layout.md)
 defines the supported style subset; the [interaction contract](native-events.md)
 defines native event observations and public propagation. The
@@ -88,10 +88,11 @@ disposed handles. The runtime cannot terminate arbitrary consumer JavaScript.
 
 ## Framing, negotiation and identity
 
-- Each frame is one UTF-8 JSON object followed by a newline. The payload limit is
-  65,536 bytes. Invalid UTF-8, oversize/truncated framing, malformed JSON, unknown
+- Each frame is one UTF-8 JSON object followed by a newline. A command payload
+  (Bun to host) is at most 16,777,216 bytes, so a whole-window transaction fits
+  one frame; an event payload (host to Bun) is at most 65,536 bytes. Invalid UTF-8, oversize/truncated framing, malformed JSON, unknown
   fields or invalid message shapes fail the session rather than resynchronizing.
-- The first request is `hello` with protocol `10`. The host emits `ready` with the
+- The first request is `hello` with protocol `12`. The host emits `ready` with the
   same protocol, implemented capabilities, resource limits and explicit
   `service_policy`, then acknowledges the request. `tree`, `input_revisions`,
   `layout_v1`, `interactions_v1` and `window_display_v1` are mandatory. Optional
@@ -230,8 +231,9 @@ is observed without echoing older values back to the native editor.
 
 | Resource                                         |                                 Implemented maximum |
 | ------------------------------------------------ | --------------------------------------------------: |
-| Frame payload                                    |                                        65,536 bytes |
-| Operations in one batch                          |                                                 256 |
+| Command frame payload                            |                                    16,777,216 bytes |
+| Event frame payload                              |                                        65,536 bytes |
+| Operations in one batch (one transaction)        |                                              16,384 |
 | Live windows                                     |                                                  16 |
 | Nodes per window, including root                 |                                               4,096 |
 | Tree depth, measured in edges from root          |                                                  64 |
@@ -250,15 +252,14 @@ is observed without echoing older values back to the native editor.
 | Public ordinary transactions / waiting callbacks |                                           128 / 128 |
 | Concurrent application callbacks                 |                                                   1 |
 
-The operation bound applies to each native batch, not to one public
-`window.batch` transaction. A larger transaction (up to twice the node limit
-plus one batch) is committed by the core without a wire change: staging
-batches build its new nodes under a zero-size, clipped box appended to the
-root, then one batch applies every set, move and deletion of committed nodes
-and removes that box. A rejection removes the box, restoring the committed
-tree. Changes to committed nodes alone still must fit one batch, so their
-application stays atomic in one paint. Staging needs node and text capacity
-for the new nodes before old ones are deleted.
+One public `window.batch` transaction is one native batch, validated and
+applied atomically in one paint. The operation bound is four per node of a full
+window, so a whole-window mount, or its replacement (deletes, creates, inserts
+and sets), fits one batch. Core rejects a transaction at the operation bound
+with `limit_exceeded` while it is built, and the runtime rejects a command
+above the frame bound before writing it; neither reaches the host or changes
+the window. The host reader keeps 64 KiB between frames; a larger frame borrows
+memory only while it is read and decoded, off the GPUI thread.
 
 The public transaction queue reserves additional cleanup capacity for one close
 per live window. Reaching its ordinary-work limit rejects new work. Native
@@ -299,7 +300,7 @@ values use `ProtocolError`, and unsupported element kinds use
 for consumer handling and experimental compatibility policy.
 
 The negotiated flags describe implemented features, not OS permission grants.
-Protocol 11's services additionally require their immutable explicit
+Protocol 12's services additionally require their immutable explicit
 launch policy; there is no wire grant or general service selector. File
 commands (`open_file_grant`, `close_file_grant`, `file_request`) name a
 launch-policy root ID and relative paths only; no command accepts an absolute

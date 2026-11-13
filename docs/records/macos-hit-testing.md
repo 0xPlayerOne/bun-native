@@ -2,7 +2,7 @@
 
 > **Status (2026-11-05):** the hosted development and AOT macOS input scenarios
 > described below have since passed; see
-> [native platforms](native-platforms.md#hosted-paint-os-input-and-assigned-device-evidence).
+> [native platforms](../native-platforms.md#hosted-paint-os-input-and-assigned-device-evidence).
 > This record is otherwise kept as written.
 
 The controller must authorize the exact native window that would receive a mouse-down, not the first rectangle containing the point. An opaque, on-screen window may explicitly ignore mouse events. Its rectangle can cover the application while the actual input target is still the application.
@@ -17,8 +17,8 @@ The same owned-window control fails at the intended authorization boundary with 
 
 `tests/native/evidence/platform-macos-hit-testing.json` binds the source, actual SDK/compiler, controlled outcomes and raw result hashes. These results establish the guard's semantics on the connected Mac. The recorded hashes describe the source at that run. The helper has since gained the AppKit initialization described above, so its current hash no longer matches the record. **They do not establish GPUI input delivery.** Required hosted development and genuine AOT scenarios still require exact owned process/window identity, three pointer activations, 96 nonce edits, nine complete native paints, joined shutdown and zero ownership counters in each mode. Historical unsuccessful native attempts remain recorded separately.
 
-**Update (2026-11-05):** CI now compiles all three controls with `-Werror` against the hosted `macos-15` SDK and runs them in the "Build the bounded macOS OS controller" step of [`native-platforms.yml`](../.github/workflows/native-platforms.yml), before the development and AOT input scenarios. The `Validation / Gate` job in [`bun-native.yml`](../.github/workflows/bun-native.yml) requires that lane. [Native platforms](native-platforms.md) holds the run history and failure records.
+**Update (2026-11-05):** CI now compiles all three controls with `-Werror` against the hosted `macos-15` SDK and runs them in the "Build the bounded macOS OS controller" step of [`native-platforms.yml`](../../.github/workflows/native-platforms.yml), before the development and AOT input scenarios. The `Validation / Gate` job in [`bun-native.yml`](../../.github/workflows/bun-native.yml) requires that lane. [Native platforms](../native-platforms.md) holds the run history and failure records.
 
 Reference: Apple's `NSWindow.windowNumber(at:belowWindowWithWindowNumber:)` documentation explicitly describes mouse-down hit testing, including transparent pixels and windows with `ignoresMouseEvents`.
 
-**Update (2026-11-06):** the three controls were rebuilt and re-run on a physical Mac (macOS 27.2, Xcode 27.2) and passed. The new record, with current source hashes, is [`platform-macos-hit-testing-physical-2026-11-06.json`](../tests/native/evidence/platform-macos-hit-testing-physical-2026-11-06.json); see [macOS qualification](macos-qualification.md). It still does not establish GPUI input delivery.
+**Update (2026-11-06):** the three controls were rebuilt and re-run on a physical Mac (macOS 27.2, Xcode 27.2) and passed. The new record, with current source hashes, is [`platform-macos-hit-testing-physical-2026-11-06.json`](../../tests/native/evidence/platform-macos-hit-testing-physical-2026-11-06.json); see [macOS qualification](macos-qualification.md). It still does not establish GPUI input delivery.

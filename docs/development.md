@@ -10,7 +10,7 @@
 4. **Package:** use Bun's experimental machine-code AOT `bun compile` and pinned native host artifacts. Do not silently substitute JIT `bun build --compile` in a claimed AOT release.
 5. **Diagnose:** expose exact Bun/native host versions, renderer ABI, OS/arch, cache/asset state, logs, unsupported capabilities and reproducible failures.
 
-The executable commands are `bun run native create`, `bun run native dev` and `bun run native build` from the repository root. See [their complete contract and tests](developer-tooling.md). The broader workflow above remains the target. The CLI is also published to npm as `@bun-native/cli`, but it can't create a project outside a checkout yet.
+The executable commands are `bun run native create`, `bun run native dev` and `bun run native build` from the repository root. See [their complete contract and tests](developer-tooling.md). The broader workflow above remains the target. The same CLI is published to npm as `@bun-native/cli` and can create registry projects outside a checkout ([getting started](getting-started.md#without-a-checkout-the-npm-cli)).
 
 ## Reload and state
 

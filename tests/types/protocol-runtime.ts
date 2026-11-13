@@ -6,6 +6,7 @@ import {
   FrameDecoder,
   GLOBAL_SHORTCUT_KEYS,
   MAX_CLIPBOARD_BYTES,
+  MAX_EVENT_FRAME_BYTES,
   MAX_FRAME_BYTES,
   MAX_GLOBAL_SHORTCUTS,
   MAX_NOTIFICATION_BODY_BYTES,
@@ -47,6 +48,7 @@ import {
 
 export const sizes: readonly number[] = [
   MAX_CLIPBOARD_BYTES,
+  MAX_EVENT_FRAME_BYTES,
   MAX_FRAME_BYTES,
   MAX_GLOBAL_SHORTCUTS,
   MAX_NOTIFICATION_BODY_BYTES,
@@ -55,11 +57,11 @@ export const sizes: readonly number[] = [
   MAX_OPERATIONS,
   MAX_TEXT_BYTES,
 ]
-export const version: 11 = PROTOCOL_VERSION
+export const version: 12 = PROTOCOL_VERSION
 
 export function checkFraming(bytes: Uint8Array): unknown[] {
   const frame: Uint8Array = encodeFrame({ type: 'ack', id: 1 })
-  const decoder = new FrameDecoder()
+  const decoder = new FrameDecoder(MAX_EVENT_FRAME_BYTES)
   const messages: unknown[] = decoder.push(frame)
   decoder.push(bytes)
   decoder.finish()

@@ -99,6 +99,7 @@ for await (const chunk of Bun.stdin.stream())
           await finish({ kind: 'button', id: options.cancel_button ?? options.buttons[0]!.id })
         if (mode === 'dismiss') await finish({ kind: 'dismissed' })
         if (mode === 'failed') await finish({ kind: 'failed' })
+        if (mode === 'unknown-button') await finish({ kind: 'button', id: 'never-offered' })
         if (mode === 'foreign') await complete(window_id, dialog_id + 100, { kind: 'dismissed' })
         break
       }

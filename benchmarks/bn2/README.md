@@ -3,7 +3,7 @@
 Local Linux correctness records for the Solid renderer. Each one uses a
 development-profile GPUI host and software rendering. None of them is a
 performance measurement or a hosted release result. The
-[BN2 Solid integration report](../../docs/bn2-solid-integration.md) explains every
+[BN2 Solid integration report](../../docs/records/bn2-solid-integration.md) explains every
 record and its limits.
 
 | Record                                                                     | Scope                                                                            |

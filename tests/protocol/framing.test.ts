@@ -1,5 +1,15 @@
 import { describe, expect, test } from 'bun:test'
-import { encodeFrame, FrameDecoder, MAX_FRAME_BYTES, ProtocolError } from '@bun-native/protocol'
+import { readFileSync } from 'node:fs'
+import { resolve } from 'node:path'
+import {
+  DEFAULT_LIMITS,
+  encodeFrame,
+  FrameDecoder,
+  MAX_EVENT_FRAME_BYTES,
+  MAX_FRAME_BYTES,
+  MAX_OPERATIONS,
+  ProtocolError,
+} from '@bun-native/protocol'
 
 describe('bounded native pipe framing', () => {
   test('decodes split UTF-8 and multiple frames without losing order', () => {
@@ -31,6 +41,43 @@ describe('bounded native pipe framing', () => {
     decoder.push(new Uint8Array(MAX_FRAME_BYTES).fill(97))
     expect(() => decoder.push(Uint8Array.of(97))).toThrow('Frame exceeds byte limit')
     expect(() => decoder.push(encodeFrame({ ok: true }))).toThrow('Decoder is closed')
+  })
+
+  test('an event decoder bounds frames at the event limit', () => {
+    const valid = 'a'.repeat(MAX_EVENT_FRAME_BYTES - 2)
+    const decoder = new FrameDecoder(MAX_EVENT_FRAME_BYTES)
+    expect(decoder.push(encodeFrame(valid))).toEqual([valid])
+    expect(() => decoder.push(encodeFrame(`${valid}a`))).toThrow('Frame exceeds byte limit')
+  })
+
+  test('a large frame split across chunks decodes and the decoder keeps decoding', () => {
+    // Grows past the retained buffer, then drops back to it for the next frame.
+    const large = encodeFrame({ text: 'b'.repeat(4 * MAX_EVENT_FRAME_BYTES) })
+    const decoder = new FrameDecoder()
+    const frames: unknown[] = []
+    for (let start = 0; start < large.length; start += 7_919)
+      frames.push(...decoder.push(large.subarray(start, start + 7_919)))
+    frames.push(...decoder.push(encodeFrame({ n: 1 }).subarray(0, 3)))
+    frames.push(...decoder.push(encodeFrame({ n: 1 }).subarray(3)))
+    expect(frames).toEqual([{ text: 'b'.repeat(4 * MAX_EVENT_FRAME_BYTES) }, { n: 1 }])
+    expect(() => decoder.finish()).not.toThrow()
+  })
+
+  test('frame and batch limits match the Rust wire contract', () => {
+    const wire = readFileSync(resolve(import.meta.dir, '../../native/protocol/src/wire.rs'), 'utf8')
+    const constant = (name: string) =>
+      Number(
+        wire
+          .match(new RegExp(`^pub const ${name}: usize = ([\\d_]+);$`, 'm'))?.[1]
+          ?.replaceAll('_', '')
+      )
+    expect(constant('MAX_FRAME_BYTES')).toBe(MAX_FRAME_BYTES)
+    expect(constant('MAX_EVENT_FRAME_BYTES')).toBe(MAX_EVENT_FRAME_BYTES)
+    expect(constant('MAX_OPERATIONS')).toBe(MAX_OPERATIONS)
+    expect(DEFAULT_LIMITS.max_frame_bytes).toBe(MAX_FRAME_BYTES)
+    expect(DEFAULT_LIMITS.max_operations).toBe(MAX_OPERATIONS)
+    // A whole-window replacement fits one batch.
+    expect(MAX_OPERATIONS).toBe(4 * DEFAULT_LIMITS.max_nodes_per_window)
   })
 
   test.each([

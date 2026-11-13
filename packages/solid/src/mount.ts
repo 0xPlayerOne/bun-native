@@ -1,6 +1,6 @@
 import { NativeStateError, type NativeWindow } from '@bun-native/core'
 import { createRenderRoot, type RenderOptions, type RenderRoot } from '@bun-native/renderer'
-import { createMemo, createRoot, createSignal } from 'solid-js'
+import { catchError, createMemo, createRoot, createSignal } from 'solid-js'
 import type { JSX } from './jsx.ts'
 import { renderer } from './renderer.ts'
 
@@ -32,10 +32,24 @@ export function render(
   assertReactiveRuntime()
   return createRenderRoot(
     window,
-    ({ container, onCleanup }) => {
+    ({ container, onCleanup, fail }) => {
       createRoot((dispose) => {
         onCleanup(dispose)
-        renderer.insert(container, component())
+        // An error from a later reactive update ends only this root, as in
+        // React, instead of escaping through whichever setter (usually a
+        // native listener) ran it and ending the application. An error while
+        // evaluating the component still rejects `ready` synchronously.
+        let mounted = false
+        let initial: { cause: unknown } | undefined
+        catchError(
+          () => renderer.insert(container, component()),
+          (cause) => {
+            if (mounted) fail(cause)
+            else initial ??= { cause }
+          }
+        )
+        if (initial) throw initial.cause
+        mounted = true
       })
     },
     options

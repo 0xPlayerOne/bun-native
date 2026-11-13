@@ -5,6 +5,7 @@ import {
   type NativeBatch,
   type NativeDropTarget,
   type NativeNode,
+  type NativeUIEvent,
   type NativeWindow,
   type Style,
 } from '@bun-native/core'
@@ -30,6 +31,16 @@ import {
 type Registration = {
   listener: EventListener
   unsubscribe: () => void
+}
+
+/** Adapter behavior that is not a public render option. */
+export interface RenderAdapter {
+  /**
+   * Run one native callback; React batches it as a discrete update. An
+   * adapter that supplies this keeps each handler's registration while the
+   * handler property stays defined (see `Owner.stableHandlers`).
+   */
+  dispatch(listener: EventListener, event: NativeUIEvent): void | Promise<void>
 }
 
 export interface RenderOptions {
@@ -86,7 +97,8 @@ class Root implements RenderRoot, Owner {
   constructor(
     private readonly window: NativeWindow,
     initialize: (context: RenderContext) => void,
-    style: Style | undefined
+    style: Style | undefined,
+    private readonly adapter: RenderAdapter | undefined
   ) {
     // Copy before initialization or asynchronous commits, without publishing an owner yet.
     setProperty(this.root, 'style', style)
@@ -144,6 +156,10 @@ class Root implements RenderRoot, Owner {
       commits: this.commits,
       mutations: Object.freeze({ ...this.mutations }),
     })
+  }
+
+  get stableHandlers(): boolean {
+    return this.adapter !== undefined
   }
 
   changed(): void {
@@ -324,7 +340,12 @@ class Root implements RenderRoot, Owner {
         continue
       }
       for (const [name, registration] of this.registrations.get(node) ?? [])
-        if (state.events[name] !== registration.listener) this.revoke(node, name)
+        if (
+          this.adapter
+            ? state.events[name] === undefined
+            : state.events[name] !== registration.listener
+        )
+          this.revoke(node, name)
       for (const [name, listener] of Object.entries(state.events)) {
         if (!isEventProperty(name) || !listener || this.registrations.get(node)?.has(name)) continue
         const binding = eventProperties[name]
@@ -332,9 +353,14 @@ class Root implements RenderRoot, Owner {
           state.handle,
           binding.type,
           async (event) => {
-            if (node.owner !== this || node.properties[name] !== listener) return
+            if (node.owner !== this) return
+            const adapter = this.adapter
+            const current = node.properties[name]
+            // A replaced handler is not called before its replacement commits,
+            // unless the adapter keeps the registration and calls the latest.
+            if (adapter ? !current : current !== listener) return
             if (event.type === 'input') observeInput(event)
-            await listener(event)
+            await (adapter ? adapter.dispatch(current!, event) : listener(event))
             await this.flush()
           },
           { capture: binding.capture }
@@ -354,11 +380,12 @@ class Root implements RenderRoot, Owner {
 export function createRenderRoot(
   window: NativeWindow,
   initialize: (context: RenderContext) => void,
-  options: RenderOptions = {}
+  options: RenderOptions = {},
+  adapter?: RenderAdapter
 ): RenderRoot {
   if (!options || typeof options !== 'object' || Array.isArray(options))
     throw new TypeError('Native render options must be an object')
   for (const name of Object.keys(options))
     if (name !== 'style') throw new TypeError('Unknown native render option: ' + name)
-  return new Root(window, initialize, options.style)
+  return new Root(window, initialize, options.style, adapter)
 }

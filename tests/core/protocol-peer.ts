@@ -39,9 +39,7 @@ for await (const chunk of Bun.stdin.stream()) {
               max_text_bytes: 32,
               max_text_bytes_per_window: 40,
             }
-          : mode === 'chunked'
-            ? { ...DEFAULT_LIMITS, max_operations: 8 }
-            : { ...DEFAULT_LIMITS }
+          : { ...DEFAULT_LIMITS }
       maxOperations = limits.max_operations
       await emit({
         type: 'ready',

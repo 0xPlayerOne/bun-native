@@ -8,7 +8,6 @@ import {
   replaceText,
   setProperty,
   type ElementTag,
-  type EventProperty,
   type Node,
   type PropertyName,
   type RendererNode,
@@ -48,11 +47,6 @@ type Config = Reconciler.HostConfig<
 const context: HostContext = Object.freeze({})
 let updatePriority: Reconciler.EventPriority = NoEventPriority
 let activeEvent: { type: string; observedAt: number } | undefined
-type EventBinding = {
-  listener: Listener<NativeUIEvent> | undefined
-  dispatch: Listener<NativeUIEvent>
-}
-const bindings = new WeakMap<Node, Map<EventProperty, EventBinding>>()
 
 function unsupported(feature: string): never {
   throw new UnsupportedFeatureError('react-' + feature)
@@ -65,52 +59,30 @@ const noInstance = () => null
 const returnFalse = () => false
 const hostContext = () => context
 
-function createBinding(listener: Listener<NativeUIEvent>): EventBinding {
-  const binding: EventBinding = { listener, dispatch }
-  function dispatch(event: NativeUIEvent): void | Promise<void> {
-    const current = binding.listener
-    if (!current) return
-    const previous = activeEvent
-    activeEvent = { type: event.type, observedAt: performance.now() }
-    try {
-      return reconciler.discreteUpdates(current, event, undefined, undefined, undefined)
-    } finally {
-      activeEvent = previous
-      reconciler.flushSyncWork()
-    }
+/**
+ * Run a native callback as a discrete React update. The shared renderer keeps
+ * one registration per node/type/phase and calls the latest committed handler,
+ * so inline closures replaced on ordinary rerenders keep queued events.
+ */
+export function dispatchDiscrete(
+  listener: Listener<NativeUIEvent>,
+  event: NativeUIEvent
+): void | Promise<void> {
+  const previous = activeEvent
+  activeEvent = { type: event.type, observedAt: performance.now() }
+  try {
+    return reconciler.discreteUpdates(listener, event, undefined, undefined, undefined)
+  } finally {
+    activeEvent = previous
+    reconciler.flushSyncWork()
   }
-  return binding
-}
-
-function updateEvent(node: Node, name: EventProperty, value: unknown): void {
-  const registered = bindings.get(node)
-  const existing = registered?.get(name)
-  if (value === undefined) {
-    if (existing) existing.listener = undefined
-    registered?.delete(name)
-    setProperty(node, name, undefined)
-    return
-  }
-  if (typeof value !== 'function') throw new TypeError('Native event listeners must be functions')
-  // The callable boundary is checked here; core supplies the validated event.
-  const listener = value as Listener<NativeUIEvent>
-  if (existing) {
-    // React replaces inline closures on ordinary rerenders. Keep the node's
-    // native type/phase registration alive so queued events retain their ordering.
-    existing.listener = listener
-    return
-  }
-  const binding = createBinding(listener)
-  setProperty(node, name, binding.dispatch)
-  const next = registered ?? new Map<EventProperty, EventBinding>()
-  next.set(name, binding)
-  bindings.set(node, next)
 }
 
 function updateProperty(node: Node, name: string, value: unknown): void {
-  if (isEventProperty(name)) updateEvent(node, name, value)
+  if (isEventProperty(name) && value !== undefined && typeof value !== 'function')
+    throw new TypeError('Native event listeners must be functions')
   // React props arrive as strings; the renderer rejects unknown names at runtime.
-  else setProperty(node, name as PropertyName, value)
+  setProperty(node, name as PropertyName, value)
 }
 
 const reserved = (name: string) => name === 'children' || name === 'ref' || name === 'key'
@@ -200,8 +172,6 @@ const host: Config = {
   prepareScopeUpdate: unsupported.bind(null, 'scope'),
   getInstanceFromScope: noInstance,
   detachDeletedInstance(node) {
-    for (const binding of bindings.get(node)?.values() ?? []) binding.listener = undefined
-    bindings.delete(node)
     node.children.length = 0
     node.parent = undefined
     for (const name of Object.keys(node.properties)) {

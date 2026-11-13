@@ -1,5 +1,5 @@
 use crate::{channel::EventSink, state::WindowState};
-use bun_native_protocol::{Event, MAX_FRAME_BYTES, NodeId, WindowId};
+use bun_native_protocol::{Event, MAX_EVENT_FRAME_BYTES, NodeId, WindowId};
 use gpui::{App, SharedString};
 use std::cell::RefCell;
 use std::rc::Weak;
@@ -62,7 +62,7 @@ fn event_fits(value: &str) -> bool {
             _ => 1,
         })
         .sum();
-    encoded_bytes + 1_536 <= MAX_FRAME_BYTES
+    encoded_bytes + 1_536 <= MAX_EVENT_FRAME_BYTES
 }
 
 #[cfg(test)]
@@ -82,7 +82,7 @@ mod tests {
             let encoded = serde_json::to_string(value).unwrap();
             assert_eq!(
                 event_fits(value),
-                encoded.len() - 2 + 1_536 <= MAX_FRAME_BYTES
+                encoded.len() - 2 + 1_536 <= MAX_EVENT_FRAME_BYTES
             );
         }
     }

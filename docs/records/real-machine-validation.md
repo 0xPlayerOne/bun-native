@@ -18,15 +18,15 @@ deadline or an assertion to match a result.
 
 ## What already exists (use it before adding anything)
 
-| Need                                          | Existing instrument                                                                                                                                                                                                                     |
-| --------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Is CoreGraphics event posting permitted?      | `CGPreflightPostEventAccess()`, reported as `postEventAccess` by [`native-platform-macos.m`](../scripts/quality/native-platform-macos.m); [`macos-drag-source.m`](../tests/native/macos-drag-source.m) exits 2 without it               |
-| OS drag source, Windows and macOS             | [`windows-drag-source.cs`](../tests/native/windows-drag-source.cs) (OLE `DoDragDrop`), [`macos-drag-source.m`](../tests/native/macos-drag-source.m) (`NSDraggingSession`), driven by [`drag-source.ts`](../tests/native/drag-source.ts) |
-| Host trace of an AppKit drag (#303)           | `BUN_NATIVE_PHASE_TRACE`: steps `active`, `target_move`, `cleared` ([`phases.rs`](../native/gpui-host/src/phases.rs)); set by [`drag-drop.ts`](../tests/native/drag-drop.ts) on macOS                                                   |
-| Late-entry and live-target check after a miss | `AppKit large-list entry evidence` line (`sourceEntry`, `lateEntryMs`, `currentWindow`, `activeTargets`) in `drag-drop.ts`                                                                                                              |
-| Host stack sample after a miss (#303)         | `AppKit host stack sample after the failed entry`: a one-second `sample` of the host                                                                                                                                                    |
-| Fault containment with a real OS click (#247) | [`native-fault-macos.py`](../scripts/quality/native-fault-macos.py) plus [`fault.ts`](../tests/native/fault.ts); `--no-os-click` is the only thing that skips the click                                                                 |
-| Hosted macOS and Windows drag runs            | "Development and AOT OS drag and drop through core, Solid and React" in [`native-platforms.yml`](../.github/workflows/native-platforms.yml)                                                                                             |
+| Need                                          | Existing instrument                                                                                                                                                                                                                              |
+| --------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Is CoreGraphics event posting permitted?      | `CGPreflightPostEventAccess()`, reported as `postEventAccess` by [`native-platform-macos.m`](../../scripts/quality/native-platform-macos.m); [`macos-drag-source.m`](../../tests/native/macos-drag-source.m) exits 2 without it                  |
+| OS drag source, Windows and macOS             | [`windows-drag-source.cs`](../../tests/native/windows-drag-source.cs) (OLE `DoDragDrop`), [`macos-drag-source.m`](../../tests/native/macos-drag-source.m) (`NSDraggingSession`), driven by [`drag-source.ts`](../../tests/native/drag-source.ts) |
+| Host trace of an AppKit drag (#303)           | `BUN_NATIVE_PHASE_TRACE`: steps `active`, `target_move`, `cleared` ([`phases.rs`](../../native/gpui-host/src/phases.rs)); set by [`drag-drop.ts`](../../tests/native/drag-drop.ts) on macOS                                                      |
+| Late-entry and live-target check after a miss | `AppKit large-list entry evidence` line (`sourceEntry`, `lateEntryMs`, `currentWindow`, `activeTargets`) in `drag-drop.ts`                                                                                                                       |
+| Host stack sample after a miss (#303)         | `AppKit host stack sample after the failed entry`: a one-second `sample` of the host                                                                                                                                                             |
+| Fault containment with a real OS click (#247) | [`native-fault-macos.py`](../../scripts/quality/native-fault-macos.py) plus [`fault.ts`](../../tests/native/fault.ts); `--no-os-click` is the only thing that skips the click                                                                    |
+| Hosted macOS and Windows drag runs            | "Development and AOT OS drag and drop through core, Solid and React" in [`native-platforms.yml`](../../.github/workflows/native-platforms.yml)                                                                                                   |
 
 No new instrumentation is needed for the Windows drive-path drop, the click
 fault or the next #303 failure. #248 and #250 are different: see
@@ -162,12 +162,12 @@ instrument injects one; that stays open.
 
 ## macOS workspace references (#248, #250)
 
-The Linux scenarios ([Solid](../scripts/quality/native-solid-workspace-scenario.py)
-and [React](../scripts/quality/native-react-workspace-scenario.py)) run unchanged
-on macOS through [`native-workspace-macos.py`](../scripts/quality/native-workspace-macos.py).
+The Linux scenarios ([Solid](../../scripts/quality/native-solid-workspace-scenario.py)
+and [React](../../scripts/quality/native-react-workspace-scenario.py)) run unchanged
+on macOS through [`native-workspace-macos.py`](../../scripts/quality/native-workspace-macos.py).
 It maps their X11 command words to the SDK helper's owned-window actions:
 
-| Scenario word                     | macOS action in [`native-platform-macos.m`](../scripts/quality/native-platform-macos.m)                               |
+| Scenario word                     | macOS action in [`native-platform-macos.m`](../../scripts/quality/native-platform-macos.m)                            |
 | --------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
 | `click 1`                         | `click`: CoreGraphics mouse down/up after the AppKit hit-target check                                                 |
 | `click --repeat N --delay D 4/5`  | `scroll`: one pointer move, then N three-line wheel events (4 up, 5 down; GPUI X11 SCROLL_LINES), each target-checked |
@@ -207,10 +207,10 @@ Accessibility and a PTY typed through OS input remain separate gaps
 ### Long session on a physical Mac (#248, #250)
 
 The workspace soak fixtures have a wall-clock session mode
-([`workspace-session.ts`](../tests/native/workspace-session.ts)): the fixed soak
+([`workspace-session.ts`](../../tests/native/workspace-session.ts)): the fixed soak
 round repeats until `BUN_NATIVE_SOAK_SECONDS` pass, with one CoreGraphics-typed
 prompt or task, Return and 24 wheel notches per round through the same helper
-([`workspace-os-input.ts`](../tests/native/workspace-os-input.ts)),
+([`workspace-os-input.ts`](../../tests/native/workspace-os-input.ts)),
 and a sample (host and app RSS from `ps`, threads, open files from `lsof`,
 acknowledgement and input-to-state latency) every `BUN_NATIVE_SOAK_SAMPLE_SECONDS`.
 Hosted `macos-15` runs 120 s of each framework and mode in the workspace step;

@@ -177,7 +177,7 @@ fn malformed_utf8_inside_a_frame_is_rejected() {
 fn display_messages_are_stable() {
     assert_eq!(
         ProtocolError::Oversized.to_string(),
-        "frame exceeds 65536 bytes"
+        "frame exceeds its byte limit"
     );
     assert_eq!(
         ProtocolError::Truncated.to_string(),
@@ -223,14 +223,14 @@ fn oversized_events_write_nothing_and_the_limit_is_inclusive() {
         },
     };
     let base = serde_json::to_vec(&event(0)).unwrap().len();
-    let exact = event(MAX_FRAME_BYTES - base);
+    let exact = event(MAX_EVENT_FRAME_BYTES - base);
     assert!(exact.validate().is_ok());
     let mut bytes = Vec::new();
     write_event(&mut bytes, &exact).unwrap();
-    assert_eq!(bytes.len(), MAX_FRAME_BYTES + 1);
+    assert_eq!(bytes.len(), MAX_EVENT_FRAME_BYTES + 1);
     assert_eq!(bytes.last(), Some(&b'\n'));
 
-    let over = event(MAX_FRAME_BYTES - base + 1);
+    let over = event(MAX_EVENT_FRAME_BYTES - base + 1);
     assert!(over.validate().is_ok());
     let mut bytes = Vec::new();
     assert!(matches!(

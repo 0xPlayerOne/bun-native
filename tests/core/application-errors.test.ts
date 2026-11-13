@@ -144,31 +144,33 @@ describe('application error paths (scripted headless subprocess)', () => {
       expect(app.diagnostics.nodes).toBe(2)
     }, 'small'))
 
-  test('stages new subtrees above the operation limit but rejects committed changes above it', () =>
+  test('rejects a transaction above the negotiated operation limit before sending it', () =>
     withScripted(async (app) => {
-      const window = await app.openWindow({ title: 'Staged limits' })
-      // New subtrees above the limit commit in staged batches (#488) ...
-      const staged = await window.batch((batch) => {
-        const box = batch.create({ kind: 'box' })
-        for (let index = 0; index < 9; index += 1) batch.append(box, batch.create({ kind: 'box' }))
-        batch.append(window.root, box)
-        return box
-      })
-      await window.batch((batch) => batch.remove(staged))
-      // ... but visible changes to committed nodes above it cannot be staged.
+      const window = await app.openWindow({ title: 'Operation limit' })
       const committed = await text(window)
       const revision = window.revision
+      // Three operations in: four new nodes and their inserts exceed eight.
+      let created = 0
       await assert.rejects(
         window.batch((batch) => {
-          for (let index = 0; index < 9; index += 1)
-            batch.set(committed, { kind: 'text', text: `Changed ${index}` })
+          const box = batch.create({ kind: 'box' })
+          batch.append(window.root, box)
+          for (let index = 0; index < 4; index += 1) {
+            batch.append(box, batch.create({ kind: 'box' }))
+            created += 1
+          }
         }),
         (error: unknown) =>
           error instanceof NativeStateError &&
           error.code === 'limit_exceeded' &&
-          error.message === 'Batch operation limit exceeded by changes to committed nodes'
+          error.message === 'Batch operation limit exceeded'
       )
+      expect(created).toBe(3)
+      // The rejected transaction left the window usable at its revision.
       expect(window.revision).toBe(revision)
+      expect(app.diagnostics.nodes).toBe(2)
+      await window.batch((batch) => batch.set(committed, { kind: 'text', text: 'Still here' }))
+      expect(window.revision).toBe(revision + 1)
       await window.batch((batch) => batch.remove(committed))
       expect(app.diagnostics.nodes).toBe(1)
     }, 'small'))

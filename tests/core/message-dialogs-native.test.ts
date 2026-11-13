@@ -213,4 +213,12 @@ describe('OS message dialogs (headless real subprocess)', () => {
       await assert.rejects(app.closed, /unallocated message dialog/)
     }, 'foreign')
   })
+
+  test('a result naming a button the dialog was not given fails the channel', async () => {
+    await withPeer(async (app) => {
+      const window = await app.openWindow({ title: 'Unknown button' })
+      void window.showMessageDialog(options).catch(() => {})
+      await assert.rejects(app.closed, /button it was not given/)
+    }, 'unknown-button')
+  })
 })

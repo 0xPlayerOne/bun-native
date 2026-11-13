@@ -1,4 +1,10 @@
-export { encodeFrame, FrameDecoder, MAX_FRAME_BYTES, ProtocolError } from './framing.ts'
+export {
+  encodeFrame,
+  FrameDecoder,
+  MAX_EVENT_FRAME_BYTES,
+  MAX_FRAME_BYTES,
+  ProtocolError,
+} from './framing.ts'
 export {
   DECORATION_FIELDS,
   MAX_OVERLAY_DEPTH,

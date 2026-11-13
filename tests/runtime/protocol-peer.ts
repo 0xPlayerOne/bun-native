@@ -155,7 +155,10 @@ for await (const chunk of Bun.stdin.stream()) {
     } else if (command.type === 'open') {
       if (mode === 'diagnostic-open-timeout') {
         const diagnostic = Bun.stderr.writer()
-        diagnostic.write('x'.repeat(5_000) + '\nOwned diagnostic peer is waiting at open\n')
+        diagnostic.write(
+          'x'.repeat(5_000) +
+            '\napi_key=leaked-startup-secret\nOwned diagnostic peer is waiting at open\n'
+        )
         await diagnostic.flush()
         continue
       }

@@ -4,7 +4,7 @@
 
 use bun_native_protocol::{
     DialogId, ErrorCode, Event, EventSequence, FileDialogFailure, FileDialogMode, FileDialogResult,
-    FileFilter, MAX_DIALOG_PATHS, MAX_FRAME_BYTES, MAX_ID, WindowId, validate_dialog_path,
+    FileFilter, MAX_DIALOG_PATHS, MAX_EVENT_FRAME_BYTES, MAX_ID, WindowId, validate_dialog_path,
 };
 
 type Failure = (ErrorCode, &'static str);
@@ -76,7 +76,7 @@ pub(crate) fn fit_frame(
         dialog_id: dialog,
         result,
     };
-    let fits = serde_json::to_vec(&event).is_ok_and(|bytes| bytes.len() <= MAX_FRAME_BYTES);
+    let fits = serde_json::to_vec(&event).is_ok_and(|bytes| bytes.len() <= MAX_EVENT_FRAME_BYTES);
     let Event::FileDialogCompleted { result, .. } = event else {
         unreachable!("constructed above")
     };

@@ -1,7 +1,11 @@
 /** @jsxImportSource @bun-native/react */
 import { expect, test } from 'bun:test'
 import { resolve } from 'node:path'
-import { createApplication, type SplitResizeEvent } from '@bun-native/core'
+import {
+  createApplication,
+  type DismissRequestEvent,
+  type SplitResizeEvent,
+} from '@bun-native/core'
 import { render } from '@bun-native/react'
 import { createElement, setProperty, snapshot } from '../../packages/renderer/src/nodes.ts'
 
@@ -68,6 +72,45 @@ test('React onSplitResize receives the host-owned ratio and its source', async (
       [0.3, 'pointer'],
       [0.31, 'keyboard'],
     ])
+    await root.dispose()
+    await window.close()
+  } finally {
+    await app.shutdown().catch(() => {})
+    await app.closed.catch(() => {})
+  }
+  expect(app.diagnostics).toMatchObject({ windows: 0, nodes: 0, callbacks: 0 })
+})
+
+test('React onDismiss observes a popup window losing its parent focus', async () => {
+  const app = await createApplication({
+    executable: process.execPath,
+    args: [resolve(import.meta.dir, '../core/overlay-peer.ts'), '--overlays', '--popups'],
+    requestTimeoutMs: 1_000,
+  })
+  try {
+    const window = await app.openWindow({ title: 'React popup dismissal' })
+    const seen: string[] = []
+    const view = (probe: string) => (
+      <box>
+        <text>{probe}</text>
+        <overlay
+          anchor="parent"
+          surface="window"
+          style={{ width: 160, height: 96 }}
+          onDismiss={(event: DismissRequestEvent) =>
+            void seen.push(event.type + ':' + event.reason)
+          }
+        >
+          <button>Copy</button>
+        </overlay>
+      </box>
+    )
+    const root = render(view(''), window)
+    await root.ready
+    root.render(view('event:' + JSON.stringify([{ type: 'dismiss', target: 'overlay#0' }])))
+    const until = performance.now() + 2_000
+    while (seen.length < 1 && performance.now() < until) await Bun.sleep(1)
+    expect(seen).toEqual(['dismiss:window_blur'])
     await root.dispose()
     await window.close()
   } finally {

@@ -4,7 +4,7 @@
 mod frames;
 mod layout;
 mod pointer;
-use bun_native_protocol::{BatchMetrics, MAX_FRAME_BYTES, NodeId, RequestId, Tree, WindowId};
+use bun_native_protocol::{BatchMetrics, MAX_EVENT_FRAME_BYTES, NodeId, RequestId, Tree, WindowId};
 pub(crate) use layout::LayoutFrame;
 use layout::LayoutSnapshot;
 use serde_json::{Value, json};
@@ -42,7 +42,7 @@ struct Log {
 
 fn append(file: &mut File, record: &Value) -> io::Result<()> {
     let mut line = record.to_string();
-    if line.len() > MAX_FRAME_BYTES {
+    if line.len() > MAX_EVENT_FRAME_BYTES {
         return Err(io::Error::other("evidence record exceeds 65536 bytes"));
     }
     line.push('\n');
@@ -398,7 +398,7 @@ impl Evidence {
                 value["input_revision"] = json!(revision);
             }
             size += value.to_string().len() + 1;
-            if size > MAX_FRAME_BYTES {
+            if size > MAX_EVENT_FRAME_BYTES {
                 omitted = true;
                 break;
             }
@@ -408,7 +408,7 @@ impl Evidence {
         if omitted {
             record["status"] = json!("omitted");
             record["reason"] = json!("evidence_record_limit");
-            record["max_record_bytes"] = json!(MAX_FRAME_BYTES);
+            record["max_record_bytes"] = json!(MAX_EVENT_FRAME_BYTES);
             record["node_count"] = json!(tree.nodes().count());
         } else {
             record["nodes"] = json!(nodes);

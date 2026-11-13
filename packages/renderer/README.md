@@ -88,7 +88,9 @@ staged node or renderer reference.
 to public core event types and capture phases. `EventHandlers` derives each
 callback argument from the corresponding `NativeEventMap` member. It covers
 `onClick`, `onInput`, `onKeyDown`, `onKeyUp`, `onPointerDown`, `onPointerUp`,
-`onFocus` and `onBlur`, plus each property's `Capture` variant. Native boxes can
+`onFocus`, `onBlur`, `onSplitResize` and `onDismiss` (a popup window overlay's
+parent lost focus; Escape and backdrop presses stay ordinary `onKeyDown` and
+`onPointerDown` events), plus each property's `Capture` variant. Native boxes can
 observe descendant events; handlers are not restricted to button/input leaves.
 Private text literals cannot own native registrations.
 
@@ -98,7 +100,11 @@ public core alone captures and validates native ancestry, freezes queued routes,
 orders capture/target/bubble callbacks, and applies propagation stops. No adapter
 reconstructs a route from its current staged tree. A move preserves the original
 queued route; deleting its target or revoking a registration cancels its remaining
-authority. Callback replacement never redirects old queued work to a new function.
+authority. By default, callback replacement never redirects old queued work to a
+new function. An adapter that passes a `RenderAdapter` to `createRenderRoot`
+(React) instead keeps each registration while its handler property stays
+defined, runs the latest handler through `adapter.dispatch`, and does not
+recapture a node whose handler only changed identity.
 
 Input observations are branded before every input callback, including ancestor
 capture/bubble callbacks. Passing an actual event back into framework state

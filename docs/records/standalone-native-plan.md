@@ -2,8 +2,8 @@
 
 > **Status (2026-11-05):** this hosted lane merged with
 > [#388](https://github.com/0xPlayerOne/bun-native/pull/388) as
-> [`tests/native/cli-standalone.py`](../tests/native/cli-standalone.py) in the
-> [native Linux workflow](../.github/workflows/native-linux.yml). Per its merge
+> [`tests/native/cli-standalone.py`](../../tests/native/cli-standalone.py) in the
+> [native Linux workflow](../../.github/workflows/native-linux.yml). Per its merge
 > record, all eight installed Linux development/AOT native cases passed at the
 > qualified head. The plan below is kept as written; its limits still apply.
 

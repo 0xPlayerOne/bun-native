@@ -1,5 +1,12 @@
-/** Maximum UTF-8 JSON payload bytes, excluding the newline delimiter. */
-export const MAX_FRAME_BYTES = 65_536
+/**
+ * Maximum command frame (runtime to host) in UTF-8 JSON bytes, excluding the
+ * newline. One transaction is one batch, so this bounds a full-window mount.
+ */
+export const MAX_FRAME_BYTES = 16_777_216
+/** Maximum event frame (host to runtime): one text value or service result. */
+export const MAX_EVENT_FRAME_BYTES = 65_536
+/** Decoder capacity kept between frames; a larger frame borrows memory while it is read. */
+const RETAINED_FRAME_BYTES = 65_536
 
 export class ProtocolError extends Error {
   override readonly name = 'ProtocolError'
@@ -24,16 +31,34 @@ export function encodeFrame(value: unknown): Uint8Array {
 }
 
 /**
- * Incremental, bounded JSON-lines decoder for a native process pipe.
+ * Incremental, bounded JSON-lines decoder for a native process pipe. `limit`
+ * is the largest frame payload it accepts: the runtime reads events with
+ * `MAX_EVENT_FRAME_BYTES`; a peer reading commands keeps the default.
  * A protocol error poisons the decoder; the caller must terminate that session.
  * Successful finish closes the decoder and is idempotent.
  */
 export class FrameDecoder {
-  private readonly buffer = new Uint8Array(MAX_FRAME_BYTES)
+  private buffer = new Uint8Array(0)
   // Preserve a leading BOM so JSON.parse rejects it, matching Rust serde_json.
   private readonly utf8 = new TextDecoder('utf-8', { fatal: true, ignoreBOM: true })
   private length = 0
   private state: 'open' | 'finished' | 'failed' = 'open'
+
+  constructor(private readonly limit: number = MAX_FRAME_BYTES) {}
+
+  /** Append a partial frame, growing the buffer geometrically up to the limit. */
+  private append(bytes: Uint8Array): void {
+    const length = this.length + bytes.length
+    if (length > this.buffer.length) {
+      const grown = new Uint8Array(
+        Math.min(this.limit, Math.max(length, 2 * this.buffer.length, 4_096))
+      )
+      grown.set(this.buffer.subarray(0, this.length))
+      this.buffer = grown
+    }
+    this.buffer.set(bytes, this.length)
+    this.length = length
+  }
 
   push(chunk: Uint8Array): unknown[] {
     if (this.state !== 'open')
@@ -49,8 +74,7 @@ export class FrameDecoder {
         const newline = chunk.indexOf(10, start)
         const end = newline === -1 ? chunk.length : newline
         const size = end - start
-        if (this.length + size > MAX_FRAME_BYTES)
-          throw new ProtocolError('Frame exceeds byte limit')
+        if (this.length + size > this.limit) throw new ProtocolError('Frame exceeds byte limit')
         if (newline !== -1 && this.length === 0) {
           // A frame wholly inside this chunk decodes in place, without a copy.
           if (size === 0) throw new ProtocolError('Empty frame')
@@ -58,12 +82,12 @@ export class FrameDecoder {
           start = newline + 1
           continue
         }
-        this.buffer.set(chunk.subarray(start, end), this.length)
-        this.length += size
+        this.append(chunk.subarray(start, end))
         if (newline === -1) break
         const json = this.utf8.decode(this.buffer.subarray(0, this.length))
-        frames.push(JSON.parse(json) as unknown)
         this.length = 0
+        if (this.buffer.length > RETAINED_FRAME_BYTES) this.buffer = new Uint8Array(0)
+        frames.push(JSON.parse(json) as unknown)
         start = newline + 1
       }
     } catch (error) {

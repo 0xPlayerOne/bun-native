@@ -16,7 +16,7 @@ use super::session_bus::{Failure, Link, Messages, SessionBus, sender, session_bu
 use crate::channel::EventSink;
 use bun_native_protocol::{
     DialogId, ErrorCode, Event, EventSequence, FileDialogFailure, FileDialogMode,
-    FileDialogOptions, FileDialogResult, MAX_DIALOG_PATHS, MAX_FILE_DIALOGS, MAX_FRAME_BYTES,
+    FileDialogOptions, FileDialogResult, MAX_DIALOG_PATHS, MAX_EVENT_FRAME_BYTES, MAX_FILE_DIALOGS,
     MAX_ID, RequestId, WindowId, validate_dialog_path,
 };
 use gpui::{App, AsyncApp, Task, Window};
@@ -442,7 +442,7 @@ fn fit_frame(window: WindowId, dialog: DialogId, result: FileDialogResult) -> Fi
         dialog_id: dialog,
         result,
     };
-    let fits = serde_json::to_vec(&event).is_ok_and(|bytes| bytes.len() <= MAX_FRAME_BYTES);
+    let fits = serde_json::to_vec(&event).is_ok_and(|bytes| bytes.len() <= MAX_EVENT_FRAME_BYTES);
     let Event::FileDialogCompleted { result, .. } = event else {
         unreachable!("constructed above")
     };

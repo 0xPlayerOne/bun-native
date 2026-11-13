@@ -7,14 +7,11 @@ import toolchain from '../../toolchain.json'
 /** Shared real AOT compiler and executable checks for fixtures and application tooling. */
 export function compileApplication(input: string, output: string, cwd: string, trim = false) {
   if (Bun.revision !== toolchain.bun.revision) throw new Error('Use the pinned Bun AOT compiler')
+  // toolchain.json is the one record of the compiler arguments (with the pinned revision).
   const compileCommand = [
     process.execPath,
-    '--no-install',
-    'compile',
-    '--no-script',
-    '--production',
+    ...toolchain.bun.compileArguments,
     ...(trim ? ['--trim'] : []),
-    '--explain=json',
     input,
     '--outfile',
     output,

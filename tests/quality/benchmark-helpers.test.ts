@@ -1,6 +1,7 @@
 import { expect, test } from 'bun:test'
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
+import { fixtures } from '../../scripts/quality/native-fixtures.ts'
 import {
   defaultCollectionRounds,
   observeCollection,
@@ -72,13 +73,8 @@ test('settled observation rejects unbounded or fractional round counts', async (
   })
 })
 
-test('the AOT build helper README lists exactly the entries in build-window.ts', () => {
-  const helper = readFileSync(resolve(root, 'experiments/aot-gpui/build-window.ts'), 'utf8')
-  const block = helper.slice(helper.indexOf('const entries = {'), helper.indexOf('} as const'))
-  const entries = [...block.matchAll(/^\s+'?([a-z-]+)'?: '([^']+)',$/gm)].map(([, name, path]) => [
-    name,
-    path,
-  ])
+test('the AOT build helper README lists exactly the native fixture entries', () => {
+  const entries = Object.entries(fixtures).map(([name, fixture]) => [name, fixture.path])
   expect(entries.length).toBeGreaterThan(0)
   const readme = readFileSync(resolve(root, 'experiments/aot-gpui/README.md'), 'utf8')
   const documented = [

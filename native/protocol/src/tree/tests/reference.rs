@@ -77,7 +77,7 @@ impl Model {
         if operations.is_empty() || operations.len() > MAX_OPERATIONS {
             return Err((
                 ErrorCode::LimitExceeded,
-                "batch must have between 1 and 256 operations",
+                "batch must have between 1 and 16384 operations",
             ));
         }
         if last_node_id > MAX_ID || self.nodes.keys().next_back().unwrap().get() > last_node_id {

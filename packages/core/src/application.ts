@@ -4,12 +4,16 @@ import {
   type ApplicationEvent,
   type Capability,
   type FileDialogOptions,
+  type HostEvent,
   type Limits,
-  type Operation,
   type WindowEvent,
 } from '@bun-native/protocol'
-import { NativeCommandError, NativeHost, type HostOptions } from '@bun-native/runtime'
-import { planStagedCommit, sendStagedCommit } from './commit-plan.ts'
+import {
+  NativeCommandError,
+  NativeHost,
+  type HostOptions,
+  type WindowCommand,
+} from '@bun-native/runtime'
 import { dispatchPlan, EventBindings, prunePlan, type DispatchPlan } from './events.ts'
 import { DisplaySubscription } from './display.ts'
 import {
@@ -110,15 +114,31 @@ import {
 
 const MAX_QUEUED_TRANSACTIONS = 128
 const MAX_QUEUED_CALLBACKS = 128
-type Callback =
-  | { windowId: number; nodeId: number; plan: DispatchPlan }
-  | { windowId: number; shortcut: ShortcutRegistration; event: GlobalShortcutEvent }
-  | { windowId: number; notification: NotificationRegistration; event: NotificationEvent }
-  | { windowId: number; process: ProcessRegistration; event: ProcessEvent; chunk: number }
-  | { windowId: number; display: DisplaySubscription; event: DisplayChangeEvent }
-  | { windowId: number; dropTarget: DropTargetRegistration; event: DropTargetEvent }
-  /** Application-scoped: no window owns the menu bar. */
-  | { menuBar: MenuBarRegistration; event: AppMenuItemEvent }
+/**
+ * One queued application callback. `run` delivers it; `retain` decides, when
+ * its window cancels callbacks, whether it stays queued. Without a window it
+ * belongs to the application (the menu bar).
+ */
+interface Callback {
+  readonly windowId?: number | undefined
+  retain(): boolean
+  run(): Promise<void>
+}
+
+/** A service registration whose listener receives its own events. */
+interface Delivery<T> {
+  readonly live: boolean
+  readonly listener: Listener<T> | undefined
+  readonly controller: AbortController
+}
+
+function listenerCallback<T>(
+  windowId: number | undefined,
+  registration: Delivery<T>,
+  event: T
+): Callback {
+  return { windowId, retain: () => registration.live, run: () => deliver(registration, event) }
+}
 
 /** Monotonic identities of one kind: never reused, never wrapped. */
 class Identities {
@@ -210,18 +230,9 @@ class Application implements NativeApplication {
 
   cancelCallbacks(windowId: number): void {
     if (!this.callbacks.length) return
-    const window = this.windows.get(windowId)
-    this.callbacks = this.callbacks.filter((callback) => {
-      if ('menuBar' in callback || callback.windowId !== windowId) return true
-      if ('shortcut' in callback) return callback.shortcut.live
-      if ('notification' in callback) return callback.notification.deliverable
-      if ('dropTarget' in callback) return callback.dropTarget.live
-      if ('process' in callback) return callback.process.live
-      if ('display' in callback) return callback.display.live
-      if (window?.isTargetLive(callback.nodeId) && prunePlan(callback.plan)) return true
-      window?.listeners.release(callback.plan)
-      return false
-    })
+    this.callbacks = this.callbacks.filter(
+      (callback) => callback.windowId !== windowId || callback.retain()
+    )
   }
 
   queueCallback(callback: Callback): void {
@@ -267,27 +278,10 @@ class Application implements NativeApplication {
     while (this.callbacks.length) {
       const callback = this.callbacks.shift()!
       this.dispatched += 1
-      const window = 'menuBar' in callback ? undefined : this.windows.get(callback.windowId)
-      if (!window && !('menuBar' in callback)) continue
+      if (callback.windowId !== undefined && !this.windows.has(callback.windowId)) continue
       this.activeCallbacks = 1
       try {
-        if ('menuBar' in callback) {
-          const listener = callback.menuBar.listener
-          if (listener && callback.menuBar.live)
-            await dispatchOwned(listener, callback.event, callback.menuBar.controller.signal)
-        } else if (!window) continue
-        else if ('shortcut' in callback) await dispatchShortcut(callback.shortcut, callback.event)
-        else if ('dropTarget' in callback)
-          await dispatchDropTarget(callback.dropTarget, callback.event)
-        else if ('notification' in callback)
-          await dispatchNotification(callback.notification, callback.event)
-        else if ('process' in callback)
-          await window.dispatchProcess(callback.process, callback.event, callback.chunk)
-        else if ('display' in callback) {
-          const listener = callback.display.current
-          if (listener)
-            await dispatchOwned(listener, callback.event, callback.display.controller.signal)
-        } else await window.dispatch(callback.nodeId, callback.plan)
+        await callback.run()
       } finally {
         this.activeCallbacks = 0
       }
@@ -476,16 +470,45 @@ class Application implements NativeApplication {
     const registration = this.menuBar
     // A replaced or cleared bar's selection is stale and never delivered.
     if (!registration?.live || registration.id !== event.menu_id) return
-    this.queueCallback({
-      menuBar: registration,
-      event: Object.freeze({
-        type: 'app_menu_item',
-        sequence: event.sequence,
-        itemId: event.item_id,
-        menuBar: registration.handle,
-        signal: registration.controller.signal,
-      }),
-    })
+    this.queueCallback(
+      listenerCallback(
+        undefined,
+        registration,
+        Object.freeze({
+          type: 'app_menu_item' as const,
+          sequence: event.sequence,
+          itemId: event.item_id,
+          menuBar: registration.handle,
+          signal: registration.controller.signal,
+        })
+      )
+    )
+  }
+
+  /** The service identity a native event names, checked before routing. */
+  private ownedIdentity(event: HostEvent): [Identities, number, string] | undefined {
+    switch (event.type) {
+      case 'global_shortcut':
+        return [this.ids.shortcut, event.shortcut_id, 'global shortcut']
+      case 'notification_activated':
+      case 'notification_dismissed':
+        return [this.ids.notification, event.notification_id, 'notification']
+      case 'process_output':
+      case 'process_exited':
+        return [this.ids.process, event.process_id, 'process']
+      case 'file_dialog_completed':
+        return [this.ids.dialog, event.dialog_id, 'file dialog']
+      case 'message_dialog_completed':
+        return [this.ids.messageDialog, event.dialog_id, 'message dialog']
+      case 'context_menu_completed':
+        return [this.ids.contextMenu, event.menu_id, 'context menu']
+      case 'drop_target_drag':
+      case 'drop_received':
+      case 'drop_rejected':
+        return [this.ids.dropTarget, event.target_id, 'drop target']
+      default:
+        return undefined
+    }
   }
 
   private async consume(): Promise<void> {
@@ -496,32 +519,9 @@ class Application implements NativeApplication {
           this.receiveMenuItem(event)
           continue
         }
-        if (event.type === 'global_shortcut' && !this.ids.shortcut.has(event.shortcut_id))
-          throw new ProtocolError('Native event names an unallocated global shortcut')
-        if (
-          (event.type === 'notification_activated' || event.type === 'notification_dismissed') &&
-          !this.ids.notification.has(event.notification_id)
-        )
-          throw new ProtocolError('Native event names an unallocated notification')
-        if (
-          (event.type === 'process_output' || event.type === 'process_exited') &&
-          !this.ids.process.has(event.process_id)
-        )
-          throw new ProtocolError('Native event names an unallocated process')
-        if (event.type === 'file_dialog_completed' && !this.ids.dialog.has(event.dialog_id))
-          throw new ProtocolError('Native event names an unallocated file dialog')
-        if (
-          event.type === 'message_dialog_completed' &&
-          !this.ids.messageDialog.has(event.dialog_id)
-        )
-          throw new ProtocolError('Native event names an unallocated message dialog')
-        if (
-          (event.type === 'drop_target_drag' ||
-            event.type === 'drop_received' ||
-            event.type === 'drop_rejected') &&
-          !this.ids.dropTarget.has(event.target_id)
-        )
-          throw new ProtocolError('Native event names an unallocated drop target')
+        const owned = this.ownedIdentity(event)
+        if (owned && !owned[0].has(owned[1]))
+          throw new ProtocolError('Native event names an unallocated ' + owned[2])
         if (event.type === 'drop_received') {
           if (event.drop_id <= this.lastDrop)
             throw new ProtocolError('Native drop identities must increase')
@@ -550,10 +550,7 @@ class Application implements NativeApplication {
   }
 }
 
-async function dispatchShortcut(
-  registration: ShortcutRegistration,
-  event: GlobalShortcutEvent
-): Promise<void> {
+async function deliver<T>(registration: Delivery<T>, event: T): Promise<void> {
   const listener = registration.listener
   if (!listener || !registration.live) return
   await dispatchOwned(listener, event, registration.controller.signal)
@@ -571,15 +568,6 @@ async function dispatchNotification(
     // The dismissal is the last delivery for its registration.
     if (event.type === 'notification_dismissed') registration.revoke()
   }
-}
-
-async function dispatchDropTarget(
-  registration: DropTargetRegistration,
-  event: DropTargetEvent
-): Promise<void> {
-  const listener = registration.listener
-  if (!listener || !registration.live) return
-  await dispatchOwned(listener, event, registration.controller.signal)
 }
 
 async function dispatchOwned<T>(
@@ -601,6 +589,15 @@ async function dispatchOwned<T>(
   }
 }
 
+/** A host-owned file dialog or context menu awaiting its result. */
+interface PendingRequest {
+  readonly id: number
+  readonly windowId: number
+  readonly live: boolean
+  readonly result: Promise<unknown>
+  fail(error: Error): void
+}
+
 /** A native command error with one of `codes` as `service`'s public error; any other error unchanged. */
 function serviceError(
   service: NativeServiceError['service'],
@@ -612,91 +609,20 @@ function serviceError(
     : error
 }
 
-const DISPLAY_ERRORS: ReadonlySet<string> = new Set(['permission_denied', 'service_unavailable'])
-
-const CLIPBOARD_ERRORS: ReadonlySet<string> = new Set([
-  'permission_denied',
-  'service_unavailable',
-  'cancelled',
-  'native_failure',
-  'operation_timed_out',
-  'payload_too_large',
-  'limit_exceeded',
-])
-
-const FILE_ERRORS: ReadonlySet<string> = new Set([
-  'permission_denied',
-  'service_unavailable',
-  'cancelled',
-  'native_failure',
-  'limit_exceeded',
-  'not_found',
-  'already_exists',
-  'path_denied',
-  'wrong_kind',
-  'not_empty',
-  'access_denied',
-])
-
-const PROCESS_ERRORS: ReadonlySet<string> = new Set([
-  'permission_denied',
-  'service_unavailable',
-  'cancelled',
-  'native_failure',
-  'limit_exceeded',
-  'not_found',
-  'path_denied',
-  'wrong_kind',
-  'access_denied',
-  'invalid_state',
-])
-
-const DROP_ERRORS: ReadonlySet<string> = new Set([
-  'permission_denied',
-  'service_unavailable',
-  'conflict',
-  'cancelled',
-  'native_failure',
-  'limit_exceeded',
-  'not_found',
-  'path_denied',
-])
-
-const NOTIFICATION_ERRORS: ReadonlySet<string> = new Set([
-  'permission_denied',
-  'service_unavailable',
-  'cancelled',
-  'native_failure',
-  'operation_timed_out',
-  'limit_exceeded',
-])
-
-const DIALOG_ERRORS: ReadonlySet<string> = new Set([
-  'permission_denied',
-  'service_unavailable',
-  'cancelled',
-  'native_failure',
-  'operation_timed_out',
-  'limit_exceeded',
-])
-
-const MENU_ERRORS: ReadonlySet<string> = new Set([
-  'permission_denied',
-  'service_unavailable',
-  'cancelled',
-  'native_failure',
-  'limit_exceeded',
-])
-
-const SHORTCUT_ERRORS: ReadonlySet<string> = new Set([
-  'permission_denied',
-  'service_unavailable',
-  'conflict',
-  'cancelled',
-  'native_failure',
-  'operation_timed_out',
-  'limit_exceeded',
-])
+// Native error codes each service reports as its own NativeServiceError.
+const SERVICE = ['permission_denied', 'service_unavailable'] as const
+const REQUEST = [...SERVICE, 'cancelled', 'native_failure', 'limit_exceeded'] as const
+const DISPLAY_ERRORS: ReadonlySet<string> = new Set(SERVICE)
+const MENU_ERRORS: ReadonlySet<string> = new Set(REQUEST)
+const DIALOG_ERRORS: ReadonlySet<string> = new Set([...REQUEST, 'operation_timed_out'])
+const NOTIFICATION_ERRORS = DIALOG_ERRORS
+const SHORTCUT_ERRORS: ReadonlySet<string> = new Set([...DIALOG_ERRORS, 'conflict'])
+const CLIPBOARD_ERRORS: ReadonlySet<string> = new Set([...DIALOG_ERRORS, 'payload_too_large'])
+const PATH_ERRORS = [...REQUEST, 'not_found', 'path_denied'] as const
+const DROP_ERRORS: ReadonlySet<string> = new Set([...PATH_ERRORS, 'conflict'])
+const ACCESS_ERRORS = [...PATH_ERRORS, 'wrong_kind', 'access_denied'] as const
+const PROCESS_ERRORS: ReadonlySet<string> = new Set([...ACCESS_ERRORS, 'invalid_state'])
+const FILE_ERRORS: ReadonlySet<string> = new Set([...ACCESS_ERRORS, 'already_exists', 'not_empty'])
 
 class Window implements NativeWindow {
   readonly root: NativeNode<'box'>
@@ -760,45 +686,24 @@ class Window implements NativeWindow {
         transaction.finish()
       }
       if (!transaction.operations.length) return value
-      const send = (operations: readonly Operation[]) =>
-        this.application.host.send({
-          type: 'batch',
-          window_id: this.id,
-          base_revision: this.revision,
-          operations,
-        })
-      // Publish in the reply's own continuation, before any later native event.
-      const publish = (revision: number) => {
-        this.assertActive()
-        transaction.commit(this.nodes, this.text)
-        this.revision = revision
-        this.listeners.forget(transaction.nodes.deletes)
-        // The host revokes a target whose node a committed tree removed.
-        for (const registration of this.application.dropTargets.values())
-          if (registration.windowId === this.id && !this.nodes.has(registration.nodeId)) {
-            registration.revoke()
-            this.application.dropTargets.delete(registration.id)
-          }
-      }
-      if (transaction.operations.length <= this.application.limits.max_operations) {
-        publish((await send(transaction.operations)).tree_revision)
-        return value
-      }
-      const plan = planStagedCommit(
-        this.nodes,
-        transaction,
-        this.rootId,
-        () => this.application.ids.node.allocate(),
-        this.application.limits
-      )
-      await sendStagedCommit(plan, send, (reply, final) => {
-        if (final) publish(reply.tree_revision)
-        else {
-          this.assertActive()
-          // Staging changed only nodes this window has not committed.
-          this.revision = reply.tree_revision
-        }
+      // One transaction is one native batch: the host applies it atomically.
+      const reply = await this.application.host.send({
+        type: 'batch',
+        window_id: this.id,
+        base_revision: this.revision,
+        operations: transaction.operations,
       })
+      // Publish in the reply's own continuation, before any later native event.
+      this.assertActive()
+      transaction.commit(this.nodes, this.text)
+      this.revision = reply.tree_revision
+      this.listeners.forget(transaction.nodes.deletes)
+      // The host revokes a target whose node a committed tree removed.
+      for (const registration of this.application.dropTargets.values())
+        if (registration.windowId === this.id && !this.nodes.has(registration.nodeId)) {
+          registration.revoke()
+          this.application.dropTargets.delete(registration.id)
+        }
       return value
     })
   }
@@ -897,17 +802,22 @@ class Window implements NativeWindow {
     // Validate even when nobody listens: a malformed frame is a host fault.
     const snapshot = publicDisplaySnapshot(event.snapshot, this.application.capabilities)
     if (!this.active) return
-    for (const subscription of this.displayChanges)
+    for (const subscription of this.displayChanges) {
+      const change: DisplayChangeEvent = Object.freeze({
+        type: 'display_change',
+        sequence: event.sequence,
+        snapshot,
+        signal: subscription.controller.signal,
+      })
       this.application.queueCallback({
         windowId: this.id,
-        display: subscription,
-        event: Object.freeze({
-          type: 'display_change',
-          sequence: event.sequence,
-          snapshot,
-          signal: subscription.controller.signal,
-        }),
+        retain: () => subscription.live,
+        run: async () => {
+          const listener = subscription.current
+          if (listener) await dispatchOwned(listener, change, subscription.controller.signal)
+        },
       })
+    }
   }
 
   private revokeDisplayChanges(): void {
@@ -965,18 +875,20 @@ class Window implements NativeWindow {
     if (typeof listener !== 'function')
       throw new TypeError('A global shortcut listener must be a function')
     this.assertActive()
-    return this.application.service(async () => {
-      this.assertActive()
-      const registration = new ShortcutRegistration(
-        this.application.ids.shortcut.allocate(),
-        this.id,
-        key,
-        modifiers,
-        listener,
-        (item) => this.releaseShortcut(item)
-      )
-      this.application.shortcuts.set(registration.id, registration)
-      try {
+    return this.register(
+      'global_shortcuts',
+      SHORTCUT_ERRORS,
+      this.application.shortcuts,
+      () =>
+        new ShortcutRegistration(
+          this.application.ids.shortcut.allocate(),
+          this.id,
+          key,
+          modifiers,
+          listener,
+          (item) => this.releaseShortcut(item)
+        ),
+      async (registration) => {
         await this.application.host.send({
           type: 'register_global_shortcut',
           window_id: this.id,
@@ -984,47 +896,21 @@ class Window implements NativeWindow {
           key,
           modifiers,
         })
-        this.assertActive()
-        if (!registration.live)
-          throw new NativeServiceError(
-            'global_shortcuts',
-            'cancelled',
-            'Global shortcut was revoked during registration'
-          )
-        return registration.handle
-      } catch (error) {
-        registration.revoke()
-        this.application.shortcuts.delete(registration.id)
-        if (error instanceof ProtocolError) throw error
-        this.assertActive()
-        throw serviceError('global_shortcuts', SHORTCUT_ERRORS, error)
-      }
-    })
+      },
+      (registration) => registration.live,
+      'Global shortcut was revoked during registration'
+    )
   }
 
   private releaseShortcut(registration: ShortcutRegistration): Promise<void> {
     // Local revocation first: no activation is delivered after this call.
     registration.revoke()
     this.application.shortcuts.delete(registration.id)
-    // Window close and application shutdown release the native grab.
-    if (!this.active || !this.application.running) return Promise.resolve()
-    return this.application.track(
-      this.application.host
-        .send({
-          type: 'unregister_global_shortcut',
-          window_id: this.id,
-          shortcut_id: registration.id,
-        })
-        .then(
-          () => {},
-          (error: unknown) => {
-            // The owner window can close while the request is in flight.
-            if (error instanceof NativeCommandError && error.code === 'invalid_handle') return
-            if (!this.application.running) return
-            throw error
-          }
-        )
-    )
+    return this.releaseNative({
+      type: 'unregister_global_shortcut',
+      window_id: this.id,
+      shortcut_id: registration.id,
+    })
   }
 
   async postNotification(
@@ -1035,18 +921,20 @@ class Window implements NativeWindow {
     if (typeof listener !== 'function')
       throw new TypeError('A notification listener must be a function')
     this.assertActive()
-    return this.application.service(async () => {
-      this.assertActive()
-      const registration = new NotificationRegistration(
-        this.application.ids.notification.allocate(),
-        this.id,
-        title,
-        body,
-        listener,
-        (item) => this.withdrawNotification(item)
-      )
-      this.application.notifications.set(registration.id, registration)
-      try {
+    return this.register(
+      'notifications',
+      NOTIFICATION_ERRORS,
+      this.application.notifications,
+      () =>
+        new NotificationRegistration(
+          this.application.ids.notification.allocate(),
+          this.id,
+          title,
+          body,
+          listener,
+          (item) => this.withdrawNotification(item)
+        ),
+      async (registration) => {
         const posted = await this.application.host.send({
           type: 'post_notification',
           window_id: this.id,
@@ -1055,39 +943,29 @@ class Window implements NativeWindow {
           body,
         })
         registration.activatable = posted.activatable
-        this.assertActive()
-        if (!registration.deliverable)
-          throw new NativeServiceError(
-            'notifications',
-            'cancelled',
-            'Notification was revoked while it was posted'
-          )
-        return registration.handle
-      } catch (error) {
-        registration.revoke()
-        this.application.notifications.delete(registration.id)
-        if (error instanceof ProtocolError) throw error
-        this.assertActive()
-        throw serviceError('notifications', NOTIFICATION_ERRORS, error)
-      }
-    })
+      },
+      (registration) => registration.deliverable,
+      'Notification was revoked while it was posted'
+    )
   }
 
   async openFileGrant(root: string, options: FileGrantOptions = {}): Promise<NativeFileGrant> {
     const request = fileGrantRequest(root, options)
     this.assertActive()
-    return this.application.service(async () => {
-      this.assertActive()
-      const registration = new FileGrantRegistration(
-        this.application.ids.fileGrant.allocate(),
-        this.id,
-        request.root,
-        request.access,
-        (item, call) => this.fileCall(item, call),
-        (item) => this.closeFileGrant(item)
-      )
-      this.application.fileGrants.set(registration.id, registration)
-      try {
+    return this.register(
+      'filesystem_grants',
+      FILE_ERRORS,
+      this.application.fileGrants,
+      () =>
+        new FileGrantRegistration(
+          this.application.ids.fileGrant.allocate(),
+          this.id,
+          request.root,
+          request.access,
+          (item, call) => this.fileCall(item, call),
+          (item) => this.closeFileGrant(item)
+        ),
+      async (registration) => {
         await this.application.host.send({
           type: 'open_file_grant',
           window_id: this.id,
@@ -1095,26 +973,10 @@ class Window implements NativeWindow {
           root: request.root,
           access: request.access,
         })
-        this.assertActive()
-        if (!registration.live)
-          throw new NativeServiceError(
-            'filesystem_grants',
-            'cancelled',
-            'File grant was revoked while it opened'
-          )
-        return registration.handle
-      } catch (error) {
-        registration.revoke()
-        this.application.fileGrants.delete(registration.id)
-        throw this.fileError(error)
-      }
-    })
-  }
-
-  private fileError(error: unknown): unknown {
-    if (error instanceof ProtocolError) return error
-    this.assertActive()
-    return serviceError('filesystem_grants', FILE_ERRORS, error)
+      },
+      (registration) => registration.live,
+      'File grant was revoked while it opened'
+    )
   }
 
   private fileCall(registration: FileGrantRegistration, call: FileCall): Promise<unknown> {
@@ -1145,7 +1007,7 @@ class Window implements NativeWindow {
         if (error instanceof ProtocolError) throw error
         if (!registration.live) throw revoked()
         this.assertActive()
-        throw this.fileError(error)
+        throw this.serviceFailure('filesystem_grants', FILE_ERRORS, error)
       }
     })
   }
@@ -1153,20 +1015,11 @@ class Window implements NativeWindow {
   private closeFileGrant(registration: FileGrantRegistration): Promise<void> {
     registration.revoke()
     this.application.fileGrants.delete(registration.id)
-    // Window close and application shutdown close the descriptor natively.
-    if (!this.active || !this.application.running) return Promise.resolve()
-    return this.application.track(
-      this.application.host
-        .send({ type: 'close_file_grant', window_id: this.id, grant_id: registration.id })
-        .then(
-          () => {},
-          (error: unknown) => {
-            if (error instanceof NativeCommandError && error.code === 'invalid_handle') return
-            if (!this.application.running) return
-            throw error
-          }
-        )
-    )
+    return this.releaseNative({
+      type: 'close_file_grant',
+      window_id: this.id,
+      grant_id: registration.id,
+    })
   }
 
   async spawnProcess(
@@ -1186,45 +1039,31 @@ class Window implements NativeWindow {
         throw new TypeError('Process cwd must name a live file grant owned by this window')
       cwd = { grant_id: grant.id, path: request.cwd.path }
     }
-    return this.application.service(async () => {
-      this.assertActive()
-      const registration = new ProcessRegistration(
-        this.application.ids.process.allocate(),
-        this.id,
-        request.launch.executable,
-        request.launch.terminal !== undefined,
-        listener,
-        (item, call) => this.processCall(item, call),
-        (item) => this.releaseProcess(item)
-      )
-      this.application.processes.set(registration.id, registration)
-      try {
+    return this.register(
+      'processes',
+      PROCESS_ERRORS,
+      this.application.processes,
+      () =>
+        new ProcessRegistration(
+          this.application.ids.process.allocate(),
+          this.id,
+          request.launch.executable,
+          request.launch.terminal !== undefined,
+          listener,
+          (item, call) => this.processCall(item, call),
+          (item) => this.releaseProcess(item)
+        ),
+      async (registration) => {
         await this.application.host.send({
           type: 'spawn_process',
           window_id: this.id,
           process_id: registration.id,
           launch: cwd ? { ...request.launch, cwd } : request.launch,
         })
-        this.assertActive()
-        if (!registration.live)
-          throw new NativeServiceError(
-            'processes',
-            'cancelled',
-            'Process was released while it started'
-          )
-        return registration.handle
-      } catch (error) {
-        registration.revoke()
-        this.application.processes.delete(registration.id)
-        throw this.processError(error)
-      }
-    })
-  }
-
-  private processError(error: unknown): unknown {
-    if (error instanceof ProtocolError) return error
-    this.assertActive()
-    return serviceError('processes', PROCESS_ERRORS, error)
+      },
+      (registration) => registration.live,
+      'Process was released while it started'
+    )
   }
 
   private processCall(registration: ProcessRegistration, call: ProcessCall): Promise<void> {
@@ -1244,7 +1083,7 @@ class Window implements NativeWindow {
         if (error instanceof ProtocolError) throw error
         if (!registration.live) throw revoked()
         this.assertActive()
-        throw this.processError(error)
+        throw this.serviceFailure('processes', PROCESS_ERRORS, error)
       }
     })
   }
@@ -1252,20 +1091,11 @@ class Window implements NativeWindow {
   private releaseProcess(registration: ProcessRegistration): Promise<void> {
     registration.revoke()
     this.application.processes.delete(registration.id)
-    // Window close and application shutdown stop the process group natively.
-    if (!this.active || !this.application.running) return Promise.resolve()
-    return this.application.track(
-      this.application.host
-        .send({ type: 'release_process', window_id: this.id, process_id: registration.id })
-        .then(
-          () => {},
-          (error: unknown) => {
-            if (error instanceof NativeCommandError && error.code === 'invalid_handle') return
-            if (!this.application.running) return
-            throw error
-          }
-        )
-    )
+    return this.releaseNative({
+      type: 'release_process',
+      window_id: this.id,
+      process_id: registration.id,
+    })
   }
 
   receiveProcess(event: Extract<WindowEvent, { type: 'process_output' | 'process_exited' }>): void {
@@ -1286,26 +1116,31 @@ class Window implements NativeWindow {
       if ((event.stream === 'terminal') !== registration.handle.terminal)
         throw new ProtocolError('Native process output names the wrong stream kind')
       registration.chunk = event.chunk
+      const output: ProcessEvent = Object.freeze({
+        type: 'process_output',
+        stream: event.stream,
+        bytes: Uint8Array.fromBase64(event.data),
+        ...common,
+      })
+      const chunk = event.chunk
       this.application.queueCallback({
         windowId: this.id,
-        process: registration,
-        chunk: event.chunk,
-        event: Object.freeze({
-          type: 'process_output',
-          stream: event.stream,
-          bytes: Uint8Array.fromBase64(event.data),
-          ...common,
-        }),
+        retain: () => registration.live,
+        run: () => this.dispatchProcess(registration, output, chunk),
       })
       return
     }
     registration.end()
     registration.exit = Object.freeze({ ...event.exit })
+    const exited: ProcessEvent = Object.freeze({
+      type: 'process_exited',
+      exit: registration.exit,
+      ...common,
+    })
     this.application.queueCallback({
       windowId: this.id,
-      process: registration,
-      chunk: 0,
-      event: Object.freeze({ type: 'process_exited', exit: registration.exit, ...common }),
+      retain: () => registration.live,
+      run: () => this.dispatchProcess(registration, exited, 0),
     })
   }
 
@@ -1335,9 +1170,12 @@ class Window implements NativeWindow {
           (error: unknown) => {
             // Release or window close can race the acknowledgement.
             if (error instanceof NativeCommandError && error.code === 'invalid_handle') return
-            // A lost transport is reported by the application's own closed promise;
-            // recording it here first would hide the original cause.
-            if (!(error instanceof NativeCommandError) || !this.application.running) return
+            // Shutdown or a lost transport already owns the outcome, reported
+            // through the application's closed promise; recording it here first
+            // would hide the original cause. A rejection while the host still
+            // runs (the runtime's own command limit) would otherwise lose the
+            // credit silently.
+            if (!this.application.running || !this.application.host.running) return
             // Not awaited: shutdown waits for this tracked operation.
             void this.application.fail(error)
           }
@@ -1353,44 +1191,39 @@ class Window implements NativeWindow {
       throw new TypeError('A drop target listener must be a function')
     this.assertActive()
     const node = own(this.nodes, handle)
-    return this.application.service(async () => {
-      this.assertActive()
-      if (this.nodes.get(node.id)?.handle !== node.handle)
-        throw new NativeStateError('invalid_handle', 'Drop target node was removed')
-      const registration = new DropTargetRegistration(
-        this.application.ids.dropTarget.allocate(),
-        this.id,
-        node.id,
-        node.handle,
-        listener,
-        (item) => this.releaseDropTarget(item)
-      )
-      this.application.dropTargets.set(registration.id, registration)
-      try {
-        await this.application.host.send({
-          type: 'register_drop_target',
-          window_id: this.id,
-          target_id: registration.id,
-          node_id: node.id,
-        })
-        this.assertActive()
-        if (!registration.live)
-          throw new NativeServiceError(
-            'drag_drop',
-            'cancelled',
-            'Drop target was revoked during registration'
-          )
-        return registration.handle
-      } catch (error) {
-        registration.revoke()
-        this.application.dropTargets.delete(registration.id)
-        if (error instanceof ProtocolError) throw error
-        this.assertActive()
-        if (error instanceof NativeCommandError && error.code === 'invalid_handle')
-          throw new NativeStateError('invalid_handle', 'Drop target node is not committed')
-        throw this.dropError(error)
-      }
-    })
+    return this.register(
+      'drag_drop',
+      DROP_ERRORS,
+      this.application.dropTargets,
+      () => {
+        if (this.nodes.get(node.id)?.handle !== node.handle)
+          throw new NativeStateError('invalid_handle', 'Drop target node was removed')
+        return new DropTargetRegistration(
+          this.application.ids.dropTarget.allocate(),
+          this.id,
+          node.id,
+          node.handle,
+          listener,
+          (item) => this.releaseDropTarget(item)
+        )
+      },
+      async (registration) => {
+        try {
+          await this.application.host.send({
+            type: 'register_drop_target',
+            window_id: this.id,
+            target_id: registration.id,
+            node_id: node.id,
+          })
+        } catch (error) {
+          if (error instanceof NativeCommandError && error.code === 'invalid_handle' && this.active)
+            throw new NativeStateError('invalid_handle', 'Drop target node is not committed')
+          throw error
+        }
+      },
+      (registration) => registration.live,
+      'Drop target was revoked during registration'
+    )
   }
 
   private dropError(error: unknown): unknown {
@@ -1401,25 +1234,11 @@ class Window implements NativeWindow {
     // Local revocation first: no drag or drop is delivered after this call.
     registration.revoke()
     this.application.dropTargets.delete(registration.id)
-    // Window close and application shutdown remove it natively.
-    if (!this.active || !this.application.running) return Promise.resolve()
-    return this.application.track(
-      this.application.host
-        .send({
-          type: 'unregister_drop_target',
-          window_id: this.id,
-          target_id: registration.id,
-        })
-        .then(
-          () => {},
-          (error: unknown) => {
-            // A tree commit or the owner window can remove it while in flight.
-            if (error instanceof NativeCommandError && error.code === 'invalid_handle') return
-            if (!this.application.running) return
-            throw error
-          }
-        )
-    )
+    return this.releaseNative({
+      type: 'unregister_drop_target',
+      window_id: this.id,
+      target_id: registration.id,
+    })
   }
 
   private resolveDroppedItem(
@@ -1499,36 +1318,20 @@ class Window implements NativeWindow {
       )
       delivered = { type: 'drop', items: Object.freeze(items), ...common }
     }
-    this.application.queueCallback({
-      windowId: this.id,
-      dropTarget: registration,
-      event: Object.freeze(delivered),
-    })
+    this.application.queueCallback(
+      listenerCallback(this.id, registration, Object.freeze(delivered))
+    )
   }
 
   private withdrawNotification(registration: NotificationRegistration): Promise<void> {
     // Local revocation first: no activation is delivered after this call.
     registration.revoke()
     this.application.notifications.delete(registration.id)
-    // Window close and application shutdown withdraw it natively.
-    if (!this.active || !this.application.running) return Promise.resolve()
-    return this.application.track(
-      this.application.host
-        .send({
-          type: 'withdraw_notification',
-          window_id: this.id,
-          notification_id: registration.id,
-        })
-        .then(
-          () => {},
-          (error: unknown) => {
-            // The server or the owner can end it while the request is in flight.
-            if (error instanceof NativeCommandError && error.code === 'invalid_handle') return
-            if (!this.application.running) return
-            throw error
-          }
-        )
-    )
+    return this.releaseNative({
+      type: 'withdraw_notification',
+      window_id: this.id,
+      notification_id: registration.id,
+    })
   }
 
   receiveNotification(
@@ -1548,14 +1351,15 @@ class Window implements NativeWindow {
       registration.end()
       this.application.notifications.delete(registration.id)
     }
+    const delivered: NotificationEvent = Object.freeze(
+      event.type === 'notification_activated'
+        ? { type: 'notification_activated', ...common }
+        : { type: 'notification_dismissed', reason: event.reason, ...common }
+    )
     this.application.queueCallback({
       windowId: this.id,
-      notification: registration,
-      event: Object.freeze(
-        event.type === 'notification_activated'
-          ? { type: 'notification_activated', ...common }
-          : { type: 'notification_dismissed', reason: event.reason, ...common }
-      ),
+      retain: () => registration.deliverable,
+      run: () => dispatchNotification(registration, delivered),
     })
   }
 
@@ -1581,51 +1385,34 @@ class Window implements NativeWindow {
       : Object.freeze({ kind: 'cancelled' })
   }
 
-  private async fileDialog(options: FileDialogOptions, signal: AbortSignal | undefined) {
-    this.assertActive()
-    checkServiceCancellation(signal, 'file_dialogs')
-    const dialog = await this.application.service(async () => {
-      this.assertActive()
-      checkServiceCancellation(signal, 'file_dialogs')
-      for (const other of this.application.dialogs.values())
-        if (other.windowId === this.id)
-          throw new NativeServiceError(
-            'file_dialogs',
-            'limit_exceeded',
-            'This window already has an open file dialog'
-          )
-      const dialog = new FileDialogRequest(
-        this.application.ids.dialog.allocate(),
-        this.id,
-        options.mode
-      )
-      this.application.dialogs.set(dialog.id, dialog)
-      try {
-        await this.application.host.send({
+  private fileDialog(options: FileDialogOptions, signal: AbortSignal | undefined) {
+    return this.openPending(
+      'file_dialogs',
+      signal,
+      this.application.dialogs,
+      (other) => other.windowId === this.id,
+      'This window already has an open file dialog',
+      () => new FileDialogRequest(this.application.ids.dialog.allocate(), this.id, options.mode),
+      (dialog) =>
+        this.application.host.send({
           type: 'show_file_dialog',
           window_id: this.id,
           dialog_id: dialog.id,
           options,
-        })
-        this.assertActive()
-        return dialog
-      } catch (error) {
-        dialog.fail(error instanceof Error ? error : new Error(String(error)))
-        this.application.dialogs.delete(dialog.id)
-        if (error instanceof ProtocolError) throw error
-        this.assertActive()
-        throw serviceError('file_dialogs', DIALOG_ERRORS, error)
-      }
-    })
-    // An abort while the host was showing it closes the now-live dialog.
-    const cancel = () => this.closeFileDialog(dialog)
-    if (signal?.aborted) cancel()
-    else signal?.addEventListener('abort', cancel, { once: true })
-    try {
-      return await dialog.result
-    } finally {
-      signal?.removeEventListener('abort', cancel)
-    }
+        }),
+      (dialog) =>
+        this.cancelPending(
+          'file_dialogs',
+          this.application.dialogs,
+          dialog,
+          'The file dialog was cancelled',
+          {
+            type: 'close_file_dialog',
+            window_id: this.id,
+            dialog_id: dialog.id,
+          }
+        )
+    )
   }
 
   async showContextMenu(
@@ -1636,76 +1423,38 @@ class Window implements NativeWindow {
     const wire = contextMenuRequest(items, position)
     if (!this.application.capabilities.includes('context_menus_v1'))
       throw new UnsupportedFeatureError('context_menu')
-    const signal = serviceSignal(request)
-    this.assertActive()
-    checkServiceCancellation(signal, 'context_menus')
-    const menu = await this.application.service(async () => {
-      this.assertActive()
-      checkServiceCancellation(signal, 'context_menus')
-      for (const other of this.application.contextMenus.values())
-        if (other.live)
-          throw new NativeServiceError(
-            'context_menus',
-            'limit_exceeded',
-            'Another context menu is already open'
-          )
-      const menu = new ContextMenuRequest(
-        this.application.ids.contextMenu.allocate(),
-        this.id,
-        itemIds(wire.items)
-      )
-      this.application.contextMenus.set(menu.id, menu)
-      try {
-        await this.application.host.send({
+    return this.openPending(
+      'context_menus',
+      serviceSignal(request),
+      this.application.contextMenus,
+      (other) => other.live,
+      'Another context menu is already open',
+      () =>
+        new ContextMenuRequest(
+          this.application.ids.contextMenu.allocate(),
+          this.id,
+          itemIds(wire.items)
+        ),
+      (menu) =>
+        this.application.host.send({
           type: 'show_context_menu',
           window_id: this.id,
           menu_id: menu.id,
           ...wire,
-        })
-        this.assertActive()
-        return menu
-      } catch (error) {
-        menu.fail(error instanceof Error ? error : new Error(String(error)))
-        this.application.contextMenus.delete(menu.id)
-        if (error instanceof ProtocolError) throw error
-        this.assertActive()
-        throw serviceError('context_menus', DIALOG_ERRORS, error)
-      }
-    })
-    // An abort while the host was showing it closes the now-live menu.
-    const cancel = () => this.closeContextMenu(menu)
-    if (signal?.aborted) cancel()
-    else signal?.addEventListener('abort', cancel, { once: true })
-    try {
-      return await menu.result
-    } finally {
-      signal?.removeEventListener('abort', cancel)
-    }
-  }
-
-  private closeContextMenu(menu: ContextMenuRequest): void {
-    if (!menu.live) return
-    menu.fail(
-      new NativeServiceError('context_menus', 'cancelled', 'The context menu was cancelled')
+        }),
+      (menu) =>
+        this.cancelPending(
+          'context_menus',
+          this.application.contextMenus,
+          menu,
+          'The context menu was cancelled',
+          {
+            type: 'close_context_menu',
+            window_id: this.id,
+            menu_id: menu.id,
+          }
+        )
     )
-    this.application.contextMenus.delete(menu.id)
-    // Window close and application shutdown close it natively.
-    if (!this.active || !this.application.running) return
-    void this.application
-      .track(
-        this.application.host
-          .send({ type: 'close_context_menu', window_id: this.id, menu_id: menu.id })
-          .then(
-            () => {},
-            (error: unknown) => {
-              // The user can end it, or the owner close, while this is in flight.
-              if (error instanceof NativeCommandError && error.code === 'invalid_handle') return
-              if (!this.application.running) return
-              throw error
-            }
-          )
-      )
-      .catch(() => {})
   }
 
   receiveContextMenu(event: Extract<WindowEvent, { type: 'context_menu_completed' }>): void {
@@ -1754,22 +1503,8 @@ class Window implements NativeWindow {
           throw serviceError('message_dialogs', DIALOG_ERRORS, error)
         }
       },
-      close: async (id) => {
-        // Window close and application shutdown close it natively.
-        if (!this.active || !this.application.running) return
-        try {
-          await this.application.track(
-            this.application.host
-              .send({ type: 'close_message_dialog', window_id: this.id, dialog_id: id })
-              .then(() => {})
-          )
-        } catch (error) {
-          // The user can finish it, or the owner close, while this is in flight.
-          if (error instanceof NativeCommandError && error.code === 'invalid_handle') return
-          if (!this.application.running) return
-          throw error
-        }
-      },
+      close: (id) =>
+        this.releaseNative({ type: 'close_message_dialog', window_id: this.id, dialog_id: id }),
     }
   }
 
@@ -1788,32 +1523,6 @@ class Window implements NativeWindow {
     return this.messages.show(spec, signal)
   }
 
-  /** Delivery stops at once; the OS dialog is then closed natively. */
-  private closeFileDialog(dialog: FileDialogRequest): void {
-    if (!dialog.live) return
-    dialog.fail(
-      new NativeServiceError('file_dialogs', 'cancelled', 'The file dialog was cancelled')
-    )
-    this.application.dialogs.delete(dialog.id)
-    // Window close and application shutdown close it natively.
-    if (!this.active || !this.application.running) return
-    void this.application
-      .track(
-        this.application.host
-          .send({ type: 'close_file_dialog', window_id: this.id, dialog_id: dialog.id })
-          .then(
-            () => {},
-            (error: unknown) => {
-              // The user can finish it, or the owner close, while this is in flight.
-              if (error instanceof NativeCommandError && error.code === 'invalid_handle') return
-              if (!this.application.running) return
-              throw error
-            }
-          )
-      )
-      .catch(() => {})
-  }
-
   receiveFileDialog(event: Extract<WindowEvent, { type: 'file_dialog_completed' }>): void {
     if (!this.active) return
     const dialog = this.application.dialogs.get(event.dialog_id)
@@ -1830,16 +1539,135 @@ class Window implements NativeWindow {
     if (!registration) return // Released: the host may already have queued a press.
     if (registration.windowId !== this.id)
       throw new ProtocolError('Native event names a global shortcut outside its owner')
-    this.application.queueCallback({
-      windowId: this.id,
-      shortcut: registration,
-      event: Object.freeze({
-        type: 'global_shortcut',
-        sequence: event.sequence,
-        shortcut: registration.handle,
-        signal: registration.controller.signal,
-      }),
+    this.application.queueCallback(
+      listenerCallback(
+        this.id,
+        registration,
+        Object.freeze({
+          type: 'global_shortcut' as const,
+          sequence: event.sequence,
+          shortcut: registration.handle,
+          signal: registration.controller.signal,
+        })
+      )
+    )
+  }
+
+  /** A failed service request's public error: protocol faults and a closed owner first. */
+  private serviceFailure(
+    service: NativeServiceError['service'],
+    codes: ReadonlySet<string>,
+    error: unknown
+  ): unknown {
+    if (error instanceof ProtocolError) return error
+    this.assertActive()
+    return serviceError(service, codes, error)
+  }
+
+  /**
+   * Allocate, record and natively register one service handle. A failure, or
+   * a revocation while the host registered it, forgets the record again.
+   */
+  private register<R extends { readonly id: number; readonly handle: unknown; revoke(): void }>(
+    service: NativeServiceError['service'],
+    codes: ReadonlySet<string>,
+    registrations: Map<number, R>,
+    create: () => R,
+    send: (registration: R) => Promise<void>,
+    accepted: (registration: R) => boolean,
+    revoked: string
+  ): Promise<R['handle']> {
+    return this.application.service(async () => {
+      this.assertActive()
+      const registration = create()
+      registrations.set(registration.id, registration)
+      try {
+        await send(registration)
+        this.assertActive()
+        if (!accepted(registration)) throw new NativeServiceError(service, 'cancelled', revoked)
+        return registration.handle
+      } catch (error) {
+        registration.revoke()
+        registrations.delete(registration.id)
+        throw this.serviceFailure(service, codes, error)
+      }
     })
+  }
+
+  /**
+   * Natively release a handle already revoked locally. Window close and
+   * application shutdown release it natively instead, and the owner can end
+   * it while the request is in flight (`invalid_handle`).
+   */
+  private releaseNative(command: WindowCommand): Promise<void> {
+    if (!this.active || !this.application.running) return Promise.resolve()
+    return this.application.track(
+      this.application.host.send(command).then(
+        () => {},
+        (error: unknown) => {
+          if (error instanceof NativeCommandError && error.code === 'invalid_handle') return
+          if (!this.application.running) return
+          throw error
+        }
+      )
+    )
+  }
+
+  /**
+   * Show one host-owned dialog or menu and wait for its result. An abort
+   * while the host was showing it closes the now-live request.
+   */
+  private async openPending<P extends PendingRequest>(
+    service: 'file_dialogs' | 'context_menus',
+    signal: AbortSignal | undefined,
+    pending: Map<number, P>,
+    busy: (other: P) => boolean,
+    busyMessage: string,
+    create: () => P,
+    send: (request: P) => Promise<unknown>,
+    cancel: (request: P) => void
+  ): Promise<Awaited<P['result']>> {
+    this.assertActive()
+    checkServiceCancellation(signal, service)
+    const request = await this.application.service(async () => {
+      this.assertActive()
+      checkServiceCancellation(signal, service)
+      for (const other of pending.values())
+        if (busy(other)) throw new NativeServiceError(service, 'limit_exceeded', busyMessage)
+      const request = create()
+      pending.set(request.id, request)
+      try {
+        await send(request)
+        this.assertActive()
+        return request
+      } catch (error) {
+        request.fail(error instanceof Error ? error : new Error(String(error)))
+        pending.delete(request.id)
+        throw this.serviceFailure(service, DIALOG_ERRORS, error)
+      }
+    })
+    const abort = () => cancel(request)
+    if (signal?.aborted) abort()
+    else signal?.addEventListener('abort', abort, { once: true })
+    try {
+      return (await request.result) as Awaited<P['result']>
+    } finally {
+      signal?.removeEventListener('abort', abort)
+    }
+  }
+
+  /** Delivery stops at once; the OS dialog or menu is then closed natively. */
+  private cancelPending<P extends PendingRequest>(
+    service: 'file_dialogs' | 'context_menus',
+    pending: Map<number, P>,
+    request: P,
+    message: string,
+    command: WindowCommand
+  ): void {
+    if (!request.live) return
+    request.fail(new NativeServiceError(service, 'cancelled', message))
+    pending.delete(request.id)
+    void this.releaseNative(command).catch(() => {})
   }
 
   async close(): Promise<void> {
@@ -1875,31 +1703,13 @@ class Window implements NativeWindow {
    * `cancelled`, not as `invalid_handle` after the host acknowledges the close.
    */
   private revokeOwned(): void {
-    for (const registration of this.application.shortcuts.values())
-      if (registration.windowId === this.id) {
-        registration.revoke()
-        this.application.shortcuts.delete(registration.id)
-      }
-    for (const registration of this.application.notifications.values())
-      if (registration.windowId === this.id) {
-        registration.revoke()
-        this.application.notifications.delete(registration.id)
-      }
-    for (const registration of this.application.fileGrants.values())
-      if (registration.windowId === this.id) {
-        registration.revoke()
-        this.application.fileGrants.delete(registration.id)
-      }
-    for (const registration of this.application.processes.values())
-      if (registration.windowId === this.id) {
-        registration.revoke()
-        this.application.processes.delete(registration.id)
-      }
-    for (const registration of this.application.dropTargets.values())
-      if (registration.windowId === this.id) {
-        registration.revoke()
-        this.application.dropTargets.delete(registration.id)
-      }
+    const { shortcuts, notifications, fileGrants, processes, dropTargets } = this.application
+    for (const registrations of [shortcuts, notifications, fileGrants, processes, dropTargets])
+      for (const registration of registrations.values())
+        if (registration.windowId === this.id) {
+          registration.revoke()
+          registrations.delete(registration.id)
+        }
   }
 
   revoke(): void {
@@ -1909,16 +1719,16 @@ class Window implements NativeWindow {
     this.text = new CommittedText(this.application.limits.max_text_bytes)
     this.revokeDisplayChanges()
     this.revokeOwned()
-    for (const dialog of this.application.dialogs.values())
-      if (dialog.windowId === this.id) {
-        dialog.fail(new NativeStateError('invalid_handle', 'File dialog owner window was closed'))
-        this.application.dialogs.delete(dialog.id)
-      }
-    for (const menu of this.application.contextMenus.values())
-      if (menu.windowId === this.id) {
-        menu.fail(new NativeStateError('invalid_handle', 'Context menu owner window was closed'))
-        this.application.contextMenus.delete(menu.id)
-      }
+    const { dialogs, contextMenus } = this.application
+    for (const [pending, name] of [
+      [dialogs, 'File dialog'],
+      [contextMenus, 'Context menu'],
+    ] as const)
+      for (const request of pending.values())
+        if (request.windowId === this.id) {
+          request.fail(new NativeStateError('invalid_handle', name + ' owner window was closed'))
+          pending.delete(request.id)
+        }
     this.messages.revoke()
     this.application.windows.delete(this.id)
     this.resolveClosed()
@@ -2015,20 +1825,23 @@ class Window implements NativeWindow {
           'Native split resize targeted a non-split node or was not advertised'
         )
     }
+    const route = ownedPath.map((item) => item.handle)
     // Input inside a message dialog settles it during ingestion.
-    if (
-      this.messages.receive(
-        event,
-        ownedPath.map((item) => item.handle),
-        node.handle
-      )
-    )
-      return
-    const plan = this.listeners.prepare(
-      event,
-      ownedPath.map((item) => item.handle)
-    )
-    if (plan) this.application.queueCallback({ windowId: this.id, nodeId: node.id, plan })
+    if (this.messages.receive(event, route, node.handle)) return
+    const plan = this.listeners.prepare(event, route)
+    if (!plan) return
+    const nodeId = node.id
+    this.application.queueCallback({
+      windowId: this.id,
+      retain: () => {
+        // A callback whose target or every binding is gone is dropped.
+        const window = this.application.windows.get(this.id)
+        if (window?.isTargetLive(nodeId) && prunePlan(plan)) return true
+        window?.listeners.release(plan)
+        return false
+      },
+      run: () => this.dispatch(nodeId, plan),
+    })
   }
 
   async dispatch(nodeId: number, plan: DispatchPlan): Promise<void> {

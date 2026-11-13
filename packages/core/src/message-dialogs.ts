@@ -5,6 +5,7 @@ import {
   MAX_MESSAGE_DIALOG_LABEL_BYTES as MAX_LABEL_BYTES,
   MAX_MESSAGE_DIALOG_MESSAGE_BYTES as MAX_MESSAGE_BYTES,
   MAX_MESSAGE_DIALOG_TITLE_BYTES as MAX_TITLE_BYTES,
+  ProtocolError,
   type KeyModifiers,
   type MessageDialogOptions as WireMessageDialogOptions,
 } from '@bun-native/protocol'
@@ -261,6 +262,8 @@ export class MessageDialogs {
   ): void {
     const dialog = this.native.get(id)
     if (!dialog) return
+    if (result.kind === 'button' && !dialog.spec.buttons.some((button) => button.id === result.id))
+      throw new ProtocolError('Native message dialog chose a button it was not given')
     this.native.delete(id)
     dialog.nativeId = undefined
     if (dialog.state === 'closing' || dialog.state === 'settled') return

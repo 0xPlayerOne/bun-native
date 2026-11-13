@@ -87,6 +87,15 @@ pub struct PreparedBatch {
 fn error(code: ErrorCode, message: &'static str) -> ModelError {
     ModelError { code, message }
 }
+/// A child's index in its parent. Links are kept consistent, so the child is
+/// listed exactly once.
+fn position(children: &[NodeId], child_id: NodeId) -> Result<usize, ModelError> {
+    children
+        .iter()
+        .position(|id| *id == child_id)
+        .ok_or_else(invalid_handle)
+}
+
 fn invalid_handle() -> ModelError {
     error(
         ErrorCode::InvalidHandle,
@@ -215,7 +224,7 @@ impl Tree {
         if operations.is_empty() || operations.len() > MAX_OPERATIONS {
             return Err(error(
                 ErrorCode::LimitExceeded,
-                "batch must have between 1 and 256 operations",
+                crate::wire::BATCH_SIZE_MESSAGE,
             ));
         }
         if last_node_id > MAX_ID
@@ -340,8 +349,11 @@ impl Tree {
         let verdict = next.validate_attached(&attached);
         debug_assert_eq!(verdict, next.validate_graph());
         verdict?;
+        // One walk finds the modal for every focus request: a batch may hold
+        // thousands of requests, and the modal depends only on the final tree.
+        let mut modal = None;
         for request in &requests {
-            next.validate_request(*request)?;
+            next.validate_request(*request, &mut modal)?;
         }
         next.revision = next_revision(self.revision)?;
         let metrics = BatchMetrics {
@@ -382,7 +394,11 @@ impl Tree {
         active.map(|(_, id)| id)
     }
 
-    fn validate_request(&self, request: ViewRequest) -> Result<(), ModelError> {
+    fn validate_request(
+        &self,
+        request: ViewRequest,
+        modal: &mut Option<Option<NodeId>>,
+    ) -> Result<(), ModelError> {
         match request {
             ViewRequest::Focus(node_id) => {
                 let node = self.nodes.get(node_id).ok_or_else(invalid_handle)?;
@@ -402,8 +418,8 @@ impl Tree {
                     ));
                 }
                 let path = self.path(node_id).unwrap_or_default();
-                if self
-                    .active_modal()
+                if modal
+                    .get_or_insert_with(|| self.active_modal())
                     .is_some_and(|modal| !path.contains(&modal))
                 {
                     return Err(error(
@@ -497,13 +513,39 @@ impl Tree {
             }
             ancestor = self.nodes.get(id).ok_or_else(invalid_handle)?.parent;
         }
+        if old_parent == Some(parent_id) {
+            // A move within one parent shifts only the children between its
+            // old and new places, not the whole list twice.
+            let children = Arc::make_mut(
+                &mut self
+                    .nodes
+                    .get_mut(parent_id)
+                    .ok_or_else(invalid_handle)?
+                    .children,
+            );
+            if index >= children.len() {
+                return Err(error(
+                    ErrorCode::InvalidCommand,
+                    "insert index exceeds child count after detaching",
+                ));
+            }
+            let from = position(children, child_id)?;
+            if from < index {
+                children[from..=index].rotate_left(1);
+            } else {
+                children[index..=from].rotate_right(1);
+            }
+            return Ok(());
+        }
         if let Some(old_parent) = old_parent {
-            let siblings = &mut self
-                .nodes
-                .get_mut(old_parent)
-                .ok_or_else(invalid_handle)?
-                .children;
-            Arc::make_mut(siblings).retain(|id| *id != child_id);
+            let siblings = Arc::make_mut(
+                &mut self
+                    .nodes
+                    .get_mut(old_parent)
+                    .ok_or_else(invalid_handle)?
+                    .children,
+            );
+            siblings.remove(position(siblings, child_id)?);
         }
         let children = Arc::make_mut(
             &mut self
@@ -535,12 +577,14 @@ impl Tree {
         }
         let parent = self.nodes.get(node_id).ok_or_else(invalid_handle)?.parent;
         if let Some(parent) = parent {
-            let siblings = &mut self
-                .nodes
-                .get_mut(parent)
-                .ok_or_else(invalid_handle)?
-                .children;
-            Arc::make_mut(siblings).retain(|id| *id != node_id);
+            let siblings = Arc::make_mut(
+                &mut self
+                    .nodes
+                    .get_mut(parent)
+                    .ok_or_else(invalid_handle)?
+                    .children,
+            );
+            siblings.remove(position(siblings, node_id)?);
         }
         let mut pending = vec![node_id];
         while let Some(id) = pending.pop() {

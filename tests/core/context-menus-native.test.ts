@@ -156,4 +156,12 @@ describe('OS context menus (headless real subprocess)', () => {
       await assert.rejects(app.closed, /not given/)
     }, 'foreign-item')
   })
+
+  test('a completion for an unallocated menu fails the channel', async () => {
+    await withPeer(async (app) => {
+      const window = await app.openWindow({ title: 'Unallocated' })
+      void window.showContextMenu(items, at).catch(() => {})
+      await assert.rejects(app.closed, /unallocated context menu/)
+    }, 'unallocated')
+  })
 })

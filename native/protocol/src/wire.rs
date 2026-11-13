@@ -7,14 +7,25 @@ mod decode;
 #[cfg(test)]
 mod oracle_tests;
 
-pub const PROTOCOL_VERSION: u32 = 11;
+pub const PROTOCOL_VERSION: u32 = 12;
 pub const MAX_ID: u64 = 9_007_199_254_740_991;
-pub const MAX_FRAME_BYTES: usize = 65_536;
+/// Largest command frame (Bun to host) in UTF-8 JSON bytes, excluding the
+/// newline. One transaction is one batch, so this bounds a full-window mount:
+/// at most `MAX_OPERATIONS` operations plus `MAX_TEXT_BYTES_PER_WINDOW` of
+/// text, which JSON escaping can double. The reader decodes off the UI thread
+/// and returns its buffer to `RETAINED_FRAME_BYTES` after a larger frame.
+pub const MAX_FRAME_BYTES: usize = 16_777_216;
+/// Largest event frame (host to Bun). Events carry at most one text value or
+/// one bounded service result, never a tree.
+pub const MAX_EVENT_FRAME_BYTES: usize = 65_536;
 pub const MAX_TEXT_BYTES: usize = 16_384;
 pub const MAX_TEXT_BYTES_PER_WINDOW: usize = 4_194_304;
 pub const MAX_TITLE_BYTES: usize = 256;
-pub const MAX_OPERATIONS: usize = 256;
+/// Operations in one batch: four per node of a full window, which covers a
+/// whole-window replacement (deletes, creates, inserts and sets) in one batch.
+pub const MAX_OPERATIONS: usize = 16_384;
 pub const MAX_NODES_PER_WINDOW: usize = 4_096;
+pub(crate) const BATCH_SIZE_MESSAGE: &str = "batch must have between 1 and 16384 operations";
 pub const MAX_WINDOWS: usize = 16;
 pub const MAX_DEPTH: usize = 64;
 /// Overlays nested inside overlays, the outermost counting as one. GPUI
@@ -1042,7 +1053,7 @@ impl Command {
             } => {
                 revision(*base_revision)?;
                 if operations.is_empty() || operations.len() > MAX_OPERATIONS {
-                    return Err("batch must have between 1 and 256 operations");
+                    return Err(BATCH_SIZE_MESSAGE);
                 }
                 for operation in operations {
                     match operation {

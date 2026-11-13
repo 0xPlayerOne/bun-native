@@ -10,6 +10,7 @@ import {
   type TerminalSize,
 } from '@bun-native/protocol'
 import type { NativeFileGrant } from './files.ts'
+import { Registration } from './registration.ts'
 import type { Listener } from './types.ts'
 
 export interface ProcessOptions {
@@ -146,27 +147,23 @@ function processCall(name: string, value: unknown): ProcessCall {
 }
 
 /** Internal registry entry. Consumers only receive its frozen handle. */
-export class ProcessRegistration {
+export class ProcessRegistration extends Registration<ProcessEvent> {
   readonly handle: NativeProcess
-  readonly controller = new AbortController()
-  listener: Listener<ProcessEvent> | undefined
   exit: NativeProcessExit | undefined
   /** The highest output chunk received from the host. */
   chunk = 0
-  private revoked = false
   private exited = false
-  private releasing: Promise<void> | undefined
 
   constructor(
-    readonly id: number,
-    readonly windowId: number,
+    id: number,
+    windowId: number,
     executable: string,
     terminal: boolean,
     listener: Listener<ProcessEvent>,
     call: (registration: ProcessRegistration, request: ProcessCall) => Promise<void>,
     release: (registration: ProcessRegistration) => Promise<void>
   ) {
-    this.listener = listener
+    super(id, windowId, listener)
     const run = (name: string, value?: unknown) => {
       try {
         return call(this, processCall(name, value))
@@ -189,15 +186,8 @@ export class ProcessRegistration {
       closeInput: () => run('close'),
       resize: (size: TerminalSize) => run('resize', size),
       signal: (signal: ProcessSignal) => run('signal', signal),
-      release: () => {
-        this.releasing ??= this.revoked ? Promise.resolve() : release(this)
-        return this.releasing
-      },
+      release: () => this.release(release),
     })
-  }
-
-  get live(): boolean {
-    return !this.revoked
   }
 
   /** True after the host reported the exit; no further output follows. */
@@ -207,12 +197,5 @@ export class ProcessRegistration {
 
   end(): void {
     this.exited = true
-  }
-
-  /** Synchronous local revocation; the native group is stopped separately. */
-  revoke(): void {
-    this.revoked = true
-    this.listener = undefined
-    this.controller.abort()
   }
 }

@@ -2,7 +2,7 @@
 
 use crate::{
     write_event, DialogId, Event, EventSequence, FileDialogResult, ServicePolicy, WindowId,
-    MAX_DIALOG_PATHS, MAX_FRAME_BYTES,
+    MAX_DIALOG_PATHS, MAX_EVENT_FRAME_BYTES,
 };
 
 #[test]
@@ -55,8 +55,8 @@ fn a_maximal_selection_can_exceed_the_frame_and_must_be_measured() {
     assert!(small.validate().is_ok());
     let mut bytes = Vec::new();
     write_event(&mut bytes, &small).unwrap();
-    assert!(bytes.len() < MAX_FRAME_BYTES);
+    assert!(bytes.len() < MAX_EVENT_FRAME_BYTES);
     let large = event(vec![format!("/{}", "a".repeat(1_000)); MAX_DIALOG_PATHS]);
     assert!(large.validate().is_ok());
-    assert!(serde_json::to_vec(&large).unwrap().len() > MAX_FRAME_BYTES);
+    assert!(serde_json::to_vec(&large).unwrap().len() > MAX_EVENT_FRAME_BYTES);
 }

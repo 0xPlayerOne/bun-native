@@ -157,7 +157,9 @@ public packages with [`scripts/registry-packages.ts`](../scripts/registry-packag
 That script changes only `package.json` (no `private`, the release version, the
 same version for every `@bun-native` dependency, React, its types and Solid as
 exact peer dependencies so an application loads one copy, repository metadata
-and `publishConfig`) and the README. It then publishes dependencies before
+and `publishConfig`, and for the CLI `bunNative.templates`: the dependencies of
+the projects `bun-native create` makes outside a checkout, from the package set's
+consumer definitions at the release version) and the README. It then publishes dependencies before
 dependents and skips any version already on npm, so a re-run after a partial
 publish completes the set.
 

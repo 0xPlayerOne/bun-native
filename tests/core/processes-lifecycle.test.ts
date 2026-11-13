@@ -240,6 +240,25 @@ describe('owned process lifecycle edges (headless subprocess)', () => {
     }, 'ack-failure')
   })
 
+  test('a local runtime rejection of an acknowledgement ends the application with it', async () => {
+    await withProcesses(async (app) => {
+      // The runtime's own pending-command cap rejects with a plain Error, not
+      // a native reply; losing that credit would stall the stream silently.
+      const host = (app as unknown as { host: { send(command: { type: string }): unknown } }).host
+      const send = host.send.bind(host)
+      host.send = (command) =>
+        command.type === 'acknowledge_process_output'
+          ? Promise.reject(new Error('Native command limit exceeded'))
+          : send(command)
+      const window = await app.openWindow({ title: 'Ack limit' })
+      await window.spawnProcess('shell', {}, () => {})
+      await app.closed.catch(() => {})
+      expect(((await failure(app.shutdown())) as Error).message).toBe(
+        'Native command limit exceeded'
+      )
+    }, 'normal')
+  })
+
   test('closing the window settles an in-flight control as cancelled', async () => {
     await withProcesses(async (app, directory) => {
       const window = await app.openWindow({ title: 'Close' })

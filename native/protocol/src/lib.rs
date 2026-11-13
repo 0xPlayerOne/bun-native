@@ -1,5 +1,5 @@
 //! Bun Native's bounded, versioned private host protocol and atomic tree model.
-//! Protocol 11 requires explicit per-operation service policy; no older-version decoder.
+//! Protocol 12 sends one transaction as one batch; no older-version decoder.
 
 mod app_menu;
 mod dialogs;

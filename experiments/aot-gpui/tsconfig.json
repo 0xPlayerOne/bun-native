@@ -1,13 +1,4 @@
 {
-  "compilerOptions": {
-    "target": "ESNext",
-    "module": "Preserve",
-    "moduleResolution": "Bundler",
-    "strict": true,
-    "noEmit": true,
-    "skipLibCheck": true,
-    "types": ["bun"],
-    "noUncheckedIndexedAccess": true
-  },
-  "include": ["*.ts"]
+  "extends": "../../tsconfig.json",
+  "include": ["*.ts", "../../scripts/solid/preset.d.ts"]
 }
