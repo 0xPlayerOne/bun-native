@@ -2,7 +2,7 @@ import { afterAll, beforeAll, describe, expect, test } from 'bun:test'
 import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
-import { compileApplication } from '../../experiments/aot-gpui/compile.ts'
+import { compileApplication } from '../../scripts/native/compile.ts'
 import { observeTemplate } from '../native/cli-template-owner.ts'
 
 const repository = resolve(import.meta.dir, '../..')

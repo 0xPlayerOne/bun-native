@@ -2,7 +2,7 @@ import { afterAll, expect, test } from 'bun:test'
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { inspectBunRuntime } from '../../experiments/aot-gpui/inspect-runtime.ts'
+import { inspectBunRuntime } from '../../scripts/native/inspect-runtime.ts'
 
 const directory = mkdtempSync(join(tmpdir(), 'bun-native-format-inspect-'))
 afterAll(() => rmSync(directory, { recursive: true, force: true }))
