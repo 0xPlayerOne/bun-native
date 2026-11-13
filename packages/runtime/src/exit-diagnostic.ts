@@ -46,10 +46,7 @@ function escapeRegExp(text: string): string {
  * Removes inherited environment values, assignments and credential-shaped
  * tokens from native output. Over-redaction is acceptable; leaks are not.
  */
-function redactDiagnostic(
-  text: string,
-  environment: Readonly<Record<string, string | undefined>>
-): string {
+function redact(text: string, environment: Readonly<Record<string, string | undefined>>): string {
   let redacted = text.replace(/\p{Cc}/gu, (control) =>
     control === '\n' || control === '\t' ? control : ''
   )
@@ -72,6 +69,22 @@ function redactDiagnostic(
     .replace(/\b[A-Za-z0-9+_-]{32,}={0,2}/g, REDACTED)
 }
 
+/**
+ * Captured native stderr, safe to log or record. A clipped first line can hold
+ * the end of a secret that no longer matches its full environment value, so it
+ * is dropped before redaction.
+ */
+export function redactDiagnostic(
+  stderr: string,
+  clipped: boolean,
+  environment: Readonly<Record<string, string | undefined>>
+): string {
+  return redact(
+    clipped ? stderr.slice(stderr.indexOf('\n') + 1 || stderr.length) : stderr,
+    environment
+  )
+}
+
 export function exitDiagnostic(input: {
   exitCode: number | null
   signal: string | null
@@ -88,17 +101,12 @@ export function exitDiagnostic(input: {
   panicReport?: string | null
   environment: Readonly<Record<string, string | undefined>>
 }): Readonly<NativeHostExitDiagnostic> {
-  // A clipped first line can hold the end of a secret that no longer matches
-  // its full environment value, so it is dropped before redaction.
-  const stderr = input.stderrClipped
-    ? input.stderr.slice(input.stderr.indexOf('\n') + 1 || input.stderr.length)
-    : input.stderr
-  const redacted = redactDiagnostic(stderr, input.environment)
+  const redacted = redactDiagnostic(input.stderr, input.stderrClipped, input.environment)
   let panic = PANIC_LOCATION.exec(redacted)
   // The kept report leads the tail only when the captured stderr lost it.
   const report =
     !panic && input.panicReport
-      ? redactDiagnostic(input.panicReport, input.environment)
+      ? redact(input.panicReport, input.environment)
           .trimEnd()
           .slice(0, MAX_DIAGNOSTIC_TAIL / 2)
       : null

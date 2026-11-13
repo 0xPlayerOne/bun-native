@@ -623,4 +623,27 @@ describe('Solid universal adapter over the public core (headless subprocess)', (
       'Solid native rendering requires Bun --conditions=browser (reactive Solid exports)'
     )
   })
+
+  test('an error in a later reactive update ends only its render root', () =>
+    withApp(async (app) => {
+      const window = await app.openWindow({ title: 'Solid reactive failure' })
+      const [value, setValue] = createSignal(0)
+      const failed = render(() => {
+        const node = createElement('text')
+        createEffect(() => {
+          if (value() === 1) throw new Error('Reactive update failed')
+          setProp(node, 'text', String(value()))
+        })
+        return node
+      }, window)
+      const sibling = render(() => label('Unaffected'), window)
+      await Promise.all([failed.ready, sibling.ready])
+      // The setter (usually a native listener) does not receive the error.
+      setValue(1)
+      await assert.rejects(failed.closed, /Reactive update failed/)
+      expect(app.diagnostics.windows).toBe(1)
+      await sibling.flush()
+      await sibling.dispose()
+      await window.close()
+    }))
 })

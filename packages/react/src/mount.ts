@@ -57,7 +57,7 @@ class Root implements ReactRenderRoot {
           this.errors.uncaught,
           this.errors.caught,
           this.errors.recoverable,
-          this.errors.transition,
+          this.errors.transitionIndicator,
           null
         )
         onCleanup(() => {

@@ -795,7 +795,12 @@ export class NativeHost implements AsyncIterable<HostEvent> {
       clearTimeout(drainDeadline)
       this.cancelOutput()
       await Promise.allSettled(streams)
-      this.startupTrace?.finished(this.process.exitCode, this.stderrTail, this.process.pid)
+      this.startupTrace?.finished(
+        this.process.exitCode,
+        this.stderrTail,
+        this.stderrClipped,
+        this.process.pid
+      )
     }
   }
 
@@ -1038,7 +1043,7 @@ export class NativeHost implements AsyncIterable<HostEvent> {
   private fail(cause: unknown): void {
     if (this.failure) return
     this.failure = cause instanceof Error ? cause : new Error(String(cause))
-    this.startupTrace?.failure(this.failure, this.stderrTail, this.process.pid)
+    this.startupTrace?.failure(this.failure, this.stderrTail, this.stderrClipped, this.process.pid)
     this.phase = 'closed'
     for (const request of this.pending.values()) {
       clearTimeout(request.timer)

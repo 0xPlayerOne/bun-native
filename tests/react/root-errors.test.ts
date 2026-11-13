@@ -21,10 +21,28 @@ test('retained React error callbacks cannot retain or invoke released owners', (
   expect(owner).toEqual({ terminate: undefined, report: undefined })
   callbacks.uncaught(new Error('late failure'))
   callbacks.recoverable(new Error('late report'), {})
-  callbacks.caught()
-  callbacks.transition()
+  const log = spyOn(console, 'error').mockImplementation(() => {})
+  try {
+    callbacks.caught(new Error('late caught'))
+    callbacks.transitionIndicator()
+    expect(log).not.toHaveBeenCalled()
+  } finally {
+    log.mockRestore()
+  }
   callbacks.release()
   expect(calls).toEqual([first, first])
+})
+
+test('an error a boundary handled is logged, not dropped', () => {
+  const callbacks = createRootErrors({ terminate: () => {}, report: undefined })
+  const caught = new Error('handled by a boundary')
+  const log = spyOn(console, 'error').mockImplementation(() => {})
+  try {
+    callbacks.caught(caught)
+    expect(log.mock.calls).toEqual([[caught]])
+  } finally {
+    log.mockRestore()
+  }
 })
 
 test('recoverable reports freeze a copy and preserve a thrown reporter failure', () => {

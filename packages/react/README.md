@@ -191,7 +191,8 @@ callback receiving a frozen React error-info object. Its default is
 `console.error`. If the reporter itself throws, that error terminates only this
 root. Uncaught effect or ref-cleanup errors reject `dispose()` and `closed`
 after the shared cleanup path releases owned native resources. Handled React
-error boundaries retain their usable fallback and root.
+error boundaries retain their usable fallback and root; the handled error is
+logged with `console.error`, as React DOM does.
 
 Hydration, portals, host form actions, hidden Suspense/Activity subtrees, view
 transitions, fragment refs, DOM selectors and presentation-timing callbacks are not

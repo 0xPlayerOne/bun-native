@@ -2022,19 +2022,10 @@ class Window implements NativeWindow {
           'Native split resize targeted a non-split node or was not advertised'
         )
     }
+    const route = ownedPath.map((item) => item.handle)
     // Input inside a message dialog settles it during ingestion.
-    if (
-      this.messages.receive(
-        event,
-        ownedPath.map((item) => item.handle),
-        node.handle
-      )
-    )
-      return
-    const plan = this.listeners.prepare(
-      event,
-      ownedPath.map((item) => item.handle)
-    )
+    if (this.messages.receive(event, route, node.handle)) return
+    const plan = this.listeners.prepare(event, route)
     if (plan) this.application.queueCallback({ windowId: this.id, nodeId: node.id, plan })
   }
 

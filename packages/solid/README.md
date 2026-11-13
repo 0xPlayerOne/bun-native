@@ -70,7 +70,7 @@ Native services and dialogs are methods of the core window you pass to `render`;
 | `ready`       | Resolves after the initial native batch is acknowledged; component/validation errors reject it                                                       |
 | `flush()`     | Waits until scheduled reactive work has native acknowledgements; it does not promise display presentation                                            |
 | `dispose()`   | Idempotently stops the Solid owner, revokes listeners and removes only this render root's native subtree                                             |
-| `closed`      | Completes after unmount or native window close; asynchronous renderer failures reject it                                                             |
+| `closed`      | Completes after unmount or native window close; asynchronous renderer failures, and errors from later reactive updates, reject it                    |
 | `diagnostics` | Owned native-node/listener counts, pending work and acknowledged create/set/insert/remove operation counts; these are not native memory measurements |
 
 Each render root owns a native container under the existing window root. Several independent render roots can share a window. Adapter nodes cannot move between roots or masquerade as core handles. Synchronous Solid mutations coalesce into one queued/in-flight batch; changes arriving during acknowledgement become a subsequent snapshot. There is no unbounded per-property transaction queue.
