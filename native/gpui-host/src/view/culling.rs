@@ -28,7 +28,7 @@ use super::NativeView;
 use bun_native_protocol::{
     Direction, Element as NativeElement, JustifyContent, Node, NodeId, Tree,
 };
-use gpui::{Bounds, Div, Pixels, ScrollHandle, Size, WeakEntity, Window, point, px, size};
+use gpui::{Bounds, Pixels, ScrollHandle, Size, WeakEntity, Window, point, px, size};
 use std::cell::{Cell, RefCell};
 use std::collections::{HashMap, HashSet};
 use std::ops::Range;
@@ -271,28 +271,28 @@ impl<'a> Viewport<'a> {
 
     /// Plans a box's children when it is long enough to cull, inside a scroll
     /// viewport, and laid out so a run of fixed sizes keeps its geometry.
-    /// `base` gains the measuring listener; GPUI allows one per `Div`.
+    /// With the plan comes the listener that measures the rendered children;
+    /// the box must run it on its children's prepainted bounds.
     pub(super) fn plan(
         self,
         tree: &Tree,
         node_id: NodeId,
         node: &Node,
         tracked: bool,
-        base: Div,
-    ) -> (Div, Option<Plan>) {
+    ) -> Option<(Plan, ChildrenListener)> {
         let (Some(frame), Some(scope)) = (self.frame, self.scroll) else {
-            return (base, None);
+            return None;
         };
         let children = node.children();
         let NativeElement::Box { style, .. } = node.element() else {
-            return (base, None);
+            return None;
         };
         if children.len() < MIN_CULLED_CHILDREN
             || style
                 .justify_content
                 .is_some_and(|justify| justify != JustifyContent::Start)
         {
-            return (base, None);
+            return None;
         }
         let row = style.direction == Some(Direction::Row);
         let gap = px(style.gap.unwrap_or(0.) as f32);
@@ -316,25 +316,28 @@ impl<'a> Viewport<'a> {
             frame.culled.set(frame.culled.get() + culled);
             (slots, laid)
         };
-        let base = base.on_children_prepainted({
-            let measuring = Measuring {
-                children: children.into(),
-                laid: laid.into(),
-                measure,
-                handle: scope.handle.clone(),
-                tracked,
-                row,
-                view: frame.view.clone(),
-            };
-            move |bounds, window, _| measuring.measured(&bounds, window)
-        });
+        let measuring = Measuring {
+            children: children.into(),
+            laid: laid.into(),
+            measure,
+            handle: scope.handle.clone(),
+            tracked,
+            row,
+            view: frame.view.clone(),
+        };
         let plan = Plan {
             slots,
             accessible: frame.accessible,
         };
-        (base, Some(plan))
+        Some((
+            plan,
+            Box::new(move |bounds, window| measuring.measured(bounds, window)),
+        ))
     }
 }
+
+/// Runs on a box's children's prepainted bounds (`Div::on_children_prepainted`).
+pub(super) type ChildrenListener = Box<dyn Fn(&[Bounds<Pixels>], &mut Window)>;
 
 /// Splits a box's children into rendered children and runs of culled ones,
 /// from the last measure: a child is culled when it was measured, is `clean`

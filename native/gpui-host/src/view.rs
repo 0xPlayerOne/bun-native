@@ -64,6 +64,8 @@ pub(crate) struct NativeView {
     /// Viewports scrolling a child into view this frame: the offset is only
     /// known after their prepaint, so they cull nothing until then.
     revealing: RefCell<BTreeSet<NodeId>>,
+    /// Nodes a reveal places from their parent's prepaint, by parent.
+    nested_reveals: RefCell<BTreeMap<NodeId, Vec<keyboard::Reveal>>>,
     culling: Culling,
     popups: Popups,
     weak: WeakEntity<NativeView>,
@@ -138,6 +140,7 @@ impl NativeView {
             type_ahead: TypeAhead::default(),
             held_scrolls: RefCell::default(),
             revealing: RefCell::default(),
+            nested_reveals: RefCell::default(),
             culling: Culling::default(),
             popups: Popups::default(),
             weak: cx.weak_entity(),
@@ -289,6 +292,7 @@ impl NativeView {
                             window_id: self.window_id,
                             node_id,
                             events: self.events.clone(),
+                            view: cx.weak_entity(),
                         };
                         let input = cx.new(|cx| {
                             TextInput::new(value.clone(), placeholder.clone(), policy, binding, cx)
@@ -390,6 +394,19 @@ impl NativeView {
         }
     }
 
+    /// An assistive technology's focus request on a control: focus it and
+    /// scroll it into view, as Tab does. GPUI's own handling only focuses.
+    fn assistive_focus(
+        &self,
+        node_id: NodeId,
+        cx: &Context<Self>,
+    ) -> impl FnMut(Option<&accesskit::ActionData>, &mut Window, &mut App) + 'static {
+        let view = cx.weak_entity();
+        move |_, window, cx| {
+            let _ = view.update(cx, |view, cx| view.move_focus(node_id, window, cx));
+        }
+    }
+
     fn label(&self, node_id: NodeId) -> SharedString {
         self.index
             .labels
@@ -464,7 +481,8 @@ impl NativeView {
                 .expect("button reconciled before render");
             skeleton = skeleton
                 .track_focus(focus)
-                .on_click(cx.listener(move |view, _, _, cx| view.click(node_id, cx)));
+                .on_click(cx.listener(move |view, _, _, cx| view.click(node_id, cx)))
+                .on_a11y_action(accesskit::Action::Focus, self.assistive_focus(node_id, cx));
         }
         skeleton.children(
             node.children()
@@ -488,12 +506,15 @@ impl NativeView {
         let node = tree
             .node(node_id)
             .expect("validated tree contains every child");
-        let mut base = div();
+        // GPUI keeps one children-prepainted listener per `Div`; these share it.
+        let mut listeners: Vec<culling::ChildrenListener> = Vec::new();
         // A split reports each pane's child from inside its pane wrapper.
         if let Some(layout) = layout
             && !matches!(node.element(), NativeElement::Split { .. })
+            && let Some(listener) =
+                layout.children_listener(node.children(), 0, self.scrolls.get(&node_id))
         {
-            base = layout.children(base, node.children(), 0, self.scrolls.get(&node_id));
+            listeners.push(Box::new(move |bounds, window| listener(bounds, window)));
         }
         let scroll = self.scrolls.get(&node_id);
         let inner = viewport.enter(
@@ -501,7 +522,25 @@ impl NativeView {
             self.revealing.borrow().contains(&node_id),
             scroll.is_some_and(|handle| self.pinned_to_end(node_id, node, handle)),
         );
-        let (mut base, plan) = inner.plan(tree, node_id, node, scroll.is_some(), base);
+        let plan = inner
+            .plan(tree, node_id, node, scroll.is_some())
+            .map(|(plan, measuring)| {
+                listeners.push(measuring);
+                plan
+            });
+        if !self.nested_reveals.borrow().is_empty()
+            && let Some(listener) = self.reveal_listener(tree, node_id, plan.as_ref(), cx)
+        {
+            listeners.push(listener);
+        }
+        let mut base = div();
+        if !listeners.is_empty() {
+            base = base.on_children_prepainted(move |bounds, window, _| {
+                for listener in &listeners {
+                    listener(&bounds, window);
+                }
+            });
+        }
         pointer.target(&mut base, node_id);
         let mut base = base.id(node_id.get());
         style::element(base.style(), node.element(), node_id == tree.root_id());
@@ -586,6 +625,7 @@ impl NativeView {
                             window.focus(&focus, cx)
                         })
                         .on_click(cx.listener(move |view, _, _, cx| view.click(node_id, cx)))
+                        .on_a11y_action(accesskit::Action::Focus, self.assistive_focus(node_id, cx))
                         .on_action(cx.listener(move |view, _: &ActivateButton, _, cx| {
                             view.click(node_id, cx)
                         }));
@@ -804,6 +844,7 @@ impl Render for NativeView {
         // Requests issued before this frame resolve in its prepaint.
         self.held_scrolls.borrow_mut().clear();
         self.revealing.borrow_mut().clear();
+        self.nested_reveals.borrow_mut().clear();
         let phase_frame = phase_started.and_then(|started| {
             crate::phases::render(self.window_id, started, state.tree.nodes().count(), culled)
         });

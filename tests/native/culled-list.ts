@@ -15,7 +15,10 @@
  * The accessible run also reads the whole tree through the independent AT-SPI
  * client (tests/native/atspi-probe.py): every row's label and button is
  * present in order, wherever it is scrolled, and an AT focus request on a far
- * button focuses and reveals it. The host phase trace shows that each run
+ * button focuses and reveals it. Each run then puts the rows inside a list
+ * box that wraps them, far taller than the view: Tab, `scrollIntoView` and
+ * (accessible run) an AT focus request reveal the row itself, not the top of
+ * the list. The host phase trace shows that each run
  * culled rows: `BUN_NATIVE_PHASE_TRACE` names a file that does not exist yet,
  * inherited by each host, which writes it at shutdown; the fixture reads and
  * removes it after each run.
@@ -107,8 +110,23 @@ type Accessible = { role: string; name: string; states: string[]; text?: string;
 const headingElement = (step: number) =>
   ({ kind: 'button', text: 'Before list ' + step, style: { height: HEADING } }) as const
 
-async function scene(window: NativeWindow) {
+type Scene = {
+  heading: NativeNode<'button'>
+  view: NativeNode<'box'>
+  rows: NativeNode<'box'>[]
+  buttons: NativeNode<'button'>[]
+}
+
+/**
+ * The heading and a scroll view of ROWS rows, replacing `previous`; `wrapped`
+ * puts the rows inside one list box in the view instead of directly in it.
+ */
+async function scene(window: NativeWindow, wrapped = false, previous?: Scene): Promise<Scene> {
   return window.batch((batch) => {
+    if (previous) {
+      batch.remove(previous.heading)
+      batch.remove(previous.view)
+    }
     batch.set(window.root, { kind: 'box', style: { direction: 'column', background: 0xffffff } })
     const heading = batch.create(headingElement(0))
     batch.append(window.root, heading)
@@ -117,6 +135,15 @@ async function scene(window: NativeWindow) {
       style: { direction: 'column', overflow: 'scroll_y', height: VIEW, flex_shrink: 0 },
     })
     batch.append(window.root, view)
+    let list: NativeNode<'box'> = view
+    if (wrapped) {
+      list = batch.create({
+        kind: 'box',
+        style: { direction: 'column', flex_shrink: 0 },
+        accessible_role: 'list',
+      })
+      batch.append(view, list)
+    }
     const rows: NativeNode<'box'>[] = []
     const buttons: NativeNode<'button'>[] = []
     for (let index = 0; index < ROWS; index += 1) {
@@ -127,7 +154,7 @@ async function scene(window: NativeWindow) {
       batch.append(row, batch.create({ kind: 'text', text: 'Row ' + index }))
       const button = batch.create({ kind: 'button', text: 'Open ' + index })
       batch.append(row, button)
-      batch.append(view, row)
+      batch.append(list, row)
       rows.push(row)
       buttons.push(button)
     }
@@ -280,9 +307,8 @@ async function qualify(accessible: boolean) {
         labels: labels.length,
       })
 
-      // An AT focus request on a culled button focuses it (GPUI moves focus
-      // without scrolling, with or without culling); Tab continues from it
-      // and reveals the next row.
+      // An AT focus request on a culled button focuses and reveals it; Tab
+      // continues from it and reveals the next row.
       const before = focused.length
       await run([atspiPython!, '-I', probe, 'act', TITLE, 'push-button', 'Open 140', 'focus'])
       await waitFor(() => focused.length > before, 'AT focus on a culled button')
@@ -290,9 +316,56 @@ async function qualify(accessible: boolean) {
       const after = await dump()
       const target = after.find((entry) => entry.name === 'Open 140')
       assert(target?.states.includes('focused'), 'AT-SPI reports the focused button')
+      record('accessible.atFocus', await expectPainted('at-focus', 140))
       await press('Tab')
       await waitFor(() => focused.at(-1) === 141, 'Tab after AT focus')
-      record('accessible.atFocus', await expectPainted('at-focus', 141))
+      record('accessible.atFocusTab', await expectPainted('at-focus-tab', 141))
+    }
+
+    // The rows inside one list box, far taller than the view: each reveal
+    // scrolls the view to the row itself, not to the top of the list.
+    const wrapped = await scene(window, true, nodes)
+    const wrappedFocused: number[] = []
+    wrapped.buttons.forEach((button, index) =>
+      window.on(button, 'focus', (event) => {
+        if (event.node === button) wrappedFocused.push(index)
+      })
+    )
+    record(`${label}.wrappedTop`, await expectPainted('wrapped-top', 0))
+    // Focus left with the replaced scene: Tab reaches the first row button
+    // through the new heading.
+    for (let attempt = 0; attempt < 3 && wrappedFocused.length === 0; attempt += 1) {
+      await press('Tab')
+      await Bun.sleep(100)
+    }
+    await waitFor(() => wrappedFocused.length > 0, 'Tab reaches the wrapped rows')
+    assert.deepEqual(wrappedFocused, [0], 'Tab enters the list at its first button')
+    const WRAPPED_STEPS = 30
+    for (let step = 1; step <= WRAPPED_STEPS; step += 1) {
+      await window.batch((batch) => batch.set(wrapped.heading, headingElement(step)))
+      await Bun.sleep(30)
+      await press('Tab')
+      await waitFor(
+        () => wrappedFocused.length === step + 1,
+        `Tab ${step} focuses a wrapped button`
+      )
+    }
+    assert.deepEqual(
+      wrappedFocused,
+      Array.from({ length: WRAPPED_STEPS + 1 }, (_, index) => index),
+      'Tab walks the wrapped buttons in order'
+    )
+    record(`${label}.wrappedTabbed`, await expectPainted('wrapped-tabbed', WRAPPED_STEPS))
+    await window.batch((batch) => batch.scrollIntoView(wrapped.rows[120]!))
+    record(`${label}.wrappedScrollIntoView`, await expectPainted('wrapped-scroll-into-view', 120))
+    if (accessible) {
+      await window.batch((batch) => batch.scrollTo(wrapped.view, { y: 0 }))
+      await expectPainted('wrapped-scroll-top', 0)
+      const before = wrappedFocused.length
+      await run([atspiPython!, '-I', probe, 'act', TITLE, 'push-button', 'Open 140', 'focus'])
+      await waitFor(() => wrappedFocused.length > before, 'AT focus on a wrapped button')
+      assert.equal(wrappedFocused.at(-1), 140, 'the requested wrapped button is focused')
+      record('accessible.wrappedAtFocus', await expectPainted('wrapped-at-focus', 140))
     }
 
     record(`${label}.shots`, shots)
