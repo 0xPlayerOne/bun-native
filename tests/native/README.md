@@ -48,9 +48,12 @@ rows, most of them culled by the host, at GPUI X11 scale 1 or 2. Real Tab and
 Shift-Tab walk the row buttons in order and reveal each one, `scrollIntoView`,
 `scrollTo` and a restyle of a culled row are checked in captured pixels, and
 with AT-SPI on, the independent client reads every row's label and button in
-order and focuses a culled button. It needs `BUN_NATIVE_A11Y_EVIDENCE`,
-`BUN_NATIVE_ATSPI_PYTHON` and `BUN_NATIVE_PHASE_TRACE` (a new file path), and
-reads the host phase trace to confirm that rows were culled.
+order, focuses and reveals a culled button and clicks another. The rows are
+then wrapped in one list box far taller than the view, and Tab,
+`scrollIntoView` and an AT focus request must reveal the row itself, not the
+top of the list. It needs `BUN_NATIVE_A11Y_EVIDENCE`, `BUN_NATIVE_ATSPI_PYTHON`
+and `BUN_NATIVE_PHASE_TRACE` (a new file path), and reads the host phase trace
+to confirm that rows were culled.
 
 `tests/native/solid-workspace-terminal.tsx` and
 `tests/native/react-workspace-terminal.tsx` are self-driving through

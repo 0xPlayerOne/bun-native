@@ -181,7 +181,7 @@ export interface NativeBatch {
   scrollTo(node: NativeNode<ContainerKind>, offset: ScrollOffset): void
   /**
    * Requires `scroll_control_v1`. Scroll every scrolling ancestor inside the
-   * node's own layer so the ancestor's child on the node's route is visible.
+   * node's own layer, by the least amount, so the node is visible in it.
    */
   scrollIntoView(node: NativeNode): void
 }

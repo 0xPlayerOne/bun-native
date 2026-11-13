@@ -634,12 +634,22 @@ impl Render for TextInput {
             return field;
         }
         let input = cx.entity();
-        let field = field.on_a11y_action(accesskit::Action::SetTextSelection, {
-            let input = input.clone();
-            move |data, window, cx| {
-                input.update(cx, |input, cx| input.assistive_action(data, window, cx))
-            }
-        });
+        let field = field
+            .on_a11y_action(accesskit::Action::Focus, {
+                let input = input.clone();
+                move |_, window, cx| {
+                    input.update(cx, |input, cx| {
+                        window.focus(&input.focus_handle, cx);
+                        input.binding.assistive_focus(cx);
+                    })
+                }
+            })
+            .on_a11y_action(accesskit::Action::SetTextSelection, {
+                let input = input.clone();
+                move |data, window, cx| {
+                    input.update(cx, |input, cx| input.assistive_action(data, window, cx))
+                }
+            });
         // A read-only input offers no edit actions, so platforms report it as
         // not settable; the edit path would reject them anyway.
         let field = if policy.editable() {

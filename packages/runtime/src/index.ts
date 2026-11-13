@@ -397,6 +397,10 @@ export class NativeHost implements AsyncIterable<HostEvent> {
       stdin: 'pipe',
       stdout: 'pipe',
       stderr: 'pipe',
+      // The host inherits the environment as this process holds it now. The
+      // pinned Bun otherwise passes the environment it started with, without
+      // later `process.env` changes (such as an opt-in host trace).
+      env: { ...process.env },
       // A terminal's Ctrl-C signals its whole foreground process group. The
       // application owns the host's lifetime and ends it through `shutdown`
       // (or closed stdin), so the host runs in its own session on POSIX.

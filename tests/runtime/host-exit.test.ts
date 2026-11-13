@@ -137,6 +137,18 @@ describe('native host exit diagnostics (headless protocol peer)', () => {
     expect(await host.exited).toBe(3)
   })
 
+  test('the host inherits environment changes made after the application started', async () => {
+    // The secret is set in `beforeEach`, long after this process started.
+    const error = await rejectedError(
+      NativeHost.launch({
+        executable: process.execPath,
+        args: [fixture, 'environment'],
+      })
+    )
+    expect(error).toBeInstanceOf(NativeHostExitError)
+    expect((error as NativeHostExitError).diagnostic.exitCode).toBe(24)
+  })
+
   test('an exit during startup rejects launch with a startup-phase diagnostic', async () => {
     const error = await rejectedError(
       NativeHost.launch({

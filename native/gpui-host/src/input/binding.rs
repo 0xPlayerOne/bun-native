@@ -1,6 +1,7 @@
+use crate::view::NativeView;
 use crate::{channel::EventSink, state::WindowState};
 use bun_native_protocol::{Event, MAX_EVENT_FRAME_BYTES, NodeId, WindowId};
-use gpui::{App, SharedString};
+use gpui::{App, SharedString, WeakEntity};
 use std::cell::RefCell;
 use std::rc::Weak;
 
@@ -9,9 +10,20 @@ pub(crate) struct InputBinding {
     pub(crate) window_id: WindowId,
     pub(crate) node_id: NodeId,
     pub(crate) events: EventSink,
+    /// Reveals the input when assistive technology focuses it.
+    pub(crate) view: WeakEntity<NativeView>,
 }
 
 impl InputBinding {
+    /// An assistive technology's focus request moves focus here; scroll the
+    /// input into view as Tab would.
+    pub(super) fn assistive_focus(&self, cx: &mut App) {
+        let node_id = self.node_id;
+        let _ = self
+            .view
+            .update(cx, |view, cx| view.reveal_control(node_id, cx));
+    }
+
     /// Apply accepted native text before emitting its revision. A stale entity
     /// cannot resurrect a removed node or emit on a closed window. The model
     /// takes ownership of `value`; the returned string is the entity's copy.
