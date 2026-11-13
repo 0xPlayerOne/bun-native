@@ -43,7 +43,11 @@ struct Log {
 fn append(file: &mut File, record: &Value) -> io::Result<()> {
     let mut line = record.to_string();
     if line.len() > MAX_EVENT_FRAME_BYTES {
-        return Err(io::Error::other("evidence record exceeds 65536 bytes"));
+        return Err(io::Error::other(bun_native_protocol::limit_message!(
+            "evidence record exceeds ",
+            { MAX_EVENT_FRAME_BYTES },
+            " bytes"
+        )));
     }
     line.push('\n');
     // Bun also appends to this file. Keep each record in one append operation.

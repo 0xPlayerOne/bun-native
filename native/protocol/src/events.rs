@@ -552,12 +552,20 @@ impl Event {
             Self::KeyDown { key, key_char, .. } | Self::KeyUp { key, key_char, .. } => {
                 validate_text(key)?;
                 if key.is_empty() || key.len() > MAX_KEY_BYTES {
-                    return Err("native key must be nonempty and at most 256 UTF-8 bytes");
+                    return Err(crate::limit_message!(
+                        "native key must be nonempty and at most ",
+                        { MAX_KEY_BYTES },
+                        " UTF-8 bytes"
+                    ));
                 }
                 if let Some(value) = key_char {
                     validate_text(value)?;
                     if value.len() > MAX_KEY_BYTES {
-                        return Err("native key text must be at most 256 UTF-8 bytes");
+                        return Err(crate::limit_message!(
+                            "native key text must be at most ",
+                            { MAX_KEY_BYTES },
+                            " UTF-8 bytes"
+                        ));
                     }
                 }
             }
