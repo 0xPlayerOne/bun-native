@@ -15,7 +15,8 @@ const policy: Record<
   solid: {
     packages: ['core', 'renderer'],
     platform: false,
-    external: ['solid-js', 'solid-js/universal'],
+    // The Babel pair is the build-time `@bun-native/solid/build` transform's.
+    external: ['solid-js', 'solid-js/universal', '@babel/core', 'babel-preset-solid'],
   },
   react: {
     packages: ['core', 'renderer'],

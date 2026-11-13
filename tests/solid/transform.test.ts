@@ -2,7 +2,7 @@ import { describe, expect, test } from 'bun:test'
 import { createRequire } from 'node:module'
 import { version as babelVersion } from '@babel/core'
 import solidPresetManifest from 'babel-preset-solid/package.json'
-import { transformSolid } from '../../scripts/solid/transform.ts'
+import { transformSolid } from '@bun-native/solid/build'
 
 // These tests establish the JSX transformation boundary, not native rendering.
 describe('official Solid universal JSX transform', () => {

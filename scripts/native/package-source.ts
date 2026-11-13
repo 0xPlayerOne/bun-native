@@ -70,9 +70,12 @@ export async function cliSourceClosure(
       if (value?.type === 'Literal' && typeof value.value === 'string') specifiers.add(value.value)
       else if (
         !(
-          name === 'scripts/native.ts' &&
           value &&
-          source.slice(value.start, value.end) === 'pathToFileURL(entry).href'
+          ((name === 'scripts/native.ts' &&
+            source.slice(value.start, value.end) === 'pathToFileURL(entry).href') ||
+            // The Solid transform, resolved from the project's @bun-native/solid.
+            (name === 'scripts/native/bundle.ts' &&
+              source.slice(value.start, value.end) === 'pathToFileURL(transform).href'))
         )
       )
         throw new Error(`Unresolved computed package import: ${name}`)

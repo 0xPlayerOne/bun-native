@@ -1,6 +1,7 @@
 import type { BuildConfig, BunPlugin } from 'bun'
 import { mkdir, realpath, stat } from 'node:fs/promises'
 import { join, resolve, sep } from 'node:path'
+import { pathToFileURL } from 'node:url'
 
 export type Framework = 'solid' | 'react'
 
@@ -35,9 +36,25 @@ export function bundleConfig(
   }
 }
 
-/** Solid's universal JSX transform as a bundler plugin; Babel loads only for Solid builds. */
-async function solidPlugin(): Promise<BunPlugin> {
-  const { transformSolid } = await import('../solid/transform.ts')
+type SolidTransform = { transformSolid(source: string, filename: string): string }
+
+/**
+ * Solid's universal JSX transform as a bundler plugin. It is the Solid adapter's own
+ * `@bun-native/solid/build` export, resolved from the project (or, for a checkout
+ * fixture outside it, from this CLI), so Babel ships with Solid projects only.
+ */
+async function solidPlugin(cwd: string): Promise<BunPlugin> {
+  let transform: string
+  try {
+    transform = Bun.resolveSync('@bun-native/solid/build', cwd)
+  } catch {
+    try {
+      transform = Bun.resolveSync('@bun-native/solid/build', import.meta.dir)
+    } catch {
+      throw new Error('A Solid application needs @bun-native/solid installed in its project')
+    }
+  }
+  const { transformSolid } = (await import(pathToFileURL(transform).href)) as SolidTransform
   return {
     name: 'solid-native-universal',
     setup(build) {
@@ -79,7 +96,8 @@ export async function bundleApplication(options: {
   const outdir = resolve(options.outdir)
   await mkdir(outdir, { recursive: true })
   const plugins =
-    options.plugins ?? (options.framework === 'solid' ? [await solidPlugin()] : undefined)
+    options.plugins ??
+    (options.framework === 'solid' ? [await solidPlugin(options.cwd)] : undefined)
   const previous = process.cwd()
   process.chdir(options.cwd)
   let result: Awaited<ReturnType<typeof Bun.build>>

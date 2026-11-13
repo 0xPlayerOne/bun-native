@@ -283,7 +283,7 @@ const frameworkInputs: Record<Framework, readonly string[]> = {
     'packages/solid/package.json',
     'packages/renderer/package.json',
     'scripts/native/bundle.ts',
-    'scripts/solid/transform.ts',
+    'packages/solid/src/build.ts',
     'scripts/solid/preset.d.ts',
   ],
   react: [

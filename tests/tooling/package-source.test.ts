@@ -22,9 +22,10 @@ async function fixture(exercise: (directory: string) => Promise<void>): Promise<
 }
 
 describe('package export/import materialization (source reads only)', () => {
-  test('the actual CLI closure includes both compilers, inspectors and configuration without producer-only dependencies', async () => {
+  test('the actual CLI closure includes the compiler, inspectors and configuration without producer-only or Solid build dependencies', async () => {
     const closure = await cliSourceClosure(repository)
-    expect(closure.external).toEqual(['@babel/core', 'babel-preset-solid', 'oxlint'])
+    // The Solid transform (and its Babel tree) is @bun-native/solid/build, loaded from the project.
+    expect(closure.external).toEqual(['oxlint'])
     for (const path of [
       'scripts/native.ts',
       'scripts/native/host.ts',
@@ -35,7 +36,6 @@ describe('package export/import materialization (source reads only)', () => {
       'scripts/native/package-set.ts',
       'scripts/native/package-lock.ts',
       'scripts/native/bundle.ts',
-      'scripts/solid/transform.ts',
       'experiments/aot-gpui/compile.ts',
       'experiments/aot-gpui/inspect.ts',
       'experiments/aot-gpui/inspect-runtime.ts',
@@ -46,6 +46,8 @@ describe('package export/import materialization (source reads only)', () => {
     expect(closure.files).not.toContain('scripts/native/package-source.ts')
     expect(closure.files).toContain('scripts/native/package-archive.ts')
     expect(closure.files.some((path) => path.startsWith('scripts/quality/'))).toBe(false)
+    expect(closure.files.some((path) => path.startsWith('scripts/solid'))).toBe(false)
+    expect(closure.files.some((path) => path.startsWith('packages/'))).toBe(false)
   })
 
   test('preserves all real library exports and every TS source file, with exact framework and public type dependencies', async () => {
@@ -75,6 +77,12 @@ describe('package export/import materialization (source reads only)', () => {
     expect(manifests['@bun-native/solid']!.exports).toEqual({
       '.': './src/index.ts',
       './jsx-runtime': './src/jsx.ts',
+      './build': './src/build.ts',
+    })
+    expect(manifests['@bun-native/solid']!.dependencies).toMatchObject({
+      '@babel/core': '7.29.7',
+      'babel-preset-solid': '1.9.16',
+      'solid-js': '1.9.18',
     })
     expect(manifests['@bun-native/react']!.dependencies).toMatchObject({
       react: '19.3.1',
@@ -82,21 +90,28 @@ describe('package export/import materialization (source reads only)', () => {
       '@types/react': '19.3.0',
       '@types/react-reconciler': '0.34.1',
     })
-    expect(manifests['@bun-native/cli']!.dependencies).toEqual({
-      '@babel/core': '7.29.7',
-      'babel-preset-solid': '1.9.16',
-      oxlint: '1.92.0',
-    })
+    expect(manifests['@bun-native/cli']!.dependencies).toEqual({ oxlint: '1.92.0' })
     const consumers = await consumerDefinitions(repository, manifests)
     for (const framework of ['solid', 'react'] as const) {
       expect(consumers[framework].devDependencies['@types/bun']).toBe('1.4.4')
-      expect(
-        consumers[framework].lock.packages[
-          'babel-plugin-jsx-dom-expressions/@babel/helper-module-imports'
-        ]![0]
-      ).toBe('@babel/helper-module-imports@7.18.6')
       expect(consumers[framework].lock.packages['undici-types']).toBeDefined()
+      expect(consumers[framework].lock.packages['oxlint']).toBeDefined()
     }
+    // Solid projects lock the exact Babel tree through @bun-native/solid ...
+    expect(
+      consumers.solid.lock.packages[
+        'babel-plugin-jsx-dom-expressions/@babel/helper-module-imports'
+      ]![0]
+    ).toBe('@babel/helper-module-imports@7.18.6')
+    expect(consumers.solid.lock.packages['babel-preset-solid']![0]).toBe(
+      'babel-preset-solid@1.9.16'
+    )
+    // ... and React projects install none of it.
+    expect(
+      Object.keys(consumers.react.lock.packages).filter((name) =>
+        /(?:^|\/)(?:@babel\/|babel-|caniuse-lite$|browserslist$)/.test(name)
+      )
+    ).toEqual([])
     expect(consumers.react.lock.packages['csstype']).toBeDefined()
     await expect(materializedManifests(repository, ['missing-build-dependency'])).rejects.toThrow(
       'Undeclared CLI build dependency'
