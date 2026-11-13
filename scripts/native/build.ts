@@ -149,7 +149,10 @@ export async function buildProject(
     `import { dirname, join } from 'node:path'\nprocess.env['BUN_NATIVE_HOST'] ??= join(dirname(process.execPath), ${JSON.stringify(hostFile)})\nawait import('./development/application.js')\n`,
     { flag: 'wx' }
   )
-  const compiled = compileApplication(launcher, join(outdir, applicationFile), project.directory)
+  // The compiler names the program by its path relative to its working directory,
+  // so compiling the relative launcher from the output directory keeps the
+  // executable independent of where that directory is.
+  const compiled = compileApplication('launcher.ts', join(outdir, applicationFile), outdir)
   if (layout.infoPlist && infoPlist) {
     await mkdir(dirname(join(outdir, hostFile)), { recursive: true })
     await writeFile(join(outdir, layout.infoPlist), infoPlist, { flag: 'wx' })

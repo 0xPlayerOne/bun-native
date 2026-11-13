@@ -113,7 +113,7 @@ The build reuses the fixture packager's pinned `bun compile` implementation and 
 - The bundled development module and source map, generated launcher, and compiler logs for reproduction and diagnosis.
 - `build-metrics.json`, with the compilation duration.
 
-Equal sources and pins produce byte-identical files listed in `manifest.reproducibility.deterministic`, independent of the checkout location, output directory, working directory and build time. Compiler logs and `build-metrics.json` are diagnostics and are not reproducible. See [reproducible builds](reproducible-builds.md).
+Equal sources and pins produce byte-identical files listed in `manifest.reproducibility.deterministic`, independent of the checkout location, output directory, working directory and build time. For a project inside the checkout, the source map (and so the manifest) also depends on the output directory's depth relative to the sources; the executable does not. Compiler logs and `build-metrics.json` are diagnostics and are not reproducible. See [reproducible builds](reproducible-builds.md).
 
 The application resolves its host at `host.file` relative to its own executable, so the output directory can be moved and launched from another working directory. `BUN_NATIVE_HOST` is an explicit runtime override. Keep the application and bundled host together. Changed host or bundled-module bytes during packaging cause a failure. On failure, inspect the retained logs and use a new empty output directory for a retry.
 
