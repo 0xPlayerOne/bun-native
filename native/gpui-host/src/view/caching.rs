@@ -20,14 +20,17 @@
 //! it changes. GPUI itself re-renders a cached boundary that was notified,
 //! moved or clipped differently, and the whole window on a refresh (focus).
 //!
-//! Caching is off while assistive technology reads the window or layout
-//! evidence is captured: GPUI rebuilds the accessibility tree only from
-//! prepainted elements, and evidence records every element. The window then
-//! renders without boundaries, exactly as before caching existed.
+//! Caching is off while assistive technology reads the window: GPUI
+//! rebuilds the accessibility tree only from prepainted elements. The window
+//! then renders without boundaries, exactly as before caching existed. Layout
+//! evidence records the elements a frame prepaints and, for those inside a
+//! view GPUI replayed, what the frame painted before recorded for them: a
+//! replayed view keeps its bounds and content mask, so they keep theirs.
 //! `BUN_NATIVE_VIEW_CACHE=0` turns caching off for comparisons.
 
 use super::accessibility::Position;
 use super::{DropScope, NativeView, culling::CullFrame, culling::Seed};
+use crate::evidence::LayoutFrame;
 use bun_native_protocol::{Dimension, Element as NativeElement, Node, NodeId, Tree};
 use gpui::{
     AnyElement, App, AppContext, Bounds, Context, Element, ElementId, Entity, GlobalElementId,
@@ -191,6 +194,8 @@ impl CacheFrame {
 #[derive(Clone)]
 pub(super) struct BoundaryScope {
     pub(super) frame: Rc<CullFrame>,
+    /// Layout evidence, when the frame captures it.
+    pub(super) layout: Option<LayoutFrame>,
     pub(super) drop_scope: DropScope,
     pub(super) modal: Position,
     pub(super) viewport: Seed,
@@ -257,6 +262,9 @@ pub(super) struct Caching {
     outside: Option<Outside>,
     /// The frame being drawn, until its paint ends.
     pub(super) current: Option<Rc<CullFrame>>,
+    /// The layout evidence of the frame painted last: what a view GPUI
+    /// replays recorded then (`LayoutFrame::carry`).
+    pub(super) painted_layout: Option<LayoutFrame>,
 }
 
 impl Default for Caching {
@@ -269,6 +277,7 @@ impl Default for Caching {
             moved: HashSet::new(),
             outside: None,
             current: None,
+            painted_layout: None,
         }
     }
 }
