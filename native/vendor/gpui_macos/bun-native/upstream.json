@@ -5,6 +5,10 @@
   "package": "crates/gpui_macos",
   "workspace_manifest_sha256": "1e7c07401d52902c7070c7b0ca7584f32e9dde25e17829947b3292c895f8f255",
   "patched": ["src/display_link.rs", "src/gpui_macos.rs", "src/window.rs"],
+  "patches": {
+    "metal-display-link-switch.patch": "36154d704ace986f8d1921985e7daea0089d7d81d01d71da22ede056970b92fc",
+    "cvdisplaylink-keep-subscribed.patch": "305546344c995c329fcf6fd3aa729881ad141aa3739648fad824bed0a6e07021"
+  },
   "files": {
     "Cargo.toml": {
       "bytes": 2267,

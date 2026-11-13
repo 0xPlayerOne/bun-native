@@ -39,7 +39,7 @@ Upstream: GPUI itself could send deltas, or AccessKit's adapters could skip unch
 
 `Cargo.toml.upstream` and `workspace.toml.upstream` preserve both original manifests (the workspace manifest is byte-identical to the one `gpui_macos` keeps). The standalone `Cargo.toml` expands their inherited metadata and dependencies, keeps target conditions, optional flags and default-feature settings, and changes only `oo7` (optional) and the new feature. The sibling zed crates (`gpui`, `gpui_util`, `gpui_wgpu`, `collections`, `http_client`) keep the original Git URL and exact revision. The crate has its own workspace boundary.
 
-`upstream.json` records the byte size and SHA-256 of every upstream file and of zed's workspace manifest. `src/linux/accesskit_delta.rs` is new; every other file outside the four patched sources and `Cargo.toml` is byte-identical to upstream. Reversing both patches on the vendored `src` reproduces upstream exactly:
+`upstream.json` records the byte size and SHA-256 of every upstream file and of zed's workspace manifest, and the SHA-256 of each patch in the order it applies. `tests/quality/test_gpui_vendor.py` checks the inventory, every hash and the reversed patches on every quality test run. `src/linux/accesskit_delta.rs` is new; every other file outside the four patched sources and `Cargo.toml` is byte-identical to upstream. Reversing both patches on the vendored `src` reproduces upstream exactly:
 
 ```sh
 work=$(mktemp -d) && cp -r native/vendor/gpui_linux/src "$work/" &&
