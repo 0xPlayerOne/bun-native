@@ -73,3 +73,15 @@ container, 1,000 rows; the median over the five per-process medians in µs.
 | `select` | 1,376        | 1,348       | 102                 | 99                 |
 
 `mount` stayed within its process-to-process spread (13–25 ms either way).
+
+## Detached subtrees and node brands
+
+React builds each new subtree bottom-up while it is detached, and every
+`insertNode` re-walked the inserted subtree to clear captures that a detached
+subtree cannot hold, so a mount walked each node once per ancestor. An unowned
+subtree that stays unowned is now left as it is (the owner that takes it
+adopts it in full), a new node starts dirty, and staged nodes carry a private
+class brand instead of a `WeakSet` entry, which `asNode` checks on every Solid
+renderer call. [Raw records](raw/) `react-workspace-mount-*`, six alternating
+processes each, same container: `mount` per-process medians 14.6–25.0 ms
+(median 19.1) before, 13.6–19.1 ms (median 15.0) after.

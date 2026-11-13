@@ -73,10 +73,17 @@ export type PropertyName = keyof Properties
 
 const isContainer = (kind: Node['kind']) => kind === 'box' || kind === 'split' || kind === 'overlay'
 
-const nodes = new WeakSet<object>()
+/** Whether `value` was made by this module's `Node` constructor. */
+let isStaged: (value: object) => boolean
 
 export class Node implements RendererNode {
   declare readonly [identity]: true
+  /** Unforgeable brand: checked with `in`, it costs no lookup in a side table. */
+  readonly #brand = true
+  static {
+    // Reading the brand after `in` is what marks it used for the linter.
+    isStaged = (value) => #brand in value && (value as Node).#brand
+  }
   /**
    * Staged children, where a detached child leaves an `undefined` hole until
    * the list is next read: removing a child from a wide list then neither
@@ -97,9 +104,10 @@ export class Node implements RendererNode {
   captured: Snapshot | undefined
   /**
    * This node or a staged descendant lacks a current capture. Every dirty node
-   * in a tree has dirty ancestors, so snapshot() walks only dirty paths.
+   * in a tree has dirty ancestors, so snapshot() walks only dirty paths. A new
+   * node has no capture yet.
    */
-  dirty = false
+  dirty = true
   /**
    * Dirty children registered when they became dirty, so a parent whose own
    * capture is current visits only them. A recaptured parent scans all of its
@@ -111,9 +119,7 @@ export class Node implements RendererNode {
   /** Children before this position have current `index` hints. */
   indexed = 0
 
-  constructor(readonly kind: Element['kind'] | 'text-node') {
-    nodes.add(this)
-  }
+  constructor(readonly kind: Element['kind'] | 'text-node') {}
 
   /** The staged children in order; adapters may truncate this list directly. */
   get children(): Node[] {
@@ -123,7 +129,7 @@ export class Node implements RendererNode {
 }
 
 export function asNode(value: RendererNode): Node {
-  if (!value || typeof value !== 'object' || !nodes.has(value))
+  if (!value || typeof value !== 'object' || !isStaged(value))
     throw new NativeStateError('invalid_handle', 'Expected an owned staged native node')
   return value as Node
 }
@@ -310,15 +316,18 @@ export function insertNode(parent: Node, node: Node, anchor?: Node): void {
   if (owner && node.owner !== owner) checkScope(node, owner.token)
   const previousOwner = node.owner
   // An owner only holds nodes attached under its root (removal and disposal
-  // clear it), so this subtree moves without ever leaving the live tree.
-  const moved = owner !== undefined && previousOwner === owner && node.parent !== undefined
+  // clear it), so this subtree moves without ever leaving the live tree. An
+  // unowned subtree that stays unowned holds no capture an owner committed:
+  // leaving an owner cleared them, and the next owner adopts it in full. An
+  // adapter that builds detached trees bottom-up thus walks each node once.
+  const moved = previousOwner === owner && (owner === undefined || node.parent !== undefined)
   if (previousOwner && previousOwner !== owner) previousOwner.detached(node)
   if (node.parent) detachChild(node.parent, node)
   invalidate(node.parent)
   invalidate(parent)
   node.parent = parent
   attachChild(parent, node, anchor ? childIndex(parent, anchor) : parent.staged.length)
-  // Adapters may clear detached nodes directly, so a reinserted subtree is
+  // Adapters may clear detached nodes directly, so a subtree an owner takes is
   // always captured again from its current state. A moved subtree's captures
   // and dirty paths stay current below it: its root's capture names the old
   // parent, so snapshot() recaptures that node alone, and the diff moves it
