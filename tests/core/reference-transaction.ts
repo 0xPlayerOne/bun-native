@@ -59,8 +59,8 @@ export class ReferenceTransaction {
   private check(): void {
     if (!this.active)
       throw new NativeStateError('invalid_state', 'Batch callback has already returned')
-    // The logical bound of #488: a transaction may span several native batches.
-    if (this.operations.length >= 2 * this.limits.max_nodes_per_window + this.limits.max_operations)
+    // One transaction is one native batch.
+    if (this.operations.length >= this.limits.max_operations)
       throw new NativeStateError('limit_exceeded', 'Batch operation limit exceeded')
   }
 

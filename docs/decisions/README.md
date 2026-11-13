@@ -62,7 +62,7 @@ number is 0021 and there is no 0016, so the next new record is 0022.
 - [0018 — Windows task dialogs for message and confirm dialogs](0018-windows-task-dialogs.md)
 - [0019 — macOS alert sheets for message and confirm dialogs](0019-macos-alert-sheets.md)
 - [0020 — OS context menus](0020-os-context-menus.md)
-- [Native host protocol 11](../native-abi.md)
+- [Native host protocol 12](../native-abi.md)
 - [Active roadmap](https://github.com/0xPlayerOne/bun-native/issues/1)
 - [Architecture overview](../architecture.md)
 - [Engineering quality](../engineering-quality.md)

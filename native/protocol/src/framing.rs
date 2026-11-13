@@ -1,5 +1,7 @@
 use crate::wire::safe_integer;
-use crate::{Command, Event, Operation, RequestId, WindowId, MAX_FRAME_BYTES};
+use crate::{
+    Command, Event, Operation, RequestId, WindowId, MAX_EVENT_FRAME_BYTES, MAX_FRAME_BYTES,
+};
 use serde::{de, Deserialize, Deserializer};
 use std::fmt;
 use std::io::{self, BufRead, Write};
@@ -23,7 +25,7 @@ impl fmt::Display for ProtocolError {
             Self::InvalidCommand(message) | Self::InvalidEvent(message) => {
                 formatter.write_str(message)
             }
-            Self::Oversized => formatter.write_str("frame exceeds 65536 bytes"),
+            Self::Oversized => formatter.write_str("frame exceeds its byte limit"),
             Self::Truncated => formatter.write_str("channel ended within a frame"),
             Self::Poisoned => formatter.write_str("channel is poisoned"),
         }
@@ -32,10 +34,15 @@ impl fmt::Display for ProtocolError {
 
 impl std::error::Error for ProtocolError {}
 
+/// Capacity the reader keeps between frames. Nearly every command is far
+/// smaller; a larger mount frame borrows memory only while it is decoded.
+pub(crate) const RETAINED_FRAME_BYTES: usize = 65_536;
+
 /// Owns at most one bounded frame. Reading cannot grow with an untrusted line.
 /// The frame buffer is reused across frames. A longer line is rejected before
-/// it is copied, so retained capacity stays within one frame plus `Vec` growth
-/// slack, and it is released once the reader is poisoned or finished.
+/// it is copied, so capacity stays within one frame plus `Vec` growth slack
+/// while a frame is read, returns to `RETAINED_FRAME_BYTES` after it, and is
+/// released once the reader is poisoned or finished.
 #[derive(Default)]
 pub struct CommandReader {
     frame: Vec<u8>,
@@ -52,6 +59,10 @@ impl CommandReader {
             return Ok(None);
         }
         let result = self.read_inner(source);
+        if self.frame.capacity() > RETAINED_FRAME_BYTES {
+            self.frame.clear();
+            self.frame.shrink_to(RETAINED_FRAME_BYTES);
+        }
         if result.is_err() {
             self.poisoned = true;
             self.frame = Vec::new();
@@ -186,10 +197,10 @@ impl EventWriter {
         event.validate().map_err(ProtocolError::InvalidEvent)?;
         self.buffer.clear();
         let encoded = serde_json::to_writer(&mut self.buffer, event);
-        if encoded.is_err() || self.buffer.len() > MAX_FRAME_BYTES {
+        if encoded.is_err() || self.buffer.len() > MAX_EVENT_FRAME_BYTES {
             // Keep retained capacity bounded by one frame after a rejected event.
             self.buffer.clear();
-            self.buffer.shrink_to(MAX_FRAME_BYTES + 1);
+            self.buffer.shrink_to(MAX_EVENT_FRAME_BYTES + 1);
             encoded.map_err(ProtocolError::InvalidJson)?;
             return Err(ProtocolError::Oversized);
         }

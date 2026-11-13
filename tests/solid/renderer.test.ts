@@ -549,10 +549,10 @@ describe('Solid universal adapter over the public core (headless subprocess)', (
       await root.dispose()
     }))
 
-  test('a keyed pane remount above the native batch limit commits as one Solid update', () =>
+  test('a large keyed pane remount commits as one Solid update', () =>
     withApp(async (app) => {
       const window = await app.openWindow({ title: 'Solid large remount' })
-      // Each row is three nodes, created and inserted: 60 rows exceed 256 operations.
+      // Each row is three nodes, created and inserted: over 360 operations.
       const pane = (name: string, count: number) => {
         const box = createElement('box')
         for (let index = 0; index < count; index += 1) {
@@ -571,7 +571,7 @@ describe('Solid universal adapter over the public core (headless subprocess)', (
       }, window)
       await root.ready
       const text = () => asNode(container).children[0]?.children[0]?.children[0]?.properties.text
-      // The initial mount is itself one commit above the batch limit.
+      // The initial mount is itself one commit.
       const mounted = root.diagnostics.nodes
       expect(mounted).toBeGreaterThan(60 * 3)
       expect(text()).toBe('A 0')

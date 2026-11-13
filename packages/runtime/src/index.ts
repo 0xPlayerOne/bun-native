@@ -6,6 +6,7 @@ import {
   processArguments,
   encodeFrame,
   FrameDecoder,
+  MAX_EVENT_FRAME_BYTES,
   parseCommand,
   parseEvent,
   PROTOCOL_VERSION,
@@ -668,7 +669,7 @@ export class NativeHost implements AsyncIterable<HostEvent> {
   }
 
   private async readStdout(): Promise<void> {
-    const decoder = new FrameDecoder()
+    const decoder = new FrameDecoder(MAX_EVENT_FRAME_BYTES)
     try {
       for (;;) {
         const { done, value } = await this.stdout.read()

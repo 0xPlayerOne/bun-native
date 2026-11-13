@@ -6,7 +6,6 @@ import {
   type FileDialogOptions,
   type HostEvent,
   type Limits,
-  type Operation,
   type WindowEvent,
 } from '@bun-native/protocol'
 import {
@@ -15,7 +14,6 @@ import {
   type HostOptions,
   type WindowCommand,
 } from '@bun-native/runtime'
-import { planStagedCommit, sendStagedCommit } from './commit-plan.ts'
 import { dispatchPlan, EventBindings, prunePlan, type DispatchPlan } from './events.ts'
 import { DisplaySubscription } from './display.ts'
 import {
@@ -688,45 +686,24 @@ class Window implements NativeWindow {
         transaction.finish()
       }
       if (!transaction.operations.length) return value
-      const send = (operations: readonly Operation[]) =>
-        this.application.host.send({
-          type: 'batch',
-          window_id: this.id,
-          base_revision: this.revision,
-          operations,
-        })
-      // Publish in the reply's own continuation, before any later native event.
-      const publish = (revision: number) => {
-        this.assertActive()
-        transaction.commit(this.nodes, this.text)
-        this.revision = revision
-        this.listeners.forget(transaction.nodes.deletes)
-        // The host revokes a target whose node a committed tree removed.
-        for (const registration of this.application.dropTargets.values())
-          if (registration.windowId === this.id && !this.nodes.has(registration.nodeId)) {
-            registration.revoke()
-            this.application.dropTargets.delete(registration.id)
-          }
-      }
-      if (transaction.operations.length <= this.application.limits.max_operations) {
-        publish((await send(transaction.operations)).tree_revision)
-        return value
-      }
-      const plan = planStagedCommit(
-        this.nodes,
-        transaction,
-        this.rootId,
-        () => this.application.ids.node.allocate(),
-        this.application.limits
-      )
-      await sendStagedCommit(plan, send, (reply, final) => {
-        if (final) publish(reply.tree_revision)
-        else {
-          this.assertActive()
-          // Staging changed only nodes this window has not committed.
-          this.revision = reply.tree_revision
-        }
+      // One transaction is one native batch: the host applies it atomically.
+      const reply = await this.application.host.send({
+        type: 'batch',
+        window_id: this.id,
+        base_revision: this.revision,
+        operations: transaction.operations,
       })
+      // Publish in the reply's own continuation, before any later native event.
+      this.assertActive()
+      transaction.commit(this.nodes, this.text)
+      this.revision = reply.tree_revision
+      this.listeners.forget(transaction.nodes.deletes)
+      // The host revokes a target whose node a committed tree removed.
+      for (const registration of this.application.dropTargets.values())
+        if (registration.windowId === this.id && !this.nodes.has(registration.nodeId)) {
+          registration.revoke()
+          this.application.dropTargets.delete(registration.id)
+        }
       return value
     })
   }

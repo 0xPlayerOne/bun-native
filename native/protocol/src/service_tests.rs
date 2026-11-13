@@ -101,7 +101,7 @@ fn service_cases(source: &str, capability: &str) {
 fn clipboard_payload_is_byte_bounded_even_after_json_escaping() {
     use crate::{
         write_event, ClipboardText, Command, RequestId, WindowId, MAX_CLIPBOARD_BYTES,
-        MAX_FRAME_BYTES,
+        MAX_EVENT_FRAME_BYTES,
     };
     for text in [
         "é".repeat(MAX_CLIPBOARD_BYTES / 2),
@@ -116,7 +116,7 @@ fn clipboard_payload_is_byte_bounded_even_after_json_escaping() {
         };
         let mut bytes = Vec::new();
         write_event(&mut bytes, &event).unwrap();
-        assert!(bytes.len() - 1 < MAX_FRAME_BYTES);
+        assert!(bytes.len() - 1 < MAX_EVENT_FRAME_BYTES);
         let command = Command::ClipboardWrite {
             id,
             window_id,

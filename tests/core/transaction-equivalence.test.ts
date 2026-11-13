@@ -157,10 +157,8 @@ class Pair {
         .map((node) => node.id)
       return ids.length && !rng.chance(3) ? handle(rng.pick(ids))! : anyNode()
     }
-    // Rarely, one past the logical operation bound (several native batches).
-    const count = rng.chance(5)
-      ? 2 * limits.max_nodes_per_window + limits.max_operations + 1
-      : 1 + rng.below(limits.max_operations + 2)
+    // Sometimes one past the operation bound.
+    const count = 1 + rng.below(limits.max_operations + 2)
     for (let index = 0; index < count; index += 1) {
       const roll = rng.below(100)
       let run: (batch: ReferenceTransaction | Transaction, side: 0 | 1) => void
