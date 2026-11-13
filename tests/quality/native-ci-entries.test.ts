@@ -270,7 +270,8 @@ test('a batch compiles its shard in parallel, keeps going, and each step replays
   expect(readFileSync(calls, 'utf8').length).toBeGreaterThan(before.length)
   const inProcess = await replay('bridge', join(evidence, 'elsewhere-too'))
   expect(inProcess).toEqual({ code: 0, out: '', err: '' })
-  expect(readFileSync(calls, 'utf8')).toContain(join(evidence, 'elsewhere-too'))
+  // The stand-in records argv as JSON, so Windows backslashes appear escaped.
+  expect(readFileSync(calls, 'utf8')).toContain(JSON.stringify(join(evidence, 'elsewhere-too')))
 
   const lenient = await runTool(
     [

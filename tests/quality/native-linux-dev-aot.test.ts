@@ -67,7 +67,13 @@ function run(script: string, args: string[]) {
   const calls = join(work, `calls-${Math.random().toString(16).slice(2)}`)
   writeFileSync(calls, '')
   const result = Bun.spawnSync(['bash', join(scripts, script), ...args], {
-    env: { PATH: `${bin}:${process.env.PATH}`, NATIVE_EVIDENCE: evidence, CALLS: calls },
+    // MSYS=noglob: Git Bash on Windows would otherwise brace-expand '{mode}' in argv.
+    env: {
+      PATH: `${bin}:${process.env.PATH}`,
+      NATIVE_EVIDENCE: evidence,
+      CALLS: calls,
+      MSYS: 'noglob',
+    },
     stdout: 'pipe',
     stderr: 'pipe',
   })
@@ -80,7 +86,7 @@ test('the X11 session wrapper starts the same Xvfb and DBus session as the inlin
   expect(plain.result.exitCode).toBe(0)
   expect(plain.lines).toEqual([
     'xvfb-run [--auto-servernum] [--server-args=-screen 0 1280x800x24 -nolisten tcp] [dbus-run-session] [--] [bash] [' +
-      join(scripts, 'native-linux-session.sh') +
+      `${scripts}/native-linux-session.sh` +
       '] [$E/out] [--] [bun] [x.ts]',
     'session [$E/out] [--] [bun] [x.ts] env[] env[] env[]',
   ])
