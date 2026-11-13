@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.33.0](https://github.com/0xPlayerOne/bun-native/compare/v0.32.1...v0.33.0) (2026-11-13)
+
+
+### Features
+
+* release hosts, Linux ARM64 and macOS x64 lanes, npm trusted publishing ([#645](https://github.com/0xPlayerOne/bun-native/issues/645)) ([7de39e9](https://github.com/0xPlayerOne/bun-native/commit/7de39e948f86c02caa912e6d1452ee68879e295f))
+
+
+### Documentation
+
+* **audit:** reconcile closed [#260](https://github.com/0xPlayerOne/bun-native/issues/260), open limits and draft CI ([#627](https://github.com/0xPlayerOne/bun-native/issues/627)) ([2faa607](https://github.com/0xPlayerOne/bun-native/commit/2faa607e725ba60e0d7541d3031e6fbfbf4d9432))
+* clarify versioned quick-start evidence and preview status ([#622](https://github.com/0xPlayerOne/bun-native/issues/622)) ([239bc8c](https://github.com/0xPlayerOne/bun-native/commit/239bc8c5083a76fa423ada21b6f50cce83fc0e13))
+
 ## [0.32.1](https://github.com/0xPlayerOne/bun-native/compare/v0.32.0...v0.32.1) (2026-11-11)
 
 
