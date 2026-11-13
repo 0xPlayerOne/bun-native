@@ -1,14 +1,9 @@
 //! Native services have an immutable launch policy, separate from features.
 
+use crate::{MAX_CLIPBOARD_BYTES, MAX_NOTIFICATION_BODY_BYTES, MAX_NOTIFICATION_TITLE_BYTES};
 use serde::{Deserialize, Serialize};
 
 const MAX_DISPLAY_COORDINATE: f64 = 1_048_576.;
-pub const MAX_CLIPBOARD_BYTES: usize = 8_192;
-pub const MAX_SERVICE_REQUESTS: usize = 8;
-pub const MAX_GLOBAL_SHORTCUTS: usize = 16;
-pub const MAX_NOTIFICATIONS: usize = 32;
-pub const MAX_NOTIFICATION_TITLE_BYTES: usize = 256;
-pub const MAX_NOTIFICATION_BODY_BYTES: usize = 2_048;
 
 #[derive(Debug, Default, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]

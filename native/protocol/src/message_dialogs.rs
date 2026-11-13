@@ -2,17 +2,16 @@
 //! validated values as the public `showMessageDialog` call: the overlay
 //! backend and the OS backend accept and answer the same shape.
 
+use crate::{
+    MAX_MESSAGE_DIALOG_BUTTONS, MAX_MESSAGE_DIALOG_DETAIL_BYTES, MAX_MESSAGE_DIALOG_ID_BYTES,
+    MAX_MESSAGE_DIALOG_LABEL_BYTES, MAX_MESSAGE_DIALOG_MESSAGE_BYTES,
+    MAX_MESSAGE_DIALOG_TITLE_BYTES,
+};
 use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
 
 /// Live message dialogs per session. Each window owns at most one at a time.
 pub const MAX_MESSAGE_DIALOGS: usize = 16;
-pub const MAX_MESSAGE_DIALOG_BUTTONS: usize = 4;
-pub const MAX_MESSAGE_DIALOG_TITLE_BYTES: usize = 256;
-pub const MAX_MESSAGE_DIALOG_MESSAGE_BYTES: usize = 2_048;
-pub const MAX_MESSAGE_DIALOG_DETAIL_BYTES: usize = 4_096;
-pub const MAX_MESSAGE_DIALOG_LABEL_BYTES: usize = 64;
-pub const MAX_MESSAGE_DIALOG_ID_BYTES: usize = 64;
 
 fn non_null<'de, D, T>(deserializer: D) -> Result<Option<T>, D::Error>
 where

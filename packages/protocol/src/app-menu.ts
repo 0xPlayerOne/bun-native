@@ -1,13 +1,11 @@
 import { ProtocolError } from './framing.ts'
 import { fields, keys, object, string } from './values.ts'
-
-/** Top-level menus in one menu bar. */
-const MAX_APP_MENUS = 16
-/** Items, separators and submenus in one menu bar, at every depth. */
-export const MAX_APP_MENU_ENTRIES = 128
-/** A top-level menu is depth 1; submenus nest at most two levels below it. */
-export const MAX_APP_MENU_DEPTH = 3
-const MAX_APP_MENU_LABEL_BYTES = 64
+import {
+  MAX_APP_MENUS,
+  MAX_APP_MENU_DEPTH,
+  MAX_APP_MENU_ENTRIES,
+  MAX_APP_MENU_LABEL_BYTES,
+} from './wire-schema.ts'
 
 const APP_MENU_NAMED_KEYS = Object.freeze([
   'enter',

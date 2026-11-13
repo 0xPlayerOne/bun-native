@@ -1,12 +1,6 @@
 import { ProtocolError } from './framing.ts'
 import { fields, integer, keys, object, string } from './values.ts'
-
-/** Live drop targets across a session. */
-export const MAX_DROP_TARGETS = 32
-/** Items one drop may deliver. A larger drop is rejected, never truncated. */
-export const MAX_DROP_ITEMS = 64
-/** UTF-8 bytes of one untrusted display name. */
-export const MAX_DROP_NAME_BYTES = 255
+import { MAX_DROP_ITEMS, MAX_DROP_NAME_BYTES } from './wire-schema.ts'
 
 export const DRAG_STATES = Object.freeze(['entered', 'left'] as const)
 export type DragState = (typeof DRAG_STATES)[number]

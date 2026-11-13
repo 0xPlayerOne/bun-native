@@ -9,15 +9,69 @@ use super::NativeView;
 use bun_native_protocol::{AccessibleRole, Element as NativeElement, Live, NodeId, Tree};
 use gpui::{Context, Div, Role, Stateful, prelude::*};
 
+/// Where a rendered node lies relative to the open modal layer. Content
+/// neither inside the layer nor on its route stays rendered but is hidden
+/// from assistive technology, as `aria-modal` content beneath a dialog is, so
+/// a screen reader cannot browse out of the dialog any more than Tab can.
+///
+/// The modal's route is computed once per frame; each child's position
+/// follows from its parent's, so the render pass decides this in constant
+/// time per node instead of snapshotting two routes per node.
+#[derive(Clone, Copy)]
+pub(super) struct ModalScope<'a> {
+    /// Root-to-modal route; empty while no modal layer is open.
+    route: &'a [NodeId],
+    position: Position,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq)]
+enum Position {
+    /// No modal layer is open.
+    Free,
+    /// The node is `route[index]`, a strict ancestor of the modal layer.
+    Route(usize),
+    /// The modal layer or a node inside it.
+    Inside,
+    /// Beneath the modal layer: hidden.
+    Beneath,
+}
+
+impl<'a> ModalScope<'a> {
+    /// `route` is `tree.path(modal)` for the active modal, or empty.
+    pub(super) fn of(tree: &Tree, route: &'a [NodeId], node: NodeId) -> Self {
+        let position = match route.last() {
+            None => Position::Free,
+            Some(modal) if tree.is_within(node, *modal) => Position::Inside,
+            Some(_) => match route.iter().position(|id| *id == node) {
+                Some(index) => Position::Route(index),
+                None => Position::Beneath,
+            },
+        };
+        Self { route, position }
+    }
+
+    /// The position of `child`, a child of this scope's node.
+    pub(super) fn child(self, child: NodeId) -> Self {
+        let position = match self.position {
+            Position::Route(index) => match self.route.get(index + 1) {
+                Some(next) if *next == child && index + 2 == self.route.len() => Position::Inside,
+                Some(next) if *next == child => Position::Route(index + 1),
+                _ => Position::Beneath,
+            },
+            position => position,
+        };
+        Self { position, ..self }
+    }
+
+    pub(super) fn hidden(self) -> bool {
+        self.position == Position::Beneath
+    }
+}
+
 /// Whether a node lies beneath the open modal layer: neither inside it nor on
-/// its route. Such nodes stay rendered but are hidden from assistive
-/// technology, as `aria-modal` content beneath a dialog is, so a screen reader
-/// cannot browse out of the dialog any more than Tab can.
-pub(super) fn beneath_modal(tree: &Tree, node: NodeId, modal: Option<NodeId>) -> bool {
-    let Some(modal) = modal else { return false };
-    let contains =
-        |path: Option<Vec<NodeId>>, id: NodeId| path.is_some_and(|path| path.contains(&id));
-    !contains(tree.path(node), modal) && !contains(tree.path(modal), node)
+/// its route.
+pub(super) fn beneath_modal(tree: &Tree, node: NodeId, modal: NodeId) -> bool {
+    !tree.is_within(node, modal) && !tree.is_within(modal, node)
 }
 
 /// The disabled and hidden states of a node that has a role.
@@ -119,14 +173,25 @@ pub(super) fn container(
 
 impl NativeView {
     /// Inputs render their own node, so their hidden state is pushed to them
-    /// whenever the open modal layer changes.
-    pub(super) fn sync_input_accessibility(&self, cx: &mut Context<Self>) {
+    /// whenever the open modal layer or the inputs change. With no modal
+    /// layer now or before this batch, every input is already exposed.
+    pub(super) fn sync_input_accessibility(
+        &self,
+        modal_before: Option<NodeId>,
+        cx: &mut Context<Self>,
+    ) {
         let modal = self.overlays.active_modal();
+        if modal.is_none() && modal_before.is_none() {
+            return;
+        }
         let hidden: Vec<_> = {
             let state = self.state.borrow();
             self.inputs
                 .iter()
-                .map(|(id, input)| (input.clone(), beneath_modal(&state.tree, *id, modal)))
+                .map(|(id, input)| {
+                    let hidden = modal.is_some_and(|modal| beneath_modal(&state.tree, *id, modal));
+                    (input.clone(), hidden)
+                })
                 .collect()
         };
         for (input, hidden) in hidden {

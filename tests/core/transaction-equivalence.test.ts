@@ -208,7 +208,7 @@ class Pair {
       expect(next).toBe(referenceNext)
     }
     expect(snapshot(candidate.nodes)).toEqual(snapshot(reference.nodes))
-    expect(candidate.operations).toEqual(reference.operations)
+    expect([...candidate.operations]).toEqual(reference.operations)
     const expected = verdict(() => reference.validate())
     const actual = verdict(() => candidate.validate())
     expect(actual).toEqual(expected)

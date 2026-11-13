@@ -15,23 +15,28 @@ const snake = (name: string): string => name.replace(/(?<=[a-z0-9])(?=[A-Z])/g, 
 
 /** Every capability name the TypeScript protocol accepts, in declaration order. */
 function typescriptCapabilities(): string[] {
-  const source = read('packages/protocol/src/messages.ts')
+  const source = read('packages/protocol/src/wire-schema.ts')
   const block = (pattern: RegExp): string => {
     const match = source.match(pattern)?.[1]
-    if (match === undefined) throw new Error(`messages.ts no longer matches ${pattern}`)
+    if (match === undefined) throw new Error(`wire-schema.ts no longer matches ${pattern}`)
     return match
   }
   const names = (text: string): string[] => [...text.matchAll(/'([a-z0-9_]+)'/g)].map((m) => m[1]!)
-  const optional = names(block(/\nconst CAPABILITIES = \[\n([\s\S]*?)\n\] as const/))
+  const optional = names(
+    block(
+      /\nexport const CAPABILITIES = Object\.freeze\(\[\n {2}\.\.\.REQUIRED_CAPABILITIES,\n([\s\S]*?)\n\] as const\)/
+    )
+  )
   return [...REQUIRED_CAPABILITIES, ...optional]
 }
 
 /** The Rust `Capability` enum variants, serialized as serde's snake_case. */
 function rustCapabilities(): string[] {
-  const enumBody = read('native/protocol/src/wire.rs').match(
+  const enumBody = read('native/protocol/src/wire/schema.rs').match(
     /#\[serde\(rename_all = "snake_case"\)\]\npub enum Capability \{\n([\s\S]*?)\n\}/
   )?.[1]
-  if (enumBody === undefined) throw new Error('wire.rs no longer declares a snake_case Capability')
+  if (enumBody === undefined)
+    throw new Error('wire/schema.rs no longer declares a snake_case Capability')
   return [...enumBody.matchAll(/^\s+([A-Z][A-Za-z0-9]*),$/gm)].map((m) => snake(m[1]!))
 }
 
@@ -202,7 +207,7 @@ describe('the current protocol version is stated consistently', () => {
   const version = String(PROTOCOL_VERSION)
 
   test('Rust and TypeScript agree', () => {
-    expect(read('native/protocol/src/wire.rs')).toMatch(
+    expect(read('native/protocol/src/wire/schema.rs')).toMatch(
       new RegExp(`^pub const PROTOCOL_VERSION: u32 = ${version};$`, 'm')
     )
   })

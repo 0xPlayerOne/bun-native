@@ -44,6 +44,8 @@ mod popup_tests;
 #[cfg(test)]
 mod request_tests;
 #[cfg(test)]
+mod schema_tests;
+#[cfg(test)]
 mod security_tests;
 #[cfg(test)]
 mod service_tests;

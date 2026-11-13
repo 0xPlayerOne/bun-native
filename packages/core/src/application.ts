@@ -1,4 +1,5 @@
 import {
+  OperationList,
   parseRootId,
   ProtocolError,
   type ApplicationEvent,
@@ -95,6 +96,7 @@ import {
   type MessageDialogOptions,
   type MessageDialogResult,
 } from './message-dialogs.ts'
+import { runBatches, type BatchEntry } from './batches.ts'
 import { CommittedText, makeNode, own, Transaction, type NodeState } from './tree.ts'
 import {
   NativeStateError,
@@ -190,6 +192,8 @@ class Application implements NativeApplication {
   private menuBar: MenuBarRegistration | undefined
   private tail: Promise<void> = Promise.resolve()
   private queued = 0
+  /** The last queued operation while it is a batch group that has not started. */
+  private openGroup: { window: Window; entries: BatchEntry[] } | undefined
   private readonly services = new Set<Promise<void>>()
   private callbacks: Callback[] = []
   private dispatching: Promise<void> | undefined
@@ -288,16 +292,59 @@ class Application implements NativeApplication {
     }
   }
 
-  enqueue<T>(operation: () => Promise<T>, closingWindow = false): Promise<T> {
+  /** Why a new queued operation is refused, if it is. */
+  private refusal(closingWindow: boolean): Error | undefined {
     if (this.phase !== 'running')
-      return Promise.reject(
-        this.failure ?? new NativeStateError('invalid_state', 'Application is shutting down')
-      )
+      return this.failure ?? new NativeStateError('invalid_state', 'Application is shutting down')
     // At most one close per live window may use the reserved cleanup capacity.
     if (!closingWindow && this.queued >= MAX_QUEUED_TRANSACTIONS)
-      return Promise.reject(
-        new NativeStateError('limit_exceeded', 'Application transaction queue is full')
-      )
+      return new NativeStateError('limit_exceeded', 'Application transaction queue is full')
+    return undefined
+  }
+
+  /**
+   * Queue a window batch. Batches queued back to back for one window, while
+   * another operation is in flight, run as one group and share native batches
+   * (`runBatches`); each still counts against the queue limit.
+   */
+  batch<T>(window: Window, update: (batch: NativeBatch) => T): Promise<T> {
+    const refused = this.refusal(false)
+    if (refused) return Promise.reject(refused)
+    let entry!: BatchEntry
+    const result = new Promise<T>((resolve, reject) => {
+      entry = { update, resolve: resolve as (value: unknown) => void, reject }
+    })
+    const open = this.openGroup
+    if (open?.window === window) {
+      this.queued += 1
+      open.entries.push(entry)
+      return result
+    }
+    const group = { window, entries: [entry] }
+    const run = this.enqueue(() => {
+      if (this.openGroup === group) this.openGroup = undefined
+      return runBatches(window, group.entries, this.limits)
+    })
+    // The group holds one queue slot and its other entries one each. Its last
+    // callers settle once the queue has moved on, as a single batch's would.
+    run.then(
+      (release) => {
+        this.queued -= group.entries.length - 1
+        release()
+      },
+      (error: unknown) => {
+        this.queued -= group.entries.length - 1
+        for (const queued of group.entries) queued.reject(error)
+      }
+    )
+    this.openGroup = group
+    return result
+  }
+
+  enqueue<T>(operation: () => Promise<T>, closingWindow = false): Promise<T> {
+    const refused = this.refusal(closingWindow)
+    if (refused) return Promise.reject(refused)
+    this.openGroup = undefined
     this.queued += 1
     const result = this.tail
       .then(() => {
@@ -658,54 +705,47 @@ class Window implements NativeWindow {
   }
 
   batch<T>(update: (batch: NativeBatch) => T): Promise<T> {
-    return this.application.enqueue(async () => {
-      this.assertActive()
-      const transaction = new Transaction(
-        this.nodes,
-        this.rootId,
-        () => this.application.ids.node.allocate(),
-        this.application.limits,
-        this.application.capabilities,
-        this.text
-      )
-      let value: T
-      try {
-        value = update(transaction)
-        if (
-          value !== null &&
-          (typeof value === 'object' || typeof value === 'function') &&
-          typeof (value as { then?: unknown }).then === 'function'
-        ) {
-          // Reject the async contract while consuming a later rejection from
-          // the already-started callback. Its escaped transaction is revoked.
-          void Promise.resolve(value).catch(() => {})
-          throw new NativeStateError('invalid_state', 'Batch callbacks must be synchronous')
-        }
-        transaction.validate()
-      } finally {
-        transaction.finish()
-      }
-      if (!transaction.operations.length) return value
-      // One transaction is one native batch: the host applies it atomically.
-      const reply = await this.application.host.send({
-        type: 'batch',
-        window_id: this.id,
-        base_revision: this.revision,
-        operations: transaction.operations,
-      })
-      // Publish in the reply's own continuation, before any later native event.
-      this.assertActive()
-      transaction.commit(this.nodes, this.text)
-      this.revision = reply.tree_revision
-      this.listeners.forget(transaction.nodes.deletes)
-      // The host revokes a target whose node a committed tree removed.
-      for (const registration of this.application.dropTargets.values())
-        if (registration.windowId === this.id && !this.nodes.has(registration.nodeId)) {
-          registration.revoke()
-          this.application.dropTargets.delete(registration.id)
-        }
-      return value
+    return this.application.batch(this, update)
+  }
+
+  transaction(): Transaction {
+    this.assertActive()
+    return new Transaction(
+      this.nodes,
+      this.rootId,
+      () => this.application.ids.node.allocate(),
+      this.application.limits,
+      this.application.capabilities,
+      this.text
+    )
+  }
+
+  async apply(transactions: readonly Transaction[]): Promise<void> {
+    // One native batch applies every transaction atomically.
+    const reply = await this.application.host.send({
+      type: 'batch',
+      window_id: this.id,
+      base_revision: this.revision,
+      operations:
+        transactions.length === 1
+          ? transactions[0]!.operations
+          : OperationList.join(transactions.map((transaction) => transaction.operations)),
     })
+    // Publish in the reply's own continuation, before any later native event.
+    this.assertActive()
+    for (const transaction of transactions) {
+      // Each continues the one before it, which is now committed.
+      if (transaction.nodes.base !== this.nodes) transaction.rebase(this.nodes, this.text)
+      transaction.commit(this.nodes, this.text)
+      this.listeners.forget(transaction.nodes.deletes)
+    }
+    this.revision = reply.tree_revision
+    // The host revokes a target whose node a committed tree removed.
+    for (const registration of this.application.dropTargets.values())
+      if (registration.windowId === this.id && !this.nodes.has(registration.nodeId)) {
+        registration.revoke()
+        this.application.dropTargets.delete(registration.id)
+      }
   }
 
   on<T extends NativeEventType>(

@@ -70,6 +70,11 @@ fn splice(content: &str, range: &Range<usize>, new_text: &str) -> String {
 }
 
 impl TextInput {
+    /// Whether `handle` is this input's focus handle, without cloning it.
+    pub(crate) fn owns_focus(&self, handle: &FocusHandle) -> bool {
+        &self.focus_handle == handle
+    }
+
     fn left(&mut self, _: &Left, window: &mut Window, cx: &mut Context<Self>) {
         self.selection.move_left(&self.content);
         self.selection_changed(window, cx);

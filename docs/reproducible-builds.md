@@ -57,6 +57,29 @@ CARGO_ENCODED_RUSTFLAGS="--remap-path-prefix=${CARGO_HOME:-$HOME/.cargo}=/cargo"
   cargo build --locked --release -p bun-native-host
 ```
 
+### Release profile and binary size
+
+Three size changes keep the release build deterministic: none adds an input that varies between builds.
+
+- **Packed relative relocations (Linux GNU).** `native/gpui-host/build.rs` passes `-Wl,-z,pack-relative-relocs` to the host binary, so its ~43,500 `R_X86_64_RELATIVE` relocations move from `.rela.dyn` into a compact DT_RELR table. DT_RELR needs glibc 2.36, below the host's existing glibc 2.39 floor. Like `/Brepro`, it is a build-script link argument, so it survives the workflows' `CARGO_ENCODED_RUSTFLAGS`.
+- **Cold crates at `opt-level = "s"`.** `[profile.release.package.*]` in the root `Cargo.toml` lists the D-Bus stack (`zbus`, `zvariant`, `zbus_names`, `ashpd`, `notify-rust`), the AT-SPI accessibility adapter (`accesskit_unix`, `accesskit_atspi_common`, `atspi*`), SVG parsing (`usvg`, `svgtypes`, `roxmltree`) and regex compilation (`regex*`). They run on service calls, assistive-technology traffic or once, never per frame. GPUI, taffy, text shaping and wgpu stay at level 3.
+- **No oo7 keyring.** The vendored [`gpui_linux`](../native/vendor/gpui_linux/bun-native/README.md) makes GPUI's Secret Service credentials store an optional feature that nothing enables. That removes oo7, its crypto crates and zvariant's GVariant codec, whose instantiations doubled every D-Bus type.
+
+Measured on Linux x64 (`cargo build --locked --release -p bun-native-host` with the CI path remapping, pinned Rust 1.98.1, 4 vCPU; 2026-11-13). Wall times on a quiet machine; CPU time where the machine was shared.
+
+| Build                                              |   File (bytes) | `.text` (bytes) | `.rela.dyn` + `.relr.dyn` | Cold build               |
+| -------------------------------------------------- | -------------: | --------------: | ------------------------: | ------------------------ |
+| Baseline (0.33.0 sources)                          |     32,288,152 |      20,076,241 |                 1,050,120 | 283 s wall               |
+| + pack-relative-relocs only                        |     31,256,544 |      20,076,241 |                    18,472 | link flag only           |
+| + `opt-level = "s"` cold crates only               |     31,144,160 |      18,184,097 |                 1,146,912 | CPU 843 s vs 896 s (−6%) |
+| `lto = "fat"` only (not adopted)                   |     29,580,336 |      19,256,289 |                   832,152 | 653 s wall (+131%)       |
+| Relocations + `opt-level = "s"`                    |     30,348,744 |      18,485,809 |                    18,976 | 336 s wall               |
+| Relocations + `opt-level = "s"` + no oo7 (adopted) | **27,006,160** |  **16,193,105** |                    18,584 | 245 s wall               |
+
+Fat LTO was not adopted: its single-threaded link more than doubles the cold build on the 4-core runners every native shard uses, for 0.8 MB of `.text` once the cheaper changes are in. `panic = "abort"` was not adopted either; the host's panic exit shape is pinned by `tests/native/session-panic.ts`.
+
+These change the host bytes once (and its archive digest). Recheck with [`host-reproducibility.yml`](../.github/workflows/host-reproducibility.yml) after they land.
+
 ## Not yet reproducible or not yet proven
 
 - **Cross-runner host hashes:** [`host-reproducibility.yml`](../.github/workflows/host-reproducibility.yml) builds the release host twice per operating system (Linux, macOS, Windows), each on its own hosted runner from a clean target directory with only downloaded sources cached, and `scripts/quality/host-reproducibility.ts compare` requires the two SHA-256 values (and the two deterministic archives) to match. Linux, macOS and Windows gate that workflow. It runs by manual dispatch and once when its own pull request becomes ready, not on a schedule, because it is six cold Rust builds. Each job's record lists the runner image, `rustc`, linker or Xcode and SDK versions. **First run** ([run 42357401242](https://github.com/0xPlayerOne/bun-native/actions/runs/42357401242), 2026-11-07, source tree of PR #555): Linux x64 `ubuntu-24.04` identical, `51208bf9…` (32,079,600 bytes), which also matches a build of the same tree in an unrelated Linux container (Ubuntu 24.04, Rust 1.98.1, same remapping); macOS arm64 `macos-15` identical, `e405b982…` (9,408,864 bytes); Windows x64 `windows-2022` **different**, `2573377a…` and `73c73097…`, both 11,376,640 bytes. The equal size pointed at embedded build metadata. The compare job now uploads both executables and names the differing bytes by PE region (`scripts/quality/binary-diff.ts`). [Run 42363522092](https://github.com/0xPlayerOne/bun-native/actions/runs/42363522092) found exactly 20 differing bytes on Windows: the COFF `TimeDateStamp`, the three debug directory `TimeDateStamp` fields and the 16-byte CodeView GUID. The PDB path was the same relative `bun_native_host.pdb` in both, and no section differed. MSVC's `link.exe` writes the link time and a fresh PDB GUID unless `/Brepro` is set. `native/gpui-host/build.rs` now passes `/Brepro` for MSVC targets as a link argument, which survives the workflows' `CARGO_ENCODED_RUSTFLAGS`. Adding the build script changes the Linux and macOS host bytes as well (for example, Linux `490a292c…` instead of `51208bf9…` for the same sources), but not their reproducibility. **After the fix** ([run 42364600059](https://github.com/0xPlayerOne/bun-native/actions/runs/42364600059), 2026-11-07, source 1f69f0f): all three identical. Linux `490a292c…` (32,079,600 bytes, also matching a local container build), macOS `61771d6d…` (9,408,896 bytes), Windows `11ed2975…` (11,376,640 bytes). Windows then joined the gate.

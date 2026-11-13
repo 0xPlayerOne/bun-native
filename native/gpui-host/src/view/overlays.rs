@@ -5,8 +5,8 @@
 use super::{NativeView, split::tab_order};
 use bun_native_protocol::{Element as NativeElement, NodeId, OverlayAnchor, Tree};
 use gpui::{
-    AnyElement, App, Context, Div, Focusable, Pixels, Size, Stateful, Window, anchored, deferred,
-    div, prelude::*, px,
+    AnyElement, App, Context, Div, FocusHandle, Focusable, Pixels, Size, Stateful, Window,
+    anchored, deferred, div, prelude::*, px,
 };
 use std::collections::BTreeMap;
 
@@ -83,22 +83,45 @@ fn layers(tree: &Tree) -> Vec<(NodeId, Layer, bool)> {
     result
 }
 
-fn within(tree: &Tree, node: NodeId, ancestor: NodeId) -> bool {
-    tree.path(node).is_some_and(|path| path.contains(&ancestor))
-}
-
 impl NativeView {
     /// Native control focus, independent of whether the OS window is active.
+    /// The control that holds window focus. Runs on every key and several
+    /// times per batch, so it answers from the window's focus handle: O(1)
+    /// with nothing focused or the same control focused as last time, and a
+    /// scan of plain handle comparisons otherwise.
     pub(super) fn focused_control(&self, window: &Window, cx: &App) -> Option<NodeId> {
-        self.buttons
+        let focused = window.focused(cx)?;
+        if let Some(id) = self.focus_memo.get()
+            && self.owns_focus(id, &focused, cx)
+        {
+            return Some(id);
+        }
+        let found = self
+            .buttons
             .iter()
-            .find_map(|(id, focus)| focus.is_focused(window).then_some(*id))
+            .find_map(|(id, handle)| (*handle == focused).then_some(*id))
             .or_else(|| {
-                self.inputs.iter().find_map(|(id, input)| {
-                    input.focus_handle(cx).is_focused(window).then_some(*id)
-                })
+                self.inputs
+                    .iter()
+                    .find_map(|(id, input)| input.read(cx).owns_focus(&focused).then_some(*id))
             })
-            .or_else(|| self.splits.focused(window))
+            .or_else(|| {
+                self.splits
+                    .focus_handles()
+                    .find_map(|(id, handle)| (*handle == focused).then_some(id))
+            });
+        self.focus_memo.set(found);
+        found
+    }
+
+    /// Whether `id` is a live control whose focus handle is `focused`.
+    fn owns_focus(&self, id: NodeId, focused: &FocusHandle, cx: &App) -> bool {
+        self.buttons.get(&id) == Some(focused)
+            || self
+                .inputs
+                .get(&id)
+                .is_some_and(|input| input.read(cx).owns_focus(focused))
+            || self.splits.focus_handle(id) == Some(focused)
     }
 
     pub(super) fn can_focus(&self, tree: &Tree, id: NodeId) -> bool {
@@ -145,7 +168,12 @@ impl NativeView {
         let target = {
             let state = self.state.borrow();
             let tree = &state.tree;
-            let current = layers(tree);
+            // Most windows have no overlay: skip both structural walks.
+            let current = if self.index.overlays.is_empty() {
+                Vec::new()
+            } else {
+                layers(tree)
+            };
             let mut closed: Vec<(Layer, Option<NodeId>)> = Vec::new();
             let mut opened: Vec<(Layer, NodeId)> = Vec::new();
             self.overlays.live.retain(|id, entry| {
@@ -170,12 +198,16 @@ impl NativeView {
                         }
                     });
             }
-            let modal = tree.active_modal();
+            let modal = if self.index.modals.is_empty() {
+                None
+            } else {
+                tree.active_modal()
+            };
             if self.overlays.active_modal.is_some() && self.overlays.active_modal != modal {
                 self.overlays.exposure = self.overlays.exposure.wrapping_add(1);
             }
             self.overlays.active_modal = modal;
-            let allowed = |id: NodeId| modal.is_none_or(|modal| within(tree, id, modal));
+            let allowed = |id: NodeId| modal.is_none_or(|modal| tree.is_within(id, modal));
             // Outermost closed layer first: closing nested layers together
             // returns to the control focused before the outermost one opened.
             closed.sort_by_key(|(layer, _)| *layer);
@@ -193,7 +225,7 @@ impl NativeView {
                 .and_then(|(_, id)| self.layer_controls(tree, *id).first().copied());
             match modal {
                 _ if autofocus.is_some() => autofocus.map(Some),
-                Some(modal) if !effective.is_some_and(|id| within(tree, id, modal)) => {
+                Some(modal) if !effective.is_some_and(|id| tree.is_within(id, modal)) => {
                     match self.focusable(tree, modal).first() {
                         Some(first) => Some(Some(*first)),
                         None if focused.is_some() => Some(None),

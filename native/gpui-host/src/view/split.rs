@@ -6,7 +6,7 @@
 //! Each finished drag and each keyboard step that changed the ratio is
 //! reported once as `split_resize`.
 
-use super::{DropScope, NativeView, interactions::PointerFrame};
+use super::{DropScope, NativeView, accessibility::ModalScope, interactions::PointerFrame};
 use crate::{evidence::LayoutFrame, style};
 use bun_native_protocol::{
     Direction, Element as NativeElement, Event, NodeId, ResizeSource, SPLIT_DIVIDER, Style, Tree,
@@ -16,7 +16,7 @@ use gpui::{
     MouseButton, Pixels, Role, Stateful, Window, actions, canvas, div, prelude::*, px, rgb,
 };
 use std::cell::Cell;
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use std::rc::Rc;
 
 const DIVIDER_COLOR: u32 = 0xc8ced8;
@@ -95,14 +95,25 @@ pub(super) struct Splits(BTreeMap<NodeId, SplitState>);
 
 impl Splits {
     /// Keeps the user's ratio while the declared ratio is unchanged and
-    /// releases state for removed splits. Returns whether a removed divider
-    /// held keyboard focus.
-    pub(super) fn reconcile(&mut self, tree: &Tree, window: &Window, cx: &mut App) -> bool {
+    /// releases state for removed splits. `splits` are the tree's split
+    /// nodes, from the node index. Returns whether a removed divider held
+    /// keyboard focus.
+    pub(super) fn reconcile(
+        &mut self,
+        tree: &Tree,
+        splits: &BTreeSet<NodeId>,
+        window: &Window,
+        cx: &mut App,
+    ) -> bool {
+        if splits.is_empty() && self.0.is_empty() {
+            return false;
+        }
         let mut next = BTreeMap::new();
-        for (id, node) in tree.nodes() {
-            if let NativeElement::Split {
+        for id in splits {
+            let id = *id;
+            if let Some(NativeElement::Split {
                 ratio, min_size, ..
-            } = node.element()
+            }) = tree.node(id).map(|node| node.element())
             {
                 let mut state = self.0.remove(&id).unwrap_or_else(|| SplitState {
                     declared: *ratio,
@@ -136,12 +147,6 @@ impl Splits {
 
     pub(super) fn focus_handles(&self) -> impl Iterator<Item = (NodeId, &FocusHandle)> {
         self.0.iter().map(|(id, state)| (*id, &state.focus))
-    }
-
-    pub(super) fn focused(&self, window: &Window) -> Option<NodeId> {
-        self.0
-            .iter()
-            .find_map(|(id, state)| state.focus.is_focused(window).then_some(*id))
     }
 
     /// Finished pointer drags whose ratio differs from where they started.
@@ -292,6 +297,7 @@ impl NativeView {
         layout: Option<&LayoutFrame>,
         pointer: &PointerFrame,
         drop_scope: &DropScope,
+        modal: ModalScope,
         cx: &mut Context<Self>,
     ) -> AnyElement {
         let row = properties.direction != Some(Direction::Column);
@@ -328,7 +334,15 @@ impl NativeView {
                 if let Some(layout) = layout {
                     pane = layout.children(pane, std::slice::from_ref(child), 0, None);
                 }
-                pane = pane.child(self.render_node(tree, *child, layout, pointer, drop_scope, cx));
+                pane = pane.child(self.render_node(
+                    tree,
+                    *child,
+                    layout,
+                    pointer,
+                    drop_scope,
+                    modal.child(*child),
+                    cx,
+                ));
             }
             // Measures the pane for keyboard steps; it paints nothing and
             // follows the model child, so layout evidence keeps index 0.
@@ -386,9 +400,7 @@ impl NativeView {
         if let Some(label) = node.element().accessible_label() {
             divider = divider.aria_label(label.to_owned());
         }
-        let hidden =
-            super::accessibility::beneath_modal(tree, node_id, self.overlays.active_modal());
-        let divider = super::accessibility::states(divider, false, hidden);
+        let divider = super::accessibility::states(divider, false, modal.hidden());
         let divider = assistive(divider, node_id, row, cx);
         let step = |delta: f64, axis: bool| Step::By { row: axis, delta };
         let divider = bind::<DividerLeft>(divider, node_id, step(-KEYBOARD_STEP, true), row, cx);

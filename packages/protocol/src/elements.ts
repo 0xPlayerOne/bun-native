@@ -1,56 +1,24 @@
 import { ProtocolError } from './framing.ts'
-import { fields, integer, keys, number, object, string } from './values.ts'
+import { choice, integer, keys, number, object, string } from './values.ts'
+import {
+  ACCESSIBLE_ROLES,
+  ELEMENT_KEYS,
+  LIVE_POLITENESS,
+  MAX_ACCESSIBLE_SET_SIZE,
+  OVERLAY_ANCHORS,
+  OVERLAY_NAVIGATIONS,
+  OVERLAY_SURFACES,
+  STYLE_FIELDS,
+  type AccessibleRole,
+  type Live,
+  type Style,
+} from './wire-schema.ts'
 
-export interface Style {
-  direction?: 'row' | 'column'
-  gap?: number
-  padding?: number
-  width?: number | 'fill'
-  height?: number | 'fill'
-  min_width?: number
-  max_width?: number
-  min_height?: number
-  max_height?: number
-  flex_grow?: number
-  flex_shrink?: number
-  align_items?: 'start' | 'center' | 'end' | 'stretch'
-  justify_content?: 'start' | 'center' | 'end' | 'space_between' | 'space_around' | 'space_evenly'
-  overflow?: 'visible' | 'hidden' | 'scroll_x' | 'scroll_y' | 'scroll'
-  /** Requires `scroll_y` or `scroll`. `end` keeps a viewport already at its end pinned there. */
-  scroll_anchor?: 'start' | 'end'
-  background?: number
-  color?: number
-  font_size?: number
-  /** `style_decoration_v1`: one uniform border width, 0–64 logical pixels. */
-  border_width?: number
-  /** `style_decoration_v1`: unsigned 24-bit RGB. */
-  border_color?: number
-  /** `style_decoration_v1`: one radius for every corner, 0–4,096 logical pixels. */
-  corner_radius?: number
-  /** `style_decoration_v1`: 0–1, multiplying descendants too. */
-  opacity?: number
-  /** `style_decoration_v1`: inherited 100–900 in steps of 100. */
-  font_weight?: 100 | 200 | 300 | 400 | 500 | 600 | 700 | 800 | 900
-}
+export type { Style }
 
 type LeafStyle = Omit<Style, 'overflow' | 'scroll_anchor'> & { overflow?: 'visible' | 'hidden' }
 /** A split's `direction` selects its axis; gap, alignment and scrolling do not apply. */
 export type SplitStyle = Omit<LeafStyle, 'gap' | 'align_items' | 'justify_content'>
-
-/** Main-axis thickness of the host-drawn split divider, in logical pixels. */
-export const SPLIT_DIVIDER = 6
-
-/** Style fields that require `style_decoration_v1`. */
-export const DECORATION_FIELDS = Object.freeze([
-  'border_width',
-  'border_color',
-  'corner_radius',
-  'opacity',
-  'font_weight',
-] as const)
-
-/** Overlays nested inside overlays, the outermost counting as one. */
-export const MAX_OVERLAY_DEPTH = 8
 
 /** Requires the `overlay_keyboard_v1` capability; defaults are omitted when normalized. */
 export interface OverlayKeyboard {
@@ -103,9 +71,6 @@ export interface AccessibleLabel {
   accessible_label?: string
 }
 
-/** The largest `accessible_set_size` and `accessible_position`. */
-const MAX_ACCESSIBLE_SET_SIZE = 2_147_483_647
-
 /**
  * Requires `accessibility_lists_v1`. A box without `accessible_role` is layout
  * only and has no accessible node. A list's `accessible_set_size` counts every
@@ -113,7 +78,7 @@ const MAX_ACCESSIBLE_SET_SIZE = 2_147_483_647
  * in that full set, so assistive technology knows a windowed list's extent.
  */
 export interface BoxAccessibility {
-  accessible_role?: 'list' | 'list_item'
+  accessible_role?: AccessibleRole
   /** Only with a role: the list's or item's accessible name. */
   accessible_label?: string
   /** Only on a `list`. */
@@ -133,7 +98,7 @@ export type Element =
        * Requires `accessibility_lists_v1`: announce the text when the node
        * appears and whenever it changes.
        */
-      accessible_live?: 'polite' | 'assertive'
+      accessible_live?: Live
       style?: LeafStyle
     }
   | { kind: 'button'; text: string; disabled?: boolean; style?: LeafStyle }
@@ -155,101 +120,55 @@ export type Element =
   | ({ kind: 'split'; ratio?: number; min_size?: number; style?: SplitStyle } & AccessibleLabel)
   | OverlayElement
 
-function choice<T extends string>(value: unknown, name: string, values: readonly T[]): T {
-  for (const candidate of values) if (candidate === value) return candidate
-  throw new ProtocolError(name + ' must be one of ' + values.join(', '))
-}
-
 function requireLeafStyle(style: Style): asserts style is LeafStyle {
   if (style.overflow !== undefined && style.overflow !== 'visible' && style.overflow !== 'hidden')
     throw new ProtocolError('Scrolling is supported only on box and overlay elements')
 }
 
-const STYLE_KEYS = fields(
-  'direction',
-  'gap',
-  'padding',
-  'width',
-  'height',
-  'min_width',
-  'max_width',
-  'min_height',
-  'max_height',
-  'flex_grow',
-  'flex_shrink',
-  'align_items',
-  'justify_content',
-  'overflow',
-  'scroll_anchor',
-  'background',
-  'color',
-  'font_size',
-  ...DECORATION_FIELDS
-)
-
+/**
+ * One pass over the members present, each checked by its generated field
+ * description. Inherited properties are ignored, as `keys` ignores them.
+ */
 function parseStyle(value: unknown): Style {
   const data = object(value)
-  keys(data, STYLE_KEYS)
-  const style: Style = {}
-  for (const key of ['gap', 'padding'] as const)
-    if (key in data) style[key] = number(data[key], key, 0, 4_096)
-  for (const key of ['width', 'height'] as const)
-    if (key in data) style[key] = data[key] === 'fill' ? 'fill' : number(data[key], key, 0, 16_384)
-  for (const key of ['min_width', 'max_width', 'min_height', 'max_height'] as const)
-    if (key in data) style[key] = number(data[key], key, 0, 16_384)
+  const style: Record<string, unknown> = {}
+  for (const key of Object.keys(data)) {
+    const field = STYLE_FIELDS.get(key)
+    if (field === undefined) throw new ProtocolError('Unknown message property: ' + key)
+    const member = data[key]
+    switch (field.type) {
+      case 'number':
+        style[key] = number(member, key, field.min, field.max)
+        break
+      case 'dimension':
+        style[key] = member === 'fill' ? 'fill' : number(member, key, field.min, field.max)
+        break
+      case 'color':
+        style[key] = integer(member, key, 0, 0xff_ffff)
+        break
+      case 'enum':
+        style[key] = choice(member, key, field.values)
+        break
+      case 'weight':
+        style[key] = integer(member, key, field.min, field.max)
+        if ((style[key] as number) % field.step !== 0)
+          throw new ProtocolError(key + ' must be a multiple of ' + field.step)
+    }
+  }
+  const parsed = style as Style
   for (const [minimum, maximum] of [
-    [style.min_width, style.max_width],
-    [style.min_height, style.max_height],
+    [parsed.min_width, parsed.max_width],
+    [parsed.min_height, parsed.max_height],
   ])
     if (minimum !== undefined && maximum !== undefined && minimum > maximum)
       throw new ProtocolError('Minimum size must not exceed maximum size')
-  for (const key of ['background', 'color', 'border_color'] as const)
-    if (key in data) style[key] = integer(data[key], key, 0, 0xff_ffff)
-  if ('direction' in data)
-    style.direction = choice(data['direction'], 'direction', ['row', 'column'])
-  for (const key of ['flex_grow', 'flex_shrink'] as const)
-    if (key in data) style[key] = number(data[key], key, 0, 1_000)
-  if ('align_items' in data)
-    style.align_items = choice(data['align_items'], 'align_items', [
-      'start',
-      'center',
-      'end',
-      'stretch',
-    ])
-  if ('justify_content' in data)
-    style.justify_content = choice(data['justify_content'], 'justify_content', [
-      'start',
-      'center',
-      'end',
-      'space_between',
-      'space_around',
-      'space_evenly',
-    ])
-  if ('overflow' in data)
-    style.overflow = choice(data['overflow'], 'overflow', [
-      'visible',
-      'hidden',
-      'scroll_x',
-      'scroll_y',
-      'scroll',
-    ])
-  if ('scroll_anchor' in data) {
-    style.scroll_anchor = choice(data['scroll_anchor'], 'scroll_anchor', ['start', 'end'])
-    if (style.overflow !== 'scroll_y' && style.overflow !== 'scroll')
-      throw new ProtocolError('scroll_anchor requires vertical scrolling overflow')
-  }
-  if ('font_size' in data) style.font_size = number(data['font_size'], 'font_size', 1, 512)
-  if ('border_width' in data)
-    style.border_width = number(data['border_width'], 'border_width', 0, 64)
-  if ('corner_radius' in data)
-    style.corner_radius = number(data['corner_radius'], 'corner_radius', 0, 4_096)
-  if ('opacity' in data) style.opacity = number(data['opacity'], 'opacity', 0, 1)
-  if ('font_weight' in data) {
-    const weight = integer(data['font_weight'], 'font_weight', 100, 900)
-    if (weight % 100 !== 0) throw new ProtocolError('font_weight must be a multiple of 100')
-    style.font_weight = weight as NonNullable<Style['font_weight']>
-  }
-  return style
+  if (
+    parsed.scroll_anchor !== undefined &&
+    parsed.overflow !== 'scroll_y' &&
+    parsed.overflow !== 'scroll'
+  )
+    throw new ProtocolError('scroll_anchor requires vertical scrolling overflow')
+  return parsed
 }
 
 function accessibleLabel(element: Record<string, unknown>): AccessibleLabel {
@@ -270,7 +189,7 @@ function boxAccessibility(element: Record<string, unknown>): BoxAccessibility {
       if (name in element) throw new ProtocolError(name + ' requires accessible_role')
     return {}
   }
-  const role = choice(element['accessible_role'], 'accessible_role', ['list', 'list_item'])
+  const role = choice(element['accessible_role'], 'accessible_role', ACCESSIBLE_ROLES)
   if (role === 'list') {
     for (const name of ['accessible_position', 'accessible_selected'])
       if (name in element) throw new ProtocolError(name + ' is only accepted on a list_item')
@@ -312,30 +231,6 @@ function boxAccessibility(element: Record<string, unknown>): BoxAccessibility {
   }
 }
 
-const ELEMENT_BOX_KEYS = fields(
-  'kind',
-  'accessible_role',
-  'accessible_label',
-  'accessible_set_size',
-  'accessible_position',
-  'accessible_selected',
-  'style'
-)
-const ELEMENT_TEXT_KEYS = fields('kind', 'text', 'accessible_live', 'style')
-const ELEMENT_BUTTON_KEYS = fields('kind', 'text', 'disabled', 'style')
-const ELEMENT_INPUT_KEYS = fields('kind', 'value', 'placeholder', 'disabled', 'read_only', 'style')
-const ELEMENT_SPLIT_KEYS = fields('kind', 'ratio', 'min_size', 'accessible_label', 'style')
-const ELEMENT_OVERLAY_KEYS = fields(
-  'kind',
-  'anchor',
-  'modal',
-  'surface',
-  'autofocus',
-  'navigation',
-  'accessible_label',
-  'style'
-)
-
 /**
  * Elements this module produced. Each is frozen with its style, so it is still
  * exactly the normalized value that passed validation.
@@ -362,26 +257,27 @@ function validElement(value: unknown): Element {
   const style = 'style' in element ? parseStyle(element['style']) : {}
   switch (element['kind']) {
     case 'box':
-      keys(element, ELEMENT_BOX_KEYS)
+      keys(element, ELEMENT_KEYS.box)
       return { kind: 'box', ...boxAccessibility(element), style }
     case 'text':
-      keys(element, ELEMENT_TEXT_KEYS)
+      keys(element, ELEMENT_KEYS.text)
       requireLeafStyle(style)
       return {
         kind: 'text',
         text: string(element['text'], 'text'),
         ...('accessible_live' in element
           ? {
-              accessible_live: choice(element['accessible_live'], 'accessible_live', [
-                'polite',
-                'assertive',
-              ]),
+              accessible_live: choice(
+                element['accessible_live'],
+                'accessible_live',
+                LIVE_POLITENESS
+              ),
             }
           : {}),
         style,
       }
     case 'button': {
-      keys(element, ELEMENT_BUTTON_KEYS)
+      keys(element, ELEMENT_KEYS.button)
       requireLeafStyle(style)
       if ('disabled' in element && typeof element['disabled'] !== 'boolean')
         throw new ProtocolError('disabled must be a boolean')
@@ -393,7 +289,7 @@ function validElement(value: unknown): Element {
       }
     }
     case 'input': {
-      keys(element, ELEMENT_INPUT_KEYS)
+      keys(element, ELEMENT_KEYS.input)
       requireLeafStyle(style)
       for (const name of ['disabled', 'read_only'])
         if (name in element && typeof element[name] !== 'boolean')
@@ -409,7 +305,7 @@ function validElement(value: unknown): Element {
       }
     }
     case 'split': {
-      keys(element, ELEMENT_SPLIT_KEYS)
+      keys(element, ELEMENT_KEYS.split)
       requireLeafStyle(style)
       if (
         style.gap !== undefined ||
@@ -426,10 +322,10 @@ function validElement(value: unknown): Element {
       }
     }
     case 'overlay': {
-      keys(element, ELEMENT_OVERLAY_KEYS)
+      keys(element, ELEMENT_KEYS.overlay)
       const label = accessibleLabel(element)
       const anchor =
-        'anchor' in element ? choice(element['anchor'], 'anchor', ['window', 'parent']) : 'window'
+        'anchor' in element ? choice(element['anchor'], 'anchor', OVERLAY_ANCHORS) : 'window'
       for (const flag of ['modal', 'autofocus'])
         if (flag in element && typeof element[flag] !== 'boolean')
           throw new ProtocolError(flag + ' must be a boolean')
@@ -437,12 +333,12 @@ function validElement(value: unknown): Element {
       const keyboard: OverlayKeyboard = {
         ...(element['autofocus'] === true ? { autofocus: true } : {}),
         ...('navigation' in element &&
-        choice(element['navigation'], 'navigation', ['tab', 'menu']) === 'menu'
+        choice(element['navigation'], 'navigation', OVERLAY_NAVIGATIONS) === 'menu'
           ? { navigation: 'menu' as const }
           : {}),
       }
       const surface =
-        'surface' in element ? choice(element['surface'], 'surface', ['layer', 'window']) : 'layer'
+        'surface' in element ? choice(element['surface'], 'surface', OVERLAY_SURFACES) : 'layer'
       if (surface === 'window') {
         if (anchor !== 'parent')
           throw new ProtocolError('A popup window overlay must be anchored to its parent')

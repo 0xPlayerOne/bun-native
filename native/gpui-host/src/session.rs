@@ -22,11 +22,15 @@ use bun_native_protocol::{
     ProcessLaunch, RequestId, ServicePolicy, ShortcutId, ShortcutModifiers, Tree, WindowId,
 };
 use gpui::{
-    App, Bounds, TitlebarOptions, WindowBounds, WindowHandle, WindowOptions, prelude::*, px, size,
+    App, Bounds, TitlebarOptions, Window, WindowBounds, WindowHandle, WindowOptions, prelude::*,
+    px, size,
 };
 use std::cell::{Cell, RefCell};
 use std::collections::BTreeMap;
 use std::rc::Rc;
+
+/// A service's refusal: the request's error code and message.
+type Failure = (ErrorCode, &'static str);
 
 struct WindowEntry {
     handle: WindowHandle<NativeView>,
@@ -345,13 +349,11 @@ impl Session {
                 window_id,
                 shortcut_id,
                 ..
-            } => {
-                if let Err((code, message)) =
-                    self.shortcuts.unregister(id, window_id, shortcut_id, cx)
-                {
-                    self.error(id, code, message, cx);
-                }
-            }
+            } => self.report(
+                id,
+                self.shortcuts.unregister(id, window_id, shortcut_id, cx),
+                cx,
+            ),
             Command::PostNotification {
                 window_id,
                 notification_id,
@@ -363,14 +365,12 @@ impl Session {
                 window_id,
                 notification_id,
                 ..
-            } => {
-                if let Err((code, message)) =
-                    self.notifications
-                        .withdraw(id, window_id, notification_id, cx)
-                {
-                    self.error(id, code, message, cx);
-                }
-            }
+            } => self.report(
+                id,
+                self.notifications
+                    .withdraw(id, window_id, notification_id, cx),
+                cx,
+            ),
             Command::OpenFileGrant {
                 window_id,
                 grant_id,
@@ -382,11 +382,7 @@ impl Session {
                 window_id,
                 grant_id,
                 ..
-            } => {
-                if let Err((code, message)) = self.files.close(id, window_id, grant_id, cx) {
-                    self.error(id, code, message, cx);
-                }
-            }
+            } => self.report(id, self.files.close(id, window_id, grant_id, cx), cx),
             Command::FileRequest {
                 window_id,
                 grant_id,
@@ -443,12 +439,11 @@ impl Session {
                 window_id,
                 process_id,
                 ..
-            } => {
-                if let Err((code, message)) = self.processes.release(id, window_id, process_id, cx)
-                {
-                    self.error(id, code, message, cx);
-                }
-            }
+            } => self.report(
+                id,
+                self.processes.release(id, window_id, process_id, cx),
+                cx,
+            ),
             Command::ShowFileDialog {
                 window_id,
                 dialog_id,
@@ -459,12 +454,11 @@ impl Session {
                 window_id,
                 dialog_id,
                 ..
-            } => {
-                if let Err((code, message)) = self.file_dialogs.close(id, window_id, dialog_id, cx)
-                {
-                    self.error(id, code, message, cx);
-                }
-            }
+            } => self.report(
+                id,
+                self.file_dialogs.close(id, window_id, dialog_id, cx),
+                cx,
+            ),
             Command::ShowMessageDialog {
                 window_id,
                 dialog_id,
@@ -475,12 +469,11 @@ impl Session {
                 window_id,
                 dialog_id,
                 ..
-            } => {
-                if let Err((code, message)) = self.task_dialogs.close(id, window_id, dialog_id, cx)
-                {
-                    self.error(id, code, message, cx);
-                }
-            }
+            } => self.report(
+                id,
+                self.task_dialogs.close(id, window_id, dialog_id, cx),
+                cx,
+            ),
             Command::ShowContextMenu {
                 window_id,
                 menu_id,
@@ -491,11 +484,7 @@ impl Session {
             } => self.show_context_menu((id, window_id, menu_id), (x, y), &items, cx),
             Command::CloseContextMenu {
                 window_id, menu_id, ..
-            } => {
-                if let Err((code, message)) = self.context_menus.close(id, window_id, menu_id, cx) {
-                    self.error(id, code, message, cx);
-                }
-            }
+            } => self.report(id, self.context_menus.close(id, window_id, menu_id, cx), cx),
             Command::RegisterDropTarget {
                 window_id,
                 target_id,
@@ -701,6 +690,71 @@ impl Session {
         }
     }
 
+    /// A launch-policy grant, then the owned window. A denial is reported as
+    /// `PermissionDenied` with `denial`; a missing window as [`Self::window`]
+    /// reports it.
+    fn gated(
+        &self,
+        id: RequestId,
+        window_id: WindowId,
+        granted: bool,
+        denial: &str,
+        cx: &mut App,
+    ) -> Option<(WindowHandle<NativeView>, SharedWindowState)> {
+        if !granted {
+            self.error(id, ErrorCode::PermissionDenied, denial, cx);
+            return None;
+        }
+        self.window(id, window_id, cx)
+    }
+
+    /// Reads from an owned window; a window GPUI already released is
+    /// reported as `InvalidHandle`.
+    fn read_window<R>(
+        &self,
+        id: RequestId,
+        handle: WindowHandle<NativeView>,
+        read: impl FnOnce(&Window) -> R,
+        cx: &mut App,
+    ) -> Option<R> {
+        let read = handle.update(cx, |_, window, _| read(window));
+        if read.is_err() {
+            self.error(
+                id,
+                ErrorCode::InvalidHandle,
+                "native window is no longer available",
+                cx,
+            );
+        }
+        read.ok()
+    }
+
+    /// Whether this window's backend supports a service; otherwise reported
+    /// as `ServiceUnavailable` with `unavailable`.
+    fn supports(
+        &self,
+        id: RequestId,
+        handle: WindowHandle<NativeView>,
+        supports: impl FnOnce(&Window) -> bool,
+        unavailable: &str,
+        cx: &mut App,
+    ) -> bool {
+        let supported = handle
+            .update(cx, |_, window, _| supports(window))
+            .unwrap_or(false);
+        if !supported {
+            self.error(id, ErrorCode::ServiceUnavailable, unavailable, cx);
+        }
+        supported
+    }
+
+    /// Reports a service's refusal as this request's error.
+    fn report(&self, id: RequestId, result: Result<(), Failure>, cx: &mut App) {
+        if let Err((code, message)) = result {
+            self.error(id, code, message, cx);
+        }
+    }
+
     fn batch(
         &mut self,
         id: RequestId,
@@ -768,16 +822,13 @@ impl Session {
     }
 
     fn display_snapshot(&self, id: RequestId, window_id: WindowId, cx: &mut App) {
-        if !self.policy.window_display {
-            self.error(
-                id,
-                ErrorCode::PermissionDenied,
-                "window display access was not granted at native process launch",
-                cx,
-            );
-            return;
-        }
-        let Some((handle, _)) = self.window(id, window_id, cx) else {
+        let Some((handle, _)) = self.gated(
+            id,
+            window_id,
+            self.policy.window_display,
+            "window display access was not granted at native process launch",
+            cx,
+        ) else {
             return;
         };
         let disconnected = self.windows.borrow().get(&window_id).is_some_and(|entry| {
@@ -822,25 +873,14 @@ impl Session {
         // End an OS dialog or menu owned by this window before it goes away.
         self.task_dialogs.close_window(window_id, cx);
         self.context_menus.close_window(window_id, cx);
+        // GPUI runs the closed-window hook in `new` synchronously when this
+        // update returns, so it has already released every service's
+        // per-window state and sent `Closed` before the `Ack` below.
         if handle
             .update(cx, |_, window, _| window.remove_window())
             .is_ok()
         {
-            self.clipboard.cancel(
-                Some(window_id),
-                ErrorCode::InvalidHandle,
-                "clipboard owner window was closed",
-                cx,
-            );
-            self.shortcuts.close_window(window_id, cx);
-            self.notifications.close_window(window_id, cx);
-            self.files.close_window(window_id, cx);
-            self.processes.close_window(window_id, cx);
-            self.file_dialogs.close_window(window_id, cx);
-            self.task_dialogs.close_window(window_id, cx);
-            self.context_menus.close_window(window_id, cx);
-            // The closed-window hook also ends a drag GPUI still holds.
-            self.drops.close_window(window_id, false);
+            debug_assert!(!self.windows.borrow().contains_key(&window_id));
             self.events.send(Event::Ack { id }, cx);
         } else {
             state.borrow_mut().active = true;
@@ -864,33 +904,25 @@ impl Session {
             ClipboardOperation::Read => self.policy.clipboard_read,
             ClipboardOperation::Write(_) => self.policy.clipboard_write,
         };
-        if !granted {
-            self.error(
-                id,
-                ErrorCode::PermissionDenied,
-                "this clipboard operation was not granted at native process launch",
-                cx,
-            );
-            return;
-        }
-        let Some((handle, _)) = self.window(id, window_id, cx) else {
+        let Some((handle, _)) = self.gated(
+            id,
+            window_id,
+            granted,
+            "this clipboard operation was not granted at native process launch",
+            cx,
+        ) else {
             return;
         };
-        if !handle
-            .update(cx, |_, window, _| Clipboard::supports_window(window))
-            .unwrap_or(false)
-        {
-            self.error(
-                id,
-                ErrorCode::ServiceUnavailable,
-                "clipboard text is unavailable for this native window backend",
-                cx,
-            );
+        if !self.supports(
+            id,
+            handle,
+            Clipboard::supports_window,
+            "clipboard text is unavailable for this native window backend",
+            cx,
+        ) {
             return;
         }
-        if let Err((code, message)) = self.clipboard.submit(id, window_id, operation, cx) {
-            self.error(id, code, message, cx);
-        }
+        self.report(id, self.clipboard.submit(id, window_id, operation, cx), cx);
     }
 
     fn register_shortcut(
@@ -901,33 +933,25 @@ impl Session {
         cx: &mut App,
     ) {
         let (id, window_id, _) = request;
-        if !self.policy.global_shortcuts {
-            self.error(
-                id,
-                ErrorCode::PermissionDenied,
-                "global shortcuts were not granted at native process launch",
-                cx,
-            );
-            return;
-        }
-        let Some((handle, _)) = self.window(id, window_id, cx) else {
+        let Some((handle, _)) = self.gated(
+            id,
+            window_id,
+            self.policy.global_shortcuts,
+            "global shortcuts were not granted at native process launch",
+            cx,
+        ) else {
             return;
         };
-        if !handle
-            .update(cx, |_, window, _| Shortcuts::supports_window(window))
-            .unwrap_or(false)
-        {
-            self.error(
-                id,
-                ErrorCode::ServiceUnavailable,
-                "global shortcuts are unavailable for this native window backend",
-                cx,
-            );
+        if !self.supports(
+            id,
+            handle,
+            Shortcuts::supports_window,
+            "global shortcuts are unavailable for this native window backend",
+            cx,
+        ) {
             return;
         }
-        if let Err((code, message)) = self.shortcuts.register(request, key, modifiers, cx) {
-            self.error(id, code, message, cx);
-        }
+        self.report(id, self.shortcuts.register(request, key, modifiers, cx), cx);
     }
 
     fn post_notification(
@@ -938,21 +962,19 @@ impl Session {
         cx: &mut App,
     ) {
         let (id, window_id, _) = request;
-        if !self.policy.notifications {
-            self.error(
+        if self
+            .gated(
                 id,
-                ErrorCode::PermissionDenied,
+                window_id,
+                self.policy.notifications,
                 "notifications were not granted at native process launch",
                 cx,
-            );
+            )
+            .is_none()
+        {
             return;
         }
-        if self.window(id, window_id, cx).is_none() {
-            return;
-        }
-        if let Err((code, message)) = self.notifications.post(request, title, body, cx) {
-            self.error(id, code, message, cx);
-        }
+        self.report(id, self.notifications.post(request, title, body, cx), cx);
     }
 
     fn open_file_grant(
@@ -963,26 +985,24 @@ impl Session {
         cx: &mut App,
     ) {
         let (id, window_id, _) = request;
-        if !self
+        let granted = self
             .policy
             .filesystem_roots
             .iter()
-            .any(|item| item.id == root)
-        {
-            self.error(
+            .any(|item| item.id == root);
+        if self
+            .gated(
                 id,
-                ErrorCode::PermissionDenied,
+                window_id,
+                granted,
                 "this filesystem root was not granted at native process launch",
                 cx,
-            );
+            )
+            .is_none()
+        {
             return;
         }
-        if self.window(id, window_id, cx).is_none() {
-            return;
-        }
-        if let Err((code, message)) = self.files.open(request, root, access, cx) {
-            self.error(id, code, message, cx);
-        }
+        self.report(id, self.files.open(request, root, access, cx), cx);
     }
 
     fn file_request(
@@ -996,9 +1016,7 @@ impl Session {
         if self.window(id, window_id, cx).is_none() {
             return;
         }
-        if let Err((code, message)) = self.files.request(request, path, operation, cx) {
-            self.error(id, code, message, cx);
-        }
+        self.report(id, self.files.request(request, path, operation, cx), cx);
     }
 
     fn spawn_process(
@@ -1008,21 +1026,21 @@ impl Session {
         cx: &mut App,
     ) {
         let (id, window_id, _) = request;
-        if !self
+        let granted = self
             .policy
             .processes
             .iter()
-            .any(|item| item.id == launch.executable)
-        {
-            self.error(
+            .any(|item| item.id == launch.executable);
+        if self
+            .gated(
                 id,
-                ErrorCode::PermissionDenied,
+                window_id,
+                granted,
                 "this process executable was not granted at native process launch",
                 cx,
-            );
-            return;
-        }
-        if self.window(id, window_id, cx).is_none() {
+            )
+            .is_none()
+        {
             return;
         }
         let directory = match &launch.cwd {
@@ -1040,12 +1058,12 @@ impl Session {
             },
             None => None,
         };
-        if let Err((code, message)) = self
-            .processes
-            .spawn(request, Spawn { launch, directory }, cx)
-        {
-            self.error(id, code, message, cx);
-        }
+        self.report(
+            id,
+            self.processes
+                .spawn(request, Spawn { launch, directory }, cx),
+            cx,
+        );
     }
 
     fn update_process(
@@ -1058,9 +1076,7 @@ impl Session {
         if self.window(id, window_id, cx).is_none() {
             return;
         }
-        if let Err((code, message)) = self.processes.update(request, change, cx) {
-            self.error(id, code, message, cx);
-        }
+        self.report(id, self.processes.update(request, change, cx), cx);
     }
 
     fn show_file_dialog(
@@ -1070,30 +1086,19 @@ impl Session {
         cx: &mut App,
     ) {
         let (id, window_id, _) = request;
-        if !self.policy.file_dialogs {
-            self.error(
-                id,
-                ErrorCode::PermissionDenied,
-                "file dialogs were not granted at native process launch",
-                cx,
-            );
-            return;
-        }
-        let Some((handle, _)) = self.window(id, window_id, cx) else {
+        let Some((handle, _)) = self.gated(
+            id,
+            window_id,
+            self.policy.file_dialogs,
+            "file dialogs were not granted at native process launch",
+            cx,
+        ) else {
             return;
         };
-        let Ok(parent) = handle.update(cx, |_, window, _| FileDialogs::parent(window)) else {
-            self.error(
-                id,
-                ErrorCode::InvalidHandle,
-                "native window is no longer available",
-                cx,
-            );
+        let Some(parent) = self.read_window(id, handle, FileDialogs::parent, cx) else {
             return;
         };
-        if let Err((code, message)) = self.file_dialogs.show(request, options, parent, cx) {
-            self.error(id, code, message, cx);
-        }
+        self.report(id, self.file_dialogs.show(request, options, parent, cx), cx);
     }
 
     fn show_message_dialog(
@@ -1103,30 +1108,19 @@ impl Session {
         cx: &mut App,
     ) {
         let (id, window_id, _) = request;
-        if !self.policy.task_dialogs {
-            self.error(
-                id,
-                ErrorCode::PermissionDenied,
-                "OS message dialogs were not granted at native process launch",
-                cx,
-            );
-            return;
-        }
-        let Some((handle, _)) = self.window(id, window_id, cx) else {
+        let Some((handle, _)) = self.gated(
+            id,
+            window_id,
+            self.policy.task_dialogs,
+            "OS message dialogs were not granted at native process launch",
+            cx,
+        ) else {
             return;
         };
-        let Ok(owner) = handle.update(cx, |_, window, _| TaskDialogs::owner(window)) else {
-            self.error(
-                id,
-                ErrorCode::InvalidHandle,
-                "native window is no longer available",
-                cx,
-            );
+        let Some(owner) = self.read_window(id, handle, TaskDialogs::owner, cx) else {
             return;
         };
-        if let Err((code, message)) = self.task_dialogs.show(request, options, owner, cx) {
-            self.error(id, code, message, cx);
-        }
+        self.report(id, self.task_dialogs.show(request, options, owner, cx), cx);
     }
 
     fn show_context_menu(
@@ -1141,18 +1135,14 @@ impl Session {
         let Some((handle, _)) = self.window(id, window_id, cx) else {
             return;
         };
-        let Ok(owner) = handle.update(cx, |_, window, _| ContextMenus::owner(window)) else {
-            self.error(
-                id,
-                ErrorCode::InvalidHandle,
-                "native window is no longer available",
-                cx,
-            );
+        let Some(owner) = self.read_window(id, handle, ContextMenus::owner, cx) else {
             return;
         };
-        if let Err((code, message)) = self.context_menus.show(request, position, items, owner, cx) {
-            self.error(id, code, message, cx);
-        }
+        self.report(
+            id,
+            self.context_menus.show(request, position, items, owner, cx),
+            cx,
+        );
     }
 
     fn register_drop_target(
@@ -1163,16 +1153,13 @@ impl Session {
         node_id: NodeId,
         cx: &mut App,
     ) {
-        if !self.policy.drag_drop {
-            self.error(
-                id,
-                ErrorCode::PermissionDenied,
-                "drag and drop was not granted at native process launch",
-                cx,
-            );
-            return;
-        }
-        let Some((handle, state)) = self.window(id, window_id, cx) else {
+        let Some((handle, state)) = self.gated(
+            id,
+            window_id,
+            self.policy.drag_drop,
+            "drag and drop was not granted at native process launch",
+            cx,
+        ) else {
             return;
         };
         if !self.drops.available() {
@@ -1335,13 +1322,13 @@ impl Session {
 
 fn flush_and_quit(events: EventSink, final_event: Event, cx: &mut App) {
     match events.finish(final_event) {
-        Some(flushed) => cx
+        Ok(flushed) => cx
             .spawn(async move |cx| {
                 let _ = flushed.recv().await;
                 cx.update(|cx| cx.quit());
             })
             .detach(),
-        None => cx.quit(),
+        Err(_) => cx.quit(),
     }
 }
 

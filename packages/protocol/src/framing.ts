@@ -1,10 +1,5 @@
-/**
- * Maximum command frame (runtime to host) in UTF-8 JSON bytes, excluding the
- * newline. One transaction is one batch, so this bounds a full-window mount.
- */
-export const MAX_FRAME_BYTES = 16_777_216
-/** Maximum event frame (host to runtime): one text value or service result. */
-export const MAX_EVENT_FRAME_BYTES = 65_536
+import { MAX_FRAME_BYTES } from './wire-schema.ts'
+
 /** Decoder capacity kept between frames; a larger frame borrows memory while it is read. */
 const RETAINED_FRAME_BYTES = 65_536
 

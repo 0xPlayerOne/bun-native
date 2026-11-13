@@ -2,28 +2,15 @@
 //! arguments and environment are explicit arrays and maps, never a command
 //! string, and a working directory comes only from a live file grant.
 
-use crate::{validate_chunk, validate_file_path, FileGrantId};
+use crate::{
+    validate_chunk, validate_file_path, FileGrantId, MAX_PROCESS_ARGS, MAX_PROCESS_ARG_BYTES,
+    MAX_PROCESS_CPU_SECONDS, MAX_PROCESS_ENV, MAX_PROCESS_ENV_NAME_BYTES,
+    MAX_PROCESS_ENV_VALUE_BYTES, MAX_PROCESS_EXECUTABLES, MAX_PROCESS_LAUNCH_BYTES,
+    MAX_PROCESS_MEMORY_BYTES, MAX_PROCESS_OPEN_FILES, MAX_TERMINAL_DIMENSION,
+    MIN_PROCESS_MEMORY_BYTES, MIN_PROCESS_OPEN_FILES,
+};
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
-
-pub const MAX_PROCESS_EXECUTABLES: usize = 8;
-pub const MAX_PROCESSES: usize = 8;
-pub const MAX_PROCESS_ARGS: usize = 64;
-pub const MAX_PROCESS_ARG_BYTES: usize = 4_096;
-pub const MAX_PROCESS_ENV: usize = 64;
-pub const MAX_PROCESS_ENV_NAME_BYTES: usize = 128;
-pub const MAX_PROCESS_ENV_VALUE_BYTES: usize = 4_096;
-/// Combined bytes of arguments and environment, well below the frame cap.
-pub const MAX_PROCESS_LAUNCH_BYTES: usize = 32_768;
-/// Output chunks a process may have delivered but not yet acknowledged.
-pub const MAX_PROCESS_OUTPUT_CREDIT: usize = 4;
-pub const MAX_TERMINAL_DIMENSION: u16 = 1_000;
-/// Bounds of the optional per-executable resource limits.
-pub const MAX_PROCESS_CPU_SECONDS: u64 = 604_800;
-pub const MIN_PROCESS_MEMORY_BYTES: u64 = 1 << 20;
-pub const MAX_PROCESS_MEMORY_BYTES: u64 = 1 << 48;
-pub const MIN_PROCESS_OPEN_FILES: u64 = 3;
-pub const MAX_PROCESS_OPEN_FILES: u64 = 1 << 20;
 
 /// Resource limits every child started from one executable entry runs under.
 /// Each is optional; a platform that cannot enforce a requested limit refuses

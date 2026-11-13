@@ -13,13 +13,31 @@ import { stableChildren } from '@bun-native/core/order'
 export type Counts = { create: number; set: number; insert: number; remove: number }
 export type Committed = Snapshot & { handle: NativeNode }
 
-// Unchanged nodes share one immutable element across commits; memoize its
-// serialization instead of restringifying the committed side every commit.
-const keys = new WeakMap<Element, string>()
-function key(element: Element): string {
-  let value = keys.get(element)
-  if (value === undefined) keys.set(element, (value = JSON.stringify(element)))
-  return value
+/**
+ * Whether two element values are equal as the wire sees them: plain data whose
+ * `undefined` properties are omitted. Elements hold only primitives and one
+ * level of style, so comparing in place is cheaper than serializing either.
+ */
+function same(left: unknown, right: unknown): boolean {
+  if (left === right) return true
+  if (
+    left === null ||
+    right === null ||
+    typeof left !== 'object' ||
+    typeof right !== 'object' ||
+    Array.isArray(left) !== Array.isArray(right)
+  )
+    return false
+  const a = left as Record<string, unknown>
+  const b = right as Record<string, unknown>
+  let fields = 0
+  for (const name in a) {
+    if (a[name] === undefined) continue
+    if (!same(a[name], b[name])) return false
+    fields += 1
+  }
+  for (const name in b) if (b[name] !== undefined) fields -= 1
+  return fields === 0
 }
 
 const noChildren: readonly Node[] = Object.freeze([])
@@ -49,14 +67,15 @@ function updateInput(
       return true
     }
   }
-  const appearance = (element: Extract<Element, { kind: 'input' }>) =>
-    JSON.stringify({
-      placeholder: element.placeholder ?? '',
-      disabled: element.disabled === true,
-      read_only: element.read_only === true,
-      style: element.style ?? {},
-    })
-  if (appearance(old.element) === appearance(state.element)) return false
+  const before = old.element
+  const after = state.element
+  if (
+    (before.placeholder ?? '') === (after.placeholder ?? '') &&
+    (before.disabled === true) === (after.disabled === true) &&
+    (before.read_only === true) === (after.read_only === true) &&
+    same(before.style ?? {}, after.style ?? {})
+  )
+    return false
   // An appearance/state-only update preserves the current native value; this never upgrades
   // an older application value intent to a newer revision.
   const current = window.input(old.handle as NativeNode<'input'>)
@@ -208,7 +227,7 @@ export async function commitNativeTree(
       updates.set(node, { ...state, handle: old.handle })
       if (state.element.kind === 'input') {
         if (updateInput(window, batch, old, { ...state, element: state.element })) counts.set += 1
-      } else if (key(old.element) !== key(state.element)) {
+      } else if (!same(old.element, state.element)) {
         batch.set(old.handle as NativeNode<Exclude<Element['kind'], 'input'>>, state.element)
         counts.set += 1
       }

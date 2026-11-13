@@ -31,8 +31,64 @@ lto = "thin"
 codegen-units = 1
 strip = "debuginfo"
 
+# Cold code at opt-level "s": D-Bus (portals, notifications, AT-SPI
+# accessibility), SVG parsing and regex compilation run on service calls,
+# assistive-technology traffic or once, never per frame. GPUI, layout, text and
+# wgpu stay at 3. Measured on Linux x64: -1.9 MB `.text`, no build-time cost
+# (docs/reproducible-builds.md#release-profile-and-binary-size).
+
+[profile.release.package.accesskit_atspi_common]
+opt-level = "s"
+
+[profile.release.package.accesskit_unix]
+opt-level = "s"
+
+[profile.release.package.ashpd]
+opt-level = "s"
+
+[profile.release.package.atspi]
+opt-level = "s"
+
+[profile.release.package.atspi-common]
+opt-level = "s"
+
+[profile.release.package.atspi-proxies]
+opt-level = "s"
+
+[profile.release.package.notify-rust]
+opt-level = "s"
+
+[profile.release.package.regex]
+opt-level = "s"
+
+[profile.release.package.regex-automata]
+opt-level = "s"
+
+[profile.release.package.regex-syntax]
+opt-level = "s"
+
+[profile.release.package.roxmltree]
+opt-level = "s"
+
+[profile.release.package.svgtypes]
+opt-level = "s"
+
+[profile.release.package.usvg]
+opt-level = "s"
+
+[profile.release.package.zbus]
+opt-level = "s"
+
+[profile.release.package.zbus_names]
+opt-level = "s"
+
+[profile.release.package.zvariant]
+opt-level = "s"
+
 [patch."https://github.com/gfx-rs/wgpu"]
 wgpu-hal = { path = "native/vendor/wgpu-hal" }
 
 [patch."https://github.com/zed-industries/zed"]
 gpui_macos = { path = "native/vendor/gpui_macos" }
+gpui_linux = { path = "native/vendor/gpui_linux" }
+gpui_wgpu = { path = "native/vendor/gpui_wgpu" }

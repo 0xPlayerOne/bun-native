@@ -1,17 +1,13 @@
 //! Scoped filesystem grants. A grant names an immutable launch-policy root,
 //! never a path chosen at run time. Request paths are relative to that root.
 
+use crate::{
+    MAX_DIRECTORY_ENTRIES, MAX_FILESYSTEM_ROOTS, MAX_FILE_CHUNK_BYTES, MAX_FILE_NAME_BYTES,
+    MAX_FILE_PATH_BYTES, MAX_FILE_PATH_COMPONENTS, MAX_ROOT_PATH_BYTES,
+};
 use serde::{Deserialize, Serialize};
 
-pub const MAX_FILESYSTEM_ROOTS: usize = 8;
-pub const MAX_FILE_GRANTS: usize = 32;
 pub const MAX_ROOT_ID_BYTES: usize = 32;
-pub const MAX_ROOT_PATH_BYTES: usize = 4_096;
-pub const MAX_FILE_PATH_BYTES: usize = 1_024;
-pub const MAX_FILE_PATH_COMPONENTS: usize = 32;
-pub const MAX_FILE_NAME_BYTES: usize = 255;
-pub const MAX_FILE_CHUNK_BYTES: usize = 16_384;
-pub const MAX_DIRECTORY_ENTRIES: usize = 64;
 /// Canonical padded base64 length of the largest chunk.
 pub const MAX_FILE_CHUNK_BASE64: usize = MAX_FILE_CHUNK_BYTES.div_ceil(3) * 4;
 /// Largest byte offset a read or stat reports: JavaScript's safe integer range.

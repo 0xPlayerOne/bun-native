@@ -55,10 +55,9 @@ test('React inline styles equal to the previous render send no native set', asyn
   await root.render(view({ gap: 4, padding: 2 }, 'a'))
   expect(sets).toEqual([])
   expect(asNode(box!).captured).toBe(captured)
-  // Reordered keys still reach the renderer, whose element serializes differently.
+  // Reordered keys reach the renderer, which compares values, not their order.
   await root.render(view({ padding: 2, gap: 4 }, 'a'))
-  expect(sets).toEqual([{ kind: 'box', style: { padding: 2, gap: 4 } }])
-  sets.length = 0
+  expect(sets).toEqual([])
   // A changed value, a removed key and an added key each set the new style.
   await root.render(view({ gap: 8, padding: 2 }, 'a'))
   await root.render(view({ gap: 8 }, 'a'))
