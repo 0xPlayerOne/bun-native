@@ -29,6 +29,6 @@ jobs:
       runtime-repository: 0xPlayerOne/code-foundry
       runtime-ref: a8fcac90f8c96e1f294aecc7f3a2e874803b9c2b
       runner: ubuntu-latest
-      rust-shards: '["all"]'
+      rust-shards: '["native/protocol,native/gpui-host,native/macos-surface,native/posix-services,native/windows-services,native/vendor/gpui_linux/src/linux.rs,native/vendor/gpui_linux/src/linux/accesskit_delta.rs,native/vendor/gpui_linux/src/linux/platform.rs,native/vendor/gpui_linux/src/linux/wayland/window.rs,native/vendor/gpui_linux/src/linux/x11/window.rs,native/vendor/gpui_macos/src/display_link.rs,native/vendor/gpui_macos/src/gpui_macos.rs,native/vendor/gpui_macos/src/window.rs,native/vendor/gpui_wgpu/src/wgpu_renderer.rs,native/vendor/wgpu-hal/src/auxil/renderdoc.rs,native/vendor/wgpu-hal/src/gles/egl.rs"]'
       rust-threads: '1'
       rust-max-parallel: 1
