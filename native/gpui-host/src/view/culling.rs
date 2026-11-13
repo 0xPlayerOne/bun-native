@@ -283,6 +283,11 @@ impl<'a> Viewport<'a> {
         }
     }
 
+    /// The window's scale factor; `None` in popups.
+    pub(super) fn scale(&self) -> Option<f32> {
+        self.frame.map(|frame| frame.scale)
+    }
+
     /// What this viewport's parent tells its children about sizes.
     pub(super) fn sizing(&self) -> Sizing {
         self.sizing

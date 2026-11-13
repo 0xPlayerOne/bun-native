@@ -70,38 +70,52 @@ fn text(value: &str, maximum: usize, block: bool) -> bool {
 impl MessageDialogOptions {
     pub fn validate(&self) -> Result<(), &'static str> {
         if !text(&self.title, MAX_MESSAGE_DIALOG_TITLE_BYTES, false) {
-            return Err(
-                "message dialog title must be one nonblank line of at most 256 bytes without control characters",
-            );
+            return Err(crate::limit_message!(
+                "message dialog title must be one nonblank line of at most ",
+                { MAX_MESSAGE_DIALOG_TITLE_BYTES },
+                " bytes without control characters"
+            ));
         }
         if !text(&self.message, MAX_MESSAGE_DIALOG_MESSAGE_BYTES, true) {
-            return Err(
-                "message dialog message must be nonblank, at most 2048 bytes, with no control character but line feed",
-            );
+            return Err(crate::limit_message!(
+                "message dialog message must be nonblank, at most ",
+                { MAX_MESSAGE_DIALOG_MESSAGE_BYTES },
+                " bytes, with no control character but line feed"
+            ));
         }
         if self
             .detail
             .as_ref()
             .is_some_and(|detail| !text(detail, MAX_MESSAGE_DIALOG_DETAIL_BYTES, true))
         {
-            return Err(
-                "message dialog detail must be nonblank, at most 4096 bytes, with no control character but line feed",
-            );
+            return Err(crate::limit_message!(
+                "message dialog detail must be nonblank, at most ",
+                { MAX_MESSAGE_DIALOG_DETAIL_BYTES },
+                " bytes, with no control character but line feed"
+            ));
         }
         if self.buttons.is_empty() || self.buttons.len() > MAX_MESSAGE_DIALOG_BUTTONS {
-            return Err("a message dialog needs between 1 and 4 buttons");
+            return Err(crate::limit_message!(
+                "a message dialog needs between 1 and ",
+                { MAX_MESSAGE_DIALOG_BUTTONS },
+                " buttons"
+            ));
         }
         let mut ids = HashSet::new();
         for button in &self.buttons {
             if !text(&button.id, MAX_MESSAGE_DIALOG_ID_BYTES, false) {
-                return Err(
-                    "message dialog button id must be nonblank, at most 64 bytes, without control characters",
-                );
+                return Err(crate::limit_message!(
+                    "message dialog button id must be nonblank, at most ",
+                    { MAX_MESSAGE_DIALOG_ID_BYTES },
+                    " bytes, without control characters"
+                ));
             }
             if !text(&button.label, MAX_MESSAGE_DIALOG_LABEL_BYTES, false) {
-                return Err(
-                    "message dialog button label must be one nonblank line of at most 64 bytes",
-                );
+                return Err(crate::limit_message!(
+                    "message dialog button label must be one nonblank line of at most ",
+                    { MAX_MESSAGE_DIALOG_LABEL_BYTES },
+                    " bytes"
+                ));
             }
             if !ids.insert(button.id.as_str()) {
                 return Err("message dialog button ids must be unique");
@@ -137,7 +151,11 @@ impl MessageDialogResult {
     pub fn validate(&self) -> Result<(), &'static str> {
         match self {
             Self::Button { id } if !text(id, MAX_MESSAGE_DIALOG_ID_BYTES, false) => {
-                Err("message dialog result id must be nonblank, at most 64 bytes, without control characters")
+                Err(crate::limit_message!(
+                    "message dialog result id must be nonblank, at most ",
+                    { MAX_MESSAGE_DIALOG_ID_BYTES },
+                    " bytes, without control characters"
+                ))
             }
             _ => Ok(()),
         }

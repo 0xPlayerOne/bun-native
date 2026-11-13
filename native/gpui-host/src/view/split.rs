@@ -15,9 +15,9 @@ use bun_native_protocol::{
 };
 use gpui::{
     AnyElement, App, Context, Div, DragMoveEvent, ElementId, Empty, FocusHandle, KeyBinding,
-    MouseButton, Pixels, Role, Stateful, Window, actions, canvas, div, prelude::*, px, rgb,
+    MouseButton, Pixels, Role, Size, Stateful, Window, actions, canvas, div, prelude::*, px, rgb,
 };
-use std::cell::Cell;
+use std::cell::{Cell, RefCell};
 use std::collections::{BTreeMap, BTreeSet};
 use std::rc::Rc;
 
@@ -83,6 +83,39 @@ struct SplitState {
     panes: Rc<[Cell<f64>; 2]>,
     /// The ratio when the current pointer drag started.
     drag_start: Option<f64>,
+    /// What placed the split at its latest render (`Placement`).
+    placed: RefCell<Placement>,
+}
+
+/// What the split's pane space follows when its main-axis size does not
+/// follow content: the window's size and scale, and its own and its
+/// ancestors' styles. While they hold, the space measured at the last
+/// prepaint is the space this frame lays out.
+#[derive(Default, PartialEq)]
+struct Placement {
+    viewport: Size<Pixels>,
+    scale: f32,
+    /// From the split up to the root.
+    styles: Vec<Style>,
+}
+
+impl Placement {
+    /// Records this render's placement; whether it is the last render's.
+    fn hold(&mut self, viewport: Size<Pixels>, scale: f32, tree: &Tree, node_id: NodeId) -> bool {
+        let route = std::iter::successors(Some(node_id), |id| tree.parent(*id))
+            .filter_map(|id| tree.node(id))
+            .map(|node| node.element().style());
+        let held = self.viewport == viewport
+            && self.scale == scale
+            && self.styles.iter().eq(route.clone());
+        if !held {
+            self.viewport = viewport;
+            self.scale = scale;
+            self.styles.clear();
+            self.styles.extend(route.cloned());
+        }
+        held
+    }
 }
 
 impl SplitState {
@@ -123,6 +156,7 @@ impl Splits {
                     min_size: *min_size,
                     focus: cx.focus_handle().tab_stop(true),
                     panes: Rc::default(),
+                    placed: RefCell::default(),
                     drag_start: None,
                 });
                 if state.declared != *ratio {
@@ -173,6 +207,24 @@ impl Render for NoPreview {
     fn render(&mut self, _: &mut Window, _: &mut Context<Self>) -> impl IntoElement {
         Empty
     }
+}
+
+/// The leading pane's main-axis size at `ratio` of the `available` pane
+/// space measured at the last prepaint, on whole device pixels, where GPUI
+/// would round the ratio's edge (half toward zero). `None` when nothing is
+/// measured yet or a pane would fall below `min_size`: the panes then share
+/// the space by ratio.
+fn snapped(ratio: f64, available: Option<f64>, min_size: f64, scale: Option<f32>) -> Option<f64> {
+    let scale = f64::from(scale?);
+    let available = (available? * scale).round();
+    let edge = ratio * available;
+    let leading = if edge.fract() == 0.5 {
+        edge.floor()
+    } else {
+        edge.round()
+    };
+    let min_size = min_size * scale;
+    (leading >= min_size && available - leading >= min_size).then_some(leading / scale)
 }
 
 /// The ratios each pane's minimum size allows within `available` pane space.
@@ -310,6 +362,19 @@ impl NativeView {
             .get(&node_id)
             .expect("split reconciled before render");
         let ratio = state.ratio;
+        // The leading pane takes whole device pixels only where the space
+        // measured last is this frame's; elsewhere the panes share it by
+        // ratio, so a resize never lags a frame behind.
+        let sizing = viewport.sizing();
+        let held = viewport.scale().is_some_and(|scale| {
+            state
+                .placed
+                .borrow_mut()
+                .hold(self.viewport, scale, tree, node_id)
+        }) && if row { sizing.width } else { sizing.height };
+        let leading_size = held
+            .then(|| snapped(ratio, state.available(), min_size, viewport.scale()))
+            .flatten();
         let panes = state.panes.clone();
         let focus = state.focus.clone();
         let (low, high) = state
@@ -320,24 +385,26 @@ impl NativeView {
             .expect("validated tree contains every split");
         let children = node.children();
         // A pane's size follows the split's and its ratio, never content.
-        let sizing = viewport.sizing();
         let viewport = viewport.sized(super::Sizing {
             width: sizing.width,
             height: sizing.height,
             row: false,
             stretch: true,
-            // The ratio places the second pane at a fraction.
-            whole: false,
+            // The leading pane's whole-pixel size places the trailing pane
+            // on whole pixels too; a ratio alone places it at a fraction.
+            whole: sizing.whole && leading_size.is_some(),
         });
+        // Every change to a pane's measured size renders the next frame
+        // whole: the leading pane's size follows the measured space.
+        let stale = self.caching.stale();
         let pane = |index: usize, grow: f64, cx: &mut Context<Self>| {
-            let mut pane = div()
-                .relative()
-                .flex()
-                .flex_col()
-                .flex_basis(px(0.))
-                .flex_grow(grow as f32)
-                .flex_shrink(1.)
-                .overflow_hidden();
+            let mut pane = div().relative().flex().flex_col().overflow_hidden();
+            pane = match leading_size {
+                Some(size) if index == 0 => pane.flex_basis(px(size as f32)).flex_grow(0.),
+                Some(_) => pane.flex_basis(px(0.)).flex_grow(1.),
+                None => pane.flex_basis(px(0.)).flex_grow(grow as f32),
+            }
+            .flex_shrink(1.);
             pane = if row {
                 pane.min_w(px(min_size as f32))
             } else {
@@ -361,6 +428,7 @@ impl NativeView {
             // Measures the pane for keyboard steps; it paints nothing and
             // follows the model child, so layout evidence keeps index 0.
             let panes = panes.clone();
+            let stale = stale.clone();
             pane.child(
                 canvas(
                     move |bounds, window, _| {
@@ -373,6 +441,7 @@ impl NativeView {
                         // The divider's accessible limits follow the
                         // measured panes; render them on the next frame.
                         if panes[index].replace(size) != size {
+                            stale.set(true);
                             window.on_next_frame(|window, _| window.refresh());
                         }
                     },
@@ -566,7 +635,7 @@ pub(super) fn tab_order(
 
 #[cfg(test)]
 mod tests {
-    use super::{Step, limits, ratio_at, stepped};
+    use super::{Step, limits, ratio_at, snapped, stepped};
 
     #[test]
     fn divider_ratio_follows_the_pointer_and_minimum_sizes() {
@@ -645,5 +714,20 @@ mod tests {
             stepped(0.4, Step::To(f64::NAN), true, Some(400.), 0.),
             Some(0.4)
         );
+    }
+
+    #[test]
+    fn the_leading_pane_snaps_to_device_pixels_where_gpui_rounds() {
+        // 0.3 of 301 px is 90.3 px: 90 px at scale 1, 90.5 px at scale 2.
+        assert_eq!(snapped(0.3, Some(301.), 0., Some(1.)), Some(90.));
+        assert_eq!(snapped(0.3, Some(301.), 0., Some(2.)), Some(90.5));
+        // A half pixel rounds toward zero, as GPUI rounds layout edges.
+        assert_eq!(snapped(0.5, Some(301.), 0., Some(1.)), Some(150.));
+        assert_eq!(snapped(0.5, Some(300.), 0., Some(1.5)), Some(150.));
+        // Unmeasured, outside a window or below a pane's minimum: by ratio.
+        assert_eq!(snapped(0.3, None, 0., Some(1.)), None);
+        assert_eq!(snapped(0.3, Some(301.), 0., None), None);
+        assert_eq!(snapped(0.1, Some(300.), 40., Some(1.)), None);
+        assert_eq!(snapped(0.9, Some(300.), 40., Some(1.)), None);
     }
 }

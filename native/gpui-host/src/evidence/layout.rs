@@ -146,6 +146,22 @@ impl LayoutFrame {
         })
     }
 
+    /// Fills in, from `previous` (the frame painted last), the nodes this
+    /// frame did not record for which `replayed` holds: those inside a cached
+    /// view GPUI replayed. A replayed view sits at the bounds and under the
+    /// content mask it had, so everything in it keeps its geometry.
+    pub(crate) fn carry(&self, previous: &LayoutFrame, replayed: impl Fn(NodeId) -> bool) {
+        if Rc::ptr_eq(&self.nodes, &previous.nodes) {
+            return;
+        }
+        let mut nodes = self.nodes.borrow_mut();
+        for (id, layout) in previous.nodes.borrow().iter() {
+            if !nodes.contains_key(id) && replayed(*id) {
+                nodes.insert(*id, layout.clone());
+            }
+        }
+    }
+
     pub(crate) fn snapshot(&self, window: &Window, cx: &App) -> LayoutSnapshot {
         let viewport = window.viewport_size();
         LayoutSnapshot {

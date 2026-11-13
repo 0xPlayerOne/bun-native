@@ -34,14 +34,22 @@ pub struct DroppedItem {
 
 pub fn validate_drop_name(name: &str) -> Result<(), &'static str> {
     if name.is_empty() || name.len() > MAX_DROP_NAME_BYTES || name.chars().any(char::is_control) {
-        return Err("dropped item name must be 1-255 UTF-8 bytes without control characters");
+        return Err(crate::limit_message!(
+            "dropped item name must be 1-",
+            { MAX_DROP_NAME_BYTES },
+            " UTF-8 bytes without control characters"
+        ));
     }
     Ok(())
 }
 
 pub fn validate_drop_items(items: &[DroppedItem]) -> Result<(), &'static str> {
     if items.is_empty() || items.len() > MAX_DROP_ITEMS {
-        return Err("a drop must deliver between 1 and 64 items");
+        return Err(crate::limit_message!(
+            "a drop must deliver between 1 and ",
+            { MAX_DROP_ITEMS },
+            " items"
+        ));
     }
     items
         .iter()
@@ -50,7 +58,10 @@ pub fn validate_drop_items(items: &[DroppedItem]) -> Result<(), &'static str> {
 
 pub fn validate_drop_item_index(item: u32) -> Result<(), &'static str> {
     if item as usize >= MAX_DROP_ITEMS {
-        return Err("dropped item index must be below 64");
+        return Err(crate::limit_message!(
+            "dropped item index must be below ",
+            { MAX_DROP_ITEMS }
+        ));
     }
     Ok(())
 }

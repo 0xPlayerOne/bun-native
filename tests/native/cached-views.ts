@@ -8,14 +8,14 @@
  * off (`BUN_NATIVE_VIEW_CACHE=0`) and once with it on. The scene is a
  * toolbar, an input, a split and a scroll view of rows, more than 128 nodes
  * so that no layout evidence is captured. Batches touch one node at a time
- * (label text, a restyle that resizes a row, an insert and a delete), real
- * OS clicks hit buttons inside unchanged rows, Tab walks the buttons, typing
- * reaches the input, a modal overlay opens, traps Tab and closes, the list
- * scrolls by wheel and `scrollTo`, and the split ratio changes. Both runs
- * must route the same focus, click and input events in the same order and
- * paint pixel-identical window captures at every checkpoint, and the phase
- * trace (`cachedViews`) must show that the caching run replayed cached views
- * and the other none.
+ * (label text, labels of one row per frame in quick succession, a restyle
+ * that resizes a row, an insert and a delete), real OS clicks hit buttons
+ * inside unchanged rows, Tab walks the buttons, typing reaches the input, a
+ * modal overlay opens, traps Tab and closes, the list scrolls by wheel and
+ * `scrollTo`, and the split ratio changes. Both runs must route the same
+ * focus, click and input events in the same order and paint pixel-identical
+ * window captures at every checkpoint, and the phase trace (`cachedViews`)
+ * must show that the caching run replayed cached views and the other none.
  */
 import { createApplication, type NativeNode, type NativeWindow } from '@bun-native/core'
 import assert from 'node:assert/strict'
@@ -309,6 +309,22 @@ async function session(caching: boolean) {
       })
     )
     await checkpoint('restored')
+
+    // Labels change in quick succession, one row per frame: each row renders
+    // after a frame that replayed it, so its unchanged button, which GPUI
+    // last visited frames ago, must render with it and not replay.
+    for (let step = 0; step < 16; step += 1) {
+      const index = 6 + ((step * 5) % 12)
+      await window.batch((batch) =>
+        batch.set(nodes.labels[index]!, {
+          kind: 'text',
+          text: `Row ${index} #${step}`,
+          style: { width: LABEL },
+        })
+      )
+      await Bun.sleep(40)
+    }
+    await checkpoint('relabeled')
 
     // Insert a row above the clicked ones and delete it again: the rows
     // below move twice; clicks must still reach the button under the pointer.

@@ -29,6 +29,7 @@ FRAMES = [
     "renderToPaintNanos",
     "nodes",
     "culledNodes",
+    "cachedViews",
 ]
 
 
@@ -47,7 +48,7 @@ def fixture():
             and operations == 1
         ):
             renders += 1
-            frames.append([1, started - 10, 2_000_000, 15_000_000, 1001, 0])
+            frames.append([1, started - 10, 2_000_000, 15_000_000, 1001, 0, 990])
         batches.append(
             [request, 1, operations, started, 100_000, 20_000, 10_000, renders]
         )
@@ -93,6 +94,7 @@ class BridgePhaseTests(unittest.TestCase):
         self.assertEqual(frames["count"], 9)
         self.assertEqual(frames["nodes"], [1001])
         self.assertAlmostEqual(frames["renderToPaintMs"]["p50"], 15.0)
+        self.assertEqual(frames["cachedViews"]["p50"], 990)
         self.assertEqual(report["batchesOf100"]["ackMs"]["count"], 10)
 
     def test_rejects_incomplete_or_reshaped_captures(self):
@@ -152,15 +154,17 @@ class BridgePhaseTests(unittest.TestCase):
         result, trace = fixture()
         individual_start = trace["batches"][1 + PHASES.WARMUPS][3]
         trace["frames"] += [
-            [2, individual_start + 5, 9_000_000, 9_000_000, 7, 0],
-            [1, 0, 9_000_000, 9_000_000, 7, 0],
-            [1, individual_start + 5, 3_000_000, None, 1001, 0],
+            [2, individual_start + 5, 9_000_000, 9_000_000, 7, 0, 0],
+            [1, 0, 9_000_000, 9_000_000, 7, 0, 0],
+            [1, individual_start + 5, 3_000_000, None, 1001, 0, 0],
         ]
         frames = PHASES.analyze(result, trace)["framesDuringIndividualPhase"]
         self.assertEqual(frames["count"], 10)
         self.assertEqual(frames["nodes"], [1001])
         self.assertEqual(frames["renderMs"]["max"], 3.0)
         self.assertEqual(frames["renderToPaintMs"]["count"], 9)
+        self.assertEqual(frames["cachedViews"]["count"], 10)
+        self.assertEqual(frames["cachedViews"]["p50"], 990)
 
     def test_empty_summaries_have_no_quantiles(self):
         self.assertEqual(

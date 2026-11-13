@@ -670,7 +670,12 @@ impl Tree {
     /// (depth before detachment, as its walk from the root reports them)
     /// without walking the untouched window.
     fn validate_attached(&self, attached: &[NodeId]) -> Result<(), ModelError> {
-        let too_deep = || error(ErrorCode::LimitExceeded, "tree depth exceeds 64 edges");
+        let too_deep = || {
+            error(
+                ErrorCode::LimitExceeded,
+                crate::limit_message!("tree depth exceeds ", { MAX_DEPTH }, " edges"),
+            )
+        };
         let mut detached = false;
         let mut seen = HashSet::new();
         let mut pending = Vec::new();
@@ -745,7 +750,7 @@ impl Tree {
             if depth > MAX_DEPTH {
                 return Err(error(
                     ErrorCode::LimitExceeded,
-                    "tree depth exceeds 64 edges",
+                    crate::limit_message!("tree depth exceeds ", { MAX_DEPTH }, " edges"),
                 ));
             }
             if !seen.insert(id) {
@@ -793,7 +798,7 @@ fn check_node(node: &Node, overlays: usize, popup: bool) -> Result<(usize, bool)
     if overlays > MAX_OVERLAY_DEPTH {
         return Err(error(
             ErrorCode::LimitExceeded,
-            "overlay nesting exceeds 8 layers",
+            crate::limit_message!("overlay nesting exceeds ", { MAX_OVERLAY_DEPTH }, " layers"),
         ));
     }
     if popup

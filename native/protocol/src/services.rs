@@ -68,18 +68,22 @@ pub fn validate_notification(title: &str, body: &str) -> Result<(), &'static str
         || title.len() > MAX_NOTIFICATION_TITLE_BYTES
         || title.chars().any(char::is_control)
     {
-        return Err(
-            "notification title must be nonempty, at most 256 bytes, and contain no control characters",
-        );
+        return Err(crate::limit_message!(
+            "notification title must be nonempty, at most ",
+            { MAX_NOTIFICATION_TITLE_BYTES },
+            " bytes, and contain no control characters"
+        ));
     }
     if body.len() > MAX_NOTIFICATION_BODY_BYTES
         || body
             .chars()
             .any(|character| character != '\n' && character.is_control())
     {
-        return Err(
-            "notification body must be at most 2048 bytes with no control characters other than line feeds",
-        );
+        return Err(crate::limit_message!(
+            "notification body must be at most ",
+            { MAX_NOTIFICATION_BODY_BYTES },
+            " bytes with no control characters other than line feeds"
+        ));
     }
     Ok(())
 }
@@ -112,7 +116,11 @@ impl ClipboardText {
 
 pub fn validate_clipboard_text(text: &str) -> Result<(), &'static str> {
     if text.len() > MAX_CLIPBOARD_BYTES || text.contains('\0') {
-        Err("clipboard text exceeds 8192 UTF-8 bytes or contains NUL")
+        Err(crate::limit_message!(
+            "clipboard text exceeds ",
+            { MAX_CLIPBOARD_BYTES },
+            " UTF-8 bytes or contains NUL"
+        ))
     } else {
         Ok(())
     }

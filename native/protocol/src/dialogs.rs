@@ -80,25 +80,33 @@ pub fn validate_dialog_path(path: &str) -> Result<(), &'static str> {
     if path.starts_with('/') && path.len() <= MAX_DIALOG_PATH_BYTES && !path.contains('\0') {
         Ok(())
     } else {
-        Err("dialog path must be absolute, at most 4096 bytes and contain no NUL")
+        Err(crate::limit_message!(
+            "dialog path must be absolute, at most ",
+            { MAX_DIALOG_PATH_BYTES },
+            " bytes and contain no NUL"
+        ))
     }
 }
 
 impl FileDialogOptions {
     pub fn validate(&self) -> Result<(), &'static str> {
         if !line(&self.title, MAX_DIALOG_TITLE_BYTES) {
-            return Err(
-                "dialog title must be nonempty, at most 256 bytes, and contain no control characters",
-            );
+            return Err(crate::limit_message!(
+                "dialog title must be nonempty, at most ",
+                { MAX_DIALOG_TITLE_BYTES },
+                " bytes, and contain no control characters"
+            ));
         }
         if self
             .accept_label
             .as_ref()
             .is_some_and(|label| !line(label, MAX_DIALOG_LABEL_BYTES))
         {
-            return Err(
-                "dialog accept label must be nonempty, at most 64 bytes, and contain no control characters",
-            );
+            return Err(crate::limit_message!(
+                "dialog accept label must be nonempty, at most ",
+                { MAX_DIALOG_LABEL_BYTES },
+                " bytes, and contain no control characters"
+            ));
         }
         if let Some(folder) = &self.folder {
             validate_dialog_path(folder)?;
@@ -112,16 +120,22 @@ impl FileDialogOptions {
                 || name == "."
                 || name == ".."
             {
-                return Err(
-                    "suggested name must be one path component of at most 255 bytes without control characters",
-                );
+                return Err(crate::limit_message!(
+                    "suggested name must be one path component of at most ",
+                    { MAX_DIALOG_NAME_BYTES },
+                    " bytes without control characters"
+                ));
             }
         }
         if !self.filters.is_empty() && self.mode == FileDialogMode::OpenDirectory {
             return Err("a folder dialog does not accept file filters");
         }
         if self.filters.len() > MAX_DIALOG_FILTERS {
-            return Err("a file dialog accepts at most 16 filters");
+            return Err(crate::limit_message!(
+                "a file dialog accepts at most ",
+                { MAX_DIALOG_FILTERS },
+                " filters"
+            ));
         }
         for filter in &self.filters {
             if !line(&filter.name, MAX_DIALOG_FILTER_NAME_BYTES)
@@ -132,9 +146,15 @@ impl FileDialogOptions {
                     .iter()
                     .all(|pattern| line(pattern, MAX_DIALOG_PATTERN_BYTES))
             {
-                return Err(
-                    "a file filter needs a name of at most 128 bytes and 1-16 patterns of at most 64 bytes, without control characters",
-                );
+                return Err(crate::limit_message!(
+                    "a file filter needs a name of at most ",
+                    { MAX_DIALOG_FILTER_NAME_BYTES },
+                    " bytes and 1-",
+                    { MAX_DIALOG_FILTER_PATTERNS },
+                    " patterns of at most ",
+                    { MAX_DIALOG_PATTERN_BYTES },
+                    " bytes, without control characters"
+                ));
             }
         }
         Ok(())
@@ -176,7 +196,11 @@ impl FileDialogResult {
     pub fn validate(&self) -> Result<(), &'static str> {
         if let Self::Selected { paths } = self {
             if paths.is_empty() || paths.len() > MAX_DIALOG_PATHS {
-                return Err("a dialog selection holds between 1 and 256 paths");
+                return Err(crate::limit_message!(
+                    "a dialog selection holds between 1 and ",
+                    { MAX_DIALOG_PATHS },
+                    " paths"
+                ));
             }
             for path in paths {
                 validate_dialog_path(path)?;

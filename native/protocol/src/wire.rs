@@ -279,13 +279,19 @@ impl BoxAccessibility {
             .accessible_set_size
             .is_some_and(|size| size > MAX_ACCESSIBLE_SET_SIZE)
         {
-            return Err("accessible_set_size must be between 0 and 2147483647");
+            return Err(crate::limit_message!(
+                "accessible_set_size must be between 0 and ",
+                { MAX_ACCESSIBLE_SET_SIZE }
+            ));
         }
         if self
             .accessible_position
             .is_some_and(|position| position == 0 || position > MAX_ACCESSIBLE_SET_SIZE)
         {
-            return Err("accessible_position must be between 1 and 2147483647");
+            return Err(crate::limit_message!(
+                "accessible_position must be between 1 and ",
+                { MAX_ACCESSIBLE_SET_SIZE }
+            ));
         }
         Ok(())
     }
@@ -581,7 +587,11 @@ impl Command {
                     || title.len() > MAX_TITLE_BYTES
                     || title.chars().any(char::is_control)
                 {
-                    return Err("title must be nonempty, at most 256 bytes, and contain no control characters");
+                    return Err(crate::limit_message!(
+                        "title must be nonempty, at most ",
+                        { MAX_TITLE_BYTES },
+                        " bytes, and contain no control characters"
+                    ));
                 }
                 bounded(
                     *width,
@@ -696,7 +706,9 @@ fn validate_batch(base_revision: u64, operations: &[Operation]) -> Result<(), &'
                         *value,
                         0.,
                         MAX_SCROLL_OFFSET,
-                        "scroll offsets must be between 0 and 1000000",
+                        crate::limit_message!("scroll offsets must be between 0 and ", {
+                            MAX_SCROLL_OFFSET
+                        }),
                     )?;
                 }
             }
@@ -951,7 +963,11 @@ impl Style {
 
 pub fn validate_text(text: &str) -> Result<(), &'static str> {
     if text.len() > MAX_TEXT_BYTES || text.contains('\0') {
-        Err("text exceeds 16384 bytes or contains NUL")
+        Err(crate::limit_message!(
+            "text exceeds ",
+            { MAX_TEXT_BYTES },
+            " bytes or contains NUL"
+        ))
     } else {
         Ok(())
     }
