@@ -13,8 +13,8 @@ import { arch, cpus, platform, release, totalmem } from 'node:os'
 import { isAbsolute, join, resolve } from 'node:path'
 import { parseArgs } from 'node:util'
 import { buildSolid } from '../../scripts/solid-build.ts'
-import { inspectBunExecutable } from '../../experiments/aot-gpui/inspect.ts'
-import { inspectBunRuntime } from '../../experiments/aot-gpui/inspect-runtime.ts'
+import { inspectBunExecutable } from '../../scripts/native/inspect.ts'
+import { inspectBunRuntime } from '../../scripts/native/inspect-runtime.ts'
 import { count } from './workload.ts'
 import { sharedWorkloadSources } from './sources.ts'
 import toolchain from '../../toolchain.json'
@@ -96,8 +96,8 @@ async function sourceFiles() {
     '.bun-version',
     'toolchain.json',
     'scripts/solid-build.ts',
-    'experiments/aot-gpui/inspect.ts',
-    'experiments/aot-gpui/inspect-runtime.ts',
+    'scripts/native/inspect.ts',
+    'scripts/native/inspect-runtime.ts',
   ])
   for await (const path of new Bun.Glob(
     'packages/{core,protocol,runtime,renderer,solid}/package.json'

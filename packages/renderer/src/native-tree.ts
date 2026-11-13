@@ -94,30 +94,29 @@ export type Commit = {
 /**
  * Framework-independent native diff from the changed captures alone. After
  * atomic acknowledgement, the caller publishes every change as its committed
- * record and each created handle; `previous` and `handles` are read, never
- * mutated, so a rejected batch leaves committed state untouched. A committed
- * node's native handle never changes, so it is kept apart from its record.
+ * record and each created handle; each node's `committed` and `handle` are
+ * read, never written, so a rejected batch leaves committed state untouched.
+ * A committed node's native handle never changes, so it is kept apart from
+ * its record.
  */
 export async function commitNativeTree(
   window: NativeWindow,
   root: Node,
-  previous: ReadonlyMap<Node, Snapshot>,
-  handles: ReadonlyMap<Node, NativeNode>,
   changes: ReadonlyMap<Node, Snapshot>
 ): Promise<Commit> {
   const counts: Counts = { create: 0, set: 0, insert: 0, remove: 0 }
   const [created, removed] = await window.batch((batch) => {
     const removed: Node[] = []
-    // Working state overlays `previous` and records only what this batch
+    // Working state overlays committed records and records only what this batch
     // changes, instead of copying every committed handle, parent and child list.
     const created = new Map<Node, NativeNode>()
     const parents = new Map<Node, Node>()
     const edited = new Map<Node, Node[]>()
-    const handle = (node: Node) => created.get(node) ?? handles.get(node)!
+    const handle = (node: Node) => created.get(node) ?? node.handle!
     const parentOf = (node: Node) =>
-      parents.has(node) ? parents.get(node) : previous.get(node)?.parent
+      parents.has(node) ? parents.get(node) : node.committed?.parent
     const childrenOf = (node: Node): readonly Node[] =>
-      edited.get(node) ?? previous.get(node)?.children ?? noChildren
+      edited.get(node) ?? node.committed?.children ?? noChildren
     const editChildren = (node: Node): Node[] => {
       let list = edited.get(node)
       if (!list) edited.set(node, (list = [...childrenOf(node)]))
@@ -151,14 +150,14 @@ export async function commitNativeTree(
     }
     const forget = (node: Node): void => {
       removed.push(node)
-      for (const child of previous.get(node)!.children) if (!changes.has(child)) forget(child)
+      for (const child of node.committed!.children) if (!changes.has(child)) forget(child)
     }
     // Only a recaptured parent can have lost a committed child. A lost child
     // still in the tree was reinserted elsewhere and is therefore recaptured.
     // Lost children leave their working list in one pass per parent, so
     // clearing a keyed region costs O(children) rather than O(children²).
     for (const [parent, state] of changes) {
-      const old = previous.get(parent)
+      const old = parent.committed
       if (!old?.children.length || old.children === state.children) continue
       // Children shared by both lists' ends are retained; only the middles
       // can differ, and keyed edits usually leave them short.
@@ -185,7 +184,7 @@ export async function commitNativeTree(
         const node = before[index]!
         if (changes.has(node) || retained.has(node)) continue
         rescue(node)
-        batch.remove(handles.get(node)!)
+        batch.remove(node.handle!)
         counts.remove += 1
         lost.add(node)
         if (parent === root) unlisted += 1
@@ -199,7 +198,7 @@ export async function commitNativeTree(
       if (parent === root) unlisted = 0
     }
     for (const [node, state] of changes) {
-      const old = previous.get(node)
+      const old = node.committed
       if (!old) {
         if (state.inputIntent?.observedNode)
           throw new NativeStateError(
@@ -221,7 +220,7 @@ export async function commitNativeTree(
         }
         continue
       }
-      const nativeNode = handles.get(node)!
+      const nativeNode = node.handle!
       if (state.element.kind === 'input') {
         const input = { ...state, element: state.element }
         if (updateInput(window, batch, old, nativeNode as NativeNode<'input'>, input))

@@ -25,7 +25,7 @@ class VendoredGpuiProvenance(unittest.TestCase):
                 "metal-display-link-switch.patch",
                 "cvdisplaylink-keep-subscribed.patch",
             ],
-            "gpui_wgpu": ["shared-pipelines.patch"],
+            "gpui_wgpu": ["shared-pipelines.patch", "parallel-pipelines.patch"],
         }
         self.assertEqual(tuple(expected), VENDOR.PACKAGES)
         for name, patches in expected.items():

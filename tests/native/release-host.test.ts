@@ -10,7 +10,7 @@ import {
 } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { isAbsolute, join, resolve } from 'node:path'
-import { compileApplication } from '../../experiments/aot-gpui/compile.ts'
+import { compileApplication } from '../../scripts/native/compile.ts'
 import { buildProject } from '../../scripts/native/build.ts'
 import { prebuiltHost } from '../../scripts/native/host.ts'
 import { createProject, readProject } from '../../scripts/native/project.ts'

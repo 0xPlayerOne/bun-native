@@ -5,7 +5,7 @@
 // preload removes this process's peers after the run (see headless-peer-cleanup.ts).
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
-import { compileApplication } from '../../experiments/aot-gpui/compile.ts'
+import { compileApplication } from '../../scripts/native/compile.ts'
 
 const repository = resolve(import.meta.dir, '../..')
 const protocolPeerSource = join(repository, 'tests/core/protocol-peer.ts')

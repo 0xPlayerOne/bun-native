@@ -2,8 +2,8 @@ import { createHash } from 'node:crypto'
 import { existsSync, mkdirSync, readFileSync, unlinkSync, writeFileSync } from 'node:fs'
 import { arch, release, platform, cpus } from 'node:os'
 import { delimiter, dirname, isAbsolute, join } from 'node:path'
-import { inspectBunExecutable } from './inspect'
-import { inspectBunRuntime } from './inspect-runtime'
+import { inspectBunExecutable } from '../../scripts/native/inspect.ts'
+import { inspectBunRuntime } from '../../scripts/native/inspect-runtime.ts'
 
 const destination = process.argv[2]
 if (!destination || !isAbsolute(destination)) {
@@ -208,9 +208,9 @@ const report = {
   sourceHashes: [
     'run.ts',
     'probe.ts',
-    'inspect.ts',
+    '../../scripts/native/inspect.ts',
     '../../tests/tooling/inspect.test.ts',
-    'inspect-runtime.ts',
+    '../../scripts/native/inspect-runtime.ts',
     '../../tests/tooling/inspect-runtime.test.ts',
     '../../tests/tooling/inspect-runtime-formats.test.ts',
     'native.c',

@@ -36,9 +36,9 @@ describe('package export/import materialization (source reads only)', () => {
       'scripts/native/package-set.ts',
       'scripts/native/package-lock.ts',
       'scripts/native/bundle.ts',
-      'experiments/aot-gpui/compile.ts',
-      'experiments/aot-gpui/inspect.ts',
-      'experiments/aot-gpui/inspect-runtime.ts',
+      'scripts/native/compile.ts',
+      'scripts/native/inspect.ts',
+      'scripts/native/inspect-runtime.ts',
       'toolchain.json',
       'tsconfig.json',
     ])
@@ -46,6 +46,7 @@ describe('package export/import materialization (source reads only)', () => {
     expect(closure.files).not.toContain('scripts/native/package-source.ts')
     expect(closure.files).toContain('scripts/native/package-archive.ts')
     expect(closure.files.some((path) => path.startsWith('scripts/quality/'))).toBe(false)
+    expect(closure.files.some((path) => path.startsWith('experiments/'))).toBe(false)
     expect(closure.files.some((path) => path.startsWith('scripts/solid'))).toBe(false)
     expect(closure.files.some((path) => path.startsWith('packages/'))).toBe(false)
   })

@@ -810,150 +810,197 @@ impl WgpuRendererCore {
             })
         };
 
-        let quads = create_pipeline(
-            "quads",
-            "vs_quad",
-            "fs_quad",
-            &layouts.globals,
-            &layouts.instances,
-            None,
-            wgpu::PrimitiveTopology::TriangleStrip,
-            &[Some(color_target.clone())],
-            1,
-            &shader_module,
-        );
+        let quads = || {
+            create_pipeline(
+                "quads",
+                "vs_quad",
+                "fs_quad",
+                &layouts.globals,
+                &layouts.instances,
+                None,
+                wgpu::PrimitiveTopology::TriangleStrip,
+                &[Some(color_target.clone())],
+                1,
+                &shader_module,
+            )
+        };
 
-        let shadows = create_pipeline(
-            "shadows",
-            "vs_shadow",
-            "fs_shadow",
-            &layouts.globals,
-            &layouts.instances,
-            None,
-            wgpu::PrimitiveTopology::TriangleStrip,
-            &[Some(color_target.clone())],
-            1,
-            &shader_module,
-        );
+        let shadows = || {
+            create_pipeline(
+                "shadows",
+                "vs_shadow",
+                "fs_shadow",
+                &layouts.globals,
+                &layouts.instances,
+                None,
+                wgpu::PrimitiveTopology::TriangleStrip,
+                &[Some(color_target.clone())],
+                1,
+                &shader_module,
+            )
+        };
 
-        let path_rasterization = create_pipeline(
-            "path_rasterization",
-            "vs_path_rasterization",
-            "fs_path_rasterization",
-            &layouts.globals,
-            &layouts.instances,
-            None,
-            wgpu::PrimitiveTopology::TriangleList,
-            &[Some(wgpu::ColorTargetState {
-                format: surface_format,
-                blend: Some(wgpu::BlendState::PREMULTIPLIED_ALPHA_BLENDING),
-                write_mask: wgpu::ColorWrites::ALL,
-            })],
-            path_sample_count,
-            &shader_module,
-        );
+        let path_rasterization = || {
+            create_pipeline(
+                "path_rasterization",
+                "vs_path_rasterization",
+                "fs_path_rasterization",
+                &layouts.globals,
+                &layouts.instances,
+                None,
+                wgpu::PrimitiveTopology::TriangleList,
+                &[Some(wgpu::ColorTargetState {
+                    format: surface_format,
+                    blend: Some(wgpu::BlendState::PREMULTIPLIED_ALPHA_BLENDING),
+                    write_mask: wgpu::ColorWrites::ALL,
+                })],
+                path_sample_count,
+                &shader_module,
+            )
+        };
 
-        let paths = create_pipeline(
-            "paths",
-            "vs_path",
-            "fs_path",
-            &layouts.globals,
-            &layouts.instances,
-            Some(&layouts.texture),
-            wgpu::PrimitiveTopology::TriangleStrip,
-            &[Some(wgpu::ColorTargetState {
-                format: surface_format,
-                blend: Some(wgpu::BlendState::PREMULTIPLIED_ALPHA_BLENDING),
-                write_mask: wgpu::ColorWrites::ALL,
-            })],
-            1,
-            &shader_module,
-        );
-
-        let underlines = create_pipeline(
-            "underlines",
-            "vs_underline",
-            "fs_underline",
-            &layouts.globals,
-            &layouts.instances,
-            None,
-            wgpu::PrimitiveTopology::TriangleStrip,
-            &[Some(color_target.clone())],
-            1,
-            &shader_module,
-        );
-
-        let mono_sprites = create_pipeline(
-            "mono_sprites",
-            "vs_mono_sprite",
-            "fs_mono_sprite",
-            &layouts.globals,
-            &layouts.instances,
-            Some(&layouts.texture),
-            wgpu::PrimitiveTopology::TriangleStrip,
-            &[Some(color_target.clone())],
-            1,
-            &shader_module,
-        );
-
-        let subpixel_sprites = if let Some(subpixel_module) = &subpixel_shader_module {
-            let subpixel_blend = wgpu::BlendState {
-                color: wgpu::BlendComponent {
-                    src_factor: wgpu::BlendFactor::Src1,
-                    dst_factor: wgpu::BlendFactor::OneMinusSrc1,
-                    operation: wgpu::BlendOperation::Add,
-                },
-                alpha: wgpu::BlendComponent {
-                    src_factor: wgpu::BlendFactor::One,
-                    dst_factor: wgpu::BlendFactor::OneMinusSrcAlpha,
-                    operation: wgpu::BlendOperation::Add,
-                },
-            };
-
-            Some(create_pipeline(
-                "subpixel_sprites",
-                "vs_subpixel_sprite",
-                "fs_subpixel_sprite",
+        let paths = || {
+            create_pipeline(
+                "paths",
+                "vs_path",
+                "fs_path",
                 &layouts.globals,
                 &layouts.instances,
                 Some(&layouts.texture),
                 wgpu::PrimitiveTopology::TriangleStrip,
                 &[Some(wgpu::ColorTargetState {
                     format: surface_format,
-                    blend: Some(subpixel_blend),
-                    write_mask: wgpu::ColorWrites::COLOR,
+                    blend: Some(wgpu::BlendState::PREMULTIPLIED_ALPHA_BLENDING),
+                    write_mask: wgpu::ColorWrites::ALL,
                 })],
                 1,
-                subpixel_module,
-            ))
-        } else {
-            None
+                &shader_module,
+            )
         };
 
-        let poly_sprites = create_pipeline(
-            "poly_sprites",
-            "vs_poly_sprite",
-            "fs_poly_sprite",
-            &layouts.globals,
-            &layouts.instances,
-            Some(&layouts.texture),
-            wgpu::PrimitiveTopology::TriangleStrip,
-            &[Some(color_target.clone())],
-            1,
-            &shader_module,
-        );
+        let underlines = || {
+            create_pipeline(
+                "underlines",
+                "vs_underline",
+                "fs_underline",
+                &layouts.globals,
+                &layouts.instances,
+                None,
+                wgpu::PrimitiveTopology::TriangleStrip,
+                &[Some(color_target.clone())],
+                1,
+                &shader_module,
+            )
+        };
 
-        let surfaces = create_pipeline(
-            "surfaces",
-            "vs_surface",
-            "fs_surface",
-            &layouts.globals,
-            &layouts.surfaces,
-            None,
-            wgpu::PrimitiveTopology::TriangleStrip,
-            &[Some(color_target)],
-            1,
-            &shader_module,
+        let mono_sprites = || {
+            create_pipeline(
+                "mono_sprites",
+                "vs_mono_sprite",
+                "fs_mono_sprite",
+                &layouts.globals,
+                &layouts.instances,
+                Some(&layouts.texture),
+                wgpu::PrimitiveTopology::TriangleStrip,
+                &[Some(color_target.clone())],
+                1,
+                &shader_module,
+            )
+        };
+
+        let subpixel_sprites = || {
+            if let Some(subpixel_module) = &subpixel_shader_module {
+                let subpixel_blend = wgpu::BlendState {
+                    color: wgpu::BlendComponent {
+                        src_factor: wgpu::BlendFactor::Src1,
+                        dst_factor: wgpu::BlendFactor::OneMinusSrc1,
+                        operation: wgpu::BlendOperation::Add,
+                    },
+                    alpha: wgpu::BlendComponent {
+                        src_factor: wgpu::BlendFactor::One,
+                        dst_factor: wgpu::BlendFactor::OneMinusSrcAlpha,
+                        operation: wgpu::BlendOperation::Add,
+                    },
+                };
+
+                Some(create_pipeline(
+                    "subpixel_sprites",
+                    "vs_subpixel_sprite",
+                    "fs_subpixel_sprite",
+                    &layouts.globals,
+                    &layouts.instances,
+                    Some(&layouts.texture),
+                    wgpu::PrimitiveTopology::TriangleStrip,
+                    &[Some(wgpu::ColorTargetState {
+                        format: surface_format,
+                        blend: Some(subpixel_blend),
+                        write_mask: wgpu::ColorWrites::COLOR,
+                    })],
+                    1,
+                    subpixel_module,
+                ))
+            } else {
+                None
+            }
+        };
+
+        let poly_sprites = || {
+            create_pipeline(
+                "poly_sprites",
+                "vs_poly_sprite",
+                "fs_poly_sprite",
+                &layouts.globals,
+                &layouts.instances,
+                Some(&layouts.texture),
+                wgpu::PrimitiveTopology::TriangleStrip,
+                &[Some(color_target.clone())],
+                1,
+                &shader_module,
+            )
+        };
+
+        let surfaces = || {
+            create_pipeline(
+                "surfaces",
+                "vs_surface",
+                "fs_surface",
+                &layouts.globals,
+                &layouts.surfaces,
+                None,
+                wgpu::PrimitiveTopology::TriangleStrip,
+                &[Some(color_target.clone())],
+                1,
+                &shader_module,
+            )
+        };
+
+        // Bun Native patch: lavapipe and other drivers compile each pipeline
+        // as it is created, so build them on scoped threads while this thread
+        // builds the optional subpixel pipeline.
+        let (
+            [
+                quads,
+                shadows,
+                path_rasterization,
+                paths,
+                underlines,
+                mono_sprites,
+                poly_sprites,
+                surfaces,
+            ],
+            subpixel_sprites,
+        ) = compile_in_parallel(
+            [
+                &quads,
+                &shadows,
+                &path_rasterization,
+                &paths,
+                &underlines,
+                &mono_sprites,
+                &poly_sprites,
+                &surfaces,
+            ],
+            subpixel_sprites,
         );
 
         WgpuPipelines {
@@ -1254,6 +1301,32 @@ struct SharedDevicePipelines {
 
 thread_local! {
     static SHARED_PIPELINES: RefCell<Vec<SharedDevicePipelines>> = const { RefCell::new(Vec::new()) };
+}
+
+/// Bun Native patch: runs each job on its own scoped thread and `local` on
+/// this one, returning the results in order. A job whose thread cannot be
+/// started runs here instead, and a panic in a job resumes here.
+fn compile_in_parallel<T: Send, U, const N: usize>(
+    jobs: [&(dyn Fn() -> T + Sync); N],
+    local: impl FnOnce() -> U,
+) -> ([T; N], U) {
+    std::thread::scope(|scope| {
+        let started = jobs.map(|job| {
+            let thread = std::thread::Builder::new()
+                .name("gpui-pipeline".into())
+                .spawn_scoped(scope, job)
+                .ok();
+            (job, thread)
+        });
+        let local = local();
+        let results = started.map(|(job, thread)| match thread {
+            Some(thread) => thread
+                .join()
+                .unwrap_or_else(|panic| std::panic::resume_unwind(panic)),
+            None => job(),
+        });
+        (results, local)
+    })
 }
 
 impl WgpuRendererCore {
