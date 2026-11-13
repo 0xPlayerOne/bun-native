@@ -223,8 +223,10 @@ failure and diagnose it before proposing a separately source-bound correction.
 
 ### Owning harness and retained inputs
 
-`scripts/quality/standalone-packages.py` implements this single fail-stop cohort.
-Run it from the actual published source commit, with a clean tree and the exact
+The single fail-stop cohort runner was retired after #382; it remains at
+[3f0713c](https://github.com/0xPlayerOne/bun-native/blob/3f0713c/scripts/quality/standalone-packages.py).
+`scripts/quality/standalone-packages.py` now keeps only the helpers that the live
+`tests/native/cli-standalone.py` job shares. The cohort ran from the actual published source commit, with a clean tree and the exact
 published commit/tree supplied as `--source-commit` and `--source-tree`. An
 equivalent unpublished local commit is not substituted: package provenance records
 the actual Git HEAD. `--repository`, `--bun`, `--host`, `--cache` and `--output`

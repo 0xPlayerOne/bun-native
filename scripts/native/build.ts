@@ -3,7 +3,8 @@ import { chmod, copyFile, mkdir, readFile, readdir, writeFile } from 'node:fs/pr
 import { dirname, isAbsolute, join, relative, resolve } from 'node:path'
 import { compileApplication } from '../../experiments/aot-gpui/compile.ts'
 import type { Project } from './project.ts'
-import { fileDigest } from './artifact.ts'
+import { cachedFileDigest, fileDigest, sha256 } from './artifact.ts'
+import { userCache } from './context.ts'
 import toolchain from '../../toolchain.json'
 
 /**
@@ -165,7 +166,7 @@ export async function buildProject(
     throw new Error('Application module changed during AOT compilation')
   // Keep machine-local paths and wall-clock timing out of the manifest so equal
   // inputs produce an identical manifest; timing goes to a separate diagnostic.
-  const { compileCommand, buildMs, ...inspected } = compiled
+  const { compileCommand, buildMs, executable, ...inspected } = compiled
   await writeFile(
     join(outdir, 'build-metrics.json'),
     JSON.stringify({ schemaVersion: 1, compileMs: buildMs }, null, 2) + '\n',
@@ -180,13 +181,19 @@ export async function buildProject(
     toolchain,
     application: {
       file: applicationFile,
-      ...(await fileDigest(join(outdir, applicationFile))),
+      ...executable,
       // Absolute arguments are recorded relative to this artifact directory; the
       // compiler is identified by its digest instead of its install path.
       compileCommand: compileCommand.map((argument, index) =>
         index === 0 ? 'bun' : isAbsolute(argument) ? relative(outdir, argument) : argument
       ),
-      compiler: { revision: Bun.revision, executable: await fileDigest(process.execPath) },
+      compiler: {
+        revision: Bun.revision,
+        executable: await cachedFileDigest(
+          process.execPath,
+          join(userCache(), 'compiler', `${sha256(process.execPath).slice(0, 32)}.json`)
+        ),
+      },
       ...inspected,
     },
     developmentModule: { file: 'development/application.js', ...developmentModule },

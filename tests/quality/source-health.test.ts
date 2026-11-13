@@ -2,7 +2,7 @@ import { afterEach, describe, expect, test } from 'bun:test'
 import { mkdtemp, mkdir, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
-import { checkSourceHealth } from '../../scripts/quality/source-health.ts'
+import { checkScriptExports, checkSourceHealth } from '../../scripts/quality/source-health.ts'
 
 const temporary: string[] = []
 afterEach(async () => {
@@ -212,5 +212,29 @@ describe('production package source health', () => {
     expect((await checkSourceHealth(invalid)).some((error) => error.includes('parse error:'))).toBe(
       true
     )
+  })
+})
+
+describe('script exports', () => {
+  test('reports a script value export that no other module imports', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'bun-native-script-exports-'))
+    temporary.push(root)
+    const write = async (path: string, source: string) => {
+      await mkdir(dirname(join(root, path)), { recursive: true })
+      await Bun.write(join(root, path), source)
+    }
+    await write(
+      'scripts/tool.ts',
+      'export const used = 1; export const local = 2; export type Shape = { a: 1 }; console.log(local)'
+    )
+    await write('scripts/barrel.ts', 'export * from "./star.ts"')
+    await write('scripts/star.ts', 'export const starred = 1')
+    await write('scripts/whole.ts', 'export const any = 1')
+    await write(
+      'tests/tool.test.ts',
+      'import { used } from "../scripts/tool.ts"; import { starred } from "../scripts/barrel.ts"; ' +
+        'const whole = await import("../scripts/whole.ts"); console.log(used, starred, whole)'
+    )
+    expect(await checkScriptExports(root)).toEqual(['scripts/tool.ts: unused script export local'])
   })
 })

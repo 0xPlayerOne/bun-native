@@ -77,6 +77,24 @@ describe.skipIf(!supported)('installReleaseHost', () => {
         requests.push(path)
         if (path === '/v1.2.3/SHA256SUMS') return new Response(sums)
         if (path === `/v1.2.3/${releaseHostAsset(target)}`) return new Response(served)
+        // A server that sends headers and one chunk, then stalls forever.
+        if (path === '/v2.0.0/SHA256SUMS')
+          return new Response(
+            new ReadableStream({
+              start(controller) {
+                controller.enqueue(new TextEncoder().encode('partial'))
+              },
+            })
+          )
+        // An unbounded checksum body without a declared length.
+        if (path === '/v3.0.0/SHA256SUMS')
+          return new Response(
+            new ReadableStream({
+              pull(controller) {
+                controller.enqueue(new Uint8Array(16 * 1024))
+              },
+            })
+          )
         return new Response('missing', { status: 404 })
       },
     })
@@ -108,6 +126,18 @@ describe.skipIf(!supported)('installReleaseHost', () => {
     )
     await expect(installReleaseHost({ ...options, version: 'latest' })).rejects.toThrow(
       'must be x.y.z'
+    )
+  })
+
+  test('bounds a stalled download by its deadline and a streamed body by its size', async () => {
+    const options = { baseUrl: server.url.href, cache: join(directory, 'bounded') }
+    const started = performance.now()
+    await expect(
+      installReleaseHost({ ...options, version: '2.0.0', timeoutMs: 200 })
+    ).rejects.toThrow('Download exceeded 200 ms')
+    expect(performance.now() - started).toBeLessThan(5_000)
+    await expect(installReleaseHost({ ...options, version: '3.0.0' })).rejects.toThrow(
+      'Download is larger than 65536 bytes'
     )
   })
 })

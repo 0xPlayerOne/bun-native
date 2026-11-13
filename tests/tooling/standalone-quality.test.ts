@@ -22,7 +22,7 @@ describe('generated standalone projects (inert installed package fixture)', () =
           expect(pkg.devDependencies.oxlint).toBe(set.consumers[framework].devDependencies.oxlint)
           await installedFixture(project, set, framework, contents)
           const loaded = await readProject(repository, project)
-          const format = formatProject(loaded, true)
+          const format = await formatProject(loaded, true)
           expect(format.output).toContain('All matched files use the correct format.')
           expect(format.exitCode).toBe(0)
           // A lintable file inside the digest-verified package set is still never linted.
@@ -31,7 +31,7 @@ describe('generated standalone projects (inert installed package fixture)', () =
             'export function pause() {\n  debugger\n}\n'
           )
           expect(lintArguments(loaded)).toContain('vendor/**')
-          expect(lintProject(loaded)).toMatchObject({ name: 'lint', exitCode: 0, output: '' })
+          expect(await lintProject(loaded)).toMatchObject({ name: 'lint', exitCode: 0, output: '' })
         }
     })
   }, 60_000)

@@ -13,49 +13,64 @@ export type QualityStep = {
   output: string
 }
 
-/** Runs the pinned Bun with `args` in the project directory and captures its combined output. */
-export function runQualityStep(project: Project, args: string[]): Omit<QualityStep, 'name'> {
+/** A quality step that runs longer than this is killed and reported as failed. */
+const STEP_TIMEOUT_MS = 10 * 60_000
+
+/**
+ * Runs the pinned Bun with `args` in the project directory and captures its combined
+ * output. Asynchronous, so `check` runs its steps concurrently; callers print the
+ * results in a fixed order.
+ */
+export async function runQualityStep(
+  project: Project,
+  args: string[]
+): Promise<Omit<QualityStep, 'name'>> {
   const command = [process.execPath, ...args]
-  const result = Bun.spawnSync(command, {
+  const child = Bun.spawn(command, {
     cwd: project.directory,
     stdout: 'pipe',
     stderr: 'pipe',
     env: { ...process.env, NO_COLOR: '1' },
+    timeout: STEP_TIMEOUT_MS,
   })
+  const [stdout, stderr, exitCode] = await Promise.all([
+    new Response(child.stdout).text(),
+    new Response(child.stderr).text(),
+    child.exited,
+  ])
   return {
     command,
-    exitCode: result.exitCode ?? 1,
-    output: (result.stdout.toString() + result.stderr.toString()).trimEnd(),
+    exitCode: child.signalCode ? 1 : exitCode,
+    output: (stdout + stderr).trimEnd(),
   }
 }
 
 /** Arguments for the built-in formatter, never a same-named package script. */
-export function formatArguments(project: Project, check: boolean): string[] {
+export async function formatArguments(project: Project, check: boolean): Promise<string[]> {
   const entry = relative(project.directory, project.entry).split(sep).join('/')
-  const discovered = Bun.spawnSync(
+  const discovered = await Bun.spawn(
     [process.execPath, 'fmt', '--no-script', '--find-config-path', entry],
-    { cwd: project.directory, stdout: 'ignore', stderr: 'ignore' }
-  )
+    { cwd: project.directory, stdout: 'ignore', stderr: 'ignore', timeout: STEP_TIMEOUT_MS }
+  ).exited
   const args = ['--no-install', 'fmt', '--no-script', '--no-color']
   if (check) args.push('--check')
-  if (discovered.exitCode !== 0) args.push('--config', templateFormatterConfig)
+  if (discovered !== 0) args.push('--config', templateFormatterConfig)
   // Package archives and their canonical manifest are verified by digest, never reformatted.
   if (project.packageSet) args.push('--ignore-pattern', 'vendor/**')
   args.push('.')
   return args
 }
 
-export function formatProject(project: Project, check: boolean): QualityStep {
-  return { name: 'format', ...runQualityStep(project, formatArguments(project, check)) }
+export async function formatProject(project: Project, check: boolean): Promise<QualityStep> {
+  return {
+    name: 'format',
+    ...(await runQualityStep(project, await formatArguments(project, check))),
+  }
 }
 
-/** Built-in type checking, then formatting; both steps always run so one report covers both. */
-export function checkProject(project: Project): QualityStep[] {
-  return [
-    {
-      name: 'typecheck',
-      ...runQualityStep(project, ['--no-install', 'check', '--no-script', '--no-pretty']),
-    },
-    formatProject(project, true),
-  ]
+/** Built-in type checking and the formatter check, run together; one report covers both. */
+export async function checkProject(project: Project): Promise<QualityStep[]> {
+  const typecheck = runQualityStep(project, ['--no-install', 'check', '--no-script', '--no-pretty'])
+  const format = formatProject(project, true)
+  return [{ name: 'typecheck', ...(await typecheck) }, await format]
 }

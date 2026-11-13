@@ -1,16 +1,10 @@
 export { encodeFrame, FrameDecoder, MAX_FRAME_BYTES, ProtocolError } from './framing.ts'
 export {
   DECORATION_FIELDS,
-  MAX_ACCESSIBLE_SET_SIZE,
   MAX_OVERLAY_DEPTH,
   parseElement,
   SPLIT_DIVIDER,
   type Element,
-  type OverlayElement,
-  type AccessibleLabel,
-  type BoxAccessibility,
-  type OverlayKeyboard,
-  type SplitStyle,
   type Style,
 } from './elements.ts'
 export { MAX_TEXT_BYTES } from './values.ts'
@@ -26,12 +20,10 @@ export {
   parseFilePath,
   parseFilesystemRoots,
   parseRootId,
-  type DirectoryEntry,
   type FileAccess,
   type FileKind,
   type FileOperation,
   type FileResult,
-  type FilesystemRoot,
   type WriteMode,
 } from './files.ts'
 export {
@@ -42,14 +34,11 @@ export {
   MAX_PROCESSES,
   parseProcessExecutables,
   parseProcessLaunch,
-  parseProcessLimits,
   parseProcessLimitsArgument,
   PROCESS_SIGNALS,
   processArguments,
   processLimitsArgument,
   processesFromArguments,
-  type ProcessExecutable,
-  type ProcessLimits,
   type ProcessExit,
   type ProcessLaunch,
   type ProcessSignal,
@@ -58,19 +47,12 @@ export {
 } from './processes.ts'
 export {
   APP_MENU_KEYS,
-  APP_MENU_NAMED_KEYS,
-  APP_MENU_PUNCTUATION_KEYS,
   MAX_APP_MENU_DEPTH,
   MAX_APP_MENU_ENTRIES,
-  MAX_APP_MENU_ITEM_ID_BYTES,
-  MAX_APP_MENU_LABEL_BYTES,
-  MAX_APP_MENUS,
   parseAppMenus,
   parseContextMenuItems,
   type AppMenu,
   type AppMenuEntry,
-  type MenuShortcut,
-  type MenuShortcutModifiers,
 } from './app-menu.ts'
 export {
   FILE_DIALOG_MODES,
@@ -88,7 +70,6 @@ export {
   type FileDialogMode,
   type FileDialogOptions,
   type FileDialogResult,
-  type FileFilter,
 } from './dialogs.ts'
 export {
   MAX_MESSAGE_DIALOG_BUTTONS,
@@ -97,8 +78,6 @@ export {
   MAX_MESSAGE_DIALOG_LABEL_BYTES,
   MAX_MESSAGE_DIALOG_MESSAGE_BYTES,
   MAX_MESSAGE_DIALOG_TITLE_BYTES,
-  MAX_MESSAGE_DIALOGS,
-  parseMessageDialogOptions,
   type MessageDialogButton,
   type MessageDialogOptions,
   type MessageDialogResult,
@@ -109,8 +88,6 @@ export {
   MAX_DROP_ITEMS,
   MAX_DROP_NAME_BYTES,
   MAX_DROP_TARGETS,
-  type DragState,
-  type DroppedItem,
   type DropRejection,
 } from './drops.ts'
 export {
@@ -138,7 +115,10 @@ export {
   PROTOCOL_VERSION,
   REQUIRED_CAPABILITIES,
   type Command,
+  type ApplicationEvent,
+  type HostEvent,
   type NativeEvent,
+  type WindowEvent,
   type Operation,
   type Limits,
   type ErrorCode,

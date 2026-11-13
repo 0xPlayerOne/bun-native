@@ -25,7 +25,6 @@
     "lint:native": "cargo clippy --locked --workspace --all-targets -- -D warnings",
     "foundry:doctor": "bun --bun code-foundry doctor",
     "example": "bun examples/native-window/main.ts",
-    "solid:build": "bun scripts/solid-build.ts",
     "native": "MIMALLOC_PURGE_DELAY=0 bun scripts/native.ts"
   },
   "devDependencies": {

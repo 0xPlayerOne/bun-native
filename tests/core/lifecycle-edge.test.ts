@@ -168,6 +168,24 @@ describe('callback lifecycle edges (headless real protocol process)', () => {
       expect(sequences).toEqual([1, 2, 3, 4, 5])
     }))
 
+  test('a burst far beyond the queue caps is delivered while its consumer keeps up', () =>
+    withApp(async (application) => {
+      const window = await application.openWindow({ title: 'Coalesced burst' })
+      const { label, button } = await controls(window)
+      const sequences: number[] = []
+      window.onClick(button, (event) => {
+        sequences.push(event.sequence)
+      })
+      // The peer writes the burst back to back, so pipe reads coalesce many
+      // more frames than either queue cap while every listener is synchronous.
+      await trigger(window, label, 'burst:1000')
+      await until(() => sequences.length === 1_000, 'Burst was not delivered in full')
+      expect(
+        sequences.every((sequence, index) => index === 0 || sequence > sequences[index - 1]!)
+      ).toBe(true)
+      expect(application.diagnostics.queuedCallbacks).toBe(0)
+    }))
+
   test('callback flood is bounded independently of the native event transport queue', () =>
     withApp(async (application) => {
       const window = await application.openWindow({ title: 'Bounded callback backlog' })

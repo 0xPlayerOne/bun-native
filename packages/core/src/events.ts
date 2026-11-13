@@ -1,4 +1,4 @@
-import type { WindowEvent } from '@bun-native/runtime'
+import type { WindowEvent } from '@bun-native/protocol'
 import {
   NativeStateError,
   type Listener,
@@ -211,14 +211,27 @@ export class EventBindings {
     return unsubscribe(subscription)
   }
 
-  retain(ids: ReadonlyMap<number, unknown>): void {
-    for (const [id, bindings] of this.nodes) {
-      if (ids.has(id)) continue
+  /**
+   * Revoke the bindings and queued plans of committed nodes a batch removed.
+   * Only committed nodes hold bindings, and a commit records every committed
+   * node it removes, so this costs O(removed) instead of O(listeners).
+   */
+  forget(removed: ReadonlySet<number>): void {
+    if (!removed.size) return
+    let changed = false
+    for (const id of removed) {
+      const bindings = this.nodes.get(id)
+      if (!bindings) continue
       this.nodes.delete(id)
       for (const binding of bindings.values()) revoke(binding)
+      changed = true
     }
-    for (const plan of this.plans) if (!ids.has(plan.targetId)) plan.cancellation.abort()
-    this.changed()
+    for (const plan of this.plans)
+      if (removed.has(plan.targetId)) {
+        plan.cancellation.abort()
+        changed = true
+      }
+    if (changed) this.changed()
   }
 
   clear(): void {

@@ -1,5 +1,5 @@
 import { ProtocolError } from './framing.ts'
-import { integer, keys, object, string } from './values.ts'
+import { fields, integer, keys, object, string } from './values.ts'
 
 /** Live drop targets across a session. */
 export const MAX_DROP_TARGETS = 32
@@ -33,12 +33,14 @@ export function parseDropItemIndex(value: unknown): number {
   return integer(value, 'Dropped item index', 0, MAX_DROP_ITEMS - 1)
 }
 
+const DROPPED_ITEMS_KEYS = fields('name')
+
 export function parseDroppedItems(value: unknown): DroppedItem[] {
   if (!Array.isArray(value) || value.length < 1 || value.length > MAX_DROP_ITEMS)
     throw new ProtocolError('A drop must deliver between 1 and ' + MAX_DROP_ITEMS + ' items')
   return value.map((entry) => {
     const data = object(entry)
-    keys(data, ['name'])
+    keys(data, DROPPED_ITEMS_KEYS)
     const name = string(data['name'], 'Dropped item name', MAX_DROP_NAME_BYTES)
     if (!name || /\p{Cc}/u.test(name))
       throw new ProtocolError('Dropped item name must be nonempty without control characters')

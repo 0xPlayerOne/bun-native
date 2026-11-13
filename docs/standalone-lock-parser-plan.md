@@ -83,7 +83,9 @@ It initializes shared configuration/HTTP infrastructure, so each command receive
 an explicit minimal environment and owned cache. The before/after inventory must
 remain unchanged. No node_modules or extra lock/config file is supplied.
 
-`scripts/quality/standalone-lock-control.ts` uses the existing retained `c908049`
+The one-off control harness `scripts/quality/standalone-lock-control.ts` (retired; see it at
+[3f0713c](https://github.com/0xPlayerOne/bun-native/blob/3f0713c/scripts/quality/standalone-lock-control.ts))
+used the existing retained `c908049`
 package-set manifest, original generated Solid/React TypeScript manifests and
 original seed bytes. It computes corrected seeds through the unchanged corrected
 product functions, preserving those input identities. It stages fresh owned data

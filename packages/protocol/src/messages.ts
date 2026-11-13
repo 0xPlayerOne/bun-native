@@ -75,6 +75,7 @@ import {
   type DropRejection,
 } from './drops.ts'
 import {
+  fields,
   id,
   integer,
   keys,
@@ -614,24 +615,41 @@ export type NativeEvent =
   /** Application-scoped: a menu bar belongs to the application, not a window. */
   | { type: 'app_menu_item'; sequence: number; menu_id: number; item_id: string }
   | { type: 'error'; id?: number; code: ErrorCode; message: string }
+/** Sequenced events owned by one window. */
+export type WindowEvent = Extract<NativeEvent, { sequence: number; window_id: number }>
+/** Sequenced events owned by the application rather than one window. */
+export type ApplicationEvent = Extract<NativeEvent, { type: 'app_menu_item' }>
+/** Unsolicited events, as opposed to responses that carry a request id. */
+export type HostEvent = WindowEvent | ApplicationEvent
 
 function version(value: unknown): typeof PROTOCOL_VERSION {
   if (value !== PROTOCOL_VERSION) throw new ProtocolError('Native protocol version mismatch')
   return PROTOCOL_VERSION
 }
 
+/** Property names of a window-scoped command, reply or unsolicited event. */
+const windowCommand = (...names: string[]) => fields('id', 'type', 'window_id', ...names)
+const windowReply = (...names: string[]) => fields('type', 'id', 'window_id', ...names)
+const windowNotice = (...names: string[]) => fields('type', 'sequence', 'window_id', ...names)
+
+const OPERATION_CREATE_KEYS = fields('type', 'node_id', 'element')
+const OPERATION_SET_KEYS = fields('type', 'node_id', 'element', 'expected_input_revision')
+const OPERATION_INSERT_KEYS = fields('type', 'parent_id', 'child_id', 'index')
+const OPERATION_DELETE_KEYS = fields('type', 'node_id')
+const OPERATION_SCROLL_TO_KEYS = fields('type', 'node_id', 'x', 'y')
+
 function operation(value: unknown): Operation {
   const data = object(value)
   switch (data['type']) {
     case 'create':
-      keys(data, ['type', 'node_id', 'element'])
+      keys(data, OPERATION_CREATE_KEYS)
       return {
         type: 'create',
         node_id: id(data['node_id']),
         element: parseElement(data['element']),
       }
     case 'set': {
-      keys(data, ['type', 'node_id', 'element', 'expected_input_revision'])
+      keys(data, OPERATION_SET_KEYS)
       const node_id = id(data['node_id'])
       const element = parseElement(data['element'])
       if (element.kind === 'input')
@@ -646,7 +664,7 @@ function operation(value: unknown): Operation {
       return { type: 'set', node_id, element }
     }
     case 'insert':
-      keys(data, ['type', 'parent_id', 'child_id', 'index'])
+      keys(data, OPERATION_INSERT_KEYS)
       return {
         type: 'insert',
         parent_id: id(data['parent_id']),
@@ -656,10 +674,10 @@ function operation(value: unknown): Operation {
     case 'delete':
     case 'focus':
     case 'scroll_into_view':
-      keys(data, ['type', 'node_id'])
+      keys(data, OPERATION_DELETE_KEYS)
       return { type: data['type'], node_id: id(data['node_id']) }
     case 'scroll_to': {
-      keys(data, ['type', 'node_id', 'x', 'y'])
+      keys(data, OPERATION_SCROLL_TO_KEYS)
       if (!('x' in data) && !('y' in data)) throw new ProtocolError('scroll_to requires x or y')
       const offset = (axis: 'x' | 'y') =>
         axis in data ? { [axis]: number(data[axis], 'scroll ' + axis, 0, MAX_SCROLL_OFFSET) } : {}
@@ -670,20 +688,50 @@ function operation(value: unknown): Operation {
   }
 }
 
+const COMMAND_HELLO_KEYS = fields('id', 'type', 'protocol')
+const COMMAND_OPEN_KEYS = windowCommand('root_id', 'title', 'width', 'height')
+const COMMAND_BATCH_KEYS = windowCommand('base_revision', 'operations')
+const COMMAND_CLOSE_KEYS = windowCommand()
+const COMMAND_CLIPBOARD_WRITE_KEYS = windowCommand('text')
+const COMMAND_REGISTER_GLOBAL_SHORTCUT_KEYS = windowCommand('shortcut_id', 'key', 'modifiers')
+const COMMAND_UNREGISTER_GLOBAL_SHORTCUT_KEYS = windowCommand('shortcut_id')
+const COMMAND_POST_NOTIFICATION_KEYS = windowCommand('notification_id', 'title', 'body')
+const COMMAND_WITHDRAW_NOTIFICATION_KEYS = windowCommand('notification_id')
+const COMMAND_OPEN_FILE_GRANT_KEYS = windowCommand('grant_id', 'root', 'access')
+const COMMAND_CLOSE_FILE_GRANT_KEYS = windowCommand('grant_id')
+const COMMAND_FILE_REQUEST_KEYS = windowCommand('grant_id', 'path', 'operation')
+const COMMAND_SPAWN_PROCESS_KEYS = windowCommand('process_id', 'launch')
+const COMMAND_WRITE_PROCESS_KEYS = windowCommand('process_id', 'data')
+const COMMAND_CLOSE_PROCESS_INPUT_KEYS = windowCommand('process_id')
+const COMMAND_RESIZE_PROCESS_KEYS = windowCommand('process_id', 'size')
+const COMMAND_SIGNAL_PROCESS_KEYS = windowCommand('process_id', 'signal')
+const COMMAND_ACKNOWLEDGE_PROCESS_OUTPUT_KEYS = windowCommand('process_id', 'chunk')
+const COMMAND_SHOW_FILE_DIALOG_KEYS = windowCommand('dialog_id', 'options')
+const COMMAND_CLOSE_FILE_DIALOG_KEYS = windowCommand('dialog_id')
+const COMMAND_SHOW_MESSAGE_DIALOG_KEYS = windowCommand('dialog_id', 'options')
+const COMMAND_CLOSE_MESSAGE_DIALOG_KEYS = windowCommand('dialog_id')
+const COMMAND_SHOW_CONTEXT_MENU_KEYS = windowCommand('menu_id', 'x', 'y', 'items')
+const COMMAND_CLOSE_CONTEXT_MENU_KEYS = windowCommand('menu_id')
+const COMMAND_REGISTER_DROP_TARGET_KEYS = windowCommand('target_id', 'node_id')
+const COMMAND_UNREGISTER_DROP_TARGET_KEYS = windowCommand('target_id')
+const COMMAND_RESOLVE_DROPPED_ITEM_KEYS = windowCommand('target_id', 'drop_id', 'item', 'root')
+const COMMAND_SET_APP_MENU_KEYS = fields('id', 'type', 'menu_id', 'menus')
+const COMMAND_SHUTDOWN_KEYS = fields('id', 'type')
+
 /** Validate before crossing the native boundary, including JavaScript callers. */
 export function parseCommand(value: unknown): Command {
   const message = object(value)
   const request = id(message['id'])
   switch (message['type']) {
     case 'hello':
-      keys(message, ['id', 'type', 'protocol'])
+      keys(message, COMMAND_HELLO_KEYS)
       return {
         id: request,
         type: 'hello',
         protocol: version(message['protocol']),
       }
     case 'open': {
-      keys(message, ['id', 'type', 'window_id', 'root_id', 'title', 'width', 'height'])
+      keys(message, COMMAND_OPEN_KEYS)
       const title = string(message['title'], 'title', MAX_TITLE_BYTES)
       if (!title || /\p{Cc}/u.test(title))
         throw new ProtocolError('Window title must be nonempty and contain no control characters')
@@ -698,7 +746,7 @@ export function parseCommand(value: unknown): Command {
       }
     }
     case 'batch': {
-      keys(message, ['id', 'type', 'window_id', 'base_revision', 'operations'])
+      keys(message, COMMAND_BATCH_KEYS)
       const operations = message['operations']
       if (!Array.isArray(operations) || operations.length < 1 || operations.length > MAX_OPERATIONS)
         throw new ProtocolError(
@@ -715,14 +763,14 @@ export function parseCommand(value: unknown): Command {
     case 'close':
     case 'display_snapshot':
     case 'clipboard_read':
-      keys(message, ['id', 'type', 'window_id'])
+      keys(message, COMMAND_CLOSE_KEYS)
       return {
         id: request,
         type: message['type'],
         window_id: id(message['window_id']),
       }
     case 'clipboard_write':
-      keys(message, ['id', 'type', 'window_id', 'text'])
+      keys(message, COMMAND_CLIPBOARD_WRITE_KEYS)
       return {
         id: request,
         type: 'clipboard_write',
@@ -730,7 +778,7 @@ export function parseCommand(value: unknown): Command {
         text: string(message['text'], 'clipboard text', MAX_CLIPBOARD_BYTES),
       }
     case 'register_global_shortcut':
-      keys(message, ['id', 'type', 'window_id', 'shortcut_id', 'key', 'modifiers'])
+      keys(message, COMMAND_REGISTER_GLOBAL_SHORTCUT_KEYS)
       return {
         id: request,
         type: 'register_global_shortcut',
@@ -740,7 +788,7 @@ export function parseCommand(value: unknown): Command {
         modifiers: parseShortcutModifiers(message['modifiers']),
       }
     case 'unregister_global_shortcut':
-      keys(message, ['id', 'type', 'window_id', 'shortcut_id'])
+      keys(message, COMMAND_UNREGISTER_GLOBAL_SHORTCUT_KEYS)
       return {
         id: request,
         type: 'unregister_global_shortcut',
@@ -748,7 +796,7 @@ export function parseCommand(value: unknown): Command {
         shortcut_id: id(message['shortcut_id']),
       }
     case 'post_notification': {
-      keys(message, ['id', 'type', 'window_id', 'notification_id', 'title', 'body'])
+      keys(message, COMMAND_POST_NOTIFICATION_KEYS)
       const { title, body } = parseNotificationContent(message['title'], message['body'])
       return {
         id: request,
@@ -760,7 +808,7 @@ export function parseCommand(value: unknown): Command {
       }
     }
     case 'withdraw_notification':
-      keys(message, ['id', 'type', 'window_id', 'notification_id'])
+      keys(message, COMMAND_WITHDRAW_NOTIFICATION_KEYS)
       return {
         id: request,
         type: 'withdraw_notification',
@@ -768,7 +816,7 @@ export function parseCommand(value: unknown): Command {
         notification_id: id(message['notification_id']),
       }
     case 'open_file_grant':
-      keys(message, ['id', 'type', 'window_id', 'grant_id', 'root', 'access'])
+      keys(message, COMMAND_OPEN_FILE_GRANT_KEYS)
       return {
         id: request,
         type: 'open_file_grant',
@@ -778,7 +826,7 @@ export function parseCommand(value: unknown): Command {
         access: parseFileAccess(message['access']),
       }
     case 'close_file_grant':
-      keys(message, ['id', 'type', 'window_id', 'grant_id'])
+      keys(message, COMMAND_CLOSE_FILE_GRANT_KEYS)
       return {
         id: request,
         type: 'close_file_grant',
@@ -786,7 +834,7 @@ export function parseCommand(value: unknown): Command {
         grant_id: id(message['grant_id']),
       }
     case 'file_request': {
-      keys(message, ['id', 'type', 'window_id', 'grant_id', 'path', 'operation'])
+      keys(message, COMMAND_FILE_REQUEST_KEYS)
       const path = parseFilePath(message['path'])
       return {
         id: request,
@@ -798,7 +846,7 @@ export function parseCommand(value: unknown): Command {
       }
     }
     case 'spawn_process':
-      keys(message, ['id', 'type', 'window_id', 'process_id', 'launch'])
+      keys(message, COMMAND_SPAWN_PROCESS_KEYS)
       return {
         id: request,
         type: 'spawn_process',
@@ -807,7 +855,7 @@ export function parseCommand(value: unknown): Command {
         launch: parseProcessLaunch(message['launch']),
       }
     case 'write_process':
-      keys(message, ['id', 'type', 'window_id', 'process_id', 'data'])
+      keys(message, COMMAND_WRITE_PROCESS_KEYS)
       return {
         id: request,
         type: 'write_process',
@@ -817,7 +865,7 @@ export function parseCommand(value: unknown): Command {
       }
     case 'close_process_input':
     case 'release_process':
-      keys(message, ['id', 'type', 'window_id', 'process_id'])
+      keys(message, COMMAND_CLOSE_PROCESS_INPUT_KEYS)
       return {
         id: request,
         type: message['type'],
@@ -825,7 +873,7 @@ export function parseCommand(value: unknown): Command {
         process_id: id(message['process_id']),
       }
     case 'resize_process':
-      keys(message, ['id', 'type', 'window_id', 'process_id', 'size'])
+      keys(message, COMMAND_RESIZE_PROCESS_KEYS)
       return {
         id: request,
         type: 'resize_process',
@@ -834,7 +882,7 @@ export function parseCommand(value: unknown): Command {
         size: parseTerminalSize(message['size']),
       }
     case 'signal_process':
-      keys(message, ['id', 'type', 'window_id', 'process_id', 'signal'])
+      keys(message, COMMAND_SIGNAL_PROCESS_KEYS)
       return {
         id: request,
         type: 'signal_process',
@@ -843,7 +891,7 @@ export function parseCommand(value: unknown): Command {
         signal: parseProcessSignal(message['signal']),
       }
     case 'acknowledge_process_output':
-      keys(message, ['id', 'type', 'window_id', 'process_id', 'chunk'])
+      keys(message, COMMAND_ACKNOWLEDGE_PROCESS_OUTPUT_KEYS)
       return {
         id: request,
         type: 'acknowledge_process_output',
@@ -852,7 +900,7 @@ export function parseCommand(value: unknown): Command {
         chunk: id(message['chunk']),
       }
     case 'show_file_dialog':
-      keys(message, ['id', 'type', 'window_id', 'dialog_id', 'options'])
+      keys(message, COMMAND_SHOW_FILE_DIALOG_KEYS)
       return {
         id: request,
         type: 'show_file_dialog',
@@ -861,7 +909,7 @@ export function parseCommand(value: unknown): Command {
         options: parseFileDialogOptions(message['options']),
       }
     case 'close_file_dialog':
-      keys(message, ['id', 'type', 'window_id', 'dialog_id'])
+      keys(message, COMMAND_CLOSE_FILE_DIALOG_KEYS)
       return {
         id: request,
         type: 'close_file_dialog',
@@ -869,7 +917,7 @@ export function parseCommand(value: unknown): Command {
         dialog_id: id(message['dialog_id']),
       }
     case 'show_message_dialog':
-      keys(message, ['id', 'type', 'window_id', 'dialog_id', 'options'])
+      keys(message, COMMAND_SHOW_MESSAGE_DIALOG_KEYS)
       return {
         id: request,
         type: 'show_message_dialog',
@@ -878,7 +926,7 @@ export function parseCommand(value: unknown): Command {
         options: parseMessageDialogOptions(message['options']),
       }
     case 'close_message_dialog':
-      keys(message, ['id', 'type', 'window_id', 'dialog_id'])
+      keys(message, COMMAND_CLOSE_MESSAGE_DIALOG_KEYS)
       return {
         id: request,
         type: 'close_message_dialog',
@@ -886,7 +934,7 @@ export function parseCommand(value: unknown): Command {
         dialog_id: id(message['dialog_id']),
       }
     case 'show_context_menu':
-      keys(message, ['id', 'type', 'window_id', 'menu_id', 'x', 'y', 'items'])
+      keys(message, COMMAND_SHOW_CONTEXT_MENU_KEYS)
       return {
         id: request,
         type: 'show_context_menu',
@@ -897,7 +945,7 @@ export function parseCommand(value: unknown): Command {
         items: parseContextMenuItems(message['items']),
       }
     case 'close_context_menu':
-      keys(message, ['id', 'type', 'window_id', 'menu_id'])
+      keys(message, COMMAND_CLOSE_CONTEXT_MENU_KEYS)
       return {
         id: request,
         type: 'close_context_menu',
@@ -905,7 +953,7 @@ export function parseCommand(value: unknown): Command {
         menu_id: id(message['menu_id']),
       }
     case 'register_drop_target':
-      keys(message, ['id', 'type', 'window_id', 'target_id', 'node_id'])
+      keys(message, COMMAND_REGISTER_DROP_TARGET_KEYS)
       return {
         id: request,
         type: 'register_drop_target',
@@ -914,7 +962,7 @@ export function parseCommand(value: unknown): Command {
         node_id: id(message['node_id']),
       }
     case 'unregister_drop_target':
-      keys(message, ['id', 'type', 'window_id', 'target_id'])
+      keys(message, COMMAND_UNREGISTER_DROP_TARGET_KEYS)
       return {
         id: request,
         type: 'unregister_drop_target',
@@ -922,7 +970,7 @@ export function parseCommand(value: unknown): Command {
         target_id: id(message['target_id']),
       }
     case 'resolve_dropped_item':
-      keys(message, ['id', 'type', 'window_id', 'target_id', 'drop_id', 'item', 'root'])
+      keys(message, COMMAND_RESOLVE_DROPPED_ITEM_KEYS)
       return {
         id: request,
         type: 'resolve_dropped_item',
@@ -933,7 +981,7 @@ export function parseCommand(value: unknown): Command {
         root: parseRootId(message['root']),
       }
     case 'set_app_menu':
-      keys(message, ['id', 'type', 'menu_id', 'menus'])
+      keys(message, COMMAND_SET_APP_MENU_KEYS)
       return {
         id: request,
         type: 'set_app_menu',
@@ -941,16 +989,18 @@ export function parseCommand(value: unknown): Command {
         menus: parseAppMenus(message['menus']),
       }
     case 'shutdown':
-      keys(message, ['id', 'type'])
+      keys(message, COMMAND_SHUTDOWN_KEYS)
       return { id: request, type: 'shutdown' }
     default:
       throw new ProtocolError('Unknown native command')
   }
 }
 
+const LIMITS_KEYS = fields(...Object.keys(DEFAULT_LIMITS))
+
 function limits(value: unknown): Limits {
   const data = object(value)
-  keys(data, Object.keys(DEFAULT_LIMITS))
+  keys(data, LIMITS_KEYS)
   const parse = (key: keyof Limits) => integer(data[key], key, 1, DEFAULT_LIMITS[key])
   return {
     max_frame_bytes: parse('max_frame_bytes'),
@@ -974,13 +1024,21 @@ function limits(value: unknown): Limits {
 
 const ROUTE_KEYS = ['type', 'sequence', 'window_id', 'node_id', 'tree_revision', 'path'] as const
 
+/** Short paths, the common case, compare pairwise instead of building a set. */
+function unique(path: readonly number[]): boolean {
+  if (path.length > 16) return new Set(path).size === path.length
+  for (let index = 1; index < path.length; index++)
+    for (let other = 0; other < index; other++) if (path[index] === path[other]) return false
+  return true
+}
+
 function route(message: Record<string, unknown>): NodeEventRoute {
   const node_id = id(message['node_id'])
   const value = message['path']
   if (!Array.isArray(value) || !value.length || value.length > MAX_DEPTH + 1)
     throw new ProtocolError('Native event path must contain between 1 and 65 node identities')
   const path = value.map(id)
-  if (new Set(path).size !== path.length || path.at(-1) !== node_id)
+  if (!unique(path) || path.at(-1) !== node_id)
     throw new ProtocolError('Native event path must be unique and end at its target')
   return {
     sequence: id(message['sequence']),
@@ -991,9 +1049,11 @@ function route(message: Record<string, unknown>): NodeEventRoute {
   }
 }
 
+const MODIFIERS_KEYS = fields('control', 'alt', 'shift', 'platform', 'function')
+
 function modifiers(value: unknown): KeyModifiers {
   const data = object(value)
-  keys(data, ['control', 'alt', 'shift', 'platform', 'function'])
+  keys(data, MODIFIERS_KEYS)
   const modifier = (name: keyof KeyModifiers) => {
     if (typeof data[name] !== 'boolean') throw new ProtocolError('Invalid native key modifier')
     return data[name]
@@ -1007,12 +1067,53 @@ function modifiers(value: unknown): KeyModifiers {
   }
 }
 
+const EVENT_READY_KEYS = fields('type', 'protocol', 'capabilities', 'limits', 'service_policy')
+const EVENT_ACK_KEYS = fields('type', 'id')
+const EVENT_OPENED_KEYS = windowReply('root_id', 'tree_revision')
+const EVENT_APPLIED_KEYS = windowReply('tree_revision')
+const EVENT_DISPLAY_SNAPSHOT_KEYS = windowReply('snapshot')
+const EVENT_CLIPBOARD_TEXT_KEYS = windowReply('result')
+const EVENT_CLIPBOARD_WRITTEN_KEYS = windowReply()
+const EVENT_GLOBAL_SHORTCUT_REGISTERED_KEYS = windowReply('shortcut_id')
+const EVENT_DISPLAY_CHANGED_KEYS = windowNotice('snapshot')
+const EVENT_GLOBAL_SHORTCUT_KEYS = windowNotice('shortcut_id')
+const EVENT_NOTIFICATION_POSTED_KEYS = windowReply('notification_id', 'activatable')
+const EVENT_NOTIFICATION_WITHDRAWN_KEYS = windowReply('notification_id')
+const EVENT_NOTIFICATION_ACTIVATED_KEYS = windowNotice('notification_id')
+const EVENT_NOTIFICATION_DISMISSED_KEYS = windowNotice('notification_id', 'reason')
+const EVENT_FILE_GRANT_OPENED_KEYS = windowReply('grant_id')
+const EVENT_FILE_RESULT_KEYS = windowReply('grant_id', 'result')
+const EVENT_PROCESS_SPAWNED_KEYS = windowReply('process_id')
+const EVENT_PROCESS_OUTPUT_KEYS = windowNotice('process_id', 'chunk', 'stream', 'data')
+const EVENT_PROCESS_EXITED_KEYS = windowNotice('process_id', 'exit')
+const EVENT_FILE_DIALOG_OPENED_KEYS = windowReply('dialog_id')
+const EVENT_FILE_DIALOG_COMPLETED_KEYS = windowNotice('dialog_id', 'result')
+const EVENT_MESSAGE_DIALOG_OPENED_KEYS = windowReply('dialog_id')
+const EVENT_MESSAGE_DIALOG_COMPLETED_KEYS = windowNotice('dialog_id', 'result')
+const EVENT_CONTEXT_MENU_OPENED_KEYS = windowReply('menu_id')
+const EVENT_CONTEXT_MENU_COMPLETED_KEYS = windowNotice('menu_id', 'item_id')
+const EVENT_DROP_TARGET_REGISTERED_KEYS = windowReply('target_id')
+const EVENT_DROPPED_ITEM_RESOLVED_KEYS = windowReply('target_id', 'drop_id', 'item', 'root', 'path')
+const EVENT_DROP_TARGET_DRAG_KEYS = windowNotice('target_id', 'state')
+const EVENT_DROP_RECEIVED_KEYS = windowNotice('target_id', 'drop_id', 'items')
+const EVENT_DROP_REJECTED_KEYS = windowNotice('target_id', 'reason')
+const EVENT_ROUTE_KEYS = fields(...ROUTE_KEYS)
+const EVENT_KEY_KEYS = fields(...ROUTE_KEYS, 'key', 'key_char', 'modifiers')
+const EVENT_POINTER_KEYS = fields(...ROUTE_KEYS, 'button', 'x', 'y', 'modifiers')
+const EVENT_DISMISS_KEYS = fields(...ROUTE_KEYS, 'reason')
+const EVENT_SPLIT_RESIZE_KEYS = fields(...ROUTE_KEYS, 'ratio', 'source')
+const EVENT_CLOSED_KEYS = windowNotice()
+const EVENT_INPUT_KEYS = fields(...ROUTE_KEYS, 'value', 'input_revision')
+const EVENT_APP_MENU_SET_KEYS = fields('type', 'id', 'menu_id')
+const EVENT_APP_MENU_ITEM_KEYS = fields('type', 'sequence', 'menu_id', 'item_id')
+const EVENT_ERROR_KEYS = fields('type', 'id', 'code', 'message')
+
 /** Native stdout is untrusted until its message shape and limits are checked. */
 export function parseEvent(value: unknown): NativeEvent {
   const message = object(value)
   switch (message['type']) {
     case 'ready': {
-      keys(message, ['type', 'protocol', 'capabilities', 'limits', 'service_policy'])
+      keys(message, EVENT_READY_KEYS)
       const capabilities = message['capabilities']
       if (!Array.isArray(capabilities) || capabilities.length > CAPABILITIES.length)
         throw new ProtocolError('Invalid native capabilities')
@@ -1032,10 +1133,10 @@ export function parseEvent(value: unknown): NativeEvent {
       }
     }
     case 'ack':
-      keys(message, ['type', 'id'])
+      keys(message, EVENT_ACK_KEYS)
       return { type: 'ack', id: id(message['id']) }
     case 'opened':
-      keys(message, ['type', 'id', 'window_id', 'root_id', 'tree_revision'])
+      keys(message, EVENT_OPENED_KEYS)
       return {
         type: 'opened',
         id: id(message['id']),
@@ -1044,7 +1145,7 @@ export function parseEvent(value: unknown): NativeEvent {
         tree_revision: integer(message['tree_revision'], 'tree revision'),
       }
     case 'applied':
-      keys(message, ['type', 'id', 'window_id', 'tree_revision'])
+      keys(message, EVENT_APPLIED_KEYS)
       return {
         type: 'applied',
         id: id(message['id']),
@@ -1052,7 +1153,7 @@ export function parseEvent(value: unknown): NativeEvent {
         tree_revision: integer(message['tree_revision'], 'tree revision'),
       }
     case 'display_snapshot':
-      keys(message, ['type', 'id', 'window_id', 'snapshot'])
+      keys(message, EVENT_DISPLAY_SNAPSHOT_KEYS)
       return {
         type: 'display_snapshot',
         id: id(message['id']),
@@ -1060,7 +1161,7 @@ export function parseEvent(value: unknown): NativeEvent {
         snapshot: parseDisplaySnapshot(message['snapshot']),
       }
     case 'clipboard_text':
-      keys(message, ['type', 'id', 'window_id', 'result'])
+      keys(message, EVENT_CLIPBOARD_TEXT_KEYS)
       return {
         type: 'clipboard_text',
         id: id(message['id']),
@@ -1068,7 +1169,7 @@ export function parseEvent(value: unknown): NativeEvent {
         result: parseClipboardText(message['result']),
       }
     case 'clipboard_written':
-      keys(message, ['type', 'id', 'window_id'])
+      keys(message, EVENT_CLIPBOARD_WRITTEN_KEYS)
       return {
         type: 'clipboard_written',
         id: id(message['id']),
@@ -1076,7 +1177,7 @@ export function parseEvent(value: unknown): NativeEvent {
       }
     case 'global_shortcut_registered':
     case 'global_shortcut_unregistered':
-      keys(message, ['type', 'id', 'window_id', 'shortcut_id'])
+      keys(message, EVENT_GLOBAL_SHORTCUT_REGISTERED_KEYS)
       return {
         type: message['type'],
         id: id(message['id']),
@@ -1084,7 +1185,7 @@ export function parseEvent(value: unknown): NativeEvent {
         shortcut_id: id(message['shortcut_id']),
       }
     case 'display_changed':
-      keys(message, ['type', 'sequence', 'window_id', 'snapshot'])
+      keys(message, EVENT_DISPLAY_CHANGED_KEYS)
       return {
         type: 'display_changed',
         sequence: id(message['sequence']),
@@ -1092,7 +1193,7 @@ export function parseEvent(value: unknown): NativeEvent {
         snapshot: parseDisplaySnapshot(message['snapshot']),
       }
     case 'global_shortcut':
-      keys(message, ['type', 'sequence', 'window_id', 'shortcut_id'])
+      keys(message, EVENT_GLOBAL_SHORTCUT_KEYS)
       return {
         type: 'global_shortcut',
         sequence: id(message['sequence']),
@@ -1100,7 +1201,7 @@ export function parseEvent(value: unknown): NativeEvent {
         shortcut_id: id(message['shortcut_id']),
       }
     case 'notification_posted':
-      keys(message, ['type', 'id', 'window_id', 'notification_id', 'activatable'])
+      keys(message, EVENT_NOTIFICATION_POSTED_KEYS)
       if (typeof message['activatable'] !== 'boolean')
         throw new ProtocolError('Notification activatable must be a boolean')
       return {
@@ -1111,7 +1212,7 @@ export function parseEvent(value: unknown): NativeEvent {
         activatable: message['activatable'],
       }
     case 'notification_withdrawn':
-      keys(message, ['type', 'id', 'window_id', 'notification_id'])
+      keys(message, EVENT_NOTIFICATION_WITHDRAWN_KEYS)
       return {
         type: 'notification_withdrawn',
         id: id(message['id']),
@@ -1119,7 +1220,7 @@ export function parseEvent(value: unknown): NativeEvent {
         notification_id: id(message['notification_id']),
       }
     case 'notification_activated':
-      keys(message, ['type', 'sequence', 'window_id', 'notification_id'])
+      keys(message, EVENT_NOTIFICATION_ACTIVATED_KEYS)
       return {
         type: 'notification_activated',
         sequence: id(message['sequence']),
@@ -1127,7 +1228,7 @@ export function parseEvent(value: unknown): NativeEvent {
         notification_id: id(message['notification_id']),
       }
     case 'notification_dismissed':
-      keys(message, ['type', 'sequence', 'window_id', 'notification_id', 'reason'])
+      keys(message, EVENT_NOTIFICATION_DISMISSED_KEYS)
       return {
         type: 'notification_dismissed',
         sequence: id(message['sequence']),
@@ -1137,7 +1238,7 @@ export function parseEvent(value: unknown): NativeEvent {
       }
     case 'file_grant_opened':
     case 'file_grant_closed':
-      keys(message, ['type', 'id', 'window_id', 'grant_id'])
+      keys(message, EVENT_FILE_GRANT_OPENED_KEYS)
       return {
         type: message['type'],
         id: id(message['id']),
@@ -1145,7 +1246,7 @@ export function parseEvent(value: unknown): NativeEvent {
         grant_id: id(message['grant_id']),
       }
     case 'file_result':
-      keys(message, ['type', 'id', 'window_id', 'grant_id', 'result'])
+      keys(message, EVENT_FILE_RESULT_KEYS)
       return {
         type: 'file_result',
         id: id(message['id']),
@@ -1156,7 +1257,7 @@ export function parseEvent(value: unknown): NativeEvent {
     case 'process_spawned':
     case 'process_updated':
     case 'process_released':
-      keys(message, ['type', 'id', 'window_id', 'process_id'])
+      keys(message, EVENT_PROCESS_SPAWNED_KEYS)
       return {
         type: message['type'],
         id: id(message['id']),
@@ -1164,7 +1265,7 @@ export function parseEvent(value: unknown): NativeEvent {
         process_id: id(message['process_id']),
       }
     case 'process_output':
-      keys(message, ['type', 'sequence', 'window_id', 'process_id', 'chunk', 'stream', 'data'])
+      keys(message, EVENT_PROCESS_OUTPUT_KEYS)
       return {
         type: 'process_output',
         sequence: id(message['sequence']),
@@ -1175,7 +1276,7 @@ export function parseEvent(value: unknown): NativeEvent {
         data: parseProcessOutput(message['data']),
       }
     case 'process_exited':
-      keys(message, ['type', 'sequence', 'window_id', 'process_id', 'exit'])
+      keys(message, EVENT_PROCESS_EXITED_KEYS)
       return {
         type: 'process_exited',
         sequence: id(message['sequence']),
@@ -1185,7 +1286,7 @@ export function parseEvent(value: unknown): NativeEvent {
       }
     case 'file_dialog_opened':
     case 'file_dialog_closed':
-      keys(message, ['type', 'id', 'window_id', 'dialog_id'])
+      keys(message, EVENT_FILE_DIALOG_OPENED_KEYS)
       return {
         type: message['type'],
         id: id(message['id']),
@@ -1193,7 +1294,7 @@ export function parseEvent(value: unknown): NativeEvent {
         dialog_id: id(message['dialog_id']),
       }
     case 'file_dialog_completed':
-      keys(message, ['type', 'sequence', 'window_id', 'dialog_id', 'result'])
+      keys(message, EVENT_FILE_DIALOG_COMPLETED_KEYS)
       return {
         type: 'file_dialog_completed',
         sequence: id(message['sequence']),
@@ -1203,7 +1304,7 @@ export function parseEvent(value: unknown): NativeEvent {
       }
     case 'message_dialog_opened':
     case 'message_dialog_closed':
-      keys(message, ['type', 'id', 'window_id', 'dialog_id'])
+      keys(message, EVENT_MESSAGE_DIALOG_OPENED_KEYS)
       return {
         type: message['type'],
         id: id(message['id']),
@@ -1211,7 +1312,7 @@ export function parseEvent(value: unknown): NativeEvent {
         dialog_id: id(message['dialog_id']),
       }
     case 'message_dialog_completed':
-      keys(message, ['type', 'sequence', 'window_id', 'dialog_id', 'result'])
+      keys(message, EVENT_MESSAGE_DIALOG_COMPLETED_KEYS)
       return {
         type: 'message_dialog_completed',
         sequence: id(message['sequence']),
@@ -1221,7 +1322,7 @@ export function parseEvent(value: unknown): NativeEvent {
       }
     case 'context_menu_opened':
     case 'context_menu_closed':
-      keys(message, ['type', 'id', 'window_id', 'menu_id'])
+      keys(message, EVENT_CONTEXT_MENU_OPENED_KEYS)
       return {
         type: message['type'],
         id: id(message['id']),
@@ -1229,7 +1330,7 @@ export function parseEvent(value: unknown): NativeEvent {
         menu_id: id(message['menu_id']),
       }
     case 'context_menu_completed': {
-      keys(message, ['type', 'sequence', 'window_id', 'menu_id', 'item_id'])
+      keys(message, EVENT_CONTEXT_MENU_COMPLETED_KEYS)
       const event: Extract<NativeEvent, { type: 'context_menu_completed' }> = {
         type: 'context_menu_completed',
         sequence: id(message['sequence']),
@@ -1241,7 +1342,7 @@ export function parseEvent(value: unknown): NativeEvent {
     }
     case 'drop_target_registered':
     case 'drop_target_unregistered':
-      keys(message, ['type', 'id', 'window_id', 'target_id'])
+      keys(message, EVENT_DROP_TARGET_REGISTERED_KEYS)
       return {
         type: message['type'],
         id: id(message['id']),
@@ -1249,7 +1350,7 @@ export function parseEvent(value: unknown): NativeEvent {
         target_id: id(message['target_id']),
       }
     case 'dropped_item_resolved':
-      keys(message, ['type', 'id', 'window_id', 'target_id', 'drop_id', 'item', 'root', 'path'])
+      keys(message, EVENT_DROPPED_ITEM_RESOLVED_KEYS)
       return {
         type: 'dropped_item_resolved',
         id: id(message['id']),
@@ -1261,7 +1362,7 @@ export function parseEvent(value: unknown): NativeEvent {
         path: parseFilePath(message['path']),
       }
     case 'drop_target_drag':
-      keys(message, ['type', 'sequence', 'window_id', 'target_id', 'state'])
+      keys(message, EVENT_DROP_TARGET_DRAG_KEYS)
       return {
         type: 'drop_target_drag',
         sequence: id(message['sequence']),
@@ -1270,7 +1371,7 @@ export function parseEvent(value: unknown): NativeEvent {
         state: parseDragState(message['state']),
       }
     case 'drop_received':
-      keys(message, ['type', 'sequence', 'window_id', 'target_id', 'drop_id', 'items'])
+      keys(message, EVENT_DROP_RECEIVED_KEYS)
       return {
         type: 'drop_received',
         sequence: id(message['sequence']),
@@ -1280,7 +1381,7 @@ export function parseEvent(value: unknown): NativeEvent {
         items: parseDroppedItems(message['items']),
       }
     case 'drop_rejected':
-      keys(message, ['type', 'sequence', 'window_id', 'target_id', 'reason'])
+      keys(message, EVENT_DROP_REJECTED_KEYS)
       return {
         type: 'drop_rejected',
         sequence: id(message['sequence']),
@@ -1291,14 +1392,14 @@ export function parseEvent(value: unknown): NativeEvent {
     case 'click':
     case 'focus':
     case 'blur':
-      keys(message, ROUTE_KEYS)
+      keys(message, EVENT_ROUTE_KEYS)
       return {
         type: message['type'],
         ...route(message),
       }
     case 'key_down':
     case 'key_up': {
-      keys(message, [...ROUTE_KEYS, 'key', 'key_char', 'modifiers'])
+      keys(message, EVENT_KEY_KEYS)
       const key = string(message['key'], 'key', 256)
       if (!key) throw new ProtocolError('Native key must be nonempty')
       return {
@@ -1313,7 +1414,7 @@ export function parseEvent(value: unknown): NativeEvent {
     }
     case 'pointer_down':
     case 'pointer_up': {
-      keys(message, [...ROUTE_KEYS, 'button', 'x', 'y', 'modifiers'])
+      keys(message, EVENT_POINTER_KEYS)
       const button = (['left', 'right', 'middle', 'back', 'forward'] as const).find(
         (button) => button === message['button']
       )
@@ -1328,12 +1429,12 @@ export function parseEvent(value: unknown): NativeEvent {
       }
     }
     case 'dismiss':
-      keys(message, [...ROUTE_KEYS, 'reason'])
+      keys(message, EVENT_DISMISS_KEYS)
       if (message['reason'] !== 'window_blur')
         throw new ProtocolError('Unknown native dismissal reason')
       return { type: 'dismiss', ...route(message), reason: 'window_blur' }
     case 'split_resize': {
-      keys(message, [...ROUTE_KEYS, 'ratio', 'source'])
+      keys(message, EVENT_SPLIT_RESIZE_KEYS)
       const source = (['pointer', 'keyboard'] as const).find(
         (source) => source === message['source']
       )
@@ -1346,14 +1447,14 @@ export function parseEvent(value: unknown): NativeEvent {
       }
     }
     case 'closed':
-      keys(message, ['type', 'sequence', 'window_id'])
+      keys(message, EVENT_CLOSED_KEYS)
       return {
         type: 'closed',
         sequence: id(message['sequence']),
         window_id: id(message['window_id']),
       }
     case 'input':
-      keys(message, [...ROUTE_KEYS, 'value', 'input_revision'])
+      keys(message, EVENT_INPUT_KEYS)
       return {
         type: 'input',
         ...route(message),
@@ -1361,10 +1462,10 @@ export function parseEvent(value: unknown): NativeEvent {
         input_revision: integer(message['input_revision'], 'input revision'),
       }
     case 'app_menu_set':
-      keys(message, ['type', 'id', 'menu_id'])
+      keys(message, EVENT_APP_MENU_SET_KEYS)
       return { type: 'app_menu_set', id: id(message['id']), menu_id: id(message['menu_id']) }
     case 'app_menu_item':
-      keys(message, ['type', 'sequence', 'menu_id', 'item_id'])
+      keys(message, EVENT_APP_MENU_ITEM_KEYS)
       return {
         type: 'app_menu_item',
         sequence: id(message['sequence']),
@@ -1372,7 +1473,7 @@ export function parseEvent(value: unknown): NativeEvent {
         item_id: parseAppMenuItemId(message['item_id']),
       }
     case 'error': {
-      keys(message, ['type', 'id', 'code', 'message'])
+      keys(message, EVENT_ERROR_KEYS)
       const code = ERROR_CODES.find((code) => code === message['code'])
       if (!code) throw new ProtocolError('Invalid native error code')
       return {

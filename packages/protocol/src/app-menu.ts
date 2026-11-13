@@ -1,16 +1,15 @@
 import { ProtocolError } from './framing.ts'
-import { keys, object, string } from './values.ts'
+import { fields, keys, object, string } from './values.ts'
 
 /** Top-level menus in one menu bar. */
-export const MAX_APP_MENUS = 16
+const MAX_APP_MENUS = 16
 /** Items, separators and submenus in one menu bar, at every depth. */
 export const MAX_APP_MENU_ENTRIES = 128
 /** A top-level menu is depth 1; submenus nest at most two levels below it. */
 export const MAX_APP_MENU_DEPTH = 3
-export const MAX_APP_MENU_LABEL_BYTES = 64
-export const MAX_APP_MENU_ITEM_ID_BYTES = 64
+const MAX_APP_MENU_LABEL_BYTES = 64
 
-export const APP_MENU_NAMED_KEYS = Object.freeze([
+const APP_MENU_NAMED_KEYS = Object.freeze([
   'enter',
   'escape',
   'tab',
@@ -26,7 +25,7 @@ export const APP_MENU_NAMED_KEYS = Object.freeze([
   'pageup',
   'pagedown',
 ] as const)
-export const APP_MENU_PUNCTUATION_KEYS = Object.freeze([
+const APP_MENU_PUNCTUATION_KEYS = Object.freeze([
   ',',
   '.',
   '/',
@@ -104,14 +103,17 @@ function flag(data: Record<string, unknown>, key: string): boolean {
 
 const isFunctionKey = (key: string) => /^f([1-9]|1[0-2])$/.test(key)
 
+const MENU_SHORTCUT_KEYS = fields('key', 'modifiers')
+const MENU_MODIFIER_KEYS = fields('control', 'alt', 'shift', 'platform')
+
 function parseMenuShortcut(value: unknown): MenuShortcut {
   const data = object(value)
-  keys(data, ['key', 'modifiers'])
+  keys(data, MENU_SHORTCUT_KEYS)
   const key = data['key']
   if (typeof key !== 'string' || !APP_MENU_KEYS.includes(key))
     throw new ProtocolError('Menu shortcut key is not in the closed key set')
   const raw = object(data['modifiers'])
-  keys(raw, ['control', 'alt', 'shift', 'platform'])
+  keys(raw, MENU_MODIFIER_KEYS)
   const modifiers = {
     control: flag(raw, 'control'),
     alt: flag(raw, 'alt'),
@@ -132,6 +134,10 @@ interface Census {
   shortcuts: Set<string>
 }
 
+const ENTRIES_ITEM_KEYS = fields('kind', 'id', 'label', 'shortcut', 'enabled', 'checked')
+const ENTRIES_SEPARATOR_KEYS = fields('kind')
+const ENTRIES_SUBMENU_KEYS = fields('kind', 'label', 'enabled', 'items')
+
 function entries(value: unknown, depth: number, census: Census): AppMenuEntry[] {
   if (!Array.isArray(value) || !value.length)
     throw new ProtocolError('A menu or submenu needs at least one entry')
@@ -141,7 +147,7 @@ function entries(value: unknown, depth: number, census: Census): AppMenuEntry[] 
     const data = object(raw)
     switch (data['kind']) {
       case 'item': {
-        keys(data, ['kind', 'id', 'label', 'shortcut', 'enabled', 'checked'])
+        keys(data, ENTRIES_ITEM_KEYS)
         const id = parseAppMenuItemId(data['id'])
         if (census.ids.has(id))
           throw new ProtocolError('Menu item ids must be unique in a menu bar')
@@ -164,10 +170,10 @@ function entries(value: unknown, depth: number, census: Census): AppMenuEntry[] 
         return entry
       }
       case 'separator':
-        keys(data, ['kind'])
+        keys(data, ENTRIES_SEPARATOR_KEYS)
         return { kind: 'separator' }
       case 'submenu': {
-        keys(data, ['kind', 'label', 'enabled', 'items'])
+        keys(data, ENTRIES_SUBMENU_KEYS)
         const text = label(data['label'], 'menu label')
         const enabled = flag(data, 'enabled')
         if (depth >= MAX_APP_MENU_DEPTH)
@@ -193,6 +199,8 @@ export function parseContextMenuItems(value: unknown): AppMenuEntry[] {
   return entries(value, 1, { entries: 0, ids: new Set(), shortcuts: new Set() })
 }
 
+const APP_MENUS_KEYS = fields('title', 'items')
+
 /** An empty bar is valid: it removes the application's menus. */
 export function parseAppMenus(value: unknown): AppMenu[] {
   if (!Array.isArray(value) || value.length > MAX_APP_MENUS)
@@ -200,7 +208,7 @@ export function parseAppMenus(value: unknown): AppMenu[] {
   const census: Census = { entries: 0, ids: new Set(), shortcuts: new Set() }
   return value.map((raw) => {
     const data = object(raw)
-    keys(data, ['title', 'items'])
+    keys(data, APP_MENUS_KEYS)
     return {
       title: label(data['title'], 'menu title'),
       items: entries(data['items'], 1, census),

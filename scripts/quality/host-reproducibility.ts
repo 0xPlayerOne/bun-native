@@ -230,7 +230,7 @@ function findFile(directory: string, name: string): string | null {
  * builds differ, when both executables (`<os>-<attempt>.host`) were uploaded
  * beside the records.
  */
-export function explainDifferences(directory: string, comparison: Comparison): string[] {
+function explainDifferences(directory: string, comparison: Comparison): string[] {
   const lines: string[] = []
   for (const result of comparison.results) {
     if (result.status !== 'different') continue
