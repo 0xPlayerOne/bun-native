@@ -9,7 +9,7 @@ Solid/React TypeScript/JavaScript consumers installed offline, moved to unrelate
 paths, reinstalled with frozen locks, passed strict checks and public import
 inspection, and produced inspected AOT builds. Its eight invalid-input controls
 also passed. No application or native host was executed. The
-[hosted native plan](standalone-native-plan.md) is the separate native
+[hosted native plan](records/standalone-native-plan.md) is the separate native
 qualification; it now runs in `native-linux.yml` as `tests/native/cli-standalone.py` (#388). The accepted [checkout workflow](getting-started.md) also remains
 available.
 
@@ -167,6 +167,6 @@ The resulting AOT directory keeps the existing compiled-program/JIT-omission
 inspections and caller-supplied host digest, plus the package-set source identity.
 It is unsigned. Its manifest continues to mark GUI/input/teardown as `not-run`:
 package creation and compilation are not native window qualification. The
-separate [hosted plan](standalone-native-plan.md) exercises the actual installed `dev` command and AOT
+separate [hosted plan](records/standalone-native-plan.md) exercises the actual installed `dev` command and AOT
 application with owned OS input, complete paint and joined cleanup; those claims
 rest on that lane (`tests/native/cli-standalone.py`, merged in #388), not on this manifest.

@@ -8,7 +8,7 @@ The later [BN0 audit](bn0-audit.md) assesses #227/#258/#226 against hosted relea
 
 `examples/native-window/main.ts` launches a prebuilt Rust GPUI executable through `@bun-native/runtime`. GPUI creates a real window containing text, an Increment button and an editable input. A native click travels to Bun; Bun increments its counter and sends the new label to GPUI. Keyboard edits travel through GPUI's input handler to Bun. The same TypeScript entry point compiles with the pinned machine-code `bun compile` command and drives the same native host.
 
-The child owns the GPUI main thread. Commands and events use private, bounded and validated stdin/stdout pipes. The application owns request deadlines and process teardown. No browser renderer, embedded web server, CEF dependency or WebView fallback exists in this path. [ADR 0002](decisions/0002-owned-native-process.md) explains the choice and the unresolved public API work.
+The child owns the GPUI main thread. Commands and events use private, bounded and validated stdin/stdout pipes. The application owns request deadlines and process teardown. No browser renderer, embedded web server, CEF dependency or WebView fallback exists in this path. [ADR 0002](../decisions/0002-owned-native-process.md) explains the choice and the unresolved public API work.
 
 ## Exact first verified environment
 
@@ -50,11 +50,11 @@ The first working AOT application is 70,712,360 bytes, SHA-256 `e18c83bf2466a6c7
 
 The executable inspector parses the pinned Bun standalone module graph and requires `HAS_COMPILED_PROGRAM` (`0x4000`). This application has flags `0x417c`; the deliberately JIT-compiled control has `0x017c`. A separate AOT runtime behavior witness also differs from development/JIT. The `.bun_aot` ELF section exists in both runtime forms and is explicitly insufficient evidence by itself.
 
-The separate [runtime-feature inspection](aot-inspection.md) parses the named ELF `.bun_features` section using the pinned compiler's layout. It records the JIT as removed in this actual AOT application, and present in the explicit non-AOT control. The interpreter remains present. The section parser, source links, complete raw feature records and 25 metadata tests are retained; compilation does not imply that arbitrary runtime-generated strings are machine compiled. This check currently qualifies Linux ELF64 only.
+The separate [runtime-feature inspection](../aot-inspection.md) parses the named ELF `.bun_features` section using the pinned compiler's layout. It records the JIT as removed in this actual AOT application, and present in the explicit non-AOT control. The interpreter remains present. The section parser, source links, complete raw feature records and 25 metadata tests are retained; compilation does not imply that arbitrary runtime-generated strings are machine compiled. This check currently qualifies Linux ELF64 only.
 
 ## Initial observations
 
-The [committed raw smoke record](../benchmarks/bn0/native-smoke-linux-x64.json) includes pinned artifacts, source hashes, actual adapter details, process-tree RSS samples, input/paint records, screenshot hashes and cleanup outcomes.
+The [committed raw smoke record](../../benchmarks/bn0/native-smoke-linux-x64.json) includes pinned artifacts, source hashes, actual adapter details, process-tree RSS samples, input/paint records, screenshot hashes and cleanup outcomes.
 
 | Mode and scenario  | Time until owned window observed | Sampled peak process-tree RSS |
 | ------------------ | -------------------------------: | ----------------------------: |
@@ -67,7 +67,7 @@ These are fresh-process smoke observations with an unoptimized native host and s
 
 ## Hosted release-host baseline
 
-[Run 41179568675](https://github.com/0xPlayerOne/bun-native/actions/runs/41179568675), native job [124474016479](https://github.com/0xPlayerOne/bun-native/actions/runs/41179568675/job/124474016479), passed the release GPUI build and actual development/AOT native-input scenarios. The [retained release record](../benchmarks/bn0/release-linux-x64-2026-10-31/README.md) captures one warm-up and five measured fresh-process trials per mode, using the same optimized host. The original source snapshot is `e89d1511708f4230eae3318c9d6acb0612b60ca4`; all 26 recorded build-source/configuration hashes match the v1 baseline checkout at `06b8859acbc93de721b889867fbb811fd817bada`.
+[Run 41179568675](https://github.com/0xPlayerOne/bun-native/actions/runs/41179568675), native job [124474016479](https://github.com/0xPlayerOne/bun-native/actions/runs/41179568675/job/124474016479), passed the release GPUI build and actual development/AOT native-input scenarios. The [retained release record](../../benchmarks/bn0/release-linux-x64-2026-10-31/README.md) captures one warm-up and five measured fresh-process trials per mode, using the same optimized host. The original source snapshot is `e89d1511708f4230eae3318c9d6acb0612b60ca4`; all 26 recorded build-source/configuration hashes match the v1 baseline checkout at `06b8859acbc93de721b889867fbb811fd817bada`.
 
 The runner is Linux x86_64, kernel `7.0.0-1017-azure`, glibc 2.39, AMD EPYC 9V45 with four available logical CPUs. The actual window reports llvmpipe LLVM 20.1.2 and Mesa `25.2.8-0ubuntu0.24.04.4`. Bun, Rust and GPUI retain the exact pins above. The release host is 28,669,752 bytes, SHA-256 `4508642dfa90a59c49fa7a22ae20a525cf2a3d77c69c35c7555504c9aa0b9354`. The AOT application is 70,712,360 bytes, SHA-256 `a80e2ba3ab7c4a0cc23d1bd2722b28326dd37e5f9a3ffc9467252cc232a0b556`. Their combined 99,382,112 bytes exclude system libraries and installation overhead; these are unsigned experimental artifacts.
 
@@ -77,7 +77,7 @@ The runner is Linux x86_64, kernel `7.0.0-1017-azure`, glibc 2.39, AMD EPYC 9V45
 | Idle combined process-tree RSS         | 156,168,192 bytes | 160,378,880 bytes |
 | Sampled peak combined process-tree RSS | 157,442,048 bytes | 161,689,600 bytes |
 
-All 12 trials passed their native correctness and cleanup checks. Warm-ups are excluded from the distributions; measured order alternates, and each trial includes a two-second idle interval. The nominal 100 ms polling and uncontrolled page cache prevent a controlled cold-start or native input-latency claim. Five observations per mode do not establish a statistical speedup or regression, and sampled RSS is not true peak memory. The [baseline methodology](../benchmarks/NATIVE_BASELINE.md) and [audit](bn0-audit.md) retain these limits and the complete unsupported metric list.
+All 12 trials passed their native correctness and cleanup checks. Warm-ups are excluded from the distributions; measured order alternates, and each trial includes a two-second idle interval. The nominal 100 ms polling and uncontrolled page cache prevent a controlled cold-start or native input-latency claim. Five observations per mode do not establish a statistical speedup or regression, and sampled RSS is not true peak memory. The [baseline methodology](../../benchmarks/NATIVE_BASELINE.md) and [audit](bn0-audit.md) retain these limits and the complete unsupported metric list.
 
 ## Failures found and resolved
 
@@ -99,7 +99,7 @@ Baseline-supervisor SIGTERM cleanup is a separate correction now present in #273
 
 ## Reproduce and continue
 
-Install the pinned tools using [getting started](getting-started.md), build the native host explicitly and use the real commands in [testing](testing.md). The required Native Linux CI job retains build logs, manifests, native input reports and screenshots, including evidence on failure. Its declared host profile must match its actual Cargo command and binary hash.
+Install the pinned tools using [getting started](../getting-started.md), build the native host explicitly and use the real commands in [testing](../testing.md). The required Native Linux CI job retains build logs, manifests, native input reports and screenshots, including evidence on failure. Its declared host profile must match its actual Cargo command and binary hash.
 
 BN1 now has a demonstrated native calling path to extend into a common tree, owned handles, atomic batches, capabilities, cancellation and safe controlled input. It must retain real lifecycle/AOT tests. Solid and React must consume that same host; no framework-specific native implementation is needed.
 

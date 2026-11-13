@@ -6,7 +6,7 @@ This is an implementation-in-progress record for [#231](https://github.com/0xPla
 
 `examples/solid-counter/main.tsx` uses ordinary Solid signals, an effect, `<For>` keyed rows, cleanup hooks, native button events and native input observations. The pinned official Solid universal JSX transform targets `@bun-native/solid`. The adapter stages synchronous framework mutations and commits them through the existing public core's asynchronous atomic batches. The unchanged GPUI host owns native widgets and the main UI thread.
 
-The initial renderer API and lifecycle/error semantics are documented in [the package README](../packages/solid/README.md). The current adapter delegates staged nodes, keyed native planning, commit scheduling, listener reconciliation, revision-aware input intents and window lifetime to the internal `@bun-native/renderer` package, also consumed by the developing React adapter. Solid retains its universal-renderer, owner and signal integration. This change adds no alternative Rust host or framework-specific widget implementation.
+The initial renderer API and lifecycle/error semantics are documented in [the package README](../../packages/solid/README.md). The current adapter delegates staged nodes, keyed native planning, commit scheduling, listener reconciliation, revision-aware input intents and window lifetime to the internal `@bun-native/renderer` package, also consumed by the developing React adapter. Solid retains its universal-renderer, owner and signal integration. This change adds no alternative Rust host or framework-specific widget implementation.
 
 ## Exact initial environment
 
@@ -42,7 +42,7 @@ These initial runs are fresh-process software-GPU diagnostics. They do not estab
 
 ## Revision-aware input and retention increment
 
-The next source snapshot builds on `001d8040ded554f21374b7419b42177448c8f76d`. [The machine-readable correctness record](../benchmarks/bn2/solid-native-correctness.json) retains the exact source/verification-file hashes, executable inspection, six native result digests, lifecycle records and mutation counts. The source was dirty when these observations ran; its file hashes identify the tested implementation. These are historical results for those recorded hashes, not qualification of the later listener/order fixes below. The host, compiler and software-GPU environment remain the ones listed above.
+The next source snapshot builds on `001d8040ded554f21374b7419b42177448c8f76d`. [The machine-readable correctness record](../../benchmarks/bn2/solid-native-correctness.json) retains the exact source/verification-file hashes, executable inspection, six native result digests, lifecycle records and mutation counts. The source was dirty when these observations ran; its file hashes identify the tested implementation. These are historical results for those recorded hashes, not qualification of the later listener/order fixes below. The host, compiler and software-GPU environment remain the ones listed above.
 
 | Artifact                        |      Bytes | SHA-256                                                            |
 | ------------------------------- | ---------: | ------------------------------------------------------------------ |
@@ -98,11 +98,11 @@ A workspace recycle preserved the earlier source/index checkpoint and these sour
 
 The recovered source was revalidated with the restored checksum-pinned Bun: formatting, warnings-denied lint, strict checking of 49 files, package boundaries, 188 tests with 1,625 assertions, and the JavaScript package build all passed. These results validate the recovered source/process contracts, not the missing native or performance observations.
 
-The [matched benchmark tooling](../benchmarks/solid/README.md) has since been reconstructed as a separate source increment. It builds independent direct-core and Solid applications, inspects their genuine AOT executables, binds results to exact source/artifact hashes, and separates native paint/GPU calibration from repeated timing runs. It preserves raw mutation, lifecycle, heap and fixed-checkpoint weak-target observations. No previous raw samples were recreated. Fresh execution against the final shared host is required before reporting new results; acknowledgement timings and live-heap snapshots do not establish input-to-paint or cumulative allocations.
+The [matched benchmark tooling](../../benchmarks/solid/README.md) has since been reconstructed as a separate source increment. It builds independent direct-core and Solid applications, inspects their genuine AOT executables, binds results to exact source/artifact hashes, and separates native paint/GPU calibration from repeated timing runs. It preserves raw mutation, lifecycle, heap and fixed-checkpoint weak-target observations. No previous raw samples were recreated. Fresh execution against the final shared host is required before reporting new results; acknowledgement timings and live-heap snapshots do not establish input-to-paint or cumulative allocations.
 
 ## Regenerated protocol-2 native correctness
 
-Fresh runs now qualify the existing six scenarios against source `657ac295077b381120ec8340d958b596da785b3b`, with the recovered listener and keyed-planner changes present. [The regenerated record](../benchmarks/bn2/solid-native-regenerated.json) retains 42 source/verification hashes, actual executable inspection, complete observed native results and 36 native/graphics-library fingerprints. These are new observations; they do not recreate the lost raw timing comparison.
+Fresh runs now qualify the existing six scenarios against source `657ac295077b381120ec8340d958b596da785b3b`, with the recovered listener and keyed-planner changes present. [The regenerated record](../../benchmarks/bn2/solid-native-regenerated.json) retains 42 source/verification hashes, actual executable inspection, complete observed native results and 36 native/graphics-library fingerprints. These are new observations; they do not recreate the lost raw timing comparison.
 
 All three scenarios passed in both development and AOT: the counter's pointer-driven label/keyed update; all 38 nonce-tagged native text edits and derived label; and the delayed native-event echo followed by a new explicit replacement at the captured input revision. Every launch satisfied its independent native-paint and application-event expectations, closed through the OS with exit 0, and reported no forced termination, remaining owned process or unreaped child. The AOT after-state screenshots were visually inspected. The race-specific remove/reinsert and 32-row rotation regressions remain headless until their dedicated native workloads run; these six scenarios do not substitute for those workloads.
 
@@ -119,7 +119,7 @@ The restored environment reports software llvmpipe LLVM 20.1.2 and Mesa `25.2.8-
 
 ## Shared renderer and merged BN1 qualification
 
-After the shared renderer extraction and rebase onto the merged BN1 core, all six native scenarios passed again from clean source `331ef725b9da09313754473aa2e74cc2d404cb0e`. [The new qualification record](../benchmarks/bn2/solid-shared-native.json) binds the results to 45 source/verification hashes, including `packages/renderer`, the actual artifacts, 36 native/graphics-library fingerprints, complete driver observations, raw event-log digests and terminal owner-cleanup records. The older records above remain historical observations of their own source hashes.
+After the shared renderer extraction and rebase onto the merged BN1 core, all six native scenarios passed again from clean source `331ef725b9da09313754473aa2e74cc2d404cb0e`. [The new qualification record](../../benchmarks/bn2/solid-shared-native.json) binds the results to 45 source/verification hashes, including `packages/renderer`, the actual artifacts, 36 native/graphics-library fingerprints, complete driver observations, raw event-log digests and terminal owner-cleanup records. The older records above remain historical observations of their own source hashes.
 
 The rebuilt development and machine-code AOT applications both handled the real counter click/keyed change, all 38 nonce-tagged input events, and the delayed native observation followed by a new explicit replacement. The independent native-paint expectations passed. Every launch closed through the OS, exited 0 without forced cleanup or observed live/unreaped descendants, and reported zero renderer nodes/listeners after owner disposal. Both AOT after-state screenshots were visually inspected; there is still no automated pixel assertion.
 
@@ -159,7 +159,7 @@ positions, invalid props and leaf scrolling. These do not establish rendering.
 Strict JSX examples reject unsupported physical key codes, repeat/default-cancel
 fields, mismatched event fields and leaf scrolling.
 
-The [native interaction qualification](../benchmarks/bn2/solid-events-native.json)
+The [native interaction qualification](../../benchmarks/bn2/solid-events-native.json)
 records 43 source/verification hashes, an identical source-rebuilt development
 module, the actual AOT executable, 36 native/graphics-library fingerprints,
 complete driver observations and terminal ownership records. Its Git commit is
@@ -219,7 +219,7 @@ native `preventDefault`, physical key code, repeat flag or pointer-move prop.
 IME composition, programmatic selection/focus, complete text scrolling,
 accessibility, release-host qualification and macOS/Windows GUI remain open.
 
-The [protocol-4 regression record](../benchmarks/bn2/solid-events-regressions.json)
+The [protocol-4 regression record](../../benchmarks/bn2/solid-events-regressions.json)
 also qualifies the existing counter/keyed-list, 38-character input and delayed
 input-intent fixtures in development and AOT against the generalized registration
 driver. All six runs passed their independent full-tree paint expectations and
@@ -247,7 +247,7 @@ passed this run; that observation does not resolve the retained failures in #287
 
 The React implementation established a second consumer for the existing staging and native commit behavior. These implementations now reside once in `packages/renderer`, with framework-neutral node ownership and errors. Solid's mount wrapper registers `createRoot` disposal before component evaluation and inserts its component through the same Solid universal renderer. Its public `SolidNode` type names the shared opaque renderer node. The old Solid-private tree, input-intent, keyed-order and window-lifetime modules have been removed. Tests retain the existing delayed-acknowledgement listener race, revision-capture negatives, retained-descendant moves and closed-initial-mount checks against the shared implementation; the new six-scenario qualification above exercises this source refactor and merged core with its own exact artifact hashes.
 
-The first fresh repeated workload on the pre-extraction source stopped at the direct-core AOT control's fixed weak-target checkpoint. Four native paint calibrations, four complete warmups and the first Solid development/AOT trials passed. The direct-core AOT trial observed two disposed handle targets from mount 61 after both fixed collection checkpoints, while all 3,200 repeated rows were disposed and every public ownership/queue counter returned to zero. The failed run is retained for investigation; it is not a completed timing comparison or proof of a renderer-owned retaining path. Weak-reference collection and actual native/core ownership are separate observations. [Issue #287](https://github.com/0xPlayerOne/bun-native/issues/287) and the [retention research archive](../benchmarks/retention/README.md) preserve the exact no-framework controls, visible retaining graphs and unresolved native observations. The existing GC oracle remains unchanged. A separate deterministic completion-observer regression includes two deliberately broken negative controls; it complements the unresolved weak-target diagnostic.
+The first fresh repeated workload on the pre-extraction source stopped at the direct-core AOT control's fixed weak-target checkpoint. Four native paint calibrations, four complete warmups and the first Solid development/AOT trials passed. The direct-core AOT trial observed two disposed handle targets from mount 61 after both fixed collection checkpoints, while all 3,200 repeated rows were disposed and every public ownership/queue counter returned to zero. The failed run is retained for investigation; it is not a completed timing comparison or proof of a renderer-owned retaining path. Weak-reference collection and actual native/core ownership are separate observations. [Issue #287](https://github.com/0xPlayerOne/bun-native/issues/287) and the [retention research archive](../../benchmarks/retention/README.md) preserve the exact no-framework controls, visible retaining graphs and unresolved native observations. The existing GC oracle remains unchanged. A separate deterministic completion-observer regression includes two deliberately broken negative controls; it complements the unresolved weak-target diagnostic.
 
 Bun's default package conditions select Solid's inert server runtime. The application build explicitly selects reactive client exports, and mounting with an inert runtime fails. Applying a global browser condition to all unit tests also selected Oxc's browser/WASM implementation. The narrow test loader therefore selects only the exact installed Solid reactive source while preserving Node resolution for other packages. Neither adjustment introduces DOM rendering.
 
@@ -274,7 +274,7 @@ lane's correctness assertions do not resolve #287, establish matched framework
 performance or qualify a physical GPU, compositor presentation or another OS.
 
 The integrated required-job recipe was then executed locally with the frozen
-protocol-4 development host. [Its new evidence record](../benchmarks/bn2/solid-hosted-recipe-linux.json)
+protocol-4 development host. [Its new evidence record](../../benchmarks/bn2/solid-hosted-recipe-linux.json)
 binds three source-fingerprinted generated modules, three inspected AOT artifacts
 and all twelve passing native scenarios to the updated source and lockfile. It
 retains original stdout/stderr/report/screenshot hashes and zero-survivor cleanup.
@@ -302,7 +302,7 @@ inspects the real native counter bundle for the production reactive and universa
 modules, with no development or server distribution. No runtime or renderer
 implementation changed.
 
-[The new production-module record](../benchmarks/bn2/solid-production-recipe-linux.json)
+[The new production-module record](../../benchmarks/bn2/solid-production-recipe-linux.json)
 binds 75 source/controller/inspector files, three generated modules and three
 inspected executables to all twelve actual Linux scenarios. Each mode used the
 same generated module, with its production framework distribution independently
@@ -341,7 +341,7 @@ Main updates the native pins to serde `1.0.229`, serde_json `1.0.154` and
 unicode-segmentation `1.13.3`. The earlier `7e5acbd…` and startup-diagnostic
 `1a510561…` host records retain their original dependency hashes.
 
-[The current-lock integration record](../tests/native/evidence/solid-main-integration-linux.json)
+[The current-lock integration record](../../tests/native/evidence/solid-main-integration-linux.json)
 identifies a newly built development host, SHA-256
 `72db09e99bd8956c7922498af007fe7bcd55030d8654d2ed7e2e30d1bb21bd4f`,
 111,786,864 bytes, and 81 unchanged source/controller/inspector files. One

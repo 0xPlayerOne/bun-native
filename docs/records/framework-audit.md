@@ -12,14 +12,14 @@ summarizes evidence recorded elsewhere and makes no new performance claim.
 Ready-PR validation runs these checks, rather than relying on a one-time audit.
 Draft validation stops before implementation and CodeQL checks execute:
 
-| Check                                     | What it rejects                                                        |
-| ----------------------------------------- | ---------------------------------------------------------------------- |
-| `check:health`                            | unreachable modules and internal-only exports                          |
-| `check:boundaries`                        | package imports that cross the documented layering                     |
-| `check:duplicates`                        | duplicate dependency versions                                          |
-| dead-reference and doc-link quality tests | stale paths, missing link targets, docs/API drift (`api-reference.md`) |
-| `oxlint --deny-warnings`, `bun --check`   | lint and type errors in packages, scripts, tests, examples, benchmarks |
-| `cargo clippy -D warnings`, `ruff`        | Rust and Python warnings                                               |
+| Check                                     | What it rejects                                                           |
+| ----------------------------------------- | ------------------------------------------------------------------------- |
+| `check:health`                            | unreachable modules and internal-only exports                             |
+| `check:boundaries`                        | package imports that cross the documented layering                        |
+| `check:duplicates`                        | duplicate dependency versions                                             |
+| dead-reference and doc-link quality tests | stale paths, missing link targets, docs/API drift (`../api-reference.md`) |
+| `oxlint --deny-warnings`, `bun --check`   | lint and type errors in packages, scripts, tests, examples, benchmarks    |
+| `cargo clippy -D warnings`, `ruff`        | Rust and Python warnings                                                  |
 
 The first dead-code pass (knip 5.66, each result checked by hand, #623) found
 six unused script exports and removed them. Everything else it reported is a direct
@@ -65,7 +65,7 @@ checked by hand.
   host. The largest host ones were the D-Bus connection plumbing that
   `services/file_dialogs.rs` and `services/notifications.rs` each owned
   (`spawn`, `link`, shutdown accounting; about 80 lines over four clones). That
-  is now one module, [`services/session_bus.rs`](../native/gpui-host/src/services/session_bus.rs):
+  is now one module, [`services/session_bus.rs`](../../native/gpui-host/src/services/session_bus.rs):
   the lazily opened connection, its signal listener, the in-flight count and
   bounded shutdown drain, the two-second bound, connection setup and the
   session-bus check. Each service keeps its own registry, match rule, signal
@@ -89,21 +89,21 @@ checked by hand.
 Every item below has raw data in the linked record, and every candidate change was
 measured before a decision.
 
-| Path                         | Finding                                                                                                                                                                                                                               | Decision                                      | Record                                                                                          |
-| ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------- | ----------------------------------------------------------------------------------------------- |
-| Bridge acknowledgement tail  | Native prepare/apply/reply is p50 about 0.03 ms. The tail is the roughly 2% of requests that wait behind a full 1,001-node render on the UI thread.                                                                                   | No bridge change; frame cost decides the tail | [BRIDGE.md, phase attribution](../benchmarks/BRIDGE.md#phase-and-render-attribution-297)        |
-| Per-node pointer listeners   | They cost 8 allocations per node per frame. A same-semantics hitbox registry removed them and passed pointer, overlay and popup tests, but frames got about 10% slower in 5 of 5 pairs.                                               | Not adopted; listeners stay                   | [pointer registry](../benchmarks/results/pointer-registry-2026-11-10/README.md)                 |
-| Host CPU during the bridge   | `perf` over a whole bridge run (Linux, lavapipe): about two thirds of the host's user-space samples are host and GPUI code and about a quarter is lavapipe rasterization. The top host symbol, `NativeView::apply`, is about 6%.      | No hot spot worth a change at this load       | this section                                                                                    |
-| Watch compiler memory        | RSS growth came from mimalloc's purge delay keeping freed bundler pages resident, not from a retained object.                                                                                                                         | `MIMALLOC_PURGE_DELAY=0` for the CLI (#448)   | [tooling controls](../benchmarks/tooling/README.md)                                             |
-| Solid transform              | Babel garbage is collectable; reusing the preset changed nothing.                                                                                                                                                                     | No change                                     | [Solid stages](../benchmarks/tooling/results/solid-transform-linux-x64/README.md)               |
-| Sustained native watch       | Over 601 real edits, controller RSS levels off after about 100 edits. React keeps about 6 KB per edit of residual growth, and edit-to-paint time does not degrade.                                                                    | No architecture change                        | [sustained watch](../benchmarks/tooling/README.md#sustained-native-watch-601-edits-november-10) |
-| AOT heap retention (#287)    | Reproduced 19/60 on the old Bun pin and 0/60 on the current pin.                                                                                                                                                                      | Fixed by the Bun pin                          | #287                                                                                            |
+| Path                         | Finding                                                                                                                                                                                                                               | Decision                                      | Record                                                                                             |
+| ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------- | -------------------------------------------------------------------------------------------------- |
+| Bridge acknowledgement tail  | Native prepare/apply/reply is p50 about 0.03 ms. The tail is the roughly 2% of requests that wait behind a full 1,001-node render on the UI thread.                                                                                   | No bridge change; frame cost decides the tail | [BRIDGE.md, phase attribution](../../benchmarks/BRIDGE.md#phase-and-render-attribution-297)        |
+| Per-node pointer listeners   | They cost 8 allocations per node per frame. A same-semantics hitbox registry removed them and passed pointer, overlay and popup tests, but frames got about 10% slower in 5 of 5 pairs.                                               | Not adopted; listeners stay                   | [pointer registry](../../benchmarks/results/pointer-registry-2026-11-10/README.md)                 |
+| Host CPU during the bridge   | `perf` over a whole bridge run (Linux, lavapipe): about two thirds of the host's user-space samples are host and GPUI code and about a quarter is lavapipe rasterization. The top host symbol, `NativeView::apply`, is about 6%.      | No hot spot worth a change at this load       | this section                                                                                       |
+| Watch compiler memory        | RSS growth came from mimalloc's purge delay keeping freed bundler pages resident, not from a retained object.                                                                                                                         | `MIMALLOC_PURGE_DELAY=0` for the CLI (#448)   | [tooling controls](../../benchmarks/tooling/README.md)                                             |
+| Solid transform              | Babel garbage is collectable; reusing the preset changed nothing.                                                                                                                                                                     | No change                                     | [Solid stages](../../benchmarks/tooling/results/solid-transform-linux-x64/README.md)               |
+| Sustained native watch       | Over 601 real edits, controller RSS levels off after about 100 edits. React keeps about 6 KB per edit of residual growth, and edit-to-paint time does not degrade.                                                                    | No architecture change                        | [sustained watch](../../benchmarks/tooling/README.md#sustained-native-watch-601-edits-november-10) |
+| AOT heap retention (#287)    | Reproduced 19/60 on the old Bun pin and 0/60 on the current pin.                                                                                                                                                                      | Fixed by the Bun pin                          | #287                                                                                               |
 | AOT object growth (M9)       | The forced-collection object count that rose in 30-minute AOT sessions is live number strings held by a bounded AOT number-to-string cache, not Bun Native state. It levels off. See [below](#aot-object-growth-in-long-sessions-m9). |
-| Framework and execution mode | Core, Solid and React in development and AOT, with a direct Rust GPUI baseline, on Linux and macOS. A scheduled regression gate runs against committed baselines.                                                                     | Gate at 25% (hosted VMs vary 12–15%)          | [COMPARISON.md](../benchmarks/COMPARISON.md), [Rust GPUI](../benchmarks/rust-gpui/README.md)    |
+| Framework and execution mode | Core, Solid and React in development and AOT, with a direct Rust GPUI baseline, on Linux and macOS. A scheduled regression gate runs against committed baselines.                                                                     | Gate at 25% (hosted VMs vary 12–15%)          | [COMPARISON.md](../../benchmarks/COMPARISON.md), [Rust GPUI](../../benchmarks/rust-gpui/README.md) |
 
 ### AOT object growth in long sessions (M9)
 
-The [30-minute sessions](../benchmarks/results/workspace-long-session-2026-11-11/README.md)
+The [30-minute sessions](../../benchmarks/results/workspace-long-session-2026-11-11/README.md)
 recorded an AOT-only rise in live objects after a forced collection (Solid
 11,125 → 12,576, React 9,762 → 13,032), while the heap stayed under 2 MB.
 `BUN_NATIVE_SOAK_HEAP_CENSUS=1` (`tests/native/workspace-session.ts`) makes each
@@ -120,7 +120,7 @@ every live string's text.
   had 989 integer and 607 decimal strings. The integers are the round numbers
   in the fixture's `Round ${round} …` titles. The decimals are round durations,
   which `SessionRecorder` writes to `rounds.txt` as `${milliseconds}\n`.
-- [`aot-number-strings.js`](../benchmarks/retention/aot-number-strings.js)
+- [`aot-number-strings.js`](../../benchmarks/retention/aot-number-strings.js)
   reproduces this with no Bun Native, framework, host or file I/O. Each round
   makes and drops one number's string. In development, 0 such strings stay
   live. In AOT, live integer strings go to 1,025 by 2,500 rounds and stay
@@ -146,13 +146,13 @@ AOT runtime source to confirm the cache.
 ## Lifecycle, failure and packaging audits
 
 - Crash and failure: host panic, malformed payload, version mismatch and offline
-  cases each have a deciding test ([qualification matrix](qualification-matrix.md)),
+  cases each have a deciding test ([qualification matrix](../qualification-matrix.md)),
   including the CI-only host panic fault (#621).
 - Updates: versioned manifests, the verifying launcher with health rollback,
   refused interrupted or incompatible installs, and a real `native build` app
-  that confirms its own health (#618; [update lifecycle](update-lifecycle.md)).
+  that confirms its own health (#618; [update lifecycle](../update-lifecycle.md)).
 - Packaging: macOS and Windows CI create, check and AOT-build all four templates
-  (#254). Two independent hosted builds of the release host are byte-identical on Linux, macOS and Windows ([reproducible builds](reproducible-builds.md)).
+  (#254). Two independent hosted builds of the release host are byte-identical on Linux, macOS and Windows ([reproducible builds](../reproducible-builds.md)).
 
 ## What limits release scope
 
@@ -168,7 +168,7 @@ or physical-hardware qualification:
 | Upstream runtime and renderer limits | Babel 8/Solid, pinned GPUI display/Wayland behavior, AccessKit mapping and Bun/JSC retention depend on upstream changes                               | [#635](https://github.com/0xPlayerOne/bun-native/issues/635)                                                               |
 
 Per-platform release support is decided in the **accepted**
-[ADR 0021](decisions/0021-platform-release-readiness.md#acceptance-2026-11-12):
+[ADR 0021](../decisions/0021-platform-release-readiness.md#acceptance-2026-11-12):
 Linux x64 X11 is release-ready, macOS ARM64 is a supported preview without
 notarization, and Windows remains deferred. The older proposed-state table in
 that ADR is historical; its acceptance section governs.
@@ -202,7 +202,7 @@ historical observation, not an assertion that #296 is currently open.
 
 ## For a fresh agent
 
-[Getting started](getting-started.md), [development](development.md),
-[testing](testing.md) and the [API reference](api-reference.md) cover clone,
-validate, build and package. [Architecture](architecture.md) and the
-[decision records](decisions/README.md) explain the package and host boundaries.
+[Getting started](../getting-started.md), [development](../development.md),
+[testing](../testing.md) and the [API reference](../api-reference.md) cover clone,
+validate, build and package. [Architecture](../architecture.md) and the
+[decision records](../decisions/README.md) explain the package and host boundaries.

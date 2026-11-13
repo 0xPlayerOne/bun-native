@@ -58,7 +58,7 @@ Setting `BUN_NATIVE_STARTUP_TRACE=1` together with an absolute
 `BUN_NATIVE_EVIDENCE_LOG` path and a `BUN_NATIVE_EVIDENCE_NONCE` appends a
 bounded record of each startup request phase to that log. It does not change
 deadlines or scheduling. See
-[native startup diagnostics](../../docs/native-startup-diagnostics.md).
+[native startup diagnostics](../../docs/records/native-startup-diagnostics.md).
 
 ## Tests
 

@@ -1,6 +1,6 @@
 # Bun Native architecture
 
-**Status:** BN0's real Bun-controlled GPUI window and inspected machine-code AOT path are merged. BN1 implements a shared native element tree, versioned atomic mutations and an opaque public TS/JS API in the current source. Actual Linux X11 development/AOT runs have exercised pointer input, typing, Enter activation, stale-input rejection, native paint and cleanup using Mesa's software GPU. Solid and React adapters share this implemented core; each has separately recorded native and AOT evidence. Supported release scope remains governed by the platform and milestone audits. See [the BN0 record](bn0-integration.md), [native protocol 7](native-abi.md) and [the public API](../packages/core/README.md) for the precise boundary.
+**Status:** BN0's real Bun-controlled GPUI window and inspected machine-code AOT path are merged. BN1 implements a shared native element tree, versioned atomic mutations and an opaque public TS/JS API in the current source. Actual Linux X11 development/AOT runs have exercised pointer input, typing, Enter activation, stale-input rejection, native paint and cleanup using Mesa's software GPU. Solid and React adapters share this implemented core; each has separately recorded native and AOT evidence. Supported release scope remains governed by the platform and milestone audits. See [the BN0 record](records/bn0-integration.md), [native protocol 7](native-abi.md) and [the public API](../packages/core/README.md) for the precise boundary.
 
 ## System layers
 

@@ -133,7 +133,7 @@ Threads and open files (first / last / max) in every sample:
   listeners and application resources equal the baseline exactly held for every
   round, so the growth is not in those owned resources. A later heap census attributes it to live number strings
   held by a bounded number-to-string cache in Bun's AOT runtime, which levels
-  off ([framework audit](../../../docs/framework-audit.md#aot-object-growth-in-long-sessions-m9)).
+  off ([framework audit](../../../docs/records/framework-audit.md#aot-object-growth-in-long-sessions-m9)).
 - The phase-trace rows describe only the first 224–258 s of each session.
 
 Each `fixture.log` holds the expected Xvfb/DBus/portal start-up warnings. The

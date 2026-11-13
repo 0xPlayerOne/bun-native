@@ -34,4 +34,4 @@ GPUI uses explicit quit mode. Closing the final window emits `closed` but leaves
 
 Real Linux X11 tests use GPUI with Mesa llvmpipe, XTest-delivered pointer/keyboard input, correlated event and paint records, screenshots and owned-process teardown checks. The same source runs in Bun development and the inspected machine-code AOT executable. Headless protocol tests separately cover malformed frames and runtime failure behavior.
 
-See [the integration record](../bn0-integration.md) for exact versions, artifacts, commands and observed failures. This decision does not qualify a physical GPU, Wayland, macOS/Windows GUI, IME, accessibility, a reusable component tree, signed packages or an ABI compatibility promise. Those remain explicit implementation work.
+See [the integration record](../records/bn0-integration.md) for exact versions, artifacts, commands and observed failures. This decision does not qualify a physical GPU, Wayland, macOS/Windows GUI, IME, accessibility, a reusable component tree, signed packages or an ABI compatibility promise. Those remain explicit implementation work.
