@@ -247,8 +247,7 @@ jobs:
             evidence="$NATIVE_EVIDENCE/culled-list-scale$scale"
             mkdir "$evidence"
             BUN_NATIVE_A11Y_EVIDENCE="$evidence" BUN_NATIVE_PHASE_TRACE="$evidence/trace.json" \
-              xvfb-run --auto-servernum --server-args='-screen 0 1280x1024x24 -nolisten tcp' \
-              dbus-run-session -- bash scripts/quality/native-linux-session.sh \
+              bash scripts/quality/native-x11-session.sh --screen 1280x1024x24 \
               "$evidence-session" -- env GPUI_X11_SCALE_FACTOR="$scale" \
               bun tests/native/culled-list.ts 2>&1 | tee "$evidence/run.log"
             test -s "$evidence/result.json"
