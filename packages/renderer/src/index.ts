@@ -10,7 +10,7 @@ import {
 import { asNode, type RendererNode } from './nodes.ts'
 
 export { createRenderRoot } from './root.ts'
-export type { RenderContext, RenderOptions, RenderRoot } from './root.ts'
+export type { RenderAdapter, RenderContext, RenderOptions, RenderRoot } from './root.ts'
 export {
   asNode,
   createElement,

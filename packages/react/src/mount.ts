@@ -2,7 +2,7 @@ import { NativeStateError, type NativeWindow, type Style } from '@bun-native/cor
 import { createRenderRoot, type RenderOptions, type RenderRoot } from '@bun-native/renderer'
 import type { ErrorInfo, ReactNode } from 'react'
 import { ConcurrentRoot } from 'react-reconciler/constants'
-import { reconciler } from './reconciler.ts'
+import { dispatchDiscrete, reconciler } from './reconciler.ts'
 import { createRootErrors } from './root-errors.ts'
 import { createCommitBarrier } from './commit-barrier.ts'
 
@@ -82,7 +82,8 @@ class Root implements ReactRenderRoot {
         if (this.failure !== undefined) throw this.failure
         reconciler.flushPassiveEffects()
       },
-      style === undefined ? {} : { style }
+      style === undefined ? {} : { style },
+      { dispatch: dispatchDiscrete }
     )
     this.ready = this.native.ready.then(() => {
       if (this.phase !== 'active')

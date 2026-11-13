@@ -100,7 +100,11 @@ public core alone captures and validates native ancestry, freezes queued routes,
 orders capture/target/bubble callbacks, and applies propagation stops. No adapter
 reconstructs a route from its current staged tree. A move preserves the original
 queued route; deleting its target or revoking a registration cancels its remaining
-authority. Callback replacement never redirects old queued work to a new function.
+authority. By default, callback replacement never redirects old queued work to a
+new function. An adapter that passes a `RenderAdapter` to `createRenderRoot`
+(React) instead keeps each registration while its handler property stays
+defined, runs the latest handler through `adapter.dispatch`, and does not
+recapture a node whose handler only changed identity.
 
 Input observations are branded before every input callback, including ancestor
 capture/bubble callbacks. Passing an actual event back into framework state

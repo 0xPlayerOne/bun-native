@@ -26,6 +26,12 @@ export interface RendererNode {
 
 export interface Owner {
   readonly token: object
+  /**
+   * A handler property keeps its native registration while it stays defined:
+   * the registration calls the property's current value. Otherwise replacing
+   * a handler revokes the old registration once the replacement commits.
+   */
+  readonly stableHandlers: boolean
   changed(): void
   detached(node: Node): void
   input(node: Node): InputState
@@ -351,9 +357,12 @@ export function setProperty(node: Node, name: PropertyName, value: unknown): voi
   if (isEventProperty(name)) {
     if (node.kind === 'text-node')
       throw new TypeError('Text literals cannot own native event handlers')
+    const replaced = props[name] !== undefined
     if (value === undefined) delete props[name]
     else if (typeof value === 'function') props[name] = value as EventListener
     else throw new TypeError(`Native ${name} must be a function`)
+    // Only a defined/undefined change reaches a stable registration.
+    if (replaced && value !== undefined && node.owner?.stableHandlers) return
     invalidate(node)
     node.owner?.changed()
     return
