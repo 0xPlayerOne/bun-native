@@ -3,50 +3,47 @@ import { mkdir, mkdtemp, rm } from 'node:fs/promises'
 import { join, resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { parseArgs } from 'node:util'
-import { prebuiltHost } from './native/host.ts'
-import { createProject, readProject } from './native/project.ts'
+import { cliContext, releaseVersion, type CliContext } from './native/context.ts'
+// Command modules load lazily: --help and the light commands never pay for the
+// package-set, archive and hashing modules they do not use.
 
 const repository = resolve(import.meta.dir, '..')
-const usage = `Bun Native application tooling
+const usage = (cli: string) => `Bun Native application tooling
 
-  bun run native create apps/my-app [--framework solid|react] [--language typescript|javascript]
+  ${cli} create apps/my-app [--framework solid|react] [--language typescript|javascript]
   bun scripts/native.ts create /path/to/my-app --packages /path/to/package-set/manifest.json
-  bun run native dev apps/my-app --host /absolute/path/to/bun-native-host|auto [--watch]
-  bun run native build apps/my-app --host /absolute/path/to/bun-native-host|auto --host-profile dev|release [--outdir directory] [--bundle-id reverse.dns.id]
-  bun run native check apps/my-app
-  bun run native format apps/my-app [--check]
-  bun run native lint apps/my-app
-  bun run native doctor [apps/my-app] [--host /absolute/path/to/bun-native-host|auto]
-  bun run native host install [--version x.y.z] [--force]
+  ${cli} dev apps/my-app --host /absolute/path/to/bun-native-host|auto [--watch]
+  ${cli} build apps/my-app --host /absolute/path/to/bun-native-host|auto --host-profile dev|release [--outdir directory] [--bundle-id reverse.dns.id]
+  ${cli} check apps/my-app
+  ${cli} format apps/my-app [--check]
+  ${cli} lint apps/my-app
+  ${cli} doctor [apps/my-app] [--host /absolute/path/to/bun-native-host|auto]
+  ${cli} host install [--version x.y.z] [--force]
 
 Projects use checkout dependencies unless --packages selects a standalone local package set.
 Standalone scripts use their own installed CLI. Native hosts are supplied explicitly: an absolute path,
-or auto for this checkout version's released host (linux-x64, linux-arm64, darwin-arm64, darwin-x64).
+or auto for this CLI version's released host (linux-x64, linux-arm64, darwin-arm64, darwin-x64).
 dev starts once; --watch remounts the app after edits and resets state. build produces unsigned same-platform AOT artifacts.
 check runs Bun's built-in type checker, formatter check and the pinned oxlint; format applies the formatter.
 lint runs only the pinned oxlint, never on vendored packages or generated output.
 doctor reports Bun, platform, host-header and project compatibility without launching anything.
 host install and --host auto download the unsigned release host once, check it against the release's
-SHA256SUMS and reuse it from .bun-native/hosts. No other command downloads a host; none runs Cargo.
+SHA256SUMS and reuse it from the checkout's or project's .bun-native/hosts. No other command downloads a host; none runs Cargo.
 See docs/developer-tooling.md.`
 
-async function resolveHost(value: string | undefined): Promise<string> {
-  if (value !== 'auto') return prebuiltHost(value)
+async function resolveHost(context: CliContext, value: string | undefined): Promise<string> {
+  if (value !== 'auto') {
+    const { prebuiltHost } = await import('./native/host.ts')
+    return prebuiltHost(value)
+  }
   const { installReleaseHost } = await import('./native/host-download.ts')
-  return installReleaseHost({ version: await checkoutVersion(), cache: hostCache })
-}
-
-const hostCache = join(repository, '.bun-native', 'hosts')
-
-async function checkoutVersion(): Promise<string> {
-  const manifest: { version?: unknown } = await Bun.file(join(repository, 'package.json')).json()
-  if (typeof manifest.version !== 'string') throw new Error('The checkout has no workspace version')
-  return manifest.version
+  return installReleaseHost({ version: releaseVersion(context), cache: context.hostCache })
 }
 
 async function main(args: string[]): Promise<void> {
+  const context = await cliContext(repository)
   if (args.length === 0 || (args.length === 1 && ['--help', '-h'].includes(args[0]!))) {
-    console.log(usage)
+    console.log(usage(context.command))
     return
   }
   const [command, ...rest] = args
@@ -67,6 +64,7 @@ async function main(args: string[]): Promise<void> {
       throw new Error('--framework must be solid or react')
     if (values.language !== 'typescript' && values.language !== 'javascript')
       throw new Error('--language must be typescript or javascript')
+    const { createProject } = await import('./native/project.ts')
     const path = await createProject(
       repository,
       positionals[0]!,
@@ -91,6 +89,7 @@ async function main(args: string[]): Promise<void> {
     })
     if (positionals.length !== 1)
       throw new Error(`${command} requires exactly one project directory`)
+    const { readProject } = await import('./native/project.ts')
     const project = await readProject(repository, positionals[0]!)
     const { checkProject, formatProject } = await import('./native/quality.ts')
     const steps = []
@@ -123,11 +122,11 @@ async function main(args: string[]): Promise<void> {
       options: { version: { type: 'string' }, force: { type: 'boolean' } },
     })
     if (positionals.length !== 1 || positionals[0] !== 'install')
-      throw new Error('Usage: bun run native host install [--version x.y.z] [--force]')
+      throw new Error(`Usage: ${context.command} host install [--version x.y.z] [--force]`)
     const { installReleaseHost } = await import('./native/host-download.ts')
     const host = await installReleaseHost({
-      version: values.version ?? (await checkoutVersion()),
-      cache: hostCache,
+      version: releaseVersion(context, values.version),
+      cache: context.hostCache,
       force: values.force === true,
     })
     console.log(host)
@@ -142,7 +141,7 @@ async function main(args: string[]): Promise<void> {
     })
     if (positionals.length > 1) throw new Error('doctor accepts at most one project directory')
     const { diagnose } = await import('./native/doctor.ts')
-    const host = values.host === 'auto' ? await resolveHost('auto') : values.host
+    const host = values.host === 'auto' ? await resolveHost(context, 'auto') : values.host
     const results = await diagnose(repository, { host, project: positionals[0] })
     for (const result of results)
       console.log(`${result.status.padEnd(7)} ${result.name}: ${result.detail}`)
@@ -150,7 +149,7 @@ async function main(args: string[]): Promise<void> {
     return
   }
   if (command !== 'dev' && command !== 'build')
-    throw new Error(`Unknown command: ${command}\n${usage}`)
+    throw new Error(`Unknown command: ${command}\n${usage(context.command)}`)
   const options: Record<string, { type: 'string' | 'boolean' }> = { host: { type: 'string' } }
   if (command === 'build') {
     options['outdir'] = { type: 'string' }
@@ -164,7 +163,11 @@ async function main(args: string[]): Promise<void> {
     options,
   })
   if (positionals.length !== 1) throw new Error(`${command} requires exactly one project directory`)
-  const host = await resolveHost(typeof values['host'] === 'string' ? values['host'] : undefined)
+  const host = await resolveHost(
+    context,
+    typeof values['host'] === 'string' ? values['host'] : undefined
+  )
+  const { readProject } = await import('./native/project.ts')
   const project = await readProject(repository, positionals[0]!)
   if (command === 'dev' && values.watch) {
     const { watchProject } = await import('./native/watch.ts')

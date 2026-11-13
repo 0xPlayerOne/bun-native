@@ -16,6 +16,7 @@ export type ReleaseHostTarget = (typeof releaseHostTargets)[number]
 const releases = 'https://github.com/0xPlayerOne/bun-native/releases/download'
 const maximumArchiveBytes = 512 * 1024 * 1024
 const maximumChecksumBytes = 64 * 1024
+const defaultTimeoutMs = 5 * 60_000
 
 export function releaseHostTarget(
   platform: string = process.platform,
@@ -76,14 +77,55 @@ export function hostFromArchive(archive: Uint8Array): Buffer {
   return Buffer.from(tar.subarray(512, 512 + size))
 }
 
-async function download(url: string, limit: number): Promise<Uint8Array> {
-  const response = await fetch(url, { redirect: 'follow' })
-  if (!response.ok) throw new Error(`Download failed (${response.status}): ${url}`)
-  const declared = Number(response.headers.get('content-length') ?? '0')
-  if (declared > limit) throw new Error(`Download is larger than ${limit} bytes: ${url}`)
-  const bytes = new Uint8Array(await response.arrayBuffer())
-  if (bytes.length > limit) throw new Error(`Download is larger than ${limit} bytes: ${url}`)
-  return bytes
+/**
+ * One bounded download: the same deadline covers the request and the whole body,
+ * which is streamed into a byte-limited buffer (the install-bun/download.mjs pattern).
+ * A stalled release server fails the command instead of hanging it.
+ */
+async function download(url: string, limit: number, timeoutMs: number): Promise<Uint8Array> {
+  const controller = new AbortController()
+  const expired = () => new Error(`Download exceeded ${timeoutMs} ms: ${url}`)
+  let timer: ReturnType<typeof setTimeout> | undefined
+  const deadline = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => {
+      controller.abort()
+      reject(expired())
+    }, timeoutMs)
+  })
+  const operation = (async () => {
+    let response: Response
+    try {
+      response = await fetch(url, { redirect: 'follow', signal: controller.signal })
+    } catch (error) {
+      if (controller.signal.aborted) throw expired()
+      throw error
+    }
+    try {
+      if (!response.ok) throw new Error(`Download failed (${response.status}): ${url}`)
+      const declared = Number(response.headers.get('content-length') ?? '0')
+      if (declared > limit) throw new Error(`Download is larger than ${limit} bytes: ${url}`)
+      const parts: Uint8Array[] = []
+      let total = 0
+      for await (const part of response.body ?? []) {
+        total += part.byteLength
+        if (total > limit) throw new Error(`Download is larger than ${limit} bytes: ${url}`)
+        parts.push(part)
+      }
+      return Buffer.concat(parts, total)
+    } catch (error) {
+      if (controller.signal.aborted) throw expired()
+      throw error
+    } finally {
+      // Release the connection on every early exit; a completed body is a no-op.
+      controller.abort()
+    }
+  })()
+  try {
+    return await Promise.race([operation, deadline])
+  } finally {
+    clearTimeout(timer)
+    operation.catch(() => {})
+  }
 }
 
 export type HostInstallOptions = {
@@ -94,9 +136,11 @@ export type HostInstallOptions = {
   cache: string
   force?: boolean
   target?: ReleaseHostTarget
+  /** Deadline for each download, request and body together. Defaults to 5 minutes. */
+  timeoutMs?: number
 }
 
-export function installedHostPath(options: HostInstallOptions): string {
+function installedHostPath(options: HostInstallOptions): string {
   const target = options.target ?? releaseHostTarget()
   return join(options.cache, `v${options.version}`, target, 'bun-native-host')
 }
@@ -117,9 +161,12 @@ export async function installReleaseHost(options: HostInstallOptions): Promise<s
     return prebuiltHost(destination)
   const base = `${(options.baseUrl ?? process.env['BUN_NATIVE_HOST_RELEASE_URL'] ?? releases).replace(/\/+$/, '')}/v${options.version}`
   const asset = releaseHostAsset(target)
-  const sums = new TextDecoder().decode(await download(`${base}/SHA256SUMS`, maximumChecksumBytes))
+  const timeoutMs = options.timeoutMs ?? defaultTimeoutMs
+  const sums = new TextDecoder().decode(
+    await download(`${base}/SHA256SUMS`, maximumChecksumBytes, timeoutMs)
+  )
   const expected = checksumFor(sums, asset)
-  const archive = await download(`${base}/${asset}`, maximumArchiveBytes)
+  const archive = await download(`${base}/${asset}`, maximumArchiveBytes, timeoutMs)
   const actual = createHash('sha256').update(archive).digest('hex')
   if (actual !== expected)
     throw new Error(`${asset} digest ${actual} does not match SHA256SUMS ${expected}`)
