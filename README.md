@@ -67,7 +67,7 @@ The [master roadmap](https://github.com/0xPlayerOne/bun-native/issues/1) contain
 
 Bun Native is **not** an Electron, Electrobun, Tauri or WebView wrapper. It does not promise arbitrary HTML/CSS, browser DOM APIs, Tailwind, shadcn, Radix or Kobalte components running unchanged. Their functionality must be represented through actual native host elements/adapters, and support is documented per feature.
 
-The [experimental public core API](packages/core/README.md) is implemented and tested; its native element and lifecycle contract remains deliberately small. **Do not copy hypothetical CLI or advanced component examples as working commands.** The implemented commands are the checkout-local `bun run native create|dev|build|check|format|doctor` documented in [developer tooling](docs/developer-tooling.md); there is no published `bun-native` executable. BN5 [#220](https://github.com/0xPlayerOne/bun-native/issues/220) and framework/component tasks track the remaining developer-facing surface.
+The [experimental public core API](packages/core/README.md) is implemented and tested; its native element and lifecycle contract remains deliberately small. **Do not copy hypothetical CLI or advanced component examples as working commands.** The implemented commands are `create|dev|build|check|format|lint|doctor|host install`, run as `bun run native …` in a checkout or from the npm-published `@bun-native/cli` (`bunx @bun-native/cli create my-app`, see [getting started](docs/getting-started.md#without-a-checkout-the-npm-cli)); they are documented in [developer tooling](docs/developer-tooling.md). BN5 [#220](https://github.com/0xPlayerOne/bun-native/issues/220) and framework/component tasks track the remaining developer-facing surface.
 
 ## Contributing
 

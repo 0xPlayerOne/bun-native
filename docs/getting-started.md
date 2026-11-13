@@ -4,6 +4,22 @@ Create a Solid or React application inside a Bun Native checkout, run it against
 
 Steps 1, 2, 4 and 5 are the same for both frameworks. Step 3 has one walkthrough for [SolidJS](#3a-solidjs-walkthrough) and one for [React](#3b-react-walkthrough). This walkthrough describes Bun Native 0.27.2; that is the version whose checkout-based flow it originally qualified. It does not imply that every later release, platform, or separately supplied host has passed the same fresh-project procedure. Read the checked-out version from [`package.json`](../package.json), consult the dated [compatibility evidence](compatibility.md), and inspect the [protected-main Validation history](https://github.com/0xPlayerOne/bun-native/actions/workflows/bun-native.yml?query=branch%3Amain) for exact-commit hosted results.
 
+## Without a checkout: the npm CLI
+
+The released `@bun-native/cli` package creates a project that depends on the same `@bun-native/*` release from npm, with no checkout. Use the Bun revision in [`toolchain.json`](../toolchain.json) of that release ([toolchain setup](toolchain.md)):
+
+```sh
+bunx @bun-native/cli create my-app            # --framework react, --language javascript
+cd my-app
+bun install
+bun --no-install ./node_modules/@bun-native/cli/src/scripts/native.ts host install
+bun run check
+bun run dev --host auto
+bun run build --host auto --host-profile release
+```
+
+The project pins `@bun-native/core`, the selected adapter and `@bun-native/cli` to the CLI's own version, plus the framework and tool versions that release was built with; its scripts run its own installed CLI. `host install` and `--host auto` fetch the unsigned released host for that version ([released hosts](developer-tooling.md#released-hosts)). The rest of this page describes the checkout route, which framework contributors use; steps 3 to 5 apply to both once the project exists.
+
 ## 1. Prepare the checkout
 
 Use Git, Node 22 or newer for the Bun bootstrap, and the exact Bun revision in [`toolchain.json`](../toolchain.json). These commands use a POSIX shell:
