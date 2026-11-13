@@ -2,11 +2,11 @@ import {
   DECORATION_FIELDS,
   MAX_OVERLAY_DEPTH,
   MAX_SCROLL_OFFSET,
+  OperationList,
   parseElement,
   type Capability,
   type Element,
   type Limits,
-  type Operation,
   type Style,
 } from '@bun-native/protocol'
 import {
@@ -194,19 +194,28 @@ export class CommittedText {
   }
 }
 
+/** The window text a transaction starts from: committed totals, or an earlier candidate's. */
+interface TextBase {
+  readonly bytes: number
+  /** Nodes above the per-text limit; a validated candidate has none. */
+  readonly oversized: ReadonlySet<number>
+}
+
+const NO_NODES: ReadonlySet<number> = new Set()
+
 /**
  * The candidate graph: this transaction's own node copies and removals over
- * the committed map, which it never writes, so opening a batch costs nothing
- * per window node.
+ * the committed map (or an earlier transaction's candidate), which it never
+ * writes, so opening a batch costs nothing per window node.
  */
 class Overlay implements ReadonlyMap<number, NodeState> {
   /** Nodes this transaction created or wrote; each is its own copy. */
   readonly writes = new Map<number, NodeState>()
-  /** Committed nodes this transaction removed. */
+  /** Base nodes this transaction removed. */
   readonly deletes = new Set<number>()
   size: number
 
-  constructor(readonly base: ReadonlyMap<number, NodeState>) {
+  constructor(public base: ReadonlyMap<number, NodeState>) {
     this.size = base.size
   }
 
@@ -260,13 +269,28 @@ class Overlay implements ReadonlyMap<number, NodeState> {
 }
 
 /**
+ * Upper bound on an operation's JSON bytes beyond its text values: its keys,
+ * identifiers and every element field and style value at full width.
+ */
+const OPERATION_BYTES = 2_048
+/** Upper bound on a batch command's envelope: id, type, window, revision and brackets. */
+export const BATCH_ENVELOPE_BYTES = 256
+
+/**
  * A bounded candidate graph; native preflight remains authoritative. Nodes are
  * shared with the committed graph until this transaction first writes one.
+ *
+ * A transaction opened with `next` continues an earlier one that is not yet
+ * acknowledged: it reads that candidate, and both can be sent as one native
+ * batch. It commits only after `rebase` onto the committed graph the earlier
+ * one was committed to.
  */
 export class Transaction implements NativeBatch {
   readonly nodes: Overlay
-  readonly operations: Operation[] = []
+  readonly operations = new OperationList()
   private readonly requests: Request[] = []
+  /** Requests of earlier transactions sent in the same native batch, checked on this candidate. */
+  private prior: readonly Request[] = []
   /** Created and moved nodes: the only places a batch can break ownership or depth. */
   private readonly attached: number[] = []
   private active = true
@@ -278,9 +302,60 @@ export class Transaction implements NativeBatch {
     private readonly allocateId: () => number,
     private readonly limits: Readonly<Limits>,
     private readonly capabilities: readonly Capability[],
-    private readonly text: CommittedText
+    private text: TextBase
   ) {
     this.nodes = new Overlay(current)
+  }
+
+  /** A transaction over this validated candidate, to send in the same native batch. */
+  next(): Transaction {
+    const next = new Transaction(
+      this.nodes,
+      this.rootId,
+      this.allocateId,
+      this.limits,
+      this.capabilities,
+      { bytes: this.textBytes(), oversized: NO_NODES }
+    )
+    next.prior = this.prior.length ? [...this.prior, ...this.requests] : this.requests
+    return next
+  }
+
+  /**
+   * Continue from `nodes` and `text` once the transaction this one continued
+   * is committed to them; it is then sent, or committed, on its own.
+   */
+  rebase(nodes: Map<number, NodeState>, text: CommittedText): void {
+    this.nodes.base = nodes
+    this.text = text
+    this.prior = []
+  }
+
+  /** Start a native batch of its own: the batch it continued was sent without it. */
+  detach(): void {
+    this.prior = []
+  }
+
+  /** Whether the earlier requests of this native batch still hold on this candidate. */
+  keepsPrior(): boolean {
+    try {
+      this.validateRequests(this.prior)
+      return true
+    } catch {
+      return false
+    }
+  }
+
+  /** An upper bound on this transaction's operations as JSON, without serializing them. */
+  bytesBound(): number {
+    let bytes = 0
+    for (const operation of this.operations) {
+      bytes += OPERATION_BYTES
+      // A JSON escape is at most six bytes per UTF-8 byte (`\u001f` for one).
+      if (operation.type === 'create' || operation.type === 'set')
+        bytes += 6 * textBytesOf(operation.element)
+    }
+    return bytes
   }
 
   /** The candidate's own copy of a node, made on its first write. */
@@ -311,7 +386,7 @@ export class Transaction implements NativeBatch {
     const node = makeNode(this.allocateId(), normalized)
     this.nodes.write(node)
     this.attached.push(node.id)
-    this.operations.push({ type: 'create', node_id: node.id, element: node.element })
+    this.operations.create(node.id, node.element)
     return node.handle as NativeNode<E['kind']>
   }
 
@@ -344,17 +419,12 @@ export class Transaction implements NativeBatch {
         )
       if (node.inputRevision === Number.MAX_SAFE_INTEGER)
         throw new NativeStateError('limit_exceeded', 'Input revision exhausted')
-      this.operations.push({
-        type: 'set',
-        node_id: node.id,
-        element,
-        expected_input_revision: node.inputRevision,
-      })
+      this.operations.set(node.id, element, node.inputRevision)
       node.inputRevision += 1
     } else {
       if (expectedInputRevision !== undefined)
         throw new NativeStateError('invalid_state', 'Only an input accepts an edit revision')
-      this.operations.push({ type: 'set', node_id: node.id, element })
+      this.operations.set(node.id, element)
     }
     node.element = element
     // An overlay's surface decides what its subtree may hold.
@@ -388,7 +458,7 @@ export class Transaction implements NativeBatch {
     parent.children.splice(index, 0, child.id)
     child.parent = parent.id
     this.attached.push(child.id)
-    this.operations.push({ type: 'insert', parent_id: parent.id, child_id: child.id, index })
+    this.operations.insert(parent.id, child.id, index)
   }
 
   append(parentHandle: NativeNode<ContainerKind>, childHandle: NativeNode): void {
@@ -416,7 +486,7 @@ export class Transaction implements NativeBatch {
       pending.push(...child.children)
       this.nodes.delete(id)
     }
-    this.operations.push({ type: 'delete', node_id: node.id })
+    this.operations.delete(node.id)
   }
 
   focus(handle: NativeNode<'button' | 'input'>): void {
@@ -424,7 +494,7 @@ export class Transaction implements NativeBatch {
     requireCapability(this.capabilities, 'focus_v1', 'operation:focus')
     const node = own(this.nodes, handle)
     this.requests.push({ type: 'focus', id: node.id })
-    this.operations.push({ type: 'focus', node_id: node.id })
+    this.operations.focus(node.id)
   }
 
   scrollTo(handle: NativeNode<ContainerKind>, offset: ScrollOffset): void {
@@ -449,7 +519,7 @@ export class Transaction implements NativeBatch {
     if (axes.x === undefined && axes.y === undefined)
       throw new TypeError('A scroll offset requires x or y')
     this.requests.push({ type: 'scroll_to', id: node.id, ...axes })
-    this.operations.push({ type: 'scroll_to', node_id: node.id, ...axes })
+    this.operations.scrollTo(node.id, axes)
   }
 
   scrollIntoView(handle: NativeNode): void {
@@ -457,7 +527,7 @@ export class Transaction implements NativeBatch {
     requireCapability(this.capabilities, 'scroll_control_v1', 'operation:scroll_into_view')
     const node = own(this.nodes, handle)
     this.requests.push({ type: 'scroll_into_view', id: node.id })
-    this.operations.push({ type: 'scroll_into_view', node_id: node.id })
+    this.operations.scrollIntoView(node.id)
   }
 
   /** The modal overlay highest in paint order: deepest, then later in tree order. */
@@ -478,8 +548,8 @@ export class Transaction implements NativeBatch {
     return active?.id
   }
 
-  private validateRequests(): void {
-    for (const request of this.requests) {
+  private validateRequests(requests: readonly Request[] = this.requests): void {
+    for (const request of requests) {
       const node = this.nodes.get(request.id)
       if (!node)
         throw new NativeStateError('invalid_handle', 'Request target is removed by this batch')
@@ -613,6 +683,7 @@ export class Transaction implements NativeBatch {
    * totals it was opened over, in time proportional to the batch.
    */
   commit(nodes: Map<number, NodeState>, text: CommittedText): void {
+    // A continuation commits only after `rebase` onto the committed graph.
     if (nodes !== this.nodes.base || text !== this.text)
       throw new NativeStateError(
         'invalid_state',

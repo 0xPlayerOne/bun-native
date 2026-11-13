@@ -2,20 +2,12 @@
 //! never a filesystem grant: converting it into scoped authority is separate.
 
 use crate::ErrorCode;
+use crate::{
+    MAX_DIALOG_FILTERS, MAX_DIALOG_FILTER_NAME_BYTES, MAX_DIALOG_FILTER_PATTERNS,
+    MAX_DIALOG_LABEL_BYTES, MAX_DIALOG_NAME_BYTES, MAX_DIALOG_PATHS, MAX_DIALOG_PATH_BYTES,
+    MAX_DIALOG_PATTERN_BYTES, MAX_DIALOG_TITLE_BYTES,
+};
 use serde::{Deserialize, Serialize};
-
-/// Live file dialogs per session. Each window owns at most one at a time.
-pub const MAX_FILE_DIALOGS: usize = 16;
-pub const MAX_DIALOG_TITLE_BYTES: usize = 256;
-pub const MAX_DIALOG_LABEL_BYTES: usize = 64;
-pub const MAX_DIALOG_PATH_BYTES: usize = 4_096;
-pub const MAX_DIALOG_NAME_BYTES: usize = 255;
-pub const MAX_DIALOG_FILTERS: usize = 16;
-pub const MAX_DIALOG_FILTER_PATTERNS: usize = 16;
-pub const MAX_DIALOG_FILTER_NAME_BYTES: usize = 128;
-pub const MAX_DIALOG_PATTERN_BYTES: usize = 64;
-/// Selected paths in one result. The whole result must also fit one frame.
-pub const MAX_DIALOG_PATHS: usize = 256;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]

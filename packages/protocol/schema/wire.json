@@ -1,0 +1,529 @@
+{
+  "$comment": "The single source of the protocol's shared names, members and bounds. `bun run generate:schema` writes packages/protocol/src/wire-schema.ts and native/protocol/src/wire/schema.rs; `bun run check:schema` fails while either is stale. Member lists omit the message's own tag (`type` or `kind`). `@name` splices the group `name`.",
+  "constants": [
+    { "name": "PROTOCOL_VERSION", "value": 12, "rust": "u32" },
+    {
+      "name": "MAX_FRAME_BYTES",
+      "value": 16777216,
+      "doc": "Largest command frame (Bun to host) in UTF-8 JSON bytes, excluding the newline. One transaction is one batch, so this bounds a full-window mount: at most `MAX_OPERATIONS` operations plus `MAX_TEXT_BYTES_PER_WINDOW` of text, which JSON escaping can double."
+    },
+    {
+      "name": "MAX_EVENT_FRAME_BYTES",
+      "value": 65536,
+      "doc": "Largest event frame (host to Bun). Events carry at most one text value or one bounded service result, never a tree."
+    },
+    { "name": "MAX_TEXT_BYTES", "value": 16384 },
+    { "name": "MAX_TEXT_BYTES_PER_WINDOW", "value": 4194304, "export": false },
+    { "name": "MAX_TITLE_BYTES", "value": 256 },
+    {
+      "name": "MAX_OPERATIONS",
+      "value": 16384,
+      "doc": "Operations in one batch: four per node of a full window, so a whole-window replacement (deletes, creates, inserts and sets) fits one batch."
+    },
+    { "name": "MAX_NODES_PER_WINDOW", "value": 4096 },
+    { "name": "MAX_WINDOWS", "value": 16, "export": false },
+    {
+      "name": "MAX_DEPTH",
+      "value": 64,
+      "doc": "Tree edges from a window root to its deepest node."
+    },
+    {
+      "name": "MAX_OVERLAY_DEPTH",
+      "value": 8,
+      "doc": "Overlays nested inside overlays, the outermost counting as one. The host lays out each nested layer in its own bounded prepaint round."
+    },
+    {
+      "name": "MAX_SCROLL_OFFSET",
+      "value": 1000000,
+      "rust": "f64",
+      "doc": "Largest programmatic scroll offset, in logical pixels from the content start."
+    },
+    {
+      "name": "SPLIT_DIVIDER",
+      "value": 6,
+      "rust": "f64",
+      "doc": "Main-axis thickness of the host-drawn split divider, in logical pixels."
+    },
+    {
+      "name": "MAX_ACCESSIBLE_SET_SIZE",
+      "value": 2147483647,
+      "rust": "u32",
+      "doc": "The largest `accessible_set_size` and `accessible_position`."
+    },
+    {
+      "name": "MAX_KEY_BYTES",
+      "value": 256,
+      "doc": "UTF-8 bytes of a key event's `key` and `key_char`."
+    },
+    {
+      "name": "MAX_POINTER_COORDINATE",
+      "value": 1048576,
+      "rust": "f64",
+      "doc": "Largest pointer or context menu coordinate magnitude, in logical pixels."
+    },
+    {
+      "name": "MAX_CLIPBOARD_BYTES",
+      "value": 8192,
+      "doc": "Worst-case JSON escaping still leaves room within the event frame."
+    },
+    { "name": "MAX_SERVICE_REQUESTS", "value": 8, "export": false },
+    { "name": "MAX_GLOBAL_SHORTCUTS", "value": 16 },
+    { "name": "MAX_NOTIFICATIONS", "value": 32 },
+    { "name": "MAX_NOTIFICATION_TITLE_BYTES", "value": 256 },
+    { "name": "MAX_NOTIFICATION_BODY_BYTES", "value": 2048 },
+    { "name": "MAX_FILESYSTEM_ROOTS", "value": 8 },
+    { "name": "MAX_FILE_GRANTS", "value": 32 },
+    { "name": "MAX_ROOT_PATH_BYTES", "value": 4096 },
+    { "name": "MAX_FILE_PATH_BYTES", "value": 1024 },
+    { "name": "MAX_FILE_PATH_COMPONENTS", "value": 32 },
+    { "name": "MAX_FILE_NAME_BYTES", "value": 255 },
+    { "name": "MAX_FILE_CHUNK_BYTES", "value": 16384 },
+    { "name": "MAX_DIRECTORY_ENTRIES", "value": 64 },
+    { "name": "MAX_PROCESS_EXECUTABLES", "value": 8 },
+    { "name": "MAX_PROCESSES", "value": 8 },
+    { "name": "MAX_PROCESS_ARGS", "value": 64 },
+    { "name": "MAX_PROCESS_ARG_BYTES", "value": 4096 },
+    { "name": "MAX_PROCESS_ENV", "value": 64 },
+    { "name": "MAX_PROCESS_ENV_NAME_BYTES", "value": 128 },
+    { "name": "MAX_PROCESS_ENV_VALUE_BYTES", "value": 4096 },
+    {
+      "name": "MAX_PROCESS_LAUNCH_BYTES",
+      "value": 32768,
+      "doc": "Combined bytes of arguments and environment, well below the frame cap."
+    },
+    {
+      "name": "MAX_PROCESS_OUTPUT_CREDIT",
+      "value": 4,
+      "doc": "Output chunks a process may have delivered but not yet acknowledged."
+    },
+    { "name": "MAX_TERMINAL_DIMENSION", "value": 1000, "rust": "u16" },
+    {
+      "name": "MAX_PROCESS_CPU_SECONDS",
+      "value": 604800,
+      "rust": "u64",
+      "doc": "Bounds of the optional per-executable resource limits."
+    },
+    { "name": "MIN_PROCESS_MEMORY_BYTES", "value": 1048576, "rust": "u64" },
+    { "name": "MAX_PROCESS_MEMORY_BYTES", "value": 281474976710656, "rust": "u64" },
+    { "name": "MIN_PROCESS_OPEN_FILES", "value": 3, "rust": "u64" },
+    { "name": "MAX_PROCESS_OPEN_FILES", "value": 1048576, "rust": "u64" },
+    {
+      "name": "MAX_FILE_DIALOGS",
+      "value": 16,
+      "doc": "Live file dialogs per session. Each window owns at most one at a time."
+    },
+    { "name": "MAX_DIALOG_TITLE_BYTES", "value": 256 },
+    { "name": "MAX_DIALOG_LABEL_BYTES", "value": 64 },
+    { "name": "MAX_DIALOG_PATH_BYTES", "value": 4096 },
+    { "name": "MAX_DIALOG_NAME_BYTES", "value": 255 },
+    { "name": "MAX_DIALOG_FILTERS", "value": 16 },
+    { "name": "MAX_DIALOG_FILTER_PATTERNS", "value": 16 },
+    { "name": "MAX_DIALOG_FILTER_NAME_BYTES", "value": 128 },
+    { "name": "MAX_DIALOG_PATTERN_BYTES", "value": 64 },
+    {
+      "name": "MAX_DIALOG_PATHS",
+      "value": 256,
+      "doc": "Selected paths in one result. The whole result must also fit one frame."
+    },
+    { "name": "MAX_MESSAGE_DIALOG_BUTTONS", "value": 4 },
+    { "name": "MAX_MESSAGE_DIALOG_TITLE_BYTES", "value": 256 },
+    { "name": "MAX_MESSAGE_DIALOG_MESSAGE_BYTES", "value": 2048 },
+    { "name": "MAX_MESSAGE_DIALOG_DETAIL_BYTES", "value": 4096 },
+    { "name": "MAX_MESSAGE_DIALOG_LABEL_BYTES", "value": 64 },
+    { "name": "MAX_MESSAGE_DIALOG_ID_BYTES", "value": 64 },
+    { "name": "MAX_DROP_TARGETS", "value": 32, "doc": "Live drop targets across a session." },
+    {
+      "name": "MAX_DROP_ITEMS",
+      "value": 64,
+      "doc": "Items one drop may deliver. A larger drop is rejected, never truncated."
+    },
+    {
+      "name": "MAX_DROP_NAME_BYTES",
+      "value": 255,
+      "doc": "UTF-8 bytes of one untrusted display name."
+    },
+    { "name": "MAX_APP_MENUS", "value": 16, "doc": "Top-level menus in one menu bar." },
+    {
+      "name": "MAX_APP_MENU_ENTRIES",
+      "value": 128,
+      "doc": "Items, separators and submenus in one menu bar, at every depth."
+    },
+    {
+      "name": "MAX_APP_MENU_DEPTH",
+      "value": 3,
+      "doc": "A top-level menu is depth 1; submenus nest at most two levels below it."
+    },
+    { "name": "MAX_APP_MENU_LABEL_BYTES", "value": 64 }
+  ],
+  "limits": [
+    "MAX_FRAME_BYTES",
+    "MAX_OPERATIONS",
+    "MAX_NODES_PER_WINDOW",
+    "MAX_WINDOWS",
+    "MAX_DEPTH",
+    "MAX_TEXT_BYTES",
+    "MAX_TEXT_BYTES_PER_WINDOW",
+    "MAX_CLIPBOARD_BYTES",
+    "MAX_SERVICE_REQUESTS",
+    "MAX_GLOBAL_SHORTCUTS",
+    "MAX_NOTIFICATIONS",
+    "MAX_FILE_GRANTS",
+    "MAX_FILE_CHUNK_BYTES",
+    "MAX_PROCESSES",
+    "MAX_DROP_TARGETS",
+    "MAX_DROP_ITEMS"
+  ],
+  "enums": {
+    "Direction": { "values": ["row", "column"] },
+    "AlignItems": { "values": ["start", "center", "end", "stretch"] },
+    "JustifyContent": {
+      "values": ["start", "center", "end", "space_between", "space_around", "space_evenly"]
+    },
+    "Overflow": { "values": ["visible", "hidden", "scroll_x", "scroll_y", "scroll"] },
+    "ScrollAnchor": {
+      "doc": "Which edge a vertical scroll viewport keeps visible as its content changes.",
+      "values": ["start", "end"]
+    },
+    "OverlayAnchor": {
+      "doc": "Where an overlay's layer is placed.",
+      "ts": "OVERLAY_ANCHORS",
+      "default": "window",
+      "values": [
+        {
+          "name": "window",
+          "doc": "A layer covering the whole window viewport, blocking pointer input beneath it."
+        },
+        {
+          "name": "parent",
+          "doc": "A content-sized layer below its parent's bottom-left corner, kept inside the window."
+        }
+      ]
+    },
+    "OverlayNavigation": {
+      "doc": "How arrow keys move focus among an overlay's own controls.",
+      "ts": "OVERLAY_NAVIGATIONS",
+      "default": "tab",
+      "values": [
+        { "name": "tab", "doc": "Only Tab and Shift-Tab move focus." },
+        {
+          "name": "menu",
+          "doc": "Up/Down/Home/End move a roving focus and printable keys type ahead."
+        }
+      ]
+    },
+    "OverlaySurface": {
+      "doc": "What an overlay paints into. A `window` surface is an owned OS popup window: it may extend beyond its parent window and is kept on the display.",
+      "ts": "OVERLAY_SURFACES",
+      "default": "layer",
+      "values": [
+        { "name": "layer", "doc": "A deferred GPUI layer inside the parent window." },
+        {
+          "name": "window",
+          "doc": "An owned popup window placed below its parent node in screen coordinates."
+        }
+      ]
+    },
+    "AccessibleRole": {
+      "doc": "`accessibility_lists_v1`: the role a box may declare. A box without one is layout only and has no accessible node.",
+      "ts": "ACCESSIBLE_ROLES",
+      "values": ["list", "list_item"]
+    },
+    "Live": {
+      "doc": "`accessibility_lists_v1`: how urgently a live text node is announced.",
+      "ts": "LIVE_POLITENESS",
+      "values": ["polite", "assertive"]
+    },
+    "PointerButton": {
+      "ts": "POINTER_BUTTONS",
+      "values": ["left", "right", "middle", "back", "forward"]
+    },
+    "DismissReason": {
+      "doc": "Why the host asks the application to close a popup window overlay.",
+      "ts": "DISMISS_REASONS",
+      "values": [
+        {
+          "name": "window_blur",
+          "doc": "The popup's parent window stopped being the active window."
+        }
+      ]
+    },
+    "ResizeSource": {
+      "doc": "What moved a split divider (`split_resize_v1`).",
+      "ts": "RESIZE_SOURCES",
+      "values": ["pointer", "keyboard"]
+    },
+    "ErrorCode": {
+      "ts": "ERROR_CODES",
+      "values": [
+        "invalid_command",
+        "version_mismatch",
+        "invalid_state",
+        "invalid_handle",
+        "stale_revision",
+        "limit_exceeded",
+        "native_failure",
+        "permission_denied",
+        "service_unavailable",
+        "cancelled",
+        "operation_timed_out",
+        "payload_too_large",
+        "conflict",
+        "not_found",
+        "already_exists",
+        "path_denied",
+        "wrong_kind",
+        "not_empty",
+        "access_denied"
+      ]
+    },
+    "Capability": {
+      "doc": "A feature the host advertises in `ready`. The required ones are mandatory.",
+      "ts": "CAPABILITIES",
+      "values": [
+        { "name": "tree", "required": true },
+        { "name": "input_revisions", "required": true },
+        { "name": "layout_v1", "required": true },
+        { "name": "interactions_v1", "required": true },
+        { "name": "window_display_v1", "required": true },
+        "clipboard_text_v1",
+        "global_shortcuts_v1",
+        "notifications_v1",
+        "filesystem_grants_v1",
+        "processes_v1",
+        "split_v1",
+        "style_decoration_v1",
+        {
+          "name": "display_details_v1",
+          "doc": "Snapshots carry the display's work area (macOS, Windows)."
+        },
+        {
+          "name": "display_changes_v1",
+          "doc": "Owned windows report `display_changed` (macOS, Windows, Linux Wayland)."
+        },
+        "file_dialogs_v1",
+        "overlays_v1",
+        "scroll_anchor_v1",
+        "focus_v1",
+        "scroll_control_v1",
+        "overlay_keyboard_v1",
+        "popup_windows_v1",
+        "drag_drop_files_v1",
+        "input_states_v1",
+        { "name": "app_menu_v1", "doc": "A native application menu bar (macOS)." },
+        {
+          "name": "task_dialogs_v1",
+          "doc": "Owned OS message dialogs (Windows task dialogs, macOS alert sheets)."
+        },
+        {
+          "name": "context_menus_v1",
+          "doc": "OS context menus at a window point (macOS `NSMenu`, Windows popup menus)."
+        },
+        {
+          "name": "split_resize_v1",
+          "doc": "The split divider is a keyboard Tab stop and reports `split_resize`."
+        },
+        {
+          "name": "accessibility_v1",
+          "doc": "Every element kind has an accessibility role, and overlays and splits accept an `accessible_label`."
+        },
+        {
+          "name": "accessibility_lists_v1",
+          "doc": "Boxes accept list and list-item roles with set size, position and selection, and text nodes accept `accessible_live`."
+        },
+        {
+          "name": "display_identity_v1",
+          "doc": "Snapshots carry the platform display UUID when the backend names the display (macOS, Windows, Linux Wayland)."
+        }
+      ]
+    }
+  },
+  "style": [
+    { "name": "direction", "type": "enum", "enum": "Direction" },
+    { "name": "gap", "type": "number", "min": 0, "max": 4096, "doc": "Logical pixels." },
+    { "name": "padding", "type": "number", "min": 0, "max": 4096, "doc": "Logical pixels." },
+    { "name": "width", "type": "dimension", "min": 0, "max": 16384, "doc": "Logical pixels." },
+    { "name": "height", "type": "dimension", "min": 0, "max": 16384, "doc": "Logical pixels." },
+    { "name": "min_width", "type": "number", "min": 0, "max": 16384, "doc": "Logical pixels." },
+    { "name": "max_width", "type": "number", "min": 0, "max": 16384, "doc": "Logical pixels." },
+    { "name": "min_height", "type": "number", "min": 0, "max": 16384, "doc": "Logical pixels." },
+    { "name": "max_height", "type": "number", "min": 0, "max": 16384, "doc": "Logical pixels." },
+    { "name": "flex_grow", "type": "number", "min": 0, "max": 1000 },
+    { "name": "flex_shrink", "type": "number", "min": 0, "max": 1000 },
+    { "name": "align_items", "type": "enum", "enum": "AlignItems" },
+    { "name": "justify_content", "type": "enum", "enum": "JustifyContent" },
+    { "name": "overflow", "type": "enum", "enum": "Overflow" },
+    {
+      "name": "scroll_anchor",
+      "type": "enum",
+      "enum": "ScrollAnchor",
+      "doc": "Requires `scroll_y` or `scroll`. `end` keeps a viewport already at its end pinned there."
+    },
+    { "name": "background", "type": "color" },
+    { "name": "color", "type": "color" },
+    { "name": "font_size", "type": "number", "min": 1, "max": 512, "doc": "Logical pixels." },
+    {
+      "name": "border_width",
+      "type": "number",
+      "min": 0,
+      "max": 64,
+      "decoration": true,
+      "doc": "one uniform border width, in logical pixels."
+    },
+    {
+      "name": "border_color",
+      "type": "color",
+      "decoration": true
+    },
+    {
+      "name": "corner_radius",
+      "type": "number",
+      "min": 0,
+      "max": 4096,
+      "decoration": true,
+      "doc": "one radius for every corner, in logical pixels."
+    },
+    {
+      "name": "opacity",
+      "type": "number",
+      "min": 0,
+      "max": 1,
+      "decoration": true,
+      "doc": "multiplies this element and its descendants."
+    },
+    {
+      "name": "font_weight",
+      "type": "weight",
+      "min": 100,
+      "max": 900,
+      "step": 100,
+      "decoration": true,
+      "doc": "an inherited weight."
+    }
+  ],
+  "elements": {
+    "box": [
+      "accessible_role",
+      "accessible_label",
+      "accessible_set_size",
+      "accessible_position",
+      "accessible_selected",
+      "style"
+    ],
+    "text": ["text", "accessible_live", "style"],
+    "button": ["text", "disabled", "style"],
+    "input": ["value", "placeholder", "disabled", "read_only", "style"],
+    "split": ["ratio", "min_size", "accessible_label", "style"],
+    "overlay": [
+      "anchor",
+      "modal",
+      "surface",
+      "autofocus",
+      "navigation",
+      "accessible_label",
+      "style"
+    ]
+  },
+  "operations": {
+    "create": ["node_id", "element"],
+    "set": ["node_id", "element", "expected_input_revision"],
+    "insert": ["parent_id", "child_id", "index"],
+    "delete": ["node_id"],
+    "focus": ["node_id"],
+    "scroll_to": ["node_id", "x", "y"],
+    "scroll_into_view": ["node_id"]
+  },
+  "groups": {
+    "window_request": ["id", "window_id"],
+    "window_notice": ["sequence", "window_id"],
+    "route": ["sequence", "window_id", "node_id", "tree_revision", "path"]
+  },
+  "commands": {
+    "hello": ["id", "protocol"],
+    "open": ["@window_request", "root_id", "title", "width", "height"],
+    "batch": ["@window_request", "base_revision", "operations"],
+    "close": ["@window_request"],
+    "display_snapshot": ["@window_request"],
+    "clipboard_read": ["@window_request"],
+    "clipboard_write": ["@window_request", "text"],
+    "register_global_shortcut": ["@window_request", "shortcut_id", "key", "modifiers"],
+    "unregister_global_shortcut": ["@window_request", "shortcut_id"],
+    "post_notification": ["@window_request", "notification_id", "title", "body"],
+    "withdraw_notification": ["@window_request", "notification_id"],
+    "open_file_grant": ["@window_request", "grant_id", "root", "access"],
+    "close_file_grant": ["@window_request", "grant_id"],
+    "file_request": ["@window_request", "grant_id", "path", "operation"],
+    "spawn_process": ["@window_request", "process_id", "launch"],
+    "write_process": ["@window_request", "process_id", "data"],
+    "close_process_input": ["@window_request", "process_id"],
+    "resize_process": ["@window_request", "process_id", "size"],
+    "signal_process": ["@window_request", "process_id", "signal"],
+    "acknowledge_process_output": ["@window_request", "process_id", "chunk"],
+    "release_process": ["@window_request", "process_id"],
+    "show_file_dialog": ["@window_request", "dialog_id", "options"],
+    "close_file_dialog": ["@window_request", "dialog_id"],
+    "show_message_dialog": ["@window_request", "dialog_id", "options"],
+    "close_message_dialog": ["@window_request", "dialog_id"],
+    "show_context_menu": ["@window_request", "menu_id", "x", "y", "items"],
+    "close_context_menu": ["@window_request", "menu_id"],
+    "register_drop_target": ["@window_request", "target_id", "node_id"],
+    "unregister_drop_target": ["@window_request", "target_id"],
+    "resolve_dropped_item": ["@window_request", "target_id", "drop_id", "item", "root"],
+    "set_app_menu": ["id", "menu_id", "menus"],
+    "shutdown": ["id"]
+  },
+  "events": {
+    "ready": ["protocol", "capabilities", "limits", "service_policy"],
+    "ack": ["id"],
+    "opened": ["@window_request", "root_id", "tree_revision"],
+    "applied": ["@window_request", "tree_revision"],
+    "display_snapshot": ["@window_request", "snapshot"],
+    "clipboard_text": ["@window_request", "result"],
+    "clipboard_written": ["@window_request"],
+    "global_shortcut_registered": ["@window_request", "shortcut_id"],
+    "global_shortcut_unregistered": ["@window_request", "shortcut_id"],
+    "display_changed": ["@window_notice", "snapshot"],
+    "global_shortcut": ["@window_notice", "shortcut_id"],
+    "notification_posted": ["@window_request", "notification_id", "activatable"],
+    "notification_withdrawn": ["@window_request", "notification_id"],
+    "notification_activated": ["@window_notice", "notification_id"],
+    "notification_dismissed": ["@window_notice", "notification_id", "reason"],
+    "file_grant_opened": ["@window_request", "grant_id"],
+    "file_grant_closed": ["@window_request", "grant_id"],
+    "file_result": ["@window_request", "grant_id", "result"],
+    "process_spawned": ["@window_request", "process_id"],
+    "process_updated": ["@window_request", "process_id"],
+    "process_released": ["@window_request", "process_id"],
+    "process_output": ["@window_notice", "process_id", "chunk", "stream", "data"],
+    "process_exited": ["@window_notice", "process_id", "exit"],
+    "file_dialog_opened": ["@window_request", "dialog_id"],
+    "file_dialog_closed": ["@window_request", "dialog_id"],
+    "file_dialog_completed": ["@window_notice", "dialog_id", "result"],
+    "message_dialog_opened": ["@window_request", "dialog_id"],
+    "message_dialog_closed": ["@window_request", "dialog_id"],
+    "message_dialog_completed": ["@window_notice", "dialog_id", "result"],
+    "context_menu_opened": ["@window_request", "menu_id"],
+    "context_menu_closed": ["@window_request", "menu_id"],
+    "context_menu_completed": ["@window_notice", "menu_id", "item_id"],
+    "drop_target_registered": ["@window_request", "target_id"],
+    "drop_target_unregistered": ["@window_request", "target_id"],
+    "dropped_item_resolved": ["@window_request", "target_id", "drop_id", "item", "root", "path"],
+    "drop_target_drag": ["@window_notice", "target_id", "state"],
+    "drop_received": ["@window_notice", "target_id", "drop_id", "items"],
+    "drop_rejected": ["@window_notice", "target_id", "reason"],
+    "click": ["@route"],
+    "focus": ["@route"],
+    "blur": ["@route"],
+    "input": ["@route", "value", "input_revision"],
+    "key_down": ["@route", "key", "key_char", "modifiers"],
+    "key_up": ["@route", "key", "key_char", "modifiers"],
+    "pointer_down": ["@route", "button", "x", "y", "modifiers"],
+    "pointer_up": ["@route", "button", "x", "y", "modifiers"],
+    "dismiss": ["@route", "reason"],
+    "split_resize": ["@route", "ratio", "source"],
+    "closed": ["@window_notice"],
+    "app_menu_set": ["id", "menu_id"],
+    "app_menu_item": ["sequence", "menu_id", "item_id"],
+    "error": ["id", "code", "message"]
+  },
+  "modifiers": ["control", "alt", "shift", "platform", "function"]
+}

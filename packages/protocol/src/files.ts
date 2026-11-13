@@ -1,14 +1,15 @@
 import { ProtocolError } from './framing.ts'
 import { fields, integer, keys, object, string } from './values.ts'
+import {
+  MAX_DIRECTORY_ENTRIES,
+  MAX_FILESYSTEM_ROOTS,
+  MAX_FILE_CHUNK_BYTES,
+  MAX_FILE_NAME_BYTES,
+  MAX_FILE_PATH_BYTES,
+  MAX_FILE_PATH_COMPONENTS,
+  MAX_ROOT_PATH_BYTES,
+} from './wire-schema.ts'
 
-export const MAX_FILESYSTEM_ROOTS = 8
-export const MAX_FILE_GRANTS = 32
-const MAX_FILE_PATH_BYTES = 1_024
-const MAX_FILE_PATH_COMPONENTS = 32
-const MAX_FILE_NAME_BYTES = 255
-const MAX_ROOT_PATH_BYTES = 4_096
-export const MAX_FILE_CHUNK_BYTES = 16_384
-export const MAX_DIRECTORY_ENTRIES = 64
 const MAX_FILE_CHUNK_BASE64 = Math.ceil(MAX_FILE_CHUNK_BYTES / 3) * 4
 const FILESYSTEM_ROOT_ARGUMENT = '--bun-native-filesystem-root='
 const encoder = new TextEncoder()

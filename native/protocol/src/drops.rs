@@ -2,14 +2,8 @@
 //! as an untrusted display name; its path stays in the host and never grants
 //! authority by itself.
 
+use crate::{MAX_DROP_ITEMS, MAX_DROP_NAME_BYTES};
 use serde::{Deserialize, Serialize};
-
-/// Live drop targets across a session.
-pub const MAX_DROP_TARGETS: usize = 32;
-/// Items one drop may deliver. A larger drop is rejected, never truncated.
-pub const MAX_DROP_ITEMS: usize = 64;
-/// UTF-8 bytes of one display name.
-pub const MAX_DROP_NAME_BYTES: usize = 255;
 
 /// Whether an external file drag is over an owned target.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]

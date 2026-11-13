@@ -15,7 +15,7 @@ use gpui::{
     Focusable, KeyBinding, MouseButton, Pixels, Role, ScrollHandle, SharedString, Size, Stateful,
     Subscription, WeakEntity, Window, actions, canvas, deferred, div, point, prelude::*, px, rgb,
 };
-use std::cell::RefCell;
+use std::cell::{Cell, RefCell};
 use std::collections::{BTreeMap, BTreeSet};
 use std::rc::Rc;
 use std::time::Instant;
@@ -53,6 +53,8 @@ pub(crate) struct NativeView {
     root_focus: FocusHandle,
     focus_subscriptions: BTreeMap<NodeId, [Subscription; 2]>,
     reported_focus: Option<NodeId>,
+    /// The control found by the last focus lookup, checked before a scan.
+    focus_memo: Cell<Option<NodeId>>,
     overlays: Overlays,
     type_ahead: TypeAhead,
     /// Viewports with a pending programmatic scroll this frame; their end
@@ -126,6 +128,7 @@ impl NativeView {
             root_focus: cx.focus_handle(),
             focus_subscriptions: BTreeMap::new(),
             reported_focus: None,
+            focus_memo: Cell::default(),
             overlays: Overlays::default(),
             type_ahead: TypeAhead::default(),
             held_scrolls: RefCell::default(),
@@ -156,25 +159,29 @@ impl NativeView {
         let focused_before = self.focused_control(window, cx);
         self.drops.retain_nodes(self.window_id, &tree);
         let previous = std::mem::replace(&mut self.state.borrow_mut().tree, tree);
-        if self.splits.reconcile(&self.state.borrow().tree, window, cx) {
-            window.focus(&self.root_focus, cx);
-        }
-        // Snapshot cheap Arc-backed control properties before focus/IME
-        // notifications: native callbacks must never run while the shared
-        // model is borrowed. Sorted by ID, like the index it is read from.
-        let controls: Vec<(NodeId, Node)> = {
+        // Snapshot cheap Arc-backed properties of the controls this batch
+        // created or set before focus/IME notifications: native callbacks must
+        // never run while the shared model is borrowed. An untouched control
+        // shares its element with the previous tree, so its entity already
+        // holds its properties. Sorted by ID, like the index it is read from.
+        let changed: Vec<(NodeId, Node)> = {
             let state = self.state.borrow();
-            self.index.sync(&previous, &state.tree);
             self.index
-                .controls
-                .iter()
+                .sync(&previous, &state.tree)
+                .into_iter()
                 .map(|id| {
-                    let node = state.tree.node(*id).expect("indexed control is committed");
-                    (*id, node.clone())
+                    let node = state.tree.node(id).expect("indexed control is committed");
+                    (id, node.clone())
                 })
                 .collect()
         };
         drop(previous);
+        if self
+            .splits
+            .reconcile(&self.state.borrow().tree, &self.index.splits, window, cx)
+        {
+            window.focus(&self.root_focus, cx);
+        }
         self.scrolls
             .retain(|id, _| self.index.scroll_modes.contains_key(id));
         for (id, mode) in &self.index.scroll_modes {
@@ -187,11 +194,23 @@ impl NativeView {
             }
             handle.set_offset(offset);
         }
-        let control = |id: &NodeId| {
-            controls
-                .binary_search_by_key(id, |(id, _)| *id)
-                .ok()
-                .map(|position| &controls[position].1)
+        // Whether a live control is an enabled button or a disabled input,
+        // read only for the focused control and released before focus moves.
+        let committed = |id: NodeId, test: fn(&NativeElement) -> bool| {
+            let state = self.state.borrow();
+            state.tree.node(id).is_some_and(|node| test(node.element()))
+        };
+        let enabled_button = |element: &NativeElement| {
+            matches!(
+                element,
+                NativeElement::Button {
+                    disabled: false,
+                    ..
+                }
+            )
+        };
+        let disabled_input = |element: &NativeElement| {
+            matches!(element, NativeElement::Input { disabled: true, .. })
         };
         self.inputs.retain(|id, input| {
             if self.index.controls.contains(id) {
@@ -203,22 +222,34 @@ impl NativeView {
             false
         });
         self.buttons.retain(|id, focus| {
-            let node = control(id);
-            let enabled = node.is_some_and(|node| {
-                matches!(
-                    node.element(),
-                    NativeElement::Button {
-                        disabled: false,
-                        ..
-                    }
-                )
-            });
-            if !enabled && focus.is_focused(window) {
+            if focus.is_focused(window) && !committed(*id, enabled_button) {
                 window.focus(&self.root_focus, cx);
             }
-            node.is_some()
+            self.index.controls.contains(id)
         });
-        for (node_id, node) in controls {
+        // A focused input the batch did not touch keeps its place in ID order
+        // among the changed controls below, as when every input was revisited.
+        let mut untouched_focus = self
+            .inputs
+            .iter()
+            .find(|(id, input)| {
+                input.focus_handle(cx).is_focused(window)
+                    && changed.binary_search_by_key(*id, |(id, _)| *id).is_err()
+            })
+            .map(|(id, input)| (*id, input.clone()));
+        let revisit = |untouched: &mut Option<(NodeId, Entity<TextInput>)>,
+                       before: Option<NodeId>,
+                       window: &mut Window,
+                       cx: &mut Context<Self>| {
+            if let Some((id, input)) = untouched.take_if(|(id, _)| before.is_none_or(|b| *id < b))
+                && committed(id, disabled_input)
+                && input.focus_handle(cx).is_focused(window)
+            {
+                window.focus(&self.root_focus, cx);
+            }
+        };
+        for (node_id, node) in changed {
+            revisit(&mut untouched_focus, Some(node_id), window, cx);
             match node.element() {
                 NativeElement::Input {
                     value,
@@ -269,8 +300,10 @@ impl NativeView {
                 | NativeElement::Overlay { .. } => {}
             }
         }
+        revisit(&mut untouched_focus, None, window, cx);
+        let modal_before = self.overlays.active_modal();
         self.reconcile_overlays(focused_before, window, cx);
-        self.sync_input_accessibility(cx);
+        self.sync_input_accessibility(modal_before, cx);
         self.reconcile_popups(cx);
         if window.focused(cx).is_none() {
             window.focus(&self.root_focus, cx);
@@ -351,6 +384,7 @@ impl NativeView {
             .clone()
     }
 
+    #[allow(clippy::too_many_arguments)]
     fn render_node(
         &self,
         tree: &Tree,
@@ -358,6 +392,7 @@ impl NativeView {
         layout: Option<&LayoutFrame>,
         pointer: &PointerFrame,
         drop_scope: &DropScope,
+        modal: ModalScope,
         cx: &mut Context<Self>,
     ) -> AnyElement {
         let node = tree
@@ -377,11 +412,11 @@ impl NativeView {
         if let Some(chain) = drop_scope.target() {
             base = drop_target(base, chain, &self.drops);
         }
-        let hidden = accessibility::beneath_modal(tree, node_id, self.overlays.active_modal());
+        let hidden = modal.hidden();
         let base = accessibility::container(base, node.element(), hidden);
         match node.element() {
             NativeElement::Box { .. } => self
-                .container(tree, node_id, base, layout, pointer, &drop_scope, cx)
+                .container(tree, node_id, base, layout, pointer, &drop_scope, modal, cx)
                 .into_any_element(),
             NativeElement::Overlay {
                 surface: OverlaySurface::Window,
@@ -393,7 +428,7 @@ impl NativeView {
                 // Occlusion keeps pointer input from reaching anything beneath
                 // the layer; a window layer is itself the modal backdrop.
                 let content = self
-                    .container(tree, node_id, base, layout, pointer, &drop_scope, cx)
+                    .container(tree, node_id, base, layout, pointer, &drop_scope, modal, cx)
                     .occlude();
                 self.overlay_layer(node_id, *anchor, content, self.viewport)
             }
@@ -410,6 +445,7 @@ impl NativeView {
                 layout,
                 pointer,
                 &drop_scope,
+                modal,
                 cx,
             ),
             NativeElement::Text {
@@ -473,6 +509,7 @@ impl NativeView {
         layout: Option<&LayoutFrame>,
         pointer: &PointerFrame,
         drop_scope: &DropScope,
+        modal: ModalScope,
         cx: &mut Context<Self>,
     ) -> Stateful<Div> {
         let node = tree
@@ -490,11 +527,17 @@ impl NativeView {
             }
             container = container.track_scroll(handle);
         }
-        container.children(
-            node.children()
-                .iter()
-                .map(|child| self.render_node(tree, *child, layout, pointer, drop_scope, cx)),
-        )
+        container.children(node.children().iter().map(|child| {
+            self.render_node(
+                tree,
+                *child,
+                layout,
+                pointer,
+                drop_scope,
+                modal.child(*child),
+                cx,
+            )
+        }))
     }
 }
 
@@ -549,12 +592,14 @@ impl Render for NativeView {
         });
         let pointer = PointerFrame::default();
         let pressed = self.pressed.clone();
+        let modal_route = self.modal_route(&state.tree);
         let body = self.render_node(
             &state.tree,
             state.tree.root_id(),
             layout.as_ref(),
             &pointer,
             &drop_scope,
+            ModalScope::of(&state.tree, &modal_route, state.tree.root_id()),
             cx,
         );
         // Requests issued before this frame resolve in its prepaint.
@@ -655,6 +700,15 @@ impl Render for NativeView {
 }
 
 impl NativeView {
+    /// The open modal layer's root-to-modal route, once per frame; empty
+    /// while no modal layer is open.
+    fn modal_route(&self, tree: &Tree) -> Vec<NodeId> {
+        self.overlays
+            .active_modal()
+            .and_then(|modal| tree.path(modal))
+            .unwrap_or_default()
+    }
+
     fn menu_action(&mut self, step: MenuMove, window: &mut Window, cx: &mut Context<Self>) {
         if !self.menu_move(step, window, cx) {
             cx.propagate();
@@ -744,6 +798,7 @@ mod overlays;
 mod popups;
 mod split;
 
+use accessibility::ModalScope;
 use index::NodeIndex;
 use interactions::{PointerFrame, PressedButtons};
 use keyboard::{MenuMove, TypeAhead};

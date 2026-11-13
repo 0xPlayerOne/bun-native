@@ -225,3 +225,71 @@ fn dismiss_events_carry_a_validated_route_and_reason() {
     };
     assert!(misrouted.validate().is_err());
 }
+
+/// A batch that breaks two rules in different subtrees is rejected whichever
+/// subtree it touches first. The incremental check and the full walk may
+/// find different broken rules first, so a debug build must not treat that
+/// as a disagreement (it panicked the debug host).
+#[test]
+fn a_batch_breaking_two_rules_is_rejected_in_either_order() {
+    let split = Element::Split {
+        ratio: 0.5,
+        min_size: 0.0,
+        accessible_label: None,
+        style: Style::default(),
+    };
+    let input = Element::Input {
+        value: String::new(),
+        placeholder: String::new(),
+        disabled: false,
+        read_only: false,
+        style: Style::default(),
+    };
+    let boxed = || Element::Box {
+        accessibility: Default::default(),
+        style: Style::default(),
+    };
+    // Root 1 holds box 2, a full split 3 (panes 4 and 5) and box 6.
+    let tree = Tree::new(node(1))
+        .prepare(
+            0,
+            vec![
+                create(2, boxed()),
+                insert(1, 2),
+                create(3, split),
+                insert(1, 3),
+                text(4),
+                insert(3, 4),
+                text(5),
+                insert(3, 5),
+                create(6, boxed()),
+                insert(1, 6),
+            ],
+            1,
+        )
+        .unwrap()
+        .tree;
+    // A third pane for the split, and an editor in a new popup under box 2.
+    let third_pane = vec![insert(3, 6)];
+    let editor_in_popup = vec![
+        create(7, popup()),
+        insert(2, 7),
+        create(8, input),
+        insert(7, 8),
+    ];
+    for operations in [
+        [third_pane.clone(), editor_in_popup.clone()].concat(),
+        [editor_in_popup, third_pane].concat(),
+    ] {
+        let before = tree.clone();
+        let error = tree.prepare(tree.revision(), operations, 6).err().unwrap();
+        assert!(
+            matches!(
+                error.code,
+                ErrorCode::LimitExceeded | ErrorCode::InvalidState
+            ),
+            "{error:?}"
+        );
+        assert_eq!(tree, before);
+    }
+}

@@ -185,22 +185,30 @@ impl Element for TextElement {
             ElementInputHandler::new(bounds, self.input.clone()),
             cx,
         );
-        let line = prepaint.line.take().unwrap();
+        // GPUI pairs every paint with the prepaint that shaped this line.
+        let Some(line) = prepaint.line.take() else {
+            return;
+        };
         let selection = prepaint.selection.as_ref().map(|quad| quad.bounds);
         let mut caret = None;
         let clip = window.with_content_mask(Some(ContentMask { bounds }), |window| {
             if let Some(selection) = prepaint.selection.take() {
                 window.paint_quad(selection);
             }
-            line.paint(
+            // A failed glyph rasterization or atlas upload loses this
+            // frame's text, not the session, as in GPUI's own text elements
+            // (gpui text.rs `log_err`). Reported once: it can recur per frame.
+            if let Err(error) = line.paint(
                 prepaint.viewport.origin(),
                 window.line_height(),
                 gpui::TextAlign::Left,
                 None,
                 window,
                 cx,
-            )
-            .unwrap();
+            ) {
+                static REPORTED: std::sync::Once = std::sync::Once::new();
+                REPORTED.call_once(|| eprintln!("Bun Native text input paint failed: {error:#}"));
+            }
 
             if focus_handle.is_focused(window)
                 && let Some(cursor) = prepaint.cursor.take()

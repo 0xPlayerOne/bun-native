@@ -112,8 +112,23 @@ impl Control {
 
 enum Message {
     Spawned(ProcessId, Result<(), Failure>),
-    Output(ProcessId, ProcessStream, Vec<u8>),
+    Output(ProcessId, ProcessStream, Chunk),
     Exited(ProcessId, ProcessExit),
+}
+
+/// One output chunk, base64-encoded for the wire by the supervisor thread
+/// that read it, so the UI thread only moves the string into its event.
+struct Chunk(String);
+
+impl Chunk {
+    fn encode(bytes: &[u8]) -> Self {
+        Self(STANDARD.encode(bytes))
+    }
+
+    #[cfg(test)]
+    fn bytes(&self) -> Vec<u8> {
+        STANDARD.decode(&self.0).expect("chunks are valid base64")
+    }
 }
 
 struct Entry {
@@ -497,7 +512,7 @@ impl Processes {
                         process_id: process,
                         chunk,
                         stream,
-                        data: STANDARD.encode(data),
+                        data: data.0,
                     },
                     cx,
                 );
@@ -938,7 +953,7 @@ impl Running {
                     .send_blocking(Message::Output(
                         process,
                         stream.kind,
-                        buffer[..length].to_vec(),
+                        Chunk::encode(&buffer[..length]),
                     ))
                     .is_err()
                 {
@@ -1050,7 +1065,7 @@ mod tests {
             match started.messages.recv_blocking().unwrap() {
                 Message::Spawned(_, result) => assert!(result.is_ok()),
                 Message::Output(_, stream, data) => {
-                    output.push((stream, data));
+                    output.push((stream, data.bytes()));
                     started.control.lock().acknowledged += 1;
                     started.control.wake();
                 }
@@ -1202,7 +1217,7 @@ mod tests {
         while chunks < MAX_PROCESS_OUTPUT_CREDIT {
             if let Message::Output(_, _, data) = started.messages.recv_blocking().unwrap() {
                 chunks += 1;
-                held += data.len();
+                held += data.bytes().len();
             }
         }
         std::thread::sleep(Duration::from_millis(100));
@@ -1243,7 +1258,7 @@ mod tests {
         while !grandchild.ends_with('\n') {
             match started.messages.recv_blocking().unwrap() {
                 Message::Output(_, _, data) => {
-                    grandchild.push_str(std::str::from_utf8(&data).unwrap());
+                    grandchild.push_str(std::str::from_utf8(&data.bytes()).unwrap());
                     started.control.lock().acknowledged += 1;
                     started.control.wake();
                 }
@@ -1314,7 +1329,7 @@ mod tests {
         let exit = loop {
             match started.messages.recv_blocking().unwrap() {
                 Message::Output(_, _, data) => {
-                    descendant.push_str(std::str::from_utf8(&data).unwrap());
+                    descendant.push_str(std::str::from_utf8(&data.bytes()).unwrap());
                     started.control.lock().acknowledged += 1;
                     started.control.wake();
                 }

@@ -2,15 +2,9 @@
 //! native menus. Items carry an application identifier that comes back in
 //! `app_menu_item` events; nothing on the wire names a native action.
 
+use crate::{MAX_APP_MENUS, MAX_APP_MENU_DEPTH, MAX_APP_MENU_ENTRIES, MAX_APP_MENU_LABEL_BYTES};
 use serde::{Deserialize, Serialize};
 
-/// Top-level menus in one menu bar.
-pub const MAX_APP_MENUS: usize = 16;
-/// Items, separators and submenus in one menu bar, at every depth.
-pub const MAX_APP_MENU_ENTRIES: usize = 128;
-/// A top-level menu is depth 1; submenus nest at most two levels below it.
-pub const MAX_APP_MENU_DEPTH: usize = 3;
-pub const MAX_APP_MENU_LABEL_BYTES: usize = 64;
 pub const MAX_APP_MENU_ITEM_ID_BYTES: usize = 64;
 
 /// Named keys a menu shortcut may use besides `a`-`z`, `0`-`9`, `f1`-`f12`

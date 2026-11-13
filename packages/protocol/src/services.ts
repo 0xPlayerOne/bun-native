@@ -2,14 +2,11 @@ import { ProtocolError } from './framing.ts'
 import { fields, keys, number, object, string } from './values.ts'
 import { parseFilesystemRoots, type FilesystemRoot } from './files.ts'
 import { parseProcessExecutables, type ProcessExecutable } from './processes.ts'
-
-// Worst-case JSON escaping still leaves room within the 64KiB frame.
-export const MAX_CLIPBOARD_BYTES = 8_192
-export const MAX_SERVICE_REQUESTS = 8
-export const MAX_GLOBAL_SHORTCUTS = 16
-export const MAX_NOTIFICATIONS = 32
-export const MAX_NOTIFICATION_TITLE_BYTES = 256
-export const MAX_NOTIFICATION_BODY_BYTES = 2_048
+import {
+  MAX_CLIPBOARD_BYTES,
+  MAX_NOTIFICATION_BODY_BYTES,
+  MAX_NOTIFICATION_TITLE_BYTES,
+} from './wire-schema.ts'
 
 export interface ServicePolicy {
   window_display: boolean

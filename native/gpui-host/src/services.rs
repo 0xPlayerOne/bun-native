@@ -13,6 +13,11 @@ use std::ffi::OsString;
 use std::rc::Rc;
 use std::time::Duration;
 
+// The host ships for Linux, macOS and Windows only; the services without a
+// fallback module (files, processes) have no stub for any other target.
+#[cfg(not(any(target_os = "linux", target_os = "macos", windows)))]
+compile_error!("bun-native-host supports Linux, macOS and Windows targets only");
+
 pub(crate) mod app_menu;
 #[cfg(target_os = "linux")]
 pub(crate) mod clipboard;
@@ -40,10 +45,6 @@ pub(crate) mod file_dialogs;
 pub(crate) mod file_dialogs;
 #[cfg(any(target_os = "macos", test))]
 pub(crate) mod file_panel_model;
-#[cfg(any(target_os = "linux", target_os = "macos", windows))]
-pub(crate) mod files;
-#[cfg(not(any(target_os = "linux", target_os = "macos", windows)))]
-#[path = "services/files_unavailable.rs"]
 pub(crate) mod files;
 #[cfg(target_os = "linux")]
 pub(crate) mod notifications;
@@ -53,10 +54,6 @@ pub(crate) mod notifications;
 #[cfg(not(any(target_os = "linux", target_os = "macos")))]
 #[path = "services/notifications_unavailable.rs"]
 pub(crate) mod notifications;
-#[cfg(any(target_os = "linux", target_os = "macos", windows))]
-pub(crate) mod processes;
-#[cfg(not(any(target_os = "linux", target_os = "macos", windows)))]
-#[path = "services/processes_unavailable.rs"]
 pub(crate) mod processes;
 #[cfg(any(target_os = "macos", test))]
 pub(crate) mod report_pump;

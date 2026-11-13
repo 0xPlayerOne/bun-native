@@ -44,7 +44,7 @@ names, or when two sources for one pin disagree.
 | `react`              | `19.3.1`                                   | [`@bun-native/react`][react-pin] and root `package.json`                                                             |
 | `oxlint`             | `1.92.0`                                   | root [`package.json`][root-manifest] `devDependencies`, the packaged CLI dependency and standalone consumer projects |
 | `react-reconciler`   | `0.34.0`                                   | [`@bun-native/react`][react-pin]                                                                                     |
-| `native protocol`    | `12`                                       | [`PROTOCOL_VERSION`][protocol-ts] in TypeScript and [Rust][protocol-rs], which must match                            |
+| `native protocol`    | `12`                                       | [`PROTOCOL_VERSION`][protocol-schema], generated into TypeScript and Rust, which must match                          |
 
 The Solid compiler pairing is guarded separately: [#430][pr430] checks the
 installed Babel against both the preset and the JSX plugin peer ranges and keeps
@@ -193,8 +193,7 @@ Read [architecture](architecture.md), [testing](testing.md), [releasing](releasi
 [root-manifest]: ../package.json
 [solid-pin]: ../packages/solid/package.json
 [react-pin]: ../packages/react/package.json
-[protocol-ts]: ../packages/protocol/src/messages.ts
-[protocol-rs]: ../native/protocol/src/wire.rs
+[protocol-schema]: ../packages/protocol/schema/wire.json
 [core]: https://github.com/0xPlayerOne/bun-native/blob/3863459588378532a4af4fb27188f051fa0955df/packages/core/README.md
 [solid]: https://github.com/0xPlayerOne/bun-native/blob/3863459588378532a4af4fb27188f051fa0955df/packages/solid/README.md
 [react]: https://github.com/0xPlayerOne/bun-native/blob/3863459588378532a4af4fb27188f051fa0955df/packages/react/README.md

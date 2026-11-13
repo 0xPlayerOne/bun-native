@@ -6,7 +6,28 @@ use gpui::App;
 use std::cell::Cell;
 use std::io;
 use std::rc::Rc;
-use std::sync::mpsc::{SyncSender, sync_channel};
+use std::sync::mpsc::{SyncSender, TrySendError, sync_channel};
+use std::time::{Duration, Instant};
+
+/// Events the UI thread may queue ahead of the stdout writer.
+const EVENT_CAPACITY: usize = 256;
+/// A full queue applies backpressure: the UI thread waits for Bun to read, so
+/// a burst during a long JavaScript task or GC pause loses and reorders
+/// nothing, and memory stays bounded. The wait is bounded too (ADR 0003): a
+/// consumer that reads nothing for this long ends the session, as Bun's own
+/// requests time out after the same default.
+const SEND_DEADLINE: Duration = Duration::from_secs(5);
+/// How long shutdown waits for room for its final event.
+const FINISH_DEADLINE: Duration = Duration::from_secs(2);
+
+/// Why an event could not be queued.
+#[derive(Debug, PartialEq, Eq)]
+pub(crate) enum Undelivered {
+    /// The writer is gone: stdout closed or failed, so Bun cannot read.
+    Closed,
+    /// The queue stayed full past the deadline.
+    TimedOut,
+}
 
 pub(crate) enum Incoming {
     Command(Command),
@@ -37,24 +58,80 @@ impl EventSink {
         self.send(event(sequence), cx);
     }
 
+    /// Queues an event, waiting up to [`SEND_DEADLINE`] while the queue is
+    /// full. Only a closed writer or a consumer stalled past the deadline ends
+    /// the session.
     pub(crate) fn send(&self, event: Event, cx: &mut App) {
-        if self.sender.try_send(Outgoing::Event(event)).is_err() {
-            eprintln!("Bun Native event channel disconnected or exceeded its 256-event capacity");
-            cx.quit();
+        match self.queue(event, SEND_DEADLINE) {
+            Ok(stalled) if stalled >= Duration::from_millis(100) => eprintln!(
+                "Bun Native waited {} ms for Bun to read events",
+                stalled.as_millis()
+            ),
+            Ok(_) => {}
+            Err(Undelivered::Closed) => {
+                eprintln!("Bun Native event channel disconnected");
+                cx.quit();
+            }
+            Err(Undelivered::TimedOut) => {
+                eprintln!(
+                    "Bun Native stopped: Bun read no events for {} s with {EVENT_CAPACITY} queued",
+                    SEND_DEADLINE.as_secs()
+                );
+                cx.quit();
+            }
         }
     }
 
+    /// Returns how long the queue was full.
+    fn queue(&self, event: Event, limit: Duration) -> Result<Duration, Undelivered> {
+        let started = Instant::now();
+        offer(&self.sender, Outgoing::Event(event), started + limit)?;
+        Ok(started.elapsed())
+    }
+
     /// The receiver resolves only after the final event has been flushed.
-    pub(crate) fn finish(&self, event: Event) -> Option<Receiver<()>> {
+    /// Waits up to [`FINISH_DEADLINE`] for room, so a full queue still
+    /// delivers the final event instead of losing it.
+    pub(crate) fn finish(&self, event: Event) -> Result<Receiver<()>, Undelivered> {
+        self.finish_within(event, FINISH_DEADLINE)
+    }
+
+    fn finish_within(&self, event: Event, limit: Duration) -> Result<Receiver<()>, Undelivered> {
         let (sender, receiver) = async_channel::bounded(1);
-        self.sender.try_send(Outgoing::Finish(event, sender)).ok()?;
-        Some(receiver)
+        offer(
+            &self.sender,
+            Outgoing::Finish(event, sender),
+            Instant::now() + limit,
+        )?;
+        Ok(receiver)
+    }
+}
+
+/// Queues `item`, polling with a short backoff while the queue is full.
+fn offer(
+    sender: &SyncSender<Outgoing>,
+    mut item: Outgoing,
+    deadline: Instant,
+) -> Result<(), Undelivered> {
+    let mut pause = Duration::from_micros(20);
+    loop {
+        match sender.try_send(item) {
+            Ok(()) => return Ok(()),
+            Err(TrySendError::Disconnected(_)) => return Err(Undelivered::Closed),
+            Err(TrySendError::Full(back)) => item = back,
+        }
+        let now = Instant::now();
+        if now >= deadline {
+            return Err(Undelivered::TimedOut);
+        }
+        std::thread::sleep(pause.min(deadline - now));
+        pause = (pause * 2).min(Duration::from_millis(1));
     }
 }
 
 pub(crate) fn connect() -> (Receiver<Incoming>, EventSink) {
     let (commands, receiver) = async_channel::bounded(64);
-    let (sender, events) = sync_channel(256);
+    let (sender, events) = sync_channel(EVENT_CAPACITY);
     let failures = commands.clone();
     std::thread::spawn(move || {
         let stdin = io::stdin();
@@ -137,13 +214,88 @@ mod tests {
     }
 
     #[test]
-    fn finish_fails_without_blocking_on_a_full_or_closed_writer() {
+    fn finish_gives_up_on_a_queue_that_stays_full_or_a_closed_writer() {
         let (sink, events) = sink(1);
-        assert!(sink.finish(ack(1)).is_some());
-        assert!(sink.finish(ack(2)).is_none());
+        assert!(sink.finish(ack(1)).is_ok());
+        let started = Instant::now();
+        assert_eq!(
+            sink.finish_within(ack(2), Duration::from_millis(30)).err(),
+            Some(Undelivered::TimedOut)
+        );
+        assert!(started.elapsed() >= Duration::from_millis(30));
         assert!(matches!(events.try_recv(), Ok(Outgoing::Finish(..))));
         drop(events);
-        assert!(sink.finish(ack(3)).is_none());
+        assert_eq!(sink.finish(ack(3)).err(), Some(Undelivered::Closed));
+    }
+
+    #[test]
+    fn finish_waits_for_room_instead_of_dropping_the_final_ack() {
+        let (sink, events) = sink(1);
+        assert!(sink.queue(ack(1), SEND_DEADLINE).is_ok());
+        let reader = std::thread::spawn(move || {
+            std::thread::sleep(Duration::from_millis(20));
+            let first = events.recv().unwrap();
+            let last = events.recv().unwrap();
+            (first, last)
+        });
+        let flushed = sink.finish(ack(2));
+        assert!(flushed.is_ok(), "the final ack waits for the reader");
+        let (first, last) = reader.join().unwrap();
+        assert!(matches!(first, Outgoing::Event(event) if event == ack(1)));
+        assert!(matches!(last, Outgoing::Finish(event, _) if event == ack(2)));
+    }
+
+    #[test]
+    fn a_full_queue_applies_backpressure_without_loss_or_reordering() {
+        const BURST: u64 = 2_000;
+        let (sink, events) = sink(EVENT_CAPACITY);
+        // A slow reader: Bun busy for a moment, then draining.
+        let reader = std::thread::spawn(move || {
+            std::thread::sleep(Duration::from_millis(50));
+            let mut seen = Vec::new();
+            while let Ok(Outgoing::Event(Event::Ack { id })) = events.recv() {
+                seen.push(id.get());
+                if seen.len() as u64 == BURST {
+                    break;
+                }
+            }
+            seen
+        });
+        let mut stalled = Duration::ZERO;
+        for id in 1..=BURST {
+            stalled += sink.queue(ack(id), SEND_DEADLINE).unwrap();
+        }
+        let seen = reader.join().unwrap();
+        assert_eq!(seen, (1..=BURST).collect::<Vec<_>>());
+        assert!(
+            stalled >= Duration::from_millis(40),
+            "the sender waited for the reader"
+        );
+    }
+
+    #[test]
+    fn a_closed_writer_is_reported_even_when_the_queue_was_full() {
+        let (sink, events) = sink(1);
+        assert!(sink.queue(ack(1), SEND_DEADLINE).is_ok());
+        let reader = std::thread::spawn(move || {
+            std::thread::sleep(Duration::from_millis(20));
+            drop(events);
+        });
+        assert_eq!(sink.queue(ack(2), SEND_DEADLINE), Err(Undelivered::Closed));
+        reader.join().unwrap();
+    }
+
+    #[test]
+    fn a_consumer_that_never_reads_ends_the_wait_at_the_deadline() {
+        let (sink, _events) = sink(1);
+        assert!(sink.queue(ack(1), SEND_DEADLINE).is_ok());
+        let started = Instant::now();
+        assert_eq!(
+            sink.queue(ack(2), Duration::from_millis(30)),
+            Err(Undelivered::TimedOut)
+        );
+        let waited = started.elapsed();
+        assert!(waited >= Duration::from_millis(30) && waited < Duration::from_secs(1));
     }
 
     #[test]
@@ -152,8 +304,8 @@ mod tests {
         let clone = sink.clone();
         clone.sequence.set(41);
         assert_eq!(sink.sequence.get(), 41);
-        assert!(clone.finish(ack(1)).is_some());
-        assert!(sink.finish(ack(2)).is_some());
+        assert!(clone.finish(ack(1)).is_ok());
+        assert!(sink.finish(ack(2)).is_ok());
         assert_eq!(events.try_iter().count(), 2);
     }
 }

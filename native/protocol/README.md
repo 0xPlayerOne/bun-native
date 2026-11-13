@@ -16,7 +16,8 @@ commands poison the channel. The host emits a terminal `invalid_command` error
 when possible and exits. EOF is terminal even if a caller supplies a new reader.
 Decoding reads each frame straight into its typed shape, with no intermediate
 JSON value: a `batch` frame through a plain struct, its operations and elements
-through hand-written decoders (`src/wire/decode.rs`) that accept members in any
+through hand-written decoders (`src/wire/decode.rs`), driven by the member
+tables generated from `packages/protocol/schema/wire.json`, that accept members in any
 order and reject unknown, duplicate and `null` members and variant tags that are
 not exact strings. A frame the typed decoders reject is decided again by the
 reference path, which builds a bounded JSON value first, so duplicate keys use

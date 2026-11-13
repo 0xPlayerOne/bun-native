@@ -1,0 +1,115 @@
+--- a/src/wgpu_renderer.rs
++++ b/src/wgpu_renderer.rs
+@@ -123,6 +123,7 @@
+     pub preferred_present_mode: Option<wgpu::PresentMode>,
+ }
+ 
++#[derive(Clone)]
+ struct WgpuPipelines {
+     quads: wgpu::RenderPipeline,
+     shadows: wgpu::RenderPipeline,
+@@ -156,6 +157,7 @@
+     polychrome_sprites: InstanceBinding,
+ }
+ 
++#[derive(Clone)]
+ struct WgpuBindGroupLayouts {
+     globals: wgpu::BindGroupLayout,
+     instances: wgpu::BindGroupLayout,
+@@ -1097,9 +1099,8 @@
+             return;
+         };
+         let resources = &mut core.resources;
+-        resources.pipelines = WgpuRendererCore::create_pipelines(
++        (resources.bind_group_layouts, resources.pipelines) = WgpuRendererCore::shared_pipelines(
+             &resources.device,
+-            &resources.bind_group_layouts,
+             format,
+             new_alpha_mode,
+             core.rendering_params.path_sample_count,
+@@ -1236,7 +1237,73 @@
+     }
+ }
+ 
++/// Bun Native patch: bind group layouts and render pipelines shared by every
++/// renderer on one device, so a later window (or popup) reuses the compiled
++/// pipelines instead of parsing the WGSL and building every pipeline again.
++/// Entries hold a weak reference to their device and are dropped once it is
++/// gone (device recovery creates a new device and a new entry).
++struct SharedDevicePipelines {
++    device: std::sync::Weak<wgpu::Device>,
++    layouts: WgpuBindGroupLayouts,
++    /// Keyed by (format, alpha mode, path sample count, dual-source blending).
++    pipelines: Vec<(
++        (wgpu::TextureFormat, wgpu::CompositeAlphaMode, u32, bool),
++        WgpuPipelines,
++    )>,
++}
++
++thread_local! {
++    static SHARED_PIPELINES: RefCell<Vec<SharedDevicePipelines>> = const { RefCell::new(Vec::new()) };
++}
++
+ impl WgpuRendererCore {
++    /// The device's shared layouts and the pipelines for this surface,
++    /// created on first use. `uses_webgl_instance_data` is fixed per context,
++    /// and so per device.
++    fn shared_pipelines(
++        device: &Arc<wgpu::Device>,
++        surface_format: wgpu::TextureFormat,
++        alpha_mode: wgpu::CompositeAlphaMode,
++        path_sample_count: u32,
++        dual_source_blending: bool,
++        uses_webgl_instance_data: bool,
++    ) -> (WgpuBindGroupLayouts, WgpuPipelines) {
++        SHARED_PIPELINES.with_borrow_mut(|shared| {
++            shared.retain(|entry| entry.device.strong_count() > 0);
++            let weak = Arc::downgrade(device);
++            let position = match shared.iter().position(|entry| entry.device.ptr_eq(&weak)) {
++                Some(position) => position,
++                None => {
++                    shared.push(SharedDevicePipelines {
++                        device: weak,
++                        layouts: Self::create_bind_group_layouts(device, uses_webgl_instance_data),
++                        pipelines: Vec::new(),
++                    });
++                    shared.len() - 1
++                }
++            };
++            let entry = &mut shared[position];
++            let key = (surface_format, alpha_mode, path_sample_count, dual_source_blending);
++            let pipelines = match entry.pipelines.iter().find(|(cached, _)| *cached == key) {
++                Some((_, pipelines)) => pipelines.clone(),
++                None => {
++                    let pipelines = Self::create_pipelines(
++                        device,
++                        &entry.layouts,
++                        surface_format,
++                        alpha_mode,
++                        path_sample_count,
++                        dual_source_blending,
++                        uses_webgl_instance_data,
++                    );
++                    entry.pipelines.push((key, pipelines.clone()));
++                    pipelines
++                }
++            };
++            (entry.layouts.clone(), pipelines)
++        })
++    }
++
+     fn new(
+         context: &WgpuContext,
+         atlas: Arc<WgpuAtlas>,
+@@ -1249,10 +1316,8 @@
+         let uses_webgl_instance_data = context.uses_webgl_instance_data();
+         let dual_source_blending =
+             context.supports_dual_source_blending() && !uses_webgl_instance_data;
+-        let bind_group_layouts = Self::create_bind_group_layouts(&device, uses_webgl_instance_data);
+-        let pipelines = Self::create_pipelines(
++        let (bind_group_layouts, pipelines) = Self::shared_pipelines(
+             &device,
+-            &bind_group_layouts,
+             target_format,
+             alpha_mode,
+             rendering_params.path_sample_count,

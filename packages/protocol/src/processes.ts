@@ -1,24 +1,24 @@
 import { ProtocolError } from './framing.ts'
 import { parseChunk, parseFilePath, parseRootId, parseRootPath } from './files.ts'
 import { fields, id, integer, keys, object } from './values.ts'
+import {
+  MAX_PROCESS_ARGS,
+  MAX_PROCESS_ARG_BYTES,
+  MAX_PROCESS_CPU_SECONDS,
+  MAX_PROCESS_ENV,
+  MAX_PROCESS_ENV_NAME_BYTES,
+  MAX_PROCESS_ENV_VALUE_BYTES,
+  MAX_PROCESS_EXECUTABLES,
+  MAX_PROCESS_LAUNCH_BYTES,
+  MAX_PROCESS_MEMORY_BYTES,
+  MAX_PROCESS_OPEN_FILES,
+  MAX_TERMINAL_DIMENSION,
+  MIN_PROCESS_MEMORY_BYTES,
+  MIN_PROCESS_OPEN_FILES,
+} from './wire-schema.ts'
 
-export const MAX_PROCESS_EXECUTABLES = 8
-export const MAX_PROCESSES = 8
-export const MAX_PROCESS_ARGS = 64
-export const MAX_PROCESS_ENV = 64
-export const MAX_PROCESS_OUTPUT_CREDIT = 4
-const MAX_PROCESS_ARG_BYTES = 4_096
-const MAX_PROCESS_ENV_NAME_BYTES = 128
-const MAX_PROCESS_ENV_VALUE_BYTES = 4_096
-const MAX_PROCESS_LAUNCH_BYTES = 32_768
-const MAX_TERMINAL_DIMENSION = 1_000
 const PROCESS_ARGUMENT = '--bun-native-process='
 const PROCESS_LIMITS_ARGUMENT = '--bun-native-process-limits='
-const MAX_PROCESS_CPU_SECONDS = 604_800
-const MIN_PROCESS_MEMORY_BYTES = 2 ** 20
-const MAX_PROCESS_MEMORY_BYTES = 2 ** 48
-const MIN_PROCESS_OPEN_FILES = 3
-const MAX_PROCESS_OPEN_FILES = 2 ** 20
 const encoder = new TextEncoder()
 const bytes = (value: string) => encoder.encode(value).byteLength
 

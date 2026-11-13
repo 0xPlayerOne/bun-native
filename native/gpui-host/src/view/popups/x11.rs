@@ -11,6 +11,8 @@
 
 use crate::services::x11::{Budget, Display, XConnection};
 use gpui::{App, Bounds, Point, Size, Window};
+use std::cell::RefCell;
+use std::rc::{Rc, Weak};
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, AtomicUsize};
 use std::time::{Duration, Instant};
@@ -23,13 +25,22 @@ use x11rb::wrapper::ConnectionExt as _;
 /// Every placement round trip runs on the UI thread, so it gets a short bound.
 const PLACEMENT_TIMEOUT: Duration = Duration::from_millis(250);
 
-pub(crate) struct Placement {
+/// One per process, shared by every window's [`Placement`]: atoms and the
+/// screen belong to the display, not to a window.
+struct Shared {
     connection: XConnection,
     root: XWindow,
     /// The X screen in device pixels. GPUI's X11 display is this same screen.
     screen: Size<i32>,
     window_type: u32,
     popup_menu: u32,
+}
+
+pub(crate) struct Placement(Rc<Shared>);
+
+thread_local! {
+    /// GPUI windows live on the UI thread, so the shared connection does too.
+    static SHARED: RefCell<Weak<Shared>> = const { RefCell::new(Weak::new()) };
 }
 
 fn budget() -> Budget {
@@ -58,6 +69,21 @@ pub(crate) fn available(cx: &App) -> bool {
 
 impl Placement {
     pub(crate) fn connect(cx: &App) -> Option<Self> {
+        if let Some(shared) = SHARED.with(|shared| shared.borrow().upgrade()) {
+            return Some(Self(shared));
+        }
+        let shared = Rc::new(Shared::connect(cx)?);
+        SHARED.with(|slot| *slot.borrow_mut() = Rc::downgrade(&shared));
+        Some(Self(shared))
+    }
+
+    fn begin(&self) {
+        self.0.connection.stream().set_budget(&budget());
+    }
+}
+
+impl Shared {
+    fn connect(cx: &App) -> Option<Self> {
         let display = Display::from_app(cx)?;
         let budget = budget();
         let connection = display.connect(&budget).ok()?;
@@ -87,21 +113,20 @@ impl Placement {
             popup_menu,
         })
     }
+}
 
-    fn begin(&self) {
-        self.connection.stream().set_budget(&budget());
-    }
-
+impl Placement {
     pub(crate) fn screen(&self) -> Size<i32> {
-        self.screen
+        self.0.screen
     }
 
     /// The root-window position of a window's content origin, in device pixels.
     pub(crate) fn origin(&self, window: XWindow) -> Option<Point<i32>> {
         self.begin();
         let reply = self
+            .0
             .connection
-            .translate_coordinates(window, self.root, 0, 0)
+            .translate_coordinates(window, self.0.root, 0, 0)
             .ok()?
             .reply()
             .ok()?;
@@ -115,7 +140,8 @@ impl Placement {
     /// the window as a popup menu instead of GPUI's notification type.
     pub(crate) fn own(&self, popup: XWindow, parent: XWindow) -> Option<()> {
         self.begin();
-        self.connection
+        self.0
+            .connection
             .change_property32(
                 PropMode::REPLACE,
                 popup,
@@ -126,13 +152,14 @@ impl Placement {
             .ok()?
             .check()
             .ok()?;
-        self.connection
+        self.0
+            .connection
             .change_property32(
                 PropMode::REPLACE,
                 popup,
-                self.window_type,
+                self.0.window_type,
                 AtomEnum::ATOM,
-                &[self.popup_menu],
+                &[self.0.popup_menu],
             )
             .ok()?
             .check()
@@ -143,7 +170,8 @@ impl Placement {
     /// override-redirect window is not managed, so the server applies it as is.
     pub(crate) fn place(&self, popup: XWindow, bounds: Bounds<i32>) -> Option<()> {
         self.begin();
-        self.connection
+        self.0
+            .connection
             .configure_window(
                 popup,
                 &ConfigureWindowAux::new()

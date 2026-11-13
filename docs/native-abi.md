@@ -46,10 +46,19 @@ operations, and `overlay_keyboard_v1` adds the overlay `autofocus` and
 the overlay field `surface: "window"` and the routed `dismiss` event described
 in [popup windows](native-overlays.md#popup-windows-beyond-the-parent-window).
 
-The authoritative schemas and validators are
+The protocol's shared names and bounds have one source,
+[`packages/protocol/schema/wire.json`](../packages/protocol/schema/wire.json):
+the version, constants and `ready` limits, every enum, each style field's type
+and range, and the members of every element kind, operation, command and event.
+`bun run generate:schema` writes it into
+[`wire-schema.ts`](../packages/protocol/src/wire-schema.ts) and
+[`wire/schema.rs`](../native/protocol/src/wire/schema.rs), and
+`bun run check:schema` (also a test) fails while either is stale. Rust tests
+compare the derived command and event types with the schema, and a type test
+does the same for the TypeScript unions. The validators that interpret it are
 [`packages/protocol/src/messages.ts`](../packages/protocol/src/messages.ts),
-[`elements.ts`](../packages/protocol/src/elements.ts), and
-[`native/protocol/src/wire.rs`](../native/protocol/src/wire.rs), and
+[`elements.ts`](../packages/protocol/src/elements.ts),
+[`native/protocol/src/wire.rs`](../native/protocol/src/wire.rs) and
 [`events.rs`](../native/protocol/src/events.rs). The
 [Rust model](../native/protocol/src/tree.rs) independently validates mutations.
 This document explains their ownership and ordering rules; it is not a second
@@ -260,6 +269,25 @@ with `limit_exceeded` while it is built, and the runtime rejects a command
 above the frame bound before writing it; neither reaches the host or changes
 the window. The host reader keeps 64 KiB between frames; a larger frame borrows
 memory only while it is read and decoded, off the GPUI thread.
+
+Only one batch per application is in flight. Batches that one window queues
+back to back behind it, with no other queued operation between them, run as
+one group when it is acknowledged: each callback still runs in its own
+transaction, in order, over the candidate the earlier ones built, and the group
+is sent as few native batches as fit the operation bound, a conservative frame
+size bound and the focus and scroll requests already in the batch. A callback
+that throws, returns a promise or fails validation rejects only its own
+promise. If the host rejects a merged batch, its transactions are resent one at
+a time: the first one the host rejects fails with its native error, and any
+later one in that batch, which was built on its candidate, fails with
+`stale_revision`. Each caller settles after the acknowledgement of the batch
+that carried its operations. A producer that outruns the host therefore waits
+one round trip rather than behind every queued transaction.
+
+Core builds operations with the protocol's checked constructors, which return
+frozen operations that `parseCommand` accepts by identity, as it does parsed
+elements; any other command, including a copy of a built operation, is parsed
+in full before the runtime writes it.
 
 The public transaction queue reserves additional cleanup capacity for one close
 per live window. Reaching its ordinary-work limit rejects new work. Native

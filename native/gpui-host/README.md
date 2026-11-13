@@ -36,8 +36,10 @@ path; it does not qualify physical GPU performance or physical keyboard/IME.
 All GPUI entities, windows and text mutation stay on the main thread. One input
 worker parses bounded UTF-8 JSON lines; its 64-command queue applies backpressure
 to the pipe. One output worker drains a 256-event queue, keeping stdout writes
-off the UI thread. An unresponsive output consumer terminates the UI session
-when the queue fills rather than allowing unlimited retained events.
+off the UI thread. A full queue applies backpressure: the UI thread waits for
+Bun to read, up to five seconds, so a burst during a long JavaScript task is
+neither dropped nor reordered. A consumer that reads nothing for that long ends
+the UI session rather than allowing unlimited retained events.
 
 The command consumer preserves FIFO order and yields explicitly after 16
 commands or four milliseconds of elapsed turn time. It awaits GPUI's

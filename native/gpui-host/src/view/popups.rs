@@ -9,7 +9,7 @@
 //! shifted onto the screen: the X screen on Linux, and the parent window's
 //! screen on macOS. Keyboard focus never moves to a popup.
 
-use super::{DropScope, NativeView, PointerFrame, PressedButtons};
+use super::{DropScope, ModalScope, NativeView, PointerFrame, PressedButtons};
 use crate::style;
 use bun_native_protocol::{
     DismissReason, Element as NativeElement, Event, NodeId, OverlaySurface, Tree,
@@ -165,10 +165,19 @@ impl NativeView {
     /// Called after every commit: open entries for new popup surfaces, resize
     /// changed ones, and close the windows of popups that left the tree.
     pub(super) fn reconcile_popups(&mut self, cx: &mut Context<Self>) {
+        // A window that has never shown a popup needs no placement backend,
+        // so the X11 connection opens on the first popup, not the first batch.
+        if self.index.popups.is_empty() && self.popups.live.is_empty() {
+            return;
+        }
         if !self.popups.enabled(cx) {
             return;
         }
-        let current = popup_sizes(&self.state.borrow().tree);
+        let current = if self.index.popups.is_empty() {
+            Vec::new()
+        } else {
+            popup_sizes(&self.state.borrow().tree)
+        };
         let mut closed = Vec::new();
         self.popups.live.retain(|id, popup| {
             let alive = current.iter().any(|(live, _)| live == id);
@@ -376,8 +385,10 @@ impl NativeView {
         // External drags target the parent window; a popup surface holds no
         // drop target of its own.
         let drop_scope = DropScope::new(Default::default());
+        let modal_route = self.modal_route(tree);
+        let modal = ModalScope::of(tree, &modal_route, node_id);
         Some(
-            self.container(tree, node_id, base, None, pointer, &drop_scope, cx)
+            self.container(tree, node_id, base, None, pointer, &drop_scope, modal, cx)
                 .size_full()
                 .into_any_element(),
         )

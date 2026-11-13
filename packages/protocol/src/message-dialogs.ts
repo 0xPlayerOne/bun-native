@@ -1,12 +1,13 @@
 import { ProtocolError } from './framing.ts'
 import { fields, keys, object, string } from './values.ts'
-
-export const MAX_MESSAGE_DIALOG_BUTTONS = 4
-export const MAX_MESSAGE_DIALOG_TITLE_BYTES = 256
-export const MAX_MESSAGE_DIALOG_MESSAGE_BYTES = 2_048
-export const MAX_MESSAGE_DIALOG_DETAIL_BYTES = 4_096
-export const MAX_MESSAGE_DIALOG_LABEL_BYTES = 64
-export const MAX_MESSAGE_DIALOG_ID_BYTES = 64
+import {
+  MAX_MESSAGE_DIALOG_BUTTONS,
+  MAX_MESSAGE_DIALOG_DETAIL_BYTES,
+  MAX_MESSAGE_DIALOG_ID_BYTES,
+  MAX_MESSAGE_DIALOG_LABEL_BYTES,
+  MAX_MESSAGE_DIALOG_MESSAGE_BYTES,
+  MAX_MESSAGE_DIALOG_TITLE_BYTES,
+} from './wire-schema.ts'
 
 export interface MessageDialogButton {
   id: string

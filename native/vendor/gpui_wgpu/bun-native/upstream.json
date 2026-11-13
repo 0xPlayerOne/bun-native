@@ -1,0 +1,58 @@
+{
+  "schema_version": 1,
+  "repository": "https://github.com/zed-industries/zed",
+  "commit": "ba63a022c9a22ca66d68ef2a8f0bb9b5b0a9984d",
+  "package": "crates/gpui_wgpu",
+  "workspace_manifest_sha256": "1e7c07401d52902c7070c7b0ca7584f32e9dde25e17829947b3292c895f8f255",
+  "patched": ["src/wgpu_renderer.rs"],
+  "files": {
+    "Cargo.toml": {
+      "bytes": 1916,
+      "sha256": "d37123cc827188c50e474875cdf794021ace3128adb4067c2d6faac3d4b874a1"
+    },
+    "LICENSE-APACHE": {
+      "bytes": 10768,
+      "sha256": "752daf2fb234ca4a1fa372c073fe127f44b7b90fd2529ae44273a64f9d53da7a"
+    },
+    "benches/layout_line.rs": {
+      "bytes": 3934,
+      "sha256": "635fda3c820ce35cdd7ac2e9c72f9aae3eba4cc9fd7c9e6325cc08fd2065f8ae"
+    },
+    "src/cosmic_text_system.rs": {
+      "bytes": 65569,
+      "sha256": "d2aa5ba630e17613676715ea8c24ccce1a27bfa10a2c78bb68f91e1e120b9566"
+    },
+    "src/gpui_wgpu.rs": {
+      "bytes": 401,
+      "sha256": "b51033ac07d187c89c4079f208d3a557c6fff309b1cd403927ce8974e795afa0"
+    },
+    "src/shaders.wgsl": {
+      "bytes": 51582,
+      "sha256": "bf22f0bd45bdc2da6fc88e5c678e03549941d270d6d85f5a2d1044f875f75729"
+    },
+    "src/shaders_storage.wgsl": {
+      "bytes": 1538,
+      "sha256": "5e7935445569ec610b2f7ab520c6d2b3ad8613248fc4465072e8dfae941017ca"
+    },
+    "src/shaders_subpixel.wgsl": {
+      "bytes": 2106,
+      "sha256": "d48e5dbb6dd3b278bf34e748c01d6c60bf30e400cacc074c576e0e6b0869d59b"
+    },
+    "src/shaders_webgl.wgsl": {
+      "bytes": 8317,
+      "sha256": "d0e1f65206d720604371f2936fb1c64d9e58def4f7ec39a70b9edc3640f27b3d"
+    },
+    "src/wgpu_atlas.rs": {
+      "bytes": 19200,
+      "sha256": "d5906ecffcbb3db5a9e235094965960399f4dadf5db4c0a5dc76233d40f50d0f"
+    },
+    "src/wgpu_context.rs": {
+      "bytes": 30999,
+      "sha256": "a8a9a85509c17168b6d53b919d8d06a0cbe782ffc8ad72f830cb6a14b067cbe5"
+    },
+    "src/wgpu_renderer.rs": {
+      "bytes": 109242,
+      "sha256": "757d9f2a4d270d4787b192937183c51bf286caf33cd0f4f2bd459338fd8cfcd7"
+    }
+  }
+}

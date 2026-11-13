@@ -64,7 +64,10 @@ describe('bounded native pipe framing', () => {
   })
 
   test('frame and batch limits match the Rust wire contract', () => {
-    const wire = readFileSync(resolve(import.meta.dir, '../../native/protocol/src/wire.rs'), 'utf8')
+    const wire = readFileSync(
+      resolve(import.meta.dir, '../../native/protocol/src/wire/schema.rs'),
+      'utf8'
+    )
     const constant = (name: string) =>
       Number(
         wire

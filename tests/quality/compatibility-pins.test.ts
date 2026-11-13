@@ -47,7 +47,7 @@ function cargoGitRevisions(manifest: string, crate: string): string[] {
 }
 
 function rustProtocolVersion(): string | undefined {
-  return read('native/protocol/src/wire.rs').match(
+  return read('native/protocol/src/wire/schema.rs').match(
     /^pub const PROTOCOL_VERSION: u32 = (\d+);$/m
   )?.[1]
 }

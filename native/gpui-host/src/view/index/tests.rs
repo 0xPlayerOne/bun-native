@@ -1,7 +1,10 @@
 //! Incremental index maintenance must equal a full rebuild after any batch.
 
 use super::*;
-use bun_native_protocol::{MAX_NODES_PER_WINDOW, MAX_OPERATIONS, Operation, Style};
+use crate::view::accessibility::{ModalScope, beneath_modal};
+use bun_native_protocol::{
+    MAX_NODES_PER_WINDOW, MAX_OPERATIONS, Operation, OverlayAnchor, OverlayNavigation, Style,
+};
 use std::time::{Duration, Instant};
 
 // Longer than SmolStr's inline capacity, so equal labels that are reused share
@@ -63,13 +66,50 @@ fn element(rng: &mut Rng, kind: usize) -> Element {
             disabled: rng.below(2) == 0,
             style: Style::default(),
         },
-        _ => Element::Input {
+        3 => Element::Input {
             value: text,
             placeholder: String::new(),
             disabled: false,
             read_only: false,
             style: Style::default(),
         },
+        4 => Element::Split {
+            ratio: 0.5,
+            min_size: rng.below(3) as f64,
+            accessible_label: None,
+            style: Style::default(),
+        },
+        // A modal layer, a plain layer, or a popup window (anchored to its
+        // parent, fixed size, never modal), as the protocol requires.
+        _ => {
+            let (modal, popup) = match rng.below(3) {
+                0 => (true, false),
+                1 => (false, false),
+                _ => (false, true),
+            };
+            let pixels = Some(bun_native_protocol::Dimension::Pixels(40.));
+            Element::Overlay {
+                anchor: if popup {
+                    OverlayAnchor::Parent
+                } else {
+                    OverlayAnchor::Window
+                },
+                modal,
+                autofocus: false,
+                navigation: OverlayNavigation::Tab,
+                surface: if popup {
+                    OverlaySurface::Window
+                } else {
+                    OverlaySurface::Layer
+                },
+                accessible_label: None,
+                style: Style {
+                    width: pixels.filter(|_| popup),
+                    height: pixels.filter(|_| popup),
+                    ..Style::default()
+                },
+            }
+        }
     }
 }
 
@@ -84,11 +124,23 @@ fn kind(element: &Element) -> usize {
     }
 }
 
-fn random_batch(rng: &mut Rng, tree: &Tree, last_node_id: u64) -> Vec<Operation> {
+/// With `layers`, splits and overlays (drawn from that separate stream, so the
+/// leaf and box sequence is unchanged) are also created and used as parents.
+fn random_batch(
+    rng: &mut Rng,
+    mut layers: Option<&mut Rng>,
+    tree: &Tree,
+    last_node_id: u64,
+) -> Vec<Operation> {
     let ids: Vec<NodeId> = tree.nodes().map(|(id, _)| id).collect();
+    let layered = layers.is_some();
     let boxes: Vec<NodeId> = tree
         .nodes()
-        .filter(|(_, node)| matches!(node.element(), Element::Box { .. }))
+        .filter(|(_, node)| match node.element() {
+            Element::Box { .. } => true,
+            Element::Split { .. } | Element::Overlay { .. } => layered,
+            _ => false,
+        })
         .map(|(id, _)| id)
         .collect();
     let mut next_id = last_node_id;
@@ -98,9 +150,19 @@ fn random_batch(rng: &mut Rng, tree: &Tree, last_node_id: u64) -> Vec<Operation>
             0..=3 => {
                 next_id += 1;
                 let kind = rng.below(4);
+                let layer = layers
+                    .as_deref_mut()
+                    .and_then(|layers| (layers.below(8) == 0).then_some(layers));
+                let element = match layer {
+                    Some(layers) => {
+                        let kind = 4 + layers.below(2);
+                        element(layers, kind)
+                    }
+                    None => element(rng, kind),
+                };
                 operations.push(Operation::Create {
                     node_id: id(next_id),
-                    element: element(rng, kind),
+                    element,
                 });
                 operations.push(Operation::Insert {
                     parent_id: rng.pick(&boxes),
@@ -111,9 +173,13 @@ fn random_batch(rng: &mut Rng, tree: &Tree, last_node_id: u64) -> Vec<Operation>
             4..=6 => {
                 let node_id = rng.pick(&ids);
                 let current = kind(tree.node(node_id).unwrap().element());
+                let element = match layers.as_deref_mut() {
+                    Some(layers) if current >= 4 => element(layers, current),
+                    _ => element(rng, current),
+                };
                 operations.push(Operation::Set {
                     node_id,
-                    element: element(rng, current),
+                    element,
                     expected_input_revision: tree.node(node_id).unwrap().input_revision(),
                 });
             }
@@ -134,21 +200,49 @@ fn label_ptr(index: &NodeIndex, id: NodeId) -> Option<*const u8> {
     index.labels.get(&id).map(|label| label.as_ref().as_ptr())
 }
 
-#[test]
-fn incremental_index_matches_full_rebuild_for_random_batches() {
+struct Run {
+    applied: usize,
+    tree: Tree,
+    /// Whether splits, modals and popups were each indexed at some point.
+    seen: [bool; 3],
+}
+
+/// Applies random batches, checking after each that the incremental index
+/// equals a full rebuild, that `sync` reports exactly the created or set
+/// controls, and that the per-frame modal scope matches the route check.
+fn random_run(mut layers: Option<Rng>) -> Run {
     let mut rng = Rng(0x9e37_79b9_7f4a_7c15);
     let mut tree = Tree::new(id(1));
     let mut last_node_id = 1;
     let mut index = NodeIndex::new(&tree);
     let mut applied = 0;
+    let mut seen = [false; 3];
     for _ in 0..4_000 {
-        let operations = random_batch(&mut rng, &tree, last_node_id);
+        let operations = random_batch(&mut rng, layers.as_mut(), &tree, last_node_id);
         let Ok(prepared) = tree.prepare(tree.revision(), operations, last_node_id) else {
             continue;
         };
         let before = index.labels.clone();
-        index.sync(&tree, &prepared.tree);
+        let changed = index.sync(&tree, &prepared.tree);
         assert_eq!(index, NodeIndex::new(&prepared.tree));
+        let expected: Vec<NodeId> = index
+            .controls
+            .iter()
+            .copied()
+            .filter(|id| {
+                tree.node(*id).is_none_or(|old| {
+                    !std::ptr::eq(old.element(), prepared.tree.node(*id).unwrap().element())
+                })
+            })
+            .collect();
+        assert_eq!(changed, expected);
+        assert_modal_scope_matches_routes(&prepared.tree);
+        for (seen, set) in seen
+            .iter_mut()
+            .zip([&index.splits, &index.modals, &index.popups])
+        {
+            *seen |= !set.is_empty();
+        }
         // Like the former full rebuild, an unchanged label keeps its shared
         // allocation, whether the node was untouched or set to equal text.
         for (id, label) in &before {
@@ -163,8 +257,58 @@ fn incremental_index_matches_full_rebuild_for_random_batches() {
         last_node_id = prepared.last_node_id;
         applied += 1;
     }
-    assert!(applied > 1_000, "only {applied} random batches were valid");
-    assert!(tree.nodes().count() > 50);
+    Run {
+        applied,
+        tree,
+        seen,
+    }
+}
+
+#[test]
+fn incremental_index_matches_full_rebuild_for_random_batches() {
+    let run = random_run(None);
+    assert!(
+        run.applied > 1_000,
+        "only {} random batches were valid",
+        run.applied
+    );
+    assert!(run.tree.nodes().count() > 50);
+}
+
+#[test]
+fn incremental_index_tracks_splits_overlays_and_popups() {
+    let run = random_run(Some(Rng(0x2545_f491_4f6c_dd1d)));
+    assert!(
+        run.applied > 1_000,
+        "only {} random batches were valid",
+        run.applied
+    );
+    assert_eq!(
+        run.seen, [true; 3],
+        "splits, modals and popups were indexed"
+    );
+}
+
+/// The per-frame modal scope, propagated from the root, hides exactly the
+/// nodes the two-route check hides.
+fn assert_modal_scope_matches_routes(tree: &Tree) {
+    let modal = tree.active_modal();
+    let route = modal.and_then(|modal| tree.path(modal)).unwrap_or_default();
+    let mut pending = vec![ModalScope::of(tree, &route, tree.root_id())];
+    let mut ids = vec![tree.root_id()];
+    while let (Some(scope), Some(id)) = (pending.pop(), ids.pop()) {
+        assert_eq!(
+            scope.hidden(),
+            modal.is_some_and(|modal| beneath_modal(tree, id, modal)),
+            "node {id:?} beneath modal {modal:?}"
+        );
+        // A popup or nested render starts from its own node.
+        assert_eq!(scope.hidden(), ModalScope::of(tree, &route, id).hidden());
+        for child in tree.node(id).unwrap().children() {
+            pending.push(scope.child(*child));
+            ids.push(*child);
+        }
+    }
 }
 
 fn large_tree(nodes: usize) -> (Tree, u64) {
