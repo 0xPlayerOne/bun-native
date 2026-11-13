@@ -83,9 +83,8 @@ class Root implements RenderRoot, Owner {
   private rejectClosed!: (error: Error) => void
   private disposeFramework: (() => void) | undefined
   private unwatch: (() => void) | undefined
-  /** Acknowledged captures, and the native handle of each committed node. */
-  private readonly committed = new Map<Node, Snapshot>()
-  private readonly handles = new Map<Node, NativeNode>()
+  /** Committed nodes; each holds its own record and handle (see `Node.committed`). */
+  private nodes = 0
   private readonly registrations = new Map<Node, Map<EventProperty, Registration>>()
   private operation: Promise<void> | undefined
   private version = 0
@@ -152,7 +151,7 @@ class Root implements RenderRoot, Owner {
     let listeners = 0
     for (const registrations of this.registrations.values()) listeners += registrations.size
     return Object.freeze({
-      nodes: this.committed.size,
+      nodes: this.nodes,
       listeners,
       pending: this.operation !== undefined,
       commits: this.commits,
@@ -193,7 +192,7 @@ class Root implements RenderRoot, Owner {
     node: Node,
     listener: (event: DropTargetEvent) => void | Promise<void>
   ): Promise<NativeDropTarget> {
-    const handle = this.handles.get(node)
+    const handle = node.handle
     if (this.phase !== 'active' || !handle)
       return Promise.reject(
         new NativeStateError('invalid_handle', 'Node is unmounted or not yet committed')
@@ -203,7 +202,7 @@ class Root implements RenderRoot, Owner {
   }
 
   input(node: Node): InputState {
-    const handle = this.handles.get(node)
+    const handle = node.handle
     if (this.phase !== 'active' || !handle || handle.kind !== 'input')
       throw new NativeStateError(
         'invalid_handle',
@@ -214,7 +213,7 @@ class Root implements RenderRoot, Owner {
 
   async request(node: Node, send: (batch: NativeBatch, handle: NativeNode) => void): Promise<void> {
     await this.flush()
-    const handle = this.handles.get(node)
+    const handle = node.handle
     if (this.phase !== 'active' || !handle)
       throw new NativeStateError('invalid_handle', 'Node is unmounted or has no committed handle')
     await this.window.batch((batch) => send(batch, handle))
@@ -299,8 +298,8 @@ class Root implements RenderRoot, Owner {
     this.phase = 'closed'
     this.unwatch?.()
     this.unwatch = undefined
-    this.committed.clear()
-    this.handles.clear()
+    release(this.root)
+    this.nodes = 0
     this.root.children.length = 0
     invalidate(this.root)
     if (this.failure) this.rejectClosed(this.failure)
@@ -308,7 +307,7 @@ class Root implements RenderRoot, Owner {
   }
 
   private async cleanup(): Promise<void> {
-    const root = this.handles.get(this.root)
+    const root = this.root.handle
     if (root && !this.windowEnded) {
       await this.window.batch((batch) => batch.remove(root))
       this.mutations.remove += 1
@@ -318,21 +317,16 @@ class Root implements RenderRoot, Owner {
   }
 
   private async commit(changes: ReadonlyMap<Node, Snapshot>): Promise<void> {
-    const { created, removed, counts } = await commitNativeTree(
-      this.window,
-      this.root,
-      this.committed,
-      this.handles,
-      changes
-    )
+    const { created, removed, counts } = await commitNativeTree(this.window, this.root, changes)
     if (this.windowEnded) return
     // Publish in place only after acknowledgement; unchanged records stay shared.
     for (const node of removed) {
-      this.committed.delete(node)
-      this.handles.delete(node)
+      node.committed = undefined
+      node.handle = undefined
     }
-    for (const [node, state] of changes) this.committed.set(node, state)
-    for (const [node, handle] of created) this.handles.set(node, handle)
+    for (const [node, state] of changes) node.committed = state
+    for (const [node, handle] of created) node.handle = handle
+    this.nodes += created.size - removed.length
     if (Object.values(counts).some((count) => count > 0)) this.commits += 1
     for (const field of ['create', 'set', 'insert', 'remove'] as const)
       this.mutations[field] += counts[field]
@@ -363,7 +357,7 @@ class Root implements RenderRoot, Owner {
         if (!listener || this.registrations.get(node)?.has(name)) continue
         const binding = eventProperties[name]
         const unsubscribe = this.window.on(
-          this.handles.get(node)!,
+          node.handle!,
           binding.type,
           async (event) => {
             if (node.owner !== this) return
@@ -387,6 +381,18 @@ class Root implements RenderRoot, Owner {
       }
     }
   }
+}
+
+/**
+ * Drop the committed record and handle of `node` and of every node its
+ * committed record reaches: on finishing, the committed tree is exactly the
+ * set of nodes holding them.
+ */
+function release(node: Node): void {
+  const record = node.committed
+  node.committed = undefined
+  node.handle = undefined
+  if (record) for (const child of record.children) release(child)
 }
 
 /** Own one framework's staged tree, atomic native commits and terminal cleanup. */

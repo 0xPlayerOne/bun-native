@@ -147,6 +147,56 @@ test('retained native descendants are rescued before their obsolete ancestor is 
     await root.dispose()
   }))
 
+test('removed and disposed nodes keep no committed record or native handle', () =>
+  withApp(async (app) => {
+    const window = await app.openWindow({ title: 'Renderer committed state release' })
+    const committed = (node: Node) => node.committed !== undefined || node.handle !== undefined
+    const outer = createElement('box')
+    const inner = createElement('box')
+    const label = createElement('text')
+    const moved = createElement('text')
+    const kept = createElement('box')
+    insertNode(inner, label)
+    insertNode(inner, moved)
+    insertNode(outer, inner)
+    let container!: Node
+    const root = createRenderRoot(window, (context) => {
+      container = context.container
+      insertNode(container, outer)
+      insertNode(container, kept)
+    })
+    await root.ready
+    const all = [container, outer, inner, label, moved, kept]
+    expect(all.every(committed)).toBe(true)
+    // A removal that rescues one descendant releases only what left the tree.
+    insertNode(kept, moved)
+    removeNode(container, outer)
+    expect(committed(outer)).toBe(true)
+    await root.flush()
+    expect([outer, inner, label].some(committed)).toBe(false)
+    expect([container, moved, kept].every(committed)).toBe(true)
+    expect(root.diagnostics.nodes).toBe(3)
+    // A node removed but not yet committed is released by disposal.
+    removeNode(kept, moved)
+    await root.dispose()
+    expect(all.some(committed)).toBe(false)
+    expect(root.diagnostics.nodes).toBe(0)
+
+    // Window completion releases the committed tree without a removal commit.
+    const other = await app.openWindow({ title: 'Renderer committed state on close' })
+    const child = createElement('text')
+    let otherContainer!: Node
+    const closing = createRenderRoot(other, (context) => {
+      otherContainer = context.container
+      insertNode(otherContainer, child)
+    })
+    await closing.ready
+    expect([otherContainer, child].every(committed)).toBe(true)
+    await other.close()
+    await closing.closed
+    expect([otherContainer, child].some(committed)).toBe(false)
+  }))
+
 test('repeated shared roots keep one window observer and run each cleanup exactly once', () =>
   withApp(async (app) => {
     const actual = await app.openWindow({ title: 'Renderer window observer' })
