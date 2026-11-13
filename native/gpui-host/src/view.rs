@@ -899,6 +899,7 @@ impl NativeView {
             modal: modal.position(),
             viewport: viewport.seed(),
             fills: false,
+            stale: false,
         };
         self.caching.boundary(parent, child, holds, scope, cx)
     }
@@ -915,9 +916,10 @@ impl NativeView {
         state.tree.node(node_id)?;
         let cache = scope.frame.cache.as_ref()?;
         if scope.fills {
-            cache.missed();
+            cache.missed(node_id);
         }
         let route = &cache.route;
+        let outer = self.caching.enter(node_id, scope.stale);
         let element = self.render_element(
             &state.tree,
             node_id,
@@ -929,6 +931,7 @@ impl NativeView {
             scope.fills,
             cx,
         );
+        self.caching.leave(outer);
         Some(if scope.fills {
             caching::Offset(element).into_any_element()
         } else {
@@ -945,12 +948,15 @@ impl NativeView {
 
     /// Ends the frame drawn last, after its paint: everything rendered for
     /// it, including the boundaries GPUI laid out after `render`, has run.
-    /// `layout`, the frame's layout evidence once it painted, takes what
-    /// GPUI replayed from the frame painted before.
-    fn end_frame(&mut self, layout: Option<&LayoutFrame>) {
+    /// `painted` once its paint ran; `layout`, the frame's layout evidence,
+    /// then takes what GPUI replayed from the frame painted before.
+    fn end_frame(&mut self, painted: bool, layout: Option<&LayoutFrame>) {
         let Some(frame) = self.caching.current.take() else {
             return;
         };
+        if let Some(cache) = &frame.cache {
+            self.caching.painted(painted.then_some(cache));
+        }
         let state = self.state.clone();
         let state = state.borrow();
         let reused: BTreeSet<NodeId> = frame
@@ -1014,7 +1020,7 @@ impl Render for NativeView {
         }
         self.finish_divider_drags(cx);
         // A frame whose paint never ran.
-        self.end_frame(None);
+        self.end_frame(false, None);
         let drop_scope = DropScope::new(self.drops.targets(self.window_id));
         let state = self.state.borrow();
         let layout = self.evidence.layout_tracing().then(|| {
@@ -1168,7 +1174,7 @@ impl Render for NativeView {
                         if let Some(phase_frame) = phase_frame {
                             crate::phases::painted(phase_frame, frame.culled(), frame.reused());
                         }
-                        let _ = view.update(cx, |view, _| view.end_frame(layout.as_ref()));
+                        let _ = view.update(cx, |view, _| view.end_frame(true, layout.as_ref()));
                         #[cfg(target_os = "macos")]
                         frame_keeper.painted(window_id, &evidence, window);
                         let state = paint_state.borrow();
