@@ -1,5 +1,23 @@
 # Changelog
 
+## [0.33.1](https://github.com/0xPlayerOne/bun-native/compare/v0.33.0...v0.33.1) (2026-11-13)
+
+
+### Performance
+
+* halve commit work, fix the packaged CLI's host install, faster CLI; survive event bursts; remove dead code ([#649](https://github.com/0xPlayerOne/bun-native/issues/649)) ([1c216b8](https://github.com/0xPlayerOne/bun-native/commit/1c216b85f6099b49a6dc742e0d171bb3f1795136))
+
+
+### Documentation
+
+* rewrite the README status, index every doc and fix stale claims ([#651](https://github.com/0xPlayerOne/bun-native/issues/651)) ([5fa70cf](https://github.com/0xPlayerOne/bun-native/commit/5fa70cf2007db7f84d11f1b803b87ad5f6d365b0))
+
+
+### CI
+
+* cut the Validation critical path; publish React and Solid as adapter peers ([#647](https://github.com/0xPlayerOne/bun-native/issues/647)) ([f22eaee](https://github.com/0xPlayerOne/bun-native/commit/f22eaeeca4b51c55144e15ff3ac98f8576aed5ad))
+* smaller evidence uploads, warm vendored crates, lighter macOS/Windows shard 2 ([#648](https://github.com/0xPlayerOne/bun-native/issues/648)) ([8e91b67](https://github.com/0xPlayerOne/bun-native/commit/8e91b67e8638efe205f06ca2eea5293c4319bd63))
+
 ## [0.33.0](https://github.com/0xPlayerOne/bun-native/compare/v0.32.1...v0.33.0) (2026-11-13)
 
 
