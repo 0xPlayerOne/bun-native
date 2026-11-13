@@ -873,25 +873,14 @@ impl Session {
         // End an OS dialog or menu owned by this window before it goes away.
         self.task_dialogs.close_window(window_id, cx);
         self.context_menus.close_window(window_id, cx);
+        // GPUI runs the closed-window hook in `new` synchronously when this
+        // update returns, so it has already released every service's
+        // per-window state and sent `Closed` before the `Ack` below.
         if handle
             .update(cx, |_, window, _| window.remove_window())
             .is_ok()
         {
-            self.clipboard.cancel(
-                Some(window_id),
-                ErrorCode::InvalidHandle,
-                "clipboard owner window was closed",
-                cx,
-            );
-            self.shortcuts.close_window(window_id, cx);
-            self.notifications.close_window(window_id, cx);
-            self.files.close_window(window_id, cx);
-            self.processes.close_window(window_id, cx);
-            self.file_dialogs.close_window(window_id, cx);
-            self.task_dialogs.close_window(window_id, cx);
-            self.context_menus.close_window(window_id, cx);
-            // The closed-window hook also ends a drag GPUI still holds.
-            self.drops.close_window(window_id, false);
+            debug_assert!(!self.windows.borrow().contains_key(&window_id));
             self.events.send(Event::Ack { id }, cx);
         } else {
             state.borrow_mut().active = true;
