@@ -341,7 +341,9 @@ jobs:
       runtime-ref: a8fcac90f8c96e1f294aecc7f3a2e874803b9c2b
       runner: ubuntu-latest
       rust-shards: '["all"]'
-      rust-threads: '1'
+      # One thread made the Rust analysis (19 min) the longest job of the run;
+      # ubuntu-latest has 4 cores for extraction and query evaluation.
+      rust-threads: '4'
       rust-max-parallel: 1
       # All four languages are analyzed on every run. Code Foundry's planner
       # would otherwise mark unchanged languages "Not applicable", which
