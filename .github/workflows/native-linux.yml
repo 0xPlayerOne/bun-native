@@ -155,36 +155,12 @@ jobs:
         env:
           SHARD: ${{ matrix.shard }}
         run: |
-          # Each shard compiles only the entries its own steps run; shard 3's steps
-          # compile their fixtures inline. A new entry defaults to shard 2.
-          shard1=' native-window input-race bridge javascript core-lifecycle event-throughput fault scheduling layout interactions solid-workspace-terminal react-workspace-terminal '
-          # shellcheck disable=SC2016 # the xargs child shell expands its own variables
-          for entry in native-window input-race bridge javascript core-lifecycle event-throughput fault scheduling layout interactions services display-semantics display-wayland clipboard global-shortcuts notifications overlays message-dialogs popups wayland filesystem-grants text-input accessibility screen-reader ime processes file-dialogs drag-drop solid-drag-drop react-drag-drop solid-services react-services solid solid-input-intent solid-interactions react react-interactions react-behavior react-workload react-workspace react-workspace-flow solid-workspace-terminal react-workspace-terminal; do
-            case "$SHARD" in
-              1) [[ $shard1 == *" $entry "* ]] || continue ;;
-              2) [[ $shard1 != *" $entry "* ]] || continue ;;
-              *) continue ;;
-            esac
-            echo "$entry"
-          done | xargs -r -P 2 -n 1 bash -c '
-            set -euo pipefail
-            entry=$1
-            outdir="$NATIVE_EVIDENCE/$entry-package"
-            if [[ "$entry" == native-window ]]; then
-              outdir="$NATIVE_EVIDENCE/package"
-            fi
-            # Each entry owns its outdir; logs are printed whole so parallel output never interleaves.
-            log="$RUNNER_TEMP/aot-build-$entry.log"
-            status=0
-            bun experiments/aot-gpui/build-window.ts \
-              --source "$GITHUB_WORKSPACE" \
-              --host "$GITHUB_WORKSPACE/target/release/bun-native-host" \
-              --entry "$entry" --host-profile release --outdir "$outdir" > "$log" 2>&1 || status=$?
-            echo "::group::AOT entry $entry (exit $status)"
-            cat "$log"
-            echo "::endgroup::"
-            exit "$status"
-          ' _
+          # Each shard compiles only the entries its own steps run, as listed in
+          # scripts/quality/native-fixtures.ts (ciCompiles); shard 3's steps
+          # compile their fixtures inline. Two at a time: more measured no gain
+          # on the 4-vCPU runner.
+          bun scripts/quality/compile-aot-entries.ts --platform linux --shard "$SHARD" --jobs 2 \
+            --source "$GITHUB_WORKSPACE" --host "$GITHUB_WORKSPACE/target/release/bun-native-host"
       - name: Development and AOT bounded X11 clipboard service
         if: matrix.shard == 2
         timeout-minutes: 3

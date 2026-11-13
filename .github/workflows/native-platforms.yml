@@ -441,13 +441,26 @@ jobs:
             throw 'The deliberately invalid native expectation did not fail and clean up precisely'
           }
           $global:LASTEXITCODE = 0
+      # Shard 2 compiled about 20 AOT entries one by one inside its suite steps.
+      # They are independent, so they compile here in parallel (one per core,
+      # scripts/quality/native-fixtures.ts ciCompiles), and each step replays
+      # its entry's log and status, failing exactly where it did before.
+      - name: Compile and inspect the shard's AOT entries in parallel
+        if: ${{ matrix.shard == 2 && (!cancelled() && steps.native-build.outcome == 'success') }}
+        timeout-minutes: 15
+        run: |
+          $platform = if ($IsWindows) { 'win32' } else { 'darwin' }
+          $jobs = if ($IsWindows) { 4 } else { 3 }
+          # Pull requests skip the experimental Windows screen-reader and IME steps.
+          $exclude = '${{ runner.os == 'Windows' && github.event_name == 'pull_request' && 'screen-reader,ime-platform' || '' }}'
+          bun scripts/quality/compile-aot-entries.ts --platform $platform --shard ${{ matrix.shard }} `
+            --jobs $jobs "--exclude=$exclude" --keep-going
+          if ($LASTEXITCODE -ne 0) { throw 'The parallel AOT compile could not run' }
       - name: Compile and inspect the exact native fixture through Bun AOT
         if: matrix.shard == 2
         run: |
           $package = Join-Path $env:NATIVE_EVIDENCE 'aot-package'
-          bun experiments/aot-gpui/build-window.ts --entry platform-smoke `
-            --source $env:GITHUB_WORKSPACE --host $env:BUN_NATIVE_HOST `
-            --host-profile release --outdir $package
+          bun scripts/quality/compile-aot-entries.ts --entry platform-smoke --outdir $package
           if ($LASTEXITCODE -ne 0) { throw 'The genuine AOT compiler or inspection failed' }
           $manifest = Get-Content -Raw (Join-Path $package 'manifest.json') | ConvertFrom-Json
           if ($manifest.application.inspection.hasCompiledProgram -ne $true -or `
@@ -564,9 +577,7 @@ jobs:
           # (SIGSTOP / NtSuspendProcess), two batches queue behind it, then it
           # is killed (SIGKILL / TerminateProcess) (#247).
           $package = Join-Path $env:NATIVE_EVIDENCE 'fault-package'
-          bun experiments/aot-gpui/build-window.ts --entry fault `
-            --source $env:GITHUB_WORKSPACE --host $env:BUN_NATIVE_HOST `
-            --host-profile release --outdir $package
+          bun scripts/quality/compile-aot-entries.ts --entry fault --outdir $package
           if ($LASTEXITCODE -ne 0) { throw 'The ${{ runner.os }} fault AOT compiler or inspection failed' }
           $manifest = Get-Content -Raw (Join-Path $package 'manifest.json') | ConvertFrom-Json
           $driver = if ($IsWindows) { 'scripts/quality/native-fault-windows.py' } else { 'scripts/quality/native-fault-macos.py' }
@@ -581,9 +592,7 @@ jobs:
         timeout-minutes: 6
         run: |
           $package = Join-Path $env:NATIVE_EVIDENCE 'processes-package'
-          bun experiments/aot-gpui/build-window.ts --entry processes `
-            --source $env:GITHUB_WORKSPACE --host $env:BUN_NATIVE_HOST `
-            --host-profile release --outdir $package
+          bun scripts/quality/compile-aot-entries.ts --entry processes --outdir $package
           if ($LASTEXITCODE -ne 0) { throw 'The owned process AOT compiler or inspection failed' }
           $manifest = Get-Content -Raw (Join-Path $package 'manifest.json') | ConvertFrom-Json
           foreach ($mode in @('development', 'aot')) {
@@ -616,9 +625,7 @@ jobs:
           foreach ($framework in @('solid', 'react')) {
             $entry = "$framework-platform"
             $package = Join-Path $env:NATIVE_EVIDENCE "$entry-package"
-            bun experiments/aot-gpui/build-window.ts --entry $entry `
-              --source $env:GITHUB_WORKSPACE --host $env:BUN_NATIVE_HOST `
-              --host-profile release --outdir $package
+            bun scripts/quality/compile-aot-entries.ts --entry $entry --outdir $package
             if ($LASTEXITCODE -ne 0) {
               $failures += "$framework AOT compiler/inspection failed"
               continue
@@ -649,9 +656,7 @@ jobs:
         timeout-minutes: 6
         run: |
           $package = Join-Path $env:NATIVE_EVIDENCE 'filesystem-grants-package'
-          bun experiments/aot-gpui/build-window.ts --entry filesystem-grants `
-            --source $env:GITHUB_WORKSPACE --host $env:BUN_NATIVE_HOST `
-            --host-profile release --outdir $package
+          bun scripts/quality/compile-aot-entries.ts --entry filesystem-grants --outdir $package
           if ($LASTEXITCODE -ne 0) { throw 'The filesystem grants AOT compiler or inspection failed' }
           $manifest = Get-Content -Raw (Join-Path $package 'manifest.json') | ConvertFrom-Json
           $platform = if ($IsWindows) { 'win32' } else { 'darwin' }
@@ -684,9 +689,7 @@ jobs:
           if (-not $trust.trusted) { throw 'The runner does not trust the menu oracle for Accessibility' }
           $env:BUN_NATIVE_MACOS_MENU_ORACLE = $oracle
           $package = Join-Path $env:NATIVE_EVIDENCE 'app-menu-package'
-          bun experiments/aot-gpui/build-window.ts --entry app-menu `
-            --source $env:GITHUB_WORKSPACE --host $env:BUN_NATIVE_HOST `
-            --host-profile release --outdir $package
+          bun scripts/quality/compile-aot-entries.ts --entry app-menu --outdir $package
           if ($LASTEXITCODE -ne 0) { throw 'The application menu AOT compiler or inspection failed' }
           foreach ($mode in @('development', 'aot')) {
             $evidence = Join-Path $env:NATIVE_EVIDENCE "app-menu-$mode"
@@ -722,9 +725,7 @@ jobs:
           }
           $env:BUN_NATIVE_A11Y_ORACLE = $oracle
           $package = Join-Path $env:NATIVE_EVIDENCE 'accessibility-platform-package'
-          bun experiments/aot-gpui/build-window.ts --entry accessibility-platform `
-            --source $env:GITHUB_WORKSPACE --host $env:BUN_NATIVE_HOST `
-            --host-profile release --outdir $package
+          bun scripts/quality/compile-aot-entries.ts --entry accessibility-platform --outdir $package
           if ($LASTEXITCODE -ne 0) { throw 'The accessibility AOT compiler or inspection failed' }
           $manifest = Get-Content -Raw (Join-Path $package 'manifest.json') | ConvertFrom-Json
           foreach ($mode in @('development', 'aot')) {
@@ -753,9 +754,7 @@ jobs:
         timeout-minutes: 6
         run: |
           $package = Join-Path $env:NATIVE_EVIDENCE 'overlays-package'
-          bun experiments/aot-gpui/build-window.ts --entry overlays `
-            --source $env:GITHUB_WORKSPACE --host $env:BUN_NATIVE_HOST `
-            --host-profile release --outdir $package
+          bun scripts/quality/compile-aot-entries.ts --entry overlays --outdir $package
           if ($LASTEXITCODE -ne 0) { throw 'The overlay AOT compiler or inspection failed' }
           $manifest = Get-Content -Raw (Join-Path $package 'manifest.json') | ConvertFrom-Json
           if ($manifest.application.inspection.hasCompiledProgram -ne $true -or `
@@ -796,9 +795,7 @@ jobs:
           $reports = @()
           foreach ($entry in @('layout-style', 'solid-layout-style', 'react-layout-style')) {
             $package = Join-Path $env:NATIVE_EVIDENCE "$entry-package"
-            bun experiments/aot-gpui/build-window.ts --entry $entry `
-              --source $env:GITHUB_WORKSPACE --host $env:BUN_NATIVE_HOST `
-              --host-profile release --outdir $package
+            bun scripts/quality/compile-aot-entries.ts --entry $entry --outdir $package
             if ($LASTEXITCODE -ne 0) { throw "The $entry AOT compiler or inspection failed" }
             $manifest = Get-Content -Raw (Join-Path $package 'manifest.json') | ConvertFrom-Json
             if ($manifest.application.inspection.hasCompiledProgram -ne $true -or `
@@ -859,9 +856,7 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'The independent Accessibility client did not compile' }
           $env:BUN_NATIVE_A11Y_ORACLE = $oracle
           $package = Join-Path $env:NATIVE_EVIDENCE 'accessibility-package'
-          bun experiments/aot-gpui/build-window.ts --entry accessibility `
-            --source $env:GITHUB_WORKSPACE --host $env:BUN_NATIVE_HOST `
-            --host-profile release --outdir $package
+          bun scripts/quality/compile-aot-entries.ts --entry accessibility --outdir $package
           if ($LASTEXITCODE -ne 0) { throw 'The accessibility-role AOT compiler or inspection failed' }
           $manifest = Get-Content -Raw (Join-Path $package 'manifest.json') | ConvertFrom-Json
           foreach ($mode in @('development', 'aot')) {
@@ -891,9 +886,7 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'The independent Accessibility client did not compile' }
           $env:BUN_NATIVE_A11Y_ORACLE = $oracle
           $package = Join-Path $env:NATIVE_EVIDENCE 'input-states-platform-package'
-          bun experiments/aot-gpui/build-window.ts --entry input-states-platform `
-            --source $env:GITHUB_WORKSPACE --host $env:BUN_NATIVE_HOST `
-            --host-profile release --outdir $package
+          bun scripts/quality/compile-aot-entries.ts --entry input-states-platform --outdir $package
           if ($LASTEXITCODE -ne 0) { throw 'The input-state AOT compiler or inspection failed' }
           $manifest = Get-Content -Raw (Join-Path $package 'manifest.json') | ConvertFrom-Json
           foreach ($mode in @('development', 'aot')) {
@@ -965,9 +958,7 @@ jobs:
               ConvertTo-Json | Out-File (Join-Path $env:NATIVE_EVIDENCE 'nvda-download.json')
           }
           $package = Join-Path $env:NATIVE_EVIDENCE 'screen-reader-package'
-          bun experiments/aot-gpui/build-window.ts --entry screen-reader `
-            --source $env:GITHUB_WORKSPACE --host $env:BUN_NATIVE_HOST `
-            --host-profile release --outdir $package
+          bun scripts/quality/compile-aot-entries.ts --entry screen-reader --outdir $package
           if ($LASTEXITCODE -ne 0) { throw 'The screen-reader AOT compiler or inspection failed' }
           $manifest = Get-Content -Raw (Join-Path $package 'manifest.json') | ConvertFrom-Json
           try {
@@ -1033,9 +1024,7 @@ jobs:
             $env:BUN_NATIVE_IME_INPUT = (Resolve-Path 'tests/native/windows-input-oracle.ps1').Path
           }
           $package = Join-Path $env:NATIVE_EVIDENCE 'ime-platform-package'
-          bun experiments/aot-gpui/build-window.ts --entry ime-platform `
-            --source $env:GITHUB_WORKSPACE --host $env:BUN_NATIVE_HOST `
-            --host-profile release --outdir $package
+          bun scripts/quality/compile-aot-entries.ts --entry ime-platform --outdir $package
           if ($LASTEXITCODE -ne 0) { throw 'The IME AOT compiler or inspection failed' }
           $manifest = Get-Content -Raw (Join-Path $package 'manifest.json') | ConvertFrom-Json
           foreach ($mode in @('development', 'aot')) {
@@ -1078,9 +1067,7 @@ jobs:
             $env:BUN_NATIVE_WINDOWS_DISPLAY_ORACLE = (Resolve-Path 'tests/native/windows-display-oracle.ps1').Path
           }
           $package = Join-Path $env:NATIVE_EVIDENCE 'display-platform-package'
-          bun experiments/aot-gpui/build-window.ts --entry display-platform `
-            --source $env:GITHUB_WORKSPACE --host $env:BUN_NATIVE_HOST `
-            --host-profile release --outdir $package
+          bun scripts/quality/compile-aot-entries.ts --entry display-platform --outdir $package
           if ($LASTEXITCODE -ne 0) { throw 'The display fixture AOT compiler or inspection failed' }
           $manifest = Get-Content -Raw (Join-Path $package 'manifest.json') | ConvertFrom-Json
           if ($manifest.application.inspection.hasCompiledProgram -ne $true -or `
@@ -1124,9 +1111,7 @@ jobs:
           $env:BUN_NATIVE_MACOS_DISPLAY_HELPER = $oracle
           $env:BUN_NATIVE_MACOS_VIRTUAL_DISPLAY = $helper
           $package = Join-Path $env:NATIVE_EVIDENCE 'display-virtual-macos-package'
-          bun experiments/aot-gpui/build-window.ts --entry display-virtual-macos `
-            --source $env:GITHUB_WORKSPACE --host $env:BUN_NATIVE_HOST `
-            --host-profile release --outdir $package
+          bun scripts/quality/compile-aot-entries.ts --entry display-virtual-macos --outdir $package
           if ($LASTEXITCODE -ne 0) { throw 'The virtual display fixture AOT compiler or inspection failed' }
           $manifest = Get-Content -Raw (Join-Path $package 'manifest.json') | ConvertFrom-Json
           if ($manifest.application.inspection.hasCompiledProgram -ne $true -or `
@@ -1178,9 +1163,7 @@ jobs:
           $failures = @()
           foreach ($entry in @('drag-drop', 'solid-drag-drop', 'react-drag-drop')) {
             $package = Join-Path $env:NATIVE_EVIDENCE "$entry-package"
-            bun experiments/aot-gpui/build-window.ts --entry $entry `
-              --source $env:GITHUB_WORKSPACE --host $env:BUN_NATIVE_HOST `
-              --host-profile release --outdir $package
+            bun scripts/quality/compile-aot-entries.ts --entry $entry --outdir $package
             if ($LASTEXITCODE -ne 0) {
               $failures += "$entry AOT compiler/inspection failed"
               continue
