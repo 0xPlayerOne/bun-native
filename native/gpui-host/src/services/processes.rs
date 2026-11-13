@@ -44,8 +44,6 @@ use rustix::process::{Pid, Signal, kill_process_group};
 use std::cell::{Cell, RefCell};
 use std::collections::{BTreeMap, VecDeque};
 #[cfg(unix)]
-use std::io::{ErrorKind, Read as _, Write as _};
-#[cfg(unix)]
 use std::os::fd::{AsFd, OwnedFd};
 #[cfg(unix)]
 use std::os::unix::process::{CommandExt as _, ExitStatusExt as _};
@@ -938,14 +936,7 @@ impl Running {
         messages: &Sender<Message>,
     ) -> bool {
         let stream = &mut self.streams[index];
-        let mut file = std::fs::File::from(match stream.fd.try_clone() {
-            Ok(fd) => fd,
-            Err(_) => {
-                stream.open = false;
-                return true;
-            }
-        });
-        match file.read(buffer) {
+        match rustix::io::read(&stream.fd, &mut *buffer) {
             Ok(0) => stream.open = false,
             Ok(length) => {
                 control.lock().sent += 1;
@@ -960,8 +951,7 @@ impl Running {
                     return false;
                 }
             }
-            Err(error) if error.kind() == ErrorKind::WouldBlock => {}
-            Err(error) if error.kind() == ErrorKind::Interrupted => {}
+            Err(Errno::AGAIN | Errno::INTR) => {}
             // A terminal reports EIO once every slave descriptor has closed.
             Err(_) => stream.open = false,
         }
@@ -974,16 +964,11 @@ impl Running {
         };
         let mut state = control.lock();
         let (front, _) = state.input.as_slices();
-        let mut file = match input.try_clone() {
-            Ok(fd) => std::fs::File::from(fd),
-            Err(_) => return,
-        };
-        match file.write(front) {
+        match rustix::io::write(input, front) {
             Ok(written) => {
                 state.input.drain(..written);
             }
-            Err(error)
-                if matches!(error.kind(), ErrorKind::WouldBlock | ErrorKind::Interrupted) => {}
+            Err(Errno::AGAIN | Errno::INTR) => {}
             // The child closed its input: later bytes cannot be delivered.
             Err(_) => {
                 state.input.clear();

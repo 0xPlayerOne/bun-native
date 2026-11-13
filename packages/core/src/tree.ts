@@ -19,8 +19,28 @@ import {
   type ScrollOffset,
 } from './types.ts'
 
-const identities = new WeakMap<NativeNode, number>()
-const encoder = new TextEncoder()
+/** Node identity of a handle this module made, or undefined for any other value. */
+let identity: (handle: object) => number | undefined
+
+/**
+ * A node handle: its only public member is `kind`. The identity is a private
+ * field, so no other value can carry one and reading it costs no side table.
+ */
+class Handle {
+  readonly #id: number
+  static {
+    identity = (handle) => (#id in handle ? (handle as Handle).#id : undefined)
+  }
+
+  constructor(
+    readonly kind: ElementKind,
+    id: number
+  ) {
+    this.#id = id
+    Object.freeze(this)
+  }
+}
+
 // Normalized elements are replaced, never mutated, so their size is stable.
 const textSizes = new WeakMap<Element, readonly number[]>()
 const elementKinds: readonly string[] = ['box', 'text', 'button', 'input', 'split', 'overlay']
@@ -124,8 +144,7 @@ export function makeNode<E extends Element>(
   id: number,
   element: E
 ): NodeState & { handle: NativeNode<E['kind']> } {
-  const handle = Object.freeze({ kind: element.kind }) as NativeNode<E['kind']>
-  identities.set(handle, id)
+  const handle = new Handle(element.kind, id) as unknown as NativeNode<E['kind']>
   return {
     id,
     handle,
@@ -137,7 +156,7 @@ export function makeNode<E extends Element>(
 }
 
 export function own(nodes: ReadonlyMap<number, NodeState>, handle: NativeNode): NodeState {
-  const id = identities.get(handle)
+  const id = handle !== null && typeof handle === 'object' ? identity(handle) : undefined
   const node = id === undefined ? undefined : nodes.get(id)
   if (!node || node.handle !== handle)
     throw new NativeStateError(
@@ -158,7 +177,8 @@ function textSizesOf(element: Element): readonly number[] {
           : 'accessible_label' in element && element.accessible_label !== undefined
             ? [element.accessible_label]
             : []
-    sizes = texts.map((text) => encoder.encode(text).byteLength)
+    // Counted without encoding; texts are well formed, as parseElement checked.
+    sizes = texts.map((text) => Buffer.byteLength(text, 'utf8'))
     textSizes.set(element, sizes)
   }
   return sizes

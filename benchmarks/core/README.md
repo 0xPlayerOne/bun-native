@@ -98,3 +98,12 @@ processes each against `97dd2c6`, p50 µs: `mount` `parseCommand` 14.9–17.7 �
 0.64–0.78, build plus validate 108–130 → 121–133, `mount` total 149–181 →
 148–164; `keystroke` total unchanged (1.9–2.5 both). The check moved into the
 build rather than disappearing, so the gain is the second pass and the copy.
+
+A node handle's identity lived in a module `WeakMap` that every `create` wrote
+and every handle check read, and each text was encoded to count its UTF-8
+bytes. Handles now carry the identity as a private class field (still frozen,
+with `kind` as their only visible member) and texts are counted without
+encoding. Six alternating processes each, [raw records](raw/)
+`commit-handles-*`, per-process p50 µs: `mount` build 76.5–91.0 (median 80.2)
+→ 68.9–88.9 (73.5), `mount` total 128–154 (134.8) → 119–156 (126.3);
+`keystroke` total 1.9–2.5 → 2.0–2.2.

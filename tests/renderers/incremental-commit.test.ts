@@ -409,3 +409,50 @@ test('a subtree moved within its live root recaptures only its own root', async 
   await root.dispose()
   expect(model.native()).toEqual([])
 })
+
+test('detached subtrees rearranged among themselves mount from their current state', async () => {
+  const model = modelWindow()
+  let container!: Node
+  const root = createRenderRoot(model.window, (context) => {
+    container = context.container
+  })
+  await root.ready
+  const label = (text: string) => {
+    const node = createElement('text')
+    insertNode(node, createTextNode(text))
+    return node
+  }
+  // Built bottom-up while detached, as React does, then edited and moved
+  // between detached parents before any owner takes it.
+  const inner = createElement('box')
+  const first = label('one')
+  const second = label('two')
+  insertNode(inner, first)
+  insertNode(inner, second)
+  const outer = createElement('box')
+  insertNode(outer, inner)
+  const other = createElement('box')
+  insertNode(other, first)
+  replaceText(second.children[0]!, 'two edited')
+  setProperty(inner, 'style', { padding: 2 })
+  const button = createElement('button')
+  setProperty(button, 'text', 'go')
+  setProperty(button, 'onClick', () => {})
+  insertNode(inner, button, second)
+  removeNode(outer, inner)
+  insertNode(other, inner)
+  insertNode(container, other)
+  insertNode(container, outer)
+  await root.flush()
+  const expected = stagedShape(container)
+  expect(expected.children.map((child) => child.children.length)).toEqual([2, 0])
+  expect(model.native().map(nativeShape)).toEqual([expected])
+  expect(root.diagnostics).toMatchObject({ nodes: count(expected), listeners: 1 })
+  // Moving the mounted subtree back out and in again keeps the tree exact.
+  removeNode(container, other)
+  insertNode(outer, other)
+  await root.flush()
+  expect(model.native().map(nativeShape)).toEqual([stagedShape(container)])
+  await root.dispose()
+  expect(model.native()).toEqual([])
+})

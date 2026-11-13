@@ -11,7 +11,6 @@ import type { Node, Snapshot } from './nodes.ts'
 import { stableChildren } from '@bun-native/core/order'
 
 export type Counts = { create: number; set: number; insert: number; remove: number }
-export type Committed = Snapshot & { handle: NativeNode }
 
 /**
  * Whether two element values are equal as the wire sees them: plain data whose
@@ -45,7 +44,8 @@ const noChildren: readonly Node[] = Object.freeze([])
 function updateInput(
   window: NativeWindow,
   batch: NativeBatch,
-  old: Committed,
+  old: Snapshot,
+  handle: NativeNode<'input'>,
   state: Snapshot & { element: Extract<Element, { kind: 'input' }> }
 ): boolean {
   if (old.element.kind !== 'input')
@@ -55,7 +55,7 @@ function updateInput(
   const intent = state.inputIntent
   if (intent && intent !== old.inputIntent) {
     if (intent.observedNode) {
-      if (intent.observedNode !== old.handle)
+      if (intent.observedNode !== handle)
         throw new NativeStateError(
           'invalid_handle',
           'Native input observation belongs to another node'
@@ -63,7 +63,7 @@ function updateInput(
       // Echo is an observation of a native edit, even if ingestion has advanced
       // again before its callback runs. Never emit it as a replacement command.
     } else {
-      batch.set(old.handle as NativeNode<'input'>, state.element, intent.revision)
+      batch.set(handle, state.element, intent.revision)
       return true
     }
   }
@@ -78,43 +78,42 @@ function updateInput(
     return false
   // An appearance/state-only update preserves the current native value; this never upgrades
   // an older application value intent to a newer revision.
-  const current = window.input(old.handle as NativeNode<'input'>)
-  batch.set(
-    old.handle as NativeNode<'input'>,
-    { ...state.element, value: current.value },
-    current.revision
-  )
+  const current = window.input(handle)
+  batch.set(handle, { ...state.element, value: current.value }, current.revision)
   return true
 }
 
 export type Commit = {
-  /** Committed records for every changed node, to publish over the previous ones. */
-  updates: Map<Node, Committed>
+  /** Native handles of the nodes this batch created. */
+  created: Map<Node, NativeNode>
   /** Previously committed nodes that left the tree, including removed descendants. */
   removed: Node[]
   counts: Counts
 }
 
 /**
- * Framework-independent native diff from the changed captures alone. Publish
- * its records only after atomic acknowledgement; `previous` is read, never
- * mutated, so a rejected batch leaves committed state untouched.
+ * Framework-independent native diff from the changed captures alone. After
+ * atomic acknowledgement, the caller publishes every change as its committed
+ * record and each created handle; `previous` and `handles` are read, never
+ * mutated, so a rejected batch leaves committed state untouched. A committed
+ * node's native handle never changes, so it is kept apart from its record.
  */
 export async function commitNativeTree(
   window: NativeWindow,
   root: Node,
-  previous: ReadonlyMap<Node, Committed>,
+  previous: ReadonlyMap<Node, Snapshot>,
+  handles: ReadonlyMap<Node, NativeNode>,
   changes: ReadonlyMap<Node, Snapshot>
 ): Promise<Commit> {
   const counts: Counts = { create: 0, set: 0, insert: 0, remove: 0 }
-  const [updates, removed] = await window.batch((batch) => {
+  const [created, removed] = await window.batch((batch) => {
     const removed: Node[] = []
     // Working state overlays `previous` and records only what this batch
     // changes, instead of copying every committed handle, parent and child list.
     const created = new Map<Node, NativeNode>()
     const parents = new Map<Node, Node>()
     const edited = new Map<Node, Node[]>()
-    const handle = (node: Node) => created.get(node) ?? previous.get(node)!.handle
+    const handle = (node: Node) => created.get(node) ?? handles.get(node)!
     const parentOf = (node: Node) =>
       parents.has(node) ? parents.get(node) : previous.get(node)?.parent
     const childrenOf = (node: Node): readonly Node[] =>
@@ -186,7 +185,7 @@ export async function commitNativeTree(
         const node = before[index]!
         if (changes.has(node) || retained.has(node)) continue
         rescue(node)
-        batch.remove(previous.get(node)!.handle)
+        batch.remove(handles.get(node)!)
         counts.remove += 1
         lost.add(node)
         if (parent === root) unlisted += 1
@@ -199,7 +198,6 @@ export async function commitNativeTree(
         )
       if (parent === root) unlisted = 0
     }
-    const updates = new Map<Node, Committed>()
     for (const [node, state] of changes) {
       const old = previous.get(node)
       if (!old) {
@@ -221,14 +219,15 @@ export async function commitNativeTree(
           batch.append(window.root, nativeNode)
           counts.insert += 1
         }
-        updates.set(node, { ...state, handle: nativeNode })
         continue
       }
-      updates.set(node, { ...state, handle: old.handle })
+      const nativeNode = handles.get(node)!
       if (state.element.kind === 'input') {
-        if (updateInput(window, batch, old, { ...state, element: state.element })) counts.set += 1
+        const input = { ...state, element: state.element }
+        if (updateInput(window, batch, old, nativeNode as NativeNode<'input'>, input))
+          counts.set += 1
       } else if (!same(old.element, state.element)) {
-        batch.set(old.handle as NativeNode<Exclude<Element['kind'], 'input'>>, state.element)
+        batch.set(nativeNode as NativeNode<Exclude<Element['kind'], 'input'>>, state.element)
         counts.set += 1
       }
     }
@@ -261,7 +260,7 @@ export async function commitNativeTree(
         before = at
       }
     }
-    return [updates, removed] as const
+    return [created, removed] as const
   })
-  return { updates, removed, counts }
+  return { created, removed, counts }
 }
