@@ -691,10 +691,7 @@ try {
     const binary = join(destination, platform() === 'win32' ? 'application.exe' : 'application')
     const compileArgv = [
       process.execPath,
-      'compile',
-      '--no-script',
-      '--production',
-      '--explain=json',
+      ...toolchain.bun.compileArguments,
       module,
       '--outfile',
       binary,
