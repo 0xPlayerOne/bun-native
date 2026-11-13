@@ -6,7 +6,8 @@
   "workspace_manifest_sha256": "1e7c07401d52902c7070c7b0ca7584f32e9dde25e17829947b3292c895f8f255",
   "patched": ["src/wgpu_renderer.rs"],
   "patches": {
-    "shared-pipelines.patch": "82fc171939b59e30ac4b8ed5c919a4da1ec626831067c0f0d6afe47b985eaf81"
+    "shared-pipelines.patch": "82fc171939b59e30ac4b8ed5c919a4da1ec626831067c0f0d6afe47b985eaf81",
+    "parallel-pipelines.patch": "6eb11b4db515e68a63a9bb197e7e7c7f75afcdd431b4e3d69ac101b1ab8e6790"
   },
   "files": {
     "Cargo.toml": {
