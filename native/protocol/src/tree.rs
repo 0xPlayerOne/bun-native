@@ -347,7 +347,9 @@ impl Tree {
             }
         }
         let verdict = next.validate_attached(&attached);
-        debug_assert_eq!(verdict, next.validate_graph());
+        // Both accept or reject alike; with several broken rules each may
+        // name a different one first.
+        debug_assert_eq!(verdict.is_ok(), next.validate_graph().is_ok());
         verdict?;
         // One walk finds the modal for every focus request: a batch may hold
         // thousands of requests, and the modal depends only on the final tree.
