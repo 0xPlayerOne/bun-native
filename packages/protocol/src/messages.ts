@@ -615,6 +615,12 @@ export type NativeEvent =
   /** Application-scoped: a menu bar belongs to the application, not a window. */
   | { type: 'app_menu_item'; sequence: number; menu_id: number; item_id: string }
   | { type: 'error'; id?: number; code: ErrorCode; message: string }
+/** Sequenced events owned by one window. */
+export type WindowEvent = Extract<NativeEvent, { sequence: number; window_id: number }>
+/** Sequenced events owned by the application rather than one window. */
+export type ApplicationEvent = Extract<NativeEvent, { type: 'app_menu_item' }>
+/** Unsolicited events, as opposed to responses that carry a request id. */
+export type HostEvent = WindowEvent | ApplicationEvent
 
 function version(value: unknown): typeof PROTOCOL_VERSION {
   if (value !== PROTOCOL_VERSION) throw new ProtocolError('Native protocol version mismatch')

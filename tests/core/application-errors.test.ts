@@ -246,28 +246,28 @@ describe('application error paths (scripted headless subprocess)', () => {
       const window = await app.openWindow({ title: 'Identity exhaustion' })
       // These counters cannot be exhausted in a test lifetime; set their
       // private state directly to exercise the explicit no-wraparound contract.
-      const counters = app as unknown as Record<string, number>
+      const ids = (app as unknown as { ids: Record<string, { next: number }> }).ids
       const exhausted = Number.MAX_SAFE_INTEGER + 1
       const limit = (message: string) => (error: unknown) =>
         error instanceof NativeStateError &&
         error.code === 'limit_exceeded' &&
         error.message === message
-      counters['nextShortcut'] = exhausted
+      ids['shortcut']!.next = exhausted
       await assert.rejects(
         window.registerGlobalShortcut(SHORTCUT, () => {}),
         limit('Global shortcut identity space exhausted')
       )
-      counters['nextNotification'] = exhausted
+      ids['notification']!.next = exhausted
       await assert.rejects(
         window.postNotification(CONTENT, () => {}),
         limit('Notification identity space exhausted')
       )
-      counters['nextNode'] = exhausted
+      ids['node']!.next = exhausted
       await assert.rejects(
         window.batch((batch) => batch.create({ kind: 'box' })),
         limit('Native node identity space exhausted')
       )
-      counters['nextWindow'] = exhausted
+      ids['window']!.next = exhausted
       await assert.rejects(
         app.openWindow({ title: 'Exhausted' }),
         limit('Native window identity space exhausted')

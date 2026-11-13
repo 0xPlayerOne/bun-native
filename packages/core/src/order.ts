@@ -1,11 +1,9 @@
 /**
  * Flag, by index in `desired`, a longest existing sibling subsequence; every
- * other desired child needs a move. Children are distinct within each list.
+ * other desired child needs a move. Children are distinct within each list:
+ * renderer nodes or native node identities.
  */
-export function stableChildren<T extends object>(
-  current: readonly T[],
-  desired: readonly T[]
-): Uint8Array {
+export function stableChildren<T>(current: readonly T[], desired: readonly T[]): Uint8Array {
   const stable = new Uint8Array(desired.length)
   // A common prefix and suffix extend some longest subsequence, so only the
   // middle needs the search; keyed edits usually leave both ends in place.

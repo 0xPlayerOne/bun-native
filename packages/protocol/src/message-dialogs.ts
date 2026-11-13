@@ -1,8 +1,6 @@
 import { ProtocolError } from './framing.ts'
 import { fields, keys, object, string } from './values.ts'
 
-/** Live OS message dialogs per session. Each window owns at most one at a time. */
-export const MAX_MESSAGE_DIALOGS = 16
 export const MAX_MESSAGE_DIALOG_BUTTONS = 4
 export const MAX_MESSAGE_DIALOG_TITLE_BYTES = 256
 export const MAX_MESSAGE_DIALOG_MESSAGE_BYTES = 2_048

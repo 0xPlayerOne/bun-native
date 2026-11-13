@@ -1,4 +1,4 @@
-import type { WindowEvent } from '@bun-native/runtime'
+import type { WindowEvent } from '@bun-native/protocol'
 import {
   NativeStateError,
   type Listener,

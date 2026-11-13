@@ -18,6 +18,7 @@ import {
   type ServicePolicy,
   type Capability,
   type FileAccess,
+  type HostEvent,
 } from '@bun-native/protocol'
 import { isAbsolute } from 'node:path'
 import type { ReadableStreamDefaultReader } from 'node:stream/web'
@@ -31,6 +32,7 @@ export {
   type NativeHostExitReason,
 } from './exit-diagnostic.ts'
 export { installedRelease, reportHealthy, type InstalledRelease } from './installation.ts'
+export type { ApplicationEvent, HostEvent, WindowEvent } from '@bun-native/protocol'
 
 type WithoutId<T> = T extends { id: number } ? Omit<T, 'id'> : never
 export type WindowCommand = WithoutId<
@@ -71,10 +73,6 @@ export type WindowCommand = WithoutId<
     }
   >
 >
-export type WindowEvent = Extract<NativeEvent, { sequence: number; window_id: number }>
-/** Sequenced events owned by the application rather than one window. */
-export type ApplicationEvent = Extract<NativeEvent, { type: 'app_menu_item' }>
-export type HostEvent = WindowEvent | ApplicationEvent
 export type HostResponse = Extract<
   NativeEvent,
   {

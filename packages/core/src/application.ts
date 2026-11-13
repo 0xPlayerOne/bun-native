@@ -1,18 +1,14 @@
 import {
   parseRootId,
   ProtocolError,
+  type ApplicationEvent,
   type Capability,
   type FileDialogOptions,
   type Limits,
   type Operation,
-} from '@bun-native/protocol'
-import {
-  NativeCommandError,
-  NativeHost,
-  type ApplicationEvent,
-  type HostOptions,
   type WindowEvent,
-} from '@bun-native/runtime'
+} from '@bun-native/protocol'
+import { NativeCommandError, NativeHost, type HostOptions } from '@bun-native/runtime'
 import { planStagedCommit, sendStagedCommit } from './commit-plan.ts'
 import { dispatchPlan, EventBindings, prunePlan, type DispatchPlan } from './events.ts'
 import { DisplaySubscription } from './display.ts'
@@ -124,6 +120,23 @@ type Callback =
   /** Application-scoped: no window owns the menu bar. */
   | { menuBar: MenuBarRegistration; event: AppMenuItemEvent }
 
+/** Monotonic identities of one kind: never reused, never wrapped. */
+class Identities {
+  next = 1
+  constructor(private readonly kind: string) {}
+
+  allocate(): number {
+    if (!Number.isSafeInteger(this.next))
+      throw new NativeStateError('limit_exceeded', this.kind + ' identity space exhausted')
+    return this.next++
+  }
+
+  /** Whether `id` names an identity this space has already handed out. */
+  has(id: number): boolean {
+    return id < this.next
+  }
+}
+
 class Application implements NativeApplication {
   readonly closed: Promise<void>
   readonly limits: Readonly<Limits>
@@ -132,24 +145,29 @@ class Application implements NativeApplication {
   readonly serviceCapabilities: Readonly<ServiceCapabilities>
   readonly windows = new Map<number, Window>()
   readonly shortcuts = new Map<number, ShortcutRegistration>()
-  private nextShortcut = 1
   readonly notifications = new Map<number, NotificationRegistration>()
-  private nextNotification = 1
   readonly fileGrants = new Map<number, FileGrantRegistration>()
-  private nextFileGrant = 1
   readonly processes = new Map<number, ProcessRegistration>()
-  private nextProcess = 1
   readonly dialogs = new Map<number, FileDialogRequest>()
-  private nextDialog = 1
   readonly contextMenus = new Map<number, ContextMenuRequest>()
-  private nextContextMenu = 1
-  private nextMessageDialog = 1
   readonly dropTargets = new Map<number, DropTargetRegistration>()
-  private nextDropTarget = 1
+  /** Every identity space this session allocates from. */
+  readonly ids = {
+    window: new Identities('Native window'),
+    node: new Identities('Native node'),
+    shortcut: new Identities('Global shortcut'),
+    notification: new Identities('Notification'),
+    fileGrant: new Identities('File grant'),
+    process: new Identities('Process'),
+    dialog: new Identities('File dialog'),
+    contextMenu: new Identities('Context menu'),
+    messageDialog: new Identities('Message dialog'),
+    dropTarget: new Identities('Drop target'),
+    menuBar: new Identities('Menu bar'),
+  }
   private lastDrop = 0
   /** The installed (or installing) menu bar; replaced bars are revoked. */
   private menuBar: MenuBarRegistration | undefined
-  private nextMenuBar = 1
   private tail: Promise<void> = Promise.resolve()
   private queued = 0
   private readonly services = new Set<Promise<void>>()
@@ -158,8 +176,6 @@ class Application implements NativeApplication {
   private activeCallbacks = 0
   /** Callbacks taken for dispatch; progress while ingestion is paused. */
   private dispatched = 0
-  private nextWindow = 1
-  private nextNode = 1
   private stopping: Promise<void> | undefined
   private failure: Error | undefined
   private phase: 'running' | 'stopping' | 'closed' = 'running'
@@ -190,80 +206,6 @@ class Application implements NativeApplication {
       activeCallbacks: this.activeCallbacks,
       serviceRequests: this.services.size,
     })
-  }
-
-  allocateNode(): number {
-    if (!Number.isSafeInteger(this.nextNode))
-      throw new NativeStateError('limit_exceeded', 'Native node identity space exhausted')
-    return this.nextNode++
-  }
-
-  allocateShortcut(): number {
-    if (!Number.isSafeInteger(this.nextShortcut))
-      throw new NativeStateError('limit_exceeded', 'Global shortcut identity space exhausted')
-    return this.nextShortcut++
-  }
-
-  isAllocatedShortcut(id: number): boolean {
-    return id < this.nextShortcut
-  }
-
-  allocateNotification(): number {
-    if (!Number.isSafeInteger(this.nextNotification))
-      throw new NativeStateError('limit_exceeded', 'Notification identity space exhausted')
-    return this.nextNotification++
-  }
-
-  isAllocatedNotification(id: number): boolean {
-    return id < this.nextNotification
-  }
-
-  allocateFileGrant(): number {
-    if (!Number.isSafeInteger(this.nextFileGrant))
-      throw new NativeStateError('limit_exceeded', 'File grant identity space exhausted')
-    return this.nextFileGrant++
-  }
-
-  allocateProcess(): number {
-    if (!Number.isSafeInteger(this.nextProcess))
-      throw new NativeStateError('limit_exceeded', 'Process identity space exhausted')
-    return this.nextProcess++
-  }
-
-  isAllocatedProcess(id: number): boolean {
-    return id < this.nextProcess
-  }
-
-  allocateDialog(): number {
-    if (!Number.isSafeInteger(this.nextDialog))
-      throw new NativeStateError('limit_exceeded', 'File dialog identity space exhausted')
-    return this.nextDialog++
-  }
-
-  allocateContextMenu(): number {
-    if (!Number.isSafeInteger(this.nextContextMenu))
-      throw new NativeStateError('limit_exceeded', 'Context menu identity space exhausted')
-    return this.nextContextMenu++
-  }
-
-  isAllocatedDialog(id: number): boolean {
-    return id < this.nextDialog
-  }
-
-  allocateMessageDialog(): number {
-    if (!Number.isSafeInteger(this.nextMessageDialog))
-      throw new NativeStateError('limit_exceeded', 'Message dialog identity space exhausted')
-    return this.nextMessageDialog++
-  }
-
-  isAllocatedMessageDialog(id: number): boolean {
-    return id < this.nextMessageDialog
-  }
-
-  allocateDropTarget(): number {
-    if (!Number.isSafeInteger(this.nextDropTarget))
-      throw new NativeStateError('limit_exceeded', 'Drop target identity space exhausted')
-    return this.nextDropTarget++
   }
 
   cancelCallbacks(windowId: number): void {
@@ -388,9 +330,7 @@ class Application implements NativeApplication {
     return this.enqueue(async () => {
       if (this.windows.size >= this.limits.max_windows)
         throw new NativeStateError('limit_exceeded', 'Application window limit exceeded')
-      if (!Number.isSafeInteger(this.nextWindow))
-        throw new NativeStateError('limit_exceeded', 'Native window identity space exhausted')
-      const window = new Window(this, this.nextWindow++, this.allocateNode())
+      const window = new Window(this, this.ids.window.allocate(), this.ids.node.allocate())
       this.windows.set(window.id, window)
       try {
         await this.host.send({
@@ -474,7 +414,7 @@ class Application implements NativeApplication {
     if (typeof listener !== 'function')
       throw new TypeError('A menu bar listener must be a function')
     this.checkMenuBar()
-    const registration = new MenuBarRegistration(this.allocateMenuBar(), listener, (item) =>
+    const registration = new MenuBarRegistration(this.ids.menuBar.allocate(), listener, (item) =>
       item === this.menuBar ? this.clearMenuBar() : Promise.resolve()
     )
     // Revoked at submission: no selection of the old bar is delivered after this call.
@@ -492,7 +432,7 @@ class Application implements NativeApplication {
 
   async clearMenuBar(): Promise<void> {
     this.checkMenuBar()
-    const id = this.allocateMenuBar()
+    const id = this.ids.menuBar.allocate()
     this.menuBar?.revoke()
     this.menuBar = undefined
     await this.sendMenuBar(id, [])
@@ -516,12 +456,6 @@ class Application implements NativeApplication {
       )
   }
 
-  private allocateMenuBar(): number {
-    if (!Number.isSafeInteger(this.nextMenuBar))
-      throw new NativeStateError('limit_exceeded', 'Menu bar identity space exhausted')
-    return this.nextMenuBar++
-  }
-
   private async sendMenuBar(id: number, menus: ReturnType<typeof menuBarRequest>): Promise<void> {
     try {
       await this.service(() => this.host.send({ type: 'set_app_menu', menu_id: id, menus }))
@@ -530,23 +464,14 @@ class Application implements NativeApplication {
         this.menuBar.revoke()
         this.menuBar = undefined
       }
-      if (
-        error instanceof NativeCommandError &&
-        (MENU_ERRORS as readonly string[]).includes(error.code)
-      )
-        throw new NativeServiceError(
-          'app_menu',
-          error.code as NativeServiceError['code'],
-          error.message
-        )
-      throw error
+      throw serviceError('app_menu', MENU_ERRORS, error)
     }
   }
 
   private receiveMenuItem(event: ApplicationEvent): void {
     if (!this.capabilities.includes('app_menu_v1'))
       throw new ProtocolError('Native menu selection arrived without app_menu_v1')
-    if (event.menu_id >= this.nextMenuBar)
+    if (!this.ids.menuBar.has(event.menu_id))
       throw new ProtocolError('Native event names an unallocated menu bar')
     const registration = this.menuBar
     // A replaced or cleared bar's selection is stale and never delivered.
@@ -571,30 +496,30 @@ class Application implements NativeApplication {
           this.receiveMenuItem(event)
           continue
         }
-        if (event.type === 'global_shortcut' && !this.isAllocatedShortcut(event.shortcut_id))
+        if (event.type === 'global_shortcut' && !this.ids.shortcut.has(event.shortcut_id))
           throw new ProtocolError('Native event names an unallocated global shortcut')
         if (
           (event.type === 'notification_activated' || event.type === 'notification_dismissed') &&
-          !this.isAllocatedNotification(event.notification_id)
+          !this.ids.notification.has(event.notification_id)
         )
           throw new ProtocolError('Native event names an unallocated notification')
         if (
           (event.type === 'process_output' || event.type === 'process_exited') &&
-          !this.isAllocatedProcess(event.process_id)
+          !this.ids.process.has(event.process_id)
         )
           throw new ProtocolError('Native event names an unallocated process')
-        if (event.type === 'file_dialog_completed' && !this.isAllocatedDialog(event.dialog_id))
+        if (event.type === 'file_dialog_completed' && !this.ids.dialog.has(event.dialog_id))
           throw new ProtocolError('Native event names an unallocated file dialog')
         if (
           event.type === 'message_dialog_completed' &&
-          !this.isAllocatedMessageDialog(event.dialog_id)
+          !this.ids.messageDialog.has(event.dialog_id)
         )
           throw new ProtocolError('Native event names an unallocated message dialog')
         if (
           (event.type === 'drop_target_drag' ||
             event.type === 'drop_received' ||
             event.type === 'drop_rejected') &&
-          event.target_id >= this.nextDropTarget
+          !this.ids.dropTarget.has(event.target_id)
         )
           throw new ProtocolError('Native event names an unallocated drop target')
         if (event.type === 'drop_received') {
@@ -604,11 +529,11 @@ class Application implements NativeApplication {
         }
         const window = this.windows.get(event.window_id)
         if (!window) {
-          if (event.window_id >= this.nextWindow)
+          if (!this.ids.window.has(event.window_id))
             throw new ProtocolError('Native event names an unallocated window')
           continue // Revoked window: late events must not retain or invoke callbacks.
         }
-        window.receive(event, this.nextNode)
+        window.receive(event, this.ids.node.next)
       }
     } catch (cause) {
       this.failure ??= cause instanceof Error ? cause : new Error(String(cause))
@@ -676,7 +601,30 @@ async function dispatchOwned<T>(
   }
 }
 
-const FILE_ERRORS = [
+/** A native command error with one of `codes` as `service`'s public error; any other error unchanged. */
+function serviceError(
+  service: NativeServiceError['service'],
+  codes: ReadonlySet<string>,
+  error: unknown
+): unknown {
+  return error instanceof NativeCommandError && codes.has(error.code)
+    ? new NativeServiceError(service, error.code as NativeServiceError['code'], error.message)
+    : error
+}
+
+const DISPLAY_ERRORS: ReadonlySet<string> = new Set(['permission_denied', 'service_unavailable'])
+
+const CLIPBOARD_ERRORS: ReadonlySet<string> = new Set([
+  'permission_denied',
+  'service_unavailable',
+  'cancelled',
+  'native_failure',
+  'operation_timed_out',
+  'payload_too_large',
+  'limit_exceeded',
+])
+
+const FILE_ERRORS: ReadonlySet<string> = new Set([
   'permission_denied',
   'service_unavailable',
   'cancelled',
@@ -688,9 +636,9 @@ const FILE_ERRORS = [
   'wrong_kind',
   'not_empty',
   'access_denied',
-] as const
+])
 
-const PROCESS_ERRORS = [
+const PROCESS_ERRORS: ReadonlySet<string> = new Set([
   'permission_denied',
   'service_unavailable',
   'cancelled',
@@ -701,9 +649,9 @@ const PROCESS_ERRORS = [
   'wrong_kind',
   'access_denied',
   'invalid_state',
-] as const
+])
 
-const DROP_ERRORS = [
+const DROP_ERRORS: ReadonlySet<string> = new Set([
   'permission_denied',
   'service_unavailable',
   'conflict',
@@ -712,35 +660,35 @@ const DROP_ERRORS = [
   'limit_exceeded',
   'not_found',
   'path_denied',
-] as const
+])
 
-const NOTIFICATION_ERRORS = [
+const NOTIFICATION_ERRORS: ReadonlySet<string> = new Set([
   'permission_denied',
   'service_unavailable',
   'cancelled',
   'native_failure',
   'operation_timed_out',
   'limit_exceeded',
-] as const
+])
 
-const DIALOG_ERRORS = [
+const DIALOG_ERRORS: ReadonlySet<string> = new Set([
   'permission_denied',
   'service_unavailable',
   'cancelled',
   'native_failure',
   'operation_timed_out',
   'limit_exceeded',
-] as const
+])
 
-const MENU_ERRORS = [
+const MENU_ERRORS: ReadonlySet<string> = new Set([
   'permission_denied',
   'service_unavailable',
   'cancelled',
   'native_failure',
   'limit_exceeded',
-] as const
+])
 
-const SHORTCUT_ERRORS = [
+const SHORTCUT_ERRORS: ReadonlySet<string> = new Set([
   'permission_denied',
   'service_unavailable',
   'conflict',
@@ -748,7 +696,7 @@ const SHORTCUT_ERRORS = [
   'native_failure',
   'operation_timed_out',
   'limit_exceeded',
-] as const
+])
 
 class Window implements NativeWindow {
   readonly root: NativeNode<'box'>
@@ -789,7 +737,7 @@ class Window implements NativeWindow {
       const transaction = new Transaction(
         this.nodes,
         this.rootId,
-        () => this.application.allocateNode(),
+        () => this.application.ids.node.allocate(),
         this.application.limits,
         this.application.capabilities,
         this.text
@@ -840,7 +788,7 @@ class Window implements NativeWindow {
         this.nodes,
         transaction,
         this.rootId,
-        () => this.application.allocateNode(),
+        () => this.application.ids.node.allocate(),
         this.application.limits
       )
       await sendStagedCommit(plan, send, (reply, final) => {
@@ -914,12 +862,7 @@ class Window implements NativeWindow {
         if (error instanceof ProtocolError) throw error
         this.assertActive()
         checkServiceCancellation(signal, 'window_display')
-        if (
-          error instanceof NativeCommandError &&
-          (error.code === 'permission_denied' || error.code === 'service_unavailable')
-        )
-          throw new NativeServiceError('window_display', error.code, error.message)
-        throw error
+        throw serviceError('window_display', DISPLAY_ERRORS, error)
       }
     })
   }
@@ -1009,24 +952,7 @@ class Window implements NativeWindow {
         if (error instanceof ProtocolError) throw error
         this.assertActive()
         checkServiceCancellation(signal, service)
-        if (
-          error instanceof NativeCommandError &&
-          [
-            'permission_denied',
-            'service_unavailable',
-            'cancelled',
-            'native_failure',
-            'operation_timed_out',
-            'payload_too_large',
-            'limit_exceeded',
-          ].includes(error.code)
-        )
-          throw new NativeServiceError(
-            service,
-            error.code as NativeServiceError['code'],
-            error.message
-          )
-        throw error
+        throw serviceError(service, CLIPBOARD_ERRORS, error)
       }
     })
   }
@@ -1042,7 +968,7 @@ class Window implements NativeWindow {
     return this.application.service(async () => {
       this.assertActive()
       const registration = new ShortcutRegistration(
-        this.application.allocateShortcut(),
+        this.application.ids.shortcut.allocate(),
         this.id,
         key,
         modifiers,
@@ -1071,16 +997,7 @@ class Window implements NativeWindow {
         this.application.shortcuts.delete(registration.id)
         if (error instanceof ProtocolError) throw error
         this.assertActive()
-        if (
-          error instanceof NativeCommandError &&
-          (SHORTCUT_ERRORS as readonly string[]).includes(error.code)
-        )
-          throw new NativeServiceError(
-            'global_shortcuts',
-            error.code as NativeServiceError['code'],
-            error.message
-          )
-        throw error
+        throw serviceError('global_shortcuts', SHORTCUT_ERRORS, error)
       }
     })
   }
@@ -1121,7 +1038,7 @@ class Window implements NativeWindow {
     return this.application.service(async () => {
       this.assertActive()
       const registration = new NotificationRegistration(
-        this.application.allocateNotification(),
+        this.application.ids.notification.allocate(),
         this.id,
         title,
         body,
@@ -1151,16 +1068,7 @@ class Window implements NativeWindow {
         this.application.notifications.delete(registration.id)
         if (error instanceof ProtocolError) throw error
         this.assertActive()
-        if (
-          error instanceof NativeCommandError &&
-          (NOTIFICATION_ERRORS as readonly string[]).includes(error.code)
-        )
-          throw new NativeServiceError(
-            'notifications',
-            error.code as NativeServiceError['code'],
-            error.message
-          )
-        throw error
+        throw serviceError('notifications', NOTIFICATION_ERRORS, error)
       }
     })
   }
@@ -1171,7 +1079,7 @@ class Window implements NativeWindow {
     return this.application.service(async () => {
       this.assertActive()
       const registration = new FileGrantRegistration(
-        this.application.allocateFileGrant(),
+        this.application.ids.fileGrant.allocate(),
         this.id,
         request.root,
         request.access,
@@ -1206,16 +1114,7 @@ class Window implements NativeWindow {
   private fileError(error: unknown): unknown {
     if (error instanceof ProtocolError) return error
     this.assertActive()
-    if (
-      error instanceof NativeCommandError &&
-      (FILE_ERRORS as readonly string[]).includes(error.code)
-    )
-      return new NativeServiceError(
-        'filesystem_grants',
-        error.code as NativeServiceError['code'],
-        error.message
-      )
-    return error
+    return serviceError('filesystem_grants', FILE_ERRORS, error)
   }
 
   private fileCall(registration: FileGrantRegistration, call: FileCall): Promise<unknown> {
@@ -1290,7 +1189,7 @@ class Window implements NativeWindow {
     return this.application.service(async () => {
       this.assertActive()
       const registration = new ProcessRegistration(
-        this.application.allocateProcess(),
+        this.application.ids.process.allocate(),
         this.id,
         request.launch.executable,
         request.launch.terminal !== undefined,
@@ -1325,16 +1224,7 @@ class Window implements NativeWindow {
   private processError(error: unknown): unknown {
     if (error instanceof ProtocolError) return error
     this.assertActive()
-    if (
-      error instanceof NativeCommandError &&
-      (PROCESS_ERRORS as readonly string[]).includes(error.code)
-    )
-      return new NativeServiceError(
-        'processes',
-        error.code as NativeServiceError['code'],
-        error.message
-      )
-    return error
+    return serviceError('processes', PROCESS_ERRORS, error)
   }
 
   private processCall(registration: ProcessRegistration, call: ProcessCall): Promise<void> {
@@ -1468,7 +1358,7 @@ class Window implements NativeWindow {
       if (this.nodes.get(node.id)?.handle !== node.handle)
         throw new NativeStateError('invalid_handle', 'Drop target node was removed')
       const registration = new DropTargetRegistration(
-        this.application.allocateDropTarget(),
+        this.application.ids.dropTarget.allocate(),
         this.id,
         node.id,
         node.handle,
@@ -1504,16 +1394,7 @@ class Window implements NativeWindow {
   }
 
   private dropError(error: unknown): unknown {
-    if (
-      error instanceof NativeCommandError &&
-      (DROP_ERRORS as readonly string[]).includes(error.code)
-    )
-      return new NativeServiceError(
-        'drag_drop',
-        error.code as NativeServiceError['code'],
-        error.message
-      )
-    return error
+    return serviceError('drag_drop', DROP_ERRORS, error)
   }
 
   private releaseDropTarget(registration: DropTargetRegistration): Promise<void> {
@@ -1713,7 +1594,11 @@ class Window implements NativeWindow {
             'limit_exceeded',
             'This window already has an open file dialog'
           )
-      const dialog = new FileDialogRequest(this.application.allocateDialog(), this.id, options.mode)
+      const dialog = new FileDialogRequest(
+        this.application.ids.dialog.allocate(),
+        this.id,
+        options.mode
+      )
       this.application.dialogs.set(dialog.id, dialog)
       try {
         await this.application.host.send({
@@ -1729,16 +1614,7 @@ class Window implements NativeWindow {
         this.application.dialogs.delete(dialog.id)
         if (error instanceof ProtocolError) throw error
         this.assertActive()
-        if (
-          error instanceof NativeCommandError &&
-          (DIALOG_ERRORS as readonly string[]).includes(error.code)
-        )
-          throw new NativeServiceError(
-            'file_dialogs',
-            error.code as NativeServiceError['code'],
-            error.message
-          )
-        throw error
+        throw serviceError('file_dialogs', DIALOG_ERRORS, error)
       }
     })
     // An abort while the host was showing it closes the now-live dialog.
@@ -1774,7 +1650,7 @@ class Window implements NativeWindow {
             'Another context menu is already open'
           )
       const menu = new ContextMenuRequest(
-        this.application.allocateContextMenu(),
+        this.application.ids.contextMenu.allocate(),
         this.id,
         itemIds(wire.items)
       )
@@ -1793,16 +1669,7 @@ class Window implements NativeWindow {
         this.application.contextMenus.delete(menu.id)
         if (error instanceof ProtocolError) throw error
         this.assertActive()
-        if (
-          error instanceof NativeCommandError &&
-          (DIALOG_ERRORS as readonly string[]).includes(error.code)
-        )
-          throw new NativeServiceError(
-            'context_menus',
-            error.code as NativeServiceError['code'],
-            error.message
-          )
-        throw error
+        throw serviceError('context_menus', DIALOG_ERRORS, error)
       }
     })
     // An abort while the host was showing it closes the now-live menu.
@@ -1872,7 +1739,7 @@ class Window implements NativeWindow {
     if (capability.availability !== 'available' || capability.backend === 'modal_overlay')
       return undefined
     return {
-      allocate: () => this.application.allocateMessageDialog(),
+      allocate: () => this.application.ids.messageDialog.allocate(),
       show: async (id, options) => {
         try {
           await this.application.service(() =>
@@ -1884,16 +1751,7 @@ class Window implements NativeWindow {
             })
           )
         } catch (error) {
-          if (
-            error instanceof NativeCommandError &&
-            (DIALOG_ERRORS as readonly string[]).includes(error.code)
-          )
-            throw new NativeServiceError(
-              'message_dialogs',
-              error.code as NativeServiceError['code'],
-              error.message
-            )
-          throw error
+          throw serviceError('message_dialogs', DIALOG_ERRORS, error)
         }
       },
       close: async (id) => {

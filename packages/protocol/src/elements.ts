@@ -104,7 +104,7 @@ export interface AccessibleLabel {
 }
 
 /** The largest `accessible_set_size` and `accessible_position`. */
-export const MAX_ACCESSIBLE_SET_SIZE = 2_147_483_647
+const MAX_ACCESSIBLE_SET_SIZE = 2_147_483_647
 
 /**
  * Requires `accessibility_lists_v1`. A box without `accessible_role` is layout

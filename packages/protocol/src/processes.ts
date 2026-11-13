@@ -50,7 +50,7 @@ const LIMIT_BOUNDS = {
 
 const PROCESS_LIMITS_KEYS = fields(...LIMIT_NAMES)
 
-export function parseProcessLimits(value: unknown): ProcessLimits {
+function parseProcessLimits(value: unknown): ProcessLimits {
   const data = object(value)
   keys(data, PROCESS_LIMITS_KEYS)
   const limits: ProcessLimits = {}

@@ -2,15 +2,14 @@ import { ProtocolError } from './framing.ts'
 import { fields, keys, object, string } from './values.ts'
 
 /** Top-level menus in one menu bar. */
-export const MAX_APP_MENUS = 16
+const MAX_APP_MENUS = 16
 /** Items, separators and submenus in one menu bar, at every depth. */
 export const MAX_APP_MENU_ENTRIES = 128
 /** A top-level menu is depth 1; submenus nest at most two levels below it. */
 export const MAX_APP_MENU_DEPTH = 3
-export const MAX_APP_MENU_LABEL_BYTES = 64
-export const MAX_APP_MENU_ITEM_ID_BYTES = 64
+const MAX_APP_MENU_LABEL_BYTES = 64
 
-export const APP_MENU_NAMED_KEYS = Object.freeze([
+const APP_MENU_NAMED_KEYS = Object.freeze([
   'enter',
   'escape',
   'tab',
@@ -26,7 +25,7 @@ export const APP_MENU_NAMED_KEYS = Object.freeze([
   'pageup',
   'pagedown',
 ] as const)
-export const APP_MENU_PUNCTUATION_KEYS = Object.freeze([
+const APP_MENU_PUNCTUATION_KEYS = Object.freeze([
   ',',
   '.',
   '/',
