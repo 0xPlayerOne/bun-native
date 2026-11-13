@@ -100,3 +100,22 @@ export async function bundleApplication(options: {
       .sort(),
   }
 }
+
+/**
+ * The modules an entry that is compiled directly (without a framework bundle) reads,
+ * from the same resolution `bun compile` uses; nothing is written.
+ */
+export async function moduleInputs(entry: string, cwd: string): Promise<string[]> {
+  const previous = process.cwd()
+  process.chdir(cwd)
+  let result: Awaited<ReturnType<typeof Bun.build>>
+  try {
+    result = await Bun.build({ entrypoints: [entry], target: 'bun', format: 'esm', metafile: true })
+  } finally {
+    process.chdir(previous)
+  }
+  if (!result.success) throw new AggregateError(result.logs, `Cannot resolve ${entry}`)
+  return Object.keys(result.metafile?.inputs ?? {})
+    .map((path) => path.split(sep).join('/'))
+    .sort()
+}
