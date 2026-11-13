@@ -108,7 +108,7 @@ describe('native check and format (real built-in checker and formatter)', () => 
       const project = join(directory, 'styled')
       await createProject(repository, project, 'solid', 'typescript')
       const loaded = await readProject(repository, project)
-      expect(formatArguments(loaded, true)).not.toContain('--config')
+      expect(await formatArguments(loaded, true)).not.toContain('--config')
       writeFileSync(join(project, '.oxfmtrc.json'), JSON.stringify({ semi: true }) + '\n')
       const result = run([cli, 'format', project, '--check'])
       expect(result.code).toBe(1)
@@ -125,13 +125,13 @@ describe('native check and format (real built-in checker and formatter)', () => 
         copyFileSync(join(generated, 'main.tsx'), join(directory, 'main.tsx'))
       })
       const project = { directory, framework: 'react' as const, entry: join(directory, 'main.tsx') }
-      const args = formatArguments(project, true)
+      const args = await formatArguments(project, true)
       expect(args.slice(args.indexOf('--config'), args.indexOf('--config') + 2)).toEqual([
         '--config',
         templateFormatterConfig,
       ])
       expect(args).not.toContain('vendor/**')
-      expect(formatProject(project, true).exitCode).toBe(0)
+      expect((await formatProject(project, true)).exitCode).toBe(0)
       // Standalone package archives are digest-verified, so the formatter never touches them.
       const standalone = {
         ...project,
@@ -142,9 +142,9 @@ describe('native check and format (real built-in checker and formatter)', () => 
       }
       mkdirSync(join(directory, 'vendor/bun-native'), { recursive: true })
       writeFileSync(join(directory, 'vendor/bun-native/manifest.json'), '{"a":   1}\n')
-      expect(formatArguments(standalone, true)).toContain('vendor/**')
-      expect(formatProject(standalone, true).exitCode).toBe(0)
-      expect(formatProject(project, true).exitCode).toBe(1)
+      expect(await formatArguments(standalone, true)).toContain('vendor/**')
+      expect((await formatProject(standalone, true)).exitCode).toBe(0)
+      expect((await formatProject(project, true)).exitCode).toBe(1)
     } finally {
       rmSync(directory, { recursive: true, force: true })
     }
@@ -304,7 +304,7 @@ describe('checkProject (in process)', () => {
     await fixture(async (directory) => {
       const project = join(directory, 'in process')
       await createProject(repository, project, 'solid', 'typescript')
-      const steps = checkProject(await readProject(repository, project))
+      const steps = await checkProject(await readProject(repository, project))
       expect(steps.map((step) => step.name)).toEqual(['typecheck', 'format'])
       expect(steps.map((step) => step.exitCode)).toEqual([0, 0])
       expect(steps[0]!.command).toContain('check')

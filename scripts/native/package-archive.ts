@@ -1,6 +1,5 @@
-import { createHash } from 'node:crypto'
 import { gunzipSync } from 'node:zlib'
-import type { FileDigest } from './artifact.ts'
+import { sha256, type FileDigest } from './artifact.ts'
 import { packageArchivePath } from './paths.ts'
 
 const block = 512
@@ -88,10 +87,7 @@ export async function verifyPackageArchive(
     } else {
       const expected = files.get(name)
       if (!expected) throw new Error(`Packed archive file inventory differs: ${name}`)
-      if (
-        size !== expected.bytes ||
-        createHash('sha256').update(data.subarray(start, end)).digest('hex') !== expected.sha256
-      )
+      if (size !== expected.bytes || sha256(data.subarray(start, end)) !== expected.sha256)
         throw new Error(`Packed archive digest mismatch: ${name}`)
       regular.add(name)
     }

@@ -1,7 +1,7 @@
-import { createHash } from 'node:crypto'
 import { chmod, mkdir, rename, rm, stat, writeFile } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
 import { gunzipSync } from 'node:zlib'
+import { sha256 } from './artifact.ts'
 import { prebuiltHost } from './host.ts'
 
 /** The platforms whose release host archives the release workflow attaches (ADR 0021). */
@@ -167,7 +167,7 @@ export async function installReleaseHost(options: HostInstallOptions): Promise<s
   )
   const expected = checksumFor(sums, asset)
   const archive = await download(`${base}/${asset}`, maximumArchiveBytes, timeoutMs)
-  const actual = createHash('sha256').update(archive).digest('hex')
+  const actual = sha256(archive)
   if (actual !== expected)
     throw new Error(`${asset} digest ${actual} does not match SHA256SUMS ${expected}`)
   const host = hostFromArchive(archive)

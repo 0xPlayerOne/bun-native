@@ -1,6 +1,5 @@
 import toolchain from '../../toolchain.json'
 import { prebuiltHost } from './host.ts'
-import { readProject } from './project.ts'
 
 type Diagnosis = { name: string; status: 'ok' | 'failed' | 'skipped'; detail: string }
 
@@ -55,6 +54,7 @@ export async function diagnose(
     results.push({ name: 'project', status: 'skipped', detail: 'pass a project directory' })
   else
     try {
+      const { readProject } = await import('./project.ts')
       const project = await readProject(repository, options.project)
       results.push({
         name: 'project',

@@ -169,6 +169,9 @@ describe.skipIf(!supported)('packaged CLI released host (consumer layout)', () =
           )
           expect(requests).toHaveLength(2) // reused from the project cache
           expect(await run('format', '.', '--check')).toContain('format: passed')
+          // The second light command reuses the verification stamp the first one left.
+          expect(existsSync(join(project, '.bun-native', 'verified.json'))).toBe(true)
+          expect(await run('format', '.', '--check')).toContain('format: passed')
           const cli = join(project, 'node_modules', '@bun-native', 'cli')
           expect(existsSync(join(cli, '.bun-native'))).toBe(false)
           expect(readdirSync(join(cli, 'src')).sort()).not.toContain('.bun-native')

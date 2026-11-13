@@ -1,4 +1,4 @@
-import { writeFileSync } from 'node:fs'
+import { readFileSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { inspectBunExecutable } from './inspect'
 import { inspectBunRuntime } from './inspect-runtime'
@@ -31,11 +31,17 @@ export function compileApplication(input: string, output: string, cwd: string, t
   if (result.exitCode !== 0)
     throw new Error(`compile-aot failed (${result.exitCode}): ${result.stderr}`)
   const buildMs = performance.now() - start
-  const inspection = inspectBunExecutable(output)
+  // Read the executable once for both inspectors and its digest.
+  const bytes = readFileSync(output)
+  const inspection = inspectBunExecutable(bytes)
   if (!inspection.hasCompiledProgram)
     throw new Error('Compiler output has no compiled-program record')
-  const runtimeFeatures = inspectBunRuntime(output)
+  const runtimeFeatures = inspectBunRuntime(bytes)
   if (runtimeFeatures.jit === 'present' || runtimeFeatures.jitRemovedRanges.count === 0)
     throw new Error('Compiler output does not record removal of the JIT compiler')
-  return { compileCommand, buildMs, inspection, runtimeFeatures }
+  const executable = {
+    bytes: bytes.length,
+    sha256: new Bun.CryptoHasher('sha256').update(bytes).digest('hex'),
+  }
+  return { compileCommand, buildMs, inspection, runtimeFeatures, executable }
 }

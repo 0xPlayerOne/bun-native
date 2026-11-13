@@ -90,16 +90,19 @@ async function main(args: string[]): Promise<void> {
     if (positionals.length !== 1)
       throw new Error(`${command} requires exactly one project directory`)
     const { readProject } = await import('./native/project.ts')
-    const project = await readProject(repository, positionals[0]!)
+    const project = await readProject(repository, positionals[0]!, { verification: 'stamp' })
     const { checkProject, formatProject } = await import('./native/quality.ts')
-    const steps = []
-    if (command === 'format') steps.push(formatProject(project, values.check === true))
-    else {
-      if (command === 'check') steps.push(...checkProject(project))
-      // Only check and lint load the CLI's pinned oxlint; format never depends on it.
-      const { lintProject } = await import('./native/lint.ts')
-      steps.push(lintProject(project))
-    }
+    // The steps run concurrently; their reports print in this fixed order.
+    const steps =
+      command === 'format'
+        ? [await formatProject(project, values.check === true)]
+        : (
+            await Promise.all([
+              command === 'check' ? checkProject(project) : [],
+              // Only check and lint load the CLI's pinned oxlint; format never depends on it.
+              import('./native/lint.ts').then(({ lintProject }) => lintProject(project)),
+            ])
+          ).flat()
     for (const step of steps) {
       if (step.output) console.log(step.output)
       console.log(`${step.name}: ${step.exitCode === 0 ? 'passed' : 'failed'}`)
@@ -168,7 +171,10 @@ async function main(args: string[]): Promise<void> {
     typeof values['host'] === 'string' ? values['host'] : undefined
   )
   const { readProject } = await import('./native/project.ts')
-  const project = await readProject(repository, positionals[0]!)
+  // A build always re-verifies the package set it ships; dev may reuse the stamp.
+  const project = await readProject(repository, positionals[0]!, {
+    verification: command === 'build' ? 'full' : 'stamp',
+  })
   if (command === 'dev' && values.watch) {
     const { watchProject } = await import('./native/watch.ts')
     await watchProject(repository, project.directory, host)
