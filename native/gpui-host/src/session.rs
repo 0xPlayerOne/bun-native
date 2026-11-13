@@ -1290,6 +1290,8 @@ impl Session {
     }
 
     pub(crate) fn finish(&self, final_event: Event, cx: &mut App) {
+        // Before the final event, so a client that awaited shutdown can read it.
+        crate::phases::write();
         let joins = self.stop_services(cx);
         let events = self.events.clone();
         if joins.is_empty() {
