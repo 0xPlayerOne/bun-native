@@ -323,7 +323,10 @@ jobs:
       runtime-repository: 0xPlayerOne/code-foundry
       runtime-ref: a8fcac90f8c96e1f294aecc7f3a2e874803b9c2b
       runner: ubuntu-latest
-      rust-shards: '["all"]'
+      # Rust analysis covers our crates plus the vendored files our patches
+      # change; unpatched upstream vendor code is out of scope.
+      # tests/quality/codeql-rust-scope.test.ts keeps this list in sync.
+      rust-shards: '["native/protocol,native/gpui-host,native/macos-surface,native/posix-services,native/windows-services,native/vendor/gpui_linux/src/linux.rs,native/vendor/gpui_linux/src/linux/accesskit_delta.rs,native/vendor/gpui_linux/src/linux/platform.rs,native/vendor/gpui_linux/src/linux/wayland/window.rs,native/vendor/gpui_linux/src/linux/x11/window.rs,native/vendor/gpui_macos/src/display_link.rs,native/vendor/gpui_macos/src/gpui_macos.rs,native/vendor/gpui_macos/src/window.rs,native/vendor/gpui_wgpu/src/wgpu_renderer.rs,native/vendor/wgpu-hal/src/auxil/renderdoc.rs,native/vendor/wgpu-hal/src/gles/egl.rs"]'
       # One thread made the Rust analysis (19 min) the longest job of the run;
       # ubuntu-latest has 4 cores for extraction and query evaluation.
       rust-threads: '4'
@@ -332,7 +335,7 @@ jobs:
       # would otherwise mark unchanged languages "Not applicable", which
       # reports success without an analysis.
       plan: >-
-        {"enabled":"true","rust_build_mode":"none","matrix":"[{\"display\":\"Actions\",\"language\":\"actions\",\"category\":\"/language:actions\",\"build_mode\":\"none\",\"changed\":true},{\"display\":\"TypeScript\",\"language\":\"javascript-typescript\",\"category\":\"/language:javascript-typescript\",\"build_mode\":\"none\",\"changed\":true},{\"display\":\"Python\",\"language\":\"python\",\"category\":\"/language:python\",\"build_mode\":\"none\",\"changed\":true},{\"display\":\"Rust\",\"language\":\"rust\",\"category\":\"/language:rust\",\"build_mode\":\"none\",\"changed\":true,\"shard\":\"all\"}]"}
+        {"enabled":"true","rust_build_mode":"none","matrix":"[{\"display\":\"Actions\",\"language\":\"actions\",\"category\":\"/language:actions\",\"build_mode\":\"none\",\"changed\":true},{\"display\":\"TypeScript\",\"language\":\"javascript-typescript\",\"category\":\"/language:javascript-typescript\",\"build_mode\":\"none\",\"changed\":true},{\"display\":\"Python\",\"language\":\"python\",\"category\":\"/language:python\",\"build_mode\":\"none\",\"changed\":true},{\"display\":\"Rust\",\"language\":\"rust\",\"category\":\"/language:rust\",\"build_mode\":\"none\",\"changed\":true,\"shard\":\"native/protocol,native/gpui-host,native/macos-surface,native/posix-services,native/windows-services,native/vendor/gpui_linux/src/linux.rs,native/vendor/gpui_linux/src/linux/accesskit_delta.rs,native/vendor/gpui_linux/src/linux/platform.rs,native/vendor/gpui_linux/src/linux/wayland/window.rs,native/vendor/gpui_linux/src/linux/x11/window.rs,native/vendor/gpui_macos/src/display_link.rs,native/vendor/gpui_macos/src/gpui_macos.rs,native/vendor/gpui_macos/src/window.rs,native/vendor/gpui_wgpu/src/wgpu_renderer.rs,native/vendor/wgpu-hal/src/auxil/renderdoc.rs,native/vendor/wgpu-hal/src/gles/egl.rs\"}]"}
 
   gate:
     # This exact check context is required by the existing protected-main ruleset.
