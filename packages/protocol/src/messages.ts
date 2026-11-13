@@ -74,7 +74,7 @@ import {
   ERROR_CODES,
   EVENT_KEYS,
   MAX_CLIPBOARD_BYTES,
-  MAX_DEPTH,
+  MAX_EVENT_PATH_NODES,
   MAX_KEY_BYTES,
   MAX_NODES_PER_WINDOW,
   MAX_OPERATIONS,
@@ -993,8 +993,10 @@ function unique(path: readonly number[]): boolean {
 function route(message: Record<string, unknown>): NodeEventRoute {
   const node_id = id(message['node_id'])
   const value = message['path']
-  if (!Array.isArray(value) || !value.length || value.length > MAX_DEPTH + 1)
-    throw new ProtocolError('Native event path must contain between 1 and 65 node identities')
+  if (!Array.isArray(value) || !value.length || value.length > MAX_EVENT_PATH_NODES)
+    throw new ProtocolError(
+      'Native event path must contain between 1 and ' + MAX_EVENT_PATH_NODES + ' node identities'
+    )
   const path = value.map(id)
   if (!unique(path) || path.at(-1) !== node_id)
     throw new ProtocolError('Native event path must be unique and end at its target')

@@ -1,4 +1,9 @@
-import { parseContextMenuItems, ProtocolError, type AppMenuEntry } from '@bun-native/protocol'
+import {
+  MAX_POINTER_COORDINATE,
+  parseContextMenuItems,
+  ProtocolError,
+  type AppMenuEntry,
+} from '@bun-native/protocol'
 import { menuEntriesRequest, type MenuEntryOptions } from './app-menu.ts'
 
 /** Where an OS context menu opens, in logical pixels of the window's content. */
@@ -6,8 +11,6 @@ export interface ContextMenuPosition {
   readonly x: number
   readonly y: number
 }
-
-const MAX_COORDINATE = 1_048_576
 
 /** Copies consumer items into the closed wire shape and validates it with the shared parser. */
 export function contextMenuRequest(
@@ -18,7 +21,12 @@ export function contextMenuRequest(
     throw new TypeError('Context menu position must be an object')
   const { x, y } = position
   for (const value of [x, y])
-    if (typeof value !== 'number' || !Number.isFinite(value) || value < 0 || value > MAX_COORDINATE)
+    if (
+      typeof value !== 'number' ||
+      !Number.isFinite(value) ||
+      value < 0 ||
+      value > MAX_POINTER_COORDINATE
+    )
       throw new TypeError('Context menu position must be finite, nonnegative logical pixels')
   try {
     return { items: parseContextMenuItems(menuEntriesRequest(items)), x, y }
