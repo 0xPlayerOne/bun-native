@@ -1333,13 +1333,13 @@ impl Session {
 
 fn flush_and_quit(events: EventSink, final_event: Event, cx: &mut App) {
     match events.finish(final_event) {
-        Some(flushed) => cx
+        Ok(flushed) => cx
             .spawn(async move |cx| {
                 let _ = flushed.recv().await;
                 cx.update(|cx| cx.quit());
             })
             .detach(),
-        None => cx.quit(),
+        Err(_) => cx.quit(),
     }
 }
 
