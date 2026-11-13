@@ -62,10 +62,16 @@ impl PressedButtons {
 /// GPUI runs capture in native paint order. Each hovered model element updates
 /// this candidate, leaving the deepest visible native hit for the final observer.
 /// The final capture observer consumes it before normal focus/edit/click actions.
-#[derive(Default)]
+/// A window keeps one across frames: a cached view (`view/caching.rs`)
+/// replays the listeners an earlier frame registered.
+#[derive(Clone, Default)]
 pub(super) struct PointerFrame(Rc<Cell<Option<NodeId>>>);
 
 impl PointerFrame {
+    pub(super) fn reset(&self) {
+        self.0.set(None);
+    }
+
     /// Registers in place: `InteractiveElement` builders move the >1 KB `Div`.
     pub(super) fn target(&self, element: &mut Div, node_id: NodeId) {
         let down = self.0.clone();

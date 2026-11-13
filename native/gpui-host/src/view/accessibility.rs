@@ -31,7 +31,7 @@ pub(super) struct ModalScope<'a> {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]
-enum Position {
+pub(super) enum Position {
     /// No modal layer is open.
     Free,
     /// The node is `route[index]`, a strict ancestor of the modal layer.
@@ -71,6 +71,15 @@ impl<'a> ModalScope<'a> {
 
     pub(super) fn hidden(self) -> bool {
         self.position == Position::Beneath
+    }
+
+    pub(super) fn position(self) -> Position {
+        self.position
+    }
+
+    /// A scope taken with [`Self::position`], on the same route.
+    pub(super) fn resume(route: &'a [NodeId], position: Position) -> Self {
+        Self { route, position }
     }
 }
 

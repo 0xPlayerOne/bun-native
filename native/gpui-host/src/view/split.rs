@@ -319,6 +319,16 @@ impl NativeView {
             .node(node_id)
             .expect("validated tree contains every split");
         let children = node.children();
+        // A pane's size follows the split's and its ratio, never content.
+        let sizing = viewport.sizing();
+        let viewport = viewport.sized(super::Sizing {
+            width: sizing.width,
+            height: sizing.height,
+            row: false,
+            stretch: true,
+            // The ratio places the second pane at a fraction.
+            whole: false,
+        });
         let pane = |index: usize, grow: f64, cx: &mut Context<Self>| {
             let mut pane = div()
                 .relative()
@@ -448,7 +458,7 @@ impl NativeView {
                     state.drag_start.get_or_insert(state.ratio);
                     if state.ratio != ratio {
                         state.ratio = ratio;
-                        cx.notify();
+                        view.invalidate(cx);
                     }
                 }
             }),
@@ -472,7 +482,7 @@ impl NativeView {
             return;
         }
         state.ratio = ratio;
-        cx.notify();
+        self.invalidate(cx);
         self.report_resize(node_id, ratio, ResizeSource::Keyboard, cx);
     }
 

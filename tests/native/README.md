@@ -55,6 +55,16 @@ top of the list. It needs `BUN_NATIVE_A11Y_EVIDENCE`, `BUN_NATIVE_ATSPI_PYTHON`
 and `BUN_NATIVE_PHASE_TRACE` (a new file path), and reads the host phase trace
 to confirm that rows were culled.
 
+`tests/native/cached-views.ts` is self-driving: a toolbar, an input, a split
+and a `scroll_y` box of rows, run twice in fresh hosts with the session's
+AT-SPI off, once with cached views off (`BUN_NATIVE_VIEW_CACHE=0`) and once
+on, at GPUI X11 scale 1 or 2. One-node batches, an insert and a delete, real
+clicks, Tab, typing, a modal overlay, wheel and `scrollTo` scrolling and a
+split ratio change must route the same events and paint pixel-identical
+window captures in both runs, and the host phase trace must show replayed
+cached views only in the caching run. It needs `BUN_NATIVE_CACHE_EVIDENCE` and
+`BUN_NATIVE_ATSPI_PYTHON`.
+
 `tests/native/solid-workspace-terminal.tsx` and
 `tests/native/react-workspace-terminal.tsx` are self-driving through
 `workspace-terminal.ts`: the actual workspace with its real `/bin/sh` on an

@@ -27,6 +27,7 @@
 //! one-viewport margin), the next frame renders it.
 
 use super::NativeView;
+use super::caching::{CacheFrame, Sizing};
 use bun_native_protocol::{
     Direction, Element as NativeElement, JustifyContent, Node, NodeId, Tree,
 };
@@ -50,6 +51,10 @@ pub(super) struct Culling {
     /// Nodes whose own element changed since the last render: a restyle can
     /// change inherited text style and so every descendant's size.
     restyled: HashSet<NodeId>,
+    /// Boxes that rendered children never measured before: with their
+    /// measures, the next frame may cull them. A cached view holding such a
+    /// box (`view/caching.rs`) renders it again then.
+    replan: Rc<RefCell<Vec<NodeId>>>,
 }
 
 impl Culling {
@@ -71,7 +76,9 @@ impl Culling {
     /// Starts a frame. `enabled` is false while assistive technology or
     /// layout evidence needs every element; measures cannot be kept then,
     /// since nothing tells them about the changes this frame forgets.
-    /// `pinned` must stay rendered with every ancestor.
+    /// `pinned` must stay rendered with every ancestor. `cache` is the
+    /// frame's caching decisions, when it renders boundaries.
+    #[allow(clippy::too_many_arguments)]
     pub(super) fn frame(
         &mut self,
         tree: &Tree,
@@ -80,9 +87,16 @@ impl Culling {
         scale: f32,
         pinned: impl IntoIterator<Item = NodeId>,
         view: WeakEntity<NativeView>,
+        cache: Option<CacheFrame>,
     ) -> CullFrame {
+        let replan = std::mem::take(&mut *self.replan.borrow_mut());
+        for id in replan {
+            if tree.node(id).is_some() {
+                self.changed(tree, id, false);
+            }
+        }
         let mut pins = HashSet::new();
-        if enabled {
+        if enabled || cache.is_some() {
             for id in pinned {
                 let mut current = Some(id);
                 while let Some(node) = current {
@@ -92,7 +106,8 @@ impl Culling {
                     current = tree.parent(node);
                 }
             }
-        } else {
+        }
+        if !enabled {
             self.measures.clear();
         }
         CullFrame {
@@ -106,18 +121,20 @@ impl Culling {
             restyled: std::mem::take(&mut self.restyled),
             pins,
             culled: Cell::new(0),
+            replan: cache.is_some().then(|| self.replan.clone()),
+            cache,
         }
     }
 
-    /// Ends a frame: keeps the measures of the boxes it measured. Changes
-    /// recorded so far were all rendered in full and are measured in this
-    /// frame's prepaint.
-    pub(super) fn finish(&mut self, frame: CullFrame) -> usize {
-        let visited = frame.visited.into_inner();
-        let mut measures = frame.measures.into_inner();
-        measures.retain(|id, _| visited.contains(id));
+    /// Ends a frame after its paint: keeps the measures of the boxes it
+    /// measured, or that sit inside a boundary it reused (`reused`).
+    /// Changes recorded so far were all rendered in full and are measured
+    /// in this frame's prepaint.
+    pub(super) fn finish(&mut self, frame: &CullFrame, reused: impl Fn(NodeId) -> bool) {
+        let visited = frame.visited.take();
+        let mut measures = frame.measures.take();
+        measures.retain(|id, _| visited.contains(id) || reused(*id));
         self.measures = measures;
-        frame.culled.get()
     }
 }
 
@@ -134,18 +151,52 @@ pub(super) struct CullFrame {
     /// Nodes that are, or hold, something that must stay rendered.
     pins: HashSet<NodeId>,
     culled: Cell<usize>,
+    /// Where boxes that rendered unmeasured children ask to be planned
+    /// again, when this frame caches views.
+    replan: Option<Rc<RefCell<Vec<NodeId>>>>,
+    /// Cached child views (`view/caching.rs`), when this frame uses them.
+    pub(super) cache: Option<CacheFrame>,
+}
+
+impl CullFrame {
+    /// Children this frame culled so far.
+    pub(super) fn culled(&self) -> usize {
+        self.culled.get()
+    }
+
+    /// Cached views GPUI replayed in this frame.
+    pub(super) fn reused(&self) -> usize {
+        self.cache.as_ref().map_or(0, |cache| cache.reused())
+    }
+
+    /// Unchanged since the last frame, and nothing in it must render.
+    pub(super) fn unchanged(&self, node: NodeId) -> bool {
+        !self.dirty.contains(&node) && !self.pins.contains(&node)
+    }
 }
 
 /// The nearest scroll viewport above a node, in the viewport's content
 /// coordinates (zero at the content origin, growing toward its end).
 #[derive(Clone, Copy)]
 pub(super) struct Viewport<'a> {
+    /// The window's frame; `None` in popups.
     frame: Option<&'a CullFrame>,
     scroll: Option<Scope<'a>>,
+    /// The parent whose children render in this viewport.
+    sizing: Sizing,
+}
+
+/// A [`Viewport`] kept past its frame's render, for a boundary rendered
+/// later in the frame (`view/caching.rs`).
+#[derive(Clone, Copy)]
+pub(super) struct Seed {
+    scroll: Option<(NodeId, Option<Bounds<Pixels>>)>,
+    sizing: Sizing,
 }
 
 #[derive(Clone, Copy)]
 struct Scope<'a> {
+    node: NodeId,
     handle: &'a ScrollHandle,
     /// The visible rectangle widened by one viewport on every side; `None`
     /// measures without culling.
@@ -210,28 +261,78 @@ impl<'a> Viewport<'a> {
     pub(super) const OFF: Viewport<'static> = Viewport {
         frame: None,
         scroll: None,
+        sizing: Sizing::NONE,
     };
 
+    /// The window root's viewport.
     pub(super) fn of(frame: &'a CullFrame) -> Self {
         Self {
-            frame: frame.enabled.then_some(frame),
+            frame: Some(frame),
             scroll: None,
+            sizing: Sizing::NONE,
         }
     }
 
-    /// An overlay layer is drawn outside its parent's clip.
+    /// An overlay layer is drawn outside its parent's clip, sized by its
+    /// content.
     pub(super) fn layer(self) -> Self {
         Self {
             scroll: None,
+            sizing: Sizing::NONE,
             ..self
+        }
+    }
+
+    /// What this viewport's parent tells its children about sizes.
+    pub(super) fn sizing(&self) -> Sizing {
+        self.sizing
+    }
+
+    /// The same viewport for the children of another parent.
+    pub(super) fn sized(self, sizing: Sizing) -> Self {
+        Self { sizing, ..self }
+    }
+
+    /// The frame, when its children render as boundaries.
+    pub(super) fn caching(&self) -> Option<&'a CullFrame> {
+        self.frame.filter(|frame| frame.cache.is_some())
+    }
+
+    pub(super) fn seed(&self) -> Seed {
+        Seed {
+            scroll: self.scroll.map(|scope| (scope.node, scope.keep)),
+            sizing: self.sizing,
+        }
+    }
+
+    /// The viewport a seed was taken from, in the same frame.
+    pub(super) fn resume(
+        frame: &'a CullFrame,
+        seed: Seed,
+        scrolls: &'a std::collections::BTreeMap<NodeId, ScrollHandle>,
+    ) -> Self {
+        Self {
+            frame: Some(frame),
+            scroll: seed.scroll.and_then(|(node, keep)| {
+                scrolls
+                    .get(&node)
+                    .map(|handle| Scope { node, handle, keep })
+            }),
+            sizing: seed.sizing,
         }
     }
 
     /// The viewport for this node's children. A scroll viewport starts a new
     /// scope; `held` defers culling while a reveal resolves in its prepaint;
     /// `at_end` pins it to its end this frame.
-    pub(super) fn enter(self, handle: Option<&'a ScrollHandle>, held: bool, at_end: bool) -> Self {
-        let (Some(_), Some(handle)) = (self.frame, handle) else {
+    pub(super) fn enter(
+        self,
+        node: NodeId,
+        handle: Option<&'a ScrollHandle>,
+        held: bool,
+        at_end: bool,
+    ) -> Self {
+        let (Some(_), Some(handle)) = (self.frame.filter(|frame| frame.enabled), handle) else {
             return self;
         };
         let viewport = handle.bounds().size;
@@ -266,7 +367,7 @@ impl<'a> Viewport<'a> {
             keep
         });
         Self {
-            scroll: Some(Scope { handle, keep }),
+            scroll: Some(Scope { node, handle, keep }),
             ..self
         }
     }
@@ -282,7 +383,8 @@ impl<'a> Viewport<'a> {
         node: &Node,
         tracked: bool,
     ) -> Option<(Plan, ChildrenListener)> {
-        let (Some(frame), Some(scope)) = (self.frame, self.scroll) else {
+        let (Some(frame), Some(scope)) = (self.frame.filter(|frame| frame.enabled), self.scroll)
+        else {
             return None;
         };
         let children = node.children();
@@ -319,6 +421,8 @@ impl<'a> Viewport<'a> {
             (slots, laid)
         };
         let measuring = Measuring {
+            node: node_id,
+            replan: frame.replan.clone(),
             children: children.into(),
             laid: laid.into(),
             measure,
@@ -461,6 +565,8 @@ fn cross(size: Size<Pixels>, row: bool) -> Pixels {
 }
 
 struct Measuring {
+    node: NodeId,
+    replan: Option<Rc<RefCell<Vec<NodeId>>>>,
     children: Rc<[NodeId]>,
     laid: Rc<[Laid]>,
     measure: Rc<RefCell<Measure>>,
@@ -554,10 +660,18 @@ impl Measuring {
         } else {
             total / count as f32
         };
+        if let Some(replan) = &self.replan
+            && self
+                .laid
+                .iter()
+                .any(|laid| matches!(laid, Laid::Child(_, Fate::Fresh)))
+        {
+            replan.borrow_mut().push(self.node);
+        }
         if uncovered || resized {
             let view = self.view.clone();
             window.on_next_frame(move |_, cx| {
-                let _ = view.update(cx, |_, cx| cx.notify());
+                let _ = view.update(cx, |view, cx| view.invalidate(cx));
             });
         }
     }

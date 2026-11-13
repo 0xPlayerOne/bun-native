@@ -150,12 +150,21 @@ fn changes_mark_every_ancestor_dirty_and_only_set_elements_restyled() {
     assert_eq!(culling.restyled, [id(5)].into());
 
     // A frame takes the changes; the next starts clean.
-    let frame = culling.frame(&tree, true, false, 1., [id(3)], WeakEntity::new_invalid());
+    let frame = culling.frame(
+        &tree,
+        true,
+        false,
+        1.,
+        [id(3)],
+        WeakEntity::new_invalid(),
+        None,
+    );
     assert!(!frame.clean(&tree, id(4)));
     assert!(frame.pins.contains(&id(2)) && frame.pins.contains(&id(1)));
     assert!(!frame.pins.contains(&id(5)));
-    assert_eq!(culling.finish(frame), 0);
-    let frame = culling.frame(&tree, true, false, 1., [], WeakEntity::new_invalid());
+    assert_eq!(frame.culled(), 0);
+    culling.finish(&frame, |_| false);
+    let frame = culling.frame(&tree, true, false, 1., [], WeakEntity::new_invalid(), None);
     assert!(frame.clean(&tree, id(4)));
     assert!(!frame.clean(&tree, id(99)));
 }

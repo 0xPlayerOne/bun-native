@@ -250,6 +250,22 @@ jobs:
               --env 'BUN_NATIVE_A11Y_EVIDENCE={evidence}' --env 'BUN_NATIVE_PHASE_TRACE={evidence}/trace.json' \
               -- env "GPUI_X11_SCALE_FACTOR=$scale" '{app}'
           done
+      - name: Development X11 cached views route the same events and paint the same pixels as uncached at scale 1 and 2
+        if: matrix.shard == 2
+        timeout-minutes: 3
+        env:
+          BUN_NATIVE_HOST: ${{ github.workspace }}/target/release/bun-native-host
+          BUN_NATIVE_ATSPI_PYTHON: /usr/bin/python3
+        run: |
+          for scale in 1 2; do
+            evidence="$NATIVE_EVIDENCE/cached-views-scale$scale"
+            mkdir "$evidence"
+            BUN_NATIVE_CACHE_EVIDENCE="$evidence" \
+              bash scripts/quality/native-x11-session.sh --screen 1600x1200x24 \
+              "$evidence-session" -- env GPUI_X11_SCALE_FACTOR="$scale" \
+              bun tests/native/cached-views.ts 2>&1 | tee "$evidence/run.log"
+            test -s "$evidence/result.json"
+          done
       - name: Development and AOT Orca screen-reader speech through speech-dispatcher on X11 and Wayland (#241)
         if: matrix.shard == 2
         timeout-minutes: 6
@@ -1088,6 +1104,7 @@ jobs:
             ${{ runner.temp }}/native-evidence/wayland-input-peer-sha256.txt
             ${{ runner.temp }}/native-evidence/wayland-*/
             ${{ runner.temp }}/native-evidence/drag-drop-*/
+            ${{ runner.temp }}/native-evidence/cached-views-*/
             ${{ runner.temp }}/native-evidence/solid-drag-drop-*/
             ${{ runner.temp }}/native-evidence/react-drag-drop-*/
             # The compiled AOT fixtures (about 73 MB each) are build outputs that

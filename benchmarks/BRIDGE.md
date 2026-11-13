@@ -199,7 +199,12 @@ apply (`NativeView.apply`) and reply-enqueue durations plus the number of root
 renders so far. Each root render records its element-construction time (which
 also includes the trace's own node count, microseconds at 1,001 nodes) and the
 time from render start to the final native canvas paint callback (GPUI layout,
-prepaint and paint; GPU submit and presentation excluded). Records stay in fixed
+prepaint and paint; GPU submit and presentation excluded). On Linux the host
+caches unchanged subtrees as GPUI views (`native/gpui-host/src/view/caching.rs`)
+and renders changed ones while GPUI lays them out, so element construction
+for those subtrees falls in the render-to-paint time. Each frame also records
+the children it culled and the cached views GPUI replayed (`culledNodes`,
+`cachedViews`). Records stay in fixed
 memory (4,096 batches, 16,384 frames; overflow is counted and rejected by the
 analyzer) and are written once after the command loop ends, never between
 measured requests. A path that already exists disables the trace.

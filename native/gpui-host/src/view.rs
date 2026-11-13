@@ -69,6 +69,9 @@ pub(crate) struct NativeView {
     /// Each culled run's one Tab stop, by the run's first enabled button.
     run_stops: RefCell<HashMap<NodeId, RunStop>>,
     culling: Culling,
+    caching: Caching,
+    /// The window's pointer candidate, shared by every frame's listeners.
+    pointer: PointerFrame,
     popups: Popups,
     weak: WeakEntity<NativeView>,
     window_handle: AnyWindowHandle,
@@ -145,6 +148,8 @@ impl NativeView {
             nested_reveals: RefCell::default(),
             run_stops: RefCell::default(),
             culling: Culling::default(),
+            caching: Caching::default(),
+            pointer: PointerFrame::default(),
             popups: Popups::default(),
             weak: cx.weak_entity(),
             window_handle: window.window_handle(),
@@ -185,6 +190,7 @@ impl NativeView {
                         .is_none_or(|before| !std::ptr::eq(before.element(), after.element()));
                     self.culling.changed(&state.tree, id, restyled);
                 }
+                self.caching.changed(id, before, after);
             });
             self.index
                 .sync(&previous, &state.tree)
@@ -330,6 +336,9 @@ impl NativeView {
             window.focus(&self.root_focus, cx);
         }
         self.reconcile_focus(window, cx);
+        if !requests.is_empty() {
+            self.caching.invalidate();
+        }
         self.apply_requests(requests, window, cx);
         cx.notify();
         #[cfg(target_os = "macos")]
@@ -486,9 +495,30 @@ impl NativeView {
         viewport: Viewport,
         cx: &mut Context<Self>,
     ) -> AnyElement {
+        self.render_element(
+            tree, node_id, layout, pointer, drop_scope, modal, viewport, false, cx,
+        )
+    }
+
+    /// `render_node`; `fills` renders the node at its cached boundary's
+    /// fixed size (`view/caching.rs`) in place of its own.
+    #[allow(clippy::too_many_arguments)]
+    fn render_element(
+        &self,
+        tree: &Tree,
+        node_id: NodeId,
+        layout: Option<&LayoutFrame>,
+        pointer: &PointerFrame,
+        drop_scope: &DropScope,
+        modal: ModalScope,
+        viewport: Viewport,
+        fills: bool,
+        cx: &mut Context<Self>,
+    ) -> AnyElement {
         let node = tree
             .node(node_id)
             .expect("validated tree contains every child");
+        let root = node_id == tree.root_id();
         // GPUI keeps one children-prepainted listener per `Div`; these share it.
         let mut listeners: Vec<culling::ChildrenListener> = Vec::new();
         // A split reports each pane's child from inside its pane wrapper.
@@ -500,17 +530,73 @@ impl NativeView {
             listeners.push(Box::new(move |bounds, window| listener(bounds, window)));
         }
         let scroll = self.scrolls.get(&node_id);
-        let inner = viewport.enter(
-            scroll,
-            self.revealing.borrow().contains(&node_id),
-            scroll.is_some_and(|handle| self.pinned_to_end(node_id, node, handle)),
-        );
+        let (width, height, whole) = if root {
+            (true, true, true)
+        } else {
+            let sizing = viewport.sizing();
+            let (width, height) = sizing.child(node.element());
+            (width, height, sizing.whole)
+        };
+        // Only a caching frame reads it; skip the children otherwise.
+        let fixed = whole
+            && viewport.caching().is_some()
+            && node.children().iter().all(|child| {
+                tree.node(*child)
+                    .is_none_or(|child| caching::fixed(child.element()))
+            });
+        let inner = viewport
+            .enter(
+                node_id,
+                scroll,
+                self.revealing.borrow().contains(&node_id),
+                scroll.is_some_and(|handle| self.pinned_to_end(node_id, node, handle)),
+            )
+            .sized(Sizing::of_children(
+                width,
+                height,
+                whole,
+                fixed,
+                node.element(),
+            ));
         let plan = inner
             .plan(tree, node_id, node, scroll.is_some())
             .map(|(plan, measuring)| {
                 listeners.push(measuring);
                 plan
             });
+        if inner.caching().is_some()
+            && matches!(
+                node.element(),
+                NativeElement::Box { .. } | NativeElement::Overlay { .. }
+            )
+        {
+            let children = node.children();
+            let boundary = |child: NodeId| {
+                tree.node(child)
+                    .is_some_and(|child| caching::is_boundary(child.element()))
+            };
+            let slots: Vec<(usize, NodeId)> = match &plan {
+                Some(plan) => plan
+                    .slots
+                    .iter()
+                    .enumerate()
+                    .filter_map(|(index, slot)| match slot {
+                        Slot::Child(child) => Some((index, children[*child])),
+                        Slot::Run(_) => None,
+                    })
+                    .filter(|(_, child)| boundary(*child))
+                    .collect(),
+                None => children
+                    .iter()
+                    .copied()
+                    .enumerate()
+                    .filter(|(_, child)| boundary(*child))
+                    .collect(),
+            };
+            if !slots.is_empty() {
+                listeners.push(self.caching.measuring(node_id, slots, scroll.cloned()));
+            }
+        }
         if !self.nested_reveals.borrow().is_empty()
             && let Some(listener) = self.reveal_listener(tree, node_id, plan.as_ref(), cx)
         {
@@ -526,7 +612,10 @@ impl NativeView {
         }
         pointer.target(&mut base, node_id);
         let mut base = base.id(node_id.get());
-        style::element(base.style(), node.element(), node_id == tree.root_id());
+        style::element(base.style(), node.element(), root);
+        if fills {
+            caching::fill(base.style());
+        }
         let drop_scope = drop_scope.enter(node_id);
         if let Some(chain) = drop_scope.target() {
             base = drop_target(base, chain, &self.drops);
@@ -675,6 +764,21 @@ impl NativeView {
         }
         let children = node.children();
         let render = |child: NodeId, cx: &mut Context<Self>| {
+            if viewport.caching().is_some()
+                && tree
+                    .node(child)
+                    .is_some_and(|child| caching::is_boundary(child.element()))
+            {
+                return self.boundary(
+                    tree,
+                    node_id,
+                    child,
+                    drop_scope,
+                    modal.child(child),
+                    viewport,
+                    cx,
+                );
+            }
             self.render_node(
                 tree,
                 child,
@@ -766,6 +870,106 @@ impl NativeView {
         element.into_any_element()
     }
 
+    /// A child of `parent` rendered through its own view (`view/caching.rs`).
+    #[allow(clippy::too_many_arguments)]
+    fn boundary(
+        &self,
+        tree: &Tree,
+        parent: NodeId,
+        child: NodeId,
+        drop_scope: &DropScope,
+        modal: ModalScope,
+        viewport: Viewport,
+        cx: &mut Context<Self>,
+    ) -> AnyElement {
+        let holds = tree
+            .node(child)
+            .is_some_and(|node| viewport.sizing().holds(node.element()));
+        let frame = self
+            .caching
+            .current
+            .clone()
+            .expect("a caching frame is being drawn");
+        let scope = BoundaryScope {
+            frame,
+            drop_scope: drop_scope.clone(),
+            modal: modal.position(),
+            viewport: viewport.seed(),
+            fills: false,
+        };
+        self.caching.boundary(parent, child, holds, scope, cx)
+    }
+
+    /// A boundary's node, when GPUI lays the boundary out.
+    fn render_boundary(
+        &self,
+        node_id: NodeId,
+        scope: &BoundaryScope,
+        cx: &mut Context<Self>,
+    ) -> Option<AnyElement> {
+        let state = self.state.clone();
+        let state = state.borrow();
+        state.tree.node(node_id)?;
+        let cache = scope.frame.cache.as_ref()?;
+        if scope.fills {
+            cache.missed();
+        }
+        let route = &cache.route;
+        let element = self.render_element(
+            &state.tree,
+            node_id,
+            None,
+            &self.pointer,
+            &scope.drop_scope,
+            ModalScope::resume(route, scope.modal),
+            Viewport::resume(&scope.frame, scope.viewport, &self.scrolls),
+            scope.fills,
+            cx,
+        );
+        Some(if scope.fills {
+            caching::Offset(element).into_any_element()
+        } else {
+            element
+        })
+    }
+
+    /// Something outside the tree changed what the window renders: render
+    /// every cached view again.
+    fn invalidate(&mut self, cx: &mut Context<Self>) {
+        self.caching.invalidate();
+        cx.notify();
+    }
+
+    /// Ends the frame drawn last, after its paint: everything rendered for
+    /// it, including the boundaries GPUI laid out after `render`, has run.
+    fn end_frame(&mut self) {
+        let Some(frame) = self.caching.current.take() else {
+            return;
+        };
+        let state = self.state.clone();
+        let state = state.borrow();
+        let reused: BTreeSet<NodeId> = frame
+            .cache
+            .as_ref()
+            .map(|cache| cache.cached.borrow().iter().copied().collect())
+            .unwrap_or_default();
+        // Inside a boundary GPUI replayed: its state is still in use.
+        let inside = |node: NodeId| {
+            !reused.is_empty()
+                && std::iter::successors(Some(node), |id| state.tree.parent(*id))
+                    .any(|id| reused.contains(&id))
+        };
+        self.culling.finish(&frame, inside);
+        // Keep the stops this frame rendered; the next frame marks its own.
+        self.run_stops
+            .borrow_mut()
+            .retain(|_, stop| std::mem::take(&mut stop.rendered) || inside(stop.first));
+        // Requests issued before this frame resolved in its prepaint.
+        self.held_scrolls.borrow_mut().clear();
+        self.revealing.borrow_mut().clear();
+        self.nested_reveals.borrow_mut().clear();
+    }
+
     /// A viewport already showing its end stays there as content or the
     /// viewport changes; a user scroll away from the end releases it.
     fn pinned_to_end(&self, node_id: NodeId, node: &Node, handle: &ScrollHandle) -> bool {
@@ -796,6 +1000,8 @@ impl Render for NativeView {
             self.drops.drag_ended(self.window_id, cx);
         }
         self.finish_divider_drags(cx);
+        // A frame whose paint never ran.
+        self.end_frame();
         let drop_scope = DropScope::new(self.drops.targets(self.window_id));
         let state = self.state.borrow();
         let layout = self.evidence.layout_tracing().then(|| {
@@ -824,47 +1030,60 @@ impl Render for NativeView {
                 frame
             }
         });
-        let pointer = PointerFrame::default();
+        // Every frame starts without a pointer candidate, as a new frame's
+        // listeners did before the candidate outlived frames.
+        self.pointer.reset();
+        let pointer = self.pointer.clone();
         let pressed = self.pressed.clone();
         let modal_route = self.modal_route(&state.tree);
         // Layout evidence records every rendered node's bounds.
         let cull = layout.as_ref().is_none_or(|layout| !layout.captures())
             && state.tree.nodes().len() > culling::MIN_CULLED_CHILDREN;
         let focused = self.focused_control(window, cx);
-        let frame = self.culling.frame(
+        let accessible = window.is_a11y_active();
+        let revealing = !self.revealing.borrow().is_empty()
+            || !self.held_scrolls.borrow().is_empty()
+            || !self.nested_reveals.borrow().is_empty();
+        let cache = self.caching.frame(
             &state.tree,
-            cull,
-            window.is_a11y_active(),
+            !accessible && layout.as_ref().is_none_or(|layout| !layout.captures()),
+            self.viewport,
             window.scale_factor(),
-            focused
-                .into_iter()
-                .chain(self.inputs.keys().copied())
-                .chain(self.index.splits.iter().copied())
-                .chain(self.index.overlays.iter().copied())
-                .chain(drop_scope.nodes()),
-            cx.weak_entity(),
+            &modal_route,
+            drop_scope.targets(),
+            self.popups.active(),
+            self.overlays.exposure(),
+            revealing,
         );
+        let frame = Rc::new(
+            self.culling.frame(
+                &state.tree,
+                cull,
+                accessible,
+                window.scale_factor(),
+                focused
+                    .into_iter()
+                    .chain(self.inputs.keys().copied())
+                    .chain(self.index.splits.iter().copied())
+                    .chain(self.index.overlays.iter().copied())
+                    .chain(drop_scope.nodes()),
+                cx.weak_entity(),
+                cache,
+            ),
+        );
+        self.caching.current = Some(frame.clone());
         let body = self.render_node(
             &state.tree,
             state.tree.root_id(),
             layout.as_ref(),
-            &pointer,
+            &self.pointer,
             &drop_scope,
             ModalScope::of(&state.tree, &modal_route, state.tree.root_id()),
             Viewport::of(&frame),
             cx,
         );
-        let culled = self.culling.finish(frame);
-        // Requests issued before this frame resolve in its prepaint.
-        self.held_scrolls.borrow_mut().clear();
-        self.revealing.borrow_mut().clear();
-        self.nested_reveals.borrow_mut().clear();
-        // Keep the stops the last frame rendered; this frame marks its own.
-        self.run_stops
-            .borrow_mut()
-            .retain(|_, stop| std::mem::take(&mut stop.rendered));
         let phase_frame = phase_started.and_then(|started| {
-            crate::phases::render(self.window_id, started, state.tree.nodes().count(), culled)
+            crate::phases::render(self.window_id, started, state.tree.nodes().count())
         });
         let view = cx.weak_entity();
         let evidence = self.evidence.clone();
@@ -933,9 +1152,10 @@ impl Render for NativeView {
                         // Registered after native children: capture has already
                         // selected the deepest GPUI hit before default actions.
                         pointer.observe(window, &view, point(px(0.), px(0.)), &pressed);
-                        if let Some(frame) = phase_frame {
-                            crate::phases::painted(frame);
+                        if let Some(phase_frame) = phase_frame {
+                            crate::phases::painted(phase_frame, frame.culled(), frame.reused());
                         }
+                        let _ = view.update(cx, |view, _| view.end_frame());
                         #[cfg(target_os = "macos")]
                         frame_keeper.painted(window_id, &evidence, window);
                         let state = paint_state.borrow();
@@ -989,6 +1209,7 @@ impl NativeView {
 
 /// The registered drop targets and, while rendering, the chain of target
 /// ancestors above the current node, innermost first.
+#[derive(Clone)]
 struct DropScope {
     targets: Rc<BTreeMap<NodeId, DropTargetId>>,
     chain: Rc<[DropTargetId]>,
@@ -1021,6 +1242,10 @@ impl DropScope {
         }
     }
 
+    fn targets(&self) -> &BTreeMap<NodeId, DropTargetId> {
+        &self.targets
+    }
+
     /// The nodes registered as drop targets.
     fn nodes(&self) -> impl Iterator<Item = NodeId> + '_ {
         self.targets.keys().copied()
@@ -1051,6 +1276,7 @@ fn drop_target(
 }
 
 mod accessibility;
+mod caching;
 mod culling;
 #[cfg(target_os = "macos")]
 mod frame_keeper;
@@ -1064,6 +1290,7 @@ mod popups;
 mod split;
 
 use accessibility::{ModalScope, Semantics, Stub, StubActions};
+use caching::{BoundaryScope, Caching, Sizing};
 use culling::{Culling, Plan, Slot, Viewport};
 use index::NodeIndex;
 use interactions::{PointerFrame, PressedButtons};
