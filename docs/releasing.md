@@ -155,8 +155,9 @@ release tag, produces the verified [local package set](standalone-projects.md)
 with [`scripts/package-native.ts`](../scripts/package-native.ts), and turns it into
 public packages with [`scripts/registry-packages.ts`](../scripts/registry-packages.ts).
 That script changes only `package.json` (no `private`, the release version, the
-same version for every `@bun-native` dependency, repository metadata and
-`publishConfig`) and the README. It then publishes dependencies before
+same version for every `@bun-native` dependency, React, its types and Solid as
+exact peer dependencies so an application loads one copy, repository metadata
+and `publishConfig`) and the README. It then publishes dependencies before
 dependents and skips any version already on npm, so a re-run after a partial
 publish completes the set.
 

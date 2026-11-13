@@ -5,6 +5,7 @@ import { packageNames, type PackageManifest } from '../../scripts/native/package
 import {
   main,
   publishOrder,
+  frameworkPeers,
   registryManifest,
   repositoryUrl,
 } from '../../scripts/registry-packages.ts'
@@ -28,7 +29,9 @@ test('registry manifests are public, versioned together and carry provenance met
   )
   expect('private' in published).toBe(false)
   expect(published.version).toBe('0.33.0')
-  expect(published.dependencies).toEqual({ '@bun-native/core': '0.33.0', 'solid-js': '1.9.9' })
+  expect(published.dependencies).toEqual({ '@bun-native/core': '0.33.0' })
+  // One Solid per application: the adapter names it as an exact peer.
+  expect(published.peerDependencies).toEqual({ 'solid-js': '1.9.9' })
   expect(published.repository).toEqual({
     type: 'git',
     url: repositoryUrl,
@@ -79,6 +82,8 @@ test('a verified package set becomes publishable package directories in dependen
       expect(published.name).toBe(`@bun-native/${short}`)
       expect(published.version).toBe(version)
       expect(published.private).toBeUndefined()
+      for (const name of Object.keys(published.dependencies ?? {}))
+        expect(frameworkPeers.has(name)).toBe(false)
       for (const [name, range] of Object.entries(published.dependencies ?? {}))
         if (name.startsWith('@bun-native/')) {
           expect(range).toBe(version)
@@ -86,6 +91,8 @@ test('a verified package set becomes publishable package directories in dependen
         }
       expect(readFileSync(join(output, short, 'README.md'), 'utf8')).toContain('npm provenance')
     }
+    const react = JSON.parse(readFileSync(join(output, 'react', 'package.json'), 'utf8'))
+    expect(Object.keys(react.peerDependencies ?? {})).toContain('react')
     await expect(main(['--package-set', manifest, '--outdir', output])).rejects.toThrow()
   })
 })

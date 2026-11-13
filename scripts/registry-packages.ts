@@ -19,8 +19,18 @@ export type RegistryManifest = Omit<PackageManifest, 'private'> & {
   repository: { type: 'git'; url: string; directory: string }
   homepage: string
   bugs: string
+  peerDependencies?: Record<string, string>
   publishConfig: { access: 'public'; provenance: true }
 }
+
+/**
+ * Frameworks an application must load exactly once. As regular dependencies an
+ * application on another patch release gets a second React or Solid copy (React
+ * then rejects hooks, Solid splits reactive ownership), so the adapters publish
+ * them as exact peers: npm and Bun install a missing peer, and a mismatch is a
+ * resolution error instead of a silent duplicate.
+ */
+export const frameworkPeers = new Set(['react', '@types/react', 'solid-js'])
 
 const descriptions: Record<string, string> = {
   '@bun-native/cli': 'Create, check, run and AOT-build Bun Native desktop applications.',
@@ -39,14 +49,17 @@ export function registryManifest(manifest: PackageManifest, version: string): Re
   if (!description) throw new Error(`Not a Bun Native registry package: ${manifest.name}`)
   const { private: _private, dependencies, ...rest } = manifest
   const pinned: Record<string, string> = {}
+  const peers: Record<string, string> = {}
   for (const [name, range] of Object.entries(dependencies ?? {}))
-    pinned[name] = name.startsWith('@bun-native/') ? version : range
+    if (frameworkPeers.has(name)) peers[name] = range
+    else pinned[name] = name.startsWith('@bun-native/') ? version : range
   const short = manifest.name.slice('@bun-native/'.length)
   return {
     ...rest,
     version,
     description,
     ...(Object.keys(pinned).length ? { dependencies: pinned } : {}),
+    ...(Object.keys(peers).length ? { peerDependencies: peers } : {}),
     repository: {
       type: 'git',
       url: repositoryUrl,

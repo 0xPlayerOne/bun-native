@@ -36,25 +36,32 @@ concurrency:
 
 jobs:
   native:
-    name: GPUI release and native paint (${{ matrix.os }}, shard ${{ matrix.shard }}/2)
+    name: GPUI release and native paint (${{ matrix.os }}, shard ${{ matrix.shard }}/${{ matrix.shards }})
     if: vars.CI_BILLING_PAUSED == 'false' && (github.event_name != 'pull_request' || github.event.pull_request.draft == false)
     runs-on: ${{ matrix.os }}
     timeout-minutes: 60
-    # Each OS was one serial ~9 min job. Both shards build the same release
+    # Each OS was one serial ~9 min job. Every shard builds the same release
     # host; shard 1 runs host Clippy/unit tests and the workspace references,
-    # shard 2 the smoke, service, input, display and drag scenarios. A step
-    # without `if: matrix.shard == N` runs in both shards.
+    # shard 2 the smoke, service, input, display and drag scenarios, and macOS
+    # shard 3 only the 8 min of workspace long sessions, which had made macOS
+    # shard 1 the longest job of the run. A step without `if: matrix.shard == N`
+    # runs in every shard unless it excludes shard 3.
     strategy:
       fail-fast: false
       matrix:
         os: [macos-15, windows-2022]
-        shard: [1, 2]
+        shard: [1, 2, 3]
+        exclude:
+          - os: windows-2022
+            shard: 3
         include:
           - os: macos-15
+            shards: 3
             python: python3
             binary: bun-native-host
             application: platform-smoke
           - os: windows-2022
+            shards: 2
             python: python
             binary: bun-native-host.exe
             application: platform-smoke.exe
@@ -545,7 +552,7 @@ jobs:
           bun tests/native/context-menus.ts 2>&1 | Tee-Object -FilePath (Join-Path $evidence 'run.log')
           if ($LASTEXITCODE -ne 0) { throw 'Windows OS context menus were not verified' }
       - name: macOS OS message dialogs through NSAlert sheets (#239)
-        if: ${{ runner.os == 'macOS' && !cancelled() && steps.native-build.outcome == 'success' }}
+        if: ${{ matrix.shard != 3 && runner.os == 'macOS' && !cancelled() && steps.native-build.outcome == 'success' }}
         timeout-minutes: 6
         run: |
           $oracle = Join-Path $env:NATIVE_EVIDENCE 'macos-alert-oracle'
@@ -561,7 +568,7 @@ jobs:
           bun tests/native/task-dialogs.ts 2>&1 | Tee-Object -FilePath (Join-Path $evidence 'run.log')
           if ($LASTEXITCODE -ne 0) { throw 'macOS OS message dialogs were not verified' }
       - name: macOS OS context menus through NSMenu pop-ups (#239)
-        if: ${{ runner.os == 'macOS' && !cancelled() && steps.native-build.outcome == 'success' }}
+        if: ${{ matrix.shard != 3 && runner.os == 'macOS' && !cancelled() && steps.native-build.outcome == 'success' }}
         timeout-minutes: 6
         run: |
           $oracle = Join-Path $env:NATIVE_EVIDENCE 'macos-context-menu-oracle'
@@ -1394,7 +1401,7 @@ jobs:
       # from the gating steps' own reports and bound to this checkout, its AOT
       # packages and the release host. Missing or failed evidence fails here.
       - name: Record source-bound macOS feature evidence
-        if: ${{ runner.os == 'macOS' && !cancelled() && steps.native-build.outcome == 'success' }}
+        if: ${{ matrix.shard != 3 && runner.os == 'macOS' && !cancelled() && steps.native-build.outcome == 'success' }}
         timeout-minutes: 3
         run: |
           bun scripts/quality/macos-feature-evidence.ts --evidence $env:NATIVE_EVIDENCE --shard ${{ matrix.shard }} `
@@ -1458,7 +1465,7 @@ jobs:
             Write-Output "modifier flags after the restore: $(& $flags)"
           }
       - name: Development and AOT macOS Solid and React workspace long sessions (#248, #250)
-        if: ${{ matrix.shard == 1 && (runner.os == 'macOS' && !cancelled() && steps.native-build.outcome == 'success') }}
+        if: ${{ matrix.shard == 3 && (runner.os == 'macOS' && !cancelled() && steps.native-build.outcome == 'success') }}
         timeout-minutes: 13
         run: |
           # A bounded long session of each workspace soak fixture on the same

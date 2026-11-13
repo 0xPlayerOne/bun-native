@@ -206,8 +206,10 @@ test('the macOS feature steps gate on shard 2 and feed one record step', () => {
     if (at !== record) expect(record).toBeGreaterThan(at)
   }
   for (const at of features.slice(0, 4)) expect(steps[at]!.if).toContain('matrix.shard == 2')
-  // The record runs on both macOS shards and checks the shard's own features.
-  expect(steps[record]!.if ?? '').not.toContain('matrix.shard')
+  // The record runs on macOS shards 1 and 2 and checks the shard's own
+  // features; shard 3 holds only the workspace long sessions.
+  expect(steps[record]!.if).toContain('matrix.shard != 3')
+  expect(steps[record]!.if).not.toContain('matrix.shard ==')
   expect(steps[record]!.run).toContain('--shard ${{ matrix.shard }}')
   expect(steps[record]!.if).toContain("runner.os == 'macOS'")
   expect(steps[record]!.run).toContain('scripts/quality/macos-feature-evidence.ts')
