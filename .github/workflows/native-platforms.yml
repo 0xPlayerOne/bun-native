@@ -154,6 +154,14 @@ jobs:
           # Only pull requests fall back to an older key; main rebuilds cold
           # after a lockfile or toolchain change, so stale outputs never pile up.
           restore-keys: ${{ github.event_name == 'pull_request' && format('native-release-target-{0}-{1}-', runner.os, runner.arch) || '' }}
+      - name: Keep exact-hit vendored crates fresh
+        # Cargo judges path dependencies by mtime, and a fresh checkout makes
+        # every native/vendor file newer than the restored outputs, so the
+        # vendored crates and their dependents rebuilt on every exact hit.
+        # Only an exact key hit (same native/vendor hash) may backdate them.
+        if: ${{ steps.target-cache.outputs.cache-hit == 'true' }}
+        shell: bash
+        run: git ls-files -z native/vendor | xargs -0 touch -d '2000-01-01T00:00:00Z'
       - name: Check portable paint guards on the actual target Python
         run: |
           & '${{ matrix.python }}' -m unittest discover -s tests/quality -p 'test_native_platform*.py' -v
@@ -227,6 +235,29 @@ jobs:
               Copy-Item $_.FullName $target
             }
           if ($code -ne 0) { throw 'A generated template did not create, check or build through inspected AOT' }
+      - name: Verify native macOS layer invalidation and assigned Metal identity
+        # Shard 1 saves the target cache, so the objc2 crates this builds stay
+        # cached there instead of rebuilding on shard 2 every run.
+        if: ${{ matrix.shard == 1 && (runner.os == 'macOS') }}
+        timeout-minutes: 3
+        run: |
+          cargo clippy --locked --release -p bun-native-macos-surface --all-targets -- -D warnings
+          if ($LASTEXITCODE -ne 0) { throw 'Native surface Clippy failed' }
+          cargo test --locked --release -p bun-native-macos-surface
+          if ($LASTEXITCODE -ne 0) { throw 'Native surface ownership tests failed' }
+          cargo build --locked --release -p bun-native-macos-surface --example invalidation-control
+          if ($LASTEXITCODE -ne 0) { throw 'Actual Core Animation control did not compile' }
+          & target/release/examples/invalidation-control 2>&1 |
+            Tee-Object -FilePath (Join-Path $env:NATIVE_EVIDENCE 'layer-invalidation-control.log')
+          if ($LASTEXITCODE -ne 0) { throw 'Actual layer invalidation controls failed' }
+          & target/release/examples/invalidation-control --omit-invalidation 2>&1 |
+            Tee-Object -FilePath (Join-Path $env:NATIVE_EVIDENCE 'layer-invalidation-negative.log')
+          $code = $LASTEXITCODE
+          $negative = Get-Content -Raw (Join-Path $env:NATIVE_EVIDENCE 'layer-invalidation-negative.log')
+          if ($code -eq 0 -or $negative -notmatch 'committed surface did not become dirty') {
+            throw 'Omitting invalidation did not fail at the intended native dirty-state assertion'
+          }
+          $global:LASTEXITCODE = 0
       - name: Save release dependency build outputs from protected main
         if: ${{ matrix.shard == 1 && (success() && github.event_name == 'push' && github.ref == 'refs/heads/main' && steps.target-cache.outputs.cache-hit != 'true') }}
         uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
@@ -348,27 +379,6 @@ jobs:
           } else {
             & ./scripts/signing/windows-identity.ps1 -Mode cleanup -Work $work
           }
-      - name: Verify native macOS layer invalidation and assigned Metal identity
-        if: ${{ matrix.shard == 2 && (runner.os == 'macOS') }}
-        timeout-minutes: 3
-        run: |
-          cargo clippy --locked --release -p bun-native-macos-surface --all-targets -- -D warnings
-          if ($LASTEXITCODE -ne 0) { throw 'Native surface Clippy failed' }
-          cargo test --locked --release -p bun-native-macos-surface
-          if ($LASTEXITCODE -ne 0) { throw 'Native surface ownership tests failed' }
-          cargo build --locked --release -p bun-native-macos-surface --example invalidation-control
-          if ($LASTEXITCODE -ne 0) { throw 'Actual Core Animation control did not compile' }
-          & target/release/examples/invalidation-control 2>&1 |
-            Tee-Object -FilePath (Join-Path $env:NATIVE_EVIDENCE 'layer-invalidation-control.log')
-          if ($LASTEXITCODE -ne 0) { throw 'Actual layer invalidation controls failed' }
-          & target/release/examples/invalidation-control --omit-invalidation 2>&1 |
-            Tee-Object -FilePath (Join-Path $env:NATIVE_EVIDENCE 'layer-invalidation-negative.log')
-          $code = $LASTEXITCODE
-          $negative = Get-Content -Raw (Join-Path $env:NATIVE_EVIDENCE 'layer-invalidation-negative.log')
-          if ($code -eq 0 -or $negative -notmatch 'committed surface did not become dirty') {
-            throw 'Omitting invalidation did not fail at the intended native dirty-state assertion'
-          }
-          $global:LASTEXITCODE = 0
       - name: Development actual native paint and lifecycle
         if: matrix.shard == 2
         timeout-minutes: 3
@@ -945,10 +955,12 @@ jobs:
       # passed on hosted macOS after the focus routing fix (runs 43087027363 and
       # 43093920340). Windows stays experimental until it passes there (#629);
       # its failure is reported in the step outcome without failing the job.
+      # It failed on every main run through 43337990623 and cost about 200 s
+      # of the Windows shard, so pull requests skip it and main keeps it.
       # Neither replaces or relaxes the AX/UI Automation step above.
       - name: macOS VoiceOver and experimental Windows NVDA speech in development and AOT (#241)
         id: screen-reader
-        if: ${{ matrix.shard == 2 && (!cancelled() && steps.native-build.outcome == 'success') }}
+        if: ${{ matrix.shard == 2 && (runner.os == 'macOS' || github.event_name != 'pull_request') && (!cancelled() && steps.native-build.outcome == 'success') }}
         continue-on-error: ${{ runner.os == 'Windows' }}
         timeout-minutes: 15
         run: |
@@ -1026,7 +1038,7 @@ jobs:
           }
       - name: macOS and experimental Windows Korean input method composition in development and AOT (#241)
         id: ime-platform
-        if: ${{ matrix.shard == 2 && (!cancelled() && steps.native-build.outcome == 'success') }}
+        if: ${{ matrix.shard == 2 && (runner.os == 'macOS' || github.event_name != 'pull_request') && (!cancelled() && steps.native-build.outcome == 'success') }}
         continue-on-error: ${{ runner.os == 'Windows' }}
         timeout-minutes: 15
         run: |
@@ -1082,7 +1094,7 @@ jobs:
             }
           }
       - name: Report experimental Windows screen-reader and IME outcomes (#241)
-        if: ${{ matrix.shard == 2 && runner.os == 'Windows' && !cancelled() && steps.native-build.outcome == 'success' }}
+        if: ${{ matrix.shard == 2 && runner.os == 'Windows' && github.event_name != 'pull_request' && !cancelled() && steps.native-build.outcome == 'success' }}
         run: |
           foreach ($pair in @(@('screen reader', '${{ steps.screen-reader.outcome }}'), @('IME', '${{ steps.ime-platform.outcome }}'))) {
             if ($pair[1] -ne 'success') {
