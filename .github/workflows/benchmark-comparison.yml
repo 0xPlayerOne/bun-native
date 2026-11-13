@@ -100,8 +100,7 @@ jobs:
         run: |
           extra=()
           if [[ "$COLD_CACHE" == 'true' ]]; then extra+=(--cold-cache); fi
-          xvfb-run --auto-servernum --server-args='-screen 0 1280x800x24 -nolisten tcp' \
-            dbus-run-session -- bash scripts/quality/native-linux-session.sh \
+          bash scripts/quality/native-x11-session.sh \
             "$COMPARISON/session" -- bun benchmarks/comparison/run.ts \
             --host "$GITHUB_WORKSPACE/target/release/bun-native-host" --host-profile release \
             --output "$COMPARISON/run" --trials "$TRIALS" --input-trials "$INPUT_TRIALS" \
@@ -111,8 +110,7 @@ jobs:
       - name: Run the direct Rust GPUI baseline in one isolated native session
         timeout-minutes: 10
         run: |
-          xvfb-run --auto-servernum --server-args='-screen 0 1280x800x24 -nolisten tcp' \
-            dbus-run-session -- bash scripts/quality/native-linux-session.sh \
+          bash scripts/quality/native-x11-session.sh \
             "$COMPARISON/rust-session" -- bun benchmarks/rust-gpui/run.ts \
             --binary "$GITHUB_WORKSPACE/target/release/examples/workload-baseline" \
             --output "$COMPARISON/rust-gpui" --trials "$TRIALS"
@@ -150,8 +148,7 @@ jobs:
                   command=("$package/$entry")
                 fi
                 evidence="$COMPARISON/streaming/$framework-$mode-$trial"
-                xvfb-run --auto-servernum --server-args='-screen 0 1280x800x24 -nolisten tcp' \
-                  dbus-run-session -- bash scripts/quality/native-linux-session.sh \
+                bash scripts/quality/native-x11-session.sh \
                   "$evidence-session" -- python3 tests/native/streaming-list.py \
                   --framework "$framework" --mode "$mode" --host-profile release \
                   --output "$evidence" -- "${command[@]}"

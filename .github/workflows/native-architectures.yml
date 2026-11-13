@@ -87,8 +87,7 @@ jobs:
         env:
           BUN_NATIVE_HOST: ${{ github.workspace }}/target/release/bun-native-host
         run: |
-          xvfb-run --auto-servernum --server-args='-screen 0 1280x800x24 -nolisten tcp' \
-            dbus-run-session -- bash scripts/quality/native-linux-session.sh \
+          bash scripts/quality/native-x11-session.sh \
             "$NATIVE_EVIDENCE/development" development bun examples/native-window/main.ts
       - name: Compile and inspect the actual AOT entry
         run: |
@@ -100,8 +99,7 @@ jobs:
         env:
           BUN_NATIVE_HOST: ${{ runner.temp }}/native-evidence/package/bun-native-host
         run: |
-          xvfb-run --auto-servernum --server-args='-screen 0 1280x800x24 -nolisten tcp' \
-            dbus-run-session -- bash scripts/quality/native-linux-session.sh \
+          bash scripts/quality/native-x11-session.sh \
             "$NATIVE_EVIDENCE/aot" aot "$NATIVE_EVIDENCE/package/native-window"
       - name: Generated Solid and React templates through create, check and inspected AOT build
         run: |
