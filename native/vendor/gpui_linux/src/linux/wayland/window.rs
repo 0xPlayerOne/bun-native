@@ -143,6 +143,7 @@ pub struct WaylandWindowState {
     client_inset: Option<Pixels>,
     client_corner_radii: Corners<Pixels>,
     accesskit_adapter: Option<accesskit_unix::Adapter>,
+    accesskit_delta: crate::linux::accesskit_delta::Delta,
 }
 
 pub enum WaylandSurfaceState {
@@ -645,6 +646,7 @@ impl WaylandWindowState {
             client_inset: None,
             client_corner_radii: Corners::default(),
             accesskit_adapter: None,
+            accesskit_delta: Default::default(),
         })
     }
 
@@ -2262,16 +2264,26 @@ impl PlatformWindow for WaylandWindow {
             callback: callbacks.deactivation,
         };
 
+        let mut state = self.borrow_mut();
+        let activation_handler = crate::linux::accesskit_delta::StaleOnActivation {
+            handler: activation_handler,
+            stale: state.accesskit_delta.stale_flag(),
+        };
         let adapter =
             accesskit_unix::Adapter::new(activation_handler, action_handler, deactivation_handler);
 
-        self.borrow_mut().accesskit_adapter = Some(adapter);
+        state.accesskit_adapter = Some(adapter);
     }
 
     fn a11y_tree_update(&self, tree_update: accesskit::TreeUpdate) {
         let mut state = self.borrow_mut();
+        let state = &mut *state;
         if let Some(adapter) = state.accesskit_adapter.as_mut() {
-            adapter.update_if_active(|| tree_update);
+            let changes = state.accesskit_delta.update(tree_update);
+            if state.accesskit_delta.needed(&changes) {
+                let delta = &state.accesskit_delta;
+                adapter.update_if_active(|| delta.send(changes));
+            }
         }
     }
 

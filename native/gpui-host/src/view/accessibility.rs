@@ -199,3 +199,12 @@ impl NativeView {
         }
     }
 }
+
+/// The vendored `gpui_linux`'s incremental AccessKit updates, compiled here
+/// so the host's tests check them against AccessKit's own consumer.
+#[cfg(all(test, target_os = "linux"))]
+#[path = "../../../vendor/gpui_linux/src/linux/accesskit_delta.rs"]
+mod delta;
+
+#[cfg(all(test, target_os = "linux"))]
+mod delta_tests;

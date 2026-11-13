@@ -586,6 +586,7 @@ name = "bun-native-host"
 version = "0.0.0"
 dependencies = [
  "accesskit",
+ "accesskit_consumer",
  "ahash",
  "async-channel",
  "base64",
