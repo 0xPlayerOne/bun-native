@@ -171,7 +171,7 @@ jobs:
           bash scripts/quality/native-linux-dev-aot.sh --entry clipboard \
             --dev 'bun tests/native/clipboard.ts' --evidence 'diagnostics-{mode}-clipboard' \
             -- python3 scripts/quality/native-diagnostics-linux.py --output '{evidence}' \
-            --scenario clipboard --mode '{mode}' --host-profile release -- {app}
+            --scenario clipboard --mode '{mode}' --host-profile release -- '{app}'
       - name: Development and AOT X11 global shortcuts
         if: matrix.shard == 2
         timeout-minutes: 3
@@ -198,7 +198,7 @@ jobs:
                 --dev 'bun tests/native/text-input.ts' --evidence "text-input-{mode}-scale-$scale" \
                 --run-log --require result.json --screen 1280x1024x24 \
                 --env 'BUN_NATIVE_TEXT_EVIDENCE={evidence}' --env 'BUN_NATIVE_TEXT_MODE={mode}' \
-                -- env "GPUI_X11_SCALE_FACTOR=$scale" LC_CTYPE=C.UTF-8 {app}
+                -- env "GPUI_X11_SCALE_FACTOR=$scale" LC_CTYPE=C.UTF-8 '{app}'
             done
           done
       - name: Development and AOT X11 input method composition, caret position and Hanja candidates through IBus Hangul
@@ -212,7 +212,7 @@ jobs:
           bash scripts/quality/native-linux-dev-aot.sh --entry ime --dev 'bun tests/native/ime.ts' \
             --evidence 'ime-{mode}' --run-log --require result.json --screen 1280x1024x24 \
             --env 'BUN_NATIVE_TEXT_EVIDENCE={evidence}' --env 'BUN_NATIVE_TEXT_MODE={mode}' \
-            -- env LC_CTYPE=C.UTF-8 {app}
+            -- env LC_CTYPE=C.UTF-8 '{app}'
       - name: Development and AOT X11 accessibility roles and keyboard split divider (AT-SPI) at scale 1 and 2
         if: matrix.shard == 2
         timeout-minutes: 5
@@ -234,7 +234,7 @@ jobs:
               --dev 'bun tests/native/accessibility.ts' --evidence "accessibility-{mode}$suffix" \
               --run-log --require result.json --screen "${screen}x24" \
               --env 'BUN_NATIVE_A11Y_EVIDENCE={evidence}' --env 'BUN_NATIVE_A11Y_MODE={mode}' \
-              -- env "GPUI_X11_SCALE_FACTOR=$scale" {app}
+              -- env "GPUI_X11_SCALE_FACTOR=$scale" '{app}'
           done
       - name: Development and AOT Orca screen-reader speech through speech-dispatcher on X11 and Wayland (#241)
         if: matrix.shard == 2
@@ -462,7 +462,7 @@ jobs:
               bash scripts/quality/native-linux-dev-aot.sh --modes "$mode" --entry "$entry" \
                 --evidence "solid-{mode}-$scenario" \
                 -- python3 tests/native/solid-window.py \
-                --scenario "$scenario" --mode '{mode}' --output '{evidence}' -- {app}
+                --scenario "$scenario" --mode '{mode}' --output '{evidence}' -- '{app}'
             done
           done
       - name: Development and AOT React keyed counter, input and cleanup
@@ -476,7 +476,7 @@ jobs:
               bash scripts/quality/native-linux-dev-aot.sh --modes "$mode" --entry react \
                 --evidence "react-{mode}-$scenario" \
                 -- python3 tests/native/react-window.py \
-                --scenario "$scenario" --mode '{mode}' --output '{evidence}' -- {app}
+                --scenario "$scenario" --mode '{mode}' --output '{evidence}' -- '{app}'
             done
           done
       - name: Development and AOT React native event phases, caret and selection
@@ -490,7 +490,7 @@ jobs:
               bash scripts/quality/native-linux-dev-aot.sh --modes "$mode" --entry react-interactions \
                 --evidence "react-{mode}-interactions-$scenario" \
                 -- python3 tests/native/renderer-interactions.py \
-                --renderer React --scenario "$scenario" --mode '{mode}' --output '{evidence}' -- {app}
+                --renderer React --scenario "$scenario" --mode '{mode}' --output '{evidence}' -- '{app}'
             done
           done
       - name: Development and AOT React hooks, boundaries and cleanup failures
@@ -504,7 +504,7 @@ jobs:
               bash scripts/quality/native-linux-dev-aot.sh --modes "$mode" --entry react-behavior \
                 --evidence "react-{mode}-behavior-$scenario" \
                 -- python3 tests/native/react-behavior.py \
-                --scenario "$scenario" --mode '{mode}' --output '{evidence}' -- {app}
+                --scenario "$scenario" --mode '{mode}' --output '{evidence}' -- '{app}'
             done
           done
       - name: Development and AOT React workspace task flow, scrolling and cleanup
@@ -516,7 +516,7 @@ jobs:
           bash scripts/quality/native-linux-dev-aot.sh --entry react-workspace-flow \
             --evidence 'diagnostics-{mode}-react-workspace' \
             -- python3 scripts/quality/native-diagnostics-linux.py --scenario react-workspace \
-            --mode '{mode}' --host-profile release --output '{evidence}' -- {app}
+            --mode '{mode}' --host-profile release --output '{evidence}' -- '{app}'
       - name: Development and AOT workspace terminal pane OS input, PTY round trip and paint through Solid and React
         if: matrix.shard == 1
         timeout-minutes: 3
@@ -536,7 +536,7 @@ jobs:
               --env 'BUN_NATIVE_TERMINAL_MODE={mode}' \
               --env 'BUN_NATIVE_EVIDENCE_LOG={evidence}/host-evidence.jsonl' \
               --env 'BUN_NATIVE_EVIDENCE_NONCE={nonce}' \
-              -- env GPUI_X11_SCALE_FACTOR=1 {app}
+              -- env GPUI_X11_SCALE_FACTOR=1 '{app}'
           done
       - name: Development and AOT React update and lifecycle diagnostics
         if: matrix.shard == 2
@@ -628,7 +628,7 @@ jobs:
                 --dev "bun tests/native/$fixture.ts" --evidence "diagnostics-{mode}-$scenario" \
                 -- python3 scripts/quality/native-diagnostics-linux.py \
                 --output '{evidence}' --scenario "$scenario" --mode '{mode}' \
-                --host-profile release -- {app}
+                --host-profile release -- '{app}'
             done
           done
       - name: Development release-host boundary rejection, online and in an empty network namespace
@@ -689,7 +689,7 @@ jobs:
             --dev 'bun tests/native/public-lifecycle.ts' --evidence 'allocations-{mode}' \
             -- python3 scripts/quality/native-allocation-linux.py \
             --output '{evidence}' --host "$GITHUB_WORKSPACE/target/release/bun-native-host" \
-            --host-profile release --mode '{mode}' -- {app}
+            --host-profile release --mode '{mode}' -- '{app}'
       - name: AOT bridge acknowledgement measurements
         if: matrix.shard == 1
         timeout-minutes: 4
@@ -724,7 +724,7 @@ jobs:
           bash scripts/quality/native-linux-dev-aot.sh --entry solid-workspace-flow \
             --evidence 'diagnostics-{mode}-solid-workspace' \
             -- python3 scripts/quality/native-diagnostics-linux.py --scenario solid-workspace \
-            --mode '{mode}' --host-profile release --output '{evidence}' -- {app}
+            --mode '{mode}' --host-profile release --output '{evidence}' -- '{app}'
       - name: Solid workspace long-session ownership in development and AOT
         if: ${{ matrix.shard == 1 && (!cancelled() && steps.native-build.outcome == 'success') }}
         timeout-minutes: 6
@@ -939,7 +939,7 @@ jobs:
             bash scripts/quality/native-linux-dev-aot.sh --entry "$entry" \
               --evidence "diagnostics-{mode}-$entry" \
               -- python3 scripts/quality/native-diagnostics-linux.py --scenario "$entry" \
-              --mode '{mode}' --host-profile release --output '{evidence}' -- {app}
+              --mode '{mode}' --host-profile release --output '{evidence}' -- '{app}'
           done
       - name: Development and AOT streaming-list soak through Solid and React
         if: ${{ matrix.shard == 1 && (!cancelled() && steps.native-build.outcome == 'success') }}
@@ -959,7 +959,7 @@ jobs:
                 --evidence "streaming-list-$framework-{mode}" \
                 -- python3 tests/native/streaming-list.py \
                 --framework "$framework" --mode '{mode}' --host-profile release \
-                --output '{evidence}' -- {app}
+                --output '{evidence}' -- '{app}'
               reports+=("$NATIVE_EVIDENCE/streaming-list-$framework-$mode/result.json")
             done
           done
