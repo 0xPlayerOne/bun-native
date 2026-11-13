@@ -12,7 +12,8 @@ import {
 } from '@bun-native/protocol'
 import { PeerTree } from './peer-tree.ts'
 
-type Spec = { type: string; target: string; variant?: string }
+/** `count` repeats the event back to back, ahead of any later acknowledgement. */
+type Spec = { type: string; target: string; variant?: string; count?: number }
 const windows = new Map<number, PeerTree>()
 const output = Bun.stdout.writer()
 const decoder = new FrameDecoder()
@@ -96,8 +97,11 @@ for await (const chunk of Bun.stdin.stream()) {
           operation.type === 'set' &&
           operation.element.kind === 'text' &&
           operation.element.text.startsWith('event:')
-        )
-          await event(command.window_id, tree, JSON.parse(operation.element.text.slice(6)) as Spec)
+        ) {
+          const spec = JSON.parse(operation.element.text.slice(6)) as Spec
+          for (let index = 0; index < (spec.count ?? 1); index++)
+            await event(command.window_id, tree, spec)
+        }
       }
     } else if (command.type === 'close') {
       windows.delete(command.window_id)

@@ -351,6 +351,8 @@ export class NativeHost implements AsyncIterable<HostEvent> {
   private readonly events: HostEvent[] = []
   private readonly finished: Promise<void>
   private waiting: WaitingReader | undefined
+  /** Queued events the consumer has taken; progress while reading is paused. */
+  private taken = 0
   private failure: Error | undefined
   private phase: 'starting' | 'running' | 'stopping' | 'closed' = 'starting'
   private ready = false
@@ -574,7 +576,10 @@ export class NativeHost implements AsyncIterable<HostEvent> {
       next: () => {
         if (this.failure) return Promise.reject(this.failure)
         const event = this.events.shift()
-        if (event) return Promise.resolve({ done: false, value: event })
+        if (event) {
+          this.taken += 1
+          return Promise.resolve({ done: false, value: event })
+        }
         if (this.phase === 'closed') return Promise.resolve({ done: true, value: undefined })
         if (this.waiting)
           return Promise.reject(new Error('Concurrent event reads are not supported'))
@@ -666,6 +671,7 @@ export class NativeHost implements AsyncIterable<HostEvent> {
         const { done, value } = await this.stdout.read()
         if (done) break
         for (const raw of decoder.push(value)) this.receive(parseEvent(raw))
+        if (this.events.length >= MAX_QUEUED_EVENTS) await this.drainEvents()
       }
       decoder.finish()
       if (
@@ -676,6 +682,21 @@ export class NativeHost implements AsyncIterable<HostEvent> {
         throw new ProtocolError('Native output closed before shutdown')
     } finally {
       this.stdout.releaseLock()
+    }
+  }
+
+  /**
+   * One pipe read can coalesce more frames than the cap while the consumer is
+   * keeping up. Over the cap, reading pauses for macrotask turns while the
+   * consumer takes events, and fails only a turn in which it took none, so
+   * queued events stay bounded by the cap plus one read.
+   */
+  private async drainEvents(): Promise<void> {
+    while (this.events.length >= MAX_QUEUED_EVENTS) {
+      const taken = this.taken
+      await new Promise<void>((resolve) => setImmediate(resolve))
+      if (this.phase === 'closed') return
+      if (this.taken === taken) throw new ProtocolError('Native event limit exceeded')
     }
   }
 
@@ -864,8 +885,6 @@ export class NativeHost implements AsyncIterable<HostEvent> {
       this.waiting.resolve({ done: false, value: event })
       this.waiting = undefined
     } else {
-      if (this.events.length >= MAX_QUEUED_EVENTS)
-        throw new ProtocolError('Native event limit exceeded')
       this.events.push(event)
     }
   }

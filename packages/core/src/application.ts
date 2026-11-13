@@ -156,6 +156,8 @@ class Application implements NativeApplication {
   private callbacks: Callback[] = []
   private dispatching: Promise<void> | undefined
   private activeCallbacks = 0
+  /** Callbacks taken for dispatch; progress while ingestion is paused. */
+  private dispatched = 0
   private nextWindow = 1
   private nextNode = 1
   private stopping: Promise<void> | undefined
@@ -288,6 +290,20 @@ class Application implements NativeApplication {
     this.startDispatch()
   }
 
+  /**
+   * A burst can outpace dispatch while every listener is finishing. Over the
+   * cap, ingestion pauses for macrotask turns while callbacks complete, and
+   * fails only a turn in which none did: a stalled listener.
+   */
+  private async drainCallbacks(): Promise<void> {
+    while (this.callbacks.length >= MAX_QUEUED_CALLBACKS) {
+      const dispatched = this.dispatched
+      await new Promise<void>((resolve) => setImmediate(resolve))
+      if (this.dispatched === dispatched)
+        throw new ProtocolError('Application callback queue limit exceeded')
+    }
+  }
+
   /** Record the first failure and end the application with it. */
   async fail(cause: unknown): Promise<void> {
     this.failure ??= cause instanceof Error ? cause : new Error(String(cause))
@@ -308,6 +324,7 @@ class Application implements NativeApplication {
   private async dispatchCallbacks(): Promise<void> {
     while (this.callbacks.length) {
       const callback = this.callbacks.shift()!
+      this.dispatched += 1
       const window = 'menuBar' in callback ? undefined : this.windows.get(callback.windowId)
       if (!window && !('menuBar' in callback)) continue
       this.activeCallbacks = 1
@@ -549,6 +566,7 @@ class Application implements NativeApplication {
   private async consume(): Promise<void> {
     try {
       for await (const event of this.host) {
+        if (this.callbacks.length >= MAX_QUEUED_CALLBACKS) await this.drainCallbacks()
         if (event.type === 'app_menu_item') {
           this.receiveMenuItem(event)
           continue
