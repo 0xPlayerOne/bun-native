@@ -91,6 +91,14 @@ jobs:
           # Only pull requests fall back to an older key; main rebuilds cold
           # after a lockfile or toolchain change, so stale outputs never pile up.
           restore-keys: ${{ github.event_name == 'pull_request' && format('native-release-target-{0}-{1}-', runner.os, runner.arch) || '' }}
+      - name: Keep exact-hit vendored crates fresh
+        # Cargo judges path dependencies by mtime, and a fresh checkout makes
+        # every native/vendor file newer than the restored outputs, so the
+        # vendored crates and their dependents rebuilt on every exact hit.
+        # Only an exact key hit (same native/vendor hash) may backdate them.
+        if: ${{ steps.target-cache.outputs.cache-hit == 'true' }}
+        shell: bash
+        run: git ls-files -z native/vendor | xargs -0 touch -d '2000-01-01T00:00:00Z'
       - name: Record build environment
         run: |
           {
@@ -1382,11 +1390,12 @@ jobs:
             ${{ runner.temp }}/native-evidence/drag-drop-*/
             ${{ runner.temp }}/native-evidence/solid-drag-drop-*/
             ${{ runner.temp }}/native-evidence/react-drag-drop-*/
-            # The compiled service fixtures (about 71 MB each) are build outputs;
-            # their manifests record each executable's size and SHA-256.
-            !${{ runner.temp }}/native-evidence/global-shortcuts-package/global-shortcuts
-            !${{ runner.temp }}/native-evidence/notifications-package/notifications
-            !${{ runner.temp }}/native-evidence/filesystem-grants-package/filesystem-grants
+            # The compiled AOT fixtures (about 73 MB each) are build outputs that
+            # wildcards like accessibility-*/ also matched (about 360 MB on
+            # shard 2); their manifests record each executable's size and
+            # SHA-256. Every package directory is excluded here and only its
+            # manifest, logs and development bundle are taken back below.
+            !${{ runner.temp }}/native-evidence/*-package/**
             ${{ runner.temp }}/native-evidence/development/
             ${{ runner.temp }}/native-evidence/aot/
             ${{ runner.temp }}/native-evidence/input-race-aot/
@@ -1398,11 +1407,9 @@ jobs:
             ${{ runner.temp }}/native-evidence/events-aot/
             ${{ runner.temp }}/native-evidence/solid-development-*/
             ${{ runner.temp }}/native-evidence/solid-aot-*/
-            ${{ runner.temp }}/native-evidence/solid*-package/development/
             ${{ runner.temp }}/native-evidence/react-development-*/
             ${{ runner.temp }}/native-evidence/react-aot-*/
             ${{ runner.temp }}/native-evidence/react-workload/
-            ${{ runner.temp }}/native-evidence/react*-package/development/
             ${{ runner.temp }}/native-evidence/desktop-services-*/
             ${{ runner.temp }}/native-evidence/diagnostics-*/
             ${{ runner.temp }}/native-evidence/allocations-*/
@@ -1419,6 +1426,7 @@ jobs:
             ${{ runner.temp }}/native-evidence/package/*.log
             ${{ runner.temp }}/native-evidence/*-package/manifest.json
             ${{ runner.temp }}/native-evidence/*-package/*.log
+            ${{ runner.temp }}/native-evidence/*-package/development/
           include-hidden-files: true
           if-no-files-found: error
           retention-days: 14
