@@ -153,15 +153,24 @@ describe('standalone verification stamp (inert installed package fixture)', () =
     })
   }, 60_000)
 
-  test('a project that cannot hold a stamp still verifies fully every time', async () => {
+  test('a user cache that cannot hold a stamp still verifies fully every time', async () => {
     await packageFixture(async ({ directory, manifest, set, contents }) => {
       const project = join(directory, 'project')
       await createProject(repository, project, 'react', 'javascript', manifest)
       await installedFixture(project, set, 'react', contents)
-      await writeFile(join(project, '.bun-native'), 'not a directory')
-      const read = await readProject(repository, project, stamped)
-      expect(read.packageSet?.source.commit).toBe(set.source.commit)
-      expect(await readFile(join(project, '.bun-native'), 'utf8')).toBe('not a directory')
+      const blocked = join(directory, 'not-a-directory')
+      await writeFile(blocked, 'not a directory')
+      process.env['XDG_CACHE_HOME'] = blocked
+      try {
+        for (let attempt = 0; attempt < 2; attempt++) {
+          const read = await readProject(repository, project, stamped)
+          expect(read.packageSet?.source.commit).toBe(set.source.commit)
+        }
+        expect(await readFile(blocked, 'utf8')).toBe('not a directory')
+        expect(existsSync(join(project, '.bun-native'))).toBe(false)
+      } finally {
+        process.env['XDG_CACHE_HOME'] = cacheHome
+      }
     })
   })
 })

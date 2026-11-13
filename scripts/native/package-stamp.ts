@@ -153,7 +153,7 @@ async function writeStamp(directory: string, stamp: Stamp): Promise<void> {
     await writeFile(partial, JSON.stringify(stamp, null, 2) + '\n')
     await rename(partial, file)
   } catch {
-    // A read-only project still verifies; it only loses the cache.
+    // An unwritable user cache still verifies; it only loses the stamp.
     await rm(partial, { force: true }).catch(() => {})
   }
 }
