@@ -2,8 +2,8 @@
  * Core and runtime commit path micro benchmark.
  *
  * Runs the application-side work of one acknowledged commit in process: the
- * core `Transaction` build (element normalization), its `validate`, the
- * runtime's `parseCommand` revalidation and `encodeFrame`, then the commit and
+ * core `Transaction` build (element normalization and checked operations), its
+ * `validate`, the runtime's `parseCommand` and `encodeFrame`, then the commit and
  * the window's listener bookkeeping. No host, IPC or native work.
  *
  *   bun benchmarks/core/commit.ts [samples]

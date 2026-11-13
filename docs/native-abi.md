@@ -261,6 +261,25 @@ above the frame bound before writing it; neither reaches the host or changes
 the window. The host reader keeps 64 KiB between frames; a larger frame borrows
 memory only while it is read and decoded, off the GPUI thread.
 
+Only one batch per application is in flight. Batches that one window queues
+back to back behind it, with no other queued operation between them, run as
+one group when it is acknowledged: each callback still runs in its own
+transaction, in order, over the candidate the earlier ones built, and the group
+is sent as few native batches as fit the operation bound, a conservative frame
+size bound and the focus and scroll requests already in the batch. A callback
+that throws, returns a promise or fails validation rejects only its own
+promise. If the host rejects a merged batch, its transactions are resent one at
+a time: the first one the host rejects fails with its native error, and any
+later one in that batch, which was built on its candidate, fails with
+`stale_revision`. Each caller settles after the acknowledgement of the batch
+that carried its operations. A producer that outruns the host therefore waits
+one round trip rather than behind every queued transaction.
+
+Core builds operations with the protocol's checked constructors, which return
+frozen operations that `parseCommand` accepts by identity, as it does parsed
+elements; any other command, including a copy of a built operation, is parsed
+in full before the runtime writes it.
+
 The public transaction queue reserves additional cleanup capacity for one close
 per live window. Reaching its ordinary-work limit rejects new work. Native
 output uses nonblocking enqueue; an overflowing/disconnected output channel

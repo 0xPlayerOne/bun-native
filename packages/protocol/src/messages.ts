@@ -639,51 +639,144 @@ const OPERATION_INSERT_KEYS = fields('type', 'parent_id', 'child_id', 'index')
 const OPERATION_DELETE_KEYS = fields('type', 'node_id')
 const OPERATION_SCROLL_TO_KEYS = fields('type', 'node_id', 'x', 'y')
 
+function createOperation(nodeId: unknown, element: unknown): Operation {
+  return { type: 'create', node_id: id(nodeId), element: parseElement(element) }
+}
+
+function setOperation(
+  nodeId: unknown,
+  value: unknown,
+  revised: boolean,
+  revision: unknown
+): Operation {
+  const node_id = id(nodeId)
+  const element = parseElement(value)
+  if (element.kind === 'input')
+    return {
+      type: 'set',
+      node_id,
+      element,
+      expected_input_revision: integer(revision, 'input revision'),
+    }
+  if (revised) throw new ProtocolError('Only input elements accept an input revision')
+  return { type: 'set', node_id, element }
+}
+
+function insertOperation(parentId: unknown, childId: unknown, index: unknown): Operation {
+  return {
+    type: 'insert',
+    parent_id: id(parentId),
+    child_id: id(childId),
+    index: integer(index, 'index', 0, MAX_NODES_PER_WINDOW),
+  }
+}
+
+function scrollOperation(
+  nodeId: unknown,
+  offset: { readonly x?: unknown; readonly y?: unknown }
+): Operation {
+  if (!('x' in offset) && !('y' in offset)) throw new ProtocolError('scroll_to requires x or y')
+  const axis = (name: 'x' | 'y') =>
+    name in offset ? { [name]: number(offset[name], 'scroll ' + name, 0, MAX_SCROLL_OFFSET) } : {}
+  return { type: 'scroll_to', node_id: id(nodeId), ...axis('x'), ...axis('y') }
+}
+
+/** The operations of an `OperationList`, copied, or `undefined` for any other value. */
+let listed: (value: unknown) => Operation[] | undefined
+
+/**
+ * One batch's operations, built by checked constructors for a trusted builder
+ * such as core's transaction. Each constructor checks its fields as
+ * `parseCommand` would and freezes the operation, and the list keeps them
+ * where no caller can replace them, so `parseCommand` accepts a list as its
+ * batch operations without parsing each one again. A plain operations array,
+ * including one read from a list, is parsed in full.
+ */
+export class OperationList implements Iterable<Operation> {
+  #operations: Operation[] = []
+
+  static {
+    listed = (value) =>
+      value !== null && typeof value === 'object' && #operations in value
+        ? (value as OperationList).#operations.slice()
+        : undefined
+  }
+
+  /** One list of `lists`, in order, as one batch carries them. */
+  static join(lists: readonly OperationList[]): OperationList {
+    const joined = new OperationList()
+    joined.#operations = lists.flatMap((list) => list.#operations)
+    return joined
+  }
+
+  get length(): number {
+    return this.#operations.length
+  }
+
+  [Symbol.iterator](): Iterator<Operation> {
+    return this.#operations.values()
+  }
+
+  #push(operation: Operation): void {
+    this.#operations.push(Object.freeze(operation))
+  }
+
+  create(nodeId: number, element: Element): void {
+    this.#push(createOperation(nodeId, element))
+  }
+
+  set(nodeId: number, element: Element, expectedInputRevision?: number): void {
+    this.#push(
+      setOperation(nodeId, element, expectedInputRevision !== undefined, expectedInputRevision)
+    )
+  }
+
+  insert(parentId: number, childId: number, index: number): void {
+    this.#push(insertOperation(parentId, childId, index))
+  }
+
+  delete(nodeId: number): void {
+    this.#push({ type: 'delete', node_id: id(nodeId) })
+  }
+
+  focus(nodeId: number): void {
+    this.#push({ type: 'focus', node_id: id(nodeId) })
+  }
+
+  scrollTo(nodeId: number, offset: { readonly x?: number; readonly y?: number }): void {
+    this.#push(scrollOperation(nodeId, offset))
+  }
+
+  scrollIntoView(nodeId: number): void {
+    this.#push({ type: 'scroll_into_view', node_id: id(nodeId) })
+  }
+}
+
 function operation(value: unknown): Operation {
   const data = object(value)
   switch (data['type']) {
     case 'create':
       keys(data, OPERATION_CREATE_KEYS)
-      return {
-        type: 'create',
-        node_id: id(data['node_id']),
-        element: parseElement(data['element']),
-      }
-    case 'set': {
+      return createOperation(data['node_id'], data['element'])
+    case 'set':
       keys(data, OPERATION_SET_KEYS)
-      const node_id = id(data['node_id'])
-      const element = parseElement(data['element'])
-      if (element.kind === 'input')
-        return {
-          type: 'set',
-          node_id,
-          element,
-          expected_input_revision: integer(data['expected_input_revision'], 'input revision'),
-        }
-      if ('expected_input_revision' in data)
-        throw new ProtocolError('Only input elements accept an input revision')
-      return { type: 'set', node_id, element }
-    }
+      return setOperation(
+        data['node_id'],
+        data['element'],
+        'expected_input_revision' in data,
+        data['expected_input_revision']
+      )
     case 'insert':
       keys(data, OPERATION_INSERT_KEYS)
-      return {
-        type: 'insert',
-        parent_id: id(data['parent_id']),
-        child_id: id(data['child_id']),
-        index: integer(data['index'], 'index', 0, MAX_NODES_PER_WINDOW),
-      }
+      return insertOperation(data['parent_id'], data['child_id'], data['index'])
     case 'delete':
     case 'focus':
     case 'scroll_into_view':
       keys(data, OPERATION_DELETE_KEYS)
       return { type: data['type'], node_id: id(data['node_id']) }
-    case 'scroll_to': {
+    case 'scroll_to':
       keys(data, OPERATION_SCROLL_TO_KEYS)
-      if (!('x' in data) && !('y' in data)) throw new ProtocolError('scroll_to requires x or y')
-      const offset = (axis: 'x' | 'y') =>
-        axis in data ? { [axis]: number(data[axis], 'scroll ' + axis, 0, MAX_SCROLL_OFFSET) } : {}
-      return { type: 'scroll_to', node_id: id(data['node_id']), ...offset('x'), ...offset('y') }
-    }
+      return scrollOperation(data['node_id'], data)
     default:
       throw new ProtocolError('Unknown native operation')
   }
@@ -748,7 +841,9 @@ export function parseCommand(value: unknown): Command {
     }
     case 'batch': {
       keys(message, COMMAND_BATCH_KEYS)
-      const operations = message['operations']
+      // A list's operations were checked as it was built and cannot change since.
+      const built = listed(message['operations'])
+      const operations = built ?? message['operations']
       if (!Array.isArray(operations) || operations.length < 1 || operations.length > MAX_OPERATIONS)
         throw new ProtocolError(
           'Batch must contain between 1 and ' + MAX_OPERATIONS + ' operations'
@@ -758,7 +853,7 @@ export function parseCommand(value: unknown): Command {
         type: 'batch',
         window_id: id(message['window_id']),
         base_revision: integer(message['base_revision'], 'tree revision'),
-        operations: operations.map(operation),
+        operations: built ?? operations.map(operation),
       }
     }
     case 'close':

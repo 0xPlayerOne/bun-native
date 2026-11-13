@@ -39,6 +39,8 @@ export function integer(
 }
 
 export function id(value: unknown): number {
+  // The common valid case without the generic range check's arguments.
+  if (Number.isSafeInteger(value) && (value as number) >= 1) return value as number
   return integer(value, 'Identifier', 1)
 }
 

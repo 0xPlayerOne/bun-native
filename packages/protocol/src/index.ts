@@ -116,6 +116,7 @@ export {
   ERROR_CODES,
   MAX_OPERATIONS,
   MAX_SCROLL_OFFSET,
+  OperationList,
   parseCommand,
   parseEvent,
   PROTOCOL_VERSION,

@@ -48,7 +48,7 @@ request. No current benchmark covered this path: the
 
 - `mount`: 42 `box > [text, button]` rows into an empty window (126 creates,
   126 inserts), split into the core build (element normalization), its
-  `validate`, the runtime's `parseCommand` revalidation and `encodeFrame`;
+  `validate`, the runtime's `parseCommand` and `encodeFrame`;
 - `keystroke`: one text `set` in a committed 1,000-row window whose labels each
   hold a click listener: the core build and validation, the runtime phase
   (`parseCommand` and `encodeFrame`), the commit and the listener bookkeeping
@@ -89,3 +89,12 @@ does work; any other value, including a copy of a parsed element, is still
 validated in full. Listener bookkeeping walked every bound node after each
 commit and now visits only the nodes the commit removed. `encodeFrame` is the
 largest remaining runtime phase.
+
+Core now builds operations into a protocol `OperationList`, whose constructors
+check each operation once, freeze it and keep it where no caller can replace
+it, so `parseCommand` copies the list instead of parsing every operation again
+(any plain operations array is still parsed in full). Interleaved, six
+processes each against `97dd2c6`, p50 µs: `mount` `parseCommand` 14.9–17.7 →
+0.64–0.78, build plus validate 108–130 → 121–133, `mount` total 149–181 →
+148–164; `keystroke` total unchanged (1.9–2.5 both). The check moved into the
+build rather than disappearing, so the gain is the second pass and the copy.

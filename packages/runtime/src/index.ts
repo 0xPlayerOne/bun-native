@@ -13,6 +13,7 @@ import {
   REQUIRED_CAPABILITIES,
   ProtocolError,
   type Command,
+  type OperationList,
   type NativeEvent,
   type ErrorCode,
   type Limits,
@@ -35,7 +36,12 @@ export {
 export { installedRelease, reportHealthy, type InstalledRelease } from './installation.ts'
 export type { ApplicationEvent, HostEvent, WindowEvent } from '@bun-native/protocol'
 
-type WithoutId<T> = T extends { id: number } ? Omit<T, 'id'> : never
+/** A command as callers submit it; a batch may carry core's checked `OperationList`. */
+type WithoutId<T> = T extends { id: number }
+  ? T extends { type: 'batch'; operations: infer O }
+    ? Omit<T, 'id' | 'operations'> & { operations: O | OperationList }
+    : Omit<T, 'id'>
+  : never
 export type WindowCommand = WithoutId<
   Extract<
     Command,
