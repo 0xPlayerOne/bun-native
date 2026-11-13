@@ -3,6 +3,7 @@ import {
   type GlobalShortcutKey,
   type ShortcutModifiers,
 } from '@bun-native/protocol'
+import { Registration } from './registration.ts'
 import type { Listener } from './types.ts'
 
 /** Layout-level key names; the native backend grabs the unshifted key that produces them. */
@@ -74,41 +75,19 @@ export function shortcutRequest(options: GlobalShortcutOptions): {
 }
 
 /** Internal registry entry. Consumers only receive its frozen handle. */
-export class ShortcutRegistration {
+export class ShortcutRegistration extends Registration<GlobalShortcutEvent> {
   readonly handle: NativeGlobalShortcut
-  readonly controller = new AbortController()
-  listener: Listener<GlobalShortcutEvent> | undefined
-  private released = false
-  private releasing: Promise<void> | undefined
 
   constructor(
-    readonly id: number,
-    readonly windowId: number,
+    id: number,
+    windowId: number,
     key: GlobalShortcutKey,
     modifiers: ShortcutModifiers,
     listener: Listener<GlobalShortcutEvent>,
     release: (registration: ShortcutRegistration) => Promise<void>
   ) {
-    this.listener = listener
+    super(id, windowId, listener)
     this.handle = publicHandle(this, key, modifiers, release)
-  }
-
-  /** Shared by the public handle; one release per registration. */
-  release(release: (registration: ShortcutRegistration) => Promise<void>): Promise<void> {
-    this.releasing ??= this.released ? Promise.resolve() : release(this)
-    return this.releasing
-  }
-
-  get live(): boolean {
-    return !this.released
-  }
-
-  /** Synchronous local revocation; the native grab is released separately. */
-  revoke(): void {
-    if (this.released) return
-    this.released = true
-    this.listener = undefined
-    this.controller.abort()
   }
 }
 

@@ -9,6 +9,7 @@ import {
   type FileResult,
   type WriteMode,
 } from '@bun-native/protocol'
+import { Registration } from './registration.ts'
 
 export interface FileGrantOptions {
   /** At most the root's launch access. Defaults to `read`. */
@@ -200,19 +201,18 @@ const fileCalls = {
 }
 
 /** Internal registry entry. Consumers only receive its frozen handle. */
-export class FileGrantRegistration {
+export class FileGrantRegistration extends Registration {
   readonly handle: NativeFileGrant
-  private revoked = false
-  private closing: Promise<void> | undefined
 
   constructor(
-    readonly id: number,
-    readonly windowId: number,
+    id: number,
+    windowId: number,
     root: string,
     access: FileAccess,
     call: (registration: FileGrantRegistration, request: FileCall) => Promise<unknown>,
     close: (registration: FileGrantRegistration) => Promise<void>
   ) {
+    super(id, windowId)
     const run = <T>(request: () => FileCall) => {
       try {
         return call(this, request()) as Promise<T>
@@ -236,18 +236,7 @@ export class FileGrantRegistration {
         run<number>(() => fileCalls.write(target, bytes, value)),
       createDirectory: (target: string) => run<void>(() => fileCalls.createDirectory(target)),
       remove: (target: string) => run<void>(() => fileCalls.remove(target)),
-      close: () => {
-        this.closing ??= this.revoked ? Promise.resolve() : close(this)
-        return this.closing
-      },
+      close: () => this.release(close),
     })
-  }
-
-  get live(): boolean {
-    return !this.revoked
-  }
-
-  revoke(): void {
-    this.revoked = true
   }
 }
