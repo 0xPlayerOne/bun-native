@@ -26,9 +26,12 @@ describe('complete standalone locks (inert metadata; no package manager)', () =>
         expect(Object.keys(local.packages)).toHaveLength(6)
         expect(seed.overrides).toEqual(manifest.overrides)
         expect(lockedPackages(seed, local)).toEqual(set.consumers[framework].lock)
-        expect(
-          seed.packages['babel-plugin-jsx-dom-expressions/@babel/helper-module-imports'][0]
-        ).toBe('@babel/helper-module-imports@7.18.6')
+        // Only Solid projects lock the Babel tree, through @bun-native/solid/build.
+        if (framework === 'solid')
+          expect(
+            seed.packages['babel-plugin-jsx-dom-expressions/@babel/helper-module-imports'][0]
+          ).toBe('@babel/helper-module-imports@7.18.6')
+        else expect(Object.keys(seed.packages).filter((name) => /babel/.test(name))).toEqual([])
         for (const [name, tuple] of Object.entries(local.packages)) {
           const pkg = set.packages[name]!
           expect(tuple[0]).toBe(`${name}@vendor/bun-native/${pkg.archive.file}`)
@@ -89,7 +92,7 @@ describe('complete standalone locks (inert metadata; no package manager)', () =>
         if (change === 'path') row[0] += '.changed'
         if (change === 'file-prefix') row[0] = row[0].replace('@vendor/', '@file:vendor/')
         if (change === 'integrity') row[2] = 'sha256-' + Buffer.alloc(32).toString('base64')
-        if (change === 'dependencies') delete row[1].dependencies['@babel/core']
+        if (change === 'dependencies') delete row[1].dependencies['oxlint']
         if (change === 'bin') row[1].bin['bun-native'] = './wrong.ts'
         if (change === 'extra')
           changed.packages['@bun-native/unexpected'] = [
@@ -98,7 +101,7 @@ describe('complete standalone locks (inert metadata; no package manager)', () =>
             row[2],
           ]
         if (change === 'nested')
-          changed.packages['@bun-native/cli/@babel/core'] = changed.packages['@babel/core']
+          changed.packages['@bun-native/cli/oxlint'] = changed.packages['oxlint']
         expect(() => verify(changed)).toThrow()
       }
       for (const change of ['missing', 'path', 'selector', 'local-selector', 'parent']) {

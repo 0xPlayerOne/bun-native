@@ -79,27 +79,14 @@ jobs:
       - name: Disable the concurrent JIT for this diagnostic dispatch (#629)
         if: github.event_name == 'workflow_dispatch' && inputs['concurrent-jit'] == 'off'
         run: echo 'BUN_JSC_useConcurrentJIT=0' >> "$GITHUB_ENV"
-      - name: Install checksum-pinned Bun compiler
-        run: node scripts/install-bun.mjs --destination "$RUNNER_TEMP/bun-native-bun"
-      # apt retries each fetch with backoff and gives up on a dead mirror after
-      # 30 s; the step limit sits above the slowest recorded throttled download
-      # (20m42s) so a mirror outage cannot consume the whole job (job 130605231985).
-      - name: Install pinned Rust toolchain
-        run: rustup show active-toolchain
+      - name: Install the pinned Bun and Rust toolchains and downloads
+        id: toolchain
+        uses: ./.github/actions/native-toolchain
       # The same index-verified archive set (and cache key) as Native Linux, so a
       # mirror outage does not fail the comparison once Native Linux has cached it.
       - name: Install native build and isolated X11 prerequisites
         timeout-minutes: 25
         uses: ./.github/actions/linux-native-prerequisites
-      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-        with:
-          path: |
-            ~/.bun/install/cache
-            ~/.cargo/registry/index
-            ~/.cargo/registry/cache
-            ~/.cargo/git/db
-          key: gpui-downloads-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('toolchain.json', 'bun.lock', 'rust-toolchain.toml', 'Cargo.lock') }}
-      - run: bun install --frozen-lockfile
       - name: Build release native host
         run: |
           { time -p cargo build --locked --release --manifest-path Cargo.toml -p bun-native-host --bin bun-native-host; } 2>&1 | tee "$COMPARISON/host-build.log"
@@ -113,8 +100,7 @@ jobs:
         run: |
           extra=()
           if [[ "$COLD_CACHE" == 'true' ]]; then extra+=(--cold-cache); fi
-          xvfb-run --auto-servernum --server-args='-screen 0 1280x800x24 -nolisten tcp' \
-            dbus-run-session -- bash scripts/quality/native-linux-session.sh \
+          bash scripts/quality/native-x11-session.sh \
             "$COMPARISON/session" -- bun benchmarks/comparison/run.ts \
             --host "$GITHUB_WORKSPACE/target/release/bun-native-host" --host-profile release \
             --output "$COMPARISON/run" --trials "$TRIALS" --input-trials "$INPUT_TRIALS" \
@@ -124,8 +110,7 @@ jobs:
       - name: Run the direct Rust GPUI baseline in one isolated native session
         timeout-minutes: 10
         run: |
-          xvfb-run --auto-servernum --server-args='-screen 0 1280x800x24 -nolisten tcp' \
-            dbus-run-session -- bash scripts/quality/native-linux-session.sh \
+          bash scripts/quality/native-x11-session.sh \
             "$COMPARISON/rust-session" -- bun benchmarks/rust-gpui/run.ts \
             --binary "$GITHUB_WORKSPACE/target/release/examples/workload-baseline" \
             --output "$COMPARISON/rust-gpui" --trials "$TRIALS"
@@ -163,8 +148,7 @@ jobs:
                   command=("$package/$entry")
                 fi
                 evidence="$COMPARISON/streaming/$framework-$mode-$trial"
-                xvfb-run --auto-servernum --server-args='-screen 0 1280x800x24 -nolisten tcp' \
-                  dbus-run-session -- bash scripts/quality/native-linux-session.sh \
+                bash scripts/quality/native-x11-session.sh \
                   "$evidence-session" -- python3 tests/native/streaming-list.py \
                   --framework "$framework" --mode "$mode" --host-profile release \
                   --output "$evidence" -- "${command[@]}"
@@ -265,19 +249,9 @@ jobs:
       - name: Disable the concurrent JIT for this diagnostic dispatch (#629)
         if: github.event_name == 'workflow_dispatch' && inputs['concurrent-jit'] == 'off'
         run: echo 'BUN_JSC_useConcurrentJIT=0' >> "$GITHUB_ENV"
-      - name: Install checksum-pinned Bun compiler
-        run: node scripts/install-bun.mjs --destination "$RUNNER_TEMP/bun-native-bun"
-      - name: Install pinned Rust toolchain
-        run: rustup show active-toolchain
-      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-        with:
-          path: |
-            ~/.bun/install/cache
-            ~/.cargo/registry/index
-            ~/.cargo/registry/cache
-            ~/.cargo/git/db
-          key: gpui-downloads-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('toolchain.json', 'bun.lock', 'rust-toolchain.toml', 'Cargo.lock') }}
-      - run: bun install --frozen-lockfile
+      - name: Install the pinned Bun and Rust toolchains and downloads
+        id: toolchain
+        uses: ./.github/actions/native-toolchain
       - name: Build release native host and the direct Rust GPUI baseline
         run: |
           { time -p cargo build --locked --release --manifest-path Cargo.toml -p bun-native-host --bin bun-native-host --example workload-baseline; } 2>&1 | tee "$COMPARISON/host-build.log"
@@ -359,10 +333,9 @@ jobs:
       - name: Disable the concurrent JIT for this diagnostic dispatch (#629)
         if: github.event_name == 'workflow_dispatch' && inputs['concurrent-jit'] == 'off'
         run: "'BUN_JSC_useConcurrentJIT=0' | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8"
-      - name: Install checksum-pinned Bun compiler
-        run: node scripts/install-bun.mjs --destination (Join-Path $env:RUNNER_TEMP 'bun-native-bun')
-      - name: Install pinned Rust toolchain
-        run: rustup show active-toolchain
+      - name: Install the pinned Bun and Rust toolchains and downloads
+        id: toolchain
+        uses: ./.github/actions/native-toolchain
       - name: Locate the installed Windows SDK shader compiler
         run: |
           $sdk = Join-Path ${env:ProgramFiles(x86)} 'Windows Kits/10/bin'
@@ -374,15 +347,6 @@ jobs:
             Select-Object -First 1
           if (!$fxc) { throw 'GPUI release shaders require the Windows SDK fxc.exe' }
           "GPUI_FXC_PATH=$fxc" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
-      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-        with:
-          path: |
-            ~/.bun/install/cache
-            ~/.cargo/registry/index
-            ~/.cargo/registry/cache
-            ~/.cargo/git/db
-          key: gpui-downloads-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('toolchain.json', 'bun.lock', 'rust-toolchain.toml', 'Cargo.lock') }}
-      - run: bun install --frozen-lockfile
       - name: Build release native host and the direct Rust GPUI baseline
         run: |
           $timer = [Diagnostics.Stopwatch]::StartNew()

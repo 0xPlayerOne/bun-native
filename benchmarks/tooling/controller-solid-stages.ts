@@ -23,7 +23,7 @@ import { parseArgs } from 'node:util'
 import { bundleProject } from '../../scripts/native/build.ts'
 import { bundleConfig } from '../../scripts/native/bundle.ts'
 import { createProject, readProject, type Project } from '../../scripts/native/project.ts'
-import { transformSolid } from '../../scripts/solid/transform.ts'
+import { transformSolid } from '@bun-native/solid/build'
 
 const repository = resolve(import.meta.dir, '../..')
 const stages = ['full', 'transform', 'bundle'] as const

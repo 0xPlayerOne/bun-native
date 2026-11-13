@@ -1,7 +1,7 @@
 //! Bounded I/O workers keep pipe reads and writes off the native UI thread.
 
 use async_channel::{Receiver, Sender};
-use bun_native_protocol::{Command, CommandReader, Event, EventSequence, EventWriter};
+use bun_native_protocol::{CommandReader, Event, EventSequence, EventWriter, ValidCommand};
 use gpui::App;
 use std::cell::Cell;
 use std::io;
@@ -30,7 +30,7 @@ pub(crate) enum Undelivered {
 }
 
 pub(crate) enum Incoming {
-    Command(Command),
+    Command(ValidCommand),
     InvalidFrame,
     Disconnected,
 }

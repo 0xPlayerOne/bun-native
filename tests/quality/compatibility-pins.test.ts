@@ -74,8 +74,20 @@ function repositoryPins(): Map<string, string> {
         rootManifest.devDependencies['solid-js'],
       ]),
     ],
-    ['babel-preset-solid', rootManifest.devDependencies['babel-preset-solid']],
-    ['@babel/core', rootManifest.devDependencies['@babel/core']],
+    [
+      'babel-preset-solid',
+      agreed('babel-preset-solid', [
+        solidManifest.dependencies['babel-preset-solid'],
+        rootManifest.devDependencies['babel-preset-solid'],
+      ]),
+    ],
+    [
+      '@babel/core',
+      agreed('@babel/core', [
+        solidManifest.dependencies['@babel/core'],
+        rootManifest.devDependencies['@babel/core'],
+      ]),
+    ],
     ['oxlint', rootManifest.devDependencies.oxlint],
     [
       'react',

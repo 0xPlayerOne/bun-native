@@ -115,6 +115,125 @@ export function isFixture(value: string | undefined): value is FixtureName {
   return typeof value === 'string' && Object.hasOwn(fixtures, value)
 }
 
+/** A native CI job that compiles fixtures ahead of its suite steps. */
+export type CiPlatform = 'linux' | 'darwin' | 'win32'
+
+/**
+ * The fixtures each native CI shard compiles in its one parallel "Compile and
+ * inspect" step (`scripts/quality/compile-aot-entries.ts`), before its suite
+ * steps run them. A suite moved between shards moves its entries here;
+ * tests/quality/native-ci-entries.test.ts fails while a shard's steps run an entry
+ * this table does not compile there, or this table compiles one nothing uses.
+ * Steps of other shards still compile their fixtures inline.
+ */
+export const ciCompiles: Record<CiPlatform, Partial<Record<number, readonly FixtureName[]>>> = {
+  linux: {
+    1: [
+      'native-window',
+      'input-race',
+      'bridge',
+      'javascript',
+      'core-lifecycle',
+      'event-throughput',
+      'fault',
+      'scheduling',
+      'layout',
+      'interactions',
+      'solid-workspace-terminal',
+      'react-workspace-terminal',
+    ],
+    2: [
+      'services',
+      'display-semantics',
+      'display-wayland',
+      'clipboard',
+      'global-shortcuts',
+      'notifications',
+      'overlays',
+      'message-dialogs',
+      'popups',
+      'wayland',
+      'filesystem-grants',
+      'text-input',
+      'accessibility',
+      'screen-reader',
+      'ime',
+      'processes',
+      'file-dialogs',
+      'drag-drop',
+      'solid-drag-drop',
+      'react-drag-drop',
+      'solid-services',
+      'react-services',
+      'solid',
+      'solid-input-intent',
+      'solid-interactions',
+      'react',
+      'react-interactions',
+      'react-behavior',
+      'react-workload',
+      'react-workspace',
+      'react-workspace-flow',
+    ],
+  },
+  darwin: {
+    2: [
+      'platform-smoke',
+      'fault',
+      'processes',
+      'solid-platform',
+      'react-platform',
+      'filesystem-grants',
+      'app-menu',
+      'accessibility-platform',
+      'overlays',
+      'layout-style',
+      'solid-layout-style',
+      'react-layout-style',
+      'accessibility',
+      'input-states-platform',
+      'screen-reader',
+      'ime-platform',
+      'display-platform',
+      'display-virtual-macos',
+      'drag-drop',
+      'solid-drag-drop',
+      'react-drag-drop',
+    ],
+  },
+  win32: {
+    2: [
+      'platform-smoke',
+      'fault',
+      'processes',
+      'solid-platform',
+      'react-platform',
+      'filesystem-grants',
+      'accessibility-platform',
+      // The experimental Windows screen-reader and IME steps run on main only.
+      'screen-reader',
+      'ime-platform',
+      'display-platform',
+      'drag-drop',
+      'solid-drag-drop',
+      'react-drag-drop',
+    ],
+  },
+}
+
+/**
+ * Entries a shard compiles only to prove the example builds through inspected
+ * AOT; no suite step runs them.
+ */
+export const ciCompileOnly: ReadonlySet<FixtureName> = new Set(['react-workspace'])
+
+/** Package directories (under the evidence directory) that are not `<entry>-package`. */
+export function ciPackageDirectory(platform: CiPlatform, entry: FixtureName): string {
+  if (platform === 'linux' && entry === 'native-window') return 'package'
+  if (platform !== 'linux' && entry === 'platform-smoke') return 'aot-package'
+  return `${entry}-package`
+}
+
 const declared: Partial<Record<FixtureName, readonly string[]>> = {
   'layout-style': macosDriver,
   'solid-layout-style': macosDriver,
@@ -164,7 +283,7 @@ const frameworkInputs: Record<Framework, readonly string[]> = {
     'packages/solid/package.json',
     'packages/renderer/package.json',
     'scripts/native/bundle.ts',
-    'scripts/solid/transform.ts',
+    'packages/solid/src/build.ts',
     'scripts/solid/preset.d.ts',
   ],
   react: [

@@ -67,19 +67,9 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - name: Install checksum-pinned Bun compiler
-        run: node scripts/install-bun.mjs --destination "$RUNNER_TEMP/bun-native-bun"
-      - name: Install pinned Rust toolchain
-        run: rustup show active-toolchain
-      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-        with:
-          path: |
-            ~/.bun/install/cache
-            ~/.cargo/registry/index
-            ~/.cargo/registry/cache
-            ~/.cargo/git/db
-          key: native-downloads-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('toolchain.json', 'bun.lock', 'rust-toolchain.toml', 'Cargo.lock') }}
-      - run: bun install --frozen-lockfile
+      - name: Install the pinned Bun and Rust toolchains and downloads
+        id: toolchain
+        uses: ./.github/actions/native-toolchain
       - name: Restore protocol dependency build outputs
         id: protocol-target-cache
         if: github.event_name != 'schedule'
@@ -196,19 +186,11 @@ jobs:
             node --version
             node -e 'const os = require("node:os"); const fs = require("node:fs"); const crypto = require("node:crypto"); const bytes = fs.readFileSync("toolchain.json"); const pin = JSON.parse(bytes).bun; console.log(JSON.stringify({os:os.platform(),arch:os.arch(),release:os.release(),expectedBunRevision:pin.cliRevision,manifestSha256:crypto.createHash("sha256").update(bytes).digest("hex"),phase:"before Bun bootstrap"}))'
           } > .bun-native/evidence/bootstrap.txt
-      - name: Install checksum-pinned Bun compiler
-        run: node scripts/install-bun.mjs --destination "$RUNNER_TEMP/bun-native-bun" 2>&1 | tee .bun-native/evidence/bun-bootstrap.log
-      - name: Install pinned Rust toolchain
-        run: rustup show active-toolchain
-      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      - name: Install the pinned Bun and Rust toolchains and downloads
+        id: toolchain
+        uses: ./.github/actions/native-toolchain
         with:
-          path: |
-            ~/.bun/install/cache
-            ~/.cargo/registry/index
-            ~/.cargo/registry/cache
-            ~/.cargo/git/db
-          key: native-downloads-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('toolchain.json', 'bun.lock', 'rust-toolchain.toml', 'Cargo.lock') }}
-      - run: bun install --frozen-lockfile
+          bootstrap-log: .bun-native/evidence/bun-bootstrap.log
       # Dependency build outputs (serde, serde_json and build scripts) come from
       # the last protected-main run of the same lockfile and toolchain; the
       # protocol crate itself still rebuilds. Cold, Windows spent 42 s here

@@ -26,7 +26,14 @@ COLUMNS = [
     "replyEnqueueNanos",
     "rendersBefore",
 ]
-FRAMES = ["windowId", "startedNanos", "renderNanos", "renderToPaintNanos", "nodes"]
+FRAMES = [
+    "windowId",
+    "startedNanos",
+    "renderNanos",
+    "renderToPaintNanos",
+    "nodes",
+    "culledNodes",
+]
 
 
 def fixture():
@@ -44,7 +51,7 @@ def fixture():
             and operations == 1
         ):
             renders += 1
-            frames.append([1, started - 10, 2_000_000, 15_000_000, 1001])
+            frames.append([1, started - 10, 2_000_000, 15_000_000, 1001, 0])
         batches.append(
             [request, 1, operations, started, 100_000, 20_000, 10_000, renders]
         )
@@ -149,9 +156,9 @@ class BridgePhaseTests(unittest.TestCase):
         result, trace = fixture()
         individual_start = trace["batches"][1 + PHASES.WARMUPS][3]
         trace["frames"] += [
-            [2, individual_start + 5, 9_000_000, 9_000_000, 7],
-            [1, 0, 9_000_000, 9_000_000, 7],
-            [1, individual_start + 5, 3_000_000, None, 1001],
+            [2, individual_start + 5, 9_000_000, 9_000_000, 7, 0],
+            [1, 0, 9_000_000, 9_000_000, 7, 0],
+            [1, individual_start + 5, 3_000_000, None, 1001, 0],
         ]
         frames = PHASES.analyze(result, trace)["framesDuringIndividualPhase"]
         self.assertEqual(frames["count"], 10)

@@ -1,6 +1,7 @@
 use crate::wire::safe_integer;
 use crate::{
-    Command, Event, Operation, RequestId, WindowId, MAX_EVENT_FRAME_BYTES, MAX_FRAME_BYTES,
+    Command, Event, Operation, RequestId, ValidCommand, WindowId, MAX_EVENT_FRAME_BYTES,
+    MAX_FRAME_BYTES,
 };
 use serde::{de, Deserialize, Deserializer};
 use std::fmt;
@@ -51,7 +52,10 @@ pub struct CommandReader {
 }
 
 impl CommandReader {
-    pub fn read(&mut self, source: &mut impl BufRead) -> Result<Option<Command>, ProtocolError> {
+    pub fn read(
+        &mut self,
+        source: &mut impl BufRead,
+    ) -> Result<Option<ValidCommand>, ProtocolError> {
         if self.poisoned {
             return Err(ProtocolError::Poisoned);
         }
@@ -74,7 +78,10 @@ impl CommandReader {
         result
     }
 
-    fn read_inner(&mut self, source: &mut impl BufRead) -> Result<Option<Command>, ProtocolError> {
+    fn read_inner(
+        &mut self,
+        source: &mut impl BufRead,
+    ) -> Result<Option<ValidCommand>, ProtocolError> {
         let frame = &mut self.frame;
         frame.clear();
         loop {
@@ -95,8 +102,9 @@ impl CommandReader {
             source.consume(count + usize::from(newline.is_some()));
             if newline.is_some() {
                 let command = decode_command(frame)?;
-                command.validate().map_err(ProtocolError::InvalidCommand)?;
-                return Ok(Some(command));
+                return ValidCommand::new(command)
+                    .map(Some)
+                    .map_err(ProtocolError::InvalidCommand);
             }
         }
     }

@@ -53,10 +53,13 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - name: Install checksum-pinned Bun compiler
-        run: node scripts/install-bun.mjs --destination (Join-Path $env:RUNNER_TEMP 'bun-native-bun')
-      - name: Install pinned Rust toolchain
-        run: rustup show active-toolchain
+      - name: Install the pinned Bun and Rust toolchains and downloads
+        id: toolchain
+        uses: ./.github/actions/native-toolchain
+        # Only downloaded sources are cached. No build output is restored, so the
+        # two attempts share nothing that was compiled.
+        with:
+          remap-cargo-home: 'true'
       # apt retries each fetch with backoff and gives up on a dead mirror after
       # 30 s; the step limit sits above the slowest recorded throttled download
       # (20m42s) so a mirror outage cannot consume the whole job (job 130605231985).
@@ -95,22 +98,6 @@ jobs:
             Select-Object -First 1
           if (!$fxc) { throw 'GPUI release shaders require the Windows SDK fxc.exe' }
           "GPUI_FXC_PATH=$fxc" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
-      # Only downloaded sources are cached. No build output is restored, so the two
-      # attempts share nothing that was compiled.
-      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-        with:
-          path: |
-            ~/.bun/install/cache
-            ~/.cargo/registry/index
-            ~/.cargo/registry/cache
-            ~/.cargo/git/db
-          key: gpui-downloads-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('toolchain.json', 'bun.lock', 'rust-toolchain.toml', 'Cargo.lock') }}
-      - run: bun install --frozen-lockfile
-      - name: Keep the runner's Cargo home path out of native binaries
-        run: |
-          $cargoHome = if ($env:CARGO_HOME) { $env:CARGO_HOME } else { Join-Path $HOME '.cargo' }
-          "CARGO_ENCODED_RUSTFLAGS=--remap-path-prefix=$cargoHome=/cargo" |
-            Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
       - name: Build the release native host from a clean target directory
         run: |
           cargo build --locked --release -p bun-native-host

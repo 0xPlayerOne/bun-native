@@ -37,11 +37,7 @@ export async function packageFixture(
     // Match readProject's canonical consumer root, including OS temp aliases.
     // Keep resolution inside the owned cleanup boundary if it rejects.
     directory = await realpath(directory)
-    const manifests = await materializedManifests(repository, [
-      '@babel/core',
-      'babel-preset-solid',
-      'oxlint',
-    ])
+    const manifests = await materializedManifests(repository, ['oxlint'])
     const contents: Record<string, Record<string, string>> = {}
     const set: PackageSet = {
       schemaVersion: 1,

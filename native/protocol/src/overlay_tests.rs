@@ -8,7 +8,9 @@ fn node(value: u64) -> NodeId {
     NodeId::try_from(value).unwrap()
 }
 fn read_json(value: &Value) -> Result<Option<Command>, ProtocolError> {
-    CommandReader::default().read(&mut Cursor::new(format!("{value}\n").as_bytes()))
+    CommandReader::default()
+        .read(&mut Cursor::new(format!("{value}\n").as_bytes()))
+        .map(|command| command.map(ValidCommand::into_command))
 }
 fn batch(element: Value) -> Value {
     json!({"type":"batch","id":1,"window_id":1,"base_revision":0,"operations":[{"type":"create","node_id":2,"element":element}]})

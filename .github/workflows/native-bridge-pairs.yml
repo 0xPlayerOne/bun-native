@@ -100,8 +100,7 @@ jobs:
       - name: Collect the predeclared AB/BA sequence in one isolated native session
         timeout-minutes: 50
         run: |
-          xvfb-run --auto-servernum --server-args='-screen 0 1280x800x24 -nolisten tcp' \
-            dbus-run-session -- bash scripts/quality/native-linux-session.sh \
+          bash scripts/quality/native-x11-session.sh \
             "$PAIRED_EVIDENCE/session" -- python3 benchmarks/bridge-pairs.py run \
             --prepared "$PAIRED_EVIDENCE/prepared" --bun "$(command -v bun)" \
             --output "$PAIRED_EVIDENCE/observations" --pairs 5 --warmups 1

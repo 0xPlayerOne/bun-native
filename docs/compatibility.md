@@ -39,8 +39,8 @@ names, or when two sources for one pin disagree.
 | `gpui revision`      | `ba63a022c9a22ca66d68ef2a8f0bb9b5b0a9984d` | [`toolchain.json`][toolchain] and both GPUI crates in [`gpui-host`][host-manifest]                                   |
 | `gpui`               | `0.2.2`                                    | [`toolchain.json`][toolchain] `gpui.version`                                                                         |
 | `solid-js`           | `1.9.18`                                   | [`@bun-native/solid`][solid-pin] and root `package.json`                                                             |
-| `babel-preset-solid` | `1.9.16`                                   | root [`package.json`][root-manifest]; Babel 8 stays excluded under [#316][i316]                                      |
-| `@babel/core`        | `7.29.7`                                   | root [`package.json`][root-manifest]                                                                                 |
+| `babel-preset-solid` | `1.9.16`                                   | [`@bun-native/solid`][solid-pin] and root `package.json`; Babel 8 stays excluded under [#316][i316]                  |
+| `@babel/core`        | `7.29.7`                                   | [`@bun-native/solid`][solid-pin] and root `package.json`                                                             |
 | `react`              | `19.3.1`                                   | [`@bun-native/react`][react-pin] and root `package.json`                                                             |
 | `oxlint`             | `1.92.0`                                   | root [`package.json`][root-manifest] `devDependencies`, the packaged CLI dependency and standalone consumer projects |
 | `react-reconciler`   | `0.34.0`                                   | [`@bun-native/react`][react-pin]                                                                                     |

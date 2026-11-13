@@ -12,7 +12,9 @@ fn node(value: u64) -> NodeId {
     NodeId::try_from(value).unwrap()
 }
 fn read(bytes: &[u8]) -> Result<Option<Command>, ProtocolError> {
-    CommandReader::default().read(&mut Cursor::new(bytes))
+    CommandReader::default()
+        .read(&mut Cursor::new(bytes))
+        .map(|command| command.map(ValidCommand::into_command))
 }
 fn read_json(value: &Value) -> Result<Option<Command>, ProtocolError> {
     read(format!("{value}\n").as_bytes())
@@ -27,10 +29,13 @@ fn fragmented_utf8_and_multiple_frames_preserve_boundaries() {
     let mut source = BufReader::with_capacity(1, Cursor::new(bytes.as_bytes()));
     let mut reader = CommandReader::default();
     assert!(
-        matches!(reader.read(&mut source).unwrap(), Some(Command::Open { title, .. }) if title == "界🌍")
+        matches!(reader.read(&mut source).unwrap().map(ValidCommand::into_command), Some(Command::Open { title, .. }) if title == "界🌍")
     );
     assert_eq!(
-        reader.read(&mut source).unwrap(),
+        reader
+            .read(&mut source)
+            .unwrap()
+            .map(ValidCommand::into_command),
         Some(Command::Close {
             id: request(2),
             window_id: window(1)

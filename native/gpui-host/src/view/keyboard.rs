@@ -87,6 +87,7 @@ impl NativeView {
             {
                 handle.scroll_to_item(index);
                 self.held_scrolls.borrow_mut().insert(ancestor);
+                self.revealing.borrow_mut().insert(ancestor);
             }
             // A layer is painted outside its parent's flow; stop at its edge.
             if is_overlay(tree, ancestor) {

@@ -2,8 +2,8 @@
 
 use super::{decode_command, decode_command_last_wins, EventWriter, ProtocolError};
 use crate::{
-    Command, CommandReader, Event, EventSequence, NodeId, WindowId, MAX_EVENT_FRAME_BYTES,
-    MAX_FRAME_BYTES, MAX_TEXT_BYTES,
+    Command, CommandReader, Event, EventSequence, NodeId, ValidCommand, WindowId,
+    MAX_EVENT_FRAME_BYTES, MAX_FRAME_BYTES, MAX_TEXT_BYTES,
 };
 use serde_json::{json, Value};
 use std::fmt::Write as _;
@@ -174,7 +174,9 @@ fn fast_decode_matches_reference_on_shared_fixtures_and_duplicate_key_mutations(
 }
 
 fn read(frame: &str) -> Result<Option<Command>, ProtocolError> {
-    CommandReader::default().read(&mut Cursor::new(format!("{frame}\n")))
+    CommandReader::default()
+        .read(&mut Cursor::new(format!("{frame}\n")))
+        .map(|command| command.map(ValidCommand::into_command))
 }
 
 #[test]
@@ -212,13 +214,17 @@ fn reader_reuses_its_frame_buffer_and_releases_it_when_done() {
     let large = frame(super::RETAINED_FRAME_BYTES);
     let mut source = Cursor::new(format!("{large}\n{{\"id\":2,\"type\":\"shutdown\"}}\n"));
     assert!(matches!(
-        reader.read(&mut source),
+        reader
+            .read(&mut source)
+            .map(|command| command.map(ValidCommand::into_command)),
         Ok(Some(Command::Shutdown { .. }))
     ));
     let capacity = reader.frame.capacity();
     assert!((super::RETAINED_FRAME_BYTES - 100..=super::RETAINED_FRAME_BYTES).contains(&capacity));
     assert!(matches!(
-        reader.read(&mut source),
+        reader
+            .read(&mut source)
+            .map(|command| command.map(ValidCommand::into_command)),
         Ok(Some(Command::Shutdown { .. }))
     ));
     assert_eq!(
@@ -233,7 +239,9 @@ fn reader_reuses_its_frame_buffer_and_releases_it_when_done() {
     let mut reader = CommandReader::default();
     let mut source = Cursor::new(format!("{}\n", frame(MAX_FRAME_BYTES)));
     assert!(matches!(
-        reader.read(&mut source),
+        reader
+            .read(&mut source)
+            .map(|command| command.map(ValidCommand::into_command)),
         Ok(Some(Command::Shutdown { .. }))
     ));
     assert!(reader.frame.capacity() <= super::RETAINED_FRAME_BYTES);

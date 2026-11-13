@@ -3,7 +3,8 @@
 Follow-up to the [allocator control](../../README.md) for
 [#372](https://github.com/0xPlayerOne/bun-native/issues/372): after
 `MIMALLOC_PURGE_DELAY=0`, does the Solid Babel universal transform
-([`scripts/solid/transform.ts`](../../../../scripts/solid/transform.ts)) have a
+(then `scripts/solid/transform.ts`, now
+[`packages/solid/src/build.ts`](../../../../packages/solid/src/build.ts)) have a
 causal, safe change that reduces the controller's resident memory over 401 edits?
 
 **Result: no product change is justified.** Reusing the loaded Babel preset made

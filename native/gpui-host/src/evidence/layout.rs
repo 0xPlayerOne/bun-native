@@ -82,6 +82,11 @@ impl LayoutFrame {
         self
     }
 
+    /// Whether this frame records layout: every node must then be rendered.
+    pub(crate) fn captures(&self) -> bool {
+        self.node_count <= MAX_LAYOUT_NODES
+    }
+
     pub(crate) fn children(
         &self,
         element: Div,
