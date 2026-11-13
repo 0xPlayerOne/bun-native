@@ -1,15 +1,15 @@
-# Bun Native — autonomous implementation instructions
+# Bun Native: agent instructions
 
-**Active direction (October 31, 2026):** Bun Native is a **complete, unconditional rewrite** of the old Bunly experimental CEF/WebView desktop framework. The old runtime, DOM/CEF APIs and tests are obsolete and should be deleted/replaced under [BN0 #251](https://github.com/0xPlayerOne/bun-native/issues/251), not retained as fallbacks. Historical source remains in Git history. Build native desktop apps authored in TypeScript/JavaScript with Bun, native UI rendering (Rust GPUI is the initial engine), and **Bun AOT production compilation**. SolidJS comes first, React second. No WebView or CEF fallback.
+**Direction:** Bun Native builds native desktop apps authored in TypeScript or JavaScript with Bun, a native UI renderer (Rust GPUI first) and **Bun AOT production compilation**. SolidJS and React are both supported. There is no WebView or CEF fallback; the old Bunly/CEF runtime is gone and lives only in Git history.
 
 **Owner's authorization:** This public repository is a fully experimental project. An assigned agent may autonomously perform every implementation and cleanup task in [roadmap #1](https://github.com/0xPlayerOne/bun-native/issues/1), including source deletion, refactors, dependencies/toolchain changes, issues, branches, draft/ready PRs, CI, repo release tooling, and auto-merge when GitHub rules permit. **Do not ask for routine approvals, design sign-offs, milestone checkpoints, or manual testing.** Make practical decisions and document major architecture changes. Continue onto other unblocked tasks while CI runs or blockers are repaired.
 
-**Workspace state:** The active source now contains Bun Native packages and native protocol tests. See [docs/bun-native-handoff.md](docs/bun-native-handoff.md) for the deletion inventory, checks and unverified acceptance. Do not recover obsolete runtime files merely to satisfy an old command.
+**Workspace state:** BN0 and BN1 are complete. The [docs index](docs/README.md) lists current guides and dated records; [compatibility](docs/compatibility.md) is the support table. Do not recover obsolete runtime files to satisfy an old command.
 
 ## Start and operating sequence
 
-1. Read this file, the [roadmap](https://github.com/0xPlayerOne/bun-native/issues/1) and relevant GitHub issue, and inspect the actual branch/worktree and managed contribution policy below. Do not treat the old `docs/architecture.md`, README or legacy Bun 1.4.4 configuration as Bun Native requirements when they describe CEF.
-2. Start [#251](https://github.com/0xPlayerOne/bun-native/issues/251) (remove/replace CEF codebase) and [#225](https://github.com/0xPlayerOne/bun-native/issues/225) (pin current Bun AOT/GPUI toolchain) without waiting on a prototype or human choice. Then native window #230, AOT binary #227, integration blockers #226, and follow dependencies across BN1–BN7.
+1. Read this file, the [roadmap](https://github.com/0xPlayerOne/bun-native/issues/1) and the relevant GitHub issue, and inspect the actual branch and the managed contribution policy below.
+2. Pick the next unblocked task in the BN milestones without waiting for a human choice, and follow its dependencies.
 3. Open a draft PR with the first useful commit, push incremental work, run focused validation, mark ready when prepared and enable auto-merge if repository checks allow. Never bypass protected branch checks, fabricate a passing test, or force a merge. Keep other ready tasks moving.
 4. If an integration test fails, reproduce it, log exact tools/OS/build mode, fix or choose another valid native implementation, and continue. No project stop/go gate. Bun's normal JIT may be used in development; **do not** label a JIT release as AOT. Keep browserless native UI and Bun AOT as the production objective.
 5. Use strict TypeScript for authored core code when appropriate; JavaScript is a first-class supported consumer language. Build Rust native internals once/prebuild artifacts; ordinary consumer TS/JS edits must not silently compile native sources.
