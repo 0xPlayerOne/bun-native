@@ -5,8 +5,8 @@
 use super::{NativeView, split::tab_order};
 use bun_native_protocol::{Element as NativeElement, NodeId, OverlayAnchor, Tree};
 use gpui::{
-    AnyElement, App, Context, Div, Focusable, Pixels, Size, Stateful, Window, anchored, deferred,
-    div, prelude::*, px,
+    AnyElement, App, Context, Div, FocusHandle, Focusable, Pixels, Size, Stateful, Window,
+    anchored, deferred, div, prelude::*, px,
 };
 use std::collections::BTreeMap;
 
@@ -85,16 +85,43 @@ fn layers(tree: &Tree) -> Vec<(NodeId, Layer, bool)> {
 
 impl NativeView {
     /// Native control focus, independent of whether the OS window is active.
+    /// The control that holds window focus. Runs on every key and several
+    /// times per batch, so it answers from the window's focus handle: O(1)
+    /// with nothing focused or the same control focused as last time, and a
+    /// scan of plain handle comparisons otherwise.
     pub(super) fn focused_control(&self, window: &Window, cx: &App) -> Option<NodeId> {
-        self.buttons
+        let focused = window.focused(cx)?;
+        if let Some(id) = self.focus_memo.get()
+            && self.owns_focus(id, &focused, cx)
+        {
+            return Some(id);
+        }
+        let found = self
+            .buttons
             .iter()
-            .find_map(|(id, focus)| focus.is_focused(window).then_some(*id))
+            .find_map(|(id, handle)| (*handle == focused).then_some(*id))
             .or_else(|| {
-                self.inputs.iter().find_map(|(id, input)| {
-                    input.focus_handle(cx).is_focused(window).then_some(*id)
-                })
+                self.inputs
+                    .iter()
+                    .find_map(|(id, input)| input.read(cx).owns_focus(&focused).then_some(*id))
             })
-            .or_else(|| self.splits.focused(window))
+            .or_else(|| {
+                self.splits
+                    .focus_handles()
+                    .find_map(|(id, handle)| (*handle == focused).then_some(id))
+            });
+        self.focus_memo.set(found);
+        found
+    }
+
+    /// Whether `id` is a live control whose focus handle is `focused`.
+    fn owns_focus(&self, id: NodeId, focused: &FocusHandle, cx: &App) -> bool {
+        self.buttons.get(&id) == Some(focused)
+            || self
+                .inputs
+                .get(&id)
+                .is_some_and(|input| input.read(cx).owns_focus(focused))
+            || self.splits.focus_handle(id) == Some(focused)
     }
 
     pub(super) fn can_focus(&self, tree: &Tree, id: NodeId) -> bool {

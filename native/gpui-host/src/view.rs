@@ -15,7 +15,7 @@ use gpui::{
     Focusable, KeyBinding, MouseButton, Pixels, Role, ScrollHandle, SharedString, Size, Stateful,
     Subscription, WeakEntity, Window, actions, canvas, deferred, div, point, prelude::*, px, rgb,
 };
-use std::cell::RefCell;
+use std::cell::{Cell, RefCell};
 use std::collections::{BTreeMap, BTreeSet};
 use std::rc::Rc;
 use std::time::Instant;
@@ -53,6 +53,8 @@ pub(crate) struct NativeView {
     root_focus: FocusHandle,
     focus_subscriptions: BTreeMap<NodeId, [Subscription; 2]>,
     reported_focus: Option<NodeId>,
+    /// The control found by the last focus lookup, checked before a scan.
+    focus_memo: Cell<Option<NodeId>>,
     overlays: Overlays,
     type_ahead: TypeAhead,
     /// Viewports with a pending programmatic scroll this frame; their end
@@ -126,6 +128,7 @@ impl NativeView {
             root_focus: cx.focus_handle(),
             focus_subscriptions: BTreeMap::new(),
             reported_focus: None,
+            focus_memo: Cell::default(),
             overlays: Overlays::default(),
             type_ahead: TypeAhead::default(),
             held_scrolls: RefCell::default(),

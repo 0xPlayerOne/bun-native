@@ -149,12 +149,6 @@ impl Splits {
         self.0.iter().map(|(id, state)| (*id, &state.focus))
     }
 
-    pub(super) fn focused(&self, window: &Window) -> Option<NodeId> {
-        self.0
-            .iter()
-            .find_map(|(id, state)| state.focus.is_focused(window).then_some(*id))
-    }
-
     /// Finished pointer drags whose ratio differs from where they started.
     fn finished_drags(&mut self) -> Vec<(NodeId, f64)> {
         self.0
