@@ -1947,7 +1947,6 @@ dependencies = [
 [[package]]
 name = "gpui_wgpu"
 version = "0.1.0"
-source = "git+https://github.com/zed-industries/zed?rev=ba63a022c9a22ca66d68ef2a8f0bb9b5b0a9984d#ba63a022c9a22ca66d68ef2a8f0bb9b5b0a9984d"
 dependencies = [
  "anyhow",
  "bytemuck",
