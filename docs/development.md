@@ -1,6 +1,6 @@
 # Developer workflow
 
-**Implemented:** the [checkout CLI](developer-tooling.md) creates Solid/React TypeScript or checked JavaScript projects, starts them against an explicitly supplied prebuilt host, optionally watches source with joined full remounts, and produces unsigned same-platform AOT artifacts. These projects use the surrounding repository's dependencies; the explicit `create --packages` mode instead generates [standalone projects from local package sets](standalone-projects.md) under [#382](https://github.com/0xPlayerOne/bun-native/issues/382). Registry publication, host acquisition, native reload qualification and standalone diagnostics remain open under [BN5 #220](https://github.com/0xPlayerOne/bun-native/issues/220).
+**Implemented:** the [checkout CLI](developer-tooling.md) creates Solid/React TypeScript or checked JavaScript projects, starts them against an explicitly supplied prebuilt host, optionally watches source with joined full remounts, and produces unsigned same-platform AOT artifacts. These projects use the surrounding repository's dependencies; the explicit `create --packages` mode instead generates [standalone projects from local package sets](standalone-projects.md) under [#382](https://github.com/0xPlayerOne/bun-native/issues/382). `bun run native host install` (or `--host auto`) downloads the matching release host. Native reload qualification and standalone diagnostics remain open under [BN5 #220](https://github.com/0xPlayerOne/bun-native/issues/220).
 
 ## The expected workflow
 
@@ -10,7 +10,7 @@
 4. **Package:** use Bun's experimental machine-code AOT `bun compile` and pinned native host artifacts. Do not silently substitute JIT `bun build --compile` in a claimed AOT release.
 5. **Diagnose:** expose exact Bun/native host versions, renderer ABI, OS/arch, cache/asset state, logs, unsupported capabilities and reproducible failures.
 
-The executable commands are `bun run native create`, `bun run native dev` and `bun run native build` from the repository root. See [their complete contract and tests](developer-tooling.md). The broader workflow above remains the target; there is no published `bun-native` executable yet.
+The executable commands are `bun run native create`, `bun run native dev` and `bun run native build` from the repository root. See [their complete contract and tests](developer-tooling.md). The broader workflow above remains the target. The CLI is also published to npm as `@bun-native/cli`, but it can't create a project outside a checkout yet.
 
 ## Reload and state
 

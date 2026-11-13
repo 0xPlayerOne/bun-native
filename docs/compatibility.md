@@ -1,18 +1,22 @@
 # Compatibility and support scope
 
 **Version:** Bun Native **0.27.2**, main [`e456a6d`][v0272]. The exact pins
-below are current for that source. The capability table under
+below always match the checked-out source (`compatibility-pins.test.ts` checks
+them); the rest of this page describes 0.27.2. The capability table under
 [Languages, frameworks and platforms](#languages-frameworks-and-platforms)
 describes [accepted source `38634595`][snapshot] (November 5, 2026), and
 [Changes in 0.27.2](#changes-in-0272) lists every capability merged after it,
-each with its own evidence. A capability that appears in neither is not
-supported.
+each with its own evidence. Platform status since then (Linux x64 X11
+supported, macOS 15 ARM64 supported as a preview, Wayland within GPUI's limits,
+Linux ARM64 and macOS x64 observed) is in the
+[platform release decision](decisions/0021-platform-release-readiness.md#acceptance-2026-11-12).
+A capability that appears in none of these is not supported.
 
 **Status:** BN0 and BN1 are complete within their recorded Linux scope. The
 shared core, Solid and React adapters, native layout, Linux services, the
 checkout CLI and standalone package projects are implemented. Their APIs and
-qualification remain experimental; no signed, installed, cross-platform
-application release is qualified. [ADR 0013](decisions/0013-release-readiness.md)
+qualification remain experimental, and no release is signed with a
+production identity yet. [ADR 0013](decisions/0013-release-readiness.md)
 records the resulting release-readiness decision and its blocking risks. The
 [BN0 audit][bn0] and [BN1 audit][bn1] retain their own source, host and
 compiler identities.
@@ -127,7 +131,9 @@ or a virtual display; it is not physical hardware.
 Still unsupported in 0.27.2: signed or notarized artifacts and installers
 ([#249][i249]), Windows physical hardware, Linux ARM64, macOS x64 and Windows
 ARM64 GUI, Babel 8 with the Solid compiler ([#316][i316]), and every DOM, CSS
-cascade and WebView path described below.
+cascade and WebView path described below. Since then Linux ARM64 and macOS x64
+have gating CI lanes and released hosts, which makes them observed, not
+supported ([ADR 0021](decisions/0021-platform-release-readiness.md#second-architectures-2026-11-12)).
 
 ## Evidence procedure
 
