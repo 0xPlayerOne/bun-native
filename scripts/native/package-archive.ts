@@ -1,8 +1,8 @@
 import { gunzipSync } from 'node:zlib'
 import { sha256, type FileDigest } from './artifact.ts'
 import { packageArchivePath } from './paths.ts'
+import { USTAR_BLOCK as block, ustarChecksumValid, ustarNumber } from './ustar.ts'
 
-const block = 512
 const maximumBytes = 64 * 1024 * 1024
 
 function text(field: Buffer): string {
@@ -13,10 +13,8 @@ function text(field: Buffer): string {
 }
 
 function octal(field: Buffer): number {
-  const value = field.toString('latin1')
-  if (!/^[\0 ]*[0-7]+[\0 ]*$/.test(value)) throw new Error('Invalid package tar numeric field')
-  const number = Number.parseInt(value.replaceAll('\0', '').trim(), 8)
-  if (!Number.isSafeInteger(number)) throw new Error('Invalid package tar size')
+  const number = ustarNumber(field)
+  if (number === undefined) throw new Error('Invalid package tar numeric field')
   return number
 }
 
@@ -56,11 +54,8 @@ export async function verifyPackageArchive(
       ended = true
       break
     }
-    const checksum = octal(header.subarray(148, 156))
-    let sum = 0
-    for (let index = 0; index < block; index += 1)
-      sum += index >= 148 && index < 156 ? 32 : header[index]!
-    if (sum !== checksum) throw new Error('Invalid package tar header checksum')
+    octal(header.subarray(148, 156))
+    if (!ustarChecksumValid(header)) throw new Error('Invalid package tar header checksum')
     if (!['ustar\0', 'ustar '].includes(header.subarray(257, 263).toString('latin1')))
       throw new Error('Package archive must use the supported USTAR format')
     const kind = header[156] === 0 ? '0' : String.fromCharCode(header[156]!)

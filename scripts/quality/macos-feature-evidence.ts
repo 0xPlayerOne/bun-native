@@ -14,7 +14,7 @@ import { parseArgs } from 'node:util'
  * Any missing, failed or mismatched item fails the step; nothing is inferred.
  */
 
-export const MODES = ['development', 'aot'] as const
+const MODES = ['development', 'aot'] as const
 
 /** One retained report and what it must say. */
 export type Report = {

@@ -2,8 +2,8 @@ import { readFile, stat, writeFile } from 'node:fs/promises'
 import { basename, isAbsolute } from 'node:path'
 import { parseArgs } from 'node:util'
 import { gzipSync } from 'node:zlib'
+import { USTAR_BLOCK as block, ustarChecksum } from './ustar.ts'
 
-const block = 512
 const record = 20 * block
 
 /**
@@ -63,9 +63,7 @@ export function ustarGzip(
     header[156] = 0x30 // regular file
     field(header, 257, 6, 'ustar\0')
     field(header, 263, 2, '00')
-    let sum = 0
-    for (const byte of header) sum += byte
-    field(header, 148, 8, sum.toString(8).padStart(6, '0') + '\0 ')
+    field(header, 148, 8, ustarChecksum(header).toString(8).padStart(6, '0') + '\0 ')
     parts.push(header, Buffer.from(data), Buffer.alloc((block - (data.length % block)) % block))
   }
   parts.push(Buffer.alloc(block * 2))

@@ -19,7 +19,7 @@ import { join, resolve } from 'node:path'
  * `--write` rewrites the record from the lockfiles; review the diff.
  */
 
-export const LOCKFILES = ['Cargo.lock', 'bun.lock', 'experiments/native-allocation-api/Cargo.lock']
+const LOCKFILES = ['Cargo.lock', 'bun.lock', 'experiments/native-allocation-api/Cargo.lock']
 const RECORD = 'scripts/quality/duplicate-dependencies.json'
 
 export type Duplicates = Record<string, string[]>
@@ -67,7 +67,7 @@ export function bunDuplicates(text: string): Duplicates {
   return duplicatesOf(versions)
 }
 
-export function lockDuplicates(path: string, text: string): Duplicates {
+function lockDuplicates(path: string, text: string): Duplicates {
   return path.endsWith('Cargo.lock') ? cargoDuplicates(text) : bunDuplicates(text)
 }
 
@@ -110,7 +110,7 @@ export function compareDuplicates(
   return errors
 }
 
-export function actualDuplicates(root: string): Record<string, Duplicates> {
+function actualDuplicates(root: string): Record<string, Duplicates> {
   const out: Record<string, Duplicates> = {}
   for (const lockfile of LOCKFILES) {
     const path = join(root, lockfile)

@@ -3,6 +3,7 @@ import { dirname, join } from 'node:path'
 import { gunzipSync } from 'node:zlib'
 import { sha256 } from './artifact.ts'
 import { prebuiltHost } from './host.ts'
+import { ustarChecksumValid, ustarNumber } from './ustar.ts'
 
 /** The platforms whose release host archives the release workflow attaches (ADR 0021). */
 export const releaseHostTargets = [
@@ -45,12 +46,6 @@ export function checksumFor(sums: string, asset: string): string {
   return matches[0]![1]!
 }
 
-function octal(header: Buffer, offset: number, length: number): number {
-  const text = header.toString('latin1', offset, offset + length).replace(/[\0 ]+$/, '')
-  if (!/^[0-7]+$/.test(text)) throw new Error('Host archive has an invalid USTAR number')
-  return Number.parseInt(text, 8)
-}
-
 /**
  * The single `bun-native-host` member of a host archive made by host-archive.ts:
  * a gzip-compressed USTAR stream with exactly one regular file, mode 0755.
@@ -65,11 +60,9 @@ export function hostFromArchive(archive: Uint8Array): Buffer {
   if (header[156] !== 0x30 && header[156] !== 0)
     throw new Error('Host member is not a regular file')
   if (header.toString('latin1', 257, 262) !== 'ustar') throw new Error('Host archive is not USTAR')
-  let checksum = 0
-  for (let index = 0; index < 512; index++)
-    checksum += index >= 148 && index < 156 ? 0x20 : header[index]!
-  if (checksum !== octal(header, 148, 8)) throw new Error('Host archive header checksum mismatch')
-  const size = octal(header, 124, 12)
+  if (!ustarChecksumValid(header)) throw new Error('Host archive header checksum mismatch')
+  const size = ustarNumber(header.subarray(124, 136))
+  if (size === undefined) throw new Error('Host archive has an invalid USTAR number')
   const end = 512 + Math.ceil(size / 512) * 512
   if (size === 0 || end + 1024 > tar.length) throw new Error('Host archive is truncated')
   if (tar.subarray(end).some((byte) => byte !== 0))
