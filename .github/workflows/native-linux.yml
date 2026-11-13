@@ -46,10 +46,12 @@ jobs:
         run: |
           mkdir "$RUNNER_TEMP/native-evidence"
           echo "NATIVE_EVIDENCE=$RUNNER_TEMP/native-evidence" >> "$GITHUB_ENV"
-      - name: Install checksum-pinned Bun compiler
-        run: node scripts/install-bun.mjs --destination "$RUNNER_TEMP/bun-native-bun"
-      - name: Install pinned Rust toolchain
-        run: rustup show active-toolchain
+      - name: Install the pinned Bun and Rust toolchains, downloads and release dependency outputs
+        id: toolchain
+        uses: ./.github/actions/native-toolchain
+        with:
+          release-target: 'true'
+          remap-cargo-home: 'true'
       - name: Install native build and isolated X11 prerequisites
         timeout-minutes: 25
         uses: ./.github/actions/linux-native-prerequisites
@@ -66,39 +68,6 @@ jobs:
           test -r "$manifest"
           dpkg-query -S "$manifest"
           printf 'VK_DRIVER_FILES=%s\n' "$manifest" >> "$GITHUB_ENV"
-      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-        with:
-          path: |
-            ~/.bun/install/cache
-            ~/.cargo/registry/index
-            ~/.cargo/registry/cache
-            ~/.cargo/git/db
-          key: gpui-downloads-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('toolchain.json', 'bun.lock', 'rust-toolchain.toml', 'Cargo.lock') }}
-      - run: bun install --frozen-lockfile
-      # Dependency build outputs come from the last protected-main build of the
-      # same lockfile and toolchain. Workspace crates still rebuild from this
-      # checkout. The scheduled audit restores nothing, keeping a cold build.
-      - name: Restore release dependency build outputs
-        id: target-cache
-        if: github.event_name != 'schedule'
-        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-        with:
-          path: |
-            target/release/build
-            target/release/deps
-            target/release/.fingerprint
-          key: native-release-target-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('rust-toolchain.toml', 'Cargo.lock', 'Cargo.toml', 'native/vendor/**') }}
-          # Only pull requests fall back to an older key; main rebuilds cold
-          # after a lockfile or toolchain change, so stale outputs never pile up.
-          restore-keys: ${{ github.event_name == 'pull_request' && format('native-release-target-{0}-{1}-', runner.os, runner.arch) || '' }}
-      - name: Keep exact-hit vendored crates fresh
-        # Cargo judges path dependencies by mtime, and a fresh checkout makes
-        # every native/vendor file newer than the restored outputs, so the
-        # vendored crates and their dependents rebuilt on every exact hit.
-        # Only an exact key hit (same native/vendor hash) may backdate them.
-        if: ${{ steps.target-cache.outputs.cache-hit == 'true' }}
-        shell: bash
-        run: git ls-files -z native/vendor | xargs -0 touch -d '2000-01-01T00:00:00Z'
       - name: Record build environment
         run: |
           {
@@ -113,18 +82,13 @@ jobs:
             sha256sum "$VK_DRIVER_FILES"
             printf 'Application modes: Bun development and verified machine-code AOT\nNative host profile: release\nDisplay: isolated Xvfb X11; one Wayland step on headless sway\nInput: XTest; Wayland virtual pointer/keyboard\nRenderer request: Mesa software Vulkan/GL; actual adapter in result.json\n'
           } > "$NATIVE_EVIDENCE/toolchain.txt"
-      - name: Keep the runner's Cargo home path out of native binaries
-        # Dependency sources live under CARGO_HOME, and their panic locations are
-        # otherwise embedded verbatim, so equal sources built under another home
-        # differ. See docs/reproducible-builds.md.
-        run: printf 'CARGO_ENCODED_RUSTFLAGS=--remap-path-prefix=%s=/cargo\n' "${CARGO_HOME:-$HOME/.cargo}" >> "$GITHUB_ENV"
       - name: Check native source formatting
         run: cargo fmt --manifest-path Cargo.toml --all -- --check
       - name: Build native executable
         id: native-build
         run: |
           { time -p cargo build --locked --release --manifest-path Cargo.toml -p bun-native-host --bin bun-native-host --example clipboard-peer --example shortcut-peer --example xdnd-source --example wayland-input-peer; } 2>&1 | tee "$NATIVE_EVIDENCE/build.log"
-          echo "${{ steps.target-cache.outputs.cache-matched-key || 'none' }}" > "$NATIVE_EVIDENCE/target-cache-key.txt"
+          echo "${{ steps.toolchain.outputs.target-cache-matched-key || 'none' }}" > "$NATIVE_EVIDENCE/target-cache-key.txt"
           sha256sum target/release/bun-native-host > "$NATIVE_EVIDENCE/binary-sha256.txt"
           stat --format='%s bytes' target/release/bun-native-host > "$NATIVE_EVIDENCE/binary-size.txt"
           sha256sum target/release/examples/clipboard-peer > "$NATIVE_EVIDENCE/clipboard-peer-sha256.txt"
@@ -138,14 +102,14 @@ jobs:
           cargo clippy --locked --release --manifest-path Cargo.toml -p bun-native-host --all-targets -- -D warnings
           cargo test --locked --release --manifest-path Cargo.toml -p bun-native-host
       - name: Save release dependency build outputs from protected main
-        if: ${{ matrix.shard == 3 && (success() && github.event_name == 'push' && github.ref == 'refs/heads/main' && steps.target-cache.outputs.cache-hit != 'true') }}
+        if: ${{ matrix.shard == 3 && (success() && github.event_name == 'push' && github.ref == 'refs/heads/main' && steps.toolchain.outputs.target-cache-hit != 'true') }}
         uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: |
             target/release/build
             target/release/deps
             target/release/.fingerprint
-          key: native-release-target-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('rust-toolchain.toml', 'Cargo.lock', 'Cargo.toml', 'native/vendor/**') }}
+          key: ${{ steps.toolchain.outputs.target-cache-key }}
       - name: Qualify fixed allocation regions with the actual Rust and Heaptrack ABI
         if: matrix.shard == 1
         timeout-minutes: 3

@@ -1,0 +1,125 @@
+name: Native toolchain
+description: >-
+  The one toolchain setup of every Bun Native job: the checksum-pinned Bun
+  compiler, the pinned Rust toolchain, one download cache per OS and
+  architecture, the locked workspace install and, on request, the release
+  dependency build outputs and the Cargo home path remap. Runs in bash on
+  every runner (Git Bash on Windows).
+inputs:
+  rust:
+    description: Install the pinned Rust toolchain and restore the shared download cache.
+    default: 'true'
+  install:
+    description: Run `bun install --frozen-lockfile`.
+    default: 'true'
+  bootstrap-log:
+    description: A file that also receives the Bun bootstrap output, or empty.
+    default: ''
+  release-target:
+    description: >-
+      Restore the release dependency build outputs (target/release build, deps
+      and fingerprints) of the last protected-main build of the same lockfile,
+      toolchain and vendored sources.
+    default: 'false'
+  cold-on-schedule:
+    description: With release-target, restore nothing for the scheduled audit, keeping its build cold.
+    default: 'true'
+  remap-cargo-home:
+    description: Keep the runner's Cargo home path out of native binaries (docs/reproducible-builds.md).
+    default: 'false'
+outputs:
+  target-cache-key:
+    description: The exact release dependency cache key, for the protected-main save.
+    value: ${{ steps.target-key.outputs.key }}
+  target-cache-hit:
+    description: "'true' only when release-target restored the exact key."
+    value: ${{ steps.target-cache.outputs.cache-hit }}
+  target-cache-matched-key:
+    description: The release dependency cache key that was restored, if any.
+    value: ${{ steps.target-cache.outputs.cache-matched-key }}
+runs:
+  using: composite
+  steps:
+    - name: Install checksum-pinned Bun compiler
+      shell: bash
+      env:
+        BOOTSTRAP_LOG: ${{ inputs.bootstrap-log }}
+      run: |
+        destination="$RUNNER_TEMP/bun-native-bun"
+        if [[ "$RUNNER_OS" == Windows ]]; then
+          destination="$RUNNER_TEMP\\bun-native-bun"
+        fi
+        if [[ -n "$BOOTSTRAP_LOG" ]]; then
+          node scripts/install-bun.mjs --destination "$destination" 2>&1 | tee "$BOOTSTRAP_LOG"
+        else
+          node scripts/install-bun.mjs --destination "$destination"
+        fi
+    - name: Install pinned Rust toolchain
+      if: inputs.rust == 'true'
+      shell: bash
+      run: rustup show active-toolchain
+    # One download cache per OS and architecture for every job (it was two,
+    # gpui-downloads and native-downloads, with the same paths and inputs).
+    - name: Restore Bun and Cargo downloads
+      id: downloads
+      if: inputs.rust == 'true'
+      uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      with:
+        path: |
+          ~/.bun/install/cache
+          ~/.cargo/registry/index
+          ~/.cargo/registry/cache
+          ~/.cargo/git/db
+        key: downloads-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('toolchain.json', 'bun.lock', 'rust-toolchain.toml', 'Cargo.lock') }}
+    # Whichever job saves a missed key first defines it for every other job, and
+    # a protocol-only job would otherwise save only the protocol crates. Fetch
+    # every host-target crate of the lockfile, so the saved set is complete.
+    - name: Fetch every locked crate for this host into a new download cache
+      if: inputs.rust == 'true' && steps.downloads.outputs.cache-hit != 'true'
+      shell: bash
+      run: |
+        host=$(rustc -vV | sed -n 's/^host: //p')
+        cargo fetch --locked --manifest-path Cargo.toml --target "$host"
+    - name: Install locked workspace packages
+      if: inputs.install == 'true'
+      shell: bash
+      run: bun install --frozen-lockfile
+    - name: Name the release dependency build outputs
+      id: target-key
+      if: inputs.release-target == 'true'
+      shell: bash
+      run: echo "key=native-release-target-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('rust-toolchain.toml', 'Cargo.lock', 'Cargo.toml', 'native/vendor/**') }}" >> "$GITHUB_OUTPUT"
+    # Workspace crates still rebuild from this checkout.
+    - name: Restore release dependency build outputs
+      id: target-cache
+      if: inputs.release-target == 'true' && (inputs.cold-on-schedule != 'true' || github.event_name != 'schedule')
+      uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      with:
+        path: |
+          target/release/build
+          target/release/deps
+          target/release/.fingerprint
+        key: ${{ steps.target-key.outputs.key }}
+        # Only pull requests fall back to an older key; main rebuilds cold
+        # after a lockfile or toolchain change, so stale outputs never pile up.
+        restore-keys: ${{ github.event_name == 'pull_request' && format('native-release-target-{0}-{1}-', runner.os, runner.arch) || '' }}
+    - name: Keep exact-hit vendored crates fresh
+      # Cargo judges path dependencies by mtime, and a fresh checkout makes
+      # every native/vendor file newer than the restored outputs, so the
+      # vendored crates and their dependents rebuilt on every exact hit.
+      # Only an exact key hit (same native/vendor hash) may backdate them.
+      if: steps.target-cache.outputs.cache-hit == 'true'
+      shell: bash
+      run: git ls-files -z native/vendor | xargs -0 touch -d '2000-01-01T00:00:00Z'
+    - name: Keep the runner's Cargo home path out of native binaries
+      # Dependency sources live under CARGO_HOME, and their panic locations are
+      # otherwise embedded verbatim, so equal sources built under another home
+      # differ. See docs/reproducible-builds.md.
+      if: inputs.remap-cargo-home == 'true'
+      shell: bash
+      run: |
+        cargo_home="${CARGO_HOME:-$HOME/.cargo}"
+        if [[ "$RUNNER_OS" == Windows ]]; then
+          cargo_home="${CARGO_HOME:-$USERPROFILE\\.cargo}"
+        fi
+        printf 'CARGO_ENCODED_RUSTFLAGS=--remap-path-prefix=%s=/cargo\n' "$cargo_home" >> "$GITHUB_ENV"

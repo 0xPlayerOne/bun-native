@@ -34,10 +34,13 @@ jobs:
         run: |
           mkdir "$RUNNER_TEMP/native-evidence"
           echo "NATIVE_EVIDENCE=$RUNNER_TEMP/native-evidence" >> "$GITHUB_ENV"
-      - name: Install checksum-pinned Bun compiler
-        run: node scripts/install-bun.mjs --destination "$RUNNER_TEMP/bun-native-bun"
-      - name: Install pinned Rust toolchain
-        run: rustup show active-toolchain
+      - name: Install the pinned Bun and Rust toolchains, downloads and release dependency outputs
+        id: toolchain
+        uses: ./.github/actions/native-toolchain
+        with:
+          release-target: 'true'
+          cold-on-schedule: 'false'
+          remap-cargo-home: 'true'
       - name: Install native build and isolated X11 prerequisites
         timeout-minutes: 25
         uses: ./.github/actions/linux-native-prerequisites
@@ -50,25 +53,6 @@ jobs:
           fi
           test -r "${manifests[0]}"
           printf 'VK_DRIVER_FILES=%s\n' "${manifests[0]}" >> "$GITHUB_ENV"
-      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-        with:
-          path: |
-            ~/.bun/install/cache
-            ~/.cargo/registry/index
-            ~/.cargo/registry/cache
-            ~/.cargo/git/db
-          key: gpui-downloads-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('toolchain.json', 'bun.lock', 'rust-toolchain.toml', 'Cargo.lock') }}
-      - run: bun install --frozen-lockfile
-      - name: Restore release dependency build outputs
-        id: target-cache
-        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-        with:
-          path: |
-            target/release/build
-            target/release/deps
-            target/release/.fingerprint
-          key: native-release-target-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('rust-toolchain.toml', 'Cargo.lock', 'Cargo.toml', 'native/vendor/**') }}
-          restore-keys: ${{ github.event_name == 'pull_request' && format('native-release-target-{0}-{1}-', runner.os, runner.arch) || '' }}
       - name: Record source and actual target tools
         run: |
           {
@@ -79,8 +63,6 @@ jobs:
             cargo --version
             dpkg-query -W libvulkan1 mesa-vulkan-drivers xvfb openbox xdotool
           } | tee "$NATIVE_EVIDENCE/toolchain.txt"
-      - name: Keep the runner's Cargo home path out of native binaries
-        run: printf 'CARGO_ENCODED_RUSTFLAGS=--remap-path-prefix=%s=/cargo\n' "${CARGO_HOME:-$HOME/.cargo}" >> "$GITHUB_ENV"
       - name: Build native executable
         id: native-build
         run: |
@@ -90,14 +72,14 @@ jobs:
       - name: Test actual native host
         run: cargo test --locked --release -p bun-native-host
       - name: Save release dependency build outputs from protected main
-        if: ${{ success() && github.event_name == 'push' && github.ref == 'refs/heads/main' && steps.target-cache.outputs.cache-hit != 'true' }}
+        if: ${{ success() && github.event_name == 'push' && github.ref == 'refs/heads/main' && steps.toolchain.outputs.target-cache-hit != 'true' }}
         uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: |
             target/release/build
             target/release/deps
             target/release/.fingerprint
-          key: native-release-target-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('rust-toolchain.toml', 'Cargo.lock', 'Cargo.toml', 'native/vendor/**') }}
+          key: ${{ steps.toolchain.outputs.target-cache-key }}
       - name: Read the software GPU driver into the page cache
         timeout-minutes: 2
         run: python3 scripts/quality/warm-gpu-driver.py --output "$NATIVE_EVIDENCE/gpu-driver-warmup.json"
@@ -173,10 +155,13 @@ jobs:
           $evidence = Join-Path $env:RUNNER_TEMP 'bun-native-platform-evidence'
           New-Item -ItemType Directory $evidence | Out-Null
           "NATIVE_EVIDENCE=$evidence" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
-      - name: Install checksum-pinned Bun compiler
-        run: node scripts/install-bun.mjs --destination (Join-Path $env:RUNNER_TEMP 'bun-native-bun')
-      - name: Install pinned Rust toolchain
-        run: rustup show active-toolchain
+      - name: Install the pinned Bun and Rust toolchains, downloads and release dependency outputs
+        id: toolchain
+        uses: ./.github/actions/native-toolchain
+        with:
+          release-target: 'true'
+          cold-on-schedule: 'false'
+          remap-cargo-home: 'true'
       - name: Verify Xcode and precompiled Metal tools
         timeout-minutes: 10
         run: |
@@ -189,25 +174,6 @@ jobs:
           }
           xcrun --sdk macosx metal --version | Tee-Object -FilePath (Join-Path $env:NATIVE_EVIDENCE 'metal-version.txt')
           if ($LASTEXITCODE -ne 0) { throw 'GPUI requires the Xcode Metal compiler' }
-      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-        with:
-          path: |
-            ~/.bun/install/cache
-            ~/.cargo/registry/index
-            ~/.cargo/registry/cache
-            ~/.cargo/git/db
-          key: gpui-downloads-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('toolchain.json', 'bun.lock', 'rust-toolchain.toml', 'Cargo.lock') }}
-      - run: bun install --frozen-lockfile
-      - name: Restore release dependency build outputs
-        id: target-cache
-        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-        with:
-          path: |
-            target/release/build
-            target/release/deps
-            target/release/.fingerprint
-          key: native-release-target-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('rust-toolchain.toml', 'Cargo.lock', 'Cargo.toml', 'native/vendor/**') }}
-          restore-keys: ${{ github.event_name == 'pull_request' && format('native-release-target-{0}-{1}-', runner.os, runner.arch) || '' }}
       - name: Record source and actual target tools
         run: |
           & {
@@ -218,11 +184,6 @@ jobs:
             rustc --version --verbose
             cargo --version
           } | Tee-Object -FilePath (Join-Path $env:NATIVE_EVIDENCE 'toolchain.txt')
-      - name: Keep the runner's Cargo home path out of native binaries
-        run: |
-          $cargoHome = if ($env:CARGO_HOME) { $env:CARGO_HOME } else { Join-Path $HOME '.cargo' }
-          "CARGO_ENCODED_RUSTFLAGS=--remap-path-prefix=$cargoHome=/cargo" |
-            Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
       - name: Build the genuine target-platform GPUI executable
         id: native-build
         run: |
@@ -238,14 +199,14 @@ jobs:
           cargo test --locked --release -p bun-native-host
           if ($LASTEXITCODE -ne 0) { throw 'Native host tests failed' }
       - name: Save release dependency build outputs from protected main
-        if: ${{ success() && github.event_name == 'push' && github.ref == 'refs/heads/main' && steps.target-cache.outputs.cache-hit != 'true' }}
+        if: ${{ success() && github.event_name == 'push' && github.ref == 'refs/heads/main' && steps.toolchain.outputs.target-cache-hit != 'true' }}
         uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: |
             target/release/build
             target/release/deps
             target/release/.fingerprint
-          key: native-release-target-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('rust-toolchain.toml', 'Cargo.lock', 'Cargo.toml', 'native/vendor/**') }}
+          key: ${{ steps.toolchain.outputs.target-cache-key }}
       - name: Development actual native paint and lifecycle
         timeout-minutes: 3
         run: |

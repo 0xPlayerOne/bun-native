@@ -90,10 +90,12 @@ jobs:
             node = (node --version)
             phase = 'before Bun bootstrap; native build and input not yet verified'
           } | ConvertTo-Json | Out-File (Join-Path $evidence 'bootstrap-environment.json')
-      - name: Install checksum-pinned Bun compiler
-        run: node scripts/install-bun.mjs --destination (Join-Path $env:RUNNER_TEMP 'bun-native-bun')
-      - name: Install pinned Rust toolchain
-        run: rustup show active-toolchain
+      - name: Install the pinned Bun and Rust toolchains, downloads and release dependency outputs
+        id: toolchain
+        uses: ./.github/actions/native-toolchain
+        with:
+          release-target: 'true'
+          remap-cargo-home: 'true'
       - name: Verify Xcode and precompiled Metal tools
         if: runner.os == 'macOS'
         timeout-minutes: 10
@@ -129,39 +131,6 @@ jobs:
             Format-List | Out-File (Join-Path $env:NATIVE_EVIDENCE 'windows-sdk.txt')
           Get-FileHash -Algorithm SHA256 -LiteralPath $fxc |
             Format-List | Out-File (Join-Path $env:NATIVE_EVIDENCE 'fxc-sha256.txt')
-      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-        with:
-          path: |
-            ~/.bun/install/cache
-            ~/.cargo/registry/index
-            ~/.cargo/registry/cache
-            ~/.cargo/git/db
-          key: gpui-downloads-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('toolchain.json', 'bun.lock', 'rust-toolchain.toml', 'Cargo.lock') }}
-      - run: bun install --frozen-lockfile
-      # Dependency build outputs come from the last protected-main build of the
-      # same lockfile and toolchain. Workspace crates still rebuild from this
-      # checkout. The scheduled audit restores nothing, keeping a cold build.
-      - name: Restore release dependency build outputs
-        id: target-cache
-        if: github.event_name != 'schedule'
-        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-        with:
-          path: |
-            target/release/build
-            target/release/deps
-            target/release/.fingerprint
-          key: native-release-target-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('rust-toolchain.toml', 'Cargo.lock', 'Cargo.toml', 'native/vendor/**') }}
-          # Only pull requests fall back to an older key; main rebuilds cold
-          # after a lockfile or toolchain change, so stale outputs never pile up.
-          restore-keys: ${{ github.event_name == 'pull_request' && format('native-release-target-{0}-{1}-', runner.os, runner.arch) || '' }}
-      - name: Keep exact-hit vendored crates fresh
-        # Cargo judges path dependencies by mtime, and a fresh checkout makes
-        # every native/vendor file newer than the restored outputs, so the
-        # vendored crates and their dependents rebuilt on every exact hit.
-        # Only an exact key hit (same native/vendor hash) may backdate them.
-        if: ${{ steps.target-cache.outputs.cache-hit == 'true' }}
-        shell: bash
-        run: git ls-files -z native/vendor | xargs -0 touch -d '2000-01-01T00:00:00Z'
       - name: Check portable paint guards on the actual target Python
         run: |
           & '${{ matrix.python }}' -m unittest discover -s tests/quality -p 'test_native_platform*.py' -v
@@ -179,13 +148,6 @@ jobs:
             & '${{ matrix.python }}' --version
             bun -e 'console.log(JSON.stringify({os:process.platform,arch:process.arch,hostProfile:"release",scope:"native paint/lifecycle and separate owned OS-input qualification; results recorded per phase"}))'
           } | Tee-Object -FilePath (Join-Path $env:NATIVE_EVIDENCE 'toolchain.txt')
-      - name: Keep the runner's Cargo home path out of native binaries
-        # Dependency panic locations otherwise embed CARGO_HOME verbatim; see
-        # docs/reproducible-builds.md.
-        run: |
-          $cargoHome = if ($env:CARGO_HOME) { $env:CARGO_HOME } else { Join-Path $HOME '.cargo' }
-          "CARGO_ENCODED_RUSTFLAGS=--remap-path-prefix=$cargoHome=/cargo" |
-            Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
       - name: Build the genuine target-platform GPUI executable
         id: native-build
         run: |
@@ -194,7 +156,7 @@ jobs:
             Tee-Object -FilePath (Join-Path $env:NATIVE_EVIDENCE 'native-build.log')
           $code = $LASTEXITCODE
           $timer.Stop()
-          @{ elapsedMs = $timer.Elapsed.TotalMilliseconds; exitCode = $code; profile = 'release'; targetCacheKey = '${{ steps.target-cache.outputs.cache-matched-key || 'none' }}' } |
+          @{ elapsedMs = $timer.Elapsed.TotalMilliseconds; exitCode = $code; profile = 'release'; targetCacheKey = '${{ steps.toolchain.outputs.target-cache-matched-key || 'none' }}' } |
             ConvertTo-Json | Out-File (Join-Path $env:NATIVE_EVIDENCE 'native-build.json')
           if ($code -ne 0) { throw "Native build failed: $code" }
           $hostPath = (Resolve-Path 'target/release/${{ matrix.binary }}').Path
@@ -259,14 +221,14 @@ jobs:
           }
           $global:LASTEXITCODE = 0
       - name: Save release dependency build outputs from protected main
-        if: ${{ matrix.shard == 1 && (success() && github.event_name == 'push' && github.ref == 'refs/heads/main' && steps.target-cache.outputs.cache-hit != 'true') }}
+        if: ${{ matrix.shard == 1 && (success() && github.event_name == 'push' && github.ref == 'refs/heads/main' && steps.toolchain.outputs.target-cache-hit != 'true') }}
         uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: |
             target/release/build
             target/release/deps
             target/release/.fingerprint
-          key: native-release-target-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('rust-toolchain.toml', 'Cargo.lock', 'Cargo.toml', 'native/vendor/**') }}
+          key: ${{ steps.toolchain.outputs.target-cache-key }}
       # OS code signing and installers (#249): the generated Solid template above is signed,
       # bundled with its update manifest and installed from its installer image. Pull
       # requests always use a throwaway self-signed identity; other runs use the release
