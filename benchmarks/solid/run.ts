@@ -96,7 +96,6 @@ async function sourceFiles() {
     '.bun-version',
     'toolchain.json',
     'scripts/solid-build.ts',
-    'scripts/solid/transform.ts',
     'experiments/aot-gpui/inspect.ts',
     'experiments/aot-gpui/inspect-runtime.ts',
   ])
