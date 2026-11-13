@@ -21,7 +21,7 @@ custom_workflows: preserve
 git_workflow: direct
 merge_strategy: squash
 release_merge_strategy: squash
-npm_publish: false
+npm_publish: false # the generated npm job is off; release.yml publishes @bun-native packages itself
 post_release: false
 codeql_rust_shards: '["all"]'
 codeql_rust_threads: 1

@@ -29,19 +29,19 @@ AOT is an execution mechanism, **not** a JSX/CSS-to-Rust compiler. The Solid/Rea
 
 ## Implemented foundation
 
-| Source                   | Responsibility                                                                       | Dependency direction                          |
-| ------------------------ | ------------------------------------------------------------------------------------ | --------------------------------------------- |
-| `packages/protocol`      | Portable framing and validated command/event contracts                               | No runtime or renderer dependencies           |
-| `packages/runtime`       | Own one prebuilt native process, handshake, requests, events and shutdown            | Protocol public exports and Bun platform APIs |
-| `packages/core`          | Opaque handles, atomic batches, input revisions and owned application callbacks      | Protocol and runtime public exports           |
-| `packages/renderer`      | Framework-neutral staged native tree that both adapters commit through               | Core public exports                           |
-| `packages/solid`         | Solid universal renderer and JSX surface                                             | Core, renderer and pinned Solid               |
-| `packages/react`         | React reconciler host config and JSX surface                                         | Core, renderer and pinned React/reconciler    |
-| `scripts/native.ts`      | Checkout CLI: create, check, format, doctor, dev (with full-remount watch) and build | Workspace packages, pinned Bun, supplied host |
-| `native/protocol`        | Rust validation and framing matching the TypeScript contract                         | Serde and standard library                    |
-| `native/gpui-host`       | Main-thread GPUI window, widgets and native input                                    | Rust protocol and pinned GPUI                 |
-| `examples/native-window` | Bun-owned counter state and native event observation                                 | Core public exports                           |
-| `experiments/aot-gpui`   | Compiler interoperability, negative controls, binary inspection and artifact recipe  | Pinned compiler and explicit prebuilt host    |
+| Source                   | Responsibility                                                                                      | Dependency direction                          |
+| ------------------------ | --------------------------------------------------------------------------------------------------- | --------------------------------------------- |
+| `packages/protocol`      | Portable framing and validated command/event contracts                                              | No runtime or renderer dependencies           |
+| `packages/runtime`       | Own one prebuilt native process, handshake, requests, events and shutdown                           | Protocol public exports and Bun platform APIs |
+| `packages/core`          | Opaque handles, atomic batches, input revisions and owned application callbacks                     | Protocol and runtime public exports           |
+| `packages/renderer`      | Framework-neutral staged native tree that both adapters commit through                              | Core public exports                           |
+| `packages/solid`         | Solid universal renderer and JSX surface                                                            | Core, renderer and pinned Solid               |
+| `packages/react`         | React reconciler host config and JSX surface                                                        | Core, renderer and pinned React/reconciler    |
+| `scripts/native.ts`      | Checkout CLI: create, check, format, lint, doctor, dev (full-remount watch), build and host install | Workspace packages, pinned Bun, supplied host |
+| `native/protocol`        | Rust validation and framing matching the TypeScript contract                                        | Serde and standard library                    |
+| `native/gpui-host`       | Main-thread GPUI window, widgets and native input                                                   | Rust protocol and pinned GPUI                 |
+| `examples/native-window` | Bun-owned counter state and native event observation                                                | Core public exports                           |
+| `experiments/aot-gpui`   | Compiler interoperability, negative controls, binary inspection and artifact recipe                 | Pinned compiler and explicit prebuilt host    |
 
 `scripts/quality/boundaries.ts` checks TypeScript import direction and runtime dependency use. Both Rust crates share the root Cargo workspace and lock. The example never invokes Cargo. Its `BUN_NATIVE_HOST` setting selects an already-built executable; the AOT recipe copies that same host into the output and records its hash.
 

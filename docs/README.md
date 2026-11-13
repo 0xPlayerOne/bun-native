@@ -1,66 +1,61 @@
 # Bun Native documentation
 
-This directory documents the **new native Bun + AOT desktop framework**, not the retired Bunly/CEF implementation.
+Bun Native is a native Bun + AOT desktop framework. These docs cover the current
+framework only; the retired Bunly/CEF implementation lives in
+[Git history](https://github.com/0xPlayerOne/bun-native/commits/main/).
 
-**Current state:** BN0 and BN1 are complete within their documented Linux native scope. The [BN0 audit](bn0-audit.md) preserves the first native/AOT release baseline. The [BN1 audit](bn1-audit.md) records the merged shared native tree, [public TS/JS API](../packages/core/README.md), historical protocol-2 contract, bounded callbacks and passed release-host scheduling/fault/lifecycle/allocator verification. Its retained archive includes eight inspected AOT applications and the exact tested source. The merged Solid [#277](https://github.com/0xPlayerOne/bun-native/pull/277), React [#280](https://github.com/0xPlayerOne/bun-native/pull/280) and shared layout [#281](https://github.com/0xPlayerOne/bun-native/pull/281) increments, the checkout CLI, the initial native services and the experimental update, reproducible-build and crash-qualification tooling from [#483](https://github.com/0xPlayerOne/bun-native/pull/483) are separate later increments. The [native ABI](native-abi.md) records the current private protocol version; full adapter, component and platform support retain their own acceptance.
+Platform and feature support is in one place: [compatibility](compatibility.md).
+Per-platform capability details are in
+[native platforms](native-platforms.md#advertised-capabilities-by-platform).
 
-## Product and architecture
+## Start here
 
-1. [Product vision](bun-native-vision.md) — user promise, differentiators and non-goals
-2. [System architecture](architecture.md) — packages, native host, event lifecycle, renderers and security boundaries
-3. [AOT and toolchain](toolchain.md) — Bun compilation, native artifacts and compatibility
-4. [Compatibility](compatibility.md) — native UI features, Solid/React, web APIs and platform status
-5. [Architecture decisions](decisions/README.md) — decisions, alternatives and recorded tradeoffs
+1. [Product vision](bun-native-vision.md): the user promise, differentiators and non-goals.
+2. [Getting started](getting-started.md): create, check, run, debug, upgrade and package a SolidJS or React app.
+3. [Developer tooling](developer-tooling.md): the `bun run native` commands, and the [development workflow](development.md).
+4. [Public API reference](api-reference.md): every export of core, Solid and React, linked to its contract.
 
-The [current implementation handoff](bun-native-handoff.md) records source removal, current checks and next actions. The [BN0 audit](bn0-audit.md) maps foundation evidence to #227/#258/#226 and the [BN0 integration record](bn0-integration.md) keeps the first Bun-to-GPUI checks and failed probes; the [BN1 audit](bn1-audit.md) maps bridge, safety, security and public API evidence to #219 and its implementation tasks. [AOT executable inspection](aot-inspection.md) explains, with source references, how the compiled-program and JIT-removal records are read.
+## How it works
 
-The initial [shared native layout contract](native-layout.md) extends this tree with bounded sizing, alignment, clipping and retained scroll state. Protocol 4 added the [shared interaction contract](native-events.md). Both documents separate implemented native verification from remaining milestone acceptance.
+- [Architecture](architecture.md): packages, the native host, the event lifecycle, renderers and security boundaries.
+- [AOT and toolchain](toolchain.md): Bun compilation, native artifacts and versioning. [AOT executable inspection](aot-inspection.md) explains how compiled programs are checked.
+- [Native ABI](native-abi.md): the private host protocol. Versions 4 through the current protocol 11 added the interaction contract and the native services.
+- [Layout](native-layout.md), [events](native-events.md) and [event subscription lifetime](event-subscription-lifetime.md).
+- [Text, focus and accessibility](native-text.md), [streaming lists](native-lists.md) and [overlays](native-overlays.md).
+- [Native services](native-services.md): display, clipboard, global shortcuts, notifications, filesystem grants, processes, dialogs, menus and drag and drop. Each is denied by default.
+- [React behavior](react-behavior.md): the React scenario matrix and its development and AOT checks.
+- [Standalone projects](standalone-projects.md): projects outside the checkout that use local package sets.
 
-- [Native event subscription lifetime](event-subscription-lifetime.md) — what an unsubscribe handle owns and what revocation releases
-- [React behavior qualification](react-behavior.md) — the BN3 React native scenario matrix and its development/AOT checks
-- [BN2 initial Solid integration](bn2-solid-integration.md) — implementation-in-progress record for the Solid adapter route and its protocol-4 qualification
+## Building, testing and releasing
 
-Later protocol versions, through the current protocol 11, added default-denied, owned [native services](native-services.md): window display snapshots, bounded clipboard text ([ADR 0007](decisions/0007-native-clipboard.md)), global shortcuts ([ADR 0008](decisions/0008-native-global-shortcuts.md)), desktop notifications ([ADR 0009](decisions/0009-native-notifications.md)), scoped filesystem grants ([ADR 0010](decisions/0010-filesystem-grants.md)), owned child processes ([ADR 0011](decisions/0011-owned-processes.md)) and file drop targets ([ADR 0012](decisions/0012-native-drag-drop.md)). OS file dialogs ([file-dialog ADR](decisions/0013-native-file-dialogs.md)), the macOS application menu bar ([ADR 0015](decisions/0015-application-menu-bar.md)), and macOS/Windows display work areas, identities and change events are optional capabilities on protocol 11; message and confirm dialogs ([ADR 0014](decisions/0014-message-dialogs.md)) are drawn by core on the modal overlay. Clipboard and global shortcuts are qualified only on Linux X11, notifications and file dialogs only on Linux, and filesystem grants and processes on Linux, with macOS and Windows runs in hosted CI only. Drag and drop is qualified on Linux X11, with macOS and Windows runs in hosted CI only. [Advertised capabilities by platform](native-platforms.md#advertised-capabilities-by-platform) lists what each host offers and which of those runs are unverified; missing services report unavailable.
+- [Testing](testing.md): hosted CI, native Linux, macOS and Windows checks, and [native fixtures](../tests/native/README.md).
+- [Native platforms](native-platforms.md): hosted macOS and Windows build, paint and OS-input checks.
+- [Security and crash matrix](qualification-matrix.md): fault, malformed payload, version mismatch and offline cases.
+- [Reproducible builds](reproducible-builds.md): which outputs are byte-identical.
+- [Releasing](releasing.md): AOT targets, release hosts, npm packages, signing and rollback.
+- [Updates](updates.md) and [update lifecycle](update-lifecycle.md): verified manifests, atomic install, rollback, launchers, key rotation and uninstall.
+- [Linting generated projects](consumer-linting.md).
+- [Benchmarks](../benchmarks/README.md): performance fixtures, comparators and raw results.
 
-[Streaming lists](native-lists.md) documents app-level windowing, theme/density tokens and the bounded Solid/React streaming soak. The [overlay contract](native-overlays.md) adds optional dialog/menu/popover layers, modal focus and end-anchored scrolling. Text editing, focus, Unicode, composition, accessibility and scaling have their own [support matrix](native-text.md).
+## Project
 
-## Build and operate
+- [Architecture decisions](decisions/README.md).
+- [Engineering quality](engineering-quality.md): the audits every PR, phase and release needs.
+- [Provenance](provenance.md): licensing, copied code and attribution.
+- [Agent contract](../AGENTS.md) and [contributing](../.github/CONTRIBUTING.md).
+- [Roadmap issue #1](https://github.com/0xPlayerOne/bun-native/issues/1) and the [BN0 to BN7 milestones](https://github.com/0xPlayerOne/bun-native/milestones).
 
-6. [Getting started](getting-started.md) — SolidJS and React walkthroughs: create, check, run, debug, upgrade and package an app in a checkout with a supplied prebuilt host; [public API reference](api-reference.md) — every export of core, Solid and React with a link to its contract
-7. [Development workflow](development.md) — current and intended edit loop; [checkout CLI](developer-tooling.md) — implemented create/check/format/doctor/dev/build commands and limitations; [standalone projects](standalone-projects.md) — `create --packages` projects outside the checkout from local package sets; [reproducible builds](reproducible-builds.md) — which outputs are byte-identical and how that is checked
-8. [Testing and validation](testing.md) — hosted CI, native Linux/macOS/Windows checks and evidence; [native fixtures](../tests/native/README.md); [native platforms](native-platforms.md) — hosted macOS/Windows build, paint and OS-input qualification, the scheduled audit and the per-platform capability table
-9. [Benchmark design](../benchmarks/README.md) — performance fixtures, comparators and raw measurements
-10. [Releasing](releasing.md) — native AOT targets, signing policy, updates and rollback; [experimental updates](updates.md) — verified manifest, atomic install, rollback, unsigned launchers and uninstall; [key rotation, launcher contract and health rollback](update-lifecycle.md); [linting generated projects](consumer-linting.md)
+## Records
 
-### Diagnostics records
+These are dated logs and executed plans. They are kept as written for
+provenance and are not updated to match current code. Machine-readable
+[evidence records](evidence/) hold the raw results they cite.
 
-- [Native first-window startup diagnostics](native-startup-diagnostics.md) — opt-in startup trace for a stalled first open
-- [Native OS-close diagnostics](native-close-diagnostics.md) — close-phase records for the #358 AOT close timeout
-- [macOS input target verification](macos-hit-testing.md) — how the macOS controller authorizes the exact window under a click
+- Milestone records: [BN0 audit](bn0-audit.md), [BN0 integration](bn0-integration.md), [BN1 audit](bn1-audit.md), [BN2 Solid integration](bn2-solid-integration.md), [implementation handoff](bun-native-handoff.md) and the [framework audit](framework-audit.md).
+- Executed plans: [portable framework qualification](platform-adapters-plan.md) (#399), [standalone local packages](standalone-packages-plan.md) (#388), [standalone lock correction](standalone-lock-parser-plan.md) and [installed-consumer qualification](standalone-native-plan.md) (#388).
+- Diagnostics: [first-window startup](native-startup-diagnostics.md), [OS close](native-close-diagnostics.md), [macOS input targets](macos-hit-testing.md) and [macOS qualification](macos-qualification.md).
+- [Real-machine validation runbook](real-machine-validation.md): the physical Windows and macOS cases and which have not run.
 
-### Executed plans
-
-Each of these plans has run; its status note links the result, and the plan is kept as written.
-
-- [Portable framework native qualification](platform-adapters-plan.md) — Solid/React adapters on the hosted macOS/Windows lane (#399)
-- [Standalone local-package qualification](standalone-packages-plan.md) — local package sets and the consumer cohort (#388)
-- [Standalone lock correction](standalone-lock-parser-plan.md) — three parser-only lock controls
-- [Installed-consumer native qualification](standalone-native-plan.md) — the hosted `cli-standalone.py` Linux lane (#388)
-
-Machine-readable [evidence records](evidence/) retain raw results cited by these documents.
-
-## Code quality and project operations
-
-- [Engineering quality and optimization](engineering-quality.md) — required audits every PR, every phase and before release
-- [Framework audit and optimization record](framework-audit.md) — hygiene checks, measured optimizations and rejected candidates, and what still limits release scope (#260)
-- [Provenance](provenance.md) — licensing, copied code and attribution
-- [Security and crash qualification matrix](qualification-matrix.md) — native fault, malformed payload, version mismatch and offline cases with their deciding tests
-- [Real-machine validation runbook](real-machine-validation.md) — setup, permissions, commands and pass conditions for the Windows and macOS cases that need a physical machine, with what has not run
-- [Agent contract](../AGENTS.md) and [Contributing](../.github/CONTRIBUTING.md)
-- [Roadmap issue #1](https://github.com/0xPlayerOne/bun-native/issues/1) and [BN0–BN7 epics](https://github.com/0xPlayerOne/bun-native/milestones)
-
-## Historical Bunly material
-
-The previous CEF/WebView architecture, benchmark reports, M1–M12 qualification records and experimental APIs are **superseded**. They are available in [Git history](https://github.com/0xPlayerOne/bun-native/commits/main/) and historical tags, but do not belong to the active Bun Native docs. Prior results do not qualify the new native runtime.
-
-Please link new implementation evidence to its BN issue/PR with exact compiler version, OS/CPU, build mode, source SHA, commands, failures and unsupported paths. Never describe a planned capability as shipped.
+New evidence should link its BN issue or PR with the compiler version, OS and
+CPU, build mode, source SHA, commands, failures and unsupported paths. Never
+describe a planned capability as shipped.
