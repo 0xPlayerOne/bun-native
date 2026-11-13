@@ -403,7 +403,15 @@ function cli(script: string, ...args: string[]) {
 // installed verifying launcher. macOS and Windows CI run it in `bun test tests`.
 test('an installer image installs and starts through its own script and launcher', async () => {
   const build = await temporary()
-  await copyFile(process.execPath, join(build, `application${exe}`))
+  // A small stand-in application keeps the image to the two real compiled tools. Windows
+  // launches only executables, so it still copies Bun there.
+  if (windows) await copyFile(process.execPath, join(build, `application${exe}`))
+  else
+    await writeFile(
+      join(build, 'application'),
+      '#!/bin/sh\nprintf \'%s\\n\' "$BUN_NATIVE_DATA_DIR"\n',
+      { mode: 0o755 }
+    )
   await writeFile(join(build, `bun-native-host${exe}`), 'host\n')
   await writeFile(
     join(build, 'manifest.json'),

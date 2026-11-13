@@ -38,23 +38,31 @@ test('AOT builds of equal sources are byte-identical across locations, output an
     const working = [repository, outside]
     const outputs = [join(projects[0]!, 'dist'), join(projects[1]!, 'release-output')]
     try {
-      for (const [index, project] of projects.entries()) {
-        const result = Bun.spawnSync(
-          [
-            process.execPath,
-            cli,
-            'build',
-            relative(working[index]!, project),
-            '--host',
-            process.execPath,
-            '--host-profile',
-            'release',
-            ...(index === 1 ? ['--outdir', outputs[1]!] : []),
-          ],
-          { cwd: working[index]!, stdout: 'pipe', stderr: 'pipe', timeout: 150_000 }
-        )
-        if (result.exitCode !== 0) throw new Error(result.stderr.toString())
-      }
+      // The builds are independent, so they compile concurrently.
+      await Promise.all(
+        projects.map(async (project, index) => {
+          const child = Bun.spawn(
+            [
+              process.execPath,
+              cli,
+              'build',
+              relative(working[index]!, project),
+              '--host',
+              process.execPath,
+              '--host-profile',
+              'release',
+              ...(index === 1 ? ['--outdir', outputs[1]!] : []),
+            ],
+            { cwd: working[index]!, stdout: 'pipe', stderr: 'pipe', timeout: 150_000 }
+          )
+          const [stderr, exitCode] = await Promise.all([
+            new Response(child.stderr).text(),
+            child.exited,
+            new Response(child.stdout).text(),
+          ])
+          if (exitCode !== 0) throw new Error(stderr)
+        })
+      )
     } finally {
       rmSync(working[1]!, { recursive: true, force: true })
     }
