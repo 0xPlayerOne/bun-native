@@ -128,6 +128,11 @@ def analyze(result, trace):
                 [frame["renderNanos"] / 1e6 for frame in window_frames]
             ),
             "renderToPaintMs": summary(painted),
+            # Cached views GPUI replayed per frame; traces before cached
+            # views have no such column.
+            "cachedViews": summary(
+                [frame.get("cachedViews", 0) for frame in window_frames]
+            ),
         },
         "totalRenders": trace["renders"],
     }
