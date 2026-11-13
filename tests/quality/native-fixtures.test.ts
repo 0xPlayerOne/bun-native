@@ -6,11 +6,19 @@ import { bundleApplication, moduleInputs } from '../../scripts/native/bundle.ts'
 import {
   fixtureInventory,
   fixtures,
+  isFixture,
   type Fixture,
   type FixtureName,
 } from '../../scripts/quality/native-fixtures.ts'
 
 const repository = resolve(import.meta.dir, '../..')
+
+test('only declared fixture names are fixtures', () => {
+  expect(isFixture('native-window')).toBe(true)
+  expect(isFixture('react-workload')).toBe(true)
+  for (const value of [undefined, '', 'toString', '__proto__', 'missing'])
+    expect(isFixture(value)).toBe(false)
+})
 
 test('every fixture entry exists', () => {
   for (const [name, fixture] of Object.entries(fixtures) as [FixtureName, Fixture][])

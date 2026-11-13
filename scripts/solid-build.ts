@@ -12,10 +12,12 @@ export async function buildSolid(entry: string, outdir: string): Promise<string>
   return module
 }
 
-if (import.meta.main) {
-  const entry = process.argv[2]
-  const outdir = process.argv[3]
-  if (!entry || !outdir || process.argv.length !== 4 || !isAbsolute(outdir))
+/** `bun scripts/solid-build.ts ENTRY ABSOLUTE_OUTPUT_DIRECTORY`; returns the module path. */
+export async function solidBuildCommand(args: readonly string[]): Promise<string> {
+  const [entry, outdir] = args
+  if (!entry || !outdir || args.length !== 2 || !isAbsolute(outdir))
     throw new Error('Usage: bun scripts/solid-build.ts ENTRY ABSOLUTE_OUTPUT_DIRECTORY')
-  console.log(await buildSolid(entry, outdir))
+  return buildSolid(entry, outdir)
 }
+
+if (import.meta.main) console.log(await solidBuildCommand(process.argv.slice(2)))
