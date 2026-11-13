@@ -73,6 +73,10 @@ for await (const chunk of Bun.stdin.stream()) {
     const command = parseCommand(value)
     if (mode === 'silent') continue
     if (mode === 'exit') process.exit(23)
+    // Reports through its exit code whether the environment the application
+    // set after it started reached this process.
+    if (mode === 'environment')
+      process.exit(process.env['BUN_NATIVE_TEST_SECRET']?.startsWith('bn-secret-') ? 24 : 25)
     if (
       command.type === 'open' &&
       (mode === 'panic' || mode === 'panic-backtrace' || mode === 'signal' || mode === 'noisy-exit')

@@ -94,13 +94,29 @@ impl LayoutFrame {
         child_offset: usize,
         scroll: Option<&ScrollHandle>,
     ) -> Div {
+        match self.children_listener(children, child_offset, scroll) {
+            Some(listener) => {
+                element.on_children_prepainted(move |bounds, window, _| listener(&bounds, window))
+            }
+            None => element,
+        }
+    }
+
+    /// What [`Self::children`] installs, for a container that runs other
+    /// listeners on its children's bounds too (GPUI keeps one per `Div`).
+    pub(crate) fn children_listener(
+        &self,
+        children: &[NodeId],
+        child_offset: usize,
+        scroll: Option<&ScrollHandle>,
+    ) -> Option<impl Fn(&[Bounds<Pixels>], &Window) + 'static> {
         if self.node_count > MAX_LAYOUT_NODES || children.is_empty() {
-            return element;
+            return None;
         }
         let children = children.to_vec();
         let scroll = scroll.cloned();
         let nodes = self.nodes.clone();
-        element.on_children_prepainted(move |bounds, window, _| {
+        Some(move |bounds: &[Bounds<Pixels>], window: &Window| {
             let ancestor_clip = rectangle(window.content_mask().bounds);
             let mut nodes = nodes.borrow_mut();
             for (index, child) in children.iter().enumerate() {

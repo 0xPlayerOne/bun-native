@@ -292,6 +292,7 @@ pub struct X11WindowState {
     pub handle: AnyWindowHandle,
     last_insets: [u32; 4],
     accesskit_adapter: Option<accesskit_unix::Adapter>,
+    accesskit_delta: crate::linux::accesskit_delta::Delta,
 }
 
 impl X11WindowState {
@@ -856,6 +857,7 @@ impl X11WindowState {
                 last_insets: [0, 0, 0, 0],
                 edge_constraints: None,
                 accesskit_adapter: None,
+                accesskit_delta: Default::default(),
                 counter_id: sync_request_counter,
                 last_sync_counter: None,
             })
@@ -1994,16 +1996,26 @@ impl PlatformWindow for X11Window {
             callback: callbacks.deactivation,
         };
 
+        let mut state = self.0.state.borrow_mut();
+        let activation_handler = crate::linux::accesskit_delta::StaleOnActivation {
+            handler: activation_handler,
+            stale: state.accesskit_delta.stale_flag(),
+        };
         let adapter =
             accesskit_unix::Adapter::new(activation_handler, action_handler, deactivation_handler);
 
-        self.0.state.borrow_mut().accesskit_adapter = Some(adapter);
+        state.accesskit_adapter = Some(adapter);
     }
 
     fn a11y_tree_update(&self, tree_update: accesskit::TreeUpdate) {
         let mut state = self.0.state.borrow_mut();
+        let state = &mut *state;
         if let Some(adapter) = state.accesskit_adapter.as_mut() {
-            adapter.update_if_active(|| tree_update);
+            let changes = state.accesskit_delta.update(tree_update);
+            if state.accesskit_delta.needed(&changes) {
+                let delta = &state.accesskit_delta;
+                adapter.update_if_active(|| delta.send(changes));
+            }
         }
     }
 
