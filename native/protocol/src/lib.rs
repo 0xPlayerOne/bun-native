@@ -7,6 +7,7 @@ mod drops;
 mod events;
 mod files;
 mod framing;
+mod message;
 mod message_dialogs;
 mod processes;
 mod services;
@@ -19,6 +20,8 @@ pub use drops::*;
 pub use events::*;
 pub use files::*;
 pub use framing::{write_event, CommandReader, EventWriter, ProtocolError};
+#[doc(hidden)]
+pub use message::{message_bytes, message_len, MessagePart};
 pub use message_dialogs::*;
 pub use processes::*;
 pub use services::*;

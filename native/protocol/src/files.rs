@@ -51,7 +51,11 @@ pub fn validate_root_id(id: &str) -> Result<(), &'static str> {
             byte.is_ascii_lowercase() || byte.is_ascii_digit() || byte == b'-' || byte == b'_'
         })
     {
-        return Err("filesystem root ID must be 1-32 lowercase ASCII letters, digits, '-' or '_', starting with a letter");
+        return Err(crate::limit_message!(
+            "filesystem root ID must be 1-",
+            { MAX_ROOT_ID_BYTES },
+            " lowercase ASCII letters, digits, '-' or '_', starting with a letter"
+        ));
     }
     Ok(())
 }
@@ -66,7 +70,11 @@ pub fn validate_root_path(path: &str) -> Result<(), &'static str> {
         || path.chars().any(char::is_control)
         || !(posix_root_path(path) || windows_root_path(path))
     {
-        return Err("filesystem root path must be absolute and normalized, at most 4096 bytes, without control characters");
+        return Err(crate::limit_message!(
+            "filesystem root path must be absolute and normalized, at most ",
+            { MAX_ROOT_PATH_BYTES },
+            " bytes, without control characters"
+        ));
     }
     Ok(())
 }
@@ -106,7 +114,13 @@ pub fn validate_file_path(path: &str) -> Result<(), &'static str> {
             .split('/')
             .any(|name| validate_file_name(name).is_err())
     {
-        return Err("file path must be relative names joined by '/', at most 1024 bytes and 32 components, without '.', '..', empty or control-character names");
+        return Err(crate::limit_message!(
+            "file path must be relative names joined by '/', at most ",
+            { MAX_FILE_PATH_BYTES },
+            " bytes and ",
+            { MAX_FILE_PATH_COMPONENTS },
+            " components, without '.', '..', empty or control-character names"
+        ));
     }
     Ok(())
 }
@@ -119,9 +133,11 @@ pub fn validate_file_name(name: &str) -> Result<(), &'static str> {
         || name.contains('/')
         || name.chars().any(char::is_control)
     {
-        return Err(
-            "file name must be 1-255 bytes, not '.' or '..', without '/' or control characters",
-        );
+        return Err(crate::limit_message!(
+            "file name must be 1-",
+            { MAX_FILE_NAME_BYTES },
+            " bytes, not '.' or '..', without '/' or control characters"
+        ));
     }
     Ok(())
 }
@@ -138,7 +154,11 @@ pub fn validate_chunk(data: &str) -> Result<(), &'static str> {
             .iter()
             .any(|&byte| !(byte.is_ascii_alphanumeric() || byte == b'+' || byte == b'/'))
     {
-        return Err("file data must be padded standard base64 of at most 16384 bytes");
+        return Err(crate::limit_message!(
+            "file data must be padded standard base64 of at most ",
+            { MAX_FILE_CHUNK_BYTES },
+            " bytes"
+        ));
     }
     Ok(())
 }
@@ -192,7 +212,11 @@ impl FileOperation {
             Self::List { after: Some(name) } => validate_file_name(name),
             Self::Read { offset, length } => {
                 if *length == 0 || *length > MAX_FILE_CHUNK_BYTES {
-                    Err("file read length must be between 1 and 16384 bytes")
+                    Err(crate::limit_message!(
+                        "file read length must be between 1 and ",
+                        { MAX_FILE_CHUNK_BYTES },
+                        " bytes"
+                    ))
                 } else if *offset > MAX_FILE_OFFSET - MAX_FILE_CHUNK_BYTES as u64 {
                     Err("file read offset exceeds the safe integer range")
                 } else {
@@ -262,7 +286,11 @@ impl FileResult {
                 entries, omitted, ..
             } => {
                 if entries.len() > MAX_DIRECTORY_ENTRIES || *omitted > MAX_FILE_OFFSET as usize {
-                    return Err("directory page exceeds 64 entries");
+                    return Err(crate::limit_message!(
+                        "directory page exceeds ",
+                        { MAX_DIRECTORY_ENTRIES },
+                        " entries"
+                    ));
                 }
                 for (index, entry) in entries.iter().enumerate() {
                     validate_file_name(&entry.name)?;
@@ -298,7 +326,11 @@ impl FileResult {
 
 pub fn validate_filesystem_roots(roots: &[FilesystemRoot]) -> Result<(), &'static str> {
     if roots.len() > MAX_FILESYSTEM_ROOTS {
-        return Err("at most 8 filesystem roots may be granted");
+        return Err(crate::limit_message!(
+            "at most ",
+            { MAX_FILESYSTEM_ROOTS },
+            " filesystem roots may be granted"
+        ));
     }
     for (index, root) in roots.iter().enumerate() {
         root.validate()?;

@@ -38,7 +38,10 @@ impl ProcessLimits {
             .cpu_seconds
             .is_some_and(|value| !(1..=MAX_PROCESS_CPU_SECONDS).contains(&value))
         {
-            return Err("process cpu_seconds must be between 1 and 604800");
+            return Err(crate::limit_message!(
+                "process cpu_seconds must be between 1 and ",
+                { MAX_PROCESS_CPU_SECONDS }
+            ));
         }
         if self.memory_bytes.is_some_and(|value| {
             !(MIN_PROCESS_MEMORY_BYTES..=MAX_PROCESS_MEMORY_BYTES).contains(&value)
@@ -48,7 +51,11 @@ impl ProcessLimits {
         if self.open_files.is_some_and(|value| {
             !(MIN_PROCESS_OPEN_FILES..=MAX_PROCESS_OPEN_FILES).contains(&value)
         }) {
-            return Err("process open_files must be between 3 and 2^20");
+            return Err(crate::limit_message!(
+                "process open_files must be between ",
+                { MIN_PROCESS_OPEN_FILES },
+                " and 2^20"
+            ));
         }
         Ok(())
     }
@@ -112,8 +119,13 @@ pub struct ProcessExecutable {
 
 impl ProcessExecutable {
     pub fn validate(&self) -> Result<(), &'static str> {
-        crate::validate_root_id(&self.id)
-            .map_err(|_| "process executable ID must be 1-32 lowercase ASCII letters, digits, '-' or '_', starting with a letter")?;
+        crate::validate_root_id(&self.id).map_err(|_| {
+            crate::limit_message!(
+                "process executable ID must be 1-",
+                { crate::MAX_ROOT_ID_BYTES },
+                " lowercase ASCII letters, digits, '-' or '_', starting with a letter"
+            )
+        })?;
         crate::validate_root_path(&self.executable)
             .map_err(|_| "process executable must be an absolute normalized path")?;
         // `/` and `X:\` are the only normalized paths ending in a separator.
@@ -129,7 +141,11 @@ impl ProcessExecutable {
 
 pub fn validate_process_executables(entries: &[ProcessExecutable]) -> Result<(), &'static str> {
     if entries.len() > MAX_PROCESS_EXECUTABLES {
-        return Err("at most 8 process executables may be granted");
+        return Err(crate::limit_message!(
+            "at most ",
+            { MAX_PROCESS_EXECUTABLES },
+            " process executables may be granted"
+        ));
     }
     for (index, entry) in entries.iter().enumerate() {
         entry.validate()?;
@@ -161,7 +177,10 @@ impl TerminalSize {
             || self.columns > MAX_TERMINAL_DIMENSION
             || self.rows > MAX_TERMINAL_DIMENSION
         {
-            return Err("terminal columns and rows must be between 1 and 1000");
+            return Err(crate::limit_message!(
+                "terminal columns and rows must be between 1 and ",
+                { MAX_TERMINAL_DIMENSION }
+            ));
         }
         Ok(())
     }
@@ -193,7 +212,7 @@ pub fn validate_env_name(name: &str) -> Result<(), &'static str> {
             .is_some_and(|byte| byte.is_ascii_alphabetic() || byte == b'_')
         || !bytes.all(|byte| byte.is_ascii_alphanumeric() || byte == b'_')
     {
-        return Err("environment names must be ASCII letters, digits and '_', not starting with a digit, at most 128 bytes");
+        return Err(crate::limit_message!("environment names must be ASCII letters, digits and '_', not starting with a digit, at most ", { MAX_PROCESS_ENV_NAME_BYTES }, " bytes"));
     }
     Ok(())
 }
@@ -208,17 +227,29 @@ impl ProcessLaunch {
                 .iter()
                 .any(|argument| !plain(argument, MAX_PROCESS_ARG_BYTES))
         {
-            return Err(
-                "process arguments must be at most 64 NUL-free strings of at most 4096 bytes",
-            );
+            return Err(crate::limit_message!(
+                "process arguments must be at most ",
+                { MAX_PROCESS_ARGS },
+                " NUL-free strings of at most ",
+                { MAX_PROCESS_ARG_BYTES },
+                " bytes"
+            ));
         }
         if self.env.len() > MAX_PROCESS_ENV {
-            return Err("at most 64 environment variables may be set");
+            return Err(crate::limit_message!(
+                "at most ",
+                { MAX_PROCESS_ENV },
+                " environment variables may be set"
+            ));
         }
         for (name, value) in &self.env {
             validate_env_name(name)?;
             if !plain(value, MAX_PROCESS_ENV_VALUE_BYTES) {
-                return Err("environment values must be NUL-free and at most 4096 bytes");
+                return Err(crate::limit_message!(
+                    "environment values must be NUL-free and at most ",
+                    { MAX_PROCESS_ENV_VALUE_BYTES },
+                    " bytes"
+                ));
             }
         }
         let total: usize = self.args.iter().map(String::len).sum::<usize>()
@@ -228,7 +259,11 @@ impl ProcessLaunch {
                 .map(|(name, value)| name.len() + value.len())
                 .sum::<usize>();
         if total > MAX_PROCESS_LAUNCH_BYTES {
-            return Err("process arguments and environment exceed 32768 bytes");
+            return Err(crate::limit_message!(
+                "process arguments and environment exceed ",
+                { MAX_PROCESS_LAUNCH_BYTES },
+                " bytes"
+            ));
         }
         if let Some(directory) = &self.cwd {
             validate_file_path(&directory.path)?;

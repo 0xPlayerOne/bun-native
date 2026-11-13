@@ -773,6 +773,7 @@ impl NativeView {
                     tree,
                     node_id,
                     child,
+                    layout,
                     drop_scope,
                     modal.child(child),
                     viewport,
@@ -877,6 +878,7 @@ impl NativeView {
         tree: &Tree,
         parent: NodeId,
         child: NodeId,
+        layout: Option<&LayoutFrame>,
         drop_scope: &DropScope,
         modal: ModalScope,
         viewport: Viewport,
@@ -892,10 +894,12 @@ impl NativeView {
             .expect("a caching frame is being drawn");
         let scope = BoundaryScope {
             frame,
+            layout: layout.cloned(),
             drop_scope: drop_scope.clone(),
             modal: modal.position(),
             viewport: viewport.seed(),
             fills: false,
+            stale: false,
         };
         self.caching.boundary(parent, child, holds, scope, cx)
     }
@@ -912,13 +916,14 @@ impl NativeView {
         state.tree.node(node_id)?;
         let cache = scope.frame.cache.as_ref()?;
         if scope.fills {
-            cache.missed();
+            cache.missed(node_id);
         }
         let route = &cache.route;
+        let outer = self.caching.enter(node_id, scope.stale);
         let element = self.render_element(
             &state.tree,
             node_id,
-            None,
+            scope.layout.as_ref(),
             &self.pointer,
             &scope.drop_scope,
             ModalScope::resume(route, scope.modal),
@@ -926,6 +931,7 @@ impl NativeView {
             scope.fills,
             cx,
         );
+        self.caching.leave(outer);
         Some(if scope.fills {
             caching::Offset(element).into_any_element()
         } else {
@@ -942,10 +948,15 @@ impl NativeView {
 
     /// Ends the frame drawn last, after its paint: everything rendered for
     /// it, including the boundaries GPUI laid out after `render`, has run.
-    fn end_frame(&mut self) {
+    /// `painted` once its paint ran; `layout`, the frame's layout evidence,
+    /// then takes what GPUI replayed from the frame painted before.
+    fn end_frame(&mut self, painted: bool, layout: Option<&LayoutFrame>) {
         let Some(frame) = self.caching.current.take() else {
             return;
         };
+        if let Some(cache) = &frame.cache {
+            self.caching.painted(painted.then_some(cache));
+        }
         let state = self.state.clone();
         let state = state.borrow();
         let reused: BTreeSet<NodeId> = frame
@@ -959,6 +970,14 @@ impl NativeView {
                 && std::iter::successors(Some(node), |id| state.tree.parent(*id))
                     .any(|id| reused.contains(&id))
         };
+        if let Some(layout) = layout.filter(|layout| layout.captures()) {
+            if let Some(previous) = self.caching.painted_layout.take()
+                && !reused.is_empty()
+            {
+                layout.carry(&previous, inside);
+            }
+            self.caching.painted_layout = Some(layout.clone());
+        }
         self.culling.finish(&frame, inside);
         // Keep the stops this frame rendered; the next frame marks its own.
         self.run_stops
@@ -1001,7 +1020,7 @@ impl Render for NativeView {
         }
         self.finish_divider_drags(cx);
         // A frame whose paint never ran.
-        self.end_frame();
+        self.end_frame(false, None);
         let drop_scope = DropScope::new(self.drops.targets(self.window_id));
         let state = self.state.borrow();
         let layout = self.evidence.layout_tracing().then(|| {
@@ -1046,7 +1065,7 @@ impl Render for NativeView {
             || !self.nested_reveals.borrow().is_empty();
         let cache = self.caching.frame(
             &state.tree,
-            !accessible && layout.as_ref().is_none_or(|layout| !layout.captures()),
+            !accessible,
             self.viewport,
             window.scale_factor(),
             &modal_route,
@@ -1155,7 +1174,7 @@ impl Render for NativeView {
                         if let Some(phase_frame) = phase_frame {
                             crate::phases::painted(phase_frame, frame.culled(), frame.reused());
                         }
-                        let _ = view.update(cx, |view, _| view.end_frame());
+                        let _ = view.update(cx, |view, _| view.end_frame(true, layout.as_ref()));
                         #[cfg(target_os = "macos")]
                         frame_keeper.painted(window_id, &evidence, window);
                         let state = paint_state.borrow();

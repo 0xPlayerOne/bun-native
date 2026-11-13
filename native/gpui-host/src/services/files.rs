@@ -717,7 +717,14 @@ fn list(fd: OwnedFd, after: Option<&str>) -> Result<FileResult, Failure> {
         }
         scanned += 1;
         if scanned > MAX_SCANNED_ENTRIES {
-            return Err((ErrorCode::LimitExceeded, "directory exceeds 100000 entries"));
+            return Err((
+                ErrorCode::LimitExceeded,
+                bun_native_protocol::limit_message!(
+                    "directory exceeds ",
+                    { MAX_SCANNED_ENTRIES },
+                    " entries"
+                ),
+            ));
         }
         match std::str::from_utf8(bytes) {
             Ok(name) if validate_file_name(name).is_ok() => {

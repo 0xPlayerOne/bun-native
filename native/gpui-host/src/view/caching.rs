@@ -20,14 +20,17 @@
 //! it changes. GPUI itself re-renders a cached boundary that was notified,
 //! moved or clipped differently, and the whole window on a refresh (focus).
 //!
-//! Caching is off while assistive technology reads the window or layout
-//! evidence is captured: GPUI rebuilds the accessibility tree only from
-//! prepainted elements, and evidence records every element. The window then
-//! renders without boundaries, exactly as before caching existed.
+//! Caching is off while assistive technology reads the window: GPUI
+//! rebuilds the accessibility tree only from prepainted elements. The window
+//! then renders without boundaries, exactly as before caching existed. Layout
+//! evidence records the elements a frame prepaints and, for those inside a
+//! view GPUI replayed, what the frame painted before recorded for them: a
+//! replayed view keeps its bounds and content mask, so they keep theirs.
 //! `BUN_NATIVE_VIEW_CACHE=0` turns caching off for comparisons.
 
 use super::accessibility::Position;
 use super::{DropScope, NativeView, culling::CullFrame, culling::Seed};
+use crate::evidence::LayoutFrame;
 use bun_native_protocol::{Dimension, Element as NativeElement, Node, NodeId, Tree};
 use gpui::{
     AnyElement, App, AppContext, Bounds, Context, Element, ElementId, Entity, GlobalElementId,
@@ -86,9 +89,9 @@ impl Sizing {
         element: &NativeElement,
     ) -> Self {
         let style = element.style();
+        // A split's panes refine this (`view/split.rs`).
         let whole = whole
             && fixed
-            && !matches!(element, NativeElement::Split { .. })
             && style.align_items != Some(bun_native_protocol::AlignItems::Center)
             && style.justify_content.is_none_or(|justify| {
                 matches!(
@@ -168,7 +171,7 @@ pub(super) struct CacheFrame {
     /// Boundaries this frame embedded cached.
     pub(super) cached: RefCell<Vec<NodeId>>,
     /// Of those, the ones GPUI rendered anyway (notified, moved or clipped).
-    rendered: Cell<usize>,
+    rendered: RefCell<Vec<NodeId>>,
 }
 
 impl CacheFrame {
@@ -177,12 +180,12 @@ impl CacheFrame {
         self.cached
             .borrow()
             .len()
-            .saturating_sub(self.rendered.get())
+            .saturating_sub(self.rendered.borrow().len())
     }
 
     /// A boundary embedded cached is rendering after all.
-    pub(super) fn missed(&self) {
-        self.rendered.set(self.rendered.get() + 1);
+    pub(super) fn missed(&self, node: NodeId) {
+        self.rendered.borrow_mut().push(node);
     }
 }
 
@@ -191,11 +194,15 @@ impl CacheFrame {
 #[derive(Clone)]
 pub(super) struct BoundaryScope {
     pub(super) frame: Rc<CullFrame>,
+    /// Layout evidence, when the frame captures it.
+    pub(super) layout: Option<LayoutFrame>,
     pub(super) drop_scope: DropScope,
     pub(super) modal: Position,
     pub(super) viewport: Seed,
     /// Embedded cached: the node fills the boundary's fixed box.
     pub(super) fills: bool,
+    /// Inside a boundary GPUI replayed in the last frame ([`Caching::enter`]).
+    pub(super) stale: bool,
 }
 
 /// A boundary's view: renders its node through the window's view.
@@ -257,6 +264,13 @@ pub(super) struct Caching {
     outside: Option<Outside>,
     /// The frame being drawn, until its paint ends.
     pub(super) current: Option<Rc<CullFrame>>,
+    /// The layout evidence of the frame painted last: what a view GPUI
+    /// replays recorded then (`LayoutFrame::carry`).
+    pub(super) painted_layout: Option<LayoutFrame>,
+    /// The boundaries GPUI replayed in the frame painted last.
+    replayed: HashSet<NodeId>,
+    /// Whether the boundary rendering now is, or is inside, one of those.
+    inside: Cell<bool>,
 }
 
 impl Default for Caching {
@@ -269,6 +283,9 @@ impl Default for Caching {
             moved: HashSet::new(),
             outside: None,
             current: None,
+            painted_layout: None,
+            replayed: HashSet::new(),
+            inside: Cell::new(false),
         }
     }
 }
@@ -277,6 +294,11 @@ impl Caching {
     /// The next frame renders every boundary.
     pub(super) fn invalidate(&self) {
         self.stale.set(true);
+    }
+
+    /// What [`Self::invalidate`] sets, for a listener later in the frame.
+    pub(super) fn stale(&self) -> Rc<Cell<bool>> {
+        self.stale.clone()
     }
 
     /// Records one node a committed batch changed, from `Tree::diff_nodes`.
@@ -309,6 +331,45 @@ impl Caching {
         }
     }
 
+    /// A frame painted: GPUI replayed its cached boundaries that did not
+    /// render. `None` when its paint never ran: GPUI's last frame is older
+    /// than the boundaries' decisions, so the next frame renders them all.
+    pub(super) fn painted(&mut self, frame: Option<&CacheFrame>) {
+        self.replayed.clear();
+        match frame {
+            Some(frame) => {
+                let rendered = frame.rendered.borrow();
+                self.replayed.extend(
+                    frame
+                        .cached
+                        .borrow()
+                        .iter()
+                        .filter(|node| !rendered.contains(node)),
+                );
+            }
+            None => self.invalidate(),
+        }
+    }
+
+    /// Enters the render of `node`'s boundary, `stale` when it is inside a
+    /// boundary GPUI replayed in the last frame; returns what to restore
+    /// with [`Self::leave`].
+    ///
+    /// GPUI keeps a cached view's replay ranges from the last frame that
+    /// visited it, and replays them against its last frame. A view inside one
+    /// GPUI replayed was not visited, so its ranges are a frame older: GPUI
+    /// would replay another view's hitboxes, text and scene, or index past
+    /// them. Such a boundary renders, which visits it again, before it is
+    /// cached anew. A boundary GPUI renders while embedded cached renders
+    /// everything inside it on its own.
+    pub(super) fn enter(&self, node: NodeId, stale: bool) -> bool {
+        self.inside.replace(stale || self.replayed.contains(&node))
+    }
+
+    pub(super) fn leave(&self, outer: bool) {
+        self.inside.set(outer);
+    }
+
     /// Starts a frame; `None` when this frame renders without boundaries.
     #[allow(clippy::too_many_arguments)]
     pub(super) fn frame(
@@ -327,6 +388,7 @@ impl Caching {
         if !self.enabled {
             return None;
         }
+        self.inside.set(false);
         if !active {
             // Changes this frame renders are not tracked: start over.
             self.measured.borrow_mut().clear();
@@ -362,7 +424,7 @@ impl Caching {
             full,
             route: route.to_vec(),
             cached: RefCell::default(),
-            rendered: Cell::new(0),
+            rendered: RefCell::default(),
         })
     }
 
@@ -405,7 +467,8 @@ impl Caching {
             .cache
             .as_ref()
             .expect("boundaries render in a caching frame");
-        let size = (holds && !cache.full && frame.unchanged(node_id))
+        let stale = self.inside.get();
+        let size = (holds && !cache.full && !stale && frame.unchanged(node_id))
             .then(|| self.measured.borrow().get(&node_id).copied())
             .flatten()
             .filter(|measured| measured.parent == parent)
@@ -423,6 +486,7 @@ impl Caching {
         });
         *boundary.scope.borrow_mut() = Some(BoundaryScope {
             fills: size.is_some(),
+            stale,
             ..scope
         });
         let entity = boundary.entity.clone();

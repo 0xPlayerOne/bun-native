@@ -99,7 +99,11 @@ pub fn validate_app_menu_item_id(id: &str) -> Result<(), &'static str> {
     {
         Ok(())
     } else {
-        Err("menu item id must be 1-64 bytes of letters, digits, '.', '_', ':' or '-'")
+        Err(crate::limit_message!(
+            "menu item id must be 1-",
+            { MAX_APP_MENU_ITEM_ID_BYTES },
+            " bytes of letters, digits, '.', '_', ':' or '-'"
+        ))
     }
 }
 
@@ -120,7 +124,11 @@ fn entries<'a>(
     for item in items {
         census.entries += 1;
         if census.entries > MAX_APP_MENU_ENTRIES {
-            return Err("a menu bar holds at most 128 entries");
+            return Err(crate::limit_message!(
+                "a menu bar holds at most ",
+                { MAX_APP_MENU_ENTRIES },
+                " entries"
+            ));
         }
         match item {
             AppMenuEntry::Item {
@@ -131,9 +139,11 @@ fn entries<'a>(
             } => {
                 validate_app_menu_item_id(id)?;
                 if !label(text) {
-                    return Err(
-                        "menu label must be nonempty, at most 64 bytes, and contain no control characters",
-                    );
+                    return Err(crate::limit_message!(
+                        "menu label must be nonempty, at most ",
+                        { MAX_APP_MENU_LABEL_BYTES },
+                        " bytes, and contain no control characters"
+                    ));
                 }
                 if census.ids.contains(&id.as_str()) {
                     return Err("menu item ids must be unique in a menu bar");
@@ -152,9 +162,11 @@ fn entries<'a>(
                 label: text, items, ..
             } => {
                 if !label(text) {
-                    return Err(
-                        "menu label must be nonempty, at most 64 bytes, and contain no control characters",
-                    );
+                    return Err(crate::limit_message!(
+                        "menu label must be nonempty, at most ",
+                        { MAX_APP_MENU_LABEL_BYTES },
+                        " bytes, and contain no control characters"
+                    ));
                 }
                 if depth >= MAX_APP_MENU_DEPTH {
                     return Err("submenus nest at most two levels below a top-level menu");
@@ -184,7 +196,11 @@ pub fn validate_context_menu(items: &[AppMenuEntry]) -> Result<(), &'static str>
 /// An empty bar is valid: it removes the application's menus.
 pub fn validate_app_menus(menus: &[AppMenu]) -> Result<(), &'static str> {
     if menus.len() > MAX_APP_MENUS {
-        return Err("a menu bar holds at most 16 menus");
+        return Err(crate::limit_message!(
+            "a menu bar holds at most ",
+            { MAX_APP_MENUS },
+            " menus"
+        ));
     }
     let mut census = Census {
         entries: 0,
@@ -193,9 +209,11 @@ pub fn validate_app_menus(menus: &[AppMenu]) -> Result<(), &'static str> {
     };
     for menu in menus {
         if !label(&menu.title) {
-            return Err(
-                "menu title must be nonempty, at most 64 bytes, and contain no control characters",
-            );
+            return Err(crate::limit_message!(
+                "menu title must be nonempty, at most ",
+                { MAX_APP_MENU_LABEL_BYTES },
+                " bytes, and contain no control characters"
+            ));
         }
         entries(&menu.items, 1, &mut census)?;
     }

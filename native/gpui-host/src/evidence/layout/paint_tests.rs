@@ -226,3 +226,34 @@ fn failed_layout_append_cannot_certify_a_new_paint_or_advance_caches() {
     assert_eq!(rows[3]["type"], "rendered");
     assert_eq!(rows[3]["tree_revision"], changed.revision());
 }
+
+#[test]
+fn a_replayed_view_carries_its_nodes_from_the_frame_painted_before() {
+    let frame = |count| LayoutFrame::new(count, &BTreeMap::new(), std::iter::empty());
+    let record = |frame: &LayoutFrame, node: u64, top: f32| {
+        frame.nodes.borrow_mut().insert(
+            id(node),
+            NodeLayout {
+                bounds: [0., top, 10., 10.],
+                ancestor_clip: [0., 0., 100., 100.],
+            },
+        );
+    };
+    let previous = frame(4);
+    for (node, top) in [(1, 0.), (2, 10.), (3, 20.), (4, 30.)] {
+        record(&previous, node, top);
+    }
+    // This frame prepainted nodes 1 and 2 (moved), and replayed 3 and 4.
+    let current = frame(4);
+    record(&current, 1, 0.);
+    record(&current, 2, 15.);
+    current.carry(&previous, |node| node != id(4));
+    let nodes = current.nodes.borrow();
+    assert_eq!(nodes[&id(2)].bounds, [0., 15., 10., 10.]);
+    assert_eq!(nodes[&id(3)].bounds, [0., 20., 10., 10.]);
+    assert!(!nodes.contains_key(&id(4)));
+    drop(nodes);
+    // A frame never carries from itself.
+    current.carry(&current.clone(), |_| true);
+    assert_eq!(current.nodes.borrow().len(), 3);
+}
