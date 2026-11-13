@@ -59,20 +59,22 @@ CARGO_ENCODED_RUSTFLAGS="--remap-path-prefix=${CARGO_HOME:-$HOME/.cargo}=/cargo"
 
 ### Release profile and binary size
 
-Two size changes keep the release build deterministic: none adds an input that varies between builds.
+Three size changes keep the release build deterministic: none adds an input that varies between builds.
 
 - **Packed relative relocations (Linux GNU).** `native/gpui-host/build.rs` passes `-Wl,-z,pack-relative-relocs` to the host binary, so its ~43,500 `R_X86_64_RELATIVE` relocations move from `.rela.dyn` into a compact DT_RELR table. DT_RELR needs glibc 2.36, below the host's existing glibc 2.39 floor. Like `/Brepro`, it is a build-script link argument, so it survives the workflows' `CARGO_ENCODED_RUSTFLAGS`.
 - **Cold crates at `opt-level = "s"`.** `[profile.release.package.*]` in the root `Cargo.toml` lists the D-Bus stack (`zbus`, `zvariant`, `zbus_names`, `ashpd`, `notify-rust`), the AT-SPI accessibility adapter (`accesskit_unix`, `accesskit_atspi_common`, `atspi*`), SVG parsing (`usvg`, `svgtypes`, `roxmltree`) and regex compilation (`regex*`). They run on service calls, assistive-technology traffic or once, never per frame. GPUI, taffy, text shaping and wgpu stay at level 3.
+- **No oo7 keyring.** The vendored [`gpui_linux`](../native/vendor/gpui_linux/bun-native/README.md) makes GPUI's Secret Service credentials store an optional feature that nothing enables. That removes oo7, its crypto crates and zvariant's GVariant codec, whose instantiations doubled every D-Bus type.
 
 Measured on Linux x64 (`cargo build --locked --release -p bun-native-host` with the CI path remapping, pinned Rust 1.98.1, 4 vCPU; 2026-11-13). Wall times on a quiet machine; CPU time where the machine was shared.
 
-| Build | File (bytes) | `.text` (bytes) | `.rela.dyn` + `.relr.dyn` | Cold build |
-| --- | ---: | ---: | ---: | --- |
-| Baseline (0.33.0 sources) | 32,288,152 | 20,076,241 | 1,050,120 | 283 s wall |
-| + pack-relative-relocs only | 31,256,544 | 20,076,241 | 18,472 | link flag only |
-| + `opt-level = "s"` cold crates only | 31,144,160 | 18,184,097 | 1,146,912 | CPU 843 s vs 896 s (−6%) |
-| `lto = "fat"` only (not adopted) | 29,580,336 | 19,256,289 | 832,152 | 653 s wall (+131%) |
-| Relocations + `opt-level = "s"` (adopted) | **30,348,744** | **18,485,809** | 18,976 | 336 s wall |
+| Build                                              |   File (bytes) | `.text` (bytes) | `.rela.dyn` + `.relr.dyn` | Cold build               |
+| -------------------------------------------------- | -------------: | --------------: | ------------------------: | ------------------------ |
+| Baseline (0.33.0 sources)                          |     32,288,152 |      20,076,241 |                 1,050,120 | 283 s wall               |
+| + pack-relative-relocs only                        |     31,256,544 |      20,076,241 |                    18,472 | link flag only           |
+| + `opt-level = "s"` cold crates only               |     31,144,160 |      18,184,097 |                 1,146,912 | CPU 843 s vs 896 s (−6%) |
+| `lto = "fat"` only (not adopted)                   |     29,580,336 |      19,256,289 |                   832,152 | 653 s wall (+131%)       |
+| Relocations + `opt-level = "s"`                    |     30,348,744 |      18,485,809 |                    18,976 | 336 s wall               |
+| Relocations + `opt-level = "s"` + no oo7 (adopted) | **27,006,160** |  **16,193,105** |                    18,584 | 245 s wall               |
 
 Fat LTO was not adopted: its single-threaded link more than doubles the cold build on the 4-core runners every native shard uses, for 0.8 MB of `.text` once the cheaper changes are in. `panic = "abort"` was not adopted either; the host's panic exit shape is pinned by `tests/native/session-panic.ts`.
 
