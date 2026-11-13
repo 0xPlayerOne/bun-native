@@ -83,10 +83,6 @@ fn layers(tree: &Tree) -> Vec<(NodeId, Layer, bool)> {
     result
 }
 
-fn within(tree: &Tree, node: NodeId, ancestor: NodeId) -> bool {
-    tree.path(node).is_some_and(|path| path.contains(&ancestor))
-}
-
 impl NativeView {
     /// Native control focus, independent of whether the OS window is active.
     pub(super) fn focused_control(&self, window: &Window, cx: &App) -> Option<NodeId> {
@@ -145,7 +141,12 @@ impl NativeView {
         let target = {
             let state = self.state.borrow();
             let tree = &state.tree;
-            let current = layers(tree);
+            // Most windows have no overlay: skip both structural walks.
+            let current = if self.index.overlays.is_empty() {
+                Vec::new()
+            } else {
+                layers(tree)
+            };
             let mut closed: Vec<(Layer, Option<NodeId>)> = Vec::new();
             let mut opened: Vec<(Layer, NodeId)> = Vec::new();
             self.overlays.live.retain(|id, entry| {
@@ -170,12 +171,16 @@ impl NativeView {
                         }
                     });
             }
-            let modal = tree.active_modal();
+            let modal = if self.index.modals.is_empty() {
+                None
+            } else {
+                tree.active_modal()
+            };
             if self.overlays.active_modal.is_some() && self.overlays.active_modal != modal {
                 self.overlays.exposure = self.overlays.exposure.wrapping_add(1);
             }
             self.overlays.active_modal = modal;
-            let allowed = |id: NodeId| modal.is_none_or(|modal| within(tree, id, modal));
+            let allowed = |id: NodeId| modal.is_none_or(|modal| tree.is_within(id, modal));
             // Outermost closed layer first: closing nested layers together
             // returns to the control focused before the outermost one opened.
             closed.sort_by_key(|(layer, _)| *layer);
@@ -193,7 +198,7 @@ impl NativeView {
                 .and_then(|(_, id)| self.layer_controls(tree, *id).first().copied());
             match modal {
                 _ if autofocus.is_some() => autofocus.map(Some),
-                Some(modal) if !effective.is_some_and(|id| within(tree, id, modal)) => {
+                Some(modal) if !effective.is_some_and(|id| tree.is_within(id, modal)) => {
                     match self.focusable(tree, modal).first() {
                         Some(first) => Some(Some(*first)),
                         None if focused.is_some() => Some(None),

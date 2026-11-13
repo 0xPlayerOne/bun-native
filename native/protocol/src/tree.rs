@@ -194,6 +194,23 @@ impl Tree {
         Some(route[..len].iter().rev().copied().collect())
     }
 
+    /// Whether `ancestor` is `node` or on its route to the root: the same
+    /// answer as `path(node)` containing `ancestor` in a committed tree,
+    /// without allocating.
+    pub fn is_within(&self, node: NodeId, ancestor: NodeId) -> bool {
+        let mut current = Some(node);
+        while let Some(id) = current {
+            let Some(node) = self.nodes.get(id) else {
+                return false;
+            };
+            if id == ancestor {
+                return true;
+            }
+            current = node.parent;
+        }
+        false
+    }
+
     fn unbounded_path(&self, id: NodeId) -> Option<Vec<NodeId>> {
         let mut path = Vec::new();
         let mut current = Some(id);
@@ -419,10 +436,9 @@ impl Tree {
                         "only an enabled button or an enabled input can take focus",
                     ));
                 }
-                let path = self.path(node_id).unwrap_or_default();
                 if modal
                     .get_or_insert_with(|| self.active_modal())
-                    .is_some_and(|modal| !path.contains(&modal))
+                    .is_some_and(|modal| !self.is_within(node_id, modal))
                 {
                     return Err(error(
                         ErrorCode::InvalidState,

@@ -240,6 +240,17 @@ fn focus_stays_inside_the_topmost_modal() {
         .tree;
     // The nested modal is deeper, so it is active even though it is earlier.
     assert_eq!(tree.active_modal(), Some(node(5)));
+    // The allocation-free containment check agrees with the route snapshot.
+    for target in 1..=7 {
+        for ancestor in 1..=7 {
+            assert_eq!(
+                tree.is_within(node(target), node(ancestor)),
+                tree.path(node(target))
+                    .is_some_and(|path| path.contains(&node(ancestor))),
+                "{target} within {ancestor}"
+            );
+        }
+    }
     for outside in [2, 4] {
         assert_eq!(
             code(
