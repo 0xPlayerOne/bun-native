@@ -18,8 +18,9 @@ use crate::{
 use bun_native_protocol::{
     AppMenuEntry, Capability, Command, ContextMenuId, DialogId, DropId, DropTargetId, ErrorCode,
     Event, FileAccess, FileDialogOptions, FileGrantId, FileOperation, Limits, MAX_WINDOWS,
-    MessageDialogOptions, NodeId, NotificationId, Operation, PROTOCOL_VERSION, ProcessId,
-    ProcessLaunch, RequestId, ServicePolicy, ShortcutId, ShortcutModifiers, Tree, WindowId,
+    MessageDialogOptions, NodeId, NotificationId, PROTOCOL_VERSION, ProcessId, ProcessLaunch,
+    RequestId, ServicePolicy, ShortcutId, ShortcutModifiers, Tree, ValidBatch, ValidCommand,
+    WindowId,
 };
 use gpui::{
     App, Bounds, TitlebarOptions, Window, WindowBounds, WindowHandle, WindowOptions, prelude::*,
@@ -194,8 +195,8 @@ impl Session {
         );
     }
 
-    pub(crate) fn dispatch(&mut self, command: Command, cx: &mut App) {
-        let id = command.id();
+    pub(crate) fn dispatch(&mut self, command: ValidCommand, cx: &mut App) {
+        let id = command.command().id();
         if id.get() <= self.last_request_id {
             self.error(
                 id,
@@ -206,7 +207,7 @@ impl Session {
             return;
         }
         self.last_request_id = id.get();
-        if let Command::Hello { protocol, .. } = command {
+        if let Command::Hello { protocol, .. } = *command.command() {
             if self.greeted {
                 self.error(
                     id,
@@ -305,6 +306,10 @@ impl Session {
             );
             return;
         }
+        let command = match command.into_batch() {
+            Ok(batch) => return self.batch(batch, cx),
+            Err(command) => *command,
+        };
         match command {
             Command::Open {
                 window_id,
@@ -324,12 +329,17 @@ impl Session {
                 },
                 cx,
             ),
+            // `into_batch` took every batch above; this arm only keeps the
+            // match exhaustive, and validates like any untrusted batch.
             Command::Batch {
                 window_id,
                 base_revision,
                 operations,
                 ..
-            } => self.batch(id, window_id, base_revision, operations, cx),
+            } => match ValidBatch::new(id, window_id, base_revision, operations) {
+                Ok(batch) => self.batch(batch, cx),
+                Err(message) => self.error(id, ErrorCode::InvalidCommand, message, cx),
+            },
             Command::Close { window_id, .. } => self.close(id, window_id, cx),
             Command::DisplaySnapshot { window_id, .. } => self.display_snapshot(id, window_id, cx),
             Command::ClipboardRead { window_id, .. } => {
@@ -755,23 +765,14 @@ impl Session {
         }
     }
 
-    fn batch(
-        &mut self,
-        id: RequestId,
-        window_id: WindowId,
-        base_revision: u64,
-        operations: Vec<Operation>,
-        cx: &mut App,
-    ) {
+    fn batch(&mut self, batch: ValidBatch, cx: &mut App) {
         let started = crate::phases::now();
-        let operation_count = operations.len();
+        let (id, window_id) = (batch.id, batch.window_id);
+        let operation_count = batch.operations().len();
         let Some((handle, state)) = self.window(id, window_id, cx) else {
             return;
         };
-        let prepared = state
-            .borrow()
-            .tree
-            .prepare(base_revision, operations, self.last_node_id);
+        let prepared = state.borrow().tree.prepare_valid(batch, self.last_node_id);
         let prepared_at = started.map(|_| std::time::Instant::now());
         let prepared = match prepared {
             Ok(prepared) => prepared,
@@ -1289,6 +1290,8 @@ impl Session {
     }
 
     pub(crate) fn finish(&self, final_event: Event, cx: &mut App) {
+        // Before the final event, so a client that awaited shutdown can read it.
+        crate::phases::write();
         let joins = self.stop_services(cx);
         let events = self.events.clone();
         if joins.is_empty() {

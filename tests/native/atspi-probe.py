@@ -1,6 +1,7 @@
 """Independent AT-SPI client for the isolated native qualification sessions.
 
-`enable` turns on the session accessibility bus as a screen reader would.
+`enable` turns on the session accessibility bus as a screen reader would;
+`disable` turns it off again, as when no assistive technology runs.
 `dump TITLE` waits for the owned window and prints its accessible subtree as
 JSON in pre-order; each entry's `depth` is its distance below the window, and
 components carry their window extents, and text entries carry their selection
@@ -29,7 +30,7 @@ gi.require_version("Atspi", "2.0")
 from gi.repository import Atspi, Gio, GLib
 
 
-def enable() -> None:
+def enable(on: bool = True) -> None:
     bus = Gio.bus_get_sync(Gio.BusType.SESSION, None)
     for name in ("IsEnabled", "ScreenReaderEnabled"):
         bus.call_sync(
@@ -37,13 +38,13 @@ def enable() -> None:
             "/org/a11y/bus",
             "org.freedesktop.DBus.Properties",
             "Set",
-            GLib.Variant("(ssv)", ("org.a11y.Status", name, GLib.Variant("b", True))),
+            GLib.Variant("(ssv)", ("org.a11y.Status", name, GLib.Variant("b", on))),
             None,
             Gio.DBusCallFlags.NONE,
             5_000,
             None,
         )
-    print(json.dumps({"enabled": True}))
+    print(json.dumps({"enabled": on}))
 
 
 def states(node: Atspi.Accessible) -> list[str]:
@@ -256,8 +257,8 @@ def watch(seconds: float) -> None:
 
 
 if __name__ == "__main__":
-    if sys.argv[1:] == ["enable"]:
-        enable()
+    if sys.argv[1:] in (["enable"], ["disable"]):
+        enable(sys.argv[1] == "enable")
     elif len(sys.argv) == 3 and sys.argv[1] == "dump":
         dump(sys.argv[2])
     elif len(sys.argv) == 3 and sys.argv[1] == "watch":
@@ -266,6 +267,6 @@ if __name__ == "__main__":
         act(sys.argv[2], sys.argv[3], sys.argv[4], sys.argv[5], sys.argv[6:])
     else:
         raise SystemExit(
-            "usage: atspi-probe.py enable | dump TITLE | watch SECONDS"
+            "usage: atspi-probe.py enable | disable | dump TITLE | watch SECONDS"
             " | act TITLE ROLE NAME ACTION [ARGS]"
         )

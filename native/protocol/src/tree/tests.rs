@@ -400,6 +400,32 @@ fn repeated_update_and_disposal_releases_nodes_without_tombstones() {
 }
 
 #[test]
+fn direct_prepare_still_validates_every_element() {
+    let tree = populated();
+    let invalid = text("\0");
+    rejected(
+        &tree,
+        vec![create(5, invalid.clone())],
+        4,
+        ErrorCode::InvalidCommand,
+    );
+    rejected(
+        &tree,
+        vec![set(3, invalid.clone(), None)],
+        4,
+        ErrorCode::InvalidCommand,
+    );
+    let window = crate::WindowId::try_from(1).unwrap();
+    let request = crate::RequestId::try_from(1).unwrap();
+    for operations in [
+        vec![create(5, invalid.clone())],
+        vec![set(3, invalid, None)],
+    ] {
+        assert!(crate::ValidBatch::new(request, window, tree.revision(), operations).is_err());
+    }
+}
+
+#[test]
 fn native_input_rejects_invalid_text_without_mutation() {
     let mut tree = populated();
     for value in ["\0".to_string(), "界".repeat(crate::MAX_TEXT_BYTES / 3 + 1)] {
@@ -495,6 +521,35 @@ fn preflight_shares_child_lists_until_a_batch_reorders_them() {
     assert!(shared(&edited, &moved, 1) && !shared(&edited, &moved, 2));
     assert_eq!(edited.node(id(2)).unwrap().children(), &[id(3), id(4)]);
     assert_eq!(moved.node(id(2)).unwrap().children(), &[id(4), id(3)]);
+}
+
+#[test]
+fn node_diff_reports_set_and_restructured_nodes_and_parents() {
+    let tree = populated();
+    let changed = |before: &Tree, after: &Tree| {
+        let mut ids = Vec::new();
+        after.diff_nodes(before, |node, _, _| ids.push(node.get()));
+        ids
+    };
+    let edited = tree
+        .prepare(1, vec![set(3, text("b"), None)], 4)
+        .unwrap()
+        .tree;
+    // An element write alone: the parent's child list is still shared.
+    assert_eq!(changed(&tree, &edited), [3]);
+    let moved = edited.prepare(2, vec![insert(2, 3, 1)], 4).unwrap().tree;
+    // A move rewrites the parent's child list, not any element.
+    assert_eq!(changed(&edited, &moved), [2]);
+    let created = moved
+        .prepare(3, vec![create(5, text("c")), insert(1, 5, 1)], 4)
+        .unwrap()
+        .tree;
+    assert_eq!(changed(&moved, &created), [1, 5]);
+    let deleted = created.prepare(4, vec![delete(2)], 5).unwrap().tree;
+    assert_eq!(changed(&created, &deleted), [1, 2, 3, 4]);
+    assert_eq!(deleted.parent(id(5)), Some(id(1)));
+    assert_eq!(deleted.parent(id(1)), None);
+    assert_eq!(deleted.parent(id(3)), None);
 }
 
 #[test]

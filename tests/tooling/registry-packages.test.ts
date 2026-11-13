@@ -93,6 +93,16 @@ test('a verified package set becomes publishable package directories in dependen
     }
     const react = JSON.parse(readFileSync(join(output, 'react', 'package.json'), 'utf8'))
     expect(Object.keys(react.peerDependencies ?? {})).toContain('react')
+    // The Solid build transform ships with the Solid adapter; the CLI carries no Babel.
+    const cli = JSON.parse(readFileSync(join(output, 'cli', 'package.json'), 'utf8'))
+    expect(cli.dependencies).toEqual({ oxlint: '1.92.0' })
+    const solid = JSON.parse(readFileSync(join(output, 'solid', 'package.json'), 'utf8'))
+    expect(solid.exports['./build']).toBe('./src/build.ts')
+    expect(solid.dependencies).toMatchObject({
+      '@babel/core': '7.29.7',
+      'babel-preset-solid': '1.9.16',
+    })
+    expect(solid.peerDependencies).toEqual({ 'solid-js': '1.9.18' })
     await expect(main(['--package-set', manifest, '--outdir', output])).rejects.toThrow()
   })
 })

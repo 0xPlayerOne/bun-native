@@ -601,54 +601,7 @@ impl Command {
                 base_revision,
                 operations,
                 ..
-            } => {
-                revision(*base_revision)?;
-                if operations.is_empty() || operations.len() > MAX_OPERATIONS {
-                    return Err(BATCH_SIZE_MESSAGE);
-                }
-                for operation in operations {
-                    match operation {
-                        Operation::Create { element, .. } => element.validate()?,
-                        Operation::Set {
-                            element,
-                            expected_input_revision,
-                            ..
-                        } => {
-                            element.validate()?;
-                            match (element, expected_input_revision) {
-                                (Element::Input { .. }, Some(value)) => revision(*value)?,
-                                (Element::Input { .. }, None) => {
-                                    return Err("input set requires expected_input_revision")
-                                }
-                                (_, Some(_)) => {
-                                    return Err("expected_input_revision is only valid for input")
-                                }
-                                (_, None) => {}
-                            }
-                        }
-                        Operation::Insert { index, .. } if *index > MAX_NODES_PER_WINDOW => {
-                            return Err("child index exceeds the node limit")
-                        }
-                        Operation::ScrollTo { x, y, .. } => {
-                            if x.is_none() && y.is_none() {
-                                return Err("scroll_to requires x or y");
-                            }
-                            for value in [x, y].into_iter().flatten() {
-                                bounded(
-                                    *value,
-                                    0.,
-                                    MAX_SCROLL_OFFSET,
-                                    "scroll offsets must be between 0 and 1000000",
-                                )?;
-                            }
-                        }
-                        Operation::Insert { .. }
-                        | Operation::Delete { .. }
-                        | Operation::Focus { .. }
-                        | Operation::ScrollIntoView { .. } => {}
-                    }
-                }
-            }
+            } => validate_batch(*base_revision, operations)?,
             Self::ClipboardWrite { text, .. } => crate::validate_clipboard_text(text)?,
             Self::RegisterGlobalShortcut { key, modifiers, .. } => {
                 crate::validate_global_shortcut(key, *modifiers)?
@@ -704,6 +657,132 @@ impl Command {
             | Self::Shutdown { .. } => {}
         }
         Ok(())
+    }
+}
+
+/// A batch's own rules, every element included: `Command::validate` for a
+/// batch, and the proof a `ValidBatch` carries.
+fn validate_batch(base_revision: u64, operations: &[Operation]) -> Result<(), &'static str> {
+    revision(base_revision)?;
+    if operations.is_empty() || operations.len() > MAX_OPERATIONS {
+        return Err(BATCH_SIZE_MESSAGE);
+    }
+    for operation in operations {
+        match operation {
+            Operation::Create { element, .. } => element.validate()?,
+            Operation::Set {
+                element,
+                expected_input_revision,
+                ..
+            } => {
+                element.validate()?;
+                match (element, expected_input_revision) {
+                    (Element::Input { .. }, Some(value)) => revision(*value)?,
+                    (Element::Input { .. }, None) => {
+                        return Err("input set requires expected_input_revision")
+                    }
+                    (_, Some(_)) => return Err("expected_input_revision is only valid for input"),
+                    (_, None) => {}
+                }
+            }
+            Operation::Insert { index, .. } if *index > MAX_NODES_PER_WINDOW => {
+                return Err("child index exceeds the node limit")
+            }
+            Operation::ScrollTo { x, y, .. } => {
+                if x.is_none() && y.is_none() {
+                    return Err("scroll_to requires x or y");
+                }
+                for value in [x, y].into_iter().flatten() {
+                    bounded(
+                        *value,
+                        0.,
+                        MAX_SCROLL_OFFSET,
+                        "scroll offsets must be between 0 and 1000000",
+                    )?;
+                }
+            }
+            Operation::Insert { .. }
+            | Operation::Delete { .. }
+            | Operation::Focus { .. }
+            | Operation::ScrollIntoView { .. } => {}
+        }
+    }
+    Ok(())
+}
+
+/// A command that passed `Command::validate`. Only `CommandReader` makes one,
+/// so a batch taken from it with `into_batch` keeps that proof and
+/// `Tree::prepare_valid` need not validate its elements again.
+#[derive(Debug, Clone, PartialEq)]
+pub struct ValidCommand(Command);
+
+impl ValidCommand {
+    pub(crate) fn new(command: Command) -> Result<Self, &'static str> {
+        command.validate()?;
+        Ok(Self(command))
+    }
+
+    pub fn command(&self) -> &Command {
+        &self.0
+    }
+
+    pub fn into_command(self) -> Command {
+        self.0
+    }
+
+    /// The batch with its validation proof, or any other command unchanged.
+    pub fn into_batch(self) -> Result<ValidBatch, Box<Command>> {
+        match self.0 {
+            Command::Batch {
+                id,
+                window_id,
+                base_revision,
+                operations,
+            } => Ok(ValidBatch {
+                id,
+                window_id,
+                base_revision,
+                operations,
+            }),
+            command => Err(Box::new(command)),
+        }
+    }
+}
+
+/// A `batch` command whose operations, every element included, passed the
+/// batch rules of `Command::validate`. The operations are private, so they
+/// cannot change after that check.
+#[derive(Debug, Clone, PartialEq)]
+pub struct ValidBatch {
+    pub id: RequestId,
+    pub window_id: WindowId,
+    pub base_revision: u64,
+    operations: Vec<Operation>,
+}
+
+impl ValidBatch {
+    /// Validates a batch that did not come through `CommandReader`.
+    pub fn new(
+        id: RequestId,
+        window_id: WindowId,
+        base_revision: u64,
+        operations: Vec<Operation>,
+    ) -> Result<Self, &'static str> {
+        validate_batch(base_revision, &operations)?;
+        Ok(Self {
+            id,
+            window_id,
+            base_revision,
+            operations,
+        })
+    }
+
+    pub fn operations(&self) -> &[Operation] {
+        &self.operations
+    }
+
+    pub(crate) fn into_operations(self) -> Vec<Operation> {
+        self.operations
     }
 }
 

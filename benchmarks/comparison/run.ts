@@ -146,7 +146,6 @@ async function sourceFiles() {
     '.bun-version',
     'toolchain.json',
     'scripts/native/bundle.ts',
-    'scripts/solid/transform.ts',
     'experiments/aot-gpui/inspect.ts',
     'experiments/aot-gpui/inspect-runtime.ts',
   ])

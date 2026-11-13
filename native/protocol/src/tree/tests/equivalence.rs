@@ -188,7 +188,29 @@ fn random_batches_match_whole_graph_clone_preflight() {
             };
             let before = tree.clone();
             let expected = model.prepare(base, &operations, last_id);
-            match (tree.prepare(base, operations, last_id), expected) {
+            // A batch the reader would accept: trusting its element checks
+            // must not change any verdict, error or committed state.
+            let valid = crate::ValidBatch::new(
+                crate::RequestId::try_from(1).unwrap(),
+                crate::WindowId::try_from(1).unwrap(),
+                base,
+                operations.clone(),
+            )
+            .ok()
+            .map(|batch| tree.prepare_valid(batch, last_id));
+            let actual = tree.prepare(base, operations, last_id);
+            if let Some(valid) = valid {
+                match (&valid, &actual) {
+                    (Ok(valid), Ok(actual)) => {
+                        assert_eq!(valid.tree, actual.tree);
+                        assert_eq!(valid.last_node_id, actual.last_node_id);
+                        assert_eq!(valid.requests, actual.requests);
+                    }
+                    (Err(valid), Err(actual)) => assert_eq!(valid, actual),
+                    _ => panic!("prepare_valid and prepare disagree"),
+                }
+            }
+            match (actual, expected) {
                 (Ok(prepared), Ok((next_model, next_id))) => {
                     accepted += 1;
                     assert_eq!(prepared.last_node_id, next_id);

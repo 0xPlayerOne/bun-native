@@ -388,9 +388,20 @@ impl NativeView {
         let modal_route = self.modal_route(tree);
         let modal = ModalScope::of(tree, &modal_route, node_id);
         Some(
-            self.container(tree, node_id, base, None, pointer, &drop_scope, modal, cx)
-                .size_full()
-                .into_any_element(),
+            self.container(
+                tree,
+                node_id,
+                base,
+                None,
+                pointer,
+                &drop_scope,
+                modal,
+                super::Viewport::OFF,
+                None,
+                cx,
+            )
+            .size_full()
+            .into_any_element(),
         )
     }
 }

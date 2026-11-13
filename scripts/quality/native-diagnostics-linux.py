@@ -112,7 +112,7 @@ def source_snapshot():
         ROOT / "scripts/quality/native-input-viewport-scenario.py",
         ROOT / "scripts/quality/native-input-viewport-paint.py",
         ROOT / "scripts/solid-build.ts",
-        ROOT / "scripts/solid/transform.ts",
+        ROOT / "packages/solid/src/build.ts",
         Path(__file__).resolve(),
         ROOT / "scripts/quality/native-input-linux.py",
     ]

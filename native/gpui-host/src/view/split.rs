@@ -6,7 +6,9 @@
 //! Each finished drag and each keyboard step that changed the ratio is
 //! reported once as `split_resize`.
 
-use super::{DropScope, NativeView, accessibility::ModalScope, interactions::PointerFrame};
+use super::{
+    DropScope, NativeView, Viewport, accessibility::ModalScope, interactions::PointerFrame,
+};
 use crate::{evidence::LayoutFrame, style};
 use bun_native_protocol::{
     Direction, Element as NativeElement, Event, NodeId, ResizeSource, SPLIT_DIVIDER, Style, Tree,
@@ -298,6 +300,7 @@ impl NativeView {
         pointer: &PointerFrame,
         drop_scope: &DropScope,
         modal: ModalScope,
+        viewport: Viewport,
         cx: &mut Context<Self>,
     ) -> AnyElement {
         let row = properties.direction != Some(Direction::Column);
@@ -341,6 +344,7 @@ impl NativeView {
                     pointer,
                     drop_scope,
                     modal.child(*child),
+                    viewport,
                     cx,
                 ));
             }

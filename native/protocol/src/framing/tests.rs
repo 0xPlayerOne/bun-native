@@ -11,7 +11,9 @@ use serde_json::{json, Value};
 use std::io::{BufReader, Cursor, Read};
 
 fn read(bytes: &[u8]) -> Result<Option<Command>, ProtocolError> {
-    CommandReader::default().read(&mut Cursor::new(bytes))
+    CommandReader::default()
+        .read(&mut Cursor::new(bytes))
+        .map(|command| command.map(ValidCommand::into_command))
 }
 fn read_json(value: &Value) -> Result<Option<Command>, ProtocolError> {
     read(format!("{value}\n").as_bytes())
@@ -75,14 +77,14 @@ fn exact_limit_frame_split_across_buffer_refills_is_accepted() {
         reader
             .read(&mut source)
             .unwrap()
-            .map(|command| command.id()),
+            .map(|command| command.command().id()),
         Some(RequestId::try_from(1).unwrap())
     );
     assert_eq!(
         reader
             .read(&mut source)
             .unwrap()
-            .map(|command| command.id()),
+            .map(|command| command.command().id()),
         Some(RequestId::try_from(2).unwrap())
     );
     assert_eq!(reader.read(&mut source).unwrap(), None);

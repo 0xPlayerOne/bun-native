@@ -65,7 +65,8 @@ fn request_operations_round_trip_with_optional_axes() {
     let command = CommandReader::default()
         .read(&mut Cursor::new(format!("{line}\n").as_bytes()))
         .unwrap()
-        .unwrap();
+        .unwrap()
+        .into_command();
     let Command::Batch { operations, .. } = command else {
         panic!("batch expected")
     };

@@ -46,10 +46,12 @@ jobs:
         run: |
           mkdir "$RUNNER_TEMP/native-evidence"
           echo "NATIVE_EVIDENCE=$RUNNER_TEMP/native-evidence" >> "$GITHUB_ENV"
-      - name: Install checksum-pinned Bun compiler
-        run: node scripts/install-bun.mjs --destination "$RUNNER_TEMP/bun-native-bun"
-      - name: Install pinned Rust toolchain
-        run: rustup show active-toolchain
+      - name: Install the pinned Bun and Rust toolchains, downloads and release dependency outputs
+        id: toolchain
+        uses: ./.github/actions/native-toolchain
+        with:
+          release-target: 'true'
+          remap-cargo-home: 'true'
       - name: Install native build and isolated X11 prerequisites
         timeout-minutes: 25
         uses: ./.github/actions/linux-native-prerequisites
@@ -66,39 +68,6 @@ jobs:
           test -r "$manifest"
           dpkg-query -S "$manifest"
           printf 'VK_DRIVER_FILES=%s\n' "$manifest" >> "$GITHUB_ENV"
-      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-        with:
-          path: |
-            ~/.bun/install/cache
-            ~/.cargo/registry/index
-            ~/.cargo/registry/cache
-            ~/.cargo/git/db
-          key: gpui-downloads-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('toolchain.json', 'bun.lock', 'rust-toolchain.toml', 'Cargo.lock') }}
-      - run: bun install --frozen-lockfile
-      # Dependency build outputs come from the last protected-main build of the
-      # same lockfile and toolchain. Workspace crates still rebuild from this
-      # checkout. The scheduled audit restores nothing, keeping a cold build.
-      - name: Restore release dependency build outputs
-        id: target-cache
-        if: github.event_name != 'schedule'
-        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-        with:
-          path: |
-            target/release/build
-            target/release/deps
-            target/release/.fingerprint
-          key: native-release-target-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('rust-toolchain.toml', 'Cargo.lock', 'Cargo.toml', 'native/vendor/**') }}
-          # Only pull requests fall back to an older key; main rebuilds cold
-          # after a lockfile or toolchain change, so stale outputs never pile up.
-          restore-keys: ${{ github.event_name == 'pull_request' && format('native-release-target-{0}-{1}-', runner.os, runner.arch) || '' }}
-      - name: Keep exact-hit vendored crates fresh
-        # Cargo judges path dependencies by mtime, and a fresh checkout makes
-        # every native/vendor file newer than the restored outputs, so the
-        # vendored crates and their dependents rebuilt on every exact hit.
-        # Only an exact key hit (same native/vendor hash) may backdate them.
-        if: ${{ steps.target-cache.outputs.cache-hit == 'true' }}
-        shell: bash
-        run: git ls-files -z native/vendor | xargs -0 touch -d '2000-01-01T00:00:00Z'
       - name: Record build environment
         run: |
           {
@@ -113,18 +82,13 @@ jobs:
             sha256sum "$VK_DRIVER_FILES"
             printf 'Application modes: Bun development and verified machine-code AOT\nNative host profile: release\nDisplay: isolated Xvfb X11; one Wayland step on headless sway\nInput: XTest; Wayland virtual pointer/keyboard\nRenderer request: Mesa software Vulkan/GL; actual adapter in result.json\n'
           } > "$NATIVE_EVIDENCE/toolchain.txt"
-      - name: Keep the runner's Cargo home path out of native binaries
-        # Dependency sources live under CARGO_HOME, and their panic locations are
-        # otherwise embedded verbatim, so equal sources built under another home
-        # differ. See docs/reproducible-builds.md.
-        run: printf 'CARGO_ENCODED_RUSTFLAGS=--remap-path-prefix=%s=/cargo\n' "${CARGO_HOME:-$HOME/.cargo}" >> "$GITHUB_ENV"
       - name: Check native source formatting
         run: cargo fmt --manifest-path Cargo.toml --all -- --check
       - name: Build native executable
         id: native-build
         run: |
           { time -p cargo build --locked --release --manifest-path Cargo.toml -p bun-native-host --bin bun-native-host --example clipboard-peer --example shortcut-peer --example xdnd-source --example wayland-input-peer; } 2>&1 | tee "$NATIVE_EVIDENCE/build.log"
-          echo "${{ steps.target-cache.outputs.cache-matched-key || 'none' }}" > "$NATIVE_EVIDENCE/target-cache-key.txt"
+          echo "${{ steps.toolchain.outputs.target-cache-matched-key || 'none' }}" > "$NATIVE_EVIDENCE/target-cache-key.txt"
           sha256sum target/release/bun-native-host > "$NATIVE_EVIDENCE/binary-sha256.txt"
           stat --format='%s bytes' target/release/bun-native-host > "$NATIVE_EVIDENCE/binary-size.txt"
           sha256sum target/release/examples/clipboard-peer > "$NATIVE_EVIDENCE/clipboard-peer-sha256.txt"
@@ -138,14 +102,14 @@ jobs:
           cargo clippy --locked --release --manifest-path Cargo.toml -p bun-native-host --all-targets -- -D warnings
           cargo test --locked --release --manifest-path Cargo.toml -p bun-native-host
       - name: Save release dependency build outputs from protected main
-        if: ${{ matrix.shard == 3 && (success() && github.event_name == 'push' && github.ref == 'refs/heads/main' && steps.target-cache.outputs.cache-hit != 'true') }}
+        if: ${{ matrix.shard == 3 && (success() && github.event_name == 'push' && github.ref == 'refs/heads/main' && steps.toolchain.outputs.target-cache-hit != 'true') }}
         uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: |
             target/release/build
             target/release/deps
             target/release/.fingerprint
-          key: native-release-target-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('rust-toolchain.toml', 'Cargo.lock', 'Cargo.toml', 'native/vendor/**') }}
+          key: ${{ steps.toolchain.outputs.target-cache-key }}
       - name: Qualify fixed allocation regions with the actual Rust and Heaptrack ABI
         if: matrix.shard == 1
         timeout-minutes: 3
@@ -164,67 +128,39 @@ jobs:
           BUN_NATIVE_HOST: ${{ github.workspace }}/target/release/bun-native-host
           BUN_NATIVE_STARTUP_LOG: '1'
         run: |
-          xvfb-run --auto-servernum --server-args='-screen 0 1280x800x24 -nolisten tcp' \
-            dbus-run-session -- bash scripts/quality/native-linux-session.sh \
+          bash scripts/quality/native-x11-session.sh \
             "$NATIVE_EVIDENCE/development" development bun examples/native-window/main.ts
       - name: Development checked-JavaScript consumer input
         if: matrix.shard == 1
         env:
           BUN_NATIVE_HOST: ${{ github.workspace }}/target/release/bun-native-host
         run: |
-          xvfb-run --auto-servernum --server-args='-screen 0 1280x800x24 -nolisten tcp' \
-            dbus-run-session -- bash scripts/quality/native-linux-session.sh \
+          bash scripts/quality/native-x11-session.sh \
             "$NATIVE_EVIDENCE/javascript-development" javascript bun tests/native/javascript.js
       - name: Development public listener and subtree lifecycle
         if: matrix.shard == 1
         env:
           BUN_NATIVE_HOST: ${{ github.workspace }}/target/release/bun-native-host
         run: |
-          xvfb-run --auto-servernum --server-args='-screen 0 1280x800x24 -nolisten tcp' \
-            dbus-run-session -- bash scripts/quality/native-linux-session.sh \
+          bash scripts/quality/native-x11-session.sh \
             "$NATIVE_EVIDENCE/lifecycle-development" core-lifecycle bun tests/native/public-lifecycle.ts
       - name: Development native input event throughput
         if: matrix.shard == 1
         env:
           BUN_NATIVE_HOST: ${{ github.workspace }}/target/release/bun-native-host
         run: |
-          xvfb-run --auto-servernum --server-args='-screen 0 1280x800x24 -nolisten tcp' \
-            dbus-run-session -- bash scripts/quality/native-linux-session.sh \
+          bash scripts/quality/native-x11-session.sh \
             "$NATIVE_EVIDENCE/events-development" event-throughput bun tests/native/event-throughput.ts
       - name: Compile and inspect the actual AOT entries
         env:
           SHARD: ${{ matrix.shard }}
         run: |
-          # Each shard compiles only the entries its own steps run; shard 3's steps
-          # compile their fixtures inline. A new entry defaults to shard 2.
-          shard1=' native-window input-race bridge javascript core-lifecycle event-throughput fault scheduling layout interactions solid-workspace-terminal react-workspace-terminal '
-          # shellcheck disable=SC2016 # the xargs child shell expands its own variables
-          for entry in native-window input-race bridge javascript core-lifecycle event-throughput fault scheduling layout interactions services display-semantics display-wayland clipboard global-shortcuts notifications overlays message-dialogs popups wayland filesystem-grants text-input accessibility screen-reader ime processes file-dialogs drag-drop solid-drag-drop react-drag-drop solid-services react-services solid solid-input-intent solid-interactions react react-interactions react-behavior react-workload react-workspace react-workspace-flow solid-workspace-terminal react-workspace-terminal; do
-            case "$SHARD" in
-              1) [[ $shard1 == *" $entry "* ]] || continue ;;
-              2) [[ $shard1 != *" $entry "* ]] || continue ;;
-              *) continue ;;
-            esac
-            echo "$entry"
-          done | xargs -r -P 2 -n 1 bash -c '
-            set -euo pipefail
-            entry=$1
-            outdir="$NATIVE_EVIDENCE/$entry-package"
-            if [[ "$entry" == native-window ]]; then
-              outdir="$NATIVE_EVIDENCE/package"
-            fi
-            # Each entry owns its outdir; logs are printed whole so parallel output never interleaves.
-            log="$RUNNER_TEMP/aot-build-$entry.log"
-            status=0
-            bun experiments/aot-gpui/build-window.ts \
-              --source "$GITHUB_WORKSPACE" \
-              --host "$GITHUB_WORKSPACE/target/release/bun-native-host" \
-              --entry "$entry" --host-profile release --outdir "$outdir" > "$log" 2>&1 || status=$?
-            echo "::group::AOT entry $entry (exit $status)"
-            cat "$log"
-            echo "::endgroup::"
-            exit "$status"
-          ' _
+          # Each shard compiles only the entries its own steps run, as listed in
+          # scripts/quality/native-fixtures.ts (ciCompiles); shard 3's steps
+          # compile their fixtures inline. Two at a time: more measured no gain
+          # on the 4-vCPU runner.
+          bun scripts/quality/compile-aot-entries.ts --platform linux --shard "$SHARD" --jobs 2 \
+            --source "$GITHUB_WORKSPACE" --host "$GITHUB_WORKSPACE/target/release/bun-native-host"
       - name: Development and AOT bounded X11 clipboard service
         if: matrix.shard == 2
         timeout-minutes: 3
@@ -232,18 +168,10 @@ jobs:
           BUN_NATIVE_HOST: ${{ github.workspace }}/target/release/bun-native-host
           BUN_NATIVE_CLIPBOARD_PEER: ${{ github.workspace }}/target/release/examples/clipboard-peer
         run: |
-          for mode in development aot; do
-            command=(bun tests/native/clipboard.ts)
-            if [[ "$mode" == aot ]]; then
-              command=("$NATIVE_EVIDENCE/clipboard-package/clipboard")
-            fi
-            evidence="$NATIVE_EVIDENCE/diagnostics-$mode-clipboard"
-            xvfb-run --auto-servernum --server-args='-screen 0 1280x800x24 -nolisten tcp' \
-              dbus-run-session -- bash scripts/quality/native-linux-session.sh \
-              "$evidence-session" -- python3 scripts/quality/native-diagnostics-linux.py \
-              --output "$evidence" --scenario clipboard --mode "$mode" \
-              --host-profile release -- "${command[@]}"
-          done
+          bash scripts/quality/native-linux-dev-aot.sh --entry clipboard \
+            --dev 'bun tests/native/clipboard.ts' --evidence 'diagnostics-{mode}-clipboard' \
+            -- python3 scripts/quality/native-diagnostics-linux.py --output '{evidence}' \
+            --scenario clipboard --mode '{mode}' --host-profile release -- '{app}'
       - name: Development and AOT X11 global shortcuts
         if: matrix.shard == 2
         timeout-minutes: 3
@@ -251,18 +179,10 @@ jobs:
           BUN_NATIVE_HOST: ${{ github.workspace }}/target/release/bun-native-host
           BUN_NATIVE_SHORTCUT_PEER: ${{ github.workspace }}/target/release/examples/shortcut-peer
         run: |
-          for mode in development aot; do
-            command=(bun tests/native/global-shortcuts.ts)
-            if [[ "$mode" == aot ]]; then
-              command=("$NATIVE_EVIDENCE/global-shortcuts-package/global-shortcuts")
-            fi
-            evidence="$NATIVE_EVIDENCE/global-shortcuts-$mode"
-            mkdir "$evidence"
-            BUN_NATIVE_SHORTCUT_EVIDENCE="$evidence" BUN_NATIVE_SHORTCUT_MODE="$mode" \
-              xvfb-run --auto-servernum --server-args='-screen 0 1280x800x24 -nolisten tcp' \
-              dbus-run-session -- bash scripts/quality/native-linux-session.sh \
-              "$evidence-session" -- "${command[@]}" 2>&1 | tee "$evidence/run.log"
-          done
+          bash scripts/quality/native-linux-dev-aot.sh --entry global-shortcuts \
+            --dev 'bun tests/native/global-shortcuts.ts' --evidence 'global-shortcuts-{mode}' \
+            --run-log --env 'BUN_NATIVE_SHORTCUT_EVIDENCE={evidence}' \
+            --env 'BUN_NATIVE_SHORTCUT_MODE={mode}'
       - name: Development and AOT X11 text, focus, Unicode, composition, AT-SPI and scaling
         if: matrix.shard == 2
         timeout-minutes: 5
@@ -273,19 +193,12 @@ jobs:
         run: |
           for mode in development aot; do
             for scale in 1 2; do
-              command=(bun tests/native/text-input.ts)
-              if [[ "$mode" == aot ]]; then
-                command=("$NATIVE_EVIDENCE/text-input-package/text-input")
-              fi
-              evidence="$NATIVE_EVIDENCE/text-input-$mode-scale-$scale"
-              mkdir "$evidence"
               # The session pins scale 1; pass the host environment explicitly after it.
-              BUN_NATIVE_TEXT_EVIDENCE="$evidence" BUN_NATIVE_TEXT_MODE="$mode" \
-                xvfb-run --auto-servernum --server-args='-screen 0 1280x1024x24 -nolisten tcp' \
-                dbus-run-session -- bash scripts/quality/native-linux-session.sh \
-                "$evidence-session" -- env GPUI_X11_SCALE_FACTOR="$scale" LC_CTYPE=C.UTF-8 \
-                "${command[@]}" 2>&1 | tee "$evidence/run.log"
-              test -s "$evidence/result.json"
+              bash scripts/quality/native-linux-dev-aot.sh --modes "$mode" --entry text-input \
+                --dev 'bun tests/native/text-input.ts' --evidence "text-input-{mode}-scale-$scale" \
+                --run-log --require result.json --screen 1280x1024x24 \
+                --env 'BUN_NATIVE_TEXT_EVIDENCE={evidence}' --env 'BUN_NATIVE_TEXT_MODE={mode}' \
+                -- env "GPUI_X11_SCALE_FACTOR=$scale" LC_CTYPE=C.UTF-8 '{app}'
             done
           done
       - name: Development and AOT X11 input method composition, caret position and Hanja candidates through IBus Hangul
@@ -296,20 +209,10 @@ jobs:
           # The system Python carries PyGObject and the IBus typelib (gir1.2-ibus-1.0, an ibus dependency).
           BUN_NATIVE_IBUS_PYTHON: /usr/bin/python3
         run: |
-          for mode in development aot; do
-            command=(bun tests/native/ime.ts)
-            if [[ "$mode" == aot ]]; then
-              command=("$NATIVE_EVIDENCE/ime-package/ime")
-            fi
-            evidence="$NATIVE_EVIDENCE/ime-$mode"
-            mkdir "$evidence"
-            BUN_NATIVE_TEXT_EVIDENCE="$evidence" BUN_NATIVE_TEXT_MODE="$mode" \
-              xvfb-run --auto-servernum --server-args='-screen 0 1280x1024x24 -nolisten tcp' \
-              dbus-run-session -- bash scripts/quality/native-linux-session.sh \
-              "$evidence-session" -- env LC_CTYPE=C.UTF-8 \
-              "${command[@]}" 2>&1 | tee "$evidence/run.log"
-            test -s "$evidence/result.json"
-          done
+          bash scripts/quality/native-linux-dev-aot.sh --entry ime --dev 'bun tests/native/ime.ts' \
+            --evidence 'ime-{mode}' --run-log --require result.json --screen 1280x1024x24 \
+            --env 'BUN_NATIVE_TEXT_EVIDENCE={evidence}' --env 'BUN_NATIVE_TEXT_MODE={mode}' \
+            -- env LC_CTYPE=C.UTF-8 '{app}'
       - name: Development and AOT X11 accessibility roles and keyboard split divider (AT-SPI) at scale 1 and 2
         if: matrix.shard == 2
         timeout-minutes: 5
@@ -327,20 +230,27 @@ jobs:
               screen=1600x1200
               suffix="-scale2"
             fi
-            for mode in development aot; do
-              command=(bun tests/native/accessibility.ts)
-              if [[ "$mode" == aot ]]; then
-                command=("$NATIVE_EVIDENCE/accessibility-package/accessibility")
-              fi
-              evidence="$NATIVE_EVIDENCE/accessibility-$mode$suffix"
-              mkdir "$evidence"
-              BUN_NATIVE_A11Y_EVIDENCE="$evidence" BUN_NATIVE_A11Y_MODE="$mode" \
-                xvfb-run --auto-servernum --server-args="-screen 0 ${screen}x24 -nolisten tcp" \
-                dbus-run-session -- bash scripts/quality/native-linux-session.sh \
-                "$evidence-session" -- env GPUI_X11_SCALE_FACTOR="$scale" \
-                "${command[@]}" 2>&1 | tee "$evidence/run.log"
-              test -s "$evidence/result.json"
-            done
+            bash scripts/quality/native-linux-dev-aot.sh --entry accessibility \
+              --dev 'bun tests/native/accessibility.ts' --evidence "accessibility-{mode}$suffix" \
+              --run-log --require result.json --screen "${screen}x24" \
+              --env 'BUN_NATIVE_A11Y_EVIDENCE={evidence}' --env 'BUN_NATIVE_A11Y_MODE={mode}' \
+              -- env "GPUI_X11_SCALE_FACTOR=$scale" '{app}'
+          done
+      - name: Development X11 viewport culling keeps Tab order, scrolling, paint and the AT-SPI tree at scale 1 and 2
+        if: matrix.shard == 2
+        timeout-minutes: 3
+        env:
+          BUN_NATIVE_HOST: ${{ github.workspace }}/target/release/bun-native-host
+          BUN_NATIVE_ATSPI_PYTHON: /usr/bin/python3
+        run: |
+          for scale in 1 2; do
+            evidence="$NATIVE_EVIDENCE/culled-list-scale$scale"
+            mkdir "$evidence"
+            BUN_NATIVE_A11Y_EVIDENCE="$evidence" BUN_NATIVE_PHASE_TRACE="$evidence/trace.json" \
+              bash scripts/quality/native-x11-session.sh --screen 1280x1024x24 \
+              "$evidence-session" -- env GPUI_X11_SCALE_FACTOR="$scale" \
+              bun tests/native/culled-list.ts 2>&1 | tee "$evidence/run.log"
+            test -s "$evidence/result.json"
           done
       - name: Development and AOT Orca screen-reader speech through speech-dispatcher on X11 and Wayland (#241)
         if: matrix.shard == 2
@@ -364,8 +274,7 @@ jobs:
             evidence="$NATIVE_EVIDENCE/screen-reader-$mode"
             mkdir "$evidence"
             BUN_NATIVE_SR_EVIDENCE="$evidence" BUN_NATIVE_SR_MODE="$mode" \
-              xvfb-run --auto-servernum --server-args='-screen 0 1280x1024x24 -nolisten tcp' \
-              dbus-run-session -- bash scripts/quality/native-linux-session.sh \
+              bash scripts/quality/native-x11-session.sh --screen 1280x1024x24 \
               "$evidence-session" -- "${command[@]}" 2>&1 | tee "$evidence/run.log"
             test -s "$evidence/result.json"
             evidence="$NATIVE_EVIDENCE/screen-reader-wayland-$mode"
@@ -381,18 +290,10 @@ jobs:
         env:
           BUN_NATIVE_HOST: ${{ github.workspace }}/target/release/bun-native-host
         run: |
-          for mode in development aot; do
-            command=(bun tests/native/notifications.ts)
-            if [[ "$mode" == aot ]]; then
-              command=("$NATIVE_EVIDENCE/notifications-package/notifications")
-            fi
-            evidence="$NATIVE_EVIDENCE/notifications-$mode"
-            mkdir "$evidence"
-            BUN_NATIVE_NOTIFICATION_EVIDENCE="$evidence" BUN_NATIVE_NOTIFICATION_MODE="$mode" \
-              xvfb-run --auto-servernum --server-args='-screen 0 1280x800x24 -nolisten tcp' \
-              dbus-run-session -- bash scripts/quality/native-linux-session.sh \
-              "$evidence-session" -- "${command[@]}" 2>&1 | tee "$evidence/run.log"
-          done
+          bash scripts/quality/native-linux-dev-aot.sh --entry notifications \
+            --dev 'bun tests/native/notifications.ts' --evidence 'notifications-{mode}' --run-log \
+            --env 'BUN_NATIVE_NOTIFICATION_EVIDENCE={evidence}' \
+            --env 'BUN_NATIVE_NOTIFICATION_MODE={mode}'
       - name: Development and AOT X11 display snapshot semantics
         if: matrix.shard == 2
         timeout-minutes: 3
@@ -401,133 +302,72 @@ jobs:
         run: |
           # Two independent X screens of different sizes; the fixture's oracle
           # is xdpyinfo/xwininfo and its operations are real X requests.
-          for mode in development aot; do
-            command=(bun tests/native/display-semantics.ts)
-            if [[ "$mode" == aot ]]; then
-              command=("$NATIVE_EVIDENCE/display-semantics-package/display-semantics")
-            fi
-            evidence="$NATIVE_EVIDENCE/display-semantics-$mode"
-            mkdir "$evidence"
-            BUN_NATIVE_DISPLAY_EVIDENCE="$evidence" BUN_NATIVE_DISPLAY_MODE="$mode" \
-              xvfb-run --auto-servernum \
-              --server-args='-screen 0 1280x800x24 -screen 1 1024x768x24 -nolisten tcp' \
-              dbus-run-session -- bash scripts/quality/native-linux-session.sh \
-              "$evidence-session" -- "${command[@]}" 2>&1 | tee "$evidence/run.log"
-          done
+          bash scripts/quality/native-linux-dev-aot.sh --entry display-semantics \
+            --dev 'bun tests/native/display-semantics.ts' --evidence 'display-semantics-{mode}' \
+            --run-log --screen 1280x800x24 --screen 1024x768x24 \
+            --env 'BUN_NATIVE_DISPLAY_EVIDENCE={evidence}' --env 'BUN_NATIVE_DISPLAY_MODE={mode}'
       - name: Development and AOT filesystem grants
         if: matrix.shard == 2
         timeout-minutes: 3
         env:
           BUN_NATIVE_HOST: ${{ github.workspace }}/target/release/bun-native-host
         run: |
-          for mode in development aot; do
-            command=(bun tests/native/filesystem-grants.ts)
-            if [[ "$mode" == aot ]]; then
-              command=("$NATIVE_EVIDENCE/filesystem-grants-package/filesystem-grants")
-            fi
-            evidence="$NATIVE_EVIDENCE/filesystem-grants-$mode"
-            mkdir "$evidence"
-            BUN_NATIVE_FILESYSTEM_EVIDENCE="$evidence" BUN_NATIVE_FILESYSTEM_MODE="$mode" \
-              xvfb-run --auto-servernum --server-args='-screen 0 1280x800x24 -nolisten tcp' \
-              dbus-run-session -- bash scripts/quality/native-linux-session.sh \
-              "$evidence-session" -- "${command[@]}" 2>&1 | tee "$evidence/run.log"
-          done
+          bash scripts/quality/native-linux-dev-aot.sh --entry filesystem-grants \
+            --dev 'bun tests/native/filesystem-grants.ts' --evidence 'filesystem-grants-{mode}' \
+            --run-log --env 'BUN_NATIVE_FILESYSTEM_EVIDENCE={evidence}' \
+            --env 'BUN_NATIVE_FILESYSTEM_MODE={mode}'
       - name: Development and AOT owned processes
         if: matrix.shard == 2
         timeout-minutes: 3
         env:
           BUN_NATIVE_HOST: ${{ github.workspace }}/target/release/bun-native-host
         run: |
-          for mode in development aot; do
-            command=(bun tests/native/processes.ts)
-            if [[ "$mode" == aot ]]; then
-              command=("$NATIVE_EVIDENCE/processes-package/processes")
-            fi
-            evidence="$NATIVE_EVIDENCE/processes-$mode"
-            mkdir "$evidence"
-            BUN_NATIVE_PROCESS_EVIDENCE="$evidence" BUN_NATIVE_PROCESS_MODE="$mode" \
-              xvfb-run --auto-servernum --server-args='-screen 0 1280x800x24 -nolisten tcp' \
-              dbus-run-session -- bash scripts/quality/native-linux-session.sh \
-              "$evidence-session" -- "${command[@]}" 2>&1 | tee "$evidence/run.log"
-          done
+          bash scripts/quality/native-linux-dev-aot.sh --entry processes \
+            --dev 'bun tests/native/processes.ts' --evidence 'processes-{mode}' --run-log \
+            --env 'BUN_NATIVE_PROCESS_EVIDENCE={evidence}' --env 'BUN_NATIVE_PROCESS_MODE={mode}'
       - name: Development and AOT OS file dialogs through xdg-desktop-portal
         if: matrix.shard == 2
         timeout-minutes: 3
         env:
           BUN_NATIVE_HOST: ${{ github.workspace }}/target/release/bun-native-host
         run: |
-          for mode in development aot; do
-            command=(bun tests/native/file-dialogs.ts)
-            if [[ "$mode" == aot ]]; then
-              command=("$NATIVE_EVIDENCE/file-dialogs-package/file-dialogs")
-            fi
-            evidence="$NATIVE_EVIDENCE/file-dialogs-$mode"
-            mkdir "$evidence"
-            BUN_NATIVE_DIALOG_EVIDENCE="$evidence" BUN_NATIVE_DIALOG_MODE="$mode" \
-              xvfb-run --auto-servernum --server-args='-screen 0 1280x800x24 -nolisten tcp' \
-              dbus-run-session -- bash scripts/quality/native-linux-session.sh \
-              "$evidence-session" -- "${command[@]}" 2>&1 | tee "$evidence/run.log"
-          done
+          bash scripts/quality/native-linux-dev-aot.sh --entry file-dialogs \
+            --dev 'bun tests/native/file-dialogs.ts' --evidence 'file-dialogs-{mode}' --run-log \
+            --env 'BUN_NATIVE_DIALOG_EVIDENCE={evidence}' --env 'BUN_NATIVE_DIALOG_MODE={mode}'
       - name: Development and AOT overlays, modal focus, keyboard menus and scrolling
         if: matrix.shard == 2
         timeout-minutes: 3
         env:
           BUN_NATIVE_HOST: ${{ github.workspace }}/target/release/bun-native-host
         run: |
-          for mode in development aot; do
-            command=(bun tests/native/overlays.ts)
-            if [[ "$mode" == aot ]]; then
-              command=("$NATIVE_EVIDENCE/overlays-package/overlays")
-            fi
-            evidence="$NATIVE_EVIDENCE/overlays-$mode"
-            mkdir "$evidence"
-            BUN_NATIVE_OVERLAY_EVIDENCE="$evidence" BUN_NATIVE_OVERLAY_MODE="$mode" \
-              BUN_NATIVE_EVIDENCE_LOG="$evidence/native-evidence.jsonl" \
-              BUN_NATIVE_EVIDENCE_NONCE="$(python3 -c 'import secrets; print(secrets.token_hex(16))')" \
-              xvfb-run --auto-servernum --server-args='-screen 0 1280x800x24 -nolisten tcp' \
-              dbus-run-session -- bash scripts/quality/native-linux-session.sh \
-              "$evidence-session" -- "${command[@]}" 2>&1 | tee "$evidence/run.log"
-          done
+          bash scripts/quality/native-linux-dev-aot.sh --entry overlays \
+            --dev 'bun tests/native/overlays.ts' --evidence 'overlays-{mode}' --run-log \
+            --env 'BUN_NATIVE_OVERLAY_EVIDENCE={evidence}' --env 'BUN_NATIVE_OVERLAY_MODE={mode}' \
+            --env 'BUN_NATIVE_EVIDENCE_LOG={evidence}/native-evidence.jsonl' \
+            --env 'BUN_NATIVE_EVIDENCE_NONCE={nonce}'
       - name: Development and AOT message and confirm dialogs on the modal overlay
         if: matrix.shard == 2
         timeout-minutes: 3
         env:
           BUN_NATIVE_HOST: ${{ github.workspace }}/target/release/bun-native-host
         run: |
-          for mode in development aot; do
-            command=(bun tests/native/message-dialogs.ts)
-            if [[ "$mode" == aot ]]; then
-              command=("$NATIVE_EVIDENCE/message-dialogs-package/message-dialogs")
-            fi
-            evidence="$NATIVE_EVIDENCE/message-dialogs-$mode"
-            mkdir "$evidence"
-            BUN_NATIVE_MESSAGE_DIALOG_EVIDENCE="$evidence" BUN_NATIVE_MESSAGE_DIALOG_MODE="$mode" \
-              BUN_NATIVE_EVIDENCE_LOG="$evidence/native-evidence.jsonl" \
-              BUN_NATIVE_EVIDENCE_NONCE="$(python3 -c 'import secrets; print(secrets.token_hex(16))')" \
-              xvfb-run --auto-servernum --server-args='-screen 0 1280x800x24 -nolisten tcp' \
-              dbus-run-session -- bash scripts/quality/native-linux-session.sh \
-              "$evidence-session" -- "${command[@]}" 2>&1 | tee "$evidence/run.log"
-          done
+          bash scripts/quality/native-linux-dev-aot.sh --entry message-dialogs \
+            --dev 'bun tests/native/message-dialogs.ts' --evidence 'message-dialogs-{mode}' \
+            --run-log --env 'BUN_NATIVE_MESSAGE_DIALOG_EVIDENCE={evidence}' \
+            --env 'BUN_NATIVE_MESSAGE_DIALOG_MODE={mode}' \
+            --env 'BUN_NATIVE_EVIDENCE_LOG={evidence}/native-evidence.jsonl' \
+            --env 'BUN_NATIVE_EVIDENCE_NONCE={nonce}'
       - name: Development and AOT popup windows beyond the parent window
         if: matrix.shard == 2
         timeout-minutes: 3
         env:
           BUN_NATIVE_HOST: ${{ github.workspace }}/target/release/bun-native-host
         run: |
-          for mode in development aot; do
-            command=(bun tests/native/popups.ts)
-            if [[ "$mode" == aot ]]; then
-              command=("$NATIVE_EVIDENCE/popups-package/popups")
-            fi
-            evidence="$NATIVE_EVIDENCE/popups-$mode"
-            mkdir "$evidence"
-            BUN_NATIVE_POPUP_EVIDENCE="$evidence" BUN_NATIVE_POPUP_MODE="$mode" \
-              BUN_NATIVE_EVIDENCE_LOG="$evidence/native-evidence.jsonl" \
-              BUN_NATIVE_EVIDENCE_NONCE="$(python3 -c 'import secrets; print(secrets.token_hex(16))')" \
-              xvfb-run --auto-servernum --server-args='-screen 0 1280x800x24 -nolisten tcp' \
-              dbus-run-session -- bash scripts/quality/native-linux-session.sh \
-              "$evidence-session" -- "${command[@]}" 2>&1 | tee "$evidence/run.log"
-          done
+          bash scripts/quality/native-linux-dev-aot.sh --entry popups \
+            --dev 'bun tests/native/popups.ts' --evidence 'popups-{mode}' --run-log \
+            --env 'BUN_NATIVE_POPUP_EVIDENCE={evidence}' --env 'BUN_NATIVE_POPUP_MODE={mode}' \
+            --env 'BUN_NATIVE_EVIDENCE_LOG={evidence}/native-evidence.jsonl' \
+            --env 'BUN_NATIVE_EVIDENCE_NONCE={nonce}'
       # A real Wayland compositor: headless sway with no X server reachable.
       # One development and one inspected AOT run at scale 1, and development
       # at output scale 2; each run takes seconds after the shared AOT compile.
@@ -591,21 +431,13 @@ jobs:
           BUN_NATIVE_DRAG_SOURCE: ${{ github.workspace }}/target/release/examples/xdnd-source
         run: |
           for entry in drag-drop solid-drag-drop react-drag-drop; do
-            for mode in development aot; do
-              command=(bun "$NATIVE_EVIDENCE/$entry-package/development/application.js")
-              if [[ "$entry" == drag-drop ]]; then
-                command=(bun tests/native/drag-drop.ts)
-              fi
-              if [[ "$mode" == aot ]]; then
-                command=("$NATIVE_EVIDENCE/$entry-package/$entry")
-              fi
-              evidence="$NATIVE_EVIDENCE/$entry-$mode"
-              mkdir "$evidence"
-              BUN_NATIVE_DRAG_DROP_EVIDENCE="$evidence" BUN_NATIVE_DRAG_DROP_MODE="$mode" \
-                xvfb-run --auto-servernum --server-args='-screen 0 1280x800x24 -nolisten tcp' \
-                dbus-run-session -- bash scripts/quality/native-linux-session.sh \
-                "$evidence-session" -- "${command[@]}" 2>&1 | tee "$evidence/run.log"
-            done
+            dev=()
+            if [[ "$entry" == drag-drop ]]; then
+              dev=(--dev 'bun tests/native/drag-drop.ts')
+            fi
+            bash scripts/quality/native-linux-dev-aot.sh --entry "$entry" "${dev[@]}" \
+              --evidence "$entry-{mode}" --run-log \
+              --env 'BUN_NATIVE_DRAG_DROP_EVIDENCE={evidence}' --env 'BUN_NATIVE_DRAG_DROP_MODE={mode}'
           done
       - name: Development and AOT native display service through core, Solid and React
         if: matrix.shard == 2
@@ -625,8 +457,7 @@ jobs:
                 session_mode="aot-$entry"
                 command=("$package/$entry")
               fi
-              xvfb-run --auto-servernum --server-args='-screen 0 1280x800x24 -nolisten tcp' \
-                dbus-run-session -- bash scripts/quality/native-linux-session.sh \
+              bash scripts/quality/native-x11-session.sh \
                 "$NATIVE_EVIDENCE/desktop-services-$entry-$mode" "$session_mode" "${command[@]}"
             done
           done
@@ -644,16 +475,10 @@ jobs:
               elif [[ "$scenario" == interactions-* ]]; then
                 entry=solid-interactions
               fi
-              package="$NATIVE_EVIDENCE/$entry-package"
-              command=(bun "$package/development/application.js")
-              if [[ "$mode" == aot ]]; then
-                command=("$package/$entry")
-              fi
-              evidence="$NATIVE_EVIDENCE/solid-$mode-$scenario"
-              xvfb-run --auto-servernum --server-args='-screen 0 1280x800x24 -nolisten tcp' \
-                dbus-run-session -- bash scripts/quality/native-linux-session.sh \
-                "$evidence-session" -- python3 tests/native/solid-window.py \
-                --scenario "$scenario" --mode "$mode" --output "$evidence" -- "${command[@]}"
+              bash scripts/quality/native-linux-dev-aot.sh --modes "$mode" --entry "$entry" \
+                --evidence "solid-{mode}-$scenario" \
+                -- python3 tests/native/solid-window.py \
+                --scenario "$scenario" --mode '{mode}' --output '{evidence}' -- '{app}'
             done
           done
       - name: Development and AOT React keyed counter, input and cleanup
@@ -663,16 +488,11 @@ jobs:
           BUN_NATIVE_HOST: ${{ github.workspace }}/target/release/bun-native-host
         run: |
           for mode in development aot; do
-            command=(bun "$NATIVE_EVIDENCE/react-package/development/application.js")
-            if [[ "$mode" == aot ]]; then
-              command=("$NATIVE_EVIDENCE/react-package/react")
-            fi
             for scenario in counter-click counter-input; do
-              evidence="$NATIVE_EVIDENCE/react-$mode-$scenario"
-              xvfb-run --auto-servernum --server-args='-screen 0 1280x800x24 -nolisten tcp' \
-                dbus-run-session -- bash scripts/quality/native-linux-session.sh \
-                "$evidence-session" -- python3 tests/native/react-window.py \
-                --scenario "$scenario" --mode "$mode" --output "$evidence" -- "${command[@]}"
+              bash scripts/quality/native-linux-dev-aot.sh --modes "$mode" --entry react \
+                --evidence "react-{mode}-$scenario" \
+                -- python3 tests/native/react-window.py \
+                --scenario "$scenario" --mode '{mode}' --output '{evidence}' -- '{app}'
             done
           done
       - name: Development and AOT React native event phases, caret and selection
@@ -682,17 +502,11 @@ jobs:
           BUN_NATIVE_HOST: ${{ github.workspace }}/target/release/bun-native-host
         run: |
           for mode in development aot; do
-            command=(bun "$NATIVE_EVIDENCE/react-interactions-package/development/application.js")
-            if [[ "$mode" == aot ]]; then
-              command=("$NATIVE_EVIDENCE/react-interactions-package/react-interactions")
-            fi
             for scenario in keyboard caret selection; do
-              evidence="$NATIVE_EVIDENCE/react-$mode-interactions-$scenario"
-              xvfb-run --auto-servernum --server-args='-screen 0 1280x800x24 -nolisten tcp' \
-                dbus-run-session -- bash scripts/quality/native-linux-session.sh \
-                "$evidence-session" -- python3 tests/native/renderer-interactions.py \
-                --renderer React --scenario "$scenario" --mode "$mode" \
-                --output "$evidence" -- "${command[@]}"
+              bash scripts/quality/native-linux-dev-aot.sh --modes "$mode" --entry react-interactions \
+                --evidence "react-{mode}-interactions-$scenario" \
+                -- python3 tests/native/renderer-interactions.py \
+                --renderer React --scenario "$scenario" --mode '{mode}' --output '{evidence}' -- '{app}'
             done
           done
       - name: Development and AOT React hooks, boundaries and cleanup failures
@@ -702,16 +516,11 @@ jobs:
           BUN_NATIVE_HOST: ${{ github.workspace }}/target/release/bun-native-host
         run: |
           for mode in development aot; do
-            command=(bun "$NATIVE_EVIDENCE/react-behavior-package/development/application.js")
-            if [[ "$mode" == aot ]]; then
-              command=("$NATIVE_EVIDENCE/react-behavior-package/react-behavior")
-            fi
             for scenario in lifecycle boundary-fallback boundary-recovery recoverable-retry throwing-reporter cleanup-effect cleanup-ref transition; do
-              evidence="$NATIVE_EVIDENCE/react-$mode-behavior-$scenario"
-              xvfb-run --auto-servernum --server-args='-screen 0 1280x800x24 -nolisten tcp' \
-                dbus-run-session -- bash scripts/quality/native-linux-session.sh \
-                "$evidence-session" -- python3 tests/native/react-behavior.py \
-                --scenario "$scenario" --mode "$mode" --output "$evidence" -- "${command[@]}"
+              bash scripts/quality/native-linux-dev-aot.sh --modes "$mode" --entry react-behavior \
+                --evidence "react-{mode}-behavior-$scenario" \
+                -- python3 tests/native/react-behavior.py \
+                --scenario "$scenario" --mode '{mode}' --output '{evidence}' -- '{app}'
             done
           done
       - name: Development and AOT React workspace task flow, scrolling and cleanup
@@ -720,18 +529,10 @@ jobs:
         env:
           BUN_NATIVE_HOST: ${{ github.workspace }}/target/release/bun-native-host
         run: |
-          for mode in development aot; do
-            command=(bun "$NATIVE_EVIDENCE/react-workspace-flow-package/development/application.js")
-            if [[ "$mode" == aot ]]; then
-              command=("$NATIVE_EVIDENCE/react-workspace-flow-package/react-workspace-flow")
-            fi
-            evidence="$NATIVE_EVIDENCE/diagnostics-$mode-react-workspace"
-            xvfb-run --auto-servernum --server-args='-screen 0 1280x800x24 -nolisten tcp' \
-              dbus-run-session -- bash scripts/quality/native-linux-session.sh \
-              "$evidence-session" -- python3 scripts/quality/native-diagnostics-linux.py \
-              --scenario react-workspace --mode "$mode" --host-profile release \
-              --output "$evidence" -- "${command[@]}"
-          done
+          bash scripts/quality/native-linux-dev-aot.sh --entry react-workspace-flow \
+            --evidence 'diagnostics-{mode}-react-workspace' \
+            -- python3 scripts/quality/native-diagnostics-linux.py --scenario react-workspace \
+            --mode '{mode}' --host-profile release --output '{evidence}' -- '{app}'
       - name: Development and AOT workspace terminal pane OS input, PTY round trip and paint through Solid and React
         if: matrix.shard == 1
         timeout-minutes: 3
@@ -746,22 +547,12 @@ jobs:
           # openbox Alt+F4 closes the window with every owner released.
           for framework in solid react; do
             entry="$framework-workspace-terminal"
-            for mode in development aot; do
-              command=(bun "$NATIVE_EVIDENCE/$entry-package/development/application.js")
-              if [[ "$mode" == aot ]]; then
-                command=("$NATIVE_EVIDENCE/$entry-package/$entry")
-              fi
-              evidence="$NATIVE_EVIDENCE/$entry-$mode"
-              mkdir "$evidence"
-              BUN_NATIVE_TERMINAL_EVIDENCE="$evidence" BUN_NATIVE_TERMINAL_MODE="$mode" \
-                BUN_NATIVE_EVIDENCE_LOG="$evidence/host-evidence.jsonl" \
-                BUN_NATIVE_EVIDENCE_NONCE="$(python3 -c 'import secrets; print(secrets.token_hex(16))')" \
-                xvfb-run --auto-servernum --server-args='-screen 0 1280x800x24 -nolisten tcp' \
-                dbus-run-session -- bash scripts/quality/native-linux-session.sh \
-                "$evidence-session" -- env GPUI_X11_SCALE_FACTOR=1 \
-                "${command[@]}" 2>&1 | tee "$evidence/run.log"
-              test -s "$evidence/result.json"
-            done
+            bash scripts/quality/native-linux-dev-aot.sh --entry "$entry" --evidence "$entry-{mode}" \
+              --run-log --require result.json --env 'BUN_NATIVE_TERMINAL_EVIDENCE={evidence}' \
+              --env 'BUN_NATIVE_TERMINAL_MODE={mode}' \
+              --env 'BUN_NATIVE_EVIDENCE_LOG={evidence}/host-evidence.jsonl' \
+              --env 'BUN_NATIVE_EVIDENCE_NONCE={nonce}' \
+              -- env GPUI_X11_SCALE_FACTOR=1 '{app}'
           done
       - name: Development and AOT React update and lifecycle diagnostics
         if: matrix.shard == 2
@@ -788,17 +579,13 @@ jobs:
             env "${calibration_env[@]}" \
               BUN_NATIVE_EVIDENCE_LOG="$evidence/calibration-$mode.jsonl" \
               BUN_NATIVE_EVIDENCE_NONCE="$nonce" \
-              timeout --kill-after=5s 150s xvfb-run --auto-servernum \
-                --server-args='-screen 0 1280x800x24 -nolisten tcp' \
-                dbus-run-session -- bash scripts/quality/native-linux-session.sh \
+              timeout --kill-after=5s 150s bash scripts/quality/native-x11-session.sh \
                 "$evidence/calibration-$mode-session" -- "${command[@]}" \
                 --host "$BUN_NATIVE_HOST" --output "$evidence/calibration-$mode.json" \
                 --nonce "$nonce" --mode "$mode" --iterations 10 --rotations 10 \
                 --mounts 2 --rows 32 --calibration > "$evidence/calibration-$mode.log" 2>&1
             nonce=$(python3 -c 'import secrets; print(secrets.token_hex(16))')
-            timeout --kill-after=5s 150s xvfb-run --auto-servernum \
-              --server-args='-screen 0 1280x800x24 -nolisten tcp' \
-              dbus-run-session -- bash scripts/quality/native-linux-session.sh \
+            timeout --kill-after=5s 150s bash scripts/quality/native-x11-session.sh \
               "$evidence/$mode-session" -- "${command[@]}" \
               --host "$BUN_NATIVE_HOST" --output "$evidence/$mode.json" \
               --nonce "$nonce" --mode "$mode" --iterations 1000 --rotations 1000 \
@@ -809,40 +596,35 @@ jobs:
         env:
           BUN_NATIVE_HOST: ${{ runner.temp }}/native-evidence/package/bun-native-host
         run: |
-          xvfb-run --auto-servernum --server-args='-screen 0 1280x800x24 -nolisten tcp' \
-            dbus-run-session -- bash scripts/quality/native-linux-session.sh \
+          bash scripts/quality/native-x11-session.sh \
             "$NATIVE_EVIDENCE/aot" aot "$NATIVE_EVIDENCE/package/native-window"
       - name: AOT stale native input rejection
         if: matrix.shard == 1
         env:
           BUN_NATIVE_HOST: ${{ github.workspace }}/target/release/bun-native-host
         run: |
-          xvfb-run --auto-servernum --server-args='-screen 0 1280x800x24 -nolisten tcp' \
-            dbus-run-session -- bash scripts/quality/native-linux-session.sh \
+          bash scripts/quality/native-x11-session.sh \
             "$NATIVE_EVIDENCE/input-race-aot" aot-input-race "$NATIVE_EVIDENCE/input-race-package/input-race"
       - name: AOT checked-JavaScript consumer input
         if: matrix.shard == 1
         env:
           BUN_NATIVE_HOST: ${{ github.workspace }}/target/release/bun-native-host
         run: |
-          xvfb-run --auto-servernum --server-args='-screen 0 1280x800x24 -nolisten tcp' \
-            dbus-run-session -- bash scripts/quality/native-linux-session.sh \
+          bash scripts/quality/native-x11-session.sh \
             "$NATIVE_EVIDENCE/javascript-aot" aot-javascript "$NATIVE_EVIDENCE/javascript-package/javascript"
       - name: AOT public listener and subtree lifecycle
         if: matrix.shard == 1
         env:
           BUN_NATIVE_HOST: ${{ github.workspace }}/target/release/bun-native-host
         run: |
-          xvfb-run --auto-servernum --server-args='-screen 0 1280x800x24 -nolisten tcp' \
-            dbus-run-session -- bash scripts/quality/native-linux-session.sh \
+          bash scripts/quality/native-x11-session.sh \
             "$NATIVE_EVIDENCE/lifecycle-aot" aot-core-lifecycle "$NATIVE_EVIDENCE/core-lifecycle-package/core-lifecycle"
       - name: AOT native input event throughput
         if: matrix.shard == 1
         env:
           BUN_NATIVE_HOST: ${{ github.workspace }}/target/release/bun-native-host
         run: |
-          xvfb-run --auto-servernum --server-args='-screen 0 1280x800x24 -nolisten tcp' \
-            dbus-run-session -- bash scripts/quality/native-linux-session.sh \
+          bash scripts/quality/native-x11-session.sh \
             "$NATIVE_EVIDENCE/events-aot" aot-event-throughput "$NATIVE_EVIDENCE/event-throughput-package/event-throughput"
       - name: Development and AOT native failure, scheduling, layout and interaction contracts
         if: matrix.shard == 1
@@ -858,16 +640,11 @@ jobs:
                 layout) fixture=layout ;;
                 interactions) fixture=interactions ;;
               esac
-              command=(bun "tests/native/$fixture.ts")
-              if [[ "$mode" == aot ]]; then
-                command=("$NATIVE_EVIDENCE/$fixture-package/$fixture")
-              fi
-              evidence="$NATIVE_EVIDENCE/diagnostics-$mode-$scenario"
-              xvfb-run --auto-servernum --server-args='-screen 0 1280x800x24 -nolisten tcp' \
-                dbus-run-session -- bash scripts/quality/native-linux-session.sh \
-                "$evidence-session" -- python3 scripts/quality/native-diagnostics-linux.py \
-                --output "$evidence" --scenario "$scenario" --mode "$mode" \
-                --host-profile release -- "${command[@]}"
+              bash scripts/quality/native-linux-dev-aot.sh --modes "$mode" --entry "$fixture" \
+                --dev "bun tests/native/$fixture.ts" --evidence "diagnostics-{mode}-$scenario" \
+                -- python3 scripts/quality/native-diagnostics-linux.py \
+                --output '{evidence}' --scenario "$scenario" --mode '{mode}' \
+                --host-profile release -- '{app}'
             done
           done
       - name: Development release-host boundary rejection, online and in an empty network namespace
@@ -879,8 +656,7 @@ jobs:
           # Raw frames to the actual host: version mismatch, pre-hello and
           # duplicate hello, non-increasing ids, invalid/forbidden/oversized
           # frames and a real window round trip (#247).
-          timeout 60s xvfb-run --auto-servernum --server-args='-screen 0 1280x800x24 -nolisten tcp' \
-            dbus-run-session -- bash scripts/quality/native-linux-session.sh \
+          timeout 60s bash scripts/quality/native-x11-session.sh \
             "$NATIVE_EVIDENCE/boundary-online" -- bun tests/native/boundary.ts \
             | tee "$NATIVE_EVIDENCE/boundary-online.json"
           # Ubuntu 24.04 restricts unprivileged user namespaces through AppArmor.
@@ -890,8 +666,7 @@ jobs:
             sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
           fi
           BUN_NATIVE_REQUIRE_OFFLINE=1 timeout 60s unshare --map-root-user --net \
-            xvfb-run --auto-servernum --server-args='-screen 0 1280x800x24 -nolisten tcp' \
-            dbus-run-session -- bash scripts/quality/native-linux-session.sh \
+            bash scripts/quality/native-x11-session.sh \
             "$NATIVE_EVIDENCE/boundary-offline" -- bun tests/native/boundary.ts \
             | tee "$NATIVE_EVIDENCE/boundary-offline.json"
           grep -q '"offline":true' "$NATIVE_EVIDENCE/boundary-offline.json"
@@ -917,8 +692,7 @@ jobs:
         if: matrix.shard == 1
         timeout-minutes: 4
         run: |
-          xvfb-run --auto-servernum --server-args='-screen 0 1280x800x24 -nolisten tcp' \
-            dbus-run-session -- bash scripts/quality/native-linux-session.sh \
+          bash scripts/quality/native-x11-session.sh \
             "$NATIVE_EVIDENCE/bridge-development-session" -- bun benchmarks/bridge.ts \
             --mode development --host "$GITHUB_WORKSPACE/target/release/bun-native-host" \
             --host-profile release --source "$GITHUB_WORKSPACE" \
@@ -927,24 +701,16 @@ jobs:
         if: matrix.shard == 1
         timeout-minutes: 5
         run: |
-          for mode in development aot; do
-            command=(bun tests/native/public-lifecycle.ts)
-            if [[ "$mode" == aot ]]; then
-              command=("$NATIVE_EVIDENCE/core-lifecycle-package/core-lifecycle")
-            fi
-            evidence="$NATIVE_EVIDENCE/allocations-$mode"
-            xvfb-run --auto-servernum --server-args='-screen 0 1280x800x24 -nolisten tcp' \
-              dbus-run-session -- bash scripts/quality/native-linux-session.sh \
-              "${evidence}-session" -- python3 scripts/quality/native-allocation-linux.py \
-              --output "$evidence" --host "$GITHUB_WORKSPACE/target/release/bun-native-host" \
-              --host-profile release --mode "$mode" -- "${command[@]}"
-          done
+          bash scripts/quality/native-linux-dev-aot.sh --entry core-lifecycle \
+            --dev 'bun tests/native/public-lifecycle.ts' --evidence 'allocations-{mode}' \
+            -- python3 scripts/quality/native-allocation-linux.py \
+            --output '{evidence}' --host "$GITHUB_WORKSPACE/target/release/bun-native-host" \
+            --host-profile release --mode '{mode}' -- '{app}'
       - name: AOT bridge acknowledgement measurements
         if: matrix.shard == 1
         timeout-minutes: 4
         run: |
-          xvfb-run --auto-servernum --server-args='-screen 0 1280x800x24 -nolisten tcp' \
-            dbus-run-session -- bash scripts/quality/native-linux-session.sh \
+          bash scripts/quality/native-x11-session.sh \
             "$NATIVE_EVIDENCE/bridge-aot-session" -- "$NATIVE_EVIDENCE/bridge-package/bridge" \
             --mode aot --aot-manifest "$NATIVE_EVIDENCE/bridge-package/manifest.json" \
             --host "$GITHUB_WORKSPACE/target/release/bun-native-host" --host-profile release \
@@ -954,8 +720,7 @@ jobs:
         if: matrix.shard == 1
         timeout-minutes: 8
         run: |
-          xvfb-run --auto-servernum --server-args='-screen 0 1280x800x24 -nolisten tcp' \
-            dbus-run-session -- bash scripts/quality/native-linux-session.sh \
+          bash scripts/quality/native-x11-session.sh \
             "$NATIVE_EVIDENCE/baseline-session" -- python3 benchmarks/native-baseline.py \
             --output "$NATIVE_EVIDENCE/baseline" --package "$NATIVE_EVIDENCE/package" \
             --bun "$(command -v bun)" --samples 5 --warmups 1 --idle-seconds 2 \
@@ -972,18 +737,10 @@ jobs:
               --host "$BUN_NATIVE_HOST" --host-profile release \
               --entry "$entry" --outdir "$NATIVE_EVIDENCE/$entry-package"
           done
-          for mode in development aot; do
-            command=(bun "$NATIVE_EVIDENCE/solid-workspace-flow-package/development/application.js")
-            if [[ "$mode" == aot ]]; then
-              command=("$NATIVE_EVIDENCE/solid-workspace-flow-package/solid-workspace-flow")
-            fi
-            evidence="$NATIVE_EVIDENCE/diagnostics-$mode-solid-workspace"
-            xvfb-run --auto-servernum --server-args='-screen 0 1280x800x24 -nolisten tcp' \
-              dbus-run-session -- bash scripts/quality/native-linux-session.sh \
-              "$evidence-session" -- python3 scripts/quality/native-diagnostics-linux.py \
-              --scenario solid-workspace --mode "$mode" --host-profile release \
-              --output "$evidence" -- "${command[@]}"
-          done
+          bash scripts/quality/native-linux-dev-aot.sh --entry solid-workspace-flow \
+            --evidence 'diagnostics-{mode}-solid-workspace' \
+            -- python3 scripts/quality/native-diagnostics-linux.py --scenario solid-workspace \
+            --mode '{mode}' --host-profile release --output '{evidence}' -- '{app}'
       - name: Solid workspace long-session ownership in development and AOT
         if: ${{ matrix.shard == 1 && (!cancelled() && steps.native-build.outcome == 'success') }}
         timeout-minutes: 6
@@ -1002,8 +759,7 @@ jobs:
             evidence="$NATIVE_EVIDENCE/diagnostics-$mode-solid-workspace-soak"
             mkdir "$evidence"
             BUN_NATIVE_DIAGNOSTICS_DIR="$evidence" \
-              xvfb-run --auto-servernum --server-args='-screen 0 1280x800x24 -nolisten tcp' \
-              dbus-run-session -- bash scripts/quality/native-linux-session.sh \
+              bash scripts/quality/native-x11-session.sh \
               "$evidence-session" -- timeout 150s "${command[@]}" 2>&1 | tee "$evidence/fixture.log"
             python3 scripts/quality/native-solid-workspace-soak.py "$evidence/soak-result.json"
           done
@@ -1039,8 +795,7 @@ jobs:
             evidence="$NATIVE_EVIDENCE/diagnostics-$mode-react-workspace-soak"
             mkdir "$evidence"
             BUN_NATIVE_DIAGNOSTICS_DIR="$evidence" \
-              xvfb-run --auto-servernum --server-args='-screen 0 1280x800x24 -nolisten tcp' \
-              dbus-run-session -- bash scripts/quality/native-linux-session.sh \
+              bash scripts/quality/native-x11-session.sh \
               "$evidence-session" -- timeout 150s "${command[@]}" 2>&1 | tee "$evidence/fixture.log"
             python3 scripts/quality/native-react-workspace-soak.py "$evidence/soak-result.json"
           done
@@ -1073,8 +828,7 @@ jobs:
               for mode in development aot; do
                 template="$framework-$language"
                 evidence="$packages/$template/$mode"
-                if ! xvfb-run --auto-servernum --server-args='-screen 0 1280x800x24 -nolisten tcp' \
-                  dbus-run-session -- bash scripts/quality/native-linux-session.sh \
+                if ! bash scripts/quality/native-x11-session.sh \
                   "$evidence-session" -- python3 tests/native/cli-templates.py run \
                   --packages "$packages" --case "$template" --mode "$mode" --output "$evidence"; then
                   template_status=1
@@ -1145,8 +899,7 @@ jobs:
           # starts the installed launcher until the AOT application paints and confirms its
           # own health, stops it and uninstalls with nothing left behind.
           evidence="$NATIVE_EVIDENCE/linux-template-installer"
-          xvfb-run --auto-servernum --server-args='-screen 0 1280x800x24 -nolisten tcp' \
-            dbus-run-session -- bash scripts/quality/native-linux-session.sh \
+          bash scripts/quality/native-x11-session.sh \
             "$evidence/session" -- bun scripts/quality/signed-installer-smoke.ts \
             --installer "$LINUX_TEMPLATE_INSTALLER" --second-update "$LINUX_TEMPLATE_SECOND_UPDATE" \
             --work "$RUNNER_TEMP/linux-template-smoke" --evidence "$evidence/install-smoke.json" \
@@ -1160,8 +913,7 @@ jobs:
           watch_status=0
           for framework in solid react; do
             evidence="$NATIVE_EVIDENCE/cli-watch-$framework"
-            if ! xvfb-run --auto-servernum --server-args='-screen 0 1280x800x24 -nolisten tcp' \
-              dbus-run-session -- bash scripts/quality/native-linux-session.sh \
+            if ! bash scripts/quality/native-x11-session.sh \
               "$evidence-session" -- python3 tests/native/cli-watch.py \
               --framework "$framework" --output "$evidence" --bun "$(command -v bun)" \
               --host "$GITHUB_WORKSPACE/target/release/bun-native-host"; then
@@ -1200,18 +952,10 @@ jobs:
             bun experiments/aot-gpui/build-window.ts \
               --source "$GITHUB_WORKSPACE" --host "$BUN_NATIVE_HOST" \
               --host-profile release --entry "$entry" --outdir "$package"
-            for mode in development aot; do
-              command=(bun "$package/development/application.js")
-              if [[ "$mode" == aot ]]; then
-                command=("$package/$entry")
-              fi
-              evidence="$NATIVE_EVIDENCE/diagnostics-$mode-$entry"
-              xvfb-run --auto-servernum --server-args='-screen 0 1280x800x24 -nolisten tcp' \
-                dbus-run-session -- bash scripts/quality/native-linux-session.sh \
-                "$evidence-session" -- python3 scripts/quality/native-diagnostics-linux.py \
-                --scenario "$entry" --mode "$mode" --host-profile release \
-                --output "$evidence" -- "${command[@]}"
-            done
+            bash scripts/quality/native-linux-dev-aot.sh --entry "$entry" \
+              --evidence "diagnostics-{mode}-$entry" \
+              -- python3 scripts/quality/native-diagnostics-linux.py --scenario "$entry" \
+              --mode '{mode}' --host-profile release --output '{evidence}' -- '{app}'
           done
       - name: Development and AOT streaming-list soak through Solid and React
         if: ${{ matrix.shard == 1 && (!cancelled() && steps.native-build.outcome == 'success') }}
@@ -1227,17 +971,12 @@ jobs:
               --source "$GITHUB_WORKSPACE" --host "$BUN_NATIVE_HOST" \
               --host-profile release --entry "$entry" --outdir "$package"
             for mode in development aot; do
-              command=(bun "$package/development/application.js")
-              if [[ "$mode" == aot ]]; then
-                command=("$package/$entry")
-              fi
-              evidence="$NATIVE_EVIDENCE/streaming-list-$framework-$mode"
-              xvfb-run --auto-servernum --server-args='-screen 0 1280x800x24 -nolisten tcp' \
-                dbus-run-session -- bash scripts/quality/native-linux-session.sh \
-                "$evidence-session" -- python3 tests/native/streaming-list.py \
-                --framework "$framework" --mode "$mode" --host-profile release \
-                --output "$evidence" -- "${command[@]}"
-              reports+=("$evidence/result.json")
+              bash scripts/quality/native-linux-dev-aot.sh --modes "$mode" --entry "$entry" \
+                --evidence "streaming-list-$framework-{mode}" \
+                -- python3 tests/native/streaming-list.py \
+                --framework "$framework" --mode '{mode}' --host-profile release \
+                --output '{evidence}' -- '{app}'
+              reports+=("$NATIVE_EVIDENCE/streaming-list-$framework-$mode/result.json")
             done
           done
           python3 tests/native/streaming-list.py summarize \
@@ -1255,24 +994,18 @@ jobs:
               --source "$GITHUB_WORKSPACE" --host "$BUN_NATIVE_HOST" \
               --host-profile release --entry "$entry" --outdir "$package"
             for scale in 1 2; do
+              dev=()
+              if [[ "$entry" == layout-style ]]; then
+                dev=(--dev 'bun tests/native/layout-style.ts')
+              fi
               for mode in development aot; do
-                command=(bun "$package/development/application.js")
-                if [[ "$entry" == layout-style ]]; then
-                  command=(bun tests/native/layout-style.ts)
-                fi
-                if [[ "$mode" == aot ]]; then
-                  command=("$package/$entry")
-                fi
-                evidence="$NATIVE_EVIDENCE/diagnostics-$mode-$entry-scale-$scale"
-                mkdir "$evidence"
-                BUN_NATIVE_LAYOUT_EVIDENCE="$evidence" BUN_NATIVE_LAYOUT_MODE="$mode" \
-                  BUN_NATIVE_TEST_SCALE_FACTOR="$scale" \
-                  BUN_NATIVE_EVIDENCE_LOG="$evidence/native-evidence.jsonl" \
-                  BUN_NATIVE_EVIDENCE_NONCE="$(python3 -c 'import secrets; print(secrets.token_hex(16))')" \
-                  xvfb-run --auto-servernum --server-args='-screen 0 1280x800x24 -nolisten tcp' \
-                  dbus-run-session -- bash scripts/quality/native-linux-session.sh \
-                  "$evidence-session" -- "${command[@]}" 2>&1 | tee "$evidence/run.log"
-                reports+=("$evidence"/layout-style-*.json)
+                bash scripts/quality/native-linux-dev-aot.sh --modes "$mode" --entry "$entry" "${dev[@]}" \
+                  --evidence "diagnostics-{mode}-$entry-scale-$scale" --run-log \
+                  --env 'BUN_NATIVE_LAYOUT_EVIDENCE={evidence}' --env 'BUN_NATIVE_LAYOUT_MODE={mode}' \
+                  --env "BUN_NATIVE_TEST_SCALE_FACTOR=$scale" \
+                  --env 'BUN_NATIVE_EVIDENCE_LOG={evidence}/native-evidence.jsonl' \
+                  --env 'BUN_NATIVE_EVIDENCE_NONCE={nonce}'
+                reports+=("$NATIVE_EVIDENCE/diagnostics-$mode-$entry-scale-$scale"/layout-style-*.json)
               done
             done
           done
