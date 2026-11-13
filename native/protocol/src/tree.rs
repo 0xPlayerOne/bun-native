@@ -3,7 +3,7 @@
 
 use crate::{
     validate_text, Element, ErrorCode, NodeId, Operation, Overflow, OverlaySurface, Style,
-    MAX_DEPTH, MAX_ID, MAX_NODES_PER_WINDOW, MAX_OPERATIONS, MAX_OVERLAY_DEPTH,
+    ValidBatch, MAX_DEPTH, MAX_ID, MAX_NODES_PER_WINDOW, MAX_OPERATIONS, MAX_OVERLAY_DEPTH,
     MAX_TEXT_BYTES_PER_WINDOW,
 };
 use nodes::NodeMap;
@@ -225,11 +225,34 @@ impl Tree {
 
     /// `last_node_id` is the session-wide committed high-water mark. Neither
     /// this tree nor that counter changes when any operation is rejected.
+    /// Validates every created and set element first; a batch from
+    /// `CommandReader` already did that and takes `prepare_valid`.
     pub fn prepare(
         &self,
         base_revision: u64,
         operations: Vec<Operation>,
+        last_node_id: u64,
+    ) -> Result<PreparedBatch, ModelError> {
+        self.prepare_operations(base_revision, operations, last_node_id, true)
+    }
+
+    /// `prepare` for a batch whose elements `Command::validate` already
+    /// accepted: identical results without validating each element again.
+    pub fn prepare_valid(
+        &self,
+        batch: ValidBatch,
+        last_node_id: u64,
+    ) -> Result<PreparedBatch, ModelError> {
+        let base_revision = batch.base_revision;
+        self.prepare_operations(base_revision, batch.into_operations(), last_node_id, false)
+    }
+
+    fn prepare_operations(
+        &self,
+        base_revision: u64,
+        operations: Vec<Operation>,
         mut last_node_id: u64,
+        validate_elements: bool,
     ) -> Result<PreparedBatch, ModelError> {
         let started = Instant::now();
         if base_revision != self.revision {
@@ -268,9 +291,11 @@ impl Tree {
         for operation in operations {
             match operation {
                 Operation::Create { node_id, element } => {
-                    element
-                        .validate()
-                        .map_err(|message| error(ErrorCode::InvalidCommand, message))?;
+                    if validate_elements {
+                        element
+                            .validate()
+                            .map_err(|message| error(ErrorCode::InvalidCommand, message))?;
+                    }
                     if node_id.get() <= last_node_id {
                         return Err(error(
                             ErrorCode::InvalidHandle,
@@ -302,9 +327,11 @@ impl Tree {
                     element,
                     expected_input_revision,
                 } => {
-                    element
-                        .validate()
-                        .map_err(|message| error(ErrorCode::InvalidCommand, message))?;
+                    if validate_elements {
+                        element
+                            .validate()
+                            .map_err(|message| error(ErrorCode::InvalidCommand, message))?;
+                    }
                     let node = next.nodes.get_mut(node_id).ok_or_else(invalid_handle)?;
                     if !node.element.same_kind(&element) {
                         return Err(error(

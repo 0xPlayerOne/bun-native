@@ -400,6 +400,32 @@ fn repeated_update_and_disposal_releases_nodes_without_tombstones() {
 }
 
 #[test]
+fn direct_prepare_still_validates_every_element() {
+    let tree = populated();
+    let invalid = text("\0");
+    rejected(
+        &tree,
+        vec![create(5, invalid.clone())],
+        4,
+        ErrorCode::InvalidCommand,
+    );
+    rejected(
+        &tree,
+        vec![set(3, invalid.clone(), None)],
+        4,
+        ErrorCode::InvalidCommand,
+    );
+    let window = crate::WindowId::try_from(1).unwrap();
+    let request = crate::RequestId::try_from(1).unwrap();
+    for operations in [
+        vec![create(5, invalid.clone())],
+        vec![set(3, invalid, None)],
+    ] {
+        assert!(crate::ValidBatch::new(request, window, tree.revision(), operations).is_err());
+    }
+}
+
+#[test]
 fn native_input_rejects_invalid_text_without_mutation() {
     let mut tree = populated();
     for value in ["\0".to_string(), "界".repeat(crate::MAX_TEXT_BYTES / 3 + 1)] {
