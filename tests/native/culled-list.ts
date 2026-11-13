@@ -10,16 +10,17 @@
  * The scene runs twice, in a fresh host each time: first with the session's
  * assistive technology switched off, then on. Both runs check that Tab and
  * Shift-Tab walk the buttons in tree order through rows that were culled
- * (OS keys from XTEST), that each focused row is scrolled into view and
+ * (OS keys from XTEST), including Shift-Tab from the heading onto the last
+ * row while it is culled, that each focused row is scrolled into view and
  * painted, and that `scrollIntoView` and `scrollTo` paint the requested rows.
  * The accessible run also reads the whole tree through the independent AT-SPI
  * client (tests/native/atspi-probe.py): every row's label and button is
- * present in order, wherever it is scrolled, and an AT focus request on a far
- * button focuses and reveals it. Each run then puts the rows inside a list
- * box that wraps them, far taller than the view: Tab, `scrollIntoView` and
- * (accessible run) an AT focus request reveal the row itself, not the top of
- * the list. The host phase trace shows that each run
- * culled rows: `BUN_NATIVE_PHASE_TRACE` names a file that does not exist yet,
+ * present in order, wherever it is scrolled; an AT focus request on a far
+ * button focuses and reveals it, and an AT click on a culled button clicks
+ * it. Each run then puts the rows inside a list box that wraps them, far
+ * taller than the view: Tab, `scrollIntoView` and (accessible run) an AT
+ * focus request reveal the row itself, not the top of the list. The host
+ * phase trace shows that each run culled rows: `BUN_NATIVE_PHASE_TRACE` names a file that does not exist yet,
  * inherited by each host, which writes it at shutdown; the fixture reads and
  * removes it after each run.
  */
@@ -167,6 +168,7 @@ async function qualify(accessible: boolean) {
   await run([atspiPython!, '-I', probe, accessible ? 'enable' : 'disable'])
   const app = await createApplication({ executable: host! })
   assert(app.capabilities.includes('scroll_control_v1' as never), 'scroll_control_v1')
+  assert(app.capabilities.includes('focus_v1' as never), 'focus_v1')
   try {
     const window = await app.openWindow({ title: TITLE, width: WIDTH, height: HEIGHT })
     const nodes = await scene(window)
@@ -244,6 +246,16 @@ async function qualify(accessible: boolean) {
       [STEPS - 2, STEPS - 3, STEPS - 4, STEPS - 5, STEPS - 6],
       'Shift-Tab walks back in order'
     )
+    // Shift-Tab from the heading wraps to the last button, culled while the
+    // view shows its top.
+    await window.batch((batch) => batch.scrollTo(nodes.view, { y: 0 }))
+    await window.batch((batch) => batch.focus(nodes.heading))
+    await waitFor(() => headingFocused > 1, 'the heading focused again')
+    await window.batch((batch) => batch.set(nodes.heading, headingElement(STEPS + 1)))
+    await Bun.sleep(30)
+    await press('shift+Tab')
+    await waitFor(() => focused.at(-1) === ROWS - 1, 'Shift-Tab wraps to the last button')
+    record(`${label}.shiftTabWrap`, await expectPainted('shift-tab-wrap', ROWS - 1))
 
     // Programmatic scrolling to rows far outside the keep window.
     await window.batch((batch) => batch.scrollIntoView(nodes.rows[120]!))
@@ -320,6 +332,13 @@ async function qualify(accessible: boolean) {
       await press('Tab')
       await waitFor(() => focused.at(-1) === 141, 'Tab after AT focus')
       record('accessible.atFocusTab', await expectPainted('at-focus-tab', 141))
+
+      // An AT click on a culled button clicks it.
+      let clicked = 0
+      window.on(nodes.buttons[10]!, 'click', () => void (clicked += 1))
+      await run([atspiPython!, '-I', probe, 'act', TITLE, 'push-button', 'Open 10', 'click'])
+      await waitFor(() => clicked === 1, 'AT click on a culled button')
+      record('accessible.atClick', clicked)
     }
 
     // The rows inside one list box, far taller than the view: each reveal

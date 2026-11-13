@@ -6,11 +6,13 @@
 //! visible area as one empty box of the run's last measured extent: no text
 //! shaping, styles, listeners or descendants. Content size and every rendered
 //! sibling's position are unchanged. Inside the run the host keeps what
-//! cannot be skipped: the focus handle of each enabled button in tree order,
+//! cannot be skipped: one Tab stop for the run's enabled buttons, which
+//! hands focus to its first (Tab) or last (Shift-Tab) button and reveals it,
 //! so Tab order is unchanged, and, while assistive technology is active, an
-//! accessible skeleton of every culled node (id, role, name and states; the
-//! culled child at its measured place, its descendants empty at its origin),
-//! so the accessibility tree is unchanged.
+//! accessible stand-in of every culled node (id, role, name, states and a
+//! button's focus and click actions; the culled child at its measured
+//! place, its descendants empty at its origin), so the accessibility tree is
+//! unchanged.
 //!
 //! Culling is conservative. Nothing is culled while layout evidence is
 //! captured, or in a scroll viewport whose reveal resolves in this frame's

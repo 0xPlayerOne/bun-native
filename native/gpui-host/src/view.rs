@@ -12,12 +12,12 @@ use bun_native_protocol::{
 };
 use gpui::{
     AnyElement, AnyWindowHandle, App, Bounds, Context, Div, ElementId, Entity, ExternalPaths,
-    FocusHandle, Focusable, KeyBinding, MouseButton, Pixels, Role, ScrollHandle, SharedString,
-    Size, Stateful, Subscription, WeakEntity, Window, actions, canvas, deferred, div, point,
-    prelude::*, px, rgb,
+    FocusHandle, Focusable, KeyBinding, MouseButton, Pixels, ScrollHandle, SharedString, Size,
+    Stateful, Subscription, WeakEntity, Window, actions, canvas, deferred, div, point, prelude::*,
+    px, rgb,
 };
 use std::cell::{Cell, RefCell};
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::{BTreeMap, BTreeSet, HashMap};
 use std::rc::Rc;
 use std::time::Instant;
 
@@ -66,6 +66,8 @@ pub(crate) struct NativeView {
     revealing: RefCell<BTreeSet<NodeId>>,
     /// Nodes a reveal places from their parent's prepaint, by parent.
     nested_reveals: RefCell<BTreeMap<NodeId, Vec<keyboard::Reveal>>>,
+    /// Each culled run's one Tab stop, by the run's first enabled button.
+    run_stops: RefCell<HashMap<NodeId, RunStop>>,
     culling: Culling,
     popups: Popups,
     weak: WeakEntity<NativeView>,
@@ -141,6 +143,7 @@ impl NativeView {
             held_scrolls: RefCell::default(),
             revealing: RefCell::default(),
             nested_reveals: RefCell::default(),
+            run_stops: RefCell::default(),
             culling: Culling::default(),
             popups: Popups::default(),
             weak: cx.weak_entity(),
@@ -424,31 +427,14 @@ impl NativeView {
         base: Stateful<Div>,
         hidden: bool,
     ) -> Stateful<Div> {
-        let base = accessibility::container(base, node.element(), hidden);
-        match node.element() {
-            NativeElement::Text {
-                accessible_live, ..
-            } => accessibility::live_states(
-                // AccessKit names labels from their value.
-                base.role(Role::Label).aria_value(self.label(node_id)),
-                false,
-                hidden,
-                *accessible_live,
-            ),
-            NativeElement::Button { disabled, .. } => accessibility::states(
-                base.role(Role::Button).aria_label(self.label(node_id)),
-                *disabled,
-                hidden,
-            ),
-            _ => base,
-        }
+        Semantics::of(node.element(), hidden, || self.label(node_id)).apply(base)
     }
 
-    /// A culled node's accessible stand-in: an empty element with the node's
-    /// element id, role, name and states and, for an enabled button, its
-    /// focus handle and click action, holding its children's stand-ins. A
-    /// culled child takes its measured place; its descendants collapse onto
-    /// its origin. Nothing is shaped, styled or painted.
+    /// A culled node's accessible stand-in ([`Stub`]): the node's element
+    /// id, role, name and states and, for an enabled button, AccessKit's
+    /// focus and click actions, holding its children's stand-ins. A culled
+    /// child takes its measured place; its descendants collapse onto its
+    /// origin. Nothing is shaped, styled or painted.
     fn skeleton(
         &self,
         tree: &Tree,
@@ -456,39 +442,36 @@ impl NativeView {
         modal: ModalScope,
         measured: Option<Bounds<Pixels>>,
         cx: &mut Context<Self>,
-    ) -> Stateful<Div> {
+    ) -> AnyElement {
         let node = tree
             .node(node_id)
             .expect("validated tree contains every child");
-        let base = div().absolute();
-        let base = match measured {
-            Some(bounds) => base
-                .left(bounds.origin.x)
-                .top(bounds.origin.y)
-                .w(bounds.size.width)
-                .h(bounds.size.height),
-            // Inside its culled ancestor's box, out of its flow.
-            None => base.top_0().left_0().size(px(0.)),
-        };
-        let mut skeleton = self.semantics(node_id, node, base.id(node_id.get()), modal.hidden());
-        if let NativeElement::Button {
-            disabled: false, ..
-        } = node.element()
-        {
-            let focus = self
-                .buttons
-                .get(&node_id)
-                .expect("button reconciled before render");
-            skeleton = skeleton
-                .track_focus(focus)
-                .on_click(cx.listener(move |view, _, _, cx| view.click(node_id, cx)))
-                .on_a11y_action(accesskit::Action::Focus, self.assistive_focus(node_id, cx));
-        }
-        skeleton.children(
-            node.children()
-                .iter()
-                .map(|child| self.skeleton(tree, *child, modal.child(*child), None, cx)),
+        let semantics = Semantics::of(node.element(), modal.hidden(), || self.label(node_id));
+        let actions = matches!(
+            node.element(),
+            NativeElement::Button {
+                disabled: false,
+                ..
+            }
         )
+        .then(|| {
+            let focus = cx.weak_entity();
+            let click = cx.weak_entity();
+            StubActions {
+                focus: Box::new(move |window, cx| {
+                    let _ = focus.update(cx, |view, cx| view.move_focus(node_id, window, cx));
+                }),
+                click: Box::new(move |_, cx| {
+                    let _ = click.update(cx, |view, cx| view.click(node_id, cx));
+                }),
+            }
+        });
+        let children = node
+            .children()
+            .iter()
+            .map(|child| self.skeleton(tree, *child, modal.child(*child), None, cx))
+            .collect();
+        Stub::new(node_id.get().into(), semantics, measured, actions, children).into_any_element()
     }
 
     #[allow(clippy::too_many_arguments)]
@@ -644,7 +627,28 @@ impl NativeView {
     }
 }
 
+/// The one Tab stop of a culled run (`view/culling.rs`), in place of a focus
+/// handle per enabled button in it: Tab onto it focuses the run's first
+/// enabled button, Shift-Tab its last, and either reveals that button, so
+/// the run renders and Tab order continues through its buttons.
+struct RunStop {
+    focus: FocusHandle,
+    first: NodeId,
+    last: NodeId,
+    /// Whether this frame rendered the stop.
+    rendered: bool,
+}
+
 impl NativeView {
+    /// The button that stands for the culled run whose Tab stop holds focus.
+    fn run_stop_target(&self, forward: bool, window: &Window) -> Option<NodeId> {
+        self.run_stops
+            .borrow()
+            .values()
+            .find(|stop| stop.focus.is_focused(window))
+            .map(|stop| if forward { stop.first } else { stop.last })
+    }
+
     #[allow(clippy::too_many_arguments)]
     fn container(
         &self,
@@ -698,9 +702,9 @@ impl NativeView {
     }
 
     /// Culled children (`view/culling.rs`) as one empty box of their extent.
-    /// It keeps the Tab stop of every enabled button in them and, while
-    /// assistive technology reads the window, every node's accessible node
-    /// at its child's measured place.
+    /// It holds one Tab stop standing for every enabled button in them
+    /// ([`RunStop`]) and, while assistive technology reads the window, every
+    /// node's accessible stand-in at its child's measured place.
     fn culled_run(
         &self,
         tree: &Tree,
@@ -715,8 +719,36 @@ impl NativeView {
             .relative()
             .w(run.size.width)
             .h(run.size.height);
-        for (child, (offset, measured)) in children[run.children.clone()].iter().zip(&run.places) {
-            if accessible {
+        let culled = &children[run.children.clone()];
+        // The run's enabled buttons, first and last in tree order.
+        let mut ends: Option<(NodeId, NodeId)> = None;
+        let mut pending: Vec<NodeId> = culled.iter().rev().copied().collect();
+        while let Some(id) = pending.pop() {
+            let Some(node) = tree.node(id) else {
+                continue;
+            };
+            if let NativeElement::Button {
+                disabled: false, ..
+            } = node.element()
+            {
+                ends = Some((ends.map_or(id, |(first, _)| first), id));
+            }
+            pending.extend(node.children().iter().rev());
+        }
+        if let Some((first, last)) = ends {
+            let mut stops = self.run_stops.borrow_mut();
+            let stop = stops.entry(first).or_insert_with(|| RunStop {
+                focus: cx.focus_handle().tab_stop(true),
+                first,
+                last,
+                rendered: true,
+            });
+            stop.last = last;
+            stop.rendered = true;
+            element = element.child(div().absolute().size(px(0.)).track_focus(&stop.focus));
+        }
+        if accessible {
+            for (child, (offset, measured)) in culled.iter().zip(&run.places) {
                 let origin = if run.row {
                     point(*offset, px(0.))
                 } else {
@@ -729,24 +761,6 @@ impl NativeView {
                     Some(Bounds::new(origin, *measured)),
                     cx,
                 ));
-                continue;
-            }
-            let mut pending = vec![*child];
-            while let Some(id) = pending.pop() {
-                let Some(node) = tree.node(id) else {
-                    continue;
-                };
-                if let NativeElement::Button {
-                    disabled: false, ..
-                } = node.element()
-                {
-                    let focus = self
-                        .buttons
-                        .get(&id)
-                        .expect("button reconciled before render");
-                    element = element.child(div().absolute().size(px(0.)).track_focus(focus));
-                }
-                pending.extend(node.children().iter().rev());
             }
         }
         element.into_any_element()
@@ -845,6 +859,10 @@ impl Render for NativeView {
         self.held_scrolls.borrow_mut().clear();
         self.revealing.borrow_mut().clear();
         self.nested_reveals.borrow_mut().clear();
+        // Keep the stops the last frame rendered; this frame marks its own.
+        self.run_stops
+            .borrow_mut()
+            .retain(|_, stop| std::mem::take(&mut stop.rendered));
         let phase_frame = phase_started.and_then(|started| {
             crate::phases::render(self.window_id, started, state.tree.nodes().count(), culled)
         });
@@ -1045,7 +1063,7 @@ mod overlays;
 mod popups;
 mod split;
 
-use accessibility::ModalScope;
+use accessibility::{ModalScope, Semantics, Stub, StubActions};
 use culling::{Culling, Plan, Slot, Viewport};
 use index::NodeIndex;
 use interactions::{PointerFrame, PressedButtons};

@@ -255,7 +255,9 @@ impl NativeView {
             } else {
                 window.focus_prev(cx);
             }
-            if let Some(id) = self.focused_control(window, cx) {
+            if let Some(id) = self.run_stop_target(forward, window) {
+                self.move_focus(id, window, cx);
+            } else if let Some(id) = self.focused_control(window, cx) {
                 self.reveal(id);
             }
             return;
