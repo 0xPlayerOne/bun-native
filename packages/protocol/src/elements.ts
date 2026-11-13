@@ -1,5 +1,5 @@
 import { ProtocolError } from './framing.ts'
-import { integer, keys, number, object, string } from './values.ts'
+import { fields, integer, keys, number, object, string } from './values.ts'
 
 export interface Style {
   direction?: 'row' | 'column'
@@ -165,29 +165,31 @@ function requireLeafStyle(style: Style): asserts style is LeafStyle {
     throw new ProtocolError('Scrolling is supported only on box and overlay elements')
 }
 
+const STYLE_KEYS = fields(
+  'direction',
+  'gap',
+  'padding',
+  'width',
+  'height',
+  'min_width',
+  'max_width',
+  'min_height',
+  'max_height',
+  'flex_grow',
+  'flex_shrink',
+  'align_items',
+  'justify_content',
+  'overflow',
+  'scroll_anchor',
+  'background',
+  'color',
+  'font_size',
+  ...DECORATION_FIELDS
+)
+
 function parseStyle(value: unknown): Style {
   const data = object(value)
-  keys(data, [
-    'direction',
-    'gap',
-    'padding',
-    'width',
-    'height',
-    'min_width',
-    'max_width',
-    'min_height',
-    'max_height',
-    'flex_grow',
-    'flex_shrink',
-    'align_items',
-    'justify_content',
-    'overflow',
-    'scroll_anchor',
-    'background',
-    'color',
-    'font_size',
-    ...DECORATION_FIELDS,
-  ])
+  keys(data, STYLE_KEYS)
   const style: Style = {}
   for (const key of ['gap', 'padding'] as const)
     if (key in data) style[key] = number(data[key], key, 0, 4_096)
@@ -310,24 +312,60 @@ function boxAccessibility(element: Record<string, unknown>): BoxAccessibility {
   }
 }
 
-/** Normalize and validate the entire property set, including JavaScript consumers. */
+const ELEMENT_BOX_KEYS = fields(
+  'kind',
+  'accessible_role',
+  'accessible_label',
+  'accessible_set_size',
+  'accessible_position',
+  'accessible_selected',
+  'style'
+)
+const ELEMENT_TEXT_KEYS = fields('kind', 'text', 'accessible_live', 'style')
+const ELEMENT_BUTTON_KEYS = fields('kind', 'text', 'disabled', 'style')
+const ELEMENT_INPUT_KEYS = fields('kind', 'value', 'placeholder', 'disabled', 'read_only', 'style')
+const ELEMENT_SPLIT_KEYS = fields('kind', 'ratio', 'min_size', 'accessible_label', 'style')
+const ELEMENT_OVERLAY_KEYS = fields(
+  'kind',
+  'anchor',
+  'modal',
+  'surface',
+  'autofocus',
+  'navigation',
+  'accessible_label',
+  'style'
+)
+
+/**
+ * Elements this module produced. Each is frozen with its style, so it is still
+ * exactly the normalized value that passed validation.
+ */
+const parsed = new WeakSet<Element>()
+
+/**
+ * Normalize and validate the entire property set, including JavaScript consumers.
+ *
+ * The result is frozen and returned unchanged when parsed again, so core's
+ * normalized elements cross the runtime boundary in O(1). Any other value,
+ * including an unfrozen copy of a parsed element, is validated in full.
+ */
 export function parseElement(value: unknown): Element {
+  if (parsed.has(value as Element)) return value as Element
+  const element = validElement(value)
+  Object.freeze(element.style)
+  parsed.add(Object.freeze(element))
+  return element
+}
+
+function validElement(value: unknown): Element {
   const element = object(value)
   const style = 'style' in element ? parseStyle(element['style']) : {}
   switch (element['kind']) {
     case 'box':
-      keys(element, [
-        'kind',
-        'accessible_role',
-        'accessible_label',
-        'accessible_set_size',
-        'accessible_position',
-        'accessible_selected',
-        'style',
-      ])
+      keys(element, ELEMENT_BOX_KEYS)
       return { kind: 'box', ...boxAccessibility(element), style }
     case 'text':
-      keys(element, ['kind', 'text', 'accessible_live', 'style'])
+      keys(element, ELEMENT_TEXT_KEYS)
       requireLeafStyle(style)
       return {
         kind: 'text',
@@ -343,7 +381,7 @@ export function parseElement(value: unknown): Element {
         style,
       }
     case 'button': {
-      keys(element, ['kind', 'text', 'disabled', 'style'])
+      keys(element, ELEMENT_BUTTON_KEYS)
       requireLeafStyle(style)
       if ('disabled' in element && typeof element['disabled'] !== 'boolean')
         throw new ProtocolError('disabled must be a boolean')
@@ -355,7 +393,7 @@ export function parseElement(value: unknown): Element {
       }
     }
     case 'input': {
-      keys(element, ['kind', 'value', 'placeholder', 'disabled', 'read_only', 'style'])
+      keys(element, ELEMENT_INPUT_KEYS)
       requireLeafStyle(style)
       for (const name of ['disabled', 'read_only'])
         if (name in element && typeof element[name] !== 'boolean')
@@ -371,7 +409,7 @@ export function parseElement(value: unknown): Element {
       }
     }
     case 'split': {
-      keys(element, ['kind', 'ratio', 'min_size', 'accessible_label', 'style'])
+      keys(element, ELEMENT_SPLIT_KEYS)
       requireLeafStyle(style)
       if (
         style.gap !== undefined ||
@@ -388,16 +426,7 @@ export function parseElement(value: unknown): Element {
       }
     }
     case 'overlay': {
-      keys(element, [
-        'kind',
-        'anchor',
-        'modal',
-        'surface',
-        'autofocus',
-        'navigation',
-        'accessible_label',
-        'style',
-      ])
+      keys(element, ELEMENT_OVERLAY_KEYS)
       const label = accessibleLabel(element)
       const anchor =
         'anchor' in element ? choice(element['anchor'], 'anchor', ['window', 'parent']) : 'window'

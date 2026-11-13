@@ -265,6 +265,7 @@ class Application implements NativeApplication {
   }
 
   cancelCallbacks(windowId: number): void {
+    if (!this.callbacks.length) return
     const window = this.windows.get(windowId)
     this.callbacks = this.callbacks.filter((callback) => {
       if ('menuBar' in callback || callback.windowId !== windowId) return true
@@ -805,7 +806,7 @@ class Window implements NativeWindow {
         this.assertActive()
         transaction.commit(this.nodes, this.text)
         this.revision = revision
-        this.listeners.retain(this.nodes)
+        this.listeners.forget(transaction.nodes.deletes)
         // The host revokes a target whose node a committed tree removed.
         for (const registration of this.application.dropTargets.values())
           if (registration.windowId === this.id && !this.nodes.has(registration.nodeId)) {

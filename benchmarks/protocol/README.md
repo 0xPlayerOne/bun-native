@@ -41,5 +41,10 @@ mount batch costs about 0.24 µs per operation to validate and encode, and an
 event about 1 µs to frame and validate. `JSON.parse` dominates
 `FrameDecoder.push`: decoding the whole chunk with one `TextDecoder` call and
 splitting it was measured at the same cost as decoding each frame and was not
-adopted. Remaining per-event allocations (`[...ROUTE_KEYS, ...]` key lists and
-spread route objects in `parseEvent`) live in `messages.ts`.
+adopted. Accepted property names are module-level sets since the
+[commit path change](../core/README.md#core-and-runtime-commit-path-micro-benchmark):
+on that source the same three processes measured `mount` `parseCommand` at
+53.2–65.6 µs (from 76.5–86.5 at `3518b3a`) and 56 `parseEvent` calls at
+16.6–17.0 µs (from 23.5–37.6). These inputs are plain objects, so they show the
+full validation that foreign values still receive ([`roundtrip-base-*`](raw/) and
+[`roundtrip-keysets-*`](raw/), pinned Bun `b1007f117`).

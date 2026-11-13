@@ -1,5 +1,5 @@
 import { ProtocolError } from './framing.ts'
-import { keys, number, object, string } from './values.ts'
+import { fields, keys, number, object, string } from './values.ts'
 import { parseFilesystemRoots, type FilesystemRoot } from './files.ts'
 import { parseProcessExecutables, type ProcessExecutable } from './processes.ts'
 
@@ -53,9 +53,11 @@ export interface ShortcutModifiers {
   platform: boolean
 }
 
+const SHORTCUT_MODIFIERS_KEYS = fields('control', 'alt', 'shift', 'platform')
+
 export function parseShortcutModifiers(value: unknown): ShortcutModifiers {
   const data = object(value)
-  keys(data, ['control', 'alt', 'shift', 'platform'])
+  keys(data, SHORTCUT_MODIFIERS_KEYS)
   const flag = (key: keyof ShortcutModifiers) => {
     if (typeof data[key] !== 'boolean')
       throw new ProtocolError('Global shortcut modifiers must state each modifier explicitly')
@@ -103,13 +105,16 @@ export function parseNotificationDismissal(value: unknown): NotificationDismissa
 
 export type ClipboardText = { kind: 'empty' } | { kind: 'text'; text: string }
 
+const CLIPBOARD_TEXT_EMPTY_KEYS = fields('kind')
+const CLIPBOARD_TEXT_READ_KEYS = fields('kind', 'text')
+
 export function parseClipboardText(value: unknown): ClipboardText {
   const data = object(value)
   if (data['kind'] === 'empty') {
-    keys(data, ['kind'])
+    keys(data, CLIPBOARD_TEXT_EMPTY_KEYS)
     return { kind: 'empty' }
   }
-  keys(data, ['kind', 'text'])
+  keys(data, CLIPBOARD_TEXT_READ_KEYS)
   if (data['kind'] !== 'text') throw new ProtocolError('Unknown clipboard text result')
   return { kind: 'text', text: string(data['text'], 'clipboard text', MAX_CLIPBOARD_BYTES) }
 }
@@ -132,9 +137,11 @@ export interface DisplaySnapshot {
 
 const DISPLAY_UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
 
+const DISPLAY_BOUNDS_KEYS = fields('x', 'y', 'width', 'height')
+
 function displayBounds(value: unknown, name: string): DisplayBounds {
   const bounds = object(value)
-  keys(bounds, ['x', 'y', 'width', 'height'])
+  keys(bounds, DISPLAY_BOUNDS_KEYS)
   return {
     x: number(bounds['x'], name + ' x', -1_048_576, 1_048_576),
     y: number(bounds['y'], name + ' y', -1_048_576, 1_048_576),
@@ -143,21 +150,23 @@ function displayBounds(value: unknown, name: string): DisplayBounds {
   }
 }
 
+const SERVICE_POLICY_KEYS = fields(
+  'window_display',
+  'clipboard_read',
+  'clipboard_write',
+  'global_shortcuts',
+  'notifications',
+  'drag_drop',
+  'filesystem_roots',
+  'processes',
+  'file_dialogs',
+  'app_menu',
+  'task_dialogs'
+)
+
 export function parseServicePolicy(value: unknown): ServicePolicy {
   const data = object(value)
-  keys(data, [
-    'window_display',
-    'clipboard_read',
-    'clipboard_write',
-    'global_shortcuts',
-    'notifications',
-    'drag_drop',
-    'filesystem_roots',
-    'processes',
-    'file_dialogs',
-    'app_menu',
-    'task_dialogs',
-  ])
+  keys(data, SERVICE_POLICY_KEYS)
   const grant = (key: keyof ServicePolicy) => {
     if (typeof data[key] !== 'boolean')
       throw new ProtocolError('Native service policy must explicitly grant or deny each operation')
@@ -178,9 +187,11 @@ export function parseServicePolicy(value: unknown): ServicePolicy {
   }
 }
 
+const DISPLAY_SNAPSHOT_KEYS = fields('bounds', 'scale_factor', 'visible_bounds', 'display_uuid')
+
 export function parseDisplaySnapshot(value: unknown): DisplaySnapshot {
   const data = object(value)
-  keys(data, ['bounds', 'scale_factor', 'visible_bounds', 'display_uuid'])
+  keys(data, DISPLAY_SNAPSHOT_KEYS)
   const snapshot: DisplaySnapshot = {
     bounds: displayBounds(data['bounds'], 'display'),
     scale_factor: number(data['scale_factor'], 'display scale factor', 0.125, 16),
