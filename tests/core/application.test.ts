@@ -113,6 +113,12 @@ describe('owned application API (headless subprocess)', () => {
       const first = await controls(one)
       const forged = { kind: 'button' } as NativeNode<'button'>
       assert.throws(() => one.onClick(forged, () => {}), NativeStateError)
+      // A handle shows only its kind; neither its prototype nor a copy carries its identity.
+      expect(Object.keys(first.button)).toEqual(['kind'])
+      expect(Object.isFrozen(first.button)).toBe(true)
+      const inherited = Object.create(Object.getPrototypeOf(first.button)) as NativeNode<'button'>
+      for (const value of [inherited, { ...first.button }, null, 7, 'button'])
+        assert.throws(() => one.onClick(value as NativeNode<'button'>, () => {}), NativeStateError)
       assert.throws(() => two.onClick(first.button, () => {}), /another window/)
       await assert.rejects(
         two.batch((batch) => batch.append(two.root, first.button)),

@@ -1,0 +1,80 @@
+{
+  "bun": "b1007f1177fd402fae67387b8548cae5ae9b5707",
+  "platform": "linux",
+  "arch": "x64",
+  "mountRows": 42,
+  "windowRows": 1000,
+  "listeners": 1000,
+  "results": [
+    {
+      "scenario": "mount",
+      "phase": "build",
+      "samples": 3000,
+      "p50Us": 84.994,
+      "p95Us": 255.232
+    },
+    {
+      "scenario": "mount",
+      "phase": "validate",
+      "samples": 3000,
+      "p50Us": 28.842,
+      "p95Us": 72.982
+    },
+    {
+      "scenario": "mount",
+      "phase": "parseCommand",
+      "samples": 3000,
+      "p50Us": 0.747,
+      "p95Us": 1.899
+    },
+    {
+      "scenario": "mount",
+      "phase": "encodeFrame",
+      "samples": 3000,
+      "p50Us": 21.6,
+      "p95Us": 58.212
+    },
+    {
+      "scenario": "mount",
+      "phase": "total",
+      "samples": 3000,
+      "p50Us": 142.791,
+      "p95Us": 1178.428
+    },
+    {
+      "scenario": "keystroke",
+      "phase": "core",
+      "samples": 3000,
+      "p50Us": 1.256,
+      "p95Us": 2.366
+    },
+    {
+      "scenario": "keystroke",
+      "phase": "runtime",
+      "samples": 3000,
+      "p50Us": 0.461,
+      "p95Us": 0.931
+    },
+    {
+      "scenario": "keystroke",
+      "phase": "commit",
+      "samples": 3000,
+      "p50Us": 0.24,
+      "p95Us": 0.635
+    },
+    {
+      "scenario": "keystroke",
+      "phase": "listeners",
+      "samples": 3000,
+      "p50Us": 0.05,
+      "p95Us": 0.076
+    },
+    {
+      "scenario": "keystroke",
+      "phase": "total",
+      "samples": 3000,
+      "p50Us": 2.082,
+      "p95Us": 3.791
+    }
+  ]
+}
