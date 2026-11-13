@@ -4,25 +4,16 @@ These helpers inspect and retain existing files and metadata. They execute no co
 package installer, application, native window or runtime workload.
 """
 
-import hashlib
 import json
 import shutil
 from pathlib import Path
+
+from .common import fingerprint as digest
 
 
 def require(condition, message):
     if not condition:
         raise RuntimeError(message)
-
-
-def digest(path):
-    result = hashlib.sha256()
-    size = 0
-    with Path(path).open("rb") as stream:
-        while chunk := stream.read(1024 * 1024):
-            size += len(chunk)
-            result.update(chunk)
-    return {"bytes": size, "sha256": result.hexdigest()}
 
 
 def retain_build_diagnostics(project, destination):

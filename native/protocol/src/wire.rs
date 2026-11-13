@@ -12,7 +12,6 @@ pub use schema::*;
 mod oracle_tests;
 
 pub const MAX_ID: u64 = 9_007_199_254_740_991;
-pub(crate) const BATCH_SIZE_MESSAGE: &str = "batch must have between 1 and 16384 operations";
 
 macro_rules! identifier {
     ($name:ident) => {

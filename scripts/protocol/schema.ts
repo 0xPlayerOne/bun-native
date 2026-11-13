@@ -5,12 +5,14 @@
  *   bun scripts/protocol/schema.ts --check   fail while either is stale
  *
  * `packages/protocol/schema/wire.json` names every constant, limit, enum,
- * style field, element and operation member, and command and event member.
- * The TypeScript output is plain data with no imports; the parsers interpret
- * it. The Rust output declares the constants, enums, `Style` and `Limits`,
- * and the member tables the hand-written element and operation decoders
- * dispatch on; its command and event tables are test-only and check the
- * derived serde types (`native/protocol/src/schema_tests.rs`).
+ * style field, element and operation member, command and event member, the
+ * members of the nested payload objects inside them, and the menu shortcut
+ * key names. The TypeScript output is plain data with no imports; the parsers
+ * interpret it. The Rust output declares the constants, enums, `Style`,
+ * `Limits`, the error texts built from constants, and the member tables the
+ * hand-written element and operation decoders dispatch on; its command, event
+ * and payload tables are test-only and check the derived serde types
+ * (`native/protocol/src/schema_tests.rs`).
  */
 import { readFileSync, writeFileSync } from 'node:fs'
 import { join, resolve } from 'node:path'
@@ -49,6 +51,9 @@ type StyleField = { name: string; doc?: string; decoration?: boolean } & (
 
 type Members = Record<string, string[]>
 
+/** A nested object's members, or a tagged object's tag and each variant's members. */
+type Payload = string[] | { tag: string; variants: Members }
+
 export interface Schema {
   constants: Constant[]
   limits: string[]
@@ -60,6 +65,11 @@ export interface Schema {
   commands: Members
   events: Members
   modifiers: string[]
+  /** Rust error texts; `{NAME}` is replaced by that constant's value. */
+  messages: Record<string, string>
+  /** Menu shortcut keys besides letters, digits and function keys. */
+  app_menu_keys: { named: string[]; punctuation: string[] }
+  payloads: Record<string, Payload>
 }
 
 const HEADER =
@@ -154,6 +164,23 @@ export function resolveSchema(schema: Schema): Schema {
     if (field.type === 'enum' && !schema.enums[field.enum])
       fail(`style field ${field.name} names unknown enum ${field.enum}`)
     if ('min' in field && !(field.min <= field.max)) fail(`style field ${field.name} has min > max`)
+  }
+  const depth = constants.get('MAX_DEPTH')?.value
+  if (constants.get('MAX_EVENT_PATH_NODES')?.value !== (depth ?? 0) + 1)
+    fail('MAX_EVENT_PATH_NODES must be MAX_DEPTH + 1')
+  for (const [name, text] of Object.entries(schema.messages)) {
+    if (!/^[A-Z][A-Z0-9_]*$/.test(name)) fail(`message ${name} is not upper case`)
+    for (const [, reference] of text.matchAll(/\{([^}]*)\}/g))
+      if (!constants.has(reference!)) fail(`message ${name} names unknown constant ${reference}`)
+  }
+  unique([...schema.app_menu_keys.named, ...schema.app_menu_keys.punctuation], 'app_menu_keys')
+  for (const [name, payload] of Object.entries(schema.payloads)) {
+    if (!snake.test(name)) fail(`payload ${name} is not snake_case`)
+    if (Array.isArray(payload)) expand({ [name]: payload }, {}, 'payload')
+    else {
+      if (!snake.test(payload.tag)) fail(`payload ${name} tag ${payload.tag} is not snake_case`)
+      expand(payload.variants, {}, `payload ${name}`)
+    }
   }
   unique(schema.modifiers, 'modifiers')
   for (const [name, members] of Object.entries(schema.groups))
@@ -366,8 +393,30 @@ export function renderTypeScript(schema: Schema): string {
     out.push(`/** ${doc} */`, `export const ${name} = ${tagTable(tag, table).join('\n')}`, '')
   out.push("/** Members of a key or pointer event's `modifiers`. */")
   out.push(
-    `export const MODIFIER_KEYS = new Set([${schema.modifiers.map((name) => `'${name}'`).join(', ')}] as const)`
+    `export const MODIFIER_KEYS = new Set([${schema.modifiers.map((name) => `'${name}'`).join(', ')}] as const)`,
+    ''
   )
+  out.push('/** Named menu shortcut keys besides letters, digits and function keys. */')
+  out.push(`export const APP_MENU_NAMED_KEYS = Object.freeze([`)
+  out.push(...schema.app_menu_keys.named.map((key) => `  ${quote(key)},`), '] as const)')
+  out.push('/** Punctuation menu shortcut keys. */')
+  out.push(`export const APP_MENU_PUNCTUATION_KEYS = Object.freeze([`)
+  out.push(...schema.app_menu_keys.punctuation.map((key) => `  ${quote(key)},`), '] as const)', '')
+  out.push(
+    '/** Members of each nested payload object; each variant of a tagged one includes the tag. */'
+  )
+  out.push('export const PAYLOAD_KEYS = Object.freeze({')
+  for (const [name, payload] of Object.entries(schema.payloads)) {
+    if (Array.isArray(payload)) {
+      out.push(
+        `  ${name}: new Set([${payload.map((member) => `'${member}'`).join(', ')}] as const),`
+      )
+      continue
+    }
+    const table = tagTable(payload.tag, payload.variants)
+    out.push(`  ${name}: ${table[0]}`, ...table.slice(1, -1).map((line) => '  ' + line), '  }),')
+  }
+  out.push('})')
   return out.join('\n') + '\n'
 }
 
@@ -541,8 +590,38 @@ export function renderRust(schema: Schema): string {
   out.push(...rustMembers('EVENT_MEMBERS', schema.events), '')
   out.push('#[cfg(test)]')
   out.push(
-    `pub(crate) const MODIFIER_MEMBERS: &[&str] = &[${schema.modifiers.map(quote).join(', ')}];`
+    `pub(crate) const MODIFIER_MEMBERS: &[&str] = &[${schema.modifiers.map(quote).join(', ')}];`,
+    ''
   )
+  const { named, punctuation } = schema.app_menu_keys
+  out.push('/// Named menu shortcut keys besides `a`-`z`, `0`-`9` and `f1`-`f12`.')
+  out.push(`pub const APP_MENU_NAMED_KEYS: [&str; ${named.length}] = [`)
+  out.push(...named.map((key) => `    ${quote(key)},`), '];')
+  out.push('/// Punctuation menu shortcut keys.')
+  out.push(`pub const APP_MENU_PUNCTUATION_KEYS: [&str; ${punctuation.length}] = [`)
+  out.push(...punctuation.map((key) => `    ${quote(key)},`), '];', '')
+  const plain = Object.entries(schema.payloads).filter((entry): entry is [string, string[]] =>
+    Array.isArray(entry[1])
+  )
+  out.push(...rustMembers('PAYLOAD_MEMBERS', Object.fromEntries(plain)), '')
+  out.push('/// A tagged payload: its name, its tag and the members of each variant.')
+  out.push('#[cfg(test)]', 'pub(crate) type TaggedMembers =')
+  out.push("    (&'static str, &'static str, &'static [(&'static str, &'static [&'static str])]);")
+  out.push('', '#[cfg(test)]', 'pub(crate) const TAGGED_PAYLOAD_MEMBERS: &[TaggedMembers] = &[')
+  for (const [name, payload] of Object.entries(schema.payloads)) {
+    if (Array.isArray(payload)) continue
+    out.push('    (', `        ${quote(name)},`, `        ${quote(payload.tag)},`, '        &[')
+    for (const [tag, members] of Object.entries(payload.variants))
+      out.push(`            (${quote(tag)}, &[${members.map(quote).join(', ')}]),`)
+    out.push('        ],', '    ),')
+  }
+  out.push('];')
+  for (const [name, text] of Object.entries(schema.messages)) {
+    const value = text.replace(/\{([^}]*)\}/g, (_, reference: string) =>
+      String(schema.constants.find((constant) => constant.name === reference)!.value)
+    )
+    out.push('', `pub(crate) const ${name}: &str = ${quote(value)};`)
+  }
   return out.join('\n') + '\n'
 }
 

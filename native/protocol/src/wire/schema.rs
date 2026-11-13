@@ -21,6 +21,9 @@ pub const MAX_NODES_PER_WINDOW: usize = 4_096;
 pub const MAX_WINDOWS: usize = 16;
 /// Tree edges from a window root to its deepest node.
 pub const MAX_DEPTH: usize = 64;
+/// Node identities in a routed event path: the target and each ancestor up to the window root, so
+/// `MAX_DEPTH + 1`.
+pub const MAX_EVENT_PATH_NODES: usize = 65;
 /// Overlays nested inside overlays, the outermost counting as one. The host lays out each nested
 /// layer in its own bounded prepaint round.
 pub const MAX_OVERLAY_DEPTH: usize = 8;
@@ -34,6 +37,8 @@ pub const MAX_ACCESSIBLE_SET_SIZE: u32 = 2_147_483_647;
 pub const MAX_KEY_BYTES: usize = 256;
 /// Largest pointer or context menu coordinate magnitude, in logical pixels.
 pub const MAX_POINTER_COORDINATE: f64 = 1_048_576.0;
+/// Largest display origin magnitude and display size, in logical pixels.
+pub const MAX_DISPLAY_COORDINATE: f64 = 1_048_576.0;
 /// Worst-case JSON escaping still leaves room within the event frame.
 pub const MAX_CLIPBOARD_BYTES: usize = 8_192;
 pub const MAX_SERVICE_REQUESTS: usize = 8;
@@ -42,6 +47,9 @@ pub const MAX_NOTIFICATIONS: usize = 32;
 pub const MAX_NOTIFICATION_TITLE_BYTES: usize = 256;
 pub const MAX_NOTIFICATION_BODY_BYTES: usize = 2_048;
 pub const MAX_FILESYSTEM_ROOTS: usize = 8;
+/// Filesystem root and process executable identifiers: lowercase ASCII letters, digits, `-` and
+/// `_`, starting with a letter.
+pub const MAX_ROOT_ID_BYTES: usize = 32;
 pub const MAX_FILE_GRANTS: usize = 32;
 pub const MAX_ROOT_PATH_BYTES: usize = 4_096;
 pub const MAX_FILE_PATH_BYTES: usize = 1_024;
@@ -98,6 +106,8 @@ pub const MAX_APP_MENU_ENTRIES: usize = 128;
 /// A top-level menu is depth 1; submenus nest at most two levels below it.
 pub const MAX_APP_MENU_DEPTH: usize = 3;
 pub const MAX_APP_MENU_LABEL_BYTES: usize = 64;
+/// An application menu item identifier, `[A-Za-z0-9._:-]`.
+pub const MAX_APP_MENU_ITEM_ID_BYTES: usize = 64;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
@@ -1037,3 +1047,154 @@ pub(crate) const EVENT_MEMBERS: &[(&str, &[&str])] = &[
 
 #[cfg(test)]
 pub(crate) const MODIFIER_MEMBERS: &[&str] = &["control", "alt", "shift", "platform", "function"];
+
+/// Named menu shortcut keys besides `a`-`z`, `0`-`9` and `f1`-`f12`.
+pub const APP_MENU_NAMED_KEYS: [&str; 14] = [
+    "enter",
+    "escape",
+    "tab",
+    "space",
+    "backspace",
+    "delete",
+    "up",
+    "down",
+    "left",
+    "right",
+    "home",
+    "end",
+    "pageup",
+    "pagedown",
+];
+/// Punctuation menu shortcut keys.
+pub const APP_MENU_PUNCTUATION_KEYS: [&str; 11] = [
+    ",",
+    ".",
+    "/",
+    ";",
+    "'",
+    "[",
+    "]",
+    "-",
+    "=",
+    "`",
+    "\\",
+];
+
+#[cfg(test)]
+pub(crate) const PAYLOAD_MEMBERS: &[(&str, &[&str])] = &[
+    ("filesystem_root", &["id", "path", "access"]),
+    ("directory_entry", &["name", "kind"]),
+    ("process_limits", &["cpu_seconds", "memory_bytes", "open_files"]),
+    ("process_executable", &["id", "executable", "limits"]),
+    ("process_launch", &["executable", "args", "env", "cwd", "terminal"]),
+    ("process_directory", &["grant_id", "path"]),
+    ("terminal_size", &["columns", "rows"]),
+    ("process_exit", &["code", "signal"]),
+    ("app_menu", &["title", "items"]),
+    ("menu_shortcut", &["key", "modifiers"]),
+    ("menu_shortcut_modifiers", &["control", "alt", "shift", "platform"]),
+    ("file_dialog_options", &["mode", "title", "accept_label", "folder", "name", "filters"]),
+    ("file_filter", &["name", "patterns"]),
+    (
+        "message_dialog_options",
+        &[
+            "title",
+            "message",
+            "detail",
+            "buttons",
+            "default_button",
+            "cancel_button",
+            "dismissible",
+        ],
+    ),
+    ("message_dialog_button", &["id", "label"]),
+    (
+        "service_policy",
+        &[
+            "window_display",
+            "clipboard_read",
+            "clipboard_write",
+            "global_shortcuts",
+            "notifications",
+            "drag_drop",
+            "filesystem_roots",
+            "processes",
+            "file_dialogs",
+            "app_menu",
+            "task_dialogs",
+        ],
+    ),
+    ("shortcut_modifiers", &["control", "alt", "shift", "platform"]),
+    ("display_snapshot", &["bounds", "scale_factor", "visible_bounds", "display_uuid"]),
+    ("display_bounds", &["x", "y", "width", "height"]),
+    ("dropped_item", &["name"]),
+];
+
+/// A tagged payload: its name, its tag and the members of each variant.
+#[cfg(test)]
+pub(crate) type TaggedMembers =
+    (&'static str, &'static str, &'static [(&'static str, &'static [&'static str])]);
+
+#[cfg(test)]
+pub(crate) const TAGGED_PAYLOAD_MEMBERS: &[TaggedMembers] = &[
+    (
+        "file_operation",
+        "kind",
+        &[
+            ("stat", &[]),
+            ("list", &["after"]),
+            ("read", &["offset", "length"]),
+            ("write", &["mode", "data"]),
+            ("create_directory", &[]),
+            ("remove", &[]),
+        ],
+    ),
+    (
+        "file_result",
+        "kind",
+        &[
+            ("stat", &["file_kind", "size", "modified_ms"]),
+            ("list", &["entries", "complete", "omitted"]),
+            ("read", &["data", "end_of_file"]),
+            ("written", &["bytes"]),
+            ("done", &[]),
+        ],
+    ),
+    (
+        "app_menu_entry",
+        "kind",
+        &[
+            ("item", &["id", "label", "shortcut", "enabled", "checked"]),
+            ("separator", &[]),
+            ("submenu", &["label", "enabled", "items"]),
+        ],
+    ),
+    (
+        "file_dialog_result",
+        "kind",
+        &[
+            ("selected", &["paths"]),
+            ("cancelled", &[]),
+            ("failed", &["code"]),
+        ],
+    ),
+    (
+        "message_dialog_result",
+        "kind",
+        &[
+            ("button", &["id"]),
+            ("dismissed", &[]),
+            ("failed", &[]),
+        ],
+    ),
+    (
+        "clipboard_text",
+        "kind",
+        &[
+            ("empty", &[]),
+            ("text", &["text"]),
+        ],
+    ),
+];
+
+pub(crate) const BATCH_SIZE_MESSAGE: &str = "batch must have between 1 and 16384 operations";

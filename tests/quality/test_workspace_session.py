@@ -1,7 +1,6 @@
 """Negative controls for the long workspace session checks; not native evidence."""
 
 import copy
-import importlib.util
 import json
 import subprocess
 import sys
@@ -9,19 +8,13 @@ import tempfile
 import unittest
 from pathlib import Path
 
+from scripts.quality.native_harness import native_react_workspace_soak as REACT
+from scripts.quality.native_harness import native_solid_workspace_soak as SOLID
+from scripts.quality.native_harness import native_workspace_session as SESSION
+
 ROOT = Path(__file__).resolve().parents[2]
 
 
-def load(name, path):
-    spec = importlib.util.spec_from_file_location(name, ROOT / path)
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
-    return module
-
-
-SESSION = load("workspace_session", "scripts/quality/native-workspace-session.py")
-SOLID = load("solid_soak", "scripts/quality/native-solid-workspace-soak.py")
-REACT = load("react_soak", "scripts/quality/native-react-workspace-soak.py")
 RESOURCES = dict.fromkeys(SOLID.RESOURCE_KEYS, 0)
 ROUNDS = 40
 

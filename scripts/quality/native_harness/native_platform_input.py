@@ -4,7 +4,6 @@ Only the supplied application's owned native window is addressed. Observation,
 injection and application/native delivery evidence remain separate operations.
 """
 
-import importlib.util
 import json
 import math
 import os
@@ -13,18 +12,9 @@ import subprocess
 import sys
 from pathlib import Path
 
-HERE = Path(__file__).resolve().parent
-
 
 class InputUnavailable(RuntimeError):
     """The current session cannot verify actual native input."""
-
-
-def load(name):
-    spec = importlib.util.spec_from_file_location(name, HERE / (name + ".py"))
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
-    return module
 
 
 def pointer_target(layout, node_id):
@@ -368,7 +358,8 @@ class LinuxInput:
 
 def create(app, host, diagnostics):
     if sys.platform == "win32":
-        module = load("native-platform-windows")
+        from . import native_platform_windows as module
+
         try:
             driver = module.WindowsInput(app.pid, host)
         except module.InputUnavailable as error:

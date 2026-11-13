@@ -1,5 +1,5 @@
 {
-  "$comment": "The single source of the protocol's shared names, members and bounds. `bun run generate:schema` writes packages/protocol/src/wire-schema.ts and native/protocol/src/wire/schema.rs; `bun run check:schema` fails while either is stale. Member lists omit the message's own tag (`type` or `kind`). `@name` splices the group `name`.",
+  "$comment": "The single source of the protocol's shared names, members and bounds. `bun run generate:schema` writes packages/protocol/src/wire-schema.ts and native/protocol/src/wire/schema.rs; `bun run check:schema` fails while either is stale. Member lists omit the message's own tag (`type` or `kind`); `payloads` are the nested objects inside commands and events. `messages` are Rust error texts built from constants. `@name` splices the group `name`.",
   "constants": [
     { "name": "PROTOCOL_VERSION", "value": 12, "rust": "u32" },
     {
@@ -25,7 +25,13 @@
     {
       "name": "MAX_DEPTH",
       "value": 64,
+      "export": false,
       "doc": "Tree edges from a window root to its deepest node."
+    },
+    {
+      "name": "MAX_EVENT_PATH_NODES",
+      "value": 65,
+      "doc": "Node identities in a routed event path: the target and each ancestor up to the window root, so `MAX_DEPTH + 1`."
     },
     {
       "name": "MAX_OVERLAY_DEPTH",
@@ -62,6 +68,12 @@
       "doc": "Largest pointer or context menu coordinate magnitude, in logical pixels."
     },
     {
+      "name": "MAX_DISPLAY_COORDINATE",
+      "value": 1048576,
+      "rust": "f64",
+      "doc": "Largest display origin magnitude and display size, in logical pixels."
+    },
+    {
       "name": "MAX_CLIPBOARD_BYTES",
       "value": 8192,
       "doc": "Worst-case JSON escaping still leaves room within the event frame."
@@ -72,6 +84,11 @@
     { "name": "MAX_NOTIFICATION_TITLE_BYTES", "value": 256 },
     { "name": "MAX_NOTIFICATION_BODY_BYTES", "value": 2048 },
     { "name": "MAX_FILESYSTEM_ROOTS", "value": 8 },
+    {
+      "name": "MAX_ROOT_ID_BYTES",
+      "value": 32,
+      "doc": "Filesystem root and process executable identifiers: lowercase ASCII letters, digits, `-` and `_`, starting with a letter."
+    },
     { "name": "MAX_FILE_GRANTS", "value": 32 },
     { "name": "MAX_ROOT_PATH_BYTES", "value": 4096 },
     { "name": "MAX_FILE_PATH_BYTES", "value": 1024 },
@@ -153,7 +170,12 @@
       "value": 3,
       "doc": "A top-level menu is depth 1; submenus nest at most two levels below it."
     },
-    { "name": "MAX_APP_MENU_LABEL_BYTES", "value": 64 }
+    { "name": "MAX_APP_MENU_LABEL_BYTES", "value": 64 },
+    {
+      "name": "MAX_APP_MENU_ITEM_ID_BYTES",
+      "value": 64,
+      "doc": "An application menu item identifier, `[A-Za-z0-9._:-]`."
+    }
   ],
   "limits": [
     "MAX_FRAME_BYTES",
@@ -525,5 +547,105 @@
     "app_menu_item": ["sequence", "menu_id", "item_id"],
     "error": ["id", "code", "message"]
   },
-  "modifiers": ["control", "alt", "shift", "platform", "function"]
+  "modifiers": ["control", "alt", "shift", "platform", "function"],
+  "messages": { "BATCH_SIZE_MESSAGE": "batch must have between 1 and {MAX_OPERATIONS} operations" },
+  "app_menu_keys": {
+    "named": [
+      "enter",
+      "escape",
+      "tab",
+      "space",
+      "backspace",
+      "delete",
+      "up",
+      "down",
+      "left",
+      "right",
+      "home",
+      "end",
+      "pageup",
+      "pagedown"
+    ],
+    "punctuation": [",", ".", "/", ";", "'", "[", "]", "-", "=", "`", "\\"]
+  },
+  "payloads": {
+    "filesystem_root": ["id", "path", "access"],
+    "file_operation": {
+      "tag": "kind",
+      "variants": {
+        "stat": [],
+        "list": ["after"],
+        "read": ["offset", "length"],
+        "write": ["mode", "data"],
+        "create_directory": [],
+        "remove": []
+      }
+    },
+    "file_result": {
+      "tag": "kind",
+      "variants": {
+        "stat": ["file_kind", "size", "modified_ms"],
+        "list": ["entries", "complete", "omitted"],
+        "read": ["data", "end_of_file"],
+        "written": ["bytes"],
+        "done": []
+      }
+    },
+    "directory_entry": ["name", "kind"],
+    "process_limits": ["cpu_seconds", "memory_bytes", "open_files"],
+    "process_executable": ["id", "executable", "limits"],
+    "process_launch": ["executable", "args", "env", "cwd", "terminal"],
+    "process_directory": ["grant_id", "path"],
+    "terminal_size": ["columns", "rows"],
+    "process_exit": ["code", "signal"],
+    "app_menu": ["title", "items"],
+    "app_menu_entry": {
+      "tag": "kind",
+      "variants": {
+        "item": ["id", "label", "shortcut", "enabled", "checked"],
+        "separator": [],
+        "submenu": ["label", "enabled", "items"]
+      }
+    },
+    "menu_shortcut": ["key", "modifiers"],
+    "menu_shortcut_modifiers": ["control", "alt", "shift", "platform"],
+    "file_dialog_options": ["mode", "title", "accept_label", "folder", "name", "filters"],
+    "file_filter": ["name", "patterns"],
+    "file_dialog_result": {
+      "tag": "kind",
+      "variants": { "selected": ["paths"], "cancelled": [], "failed": ["code"] }
+    },
+    "message_dialog_options": [
+      "title",
+      "message",
+      "detail",
+      "buttons",
+      "default_button",
+      "cancel_button",
+      "dismissible"
+    ],
+    "message_dialog_button": ["id", "label"],
+    "message_dialog_result": {
+      "tag": "kind",
+      "variants": { "button": ["id"], "dismissed": [], "failed": [] }
+    },
+    "service_policy": [
+      "window_display",
+      "clipboard_read",
+      "clipboard_write",
+      "global_shortcuts",
+      "notifications",
+      "drag_drop",
+      "filesystem_roots",
+      "processes",
+      "file_dialogs",
+      "app_menu",
+      "task_dialogs"
+    ],
+    "shortcut_modifiers": ["control", "alt", "shift", "platform"],
+    "clipboard_text": { "tag": "kind", "variants": { "empty": [], "text": ["text"] } },
+    "display_snapshot": ["bounds", "scale_factor", "visible_bounds", "display_uuid"],
+    "display_bounds": ["x", "y", "width", "height"],
+    "dropped_item": ["name"]
+  }
 }

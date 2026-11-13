@@ -1,6 +1,5 @@
 """Headless command-tail joins; these controls execute no native host or GUI."""
 
-import importlib.util
 import os
 import subprocess
 import sys
@@ -11,12 +10,10 @@ import unittest
 from pathlib import Path
 from unittest.mock import Mock, patch
 
+from scripts.quality.native_harness import cli_standalone
+from scripts.quality.native_harness import native_watch_processes as PROCESS
+
 ROOT = Path(__file__).resolve().parents[2]
-SPEC = importlib.util.spec_from_file_location(
-    "command_join_processes", ROOT / "scripts/quality/native-watch-processes.py"
-)
-PROCESS = importlib.util.module_from_spec(SPEC)
-SPEC.loader.exec_module(PROCESS)
 
 PARENT = """
 import pathlib, subprocess, sys
@@ -195,11 +192,7 @@ class CommandJoinProcessTests(unittest.TestCase):
 )
 class StandaloneSupervisorTests(unittest.TestCase):
     def exercise(self, release):
-        spec = importlib.util.spec_from_file_location(
-            "actual_standalone_supervisor", ROOT / "tests/native/cli-standalone.py"
-        )
-        controller = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(controller)
+        controller = cli_standalone
         controller.DRIVER.enable_subreaper()
         with tempfile.TemporaryDirectory(prefix="bun-native-supervisor-") as directory:
             root = Path(directory)

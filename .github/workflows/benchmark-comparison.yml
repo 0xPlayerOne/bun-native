@@ -41,7 +41,7 @@ on:
       - tests/native/*streaming-list*
       - scripts/quality/regression-check.ts
       - scripts/quality/native-input-linux.py
-      - scripts/quality/native-paint-observer.py
+      - scripts/quality/native_harness/**
 
 permissions:
   contents: read

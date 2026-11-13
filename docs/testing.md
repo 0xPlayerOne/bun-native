@@ -101,13 +101,13 @@ The Linux driver makes itself a process-local child subreaper. If interruption t
 
 `--mode aot` declares how the caller launched the app; the input driver never verifies machine-code compilation by itself. The CI lane separately invokes the pinned compiler, validates the emitted compiled-program metadata, hashes the source and both binaries, and retains `package/manifest.json` and build/inspection logs. The actual host build profile is declared in every scenario report and substantiated by the recorded Cargo release command and binary hash. Routine evidence artifacts omit the large executable files while retaining their hashes, sizes, linkage, compiler metadata and actual execution results. A missing or invalid AOT metadata check fails the job before the AOT GUI run.
 
-The harness uses Python's standard library. Ruff is the sole Python development dependency, pinned by version and wheel hashes in `scripts/quality/requirements.txt`; it is absent from application runtime dependencies. The headless safety tests check evidence freshness/nonce validation, incomplete records, bounded logs, stress-workload limits and exact event order, unavailable-display behavior, source/artifact provenance, cancellation and real child-process cleanup. Process guard tests reject a foreign child, a changed PID identity and the wrong executable before fault injection. Each process test has a bounded deadline. These tests exercise the harness and do not qualify a native GUI:
+The harness code lives in the `scripts/quality/native_harness` package; the hyphenated scripts under `scripts/quality`, `benchmarks` and `tests/native` are thin entry points that workflows call by path. Run the unit tests from the repository root so `scripts.quality.native_harness` imports resolve. The harness uses Python's standard library. Ruff is the sole Python development dependency, pinned by version and wheel hashes in `scripts/quality/requirements.txt`; it is absent from application runtime dependencies. The headless safety tests check evidence freshness/nonce validation, incomplete records, bounded logs, stress-workload limits and exact event order, unavailable-display behavior, source/artifact provenance, cancellation and real child-process cleanup. Process guard tests reject a foreign child, a changed PID identity and the wrong executable before fault injection. Each process test has a bounded deadline. These tests exercise the harness and do not qualify a native GUI:
 
 ```sh
 python3 -m venv .bun-native/quality-env
 .bun-native/quality-env/bin/pip install --no-deps --only-binary=:all: --require-hashes -r scripts/quality/requirements.txt
-.bun-native/quality-env/bin/ruff format --check scripts/quality/*.py benchmarks/*.py tests/quality/*.py
-.bun-native/quality-env/bin/ruff check scripts/quality/*.py benchmarks/*.py tests/quality/*.py
+.bun-native/quality-env/bin/ruff format --check scripts/quality benchmarks/*.py tests/quality tests/native/*.py
+.bun-native/quality-env/bin/ruff check scripts/quality benchmarks/*.py tests/quality tests/native/*.py
 PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests/quality -p 'test_*.py' -v
 bash -n scripts/quality/native-linux-session.sh
 ```

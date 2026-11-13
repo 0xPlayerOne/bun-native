@@ -1,6 +1,5 @@
 """Exact-selection and attribution guards for the opt-in bridge phase join."""
 
-import importlib.util
 import json
 import subprocess
 import sys
@@ -9,12 +8,9 @@ import unittest
 from copy import deepcopy
 from pathlib import Path
 
+from scripts.quality.native_harness import bridge_phases as PHASES
+
 ROOT = Path(__file__).resolve().parents[2]
-SPEC = importlib.util.spec_from_file_location(
-    "bridge_phases", ROOT / "benchmarks/bridge-phases.py"
-)
-PHASES = importlib.util.module_from_spec(SPEC)
-SPEC.loader.exec_module(PHASES)
 
 COLUMNS = [
     "id",

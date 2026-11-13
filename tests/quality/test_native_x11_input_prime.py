@@ -1,16 +1,13 @@
 """Headless tests for the XTest keyboard prime. No X server is used."""
 
-import importlib.util
 import json
 import tempfile
 import unittest
 from pathlib import Path
 
+from scripts.quality.native_harness import native_x11_input_prime as PRIME
+
 ROOT = Path(__file__).resolve().parents[2]
-SCRIPT = ROOT / "scripts/quality/native-x11-input-prime.py"
-SPEC = importlib.util.spec_from_file_location("native_x11_input_prime", SCRIPT)
-PRIME = importlib.util.module_from_spec(SPEC)
-SPEC.loader.exec_module(PRIME)
 
 
 class FakeSession:

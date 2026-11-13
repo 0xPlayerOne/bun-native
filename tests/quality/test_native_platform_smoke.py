@@ -2,18 +2,15 @@
 
 import copy
 import ctypes
-import importlib.util
 import time
 import unittest
 from pathlib import Path
 from unittest import mock
 
+from scripts.quality.native_harness import native_platform_smoke as SMOKE
+from scripts.quality.native_harness import native_platform_windows
+
 ROOT = Path(__file__).resolve().parents[2]
-SPEC = importlib.util.spec_from_file_location(
-    "native_platform_smoke", ROOT / "scripts/quality/native-platform-smoke.py"
-)
-SMOKE = importlib.util.module_from_spec(SPEC)
-SPEC.loader.exec_module(SMOKE)
 
 
 class PlatformPaintOwnershipTests(unittest.TestCase):
@@ -513,14 +510,14 @@ class MacInputGuardTests(unittest.TestCase):
 class WindowsInputGuardTests(unittest.TestCase):
     @unittest.skipUnless(ctypes.sizeof(ctypes.c_void_p) == 8, "x64 controller ABI")
     def test_windows_structs_have_the_documented_x64_layout(self):
-        windows = SMOKE.OS_INPUT.load("native-platform-windows")
+        windows = native_platform_windows
         self.assertEqual(ctypes.sizeof(windows.ProcessEntry), 568)
         self.assertEqual(ctypes.sizeof(windows.MouseInput), 32)
         self.assertEqual(ctypes.sizeof(windows.KeyInput), 24)
         self.assertEqual(ctypes.sizeof(windows.Input), 40)
 
     def test_partial_windows_mouse_insertion_releases_only_its_own_down_event(self):
-        windows = SMOKE.OS_INPUT.load("native-platform-windows")
+        windows = native_platform_windows
 
         class User:
             def __init__(self, inserted):
@@ -556,7 +553,7 @@ class WindowsInputGuardTests(unittest.TestCase):
             self.assertEqual(controller.user.calls[1:], releases)
 
     def test_windows_enumeration_does_not_swallow_callback_exceptions(self):
-        windows = SMOKE.OS_INPUT.load("native-platform-windows")
+        windows = native_platform_windows
         controller = windows.WindowsInput.__new__(windows.WindowsInput)
         controller.app = {"pid": 1}
         controller.host = {"pid": 2}
@@ -585,7 +582,7 @@ class WindowsInputGuardTests(unittest.TestCase):
             controller.observe("owned fixture")
 
     def test_windows_input_desktop_query_closes_only_its_owned_handle(self):
-        windows = SMOKE.OS_INPUT.load("native-platform-windows")
+        windows = native_platform_windows
 
         class Kernel:
             def GetCurrentThreadId(self):
@@ -637,7 +634,7 @@ class WindowsInputGuardTests(unittest.TestCase):
             self.assertEqual(controller.user.closed, [3])
 
     def test_windows_recycled_parent_pid_cannot_claim_an_older_native_process(self):
-        windows = SMOKE.OS_INPUT.load("native-platform-windows")
+        windows = native_platform_windows
         controller = windows.WindowsInput.__new__(windows.WindowsInput)
         controller.app = {"pid": 1, "created": "200"}
         controller.host = None

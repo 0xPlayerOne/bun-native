@@ -2,31 +2,11 @@
 //! native menus. Items carry an application identifier that comes back in
 //! `app_menu_item` events; nothing on the wire names a native action.
 
-use crate::{MAX_APP_MENUS, MAX_APP_MENU_DEPTH, MAX_APP_MENU_ENTRIES, MAX_APP_MENU_LABEL_BYTES};
+use crate::{
+    APP_MENU_NAMED_KEYS, APP_MENU_PUNCTUATION_KEYS, MAX_APP_MENUS, MAX_APP_MENU_DEPTH,
+    MAX_APP_MENU_ENTRIES, MAX_APP_MENU_ITEM_ID_BYTES, MAX_APP_MENU_LABEL_BYTES,
+};
 use serde::{Deserialize, Serialize};
-
-pub const MAX_APP_MENU_ITEM_ID_BYTES: usize = 64;
-
-/// Named keys a menu shortcut may use besides `a`-`z`, `0`-`9`, `f1`-`f12`
-/// and the punctuation in [`APP_MENU_PUNCTUATION_KEYS`].
-pub const APP_MENU_NAMED_KEYS: [&str; 14] = [
-    "enter",
-    "escape",
-    "tab",
-    "space",
-    "backspace",
-    "delete",
-    "up",
-    "down",
-    "left",
-    "right",
-    "home",
-    "end",
-    "pageup",
-    "pagedown",
-];
-pub const APP_MENU_PUNCTUATION_KEYS: [&str; 11] =
-    [",", ".", "/", ";", "'", "[", "]", "-", "=", "`", "\\"];
 
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]

@@ -1,13 +1,6 @@
 """Actual local-stream workspace actions in the existing owned X11 driver."""
 
-import importlib.util
-from pathlib import Path
-
-SPEC = importlib.util.spec_from_file_location(
-    "solid_workspace_paint", Path(__file__).with_name("native-solid-workspace-paint.py")
-)
-PAINT = importlib.util.module_from_spec(SPEC)
-SPEC.loader.exec_module(PAINT)
+from . import native_solid_workspace_paint as PAINT
 
 # Short wheel bursts that reach a possibly still-growing history's end, and how
 # long each waits for a frame there. Sixteen bursts are 48 notches, more than

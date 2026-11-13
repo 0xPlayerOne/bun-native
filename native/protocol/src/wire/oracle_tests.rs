@@ -396,6 +396,29 @@ fn mutate(value: &mut Value, rng: &mut Rng, replacements: &[Value]) {
     }
 }
 
+/// The oracle types are hand-kept copies of the old derived decoders; they
+/// must still accept exactly the members the generated schema tables name.
+#[test]
+fn oracles_match_the_schema() {
+    fn table(
+        kinds: &[&'static str],
+        members: impl Fn(&str) -> &'static [&'static str],
+    ) -> Vec<(&'static str, &'static [&'static str])> {
+        kinds
+            .iter()
+            .map(|kind| (*kind, &members(kind)[1..]))
+            .collect()
+    }
+    let elements = table(ELEMENT_KINDS, |kind| {
+        ElementKind::from_name(kind).unwrap().member_names()
+    });
+    crate::schema_tests::check_tagged::<OracleElement>("kind", &elements);
+    let operations = table(OPERATION_KINDS, |kind| {
+        OperationKind::from_name(kind).unwrap().member_names()
+    });
+    crate::schema_tests::check_tagged::<OracleOperation>("type", &operations);
+}
+
 #[test]
 fn valid_corpus_matches() {
     for element in elements() {

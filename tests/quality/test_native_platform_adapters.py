@@ -1,16 +1,12 @@
 """Strict framework paint and owner guards; no native or OS input execution."""
 
 import copy
-import importlib.util
 import unittest
 from pathlib import Path
 
+from scripts.quality.native_harness import native_platform_smoke as SMOKE
+
 ROOT = Path(__file__).resolve().parents[2]
-SPEC = importlib.util.spec_from_file_location(
-    "native_platform_smoke", ROOT / "scripts/quality/native-platform-smoke.py"
-)
-SMOKE = importlib.util.module_from_spec(SPEC)
-SPEC.loader.exec_module(SMOKE)
 
 
 class PlatformAdapterQualificationTests(unittest.TestCase):

@@ -9,7 +9,6 @@ installer's `.bun-tag` format, so a bug in one is not mirrored in the other.
 
 import base64
 import hashlib
-import importlib.util
 import json
 import os
 import re
@@ -17,10 +16,11 @@ import stat
 import subprocess
 from pathlib import Path
 
+from . import standalone_package_evidence as EVIDENCE
+from .common import ROOT
+
 # The pinned Linux x64 Bun executable identity has one source: toolchain.json.
-TOOLCHAIN = json.loads(
-    (Path(__file__).resolve().parents[2] / "toolchain.json").read_text(encoding="utf-8")
-)
+TOOLCHAIN = json.loads((ROOT / "toolchain.json").read_text(encoding="utf-8"))
 BUN_DIGEST = TOOLCHAIN["bun"]["packages"]["linux-x64"]["executable"]
 COHORT_ERRORS = (
     OSError,
@@ -33,12 +33,6 @@ COHORT_ERRORS = (
 )
 
 
-EVIDENCE_SPEC = importlib.util.spec_from_file_location(
-    "standalone_package_evidence",
-    Path(__file__).with_name("standalone-package-evidence.py"),
-)
-EVIDENCE = importlib.util.module_from_spec(EVIDENCE_SPEC)
-EVIDENCE_SPEC.loader.exec_module(EVIDENCE)
 require = EVIDENCE.require
 digest = EVIDENCE.digest
 

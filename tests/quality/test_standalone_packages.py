@@ -2,19 +2,15 @@
 
 import copy
 import hashlib
-import importlib.util
 import json
 import os
 import tempfile
 import unittest
 from pathlib import Path
 
+from scripts.quality.native_harness import standalone_packages as COHORT
+
 ROOT = Path(__file__).resolve().parents[2]
-SPEC = importlib.util.spec_from_file_location(
-    "standalone_packages", ROOT / "scripts/quality/standalone-packages.py"
-)
-COHORT = importlib.util.module_from_spec(SPEC)
-SPEC.loader.exec_module(COHORT)
 
 
 class CacheFailureTests(unittest.TestCase):

@@ -3,7 +3,6 @@
 import base64
 import copy
 import hashlib
-import importlib.util
 import io
 import json
 import os
@@ -15,11 +14,10 @@ import unittest
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
+from scripts.quality.native_harness import cli_watch as WATCH
+
 ROOT = Path(__file__).resolve().parents[2]
 SCRIPT = ROOT / "tests/native/cli-watch.py"
-SPEC = importlib.util.spec_from_file_location("cli_watch", SCRIPT)
-WATCH = importlib.util.module_from_spec(SPEC)
-SPEC.loader.exec_module(WATCH)
 PROCESS = WATCH.PROCESS
 ZERO = {
     "pid": 200,

@@ -1,20 +1,15 @@
 """File/receipt controls only; the specimen is never installed, compiled or run."""
 
 import copy
-import importlib.util
 import json
 import shutil
 import tempfile
 import unittest
 from pathlib import Path
 
+from scripts.quality.native_harness import standalone_package_evidence as EVIDENCE
+
 ROOT = Path(__file__).resolve().parents[2]
-SPEC = importlib.util.spec_from_file_location(
-    "standalone_package_evidence",
-    ROOT / "scripts/quality/standalone-package-evidence.py",
-)
-EVIDENCE = importlib.util.module_from_spec(SPEC)
-SPEC.loader.exec_module(EVIDENCE)
 
 
 class BuildEvidenceTests(unittest.TestCase):

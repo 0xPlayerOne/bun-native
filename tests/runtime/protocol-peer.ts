@@ -241,6 +241,22 @@ for await (const chunk of Bun.stdin.stream()) {
         }
         if (mode === 'inherited-pipe-exit') setTimeout(() => process.exit(23), 25)
       }
+    } else if (command.type === 'withdraw_notification') {
+      // The echoed request fields: 'wrong-notification' answers another notification.
+      await emit({
+        type: 'notification_withdrawn',
+        id: command.id,
+        window_id: command.window_id,
+        notification_id: command.notification_id + (mode === 'wrong-notification' ? 1 : 0),
+      })
+    } else if (command.type === 'release_process') {
+      // 'wrong-response-type' answers with another command's response type.
+      await emit({
+        type: mode === 'wrong-response-type' ? 'process_updated' : 'process_released',
+        id: command.id,
+        window_id: command.window_id,
+        process_id: command.process_id,
+      })
     } else if (command.type === 'close') {
       await emit({ type: 'closed', sequence: ++sequence, window_id: command.window_id })
       await emit({ type: 'ack', id: command.id })

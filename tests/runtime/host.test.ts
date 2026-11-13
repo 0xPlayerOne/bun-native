@@ -355,6 +355,40 @@ describe('native process transport (headless protocol peer)', () => {
     }
   )
 
+  test('matches each service response by its type and echoed request fields', async () => {
+    const host = await NativeHost.launch(options())
+    try {
+      expect(
+        await host.send({ type: 'withdraw_notification', window_id: 1, notification_id: 4 })
+      ).toEqual({ type: 'notification_withdrawn', id: 2, window_id: 1, notification_id: 4 })
+      expect(await host.send({ type: 'release_process', window_id: 1, process_id: 3 })).toEqual({
+        type: 'process_released',
+        id: 3,
+        window_id: 1,
+        process_id: 3,
+      })
+    } finally {
+      await deadline(host.shutdown(), 'service response cleanup')
+    }
+  })
+
+  test.each([
+    ['wrong-notification', { type: 'withdraw_notification', window_id: 1, notification_id: 4 }],
+    ['wrong-response-type', { type: 'release_process', window_id: 1, process_id: 3 }],
+  ] as const)('rejects a service response with %s', async (mode, command) => {
+    const host = await NativeHost.launch(options(mode))
+    try {
+      const error = await rejectedError(deadline(host.send(command), 'invalid service response'))
+      expect(error).toBeInstanceOf(ProtocolError)
+      expect(error.message).toBe('Native response does not match its request, owner or revision')
+    } finally {
+      await deadline(
+        host.shutdown().catch(() => {}),
+        'failed host cleanup'
+      )
+    }
+  })
+
   test.each(['wrong-batch-window', 'wrong-revision'])(
     'rejects an applied response with %s',
     async (mode) => {

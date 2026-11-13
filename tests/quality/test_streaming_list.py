@@ -1,16 +1,12 @@
 """Deterministic controls for the streaming-list soak summaries, not GUI evidence."""
 
 import copy
-import importlib.util
 import unittest
 from pathlib import Path
 
+from scripts.quality.native_harness import streaming_list as SOAK
+
 ROOT = Path(__file__).resolve().parents[2]
-SPEC = importlib.util.spec_from_file_location(
-    "streaming_list", ROOT / "tests/native/streaming-list.py"
-)
-SOAK = importlib.util.module_from_spec(SPEC)
-SPEC.loader.exec_module(SOAK)
 
 
 def frame(index, elapsed_ms, window=1, revision=None):
