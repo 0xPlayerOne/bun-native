@@ -428,6 +428,11 @@ export class NativeHost implements AsyncIterable<HostEvent> {
     }
   }
 
+  /** Whether the transport is still open (false once it failed or shut down). */
+  get running(): boolean {
+    return this.phase === 'running'
+  }
+
   get limits(): Readonly<Limits> {
     if (!this.negotiatedLimits) throw new ProtocolError('Native limits are not negotiated')
     return this.negotiatedLimits

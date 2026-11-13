@@ -4,6 +4,7 @@ import {
   type ApplicationEvent,
   type Capability,
   type FileDialogOptions,
+  type HostEvent,
   type Limits,
   type Operation,
   type WindowEvent,
@@ -488,6 +489,32 @@ class Application implements NativeApplication {
     })
   }
 
+  /** The service identity a native event names, checked before routing. */
+  private ownedIdentity(event: HostEvent): [Identities, number, string] | undefined {
+    switch (event.type) {
+      case 'global_shortcut':
+        return [this.ids.shortcut, event.shortcut_id, 'global shortcut']
+      case 'notification_activated':
+      case 'notification_dismissed':
+        return [this.ids.notification, event.notification_id, 'notification']
+      case 'process_output':
+      case 'process_exited':
+        return [this.ids.process, event.process_id, 'process']
+      case 'file_dialog_completed':
+        return [this.ids.dialog, event.dialog_id, 'file dialog']
+      case 'message_dialog_completed':
+        return [this.ids.messageDialog, event.dialog_id, 'message dialog']
+      case 'context_menu_completed':
+        return [this.ids.contextMenu, event.menu_id, 'context menu']
+      case 'drop_target_drag':
+      case 'drop_received':
+      case 'drop_rejected':
+        return [this.ids.dropTarget, event.target_id, 'drop target']
+      default:
+        return undefined
+    }
+  }
+
   private async consume(): Promise<void> {
     try {
       for await (const event of this.host) {
@@ -496,32 +523,9 @@ class Application implements NativeApplication {
           this.receiveMenuItem(event)
           continue
         }
-        if (event.type === 'global_shortcut' && !this.ids.shortcut.has(event.shortcut_id))
-          throw new ProtocolError('Native event names an unallocated global shortcut')
-        if (
-          (event.type === 'notification_activated' || event.type === 'notification_dismissed') &&
-          !this.ids.notification.has(event.notification_id)
-        )
-          throw new ProtocolError('Native event names an unallocated notification')
-        if (
-          (event.type === 'process_output' || event.type === 'process_exited') &&
-          !this.ids.process.has(event.process_id)
-        )
-          throw new ProtocolError('Native event names an unallocated process')
-        if (event.type === 'file_dialog_completed' && !this.ids.dialog.has(event.dialog_id))
-          throw new ProtocolError('Native event names an unallocated file dialog')
-        if (
-          event.type === 'message_dialog_completed' &&
-          !this.ids.messageDialog.has(event.dialog_id)
-        )
-          throw new ProtocolError('Native event names an unallocated message dialog')
-        if (
-          (event.type === 'drop_target_drag' ||
-            event.type === 'drop_received' ||
-            event.type === 'drop_rejected') &&
-          !this.ids.dropTarget.has(event.target_id)
-        )
-          throw new ProtocolError('Native event names an unallocated drop target')
+        const owned = this.ownedIdentity(event)
+        if (owned && !owned[0].has(owned[1]))
+          throw new ProtocolError('Native event names an unallocated ' + owned[2])
         if (event.type === 'drop_received') {
           if (event.drop_id <= this.lastDrop)
             throw new ProtocolError('Native drop identities must increase')
@@ -1335,9 +1339,12 @@ class Window implements NativeWindow {
           (error: unknown) => {
             // Release or window close can race the acknowledgement.
             if (error instanceof NativeCommandError && error.code === 'invalid_handle') return
-            // A lost transport is reported by the application's own closed promise;
-            // recording it here first would hide the original cause.
-            if (!(error instanceof NativeCommandError) || !this.application.running) return
+            // Shutdown or a lost transport already owns the outcome, reported
+            // through the application's closed promise; recording it here first
+            // would hide the original cause. A rejection while the host still
+            // runs (the runtime's own command limit) would otherwise lose the
+            // credit silently.
+            if (!this.application.running || !this.application.host.running) return
             // Not awaited: shutdown waits for this tracked operation.
             void this.application.fail(error)
           }
