@@ -1,5 +1,4 @@
 import { describe, expect, test } from 'bun:test'
-import { expectedNodes } from '../../benchmarks/solid/workload.ts'
 import {
   summarizePairs,
   verifyLaunch,
@@ -10,9 +9,9 @@ type Prepared = Parameters<typeof verifyPreparations>[0]
 type Observation = Parameters<typeof summarizePairs>[0][number]
 const before = 'a'.repeat(40)
 const after = 'b'.repeat(40)
-const rows = Array.from({ length: 32 }, (_, id) => ({ id, text: `Row ${id}` }))
+const expectedInitial = [{ id: 1 }]
 function preparation(commit: string): Prepared {
-  const paint = { nodes: expectedNodes(rows, 'Initial') }
+  const paint = { nodes: expectedInitial }
   const renderer = { gpu: { name: 'test renderer' } }
   return {
     status: 'passed',
@@ -48,15 +47,18 @@ describe('paired input comparison', () => {
   test('requires exact source, AOT, identical renderer and calibrated tree', () => {
     const a = preparation(before)
     const b = preparation(after)
-    expect(() => verifyPreparations(a, b, before, after)).not.toThrow()
+    expect(() => verifyPreparations(a, b, before, after, expectedInitial)).not.toThrow()
+    expect(() => verifyPreparations(a, b, before, after, [])).toThrow('Unexpected input fixture')
     b.source.dirty = true
-    expect(() => verifyPreparations(a, b, before, after)).toThrow('source is dirty')
+    expect(() => verifyPreparations(a, b, before, after, expectedInitial)).toThrow(
+      'source is dirty'
+    )
     b.source.dirty = false
     b.builds.core.aot.inspection.hasCompiledProgram = false
-    expect(() => verifyPreparations(a, b, before, after)).toThrow('not AOT')
+    expect(() => verifyPreparations(a, b, before, after, expectedInitial)).toThrow('not AOT')
     b.builds.core.aot.inspection.hasCompiledProgram = true
     b.calibrations[0]!.initial.paint.nodes = []
-    expect(() => verifyPreparations(a, b, before, after)).toThrow('trees differ')
+    expect(() => verifyPreparations(a, b, before, after, expectedInitial)).toThrow('trees differ')
   })
   test('preserves pairing and rejects failed, incomplete or reordered launches', () => {
     const summary = summarizePairs(observations, 3)
@@ -113,8 +115,20 @@ describe('paired input comparison', () => {
       },
     }
     const check = () =>
-      verifyLaunch(driver, app, 'nonce', '/host', '/application', 'revision', { name: 'renderer' })
+      verifyLaunch(
+        driver,
+        app,
+        'nonce',
+        '/host',
+        '/application',
+        'revision',
+        { name: 'renderer' },
+        'Clicked'
+      )
     expect(check()).toBe(5)
+    app.input.label = 'Wrong'
+    expect(check).toThrow()
+    app.input.label = 'Clicked'
     driver.cleanup.forced_termination = true
     expect(check).toThrow('cleanup failed')
     driver.cleanup.forced_termination = false
@@ -122,7 +136,16 @@ describe('paired input comparison', () => {
     expect(check).toThrow('OS input missing')
     driver.checks['os_input'] = 'injected-through-XTest'
     expect(() =>
-      verifyLaunch(driver, app, 'nonce', '/host', '/application', 'revision', { name: 'different' })
+      verifyLaunch(
+        driver,
+        app,
+        'nonce',
+        '/host',
+        '/application',
+        'revision',
+        { name: 'different' },
+        'Clicked'
+      )
     ).toThrow('renderer differs')
   })
 })

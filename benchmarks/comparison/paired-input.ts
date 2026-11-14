@@ -102,11 +102,13 @@ async function main(): Promise<void> {
     binary: join(candidateDir, 'core/application'),
     report: readJson(join(candidateDir, 'comparison.json')) as Prepared,
   }
+  const rows = Array.from({ length: 32 }, (_, id) => ({ id, text: `Row ${id}` }))
   verifyPreparations(
     baseline.report,
     candidate.report,
     values['baseline-commit'] ?? '',
-    values['candidate-commit'] ?? ''
+    values['candidate-commit'] ?? '',
+    expectedNodes(rows, 'Initial')
   )
   await verifyArtifacts(baseline)
   await verifyArtifacts(candidate)
@@ -117,7 +119,6 @@ async function main(): Promise<void> {
   )
   mkdirSync(output)
   const driver = resolve(import.meta.dir, '../../scripts/quality/native-input-linux.py')
-  const rows = Array.from({ length: 32 }, (_, id) => ({ id, text: `Row ${id}` }))
   const expectation = (label: string, revision?: number) =>
     JSON.stringify({
       type: 'rendered',
@@ -210,7 +211,8 @@ async function main(): Promise<void> {
           variant.host,
           variant.binary,
           Bun.revision,
-          calibration.initial.renderer.gpu
+          calibration.initial.renderer.gpu,
+          INPUT_LABEL
         )
       } catch (cause) {
         error = cause instanceof Error ? cause.message : String(cause)
