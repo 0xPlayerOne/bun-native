@@ -683,12 +683,26 @@ jobs:
           ref: 879df62168267ec49a6d6358b5c6c57c10718c9d
           path: .tree-pairs-baseline
           persist-credentials: false
+      - name: Checkout pre-overlap startup files
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: 5cfbb71c83a5f3937543ee08aa8159960c1d80a0
+          path: .tree-pairs-startup
+          persist-credentials: false
       - name: Isolate baseline and verify source boundary
         run: |
           set -euo pipefail
           test "$(cat .tree-pairs-baseline/.git/HEAD)" = 879df62168267ec49a6d6358b5c6c57c10718c9d
+          test "$(cat .tree-pairs-startup/.git/HEAD)" = 5cfbb71c83a5f3937543ee08aa8159960c1d80a0
           mv .tree-pairs-baseline "$RUNNER_TEMP/tree-pairs-baseline"
+          mv .tree-pairs-startup "$RUNNER_TEMP/tree-pairs-startup"
           mkdir "$RUNNER_TEMP/tree-pairs"
+          # Reproduce the reverted startup path in the baseline as well. The
+          # test-only lifecycle file is copied to keep the source record exact.
+          for path in native/gpui-host/src/frame_pacing.rs native/gpui-host/src/main.rs native/macos-surface/src/lib.rs tests/native/lifecycle.ts; do
+            cp "$RUNNER_TEMP/tree-pairs-startup/$path" "$RUNNER_TEMP/tree-pairs-baseline/$path"
+            cmp "$RUNNER_TEMP/tree-pairs-baseline/$path" "$GITHUB_WORKSPACE/$path"
+          done
           python3 - <<'PY'
           from pathlib import Path
           import hashlib, os
@@ -714,6 +728,8 @@ jobs:
           PY
           {
             git rev-parse HEAD
+            echo 'Baseline: 879df62168267ec49a6d6358b5c6c57c10718c9d with four startup files from 5cfbb71c83a5f3937543ee08aa8159960c1d80a0'
+            shasum -a 256 "$RUNNER_TEMP/tree-pairs-baseline/native/gpui-host/src/frame_pacing.rs" "$RUNNER_TEMP/tree-pairs-baseline/native/gpui-host/src/main.rs" "$RUNNER_TEMP/tree-pairs-baseline/native/macos-surface/src/lib.rs" "$RUNNER_TEMP/tree-pairs-baseline/tests/native/lifecycle.ts"
             sw_vers
             uname -a
             system_profiler SPHardwareDataType SPDisplaysDataType
