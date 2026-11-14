@@ -107,7 +107,9 @@ executable, rejects unequal paint trees and renderer identity, and alternates
 hashes before each launch, retains raw reports and failures, and independently
 rechecks paired order, fingerprints, cleanup, workloads and startup milestones.
 `paired-analysis.json` reports paired bootstrap intervals for startup and
-acknowledgement differences. These milestones are not display presentation;
+acknowledgement differences, CPU time, and sampled process-tree RSS. If any
+resource sample is unavailable, its paired summary is null rather than a
+partial comparison. These milestones are not display presentation;
 the VM, load and caches remain uncontrolled, and the separate native input and
 fairness checks are still required.
 

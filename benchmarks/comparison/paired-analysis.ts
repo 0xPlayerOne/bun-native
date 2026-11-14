@@ -21,7 +21,15 @@ type Entry = {
   hostSha256: string
   artifactSha256: string
   status: string
-  process: { exitCode: number; wallMs: number; spawnEpochMs: number }
+  process: {
+    exitCode: number
+    wallMs: number
+    spawnEpochMs: number
+    cpuUserMs?: number | null
+    cpuSystemMs?: number | null
+    peakTreeRssBytes?: number | null
+    rssSamples?: number
+  }
   report: Fingerprint
 }
 type Run = {
@@ -57,6 +65,8 @@ type LaunchMetrics = {
   spawnToReadyMs: number
   spawnToMountedMs: number
   entryToReadyMs: number
+  cpuTimeMs: number | null
+  peakTreeRssBytes: number | null
   phases: Record<string, ReturnType<typeof metrics>>
   load: string | null
 }
@@ -246,22 +256,49 @@ export function analyzePairedRun(directory: string) {
       const spawnToReadyMs = origin! - entry.process.spawnEpochMs + ready!
       const spawnToMountedMs = origin! - entry.process.spawnEpochMs + mounted!
       assert(spawnToReadyMs > 0 && spawnToMountedMs >= spawnToReadyMs, 'Invalid startup interval')
+      const { cpuUserMs, cpuSystemMs, peakTreeRssBytes, rssSamples } = entry.process
+      const cpuTimeMs =
+        typeof cpuUserMs === 'number' &&
+        Number.isFinite(cpuUserMs) &&
+        cpuUserMs >= 0 &&
+        typeof cpuSystemMs === 'number' &&
+        Number.isFinite(cpuSystemMs) &&
+        cpuSystemMs >= 0
+          ? cpuUserMs + cpuSystemMs
+          : null
+      const rss =
+        typeof peakTreeRssBytes === 'number' &&
+        Number.isFinite(peakTreeRssBytes) &&
+        peakTreeRssBytes > 0 &&
+        typeof rssSamples === 'number' &&
+        Number.isSafeInteger(rssSamples) &&
+        rssSamples > 0
+          ? peakTreeRssBytes
+          : null
       pair[variant] = {
         wallMs: entry.process.wallMs,
         spawnToReadyMs,
         spawnToMountedMs,
         entryToReadyMs: ready! - start!,
+        cpuTimeMs,
+        peakTreeRssBytes: rss,
         phases,
         load: record.loadAverageBeforeLaunch?.[name] ?? null,
       }
     }
     pairs.push(pair)
   }
+  const resourceAvailable = (key: 'cpuTimeMs' | 'peakTreeRssBytes') =>
+    pairs.every((pair) => pair.baseline![key] !== null && pair.candidate![key] !== null)
+  const cpuAvailable = resourceAvailable('cpuTimeMs')
+  const rssAvailable = resourceAvailable('peakTreeRssBytes')
   return {
     candidateHost: candidate.sha256,
     baselineHost: baseline.sha256,
     trials: pairs.length,
     note: 'Each pair is one fresh process per host; acknowledgement is not input or display presentation.',
+    resourceNote:
+      'CPU is user plus system time including reaped descendants; RSS is sampled process-tree RSS and may miss peaks or double-count shared pages. A missing measurement makes its paired summary null.',
     pairs,
     pairedDelta: {
       meaning:
@@ -296,6 +333,18 @@ export function analyzePairedRun(directory: string) {
       entryToReadyMs: bootstrapMedian(
         pairs.map((pair) => pair.candidate!.entryToReadyMs - pair.baseline!.entryToReadyMs)
       ),
+      cpuTimeMs: cpuAvailable
+        ? bootstrapMedian(
+            pairs.map((pair) => pair.candidate!.cpuTimeMs! - pair.baseline!.cpuTimeMs!)
+          )
+        : null,
+      peakTreeRssBytes: rssAvailable
+        ? bootstrapMedian(
+            pairs.map(
+              (pair) => pair.candidate!.peakTreeRssBytes! - pair.baseline!.peakTreeRssBytes!
+            )
+          )
+        : null,
     },
     pairedRatio: {
       meaning:
@@ -319,6 +368,10 @@ export function analyzePairedRun(directory: string) {
           processWallMs: describe(pairs.map((pair) => pair[variant]!.wallMs)),
           spawnToReadyMs: describe(pairs.map((pair) => pair[variant]!.spawnToReadyMs)),
           spawnToMountedMs: describe(pairs.map((pair) => pair[variant]!.spawnToMountedMs)),
+          cpuTimeMs: cpuAvailable ? describe(pairs.map((pair) => pair[variant]!.cpuTimeMs!)) : null,
+          peakTreeRssBytes: rssAvailable
+            ? describe(pairs.map((pair) => pair[variant]!.peakTreeRssBytes!))
+            : null,
         },
       ])
     ),
