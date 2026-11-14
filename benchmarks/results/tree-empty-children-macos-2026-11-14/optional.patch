@@ -1,0 +1,153 @@
+--- a/native/protocol/src/tree.rs
++++ b/native/protocol/src/tree.rs
+@@ -10,6 +10,7 @@
+ use serde::Serialize;
+ use std::collections::HashSet;
+ use std::fmt;
++use std::ops::Deref;
+ use std::sync::Arc;
+ use std::time::Instant;
+ 
+@@ -19,10 +20,38 @@
+     parent: Option<NodeId>,
+     // Shared like `element`: a write copies its node, so a child list is
+     // copied only when that batch actually reorders it.
+-    children: Arc<Vec<NodeId>>,
++    children: Children,
+     input_revision: Option<u64>,
+ }
+ 
++/// An empty leaf needs no allocation. Once written, lists remain persistent.
++#[derive(Debug, Clone, Default)]
++struct Children(Option<Arc<Vec<NodeId>>>);
++
++impl Deref for Children {
++    type Target = [NodeId];
++    fn deref(&self) -> &Self::Target {
++        self.0.as_deref().map_or(&[], Vec::as_slice)
++    }
++}
++impl PartialEq for Children {
++    fn eq(&self, other: &Self) -> bool {
++        self.deref() == other.deref()
++    }
++}
++impl Children {
++    fn make_mut(&mut self) -> &mut Vec<NodeId> {
++        Arc::make_mut(self.0.get_or_insert_with(Arc::default))
++    }
++    fn shares_storage(&self, other: &Self) -> bool {
++        match (&self.0, &other.0) {
++            (None, None) => true,
++            (Some(left), Some(right)) => Arc::ptr_eq(left, right),
++            _ => false,
++        }
++    }
++}
++
+ impl Node {
+     pub fn element(&self) -> &Element {
+         &self.element
+@@ -135,7 +164,7 @@
+                     style: Style::default(),
+                 }),
+                 parent: None,
+-                children: Arc::default(),
++                children: Children::default(),
+                 input_revision: None,
+             },
+         );
+@@ -189,7 +218,8 @@
+         self.nodes.diff(
+             &previous.nodes,
+             &|old, new| {
+-                Arc::ptr_eq(&old.element, &new.element) && Arc::ptr_eq(&old.children, &new.children)
++                Arc::ptr_eq(&old.element, &new.element)
++                    && old.children.shares_storage(&new.children)
+             },
+             &mut visit,
+         );
+@@ -341,7 +371,7 @@
+                         Node {
+                             element: Arc::new(element),
+                             parent: None,
+-                            children: Arc::default(),
++                            children: Children::default(),
+                             input_revision,
+                         },
+                     );
+@@ -587,13 +617,12 @@
+         if old_parent == Some(parent_id) {
+             // A move within one parent shifts only the children between its
+             // old and new places, not the whole list twice.
+-            let children = Arc::make_mut(
+-                &mut self
+-                    .nodes
+-                    .get_mut(parent_id)
+-                    .ok_or_else(invalid_handle)?
+-                    .children,
+-            );
++            let children = self
++                .nodes
++                .get_mut(parent_id)
++                .ok_or_else(invalid_handle)?
++                .children
++                .make_mut();
+             if index >= children.len() {
+                 return Err(error(
+                     ErrorCode::InvalidCommand,
+@@ -609,22 +638,20 @@
+             return Ok(());
+         }
+         if let Some(old_parent) = old_parent {
+-            let siblings = Arc::make_mut(
+-                &mut self
+-                    .nodes
+-                    .get_mut(old_parent)
+-                    .ok_or_else(invalid_handle)?
+-                    .children,
+-            );
+-            siblings.remove(position(siblings, child_id)?);
+-        }
+-        let children = Arc::make_mut(
+-            &mut self
++            let siblings = self
+                 .nodes
+-                .get_mut(parent_id)
++                .get_mut(old_parent)
+                 .ok_or_else(invalid_handle)?
+-                .children,
+-        );
++                .children
++                .make_mut();
++            siblings.remove(position(siblings, child_id)?);
++        }
++        let children = self
++            .nodes
++            .get_mut(parent_id)
++            .ok_or_else(invalid_handle)?
++            .children
++            .make_mut();
+         if index > children.len() {
+             return Err(error(
+                 ErrorCode::InvalidCommand,
+@@ -648,13 +675,12 @@
+         }
+         let parent = self.nodes.get(node_id).ok_or_else(invalid_handle)?.parent;
+         if let Some(parent) = parent {
+-            let siblings = Arc::make_mut(
+-                &mut self
+-                    .nodes
+-                    .get_mut(parent)
+-                    .ok_or_else(invalid_handle)?
+-                    .children,
+-            );
++            let siblings = self
++                .nodes
++                .get_mut(parent)
++                .ok_or_else(invalid_handle)?
++                .children
++                .make_mut();
+             siblings.remove(position(siblings, node_id)?);
+         }
+         let mut pending = vec![node_id];

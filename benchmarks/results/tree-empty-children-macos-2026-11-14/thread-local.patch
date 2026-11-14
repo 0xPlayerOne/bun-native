@@ -1,0 +1,35 @@
+--- a/native/protocol/src/tree.rs
++++ b/native/protocol/src/tree.rs
+@@ -12,6 +12,14 @@
+ use std::fmt;
+ use std::sync::Arc;
+ use std::time::Instant;
++
++// Empty leaves share per-thread storage; `Arc::make_mut` separates the first write.
++thread_local! {
++    static EMPTY_CHILDREN: Arc<Vec<NodeId>> = Arc::default();
++}
++fn empty_children() -> Arc<Vec<NodeId>> {
++    EMPTY_CHILDREN.with(Arc::clone)
++}
+ 
+ #[derive(Debug, Clone, PartialEq)]
+ pub struct Node {
+@@ -135,7 +143,7 @@
+                     style: Style::default(),
+                 }),
+                 parent: None,
+-                children: Arc::default(),
++                children: empty_children(),
+                 input_revision: None,
+             },
+         );
+@@ -341,7 +349,7 @@
+                         Node {
+                             element: Arc::new(element),
+                             parent: None,
+-                            children: Arc::default(),
++                            children: empty_children(),
+                             input_revision,
+                         },
+                     );
