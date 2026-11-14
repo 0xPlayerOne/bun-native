@@ -13,7 +13,7 @@ describe('Electrobun visible-input control', () => {
     expect(() => session.ready('wrong', [640, 720])).toThrow()
     expect(() => session.ready(nonce, [0, 720])).toThrow()
     expect(session.ready(nonce, [640, 720])).toEqual([640, 720])
-    const report = { clicks: 1, label: 'Clicked', startup: { viewMountedMs: 12 } }
+    const report = { nonce, clicks: 1, label: 'Clicked', startup: { viewMountedMs: 12 } }
     session.clicked(nonce, report)
     expect(() => session.finish('wrong')).toThrow()
     expect(session.finish(nonce)).toEqual(report)
@@ -23,16 +23,20 @@ describe('Electrobun visible-input control', () => {
   test('rejects malformed or duplicate click evidence without later success', () => {
     expect(() => new InputSession('not-a-uuid')).toThrow()
     const early = new InputSession(nonce)
-    expect(() => early.clicked(nonce, { clicks: 1, label: 'Clicked' })).toThrow()
+    expect(() => early.clicked(nonce, { nonce, clicks: 1, label: 'Clicked' })).toThrow()
     expect(() => early.ready(nonce, [640, 720])).toThrow()
     const invalid = new InputSession(nonce)
     invalid.ready(nonce, [640, 720])
-    expect(() => invalid.clicked(nonce, { clicks: 1, label: 'Initial' })).toThrow()
+    expect(() => invalid.clicked(nonce, { nonce, clicks: 1, label: 'Initial' })).toThrow()
     expect(() => invalid.finish(nonce)).toThrow()
+    const stale = new InputSession(nonce)
+    stale.ready(nonce, [640, 720])
+    expect(() => stale.clicked(nonce, { nonce: 'stale', clicks: 1, label: 'Clicked' })).toThrow()
+    expect(() => stale.finish(nonce)).toThrow()
     const duplicate = new InputSession(nonce)
     duplicate.ready(nonce, [640, 720])
-    duplicate.clicked(nonce, { clicks: 1, label: 'Clicked' })
-    expect(() => duplicate.clicked(nonce, { clicks: 2, label: 'Clicked' })).toThrow()
+    duplicate.clicked(nonce, { nonce, clicks: 1, label: 'Clicked' })
+    expect(() => duplicate.clicked(nonce, { nonce, clicks: 2, label: 'Clicked' })).toThrow()
     expect(() => duplicate.finish(nonce)).toThrow()
   })
 
@@ -60,10 +64,11 @@ describe('Electrobun visible-input control', () => {
     expect(ready).toBe(1)
     expect((await post('input/finish', nonce)).status).toBe(409)
     expect(
-      (await post('input/clicked', nonce, JSON.stringify({ clicks: 1, label: 'Clicked' }))).status
+      (await post('input/clicked', nonce, JSON.stringify({ nonce, clicks: 1, label: 'Clicked' })))
+        .status
     ).toBe(200)
     expect((await post('input/finish', nonce)).status).toBe(200)
-    expect(finished).toEqual({ clicks: 1, label: 'Clicked' })
+    expect(finished).toEqual({ nonce, clicks: 1, label: 'Clicked' })
   })
 
   test('the GUI smoke driver refuses non-hosted sessions before launching an app', async () => {

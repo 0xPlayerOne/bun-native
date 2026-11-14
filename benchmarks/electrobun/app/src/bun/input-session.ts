@@ -36,7 +36,7 @@ export class InputSession {
       throw new Error('Input click report must be an object')
     }
     const value = report as Record<string, unknown>
-    if (value['clicks'] !== 1 || value['label'] !== 'Clicked') {
+    if (value['nonce'] !== this.nonce || value['clicks'] !== 1 || value['label'] !== 'Clicked') {
       this.#phase = 'failed'
       throw new Error('Input click report has unexpected content')
     }

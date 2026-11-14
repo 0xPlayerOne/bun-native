@@ -80,6 +80,8 @@ type WindowState = {
   application: { pid: number; parent: number; image: string; created: string }
   host: { pid: number; parent: number; image: string; created: string }
   window: { id: number; frame: [number, number, number, number] }
+  windowServerTargetVerified?: boolean
+  injection?: { method: string; postedEvents: number; delivery: string }
 }
 type PendingState = { status: 'not-ready'; reason?: string }
 async function helperCall(request: Record<string, unknown>): Promise<WindowState | PendingState> {
@@ -187,7 +189,7 @@ async function main() {
   result['negative'] = negative
   result['stage'] = 'click'
   const clickStart = performance.now()
-  await helperCall({
+  const injection = await helperCall({
     ...request,
     action: 'click',
     expected: state,
@@ -195,6 +197,9 @@ async function main() {
     x: 100,
     y: 75,
   })
+  assert.equal(injection.status, 'ready')
+  assert.equal(injection.windowServerTargetVerified, true)
+  assert.equal(injection.injection?.postedEvents, 3)
   let changed: ReturnType<typeof snapshot> | undefined
   let difference: ReturnType<typeof compareVisiblePixels> | undefined
   let polls = 0
@@ -233,10 +238,13 @@ async function main() {
   const report = JSON.parse(readFileSync(reportPath, 'utf8')) as Record<string, unknown>
   assert.equal(report['clicks'], 1)
   assert.equal(report['label'], 'Clicked')
+  assert.equal(report['nonce'], nonce)
   result = {
     status: 'passed',
     stage: 'complete',
     nonce,
+    identity: state,
+    injection,
     frame,
     viewport: control.viewport,
     region,
