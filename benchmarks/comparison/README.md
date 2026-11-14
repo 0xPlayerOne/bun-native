@@ -81,6 +81,11 @@ runner and keeps their hashes and source reference. This opt-in skips Linux and
 Windows jobs. It does not substitute for native input/paint or cross-platform
 validation.
 
+Run `bun benchmarks/comparison/paired-analysis.ts /absolute/run/directory` to
+verify the complete alternating pairs, child-report hashes, workload signatures
+and cleanup, and print per-launch medians, p95s, slow counts and wall times.
+This describes the data; it does not declare a performance win.
+
 ## Export a recorded run
 
 Both paths must be absolute, and the destination must not exist yet:
