@@ -416,6 +416,18 @@ try {
       const unknown = content.filter(
         (entry) => !rows[raw.indexOf(entry)] && !MAC_ROLES[String(entry['role'])]
       )
+      if (unknown.length > 0) {
+        // The normal tree archive is written only after the scenario succeeds.
+        // Preserve the exact failing dump without changing the role assertion.
+        try {
+          writeFileSync(
+            join(output, 'ax-failed-tree.json'),
+            JSON.stringify({ name, title, raw }, null, 2) + '\n'
+          )
+        } catch (error) {
+          console.error('Could not save failing AX tree:', error)
+        }
+      }
       assert.deepEqual(unknown, [], 'every GPUI content node has a mapped AX role')
       return content.map((entry) => fromAx(entry, rows[raw.indexOf(entry)]))
     }
