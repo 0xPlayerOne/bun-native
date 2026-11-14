@@ -37,6 +37,9 @@ on:
         description: Run the same-runner macOS Core AOT startup comparison for #678 only
         type: boolean
         default: false
+      paired-macos-trials:
+        description: Alternating macOS host pairs (3 to 20)
+        default: '10'
   schedule:
     - cron: '47 6 * * 3'
   pull_request:
@@ -252,6 +255,7 @@ jobs:
       TRIALS: ${{ github.event_name == 'workflow_dispatch' && inputs.trials || '5' }}
       STARTUP_ONLY: ${{ github.event_name == 'workflow_dispatch' && inputs['startup-only'] || false }}
       PAIRED_MACOS: ${{ github.event_name == 'workflow_dispatch' && inputs['paired-macos'] || false }}
+      PAIRED_MACOS_TRIALS: ${{ github.event_name == 'workflow_dispatch' && inputs['paired-macos-trials'] || '10' }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -296,7 +300,7 @@ jobs:
         run: |
           extra=()
           if [[ "$STARTUP_ONLY" == 'true' ]]; then extra+=(--startup-trace-calibration --adapters core); fi
-          if [[ "$PAIRED_MACOS" == 'true' ]]; then extra+=(--adapters core --paired-host "$RUNNER_TEMP/paired-baseline-host" --paired-trials 10); fi
+          if [[ "$PAIRED_MACOS" == 'true' ]]; then extra+=(--adapters core --paired-host "$RUNNER_TEMP/paired-baseline-host" --paired-trials "$PAIRED_MACOS_TRIALS"); fi
           bun benchmarks/comparison/run.ts \
             --host "$GITHUB_WORKSPACE/target/release/bun-native-host" --host-profile release \
             --output "$COMPARISON/run" --trials "$TRIALS" --input-trials 0 "${extra[@]}"
