@@ -83,7 +83,8 @@ CPU models, logical CPUs, memory, Bun revision, pinned toolchain, `rustc` and
 `--startup-trace-calibration` enables bounded startup traces only for the
 separate calibration launches; first and timed launches explicitly disable the
 trace. The calibration JSONL records transport spawn and hello phases and native
-GPUI/session initialization and hello phases. Records from each process use
+GPUI platform construction, macOS frame-source selection, session initialization
+and hello phases. Records from each process use
 their own monotonic origin: subtract times only within the same process, and
 use the host PID, request ID and nonce to correlate events. The native clock
 starts when evidence is initialized, after process entry, so it does not include

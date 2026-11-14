@@ -98,22 +98,25 @@ if (process.env['BUN_NATIVE_STARTUP_TRACE'] === '1') {
     })
   const records = evidence.filter((record) => record['stage'] === 'startup-diagnostic')
   const nativeStartup = records.filter((record) => record['source'] === 'native')
+  const expectedStartup = [
+    'host_evidence_ready',
+    'channels_connected',
+    ...(process.platform === 'darwin' ? ['frame_pacing_enter', 'frame_pacing_complete'] : []),
+    'gpui_application_enter',
+    'gpui_platform_created',
+    'gpui_app_enter',
+    'session_init_enter',
+    'session_init_complete',
+    'hello_dispatched',
+    'hello_ack_submitted',
+  ]
   assert.deepEqual(
-    nativeStartup.slice(0, 8).map((record) => record['phase']),
-    [
-      'host_evidence_ready',
-      'channels_connected',
-      'gpui_application_enter',
-      'gpui_app_enter',
-      'session_init_enter',
-      'session_init_complete',
-      'hello_dispatched',
-      'hello_ack_submitted',
-    ]
+    nativeStartup.slice(0, expectedStartup.length).map((record) => record['phase']),
+    expectedStartup
   )
-  assert.equal(nativeStartup[6]?.['request_id'], 1)
-  assert.equal(nativeStartup[7]?.['request_id'], 1)
-  for (let index = 1; index < 8; index++)
+  for (const record of nativeStartup.slice(expectedStartup.length - 2, expectedStartup.length))
+    assert.equal(record['request_id'], 1)
+  for (let index = 1; index < expectedStartup.length; index++)
     assert(
       BigInt(String(nativeStartup[index]!['elapsed_ns'])) >=
         BigInt(String(nativeStartup[index - 1]!['elapsed_ns']))
