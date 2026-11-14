@@ -123,7 +123,36 @@ async function snapshot(
     height: 36,
   }
   const guardStart = performance.now()
-  const beforeGuard = await helperCall(guard)
+  let beforeGuard: WindowState | PendingState
+  try {
+    beforeGuard = await helperCall(guard)
+  } catch (error) {
+    // The hosted runner is disposable. Preserve both images only as failure
+    // diagnostics; an obstructed region never becomes a passing observation.
+    if (name === 'initial' && expected.window.frame.every(Number.isSafeInteger)) {
+      try {
+        command([
+          'screencapture',
+          '-x',
+          `-R${expected.window.frame.join(',')}`,
+          join(output, 'obstructed-display.png'),
+        ])
+        command([
+          'screencapture',
+          '-x',
+          '-o',
+          `-l${expected.window.id}`,
+          join(output, 'obstructed-surface.png'),
+        ])
+        result['obstructionDiagnostic'] =
+          'display and owned surface captured after guard rejection; not acceptance evidence'
+      } catch (diagnosticError) {
+        result['obstructionDiagnosticError'] =
+          diagnosticError instanceof Error ? diagnosticError.message : String(diagnosticError)
+      }
+    }
+    throw error
+  }
   assert.equal(beforeGuard.status, 'ready')
   assert.equal(beforeGuard.visibleRegionVerified, true)
   const frame = expected.window.frame
