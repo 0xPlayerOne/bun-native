@@ -21,6 +21,7 @@ import { count, expectedNodes, INPUT_LABEL, WINDOW_TITLE } from '../solid/worklo
 import { sharedWorkloadSources } from '../solid/sources.ts'
 import {
   assertEquivalentPaint,
+  assertEquivalentWorkloads,
   summarize,
   summarizeInputLatency,
   type InputLaunch,
@@ -28,6 +29,7 @@ import {
 } from './stats.ts'
 import toolchain from '../../toolchain.json'
 import { kernel32, ProcessTreeSampler, windowsLoad } from './windows-processes.ts'
+import { analyzePhaseTrace } from './phase-analysis.ts'
 
 const ADAPTERS = ['core', 'solid', 'react'] as const
 const MODES = ['development', 'aot'] as const
@@ -56,6 +58,8 @@ const { values } = parseArgs({
     // Linux only: sync and drop the page, dentry and inode caches before every
     // timed, first, and calibration launch.
     'cold-cache': { type: 'boolean', default: false },
+    // Extra, separate core/AOT control and phase-traced launches; never in timed summaries.
+    'phase-trials': { type: 'string', default: '0' },
   },
   strict: true,
   allowPositionals: false,
@@ -80,6 +84,10 @@ count(values.rows, 'rows', 128)
 const rssInterval = count(values['rss-interval-ms'], 'rss-interval-ms', 1_000)
 const inputTrials =
   values['input-trials'] === '0' ? 0 : count(values['input-trials'], 'input-trials', 30)
+const phaseTrials =
+  values['phase-trials'] === '0' ? 0 : count(values['phase-trials'], 'phase-trials', 10)
+if (phaseTrials && (phaseTrials < 3 || !adapters.includes('core')))
+  throw new Error('phase-trials requires core and at least 3 pairs')
 if (inputTrials && inputTrials < 3) throw new Error('input-trials must be 0 or at least 3')
 if (inputTrials && (platform() !== 'linux' || !process.env['DISPLAY']))
   throw new Error('--input-trials requires the isolated Linux X11 session (XTest)')
@@ -272,7 +280,11 @@ async function launch(
   env: Record<string, string | undefined>
 ): Promise<Launch['process']> {
   const childEnv: Record<string, string> = {}
-  for (const [key, value] of Object.entries({ ...process.env, ...env }))
+  for (const [key, value] of Object.entries({
+    ...process.env,
+    BUN_NATIVE_PHASE_TRACE: undefined,
+    ...env,
+  }))
     if (value !== undefined) childEnv[key] = value
   if (coldCache) dropPageCache()
   const spawnEpochMs = Date.now()
@@ -544,6 +556,7 @@ const launches: Launch[] = []
 const calibrations: Record<string, unknown>[] = []
 const loads: Record<string, string> = {}
 const inputLaunches: InputLaunch[] = []
+const phaseDiagnostics: Record<string, unknown>[] = []
 
 function paintExpectation(label: string, revision?: number) {
   const rows = Array.from({ length: Number(values.rows) }, (_, id) => ({ id, text: `Row ${id}` }))
@@ -594,7 +607,12 @@ async function runInput(build: Built, name: string, trial: number) {
   ]
   const env: Record<string, string> = {}
   for (const [key, value] of Object.entries(process.env))
-    if (value !== undefined && !key.startsWith('BUN_NATIVE_EVIDENCE_')) env[key] = value
+    if (
+      value !== undefined &&
+      key !== 'BUN_NATIVE_PHASE_TRACE' &&
+      !key.startsWith('BUN_NATIVE_EVIDENCE_')
+    )
+      env[key] = value
   env['BUN_NATIVE_HOST'] = host
   env['BUN_NATIVE_HOST_PROFILE'] = values['host-profile']!
   // No RSS polling here: it would compete with the measured input interval.
@@ -768,6 +786,72 @@ try {
     const ordered = trial % 2 ? rotated.reverse() : rotated
     for (const build of ordered)
       await run(build, `${build.adapter}-${build.mode}-${trial}`, trial, false)
+  }
+  // Extra launches do not enter `launches` or the performance regression gate.
+  // Each traced launch has an adjacent uninstrumented control, in alternating order.
+  if (phaseTrials) {
+    // Preserve the normal comparison even if a later diagnostic launch fails.
+    report['summary'] = summarize(launches)
+    const build = built.find((item) => item.adapter === 'core' && item.mode === 'aot')!
+    const reference = launches.find(
+      (item) => item.adapter === 'core' && item.mode === 'aot' && !item.warmup
+    )
+    if (!reference?.report || reference.status !== 'passed')
+      throw new Error('Phase diagnostic requires a passed core/AOT reference launch')
+    report['phaseDiagnostics'] = phaseDiagnostics
+    for (let trial = 1; trial <= phaseTrials; trial += 1) {
+      const order = trial % 2 ? ['control', 'trace'] : ['trace', 'control']
+      for (const variant of order) {
+        const name = `core-aot-phase-${variant}-${trial}`
+        const path = join(launchesDirectory, `${name}.json`)
+        const trace = join(launchesDirectory, `${name}.trace.json`)
+        const nonce = crypto.randomUUID()
+        assert.deepEqual(await digest(build.argv.at(-1)!), build.artifact, 'Artifact changed')
+        const processResult = await launch(
+          name,
+          [...build.argv, ...workloadArguments(path, nonce, build.mode, false)],
+          {
+            BUN_NATIVE_EVIDENCE_LOG: undefined,
+            BUN_NATIVE_EVIDENCE_NONCE: undefined,
+            BUN_NATIVE_PHASE_TRACE: variant === 'trace' ? trace : undefined,
+          }
+        )
+        const checked = childReport(build, path, nonce)
+        const entry: Record<string, unknown> = {
+          name,
+          variant,
+          trial,
+          process: processResult,
+          status: 'running',
+        }
+        phaseDiagnostics.push(entry)
+        try {
+          if (processResult.exitCode !== 0 || checked.error)
+            throw new Error(`${name} failed: ${checked.error ?? `exit ${processResult.exitCode}`}`)
+          assertEquivalentWorkloads([
+            { name: reference.name, adapter: 'core', mode: 'aot', report: reference.report },
+            { name, adapter: 'core', mode: 'aot', report: checked.item! },
+          ])
+          entry['report'] = await digest(path)
+          if (variant === 'trace') {
+            const analysis = analyzePhaseTrace(
+              checked.item,
+              JSON.parse(readFileSync(trace, 'utf8'))
+            )
+            const analysisPath = join(launchesDirectory, `${name}.analysis.json`)
+            writeFileSync(analysisPath, JSON.stringify(analysis, null, 2) + '\n')
+            entry['trace'] = await digest(trace)
+            entry['analysis'] = await digest(analysisPath)
+          }
+          entry['status'] = 'passed'
+        } catch (error) {
+          entry['status'] = 'failed'
+          entry['error'] = error instanceof Error ? error.message : String(error)
+          throw error
+        }
+        console.log(JSON.stringify({ name, status: 'passed' }))
+      }
+    }
   }
   for (let trial = 1; trial <= inputTrials; trial++) {
     const offset = trial % built.length
