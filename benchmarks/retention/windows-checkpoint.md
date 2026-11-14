@@ -116,9 +116,9 @@ the selected runtime; its hash alone does not prove its provenance.
 
 The label-triggered `Windows runtime build control` builds an uninstrumented
 `release-local` Bun from the pinned Bun and WebKit sources on an isolated
-Windows runner. A recorded build-generator-only patch passes codegen sources
-relative to their existing working directory, and temporary drive mappings
-shorten other paths. The workflow verifies the source revision and patch hash
+Windows runner. A recorded build-time codegen patch passes canonicalized source
+paths relative to the source root and resolves those inputs against that root;
+temporary drive mappings shorten other paths. The workflow verifies the source revision and patch hash
 and checks generated Windows shell command lengths before compilation. This
 is a custom build; the matching revision does not prove binary equivalence to
 the distributed runtime. It compares that runtime with the pinned distribution using
@@ -140,6 +140,15 @@ command of 14,476 characters and stopped before compilation. The recorded
 maximum does not identify which command remained oversized. A subsequent run
 records bounded command metadata to distinguish the source before changing the
 build again; no runtime or retention result was produced.
+
+The [sixth run](https://github.com/0xPlayerOne/bun-native/actions/runs/43651579878)
+identified two oversized commands: their working directory was on mapped `X:`
+while the source glob returned physical `D:` paths. The first path patch could
+not relativize across those drive names. The revised build-time patch resolves
+both sides to their canonical paths before constructing the relative arguments
+and resolves the table generator's input names against its own source root.
+The path change and generated-output equivalence remain unverified; the next
+hosted build and workload controls provide checks, not a proof of equivalence.
 
 A separate paired React fixture control tests one ownership hypothesis. Both
 variants use the same async disposal wrapper; after acknowledged disposal, the

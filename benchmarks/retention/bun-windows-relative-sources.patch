@@ -1,8 +1,9 @@
 --- a/scripts/build/aot.ts
 +++ b/scripts/build/aot.ts
 @@ -1,5 +1,5 @@
- import { readdirSync } from "node:fs";
+-import { readdirSync } from "node:fs";
 -import { resolve } from "node:path";
++import { readdirSync, realpathSync } from "node:fs";
 +import { relative, resolve } from "node:path";
  import { crateOf, debugFlag, shJoin, typesOnlyFlag, type Ctx } from "./codegen.ts";
  import type { CodegenFields } from "./config.ts";
@@ -12,18 +13,45 @@
          `--codegen-path=${cfg.codegenDir}`,
          `--target=${builtinTableTarget(cfg)}`,
 -        `--sources=${sources.bindgen.map(src => `${crateOf(src)}=${src}`).join(",")}`,
-+        `--sources=${sources.bindgen.map(src => `${crateOf(src)}=${relative(cfg.cwd, src)}`).join(",")}`,
++        `--sources=${sources.bindgen.map(src => `${crateOf(src)}=${relative(realpathSync(cfg.cwd), realpathSync(src))}`).join(",")}`,
          `--engine-directory=${engine.directory}`,
          ...(engine.javaScriptCore === undefined
            ? [`--prebuilt-generated=${engine.builtinsGeneratedDirectory}`]
 --- a/scripts/build/codegen.ts
 +++ b/scripts/build/codegen.ts
+@@ -27,7 +27,7 @@
+  * reached through the PCH.
+  */
+ 
+-import { existsSync, mkdirSync, readFileSync } from "node:fs";
++import { existsSync, mkdirSync, readFileSync, realpathSync } from "node:fs";
+ import { basename, dirname, relative, resolve } from "node:path";
+ import type { Sources } from "../glob-sources.ts";
+ import { builtinUsesArguments, emitAotCodegen, guardInputs, hashTableInputs, type EngineSources } from "./aot.ts";
 @@ -980,7 +980,7 @@
        args: shJoin(cfg, [
          script,
          // Every schema: build/types is shared by every profile, so Bindgen.d.ts describes them all.
 -        `--sources=${sources.bindgen.map(src => `${crates.get(src)}=${src}`).join(",")}`,
-+        `--sources=${sources.bindgen.map(src => `${crates.get(src)}=${relative(cfg.cwd, src)}`).join(",")}`,
++        `--sources=${sources.bindgen.map(src => `${crates.get(src)}=${relative(realpathSync(cfg.cwd), realpathSync(src))}`).join(",")}`,
          typesOnlyFlag(cfg, sources),
          `--codegen-path=${cfg.codegenDir}`,
          `--types-path=${cfg.typesDir}`,
+--- a/src/codegen/builtins/collect-bindgen.ts
++++ b/src/codegen/builtins/collect-bindgen.ts
+@@ -1,5 +1,5 @@
+ import { AssertionError } from "node:assert";
+-import { relative, sep } from "node:path";
++import { relative, resolve, sep } from "node:path";
+ import {
+   checkedWordsOf,
+   cppConstructorSymbol,
+@@ -1034,7 +1034,7 @@
+   // A type is named by the file that exports it, and another file may use it.
+   const loaded: { file: string; schema: SchemaFile }[] = [];
+   for (const source of [...sources].sort(compareBytes)) {
+-    const file = relative(bunRoot, source.slice(source.indexOf("=") + 1))
++    const file = relative(bunRoot, resolve(bunRoot, source.slice(source.indexOf("=") + 1)))
+       .split(sep)
+       .join("/");
+     const schema = await loadSchemaFile(source).catch((error: Error) => {
