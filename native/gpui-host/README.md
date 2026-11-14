@@ -42,7 +42,9 @@ neither dropped nor reordered. A consumer that reads nothing for that long ends
 the UI session rather than allowing unlimited retained events.
 
 The command consumer preserves FIFO order and yields explicitly after 16
-commands or four milliseconds of elapsed turn time. It awaits GPUI's
+commands or four milliseconds of continuous turn time. A receive that actually
+suspends has already returned control to the foreground executor and starts a
+fresh turn; a receive that is immediately ready never resets the budget. It awaits GPUI's
 nonzero one-millisecond background timer outside the UI update, allowing the
 platform event loop to process input and paint during sustained command traffic.
 A ready receive queue does not suspend an async task; draining it without this
