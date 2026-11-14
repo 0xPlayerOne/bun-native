@@ -108,6 +108,12 @@ module and executable, and requires the exact workload and zero cleanup counters
 An unrelated process error makes the diagnostic fail rather than count as a
 retention observation.
 
+`headless-adapter-control.py` accepts an optional Bun executable path after the
+trial count. It verifies the executable's `Bun.revision` against `toolchain.json`
+before creating output and records its SHA-256 as `developmentRuntime` in the
+plan. The AOT binary is a separate input and must be compiled and inspected for
+the selected runtime; its hash alone does not prove its provenance.
+
 A separate paired React fixture control tests one ownership hypothesis. Both
 variants use the same async disposal wrapper; after acknowledged disposal, the
 `clear` variant additionally sets its two captured React state dispatchers to

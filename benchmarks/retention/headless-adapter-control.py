@@ -8,6 +8,7 @@ import hashlib
 import json
 import os
 import platform
+import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -19,6 +20,25 @@ def digest(path):
         for block in iter(lambda: f.read(1024 * 1024), b""):
             h.update(block)
     return h.hexdigest()
+
+
+def resolve_runtime(command, expected_revision):
+    executable = shutil.which(command)
+    if not executable:
+        raise ValueError(f"Bun executable not found: {command}")
+    runtime = Path(executable).resolve(strict=True)
+    revision = subprocess.run(
+        [str(runtime), "-e", "process.stdout.write(Bun.revision)"],
+        capture_output=True,
+        text=True,
+        timeout=30,
+        check=True,
+    ).stdout
+    if revision != expected_revision:
+        raise ValueError(
+            f"Bun revision mismatch: expected {expected_revision}, got {revision}"
+        )
+    return runtime
 
 
 def valid_report(raw, adapter, mode, trial, revision, exit_code):
@@ -88,8 +108,9 @@ def main():
     trials = int(sys.argv[6])
     if not 1 <= trials <= 10:
         raise ValueError("Trial count must be in 1..10")
-    output.mkdir(parents=True, exist_ok=False)
     revision = json.loads(Path("toolchain.json").read_text())["bun"]["revision"]
+    runtime = resolve_runtime(sys.argv[7] if len(sys.argv) > 7 else "bun", revision)
+    output.mkdir(parents=True, exist_ok=False)
     plan = {
         "revision": revision,
         "adapter": adapter,
@@ -99,6 +120,7 @@ def main():
             "peer": digest(peer),
             "module": digest(module),
             "aot": digest(binary),
+            "developmentRuntime": digest(runtime),
         },
         "trialsPerMode": trials,
         "ordering": "development then AOT on even trials; reverse on odd trials",
@@ -122,7 +144,9 @@ def main():
                 env.pop(key, None)
             if mode == "development":
                 env["BUN_JSC_useDFGJIT"] = "0"
-            command = ["bun", str(module)] if mode == "development" else [str(binary)]
+            command = (
+                [str(runtime), str(module)] if mode == "development" else [str(binary)]
+            )
             count = (
                 ["--iterations", "10", "--rotations", "10", "--mounts", "2"]
                 if mode == "development"

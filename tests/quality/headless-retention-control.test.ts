@@ -4,10 +4,19 @@ import { expect, test } from 'bun:test'
 // retained target and failures that must never be counted as retention.
 test('headless retention classification fails closed for unrelated failures', () => {
   const python = String.raw`
-import copy, importlib.util, pathlib, tempfile
+import copy, importlib.util, json, pathlib, tempfile
 spec = importlib.util.spec_from_file_location('control', 'benchmarks/retention/headless-adapter-control.py')
 control = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(control)
+expected = json.loads(pathlib.Path('toolchain.json').read_text())['bun']['revision']
+runtime = control.resolve_runtime('bun', expected)
+assert control.resolve_runtime(str(runtime), expected) == runtime
+assert len(control.digest(runtime)) == 64
+try:
+    control.resolve_runtime(str(runtime), 'wrong-revision')
+    raise AssertionError('wrong runtime revision accepted')
+except ValueError as error:
+    assert 'revision mismatch' in str(error)
 revision = 'test-revision'
 raw = {
     'adapter': 'react', 'bunRevision': revision, 'nonce': 'development-0',
