@@ -30,7 +30,7 @@ pub(crate) enum Undelivered {
 }
 
 pub(crate) enum Incoming {
-    Command(ValidCommand),
+    Command(ValidCommand, Option<Instant>),
     InvalidFrame,
     Disconnected,
 }
@@ -129,7 +129,7 @@ fn offer(
     }
 }
 
-pub(crate) fn connect() -> (Receiver<Incoming>, EventSink) {
+pub(crate) fn connect(trace: bool) -> (Receiver<Incoming>, EventSink) {
     let (commands, receiver) = async_channel::bounded(64);
     let (sender, events) = sync_channel(EVENT_CAPACITY);
     let failures = commands.clone();
@@ -139,11 +139,11 @@ pub(crate) fn connect() -> (Receiver<Incoming>, EventSink) {
         let mut reader = CommandReader::default();
         loop {
             let incoming = match reader.read(&mut input) {
-                Ok(Some(command)) => Incoming::Command(command),
+                Ok(Some(command)) => Incoming::Command(command, trace.then(Instant::now)),
                 Ok(None) => Incoming::Disconnected,
                 Err(_) => Incoming::InvalidFrame,
             };
-            let terminal = !matches!(incoming, Incoming::Command(_));
+            let terminal = !matches!(incoming, Incoming::Command(..));
             if commands.send_blocking(incoming).is_err() || terminal {
                 break;
             }

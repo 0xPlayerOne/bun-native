@@ -59,6 +59,10 @@ export function analyzePhaseTrace(report: unknown, trace: unknown) {
     native['schemaVersion'] !== 1 ||
     JSON.stringify(native['batchColumns']) !== JSON.stringify(columns) ||
     native['droppedBatches'] !== 0 ||
+    JSON.stringify(native['foregroundColumns']) !==
+      JSON.stringify(['id', 'readToForegroundNanos']) ||
+    native['droppedForeground'] !== 0 ||
+    !Array.isArray(native['foreground']) ||
     !Array.isArray(native['batches'])
   )
     throw new Error('Unexpected or truncated host phase trace')
@@ -80,11 +84,24 @@ export function analyzePhaseTrace(report: unknown, trace: unknown) {
     )
       throw new Error(`Unexpected batch sequence at ${index}`)
   }
+  const foreground = new Map<number, number>()
+  for (const row of native['foreground'] as unknown[]) {
+    if (
+      !Array.isArray(row) ||
+      row.length !== 2 ||
+      !row.every((value) => Number.isSafeInteger(value) && value >= 0) ||
+      foreground.has(row[0] as number)
+    )
+      throw new Error('Invalid foreground trace')
+    foreground.set(row[0] as number, row[1] as number)
+  }
   const observations = samples.map((value: unknown, index: number) => {
     if (typeof value !== 'number' || !Number.isFinite(value) || value < 0)
       throw new Error(`Invalid acknowledgement sample ${index}`)
     const batch = prefix[21 + index] as number[]
     const previous = prefix[20 + index] as number[]
+    const wait = foreground.get(batch[0]!)
+    if (wait === undefined) throw new Error(`Missing foreground timing at ${index}`)
     const prepareMs = batch[4]! / 1e6
     const applyMs = batch[5]! / 1e6
     const replyEnqueueMs = batch[6]! / 1e6
@@ -95,6 +112,7 @@ export function analyzePhaseTrace(report: unknown, trace: unknown) {
       index,
       requestId: batch[0]!,
       acknowledgementMs: value,
+      readToForegroundMs: wait / 1e6,
       hostMs,
       prepareMs,
       applyMs,
@@ -106,12 +124,13 @@ export function analyzePhaseTrace(report: unknown, trace: unknown) {
   const slow = observations.filter((sample) => sample.acknowledgementMs >= 10)
   return {
     meaning:
-      'Host time covers preflight through reply enqueue. The previous host gap begins at the preceding reply, not at this application request; it also includes application work, scheduling and transport. Neither interval measures presentation or partitions the acknowledgement.',
+      'Read-to-foreground starts after command decoding and validation and includes channel enqueue and scheduling. Host time covers preflight through reply enqueue. The previous host gap begins at the preceding reply, not at this application request; it also includes application work, scheduling and transport. Neither interval measures presentation or partitions the acknowledgement.',
     signalSamples: observations.length,
     slowAtLeast10Ms: slow.length,
     acknowledgementMs: describe(observations.map((sample) => sample.acknowledgementMs)),
     hostMs: describe(observations.map((sample) => sample.hostMs)),
     slowHostMs: describe(slow.map((sample) => sample.hostMs)),
+    slowReadToForegroundMs: describe(slow.map((sample) => sample.readToForegroundMs)),
     slowPrepareMs: describe(slow.map((sample) => sample.prepareMs)),
     slowApplyMs: describe(slow.map((sample) => sample.applyMs)),
     slowReplyEnqueueMs: describe(slow.map((sample) => sample.replyEnqueueMs)),
