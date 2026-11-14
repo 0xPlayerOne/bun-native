@@ -40,6 +40,10 @@ on:
       paired-macos-trials:
         description: Alternating macOS host pairs (3 to 20)
         default: '10'
+      electrobun-smoke:
+        description: Qualify the Electrobun visible-input fixture on hosted macOS only
+        type: boolean
+        default: false
   schedule:
     - cron: '47 6 * * 3'
   pull_request:
@@ -68,7 +72,7 @@ concurrency:
 jobs:
   linux:
     name: Linux core/Solid/React development and AOT comparison
-    if: vars.CI_BILLING_PAUSED == 'false' && (github.event_name != 'pull_request' || github.event.pull_request.draft == false) && (github.event_name != 'workflow_dispatch' || (inputs['paired-only'] != true && inputs['startup-only'] != true && inputs['paired-macos'] != true))
+    if: vars.CI_BILLING_PAUSED == 'false' && (github.event_name != 'pull_request' || github.event.pull_request.draft == false) && (github.event_name != 'workflow_dispatch' || (inputs['paired-only'] != true && inputs['startup-only'] != true && inputs['paired-macos'] != true && inputs['electrobun-smoke'] != true))
     runs-on: ubuntu-24.04
     timeout-minutes: 60
     defaults:
@@ -243,7 +247,7 @@ jobs:
   # The hosted VM's paravirtual Metal device is not a physical GPU.
   macos:
     name: macOS core/Solid/React and direct Rust GPUI comparison
-    if: vars.CI_BILLING_PAUSED == 'false' && (github.event_name != 'pull_request' || github.event.pull_request.draft == false) && (github.event_name != 'workflow_dispatch' || inputs['paired-only'] != true)
+    if: vars.CI_BILLING_PAUSED == 'false' && (github.event_name != 'pull_request' || github.event.pull_request.draft == false) && (github.event_name != 'workflow_dispatch' || (inputs['paired-only'] != true && inputs['electrobun-smoke'] != true))
     runs-on: macos-15
     timeout-minutes: 60
     defaults:
@@ -357,7 +361,7 @@ jobs:
   # benchmarks/comparison/windows-processes.ts. The VM has no physical GPU.
   windows:
     name: Windows core/Solid/React and direct Rust GPUI comparison
-    if: vars.CI_BILLING_PAUSED == 'false' && (github.event_name != 'pull_request' || github.event.pull_request.draft == false) && (github.event_name != 'workflow_dispatch' || (inputs['paired-only'] != true && inputs['startup-only'] != true && inputs['paired-macos'] != true))
+    if: vars.CI_BILLING_PAUSED == 'false' && (github.event_name != 'pull_request' || github.event.pull_request.draft == false) && (github.event_name != 'workflow_dispatch' || (inputs['paired-only'] != true && inputs['startup-only'] != true && inputs['paired-macos'] != true && inputs['electrobun-smoke'] != true))
     runs-on: windows-2022
     timeout-minutes: 75
     defaults:
@@ -470,7 +474,7 @@ jobs:
 
   paired-click:
     name: Paired Linux Core AOT input investigation
-    if: vars.CI_BILLING_PAUSED == 'false' && github.event_name == 'workflow_dispatch' && inputs['paired-only'] == true && (github.event_name != 'pull_request' || github.event.pull_request.draft == false)
+    if: vars.CI_BILLING_PAUSED == 'false' && github.event_name == 'workflow_dispatch' && inputs['paired-only'] == true && inputs['electrobun-smoke'] != true && (github.event_name != 'pull_request' || github.event.pull_request.draft == false)
     runs-on: ubuntu-24.04
     timeout-minutes: 90
     defaults:
@@ -546,4 +550,65 @@ jobs:
             !${{ runner.temp }}/paired-click/*/core/application
           include-hidden-files: true
           if-no-files-found: error
+          retention-days: 30
+
+  electrobun-smoke:
+    name: Electrobun visible-input fixture smoke
+    if: vars.CI_BILLING_PAUSED == 'false' && github.event_name == 'workflow_dispatch' && inputs['electrobun-smoke'] == true && (github.event_name != 'pull_request' || github.event.pull_request.draft == false)
+    runs-on: macos-15
+    timeout-minutes: 25
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Prepare isolated fixture and evidence directory
+        run: |
+          mkdir "$RUNNER_TEMP/eb-smoke" "$RUNNER_TEMP/eb-source" "$RUNNER_TEMP/eb-inner"
+          cp -R benchmarks/electrobun/app/. "$RUNNER_TEMP/eb-source/"
+          {
+            sw_vers
+            uname -a
+            system_profiler SPHardwareDataType SPDisplaysDataType
+          } > "$RUNNER_TEMP/eb-smoke/environment.txt"
+      - name: Install pinned Bun
+        uses: ./.github/actions/native-toolchain
+        with:
+          rust: 'false'
+          install: 'false'
+      - name: Build pinned Electrobun reference
+        run: |
+          set -euo pipefail
+          cd "$RUNNER_TEMP/eb-source"
+          BUN_INSTALL_CACHE_DIR="$RUNNER_TEMP/eb-bun-cache" bunx electrobun@2.0.6 build --env=stable 2>&1 | tee "$RUNNER_TEMP/eb-smoke/build.log"
+          archive="$RUNNER_TEMP/eb-source/artifacts/stable-macos-arm64-workload-baseline.app.tar.zst"
+          shasum -a 256 "$archive" > "$RUNNER_TEMP/eb-smoke/archive.sha256"
+          /usr/bin/tar -tf "$archive" > "$RUNNER_TEMP/eb-smoke/archive-files.txt"
+          /usr/bin/tar -tvf "$archive" > "$RUNNER_TEMP/eb-smoke/archive-details.txt"
+          awk 'BEGIN { ok=1; n=0 } { n++; if ($0 !~ /^workload-baseline\.app\// || $0 ~ /(^|\/)\.\.(\/|$)/) ok=0 } END { if (!n || !ok) exit 1 }' "$RUNNER_TEMP/eb-smoke/archive-files.txt"
+          if grep -Eq '^[lh]' "$RUNNER_TEMP/eb-smoke/archive-details.txt"; then
+            echo 'Reference archive contains links; refusing extraction.' >&2
+            exit 1
+          fi
+          /usr/bin/tar -xf "$archive" -C "$RUNNER_TEMP/eb-inner"
+      - name: Compile owned-window and offline OCR helpers
+        run: |
+          xcrun clang -fobjc-arc -Wall -Wextra -Werror -framework AppKit -framework CoreGraphics -framework ApplicationServices scripts/quality/native-platform-macos.m -o "$RUNNER_TEMP/eb-smoke/window-helper"
+          xcrun clang -fobjc-arc -Wall -Wextra -Werror -framework Foundation -framework CoreGraphics -framework ImageIO -framework Vision benchmarks/electrobun/observe-text-macos.m -o "$RUNNER_TEMP/eb-smoke/text-helper"
+      - name: Qualify owned window, OS click and captured label
+        run: |
+          bun benchmarks/electrobun/visible-smoke-macos.ts \
+            --app "$RUNNER_TEMP/eb-inner/workload-baseline.app" \
+            --output "$RUNNER_TEMP/eb-smoke/run" \
+            --helper "$RUNNER_TEMP/eb-smoke/window-helper" \
+            --ocr "$RUNNER_TEMP/eb-smoke/text-helper"
+      - name: Retain smoke evidence, including failures
+        if: ${{ always() }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: electrobun-visible-input-smoke-${{ runner.arch }}
+          path: ${{ runner.temp }}/eb-smoke/
+          if-no-files-found: warn
           retention-days: 30

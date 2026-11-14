@@ -48,3 +48,40 @@ and 93 MB after its first launch. Comparison with Bun Native on the same Mac is 
 
 Not measured: per-operation latency comparable to Bun Native, CPU/GPU use, input
 latency, the CEF renderer, other platforms.
+
+## Visible-input fixture under development
+
+For the shared observer in #677, the reference has an opt-in input mode. An
+external controller supplies an absolute `EB_INPUT_CONTROL` path and a random
+UUID `EB_INPUT_NONCE`, alongside `EB_OUTPUT`. After the view's initial animation
+frame, the fixture creates the control file with its loopback port and nonce.
+It also reports the WebKit viewport dimensions for independent geometry checks.
+The controller must verify the owned window, inject one OS click, observe the
+changed output independently, then POST to `/input/finish` with the nonce in
+`x-benchmark-nonce`. The reference reports the click and exits; premature finish,
+wrong nonce, malformed click evidence and duplicate clicks are rejected. The
+control file must not already exist. The default workload does not enter this
+mode.
+
+This is fixture preparation, not a working comparative benchmark: the owned-window
+observer and externally injected click still need validation for both applications,
+and composited-display capture, calibration and a paired runner remain unfinished.
+A WebKit animation frame is not a display presentation timestamp.
+
+`observe-text-macos.m` is a bounded offline Vision OCR helper for a captured
+image. `visible-text.ts` validates its text and normalized bounding boxes, and
+`visible-pixels.ts` compares a bounded region of two decoded captures. Neither
+establishes window ownership or physical presentation. The eventual driver must
+calibrate a stable unchanged region before using pixel differences as an arrival
+signal, then independently verify the expected text. Record capture, pixel
+comparison and OCR costs separately; an OCR result obtained after the change is
+not a display timestamp.
+
+The explicit `electrobun-smoke` workflow dispatch builds the pinned reference in
+the hosted macOS runner and exercises one owned-window click and window-surface
+capture. It retains screenshots and failures, and rejects forced cleanup. This
+is a qualification attempt, not the paired or composited-display comparison.
+
+```sh
+gh workflow run benchmark-comparison.yml --ref <candidate-branch> -f electrobun-smoke=true
+```

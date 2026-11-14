@@ -103,6 +103,14 @@ test('paired input diagnostic requires an explicit dispatch and leaves ordinary 
   expect(parsed.on.workflow_dispatch.inputs['paired-macos-trials']).toMatchObject({
     default: '10',
   })
+  expect(parsed.on.workflow_dispatch.inputs['electrobun-smoke']).toMatchObject({
+    type: 'boolean',
+    default: false,
+  })
+  expect(parsed.jobs['electrobun-smoke']!.if).toContain("github.event_name == 'workflow_dispatch'")
+  expect(parsed.jobs['electrobun-smoke']!.if).toContain("inputs['electrobun-smoke'] == true")
+  for (const job of ['linux', 'macos', 'windows', 'paired-click'])
+    expect(parsed.jobs[job]!.if).toContain("inputs['electrobun-smoke'] != true")
   expect(parsed.jobs['paired-click']!.if).toContain("github.event_name == 'workflow_dispatch'")
   expect(parsed.jobs['paired-click']!.if).toContain("inputs['paired-only'] == true")
   for (const job of ['linux', 'macos', 'windows'])
