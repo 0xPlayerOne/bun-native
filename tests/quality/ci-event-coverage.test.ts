@@ -128,6 +128,16 @@ test('paired input diagnostic requires an explicit dispatch and leaves ordinary 
     expect(parsed.jobs[job]!.if).toContain("inputs['startup-only'] != true")
   for (const job of ['linux', 'windows'])
     expect(parsed.jobs[job]!.if).toContain("inputs['paired-macos'] != true")
+  for (const condition of [
+    "github.event_name == 'workflow_dispatch'",
+    "inputs['paired-only'] == true",
+    "inputs['paired-macos'] == true",
+    "inputs['startup-only'] == true",
+    "inputs['electrobun-smoke'] != true",
+  ])
+    expect(parsed.jobs['windows-retention-control']!.if).toContain(condition)
+  for (const job of ['tree-path-pairs', 'tree-path-allocations'])
+    expect(parsed.jobs[job]!.if).toContain("inputs['startup-only'] != true")
 })
 
 test('event contract parsing supports both activity syntaxes and fails closed', () => {
