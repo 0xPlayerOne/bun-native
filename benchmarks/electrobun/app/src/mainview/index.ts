@@ -88,6 +88,10 @@ async function main() {
     view.button.addEventListener('click', () => {
       clicks++
       view.update(['Clicked'])
+    })
+    // The controller requests the report only after its capture, so a loopback
+    // fetch cannot run concurrently with the measured click-to-observation path.
+    window.addEventListener('bun-native-benchmark-finish', () => {
       void post('clicked', {
         nonce,
         clicks,

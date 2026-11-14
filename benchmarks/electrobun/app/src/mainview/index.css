@@ -24,4 +24,18 @@ body {
 .input-comparison .content > button {
   box-sizing: border-box;
   flex: 0 0 44px;
+  appearance: none;
+  border: 0;
+  border-radius: 0;
+  background: #2255cc;
+  color: #fff;
+  font:
+    600 16px -apple-system,
+    sans-serif;
+}
+.input-comparison {
+  background: #fff;
+}
+.input-comparison .row {
+  line-height: 19px;
 }
