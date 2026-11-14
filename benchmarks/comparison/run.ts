@@ -60,6 +60,8 @@ const { values } = parseArgs({
     'cold-cache': { type: 'boolean', default: false },
     // Extra, separate core/AOT control and phase-traced launches; never in timed summaries.
     'phase-trials': { type: 'string', default: '0' },
+    'paired-host': { type: 'string' },
+    'paired-trials': { type: 'string', default: '0' },
   },
   strict: true,
   allowPositionals: false,
@@ -88,6 +90,19 @@ const phaseTrials =
   values['phase-trials'] === '0' ? 0 : count(values['phase-trials'], 'phase-trials', 10)
 if (phaseTrials && (phaseTrials < 3 || !adapters.includes('core')))
   throw new Error('phase-trials requires core and at least 3 pairs')
+const pairedTrials =
+  values['paired-trials'] === '0' ? 0 : count(values['paired-trials'], 'paired-trials', 10)
+const pairedHost = values['paired-host']
+if (
+  (pairedTrials > 0 &&
+    (pairedTrials < 3 || !adapters.includes('core') || !pairedHost || !isAbsolute(pairedHost))) ||
+  (pairedTrials === 0 && pairedHost)
+)
+  throw new Error('paired-trials requires core, an absolute paired-host and 3 to 10 pairs')
+if (pairedHost && (!existsSync(pairedHost) || !statSync(pairedHost).isFile()))
+  throw new Error('paired-host must be an existing file')
+if (pairedHost && existsSync(values.host) && realpathSync(pairedHost) === realpathSync(values.host))
+  throw new Error('paired-host must be a distinct native executable')
 if (inputTrials && inputTrials < 3) throw new Error('input-trials must be 0 or at least 3')
 if (inputTrials && (platform() !== 'linux' || !process.env['DISPLAY']))
   throw new Error('--input-trials requires the isolated Linux X11 session (XTest)')
@@ -407,11 +422,12 @@ function workloadArguments(
   nonce: string,
   mode: Mode,
   calibration: boolean,
-  input = false
+  input = false,
+  selectedHost = host
 ) {
   return [
     '--host',
-    host,
+    selectedHost,
     '--output',
     path,
     '--nonce',
@@ -447,6 +463,7 @@ function osRelease() {
 
 const sourceBefore = await sourceFiles()
 const nativeHost = { ...(await digest(host)), profile: values['host-profile'] }
+const pairedHostDigest = pairedHost ? await digest(pairedHost) : undefined
 const report: Record<string, unknown> = {
   schemaVersion: 1,
   status: 'running',
@@ -557,6 +574,7 @@ const calibrations: Record<string, unknown>[] = []
 const loads: Record<string, string> = {}
 const inputLaunches: InputLaunch[] = []
 const phaseDiagnostics: Record<string, unknown>[] = []
+const pairedDiagnostics: Record<string, unknown>[] = []
 
 function paintExpectation(label: string, revision?: number) {
   const rows = Array.from({ length: Number(values.rows) }, (_, id) => ({ id, text: `Row ${id}` }))
@@ -852,6 +870,65 @@ try {
         console.log(JSON.stringify({ name, status: 'passed' }))
       }
     }
+  }
+  // Alternating, uninstrumented host pairs use the same compiled AOT workload.
+  // They are diagnostic launches, never part of the ordinary comparison gate.
+  if (pairedTrials && pairedHost && pairedHostDigest) {
+    report['summary'] = summarize(launches)
+    report['pairedHost'] = pairedHostDigest
+    report['pairedDiagnostics'] = pairedDiagnostics
+    const build = built.find((item) => item.adapter === 'core' && item.mode === 'aot')!
+    const reference = launches.find(
+      (item) => item.adapter === 'core' && item.mode === 'aot' && !item.warmup
+    )
+    if (!reference?.report || reference.status !== 'passed')
+      throw new Error('Paired diagnostic requires a passed core/AOT reference launch')
+    for (let trial = 1; trial <= pairedTrials; trial += 1) {
+      const order = trial % 2 ? ['baseline', 'candidate'] : ['candidate', 'baseline']
+      for (const variant of order) {
+        const selectedHost: string = variant === 'baseline' ? pairedHost : host
+        const expectedHost: { bytes: number; sha256: string } =
+          variant === 'baseline' ? pairedHostDigest : nativeHost
+        const name = `core-aot-paired-${variant}-${trial}`
+        const path = join(launchesDirectory, `${name}.json`)
+        const nonce = crypto.randomUUID()
+        assert.deepEqual(
+          await digest(selectedHost),
+          {
+            bytes: expectedHost.bytes,
+            sha256: expectedHost.sha256,
+          },
+          'Paired host changed before launch'
+        )
+        assert.deepEqual(await digest(build.argv.at(-1)!), build.artifact, 'Artifact changed')
+        loads[name] = loadAverage()
+        const processResult = await launch(
+          name,
+          [
+            ...build.argv,
+            ...workloadArguments(path, nonce, build.mode, false, false, selectedHost),
+          ],
+          { BUN_NATIVE_EVIDENCE_LOG: undefined, BUN_NATIVE_EVIDENCE_NONCE: undefined }
+        )
+        const checked = childReport(build, path, nonce)
+        const entry: Record<string, unknown> = { name, variant, trial, process: processResult }
+        pairedDiagnostics.push(entry)
+        if (processResult.exitCode !== 0 || checked.error)
+          throw new Error(`${name} failed: ${checked.error ?? `exit ${processResult.exitCode}`}`)
+        assertEquivalentWorkloads([
+          { name: reference.name, adapter: 'core', mode: 'aot', report: reference.report },
+          { name, adapter: 'core', mode: 'aot', report: checked.item! },
+        ])
+        entry['report'] = await digest(path)
+        entry['status'] = 'passed'
+        console.log(JSON.stringify({ name, status: 'passed' }))
+      }
+    }
+    assert.deepEqual(
+      await digest(pairedHost),
+      pairedHostDigest,
+      'Paired host changed during trials'
+    )
   }
   for (let trial = 1; trial <= inputTrials; trial++) {
     const offset = trial % built.length

@@ -63,6 +63,24 @@ macOS only. Its default is zero, so scheduled and ordinary PR comparisons do
 not add diagnostic launches. For an isolated diagnostic dispatch, `macos-only`
 skips the Linux and Windows jobs; their results are not implied.
 
+## Same-runner host pairs
+
+`--paired-host /absolute/path/to/baseline --paired-trials 3` through `10`
+adds alternating baseline/candidate launches of the same compiled core AOT
+workload after the ordinary trials. Both hosts are hashed before each launch,
+the workload artifact is checked unchanged, and workload signatures and
+cleanup must agree. Raw per-launch samples and process records are retained;
+the pairs are excluded from the normal regression gate. These runs are
+untraced, so compare the full distributions rather than only a median, and
+account for order and runner load. They measure acknowledgement, not display
+presentation or native input fairness.
+
+The macOS workflow accepts `paired-baseline-ref` as a full ancestor commit SHA
+and `paired-trials`; it builds the baseline and candidate separately on the same
+runner and keeps their hashes and source reference. This opt-in skips Linux and
+Windows jobs. It does not substitute for native input/paint or cross-platform
+validation.
+
 ## Export a recorded run
 
 Both paths must be absolute, and the destination must not exist yet:

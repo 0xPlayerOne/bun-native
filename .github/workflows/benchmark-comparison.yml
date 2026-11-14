@@ -36,6 +36,12 @@ on:
         description: Run the macOS native input and paint fairness diagnostic only
         type: boolean
         default: false
+      paired-baseline-ref:
+        description: Full ancestor commit SHA for a same-runner macOS host comparison
+        default: ''
+      paired-trials:
+        description: Alternating uninstrumented core AOT host pairs (0 or 3 to 10)
+        default: '0'
   schedule:
     - cron: '47 6 * * 3'
   pull_request:
@@ -64,7 +70,7 @@ concurrency:
 jobs:
   linux:
     name: Linux core/Solid/React development and AOT comparison
-    if: vars.CI_BILLING_PAUSED == 'false' && inputs['macos-only'] != true && inputs['macos-scheduling-only'] != true && (github.event_name != 'pull_request' || github.event.pull_request.draft == false)
+    if: vars.CI_BILLING_PAUSED == 'false' && inputs['macos-only'] != true && inputs['macos-scheduling-only'] != true && !inputs['paired-baseline-ref'] && (github.event_name != 'pull_request' || github.event.pull_request.draft == false)
     runs-on: ubuntu-24.04
     timeout-minutes: 60
     defaults:
@@ -254,6 +260,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+          fetch-depth: ${{ inputs['paired-baseline-ref'] && '0' || '1' }}
       - name: Prepare result directory
         run: |
           mkdir "$RUNNER_TEMP/comparison"
@@ -269,6 +276,23 @@ jobs:
           { time -p cargo build --locked --release --manifest-path Cargo.toml -p bun-native-host --bin bun-native-host --example workload-baseline; } 2>&1 | tee "$COMPARISON/host-build.log"
           shasum -a 256 target/release/bun-native-host target/release/examples/workload-baseline > "$COMPARISON/binary-sha256.txt"
           system_profiler SPDisplaysDataType SPHardwareDataType > "$COMPARISON/hardware.txt" 2>&1 || true
+      - name: Build a pinned baseline host for paired trials
+        if: ${{ inputs['paired-baseline-ref'] != '' }}
+        timeout-minutes: 20
+        env:
+          BASELINE_REF: ${{ inputs['paired-baseline-ref'] }}
+        run: |
+          [[ "$BASELINE_REF" =~ ^[0-9a-f]{40}$ ]] || { echo 'Baseline must be a full lowercase commit SHA' >&2; exit 1; }
+          git cat-file -e "$BASELINE_REF^{commit}"
+          git merge-base --is-ancestor "$BASELINE_REF" "$GITHUB_SHA"
+          mkdir "$RUNNER_TEMP/paired-baseline" "$RUNNER_TEMP/paired-bin"
+          git archive "$BASELINE_REF" | tar -x -C "$RUNNER_TEMP/paired-baseline"
+          printf '%s\n' "$BASELINE_REF" > "$COMPARISON/paired-baseline-ref.txt"
+          cp target/release/bun-native-host "$RUNNER_TEMP/paired-bin/candidate"
+          CARGO_TARGET_DIR="$RUNNER_TEMP/paired-target" cargo build --locked --release \
+            --manifest-path "$RUNNER_TEMP/paired-baseline/Cargo.toml" -p bun-native-host --bin bun-native-host
+          cp "$RUNNER_TEMP/paired-target/release/bun-native-host" "$RUNNER_TEMP/paired-bin/baseline"
+          shasum -a 256 "$RUNNER_TEMP/paired-bin/candidate" "$RUNNER_TEMP/paired-bin/baseline" > "$COMPARISON/paired-host-sha256.txt"
       - name: Run macOS input and paint under bounded command load
         if: ${{ inputs['macos-scheduling-only'] == true }}
         timeout-minutes: 10
@@ -285,11 +309,20 @@ jobs:
       - name: Run the equivalent-workload comparison
         if: ${{ inputs['macos-scheduling-only'] != true }}
         timeout-minutes: 40
+        env:
+          BASELINE_REF: ${{ inputs['paired-baseline-ref'] }}
+          PAIRED_TRIALS: ${{ inputs['paired-trials'] || '0' }}
         run: |
+          extra=()
+          host="$GITHUB_WORKSPACE/target/release/bun-native-host"
+          if [[ -n "$BASELINE_REF" ]]; then
+            host="$RUNNER_TEMP/paired-bin/candidate"
+            extra+=(--adapters core --paired-host "$RUNNER_TEMP/paired-bin/baseline" --paired-trials "$PAIRED_TRIALS")
+          fi
           bun benchmarks/comparison/run.ts \
-            --host "$GITHUB_WORKSPACE/target/release/bun-native-host" --host-profile release \
+            --host "$host" --host-profile release \
             --output "$COMPARISON/run" --trials "$TRIALS" --input-trials 0 \
-            --phase-trials "$PHASE_TRIALS"
+            --phase-trials "$PHASE_TRIALS" "${extra[@]}"
       - name: Run the direct Rust GPUI baseline
         if: ${{ !cancelled() && inputs['macos-scheduling-only'] != true && hashFiles('target/release/examples/workload-baseline') != '' }}
         timeout-minutes: 10
@@ -339,7 +372,7 @@ jobs:
   # benchmarks/comparison/windows-processes.ts. The VM has no physical GPU.
   windows:
     name: Windows core/Solid/React and direct Rust GPUI comparison
-    if: vars.CI_BILLING_PAUSED == 'false' && inputs['macos-only'] != true && inputs['macos-scheduling-only'] != true && (github.event_name != 'pull_request' || github.event.pull_request.draft == false)
+    if: vars.CI_BILLING_PAUSED == 'false' && inputs['macos-only'] != true && inputs['macos-scheduling-only'] != true && !inputs['paired-baseline-ref'] && (github.event_name != 'pull_request' || github.event.pull_request.draft == false)
     runs-on: windows-2022
     timeout-minutes: 75
     defaults:
