@@ -13,15 +13,22 @@ function fixture() {
     const order = trial % 2 ? ['baseline', 'candidate'] : ['candidate', 'baseline']
     for (const variant of order) {
       const name = `core-aot-paired-${variant}-${trial}`
-      const ack = { count: 2, samplesMs: variant === 'baseline' ? [1, 20] : [1, 2] }
-      const phase = { acknowledgement: ack, mutations: { set: 2 } }
+      const samples = variant === 'baseline' ? [1, 20] : [1, 2]
+      const phase = { acknowledgement: { count: 2, samplesMs: samples }, mutations: { set: 2 } }
+      const signals = {
+        acknowledgement: {
+          count: 20,
+          samplesMs: [...Array(10).fill(samples[0]), ...Array(10).fill(samples[1])],
+        },
+        mutations: { set: 20 },
+      }
       const report = {
         status: 'passed',
         adapter: 'core',
         declaredMode: 'aot',
         bunRevision: 'test-revision',
-        workload: { iterations: 2 },
-        phases: { signals: phase, coalesced: phase, keyedRotations: phase },
+        workload: { iterations: 20, rotations: 2, mounts: 1 },
+        phases: { signals, coalesced: phase, keyedRotations: phase },
         lifecycles: {
           count: 1,
           rowsCreated: 1,
@@ -74,7 +81,7 @@ test('summarizes every pair and retains tail samples', () => {
     expect(result.pairs[0]!.baseline!.phases.signals).toMatchObject({
       medianMs: 10.5,
       p95Ms: 20,
-      slowAtLeast10Ms: 1,
+      slowAtLeast10Ms: 10,
     })
     expect(result.pairs[0]!.candidate!.phases.signals).toMatchObject({
       medianMs: 1.5,
@@ -135,6 +142,26 @@ test('rejects oversized reports before parsing them', () => {
   try {
     writeFileSync(join(root, 'comparison.json'), Buffer.alloc(4_194_305))
     expect(() => analyzePairedRun(root)).toThrow(/size limit/)
+  } finally {
+    rmSync(root, { recursive: true, force: true })
+  }
+})
+
+test('rejects report counts that disagree with the declared workload', () => {
+  const { root, record } = fixture()
+  try {
+    const entry = record.pairedDiagnostics[0]!
+    const child = join(root, 'launches', `${entry.name}.json`)
+    const report = JSON.parse(readFileSync(child, 'utf8'))
+    report.workload.iterations = 30
+    const raw = JSON.stringify(report)
+    writeFileSync(child, raw)
+    entry.report = {
+      bytes: Buffer.byteLength(raw),
+      sha256: createHash('sha256').update(raw).digest('hex'),
+    }
+    writeFileSync(join(root, 'comparison.json'), JSON.stringify(record))
+    expect(() => analyzePairedRun(root)).toThrow(/Signal count differs/)
   } finally {
     rmSync(root, { recursive: true, force: true })
   }

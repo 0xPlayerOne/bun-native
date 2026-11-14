@@ -28,6 +28,9 @@ type Child = Record<string, unknown> & {
   declaredMode: string
   bunRevision: string
   cleanup: unknown
+  workload: { iterations: number; rotations: number; mounts: number }
+  lifecycles: { count: number }
+  retentionObservation: { stillReachable: unknown[] }
   phases: Record<string, { acknowledgement: { samplesMs: unknown; count: unknown } }>
 }
 type LaunchMetrics = {
@@ -127,6 +130,21 @@ export function analyzePairedRun(directory: string) {
         activeCallbacks: 0,
         serviceRequests: 0,
       })
+      const { iterations, rotations, mounts } = report.workload ?? {}
+      assert(
+        Number.isSafeInteger(iterations) && iterations > 0 && iterations % 10 === 0,
+        'Invalid workload iterations'
+      )
+      assert(Number.isSafeInteger(rotations) && rotations > 0, 'Invalid workload rotations')
+      assert(
+        Number.isSafeInteger(mounts) && mounts > 0 && report.lifecycles?.count === mounts,
+        'Invalid lifecycle count'
+      )
+      assert(
+        Array.isArray(report.retentionObservation?.stillReachable) &&
+          report.retentionObservation.stillReachable.length === 0,
+        'Retained lifecycle probes'
+      )
       const labeled: Labeled = { name, adapter: 'core', mode: 'aot', report }
       if (reference) assertEquivalentWorkloads([reference, labeled])
       else reference = labeled
@@ -135,6 +153,13 @@ export function analyzePairedRun(directory: string) {
         const ack = report.phases?.[phase]?.acknowledgement
         phases[phase] = metrics(ack?.samplesMs, ack?.count)
       }
+      assert.equal(phases.signals!.count, iterations, 'Signal count differs from workload')
+      assert.equal(
+        phases.coalesced!.count,
+        iterations / 10,
+        'Coalesced count differs from workload'
+      )
+      assert.equal(phases.keyedRotations!.count, rotations, 'Rotation count differs from workload')
       pair[variant] = {
         wallMs: entry.process.wallMs,
         phases,
