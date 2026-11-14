@@ -49,6 +49,8 @@ struct Trace {
     batches: Vec<Batch>,
     frames: Vec<Frame>,
     dropped_batches: u64,
+    foreground: Vec<(RequestId, u64)>,
+    dropped_foreground: u64,
     dropped_frames: u64,
     renders: u64,
     drag: Vec<(u64, DragStep)>,
@@ -109,6 +111,8 @@ pub(crate) fn install_from_environment() {
             batches: Vec::with_capacity(MAX_BATCHES),
             frames: Vec::with_capacity(MAX_FRAMES),
             dropped_batches: 0,
+            foreground: Vec::with_capacity(MAX_BATCHES),
+            dropped_foreground: 0,
             dropped_frames: 0,
             renders: 0,
             drag: Vec::with_capacity(MAX_DRAG_STEPS),
@@ -124,6 +128,22 @@ pub(crate) fn enabled() -> bool {
 /// Clock read for a hook; `None` when tracing is disabled.
 pub(crate) fn now() -> Option<Instant> {
     enabled().then(Instant::now)
+}
+
+/// Time from completion of command reading and validation on the worker to
+/// entry on the foreground executor. Includes channel enqueue/backpressure.
+pub(crate) fn foreground(id: RequestId, received: Instant) {
+    TRACE.with(|trace| {
+        let mut trace = trace.borrow_mut();
+        let Some(trace) = trace.as_mut() else { return };
+        if trace.foreground.len() == MAX_BATCHES {
+            trace.dropped_foreground += 1;
+            return;
+        }
+        trace
+            .foreground
+            .push((id, duration(received, Instant::now())));
+    });
 }
 
 /// Phase boundaries of one acknowledged batch on the UI thread.
@@ -267,6 +287,9 @@ pub(crate) fn write() {
             "culledNodes", "cachedViews"],
         "renders": trace.renders,
         "droppedBatches": trace.dropped_batches,
+        "foregroundColumns": ["id", "readToForegroundNanos"],
+        "droppedForeground": trace.dropped_foreground,
+        "foreground": trace.foreground.iter().map(|(id, delay)| json!([id, delay])).collect::<Vec<_>>(),
         "droppedFrames": trace.dropped_frames,
         "dragColumns": ["atNanos", "step"],
         "droppedDrag": trace.dropped_drag,
@@ -350,6 +373,8 @@ mod tests {
                 batches: Vec::with_capacity(MAX_BATCHES),
                 frames: Vec::with_capacity(MAX_FRAMES),
                 dropped_batches: 0,
+                foreground: Vec::with_capacity(MAX_BATCHES),
+                dropped_foreground: 0,
                 dropped_frames: 0,
                 renders: 0,
                 drag: Vec::new(),
@@ -383,6 +408,7 @@ mod tests {
         assert!(enabled());
         assert!(now().is_some());
         let window = WindowId::try_from(1).unwrap();
+        foreground(RequestId::try_from(7).unwrap(), origin);
         batch(
             RequestId::try_from(7).unwrap(),
             window,
@@ -415,6 +441,9 @@ mod tests {
         assert_eq!(record["schemaVersion"], 1);
         assert_eq!(record["renders"], 2);
         assert_eq!(record["droppedBatches"], 0);
+        assert_eq!(record["droppedForeground"], 0);
+        assert_eq!(record["foreground"][0][0], 7);
+        assert!(record["foreground"][0][1].as_u64().is_some());
         assert_eq!(record["droppedFrames"], 0);
         assert_eq!(
             record["batchColumns"],

@@ -27,6 +27,9 @@ function fixture() {
       'rendersBefore',
     ],
     droppedBatches: 0,
+    foregroundColumns: ['id', 'readToForegroundNanos'],
+    droppedForeground: 0,
+    foreground: Array.from({ length: 24 }, (_, index) => [index + 3, 7000]),
     batches: Array.from({ length: 24 }, (_, index) => [
       index + 3,
       1,
@@ -73,6 +76,7 @@ test('aligns core signal acknowledgements with ordered native batches', () => {
     },
   ])
   expect(result.samples[1]).toMatchObject({
+    readToForegroundMs: 0.007,
     prepareMs: 0.001,
     applyMs: 0.002,
     replyEnqueueMs: 0.003,
@@ -82,6 +86,9 @@ test('aligns core signal acknowledgements with ordered native batches', () => {
 test('rejects incomplete, reordered or incompatible records rather than misaligning samples', () => {
   for (const change of [
     (f: ReturnType<typeof fixture>) => (f.trace.droppedBatches = 1),
+    (f: ReturnType<typeof fixture>) => (f.trace.droppedForeground = 1),
+    (f: ReturnType<typeof fixture>) => f.trace.foreground.pop(),
+    (f: ReturnType<typeof fixture>) => f.trace.foreground.push([24, 0]),
     (f: ReturnType<typeof fixture>) => f.trace.batches.pop(),
     (f: ReturnType<typeof fixture>) => (f.trace.batches[21]![0] = 999),
     (f: ReturnType<typeof fixture>) => (f.trace.batches[21]![3] = 2_000_001),

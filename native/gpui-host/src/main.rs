@@ -35,7 +35,7 @@ fn main() {
     };
     startup_log::install_from_environment();
     phases::install_from_environment();
-    let (commands, events) = channel::connect();
+    let (commands, events) = channel::connect(phases::enabled());
     let evidence = evidence::Evidence::from_environment();
     #[cfg(target_os = "macos")]
     frame_pacing::configure();
@@ -51,7 +51,12 @@ fn main() {
                 let mut commands_in_turn = 0;
                 while let Ok(incoming) = commands.recv().await {
                     cx.update(|cx| match incoming {
-                        Incoming::Command(command) => session.dispatch(command, cx),
+                        Incoming::Command(command, received) => {
+                            if let Some(received) = received {
+                                phases::foreground(command.command().id(), received);
+                            }
+                            session.dispatch(command, cx);
+                        }
                         Incoming::InvalidFrame => session.finish(
                             Event::Error {
                                 id: None,

@@ -44,7 +44,9 @@ pairs after the normal timed launches. It requires the core adapter. Each
 traced launch writes its own bounded host phase trace and an analysis under
 `launches/`; the extra launches do not enter the normal summary or regression
 gate. The analysis rejects missing or truncated traces and unexpected batch
-sequences. Host preflight-to-reply-enqueue duration is only one part of the
+sequences. Read-to-foreground timing starts after the worker decodes and validates
+the command; it includes channel enqueue, backpressure and foreground scheduling.
+Host preflight-to-reply-enqueue duration is only one part of the
 application's acknowledgement interval: the remainder combines scheduling,
 transport and application work, and neither interval measures presentation.
 The gap from the previous host reply to the next host batch and the intervening
