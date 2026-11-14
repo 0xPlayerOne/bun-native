@@ -93,7 +93,7 @@ impl CommandReader {
                     Err(ProtocolError::Truncated)
                 };
             }
-            let newline = available.iter().position(|byte| *byte == b'\n');
+            let newline = memchr::memchr(b'\n', available);
             let count = newline.unwrap_or(available.len());
             if frame.len() + count > MAX_FRAME_BYTES {
                 return Err(ProtocolError::Oversized);
