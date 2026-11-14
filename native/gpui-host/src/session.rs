@@ -84,6 +84,7 @@ impl Session {
         policy: ServicePolicy,
         cx: &mut App,
     ) -> Self {
+        evidence.startup_phase("session_init_enter", None);
         let windows = Rc::new(RefCell::new(BTreeMap::<WindowId, WindowEntry>::new()));
         let finishing = Rc::new(Cell::new(false));
         let clipboard = Clipboard::new(events.clone(), cx);
@@ -155,6 +156,7 @@ impl Session {
             }
         })
         .detach();
+        evidence.startup_phase("session_init_complete", None);
         Self {
             greeted: false,
             last_request_id: 0,
@@ -208,6 +210,7 @@ impl Session {
         }
         self.last_request_id = id.get();
         if let Command::Hello { protocol, .. } = *command.command() {
+            self.evidence.startup_phase("hello_dispatched", Some(id));
             if self.greeted {
                 self.error(
                     id,
@@ -294,6 +297,7 @@ impl Session {
                     cx,
                 );
                 self.events.send(Event::Ack { id }, cx);
+                self.evidence.startup_phase("hello_ack_submitted", Some(id));
             }
             return;
         }

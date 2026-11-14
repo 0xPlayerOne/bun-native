@@ -34,6 +34,10 @@ export class StartupTrace {
     return new StartupTrace(path, nonce)
   }
 
+  spawn(phase: 'spawn_enter' | 'spawn_returned', hostPid?: number): void {
+    this.write(phase, hostPid === undefined ? {} : { host_pid: hostPid })
+  }
+
   request(phase: string, command: Command, hostPid: number): void {
     this.write(phase, {
       host_pid: hostPid,

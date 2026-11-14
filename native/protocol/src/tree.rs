@@ -682,6 +682,8 @@ impl Tree {
         let mut detached = false;
         let mut seen = HashSet::new();
         let mut pending = Vec::new();
+        // Reuse path capacity across subtrees while resetting each context.
+        let mut layers = Vec::new();
         for &id in attached {
             if seen.contains(&id) || self.nodes.get(id).is_none() {
                 continue;
@@ -690,7 +692,7 @@ impl Tree {
             let mut top = id;
             // Overlay layers and the popup flag come from the ancestors, so a
             // subtree is checked exactly as the walk from the root would.
-            let mut layers = Vec::new();
+            layers.clear();
             while let Some(parent) = self.nodes.get(top).ok_or_else(invalid_handle)?.parent {
                 depth += 1;
                 top = parent;

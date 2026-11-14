@@ -25,6 +25,25 @@ on:
         type: choice
         options: ['on', 'off']
         default: 'on'
+      paired-only:
+        description: Run the bounded same-runner Core/AOT investigation for #675 only
+        type: boolean
+        default: false
+      startup-only:
+        description: Run the macOS startup trace; with paired-only and paired-macos, run Windows retention controls
+        type: boolean
+        default: false
+      paired-macos:
+        description: Run the same-runner macOS Core AOT startup comparison for #678 only
+        type: boolean
+        default: false
+      paired-macos-trials:
+        description: Alternating macOS host pairs (3 to 20)
+        default: '10'
+      electrobun-smoke:
+        description: Qualify the Electrobun visible-input fixture on hosted macOS only
+        type: boolean
+        default: false
   schedule:
     - cron: '47 6 * * 3'
   pull_request:
@@ -53,7 +72,7 @@ concurrency:
 jobs:
   linux:
     name: Linux core/Solid/React development and AOT comparison
-    if: vars.CI_BILLING_PAUSED == 'false' && (github.event_name != 'pull_request' || github.event.pull_request.draft == false)
+    if: vars.CI_BILLING_PAUSED == 'false' && (github.event_name != 'pull_request' || github.event.pull_request.draft == false) && (github.event_name != 'workflow_dispatch' || (inputs['paired-only'] != true && inputs['startup-only'] != true && inputs['paired-macos'] != true && inputs['electrobun-smoke'] != true))
     runs-on: ubuntu-24.04
     timeout-minutes: 60
     defaults:
@@ -228,7 +247,7 @@ jobs:
   # The hosted VM's paravirtual Metal device is not a physical GPU.
   macos:
     name: macOS core/Solid/React and direct Rust GPUI comparison
-    if: vars.CI_BILLING_PAUSED == 'false' && (github.event_name != 'pull_request' || github.event.pull_request.draft == false)
+    if: vars.CI_BILLING_PAUSED == 'false' && (github.event_name != 'pull_request' || github.event.pull_request.draft == false) && (github.event_name != 'workflow_dispatch' || (inputs['paired-only'] != true && inputs['electrobun-smoke'] != true))
     runs-on: macos-15
     timeout-minutes: 60
     defaults:
@@ -238,10 +257,25 @@ jobs:
       CARGO_INCREMENTAL: 0
       PYTHONDONTWRITEBYTECODE: 1
       TRIALS: ${{ github.event_name == 'workflow_dispatch' && inputs.trials || '5' }}
+      STARTUP_ONLY: ${{ github.event_name == 'workflow_dispatch' && inputs['startup-only'] || false }}
+      PAIRED_MACOS: ${{ github.event_name == 'workflow_dispatch' && inputs['paired-macos'] || false }}
+      PAIRED_MACOS_TRIALS: ${{ github.event_name == 'workflow_dispatch' && inputs['paired-macos-trials'] || '10' }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+      - name: Checkout pinned baseline source
+        if: github.event_name == 'workflow_dispatch' && inputs['paired-macos'] == true
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: 5cfbb71c83a5f3937543ee08aa8159960c1d80a0
+          path: .paired-baseline
+          persist-credentials: false
+      - name: Isolate pinned baseline checkout
+        if: github.event_name == 'workflow_dispatch' && inputs['paired-macos'] == true
+        run: |
+          test "$(cat .paired-baseline/.git/HEAD)" = 5cfbb71c83a5f3937543ee08aa8159960c1d80a0
+          mv .paired-baseline "$RUNNER_TEMP/paired-baseline"
       - name: Prepare result directory
         run: |
           mkdir "$RUNNER_TEMP/comparison"
@@ -257,19 +291,35 @@ jobs:
           { time -p cargo build --locked --release --manifest-path Cargo.toml -p bun-native-host --bin bun-native-host --example workload-baseline; } 2>&1 | tee "$COMPARISON/host-build.log"
           shasum -a 256 target/release/bun-native-host target/release/examples/workload-baseline > "$COMPARISON/binary-sha256.txt"
           system_profiler SPDisplaysDataType SPHardwareDataType > "$COMPARISON/hardware.txt" 2>&1 || true
+      - name: Build pinned baseline native host
+        if: github.event_name == 'workflow_dispatch' && inputs['paired-macos'] == true
+        timeout-minutes: 25
+        run: |
+          CARGO_TARGET_DIR="$RUNNER_TEMP/paired-target" cargo build --locked --release \
+            --manifest-path "$RUNNER_TEMP/paired-baseline/Cargo.toml" -p bun-native-host --bin bun-native-host
+          cp "$RUNNER_TEMP/paired-target/release/bun-native-host" "$RUNNER_TEMP/paired-baseline-host"
+          shasum -a 256 "$RUNNER_TEMP/paired-baseline-host" > "$COMPARISON/paired-baseline-sha256.txt"
       - name: Run the equivalent-workload comparison
         timeout-minutes: 40
         run: |
+          extra=()
+          if [[ "$STARTUP_ONLY" == 'true' ]]; then extra+=(--startup-trace-calibration --adapters core); fi
+          if [[ "$PAIRED_MACOS" == 'true' ]]; then extra+=(--adapters core --paired-host "$RUNNER_TEMP/paired-baseline-host" --paired-trials "$PAIRED_MACOS_TRIALS"); fi
           bun benchmarks/comparison/run.ts \
             --host "$GITHUB_WORKSPACE/target/release/bun-native-host" --host-profile release \
-            --output "$COMPARISON/run" --trials "$TRIALS" --input-trials 0
+            --output "$COMPARISON/run" --trials "$TRIALS" --input-trials 0 "${extra[@]}"
       - name: Run the direct Rust GPUI baseline
-        if: ${{ !cancelled() && hashFiles('target/release/examples/workload-baseline') != '' }}
+        if: ${{ !cancelled() && env.PAIRED_MACOS != 'true' && hashFiles('target/release/examples/workload-baseline') != '' }}
         timeout-minutes: 10
         run: |
           bun benchmarks/rust-gpui/run.ts \
             --binary "$GITHUB_WORKSPACE/target/release/examples/workload-baseline" \
             --output "$COMPARISON/rust-gpui" --trials "$TRIALS"
+      - name: Verify paired startup evidence
+        if: ${{ !cancelled() && env.PAIRED_MACOS == 'true' && env.COMPARISON != '' }}
+        run: |
+          test -f "$COMPARISON/run/comparison.json"
+          bun benchmarks/comparison/paired-analysis.ts "$COMPARISON/run" > "$COMPARISON/paired-analysis.json"
       - name: Export the compact record and summary table
         if: ${{ always() && env.COMPARISON != '' }}
         run: |
@@ -311,7 +361,7 @@ jobs:
   # benchmarks/comparison/windows-processes.ts. The VM has no physical GPU.
   windows:
     name: Windows core/Solid/React and direct Rust GPUI comparison
-    if: vars.CI_BILLING_PAUSED == 'false' && (github.event_name != 'pull_request' || github.event.pull_request.draft == false)
+    if: vars.CI_BILLING_PAUSED == 'false' && (github.event_name != 'pull_request' || github.event.pull_request.draft == false) && (github.event_name != 'workflow_dispatch' || (inputs['paired-only'] != true && inputs['startup-only'] != true && inputs['paired-macos'] != true && inputs['electrobun-smoke'] != true))
     runs-on: windows-2022
     timeout-minutes: 75
     defaults:
@@ -420,4 +470,502 @@ jobs:
             !${{ runner.temp }}/comparison/run/*/application.exe
           include-hidden-files: true
           if-no-files-found: error
+          retention-days: 30
+
+  paired-click:
+    name: Paired Linux Core AOT input investigation
+    if: vars.CI_BILLING_PAUSED == 'false' && github.event_name == 'workflow_dispatch' && inputs['paired-only'] == true && inputs['paired-macos'] != true && inputs['electrobun-smoke'] != true && (github.event_name != 'pull_request' || github.event.pull_request.draft == false)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    defaults:
+      run:
+        shell: bash
+    env:
+      CARGO_BUILD_JOBS: 2
+      CARGO_INCREMENTAL: 0
+      PYTHONDONTWRITEBYTECODE: 1
+      PAIR_BASELINE_SHA: d67794d1bde2eeb3621f2cd1f96d1379ea87a400
+      PAIR_CANDIDATE_SHA: 88e48ac73f6286cfde5124eb6741998ccc6bb144
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Prepare output directory
+        run: |
+          mkdir "$RUNNER_TEMP/paired-click"
+          {
+            echo "PAIR_OUTPUT=$RUNNER_TEMP/paired-click"
+            echo "PAIR_ROOT=$GITHUB_WORKSPACE"
+            echo "PAIR_BASELINE_SOURCE=$GITHUB_WORKSPACE/.bun-native/paired/baseline"
+            echo "PAIR_CANDIDATE_SOURCE=$GITHUB_WORKSPACE/.bun-native/paired/candidate"
+            echo "PAIR_BASELINE_HOST=$RUNNER_TEMP/paired-click/baseline-host"
+            echo "PAIR_CANDIDATE_HOST=$RUNNER_TEMP/paired-click/candidate-host"
+          } >> "$GITHUB_ENV"
+      - name: Install the pinned toolchain and native prerequisites
+        uses: ./.github/actions/native-toolchain
+      - uses: ./.github/actions/linux-native-prerequisites
+      - name: Checkout historical baseline
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: d67794d1bde2eeb3621f2cd1f96d1379ea87a400
+          path: .bun-native/paired/baseline
+          persist-credentials: false
+      - name: Checkout current comparison source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: 88e48ac73f6286cfde5124eb6741998ccc6bb144
+          path: .bun-native/paired/candidate
+          persist-credentials: false
+      - name: Build both exact release hosts
+        timeout-minutes: 45
+        run: |
+          set -o pipefail
+          [[ "$(git -C "$PAIR_BASELINE_SOURCE" rev-parse HEAD)" == "$PAIR_BASELINE_SHA" ]]
+          [[ "$(git -C "$PAIR_CANDIDATE_SOURCE" rev-parse HEAD)" == "$PAIR_CANDIDATE_SHA" ]]
+          export CARGO_TARGET_DIR="$RUNNER_TEMP/paired-target"
+          for variant in baseline candidate; do
+            if [[ "$variant" == baseline ]]; then source_dir="$PAIR_BASELINE_SOURCE"; host="$PAIR_BASELINE_HOST"; else source_dir="$PAIR_CANDIDATE_SOURCE"; host="$PAIR_CANDIDATE_HOST"; fi
+            (
+              cd "$source_dir"
+              bun install --frozen-lockfile
+              cargo build --locked --release -p bun-native-host --bin bun-native-host
+            ) 2>&1 | tee "$PAIR_OUTPUT/$variant-build.log"
+            cp "$CARGO_TARGET_DIR/release/bun-native-host" "$host"
+            sha256sum "$host" > "$PAIR_OUTPUT/$variant-host.sha256"
+          done
+      - name: Calibrate and measure alternating input pairs
+        timeout-minutes: 40
+        run: |
+          bash scripts/quality/native-x11-session.sh "$RUNNER_TEMP/paired-session" -- \
+            bash benchmarks/comparison/paired-input-session.sh
+      - name: Retain paired evidence, including failures
+        if: ${{ always() && env.PAIR_OUTPUT != '' }}
+        timeout-minutes: 3
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: paired-core-aot-input-linux-${{ runner.arch }}
+          path: |
+            ${{ runner.temp }}/paired-click/
+            !${{ runner.temp }}/paired-click/*-host
+            !${{ runner.temp }}/paired-click/*/core/application
+          include-hidden-files: true
+          if-no-files-found: error
+          retention-days: 30
+
+  electrobun-smoke:
+    name: Electrobun visible-input fixture smoke
+    if: vars.CI_BILLING_PAUSED == 'false' && github.event_name == 'workflow_dispatch' && inputs['electrobun-smoke'] == true && (github.event_name != 'pull_request' || github.event.pull_request.draft == false)
+    runs-on: macos-15
+    timeout-minutes: 25
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Prepare isolated fixture and evidence directory
+        run: |
+          mkdir "$RUNNER_TEMP/eb-smoke" "$RUNNER_TEMP/eb-source" "$RUNNER_TEMP/eb-inner"
+          cp -R benchmarks/electrobun/app/. "$RUNNER_TEMP/eb-source/"
+          {
+            sw_vers
+            uname -a
+            system_profiler SPHardwareDataType SPDisplaysDataType
+          } > "$RUNNER_TEMP/eb-smoke/environment.txt"
+      - name: Install pinned toolchain and workspace dependencies
+        uses: ./.github/actions/native-toolchain
+      - name: Build pinned Electrobun reference
+        run: |
+          set -euo pipefail
+          cd "$RUNNER_TEMP/eb-source"
+          BUN_INSTALL_CACHE_DIR="$RUNNER_TEMP/eb-bun-cache" bunx electrobun@2.0.6 build --env=stable 2>&1 | tee "$RUNNER_TEMP/eb-smoke/build.log"
+          archive="$RUNNER_TEMP/eb-source/artifacts/stable-macos-arm64-workload-baseline.app.tar.zst"
+          shasum -a 256 "$archive" > "$RUNNER_TEMP/eb-smoke/archive.sha256"
+          /usr/bin/tar -tf "$archive" > "$RUNNER_TEMP/eb-smoke/archive-files.txt"
+          /usr/bin/tar -tvf "$archive" > "$RUNNER_TEMP/eb-smoke/archive-details.txt"
+          awk 'BEGIN { ok=1; n=0 } { n++; if ($0 !~ /^workload-baseline\.app\// || $0 ~ /(^|\/)\.\.(\/|$)/) ok=0 } END { if (!n || !ok) exit 1 }' "$RUNNER_TEMP/eb-smoke/archive-files.txt"
+          if grep -Eq '^[lh]' "$RUNNER_TEMP/eb-smoke/archive-details.txt"; then
+            echo 'Reference archive contains links; refusing extraction.' >&2
+            exit 1
+          fi
+          /usr/bin/tar -xf "$archive" -C "$RUNNER_TEMP/eb-inner"
+      - name: Compile owned-window and offline OCR helpers
+        run: |
+          xcrun clang -fobjc-arc -Wall -Wextra -Werror -framework AppKit -framework CoreGraphics -framework ApplicationServices scripts/quality/native-platform-macos.m -o "$RUNNER_TEMP/eb-smoke/window-helper"
+          xcrun clang -fobjc-arc -Wall -Wextra -Werror -framework Foundation -framework CoreGraphics -framework ImageIO -framework Vision benchmarks/electrobun/observe-text-macos.m -o "$RUNNER_TEMP/eb-smoke/text-helper"
+      - name: Qualify owned window, OS click and captured label
+        run: |
+          bun benchmarks/electrobun/visible-smoke-macos.ts \
+            --app "$RUNNER_TEMP/eb-inner/workload-baseline.app" \
+            --output "$RUNNER_TEMP/eb-smoke/run" \
+            --helper "$RUNNER_TEMP/eb-smoke/window-helper" \
+            --ocr "$RUNNER_TEMP/eb-smoke/text-helper"
+      - name: Build the native release host and inspected Core AOT fixture
+        run: |
+          set -euo pipefail
+          cargo build --locked --release -p bun-native-host --bin bun-native-host 2>&1 | tee "$RUNNER_TEMP/eb-smoke/native-host-build.log"
+          cp target/release/bun-native-host "$RUNNER_TEMP/eb-smoke/native-host"
+          shasum -a 256 "$RUNNER_TEMP/eb-smoke/native-host" > "$RUNNER_TEMP/eb-smoke/native-host.sha256"
+          bun benchmarks/electrobun/build-native.ts --output "$RUNNER_TEMP/eb-smoke/native-build"
+      - name: Qualify native AOT window, OS click and captured label
+        run: |
+          bun benchmarks/electrobun/visible-smoke-macos.ts \
+            --native-app "$RUNNER_TEMP/eb-smoke/native-build/application" \
+            --native-host "$RUNNER_TEMP/eb-smoke/native-host" \
+            --output "$RUNNER_TEMP/eb-smoke/native-run" \
+            --helper "$RUNNER_TEMP/eb-smoke/window-helper" \
+            --ocr "$RUNNER_TEMP/eb-smoke/text-helper"
+      - name: Check both qualified reports and native build identity
+        run: |
+          bun -e '
+            import assert from "node:assert/strict";
+            import { join } from "node:path";
+            const root = join(process.env.RUNNER_TEMP, "eb-smoke");
+            const read = async (path) => Bun.file(join(root, path)).json();
+            const [reference, native, build, refApp, nativeApp] = await Promise.all([
+              read("run/result.json"), read("native-run/result.json"), read("native-build/build.json"),
+              read("run/application.json"), read("native-run/application.json"),
+            ]);
+            assert.equal(reference.status, "passed");
+            assert.equal(native.status, "passed");
+            assert.equal(native.artifacts.launcher.sha256, build.binary.sha256);
+            assert.equal(native.artifacts.launcher.bytes, build.binary.bytes);
+            assert.equal(native.artifacts.inspection.hasCompiledProgram, true);
+            assert.equal(refApp.workload.rows, 32);
+            assert.equal(nativeApp.workload.rows, 32);
+            assert.equal(nativeApp.workload.scenario, "visible-input");
+          '
+      - name: Collect alternating visible-input pairs and controls
+        if: inputs['paired-macos'] == true
+        env:
+          VISIBLE_PAIRS: ${{ inputs['paired-macos-trials'] }}
+        run: |
+          bun benchmarks/electrobun/visible-pairs-macos.ts \
+            --app "$RUNNER_TEMP/eb-inner/workload-baseline.app" \
+            --native-app "$RUNNER_TEMP/eb-smoke/native-build/application" \
+            --native-host "$RUNNER_TEMP/eb-smoke/native-host" \
+            --output "$RUNNER_TEMP/eb-smoke/pairs" \
+            --helper "$RUNNER_TEMP/eb-smoke/window-helper" \
+            --ocr "$RUNNER_TEMP/eb-smoke/text-helper" \
+            --pairs "$VISIBLE_PAIRS"
+      - name: Retain smoke evidence, including failures
+        if: ${{ always() }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: electrobun-visible-input-smoke-${{ runner.arch }}
+          path: |
+            ${{ runner.temp }}/eb-smoke/
+            !${{ runner.temp }}/eb-smoke/native-host
+            !${{ runner.temp }}/eb-smoke/native-build/application
+            !${{ runner.temp }}/eb-smoke/native-build/module/
+          if-no-files-found: warn
+          retention-days: 30
+
+  tree-path-pairs:
+    name: Ancestor path release-host comparison
+    if: vars.CI_BILLING_PAUSED == 'false' && github.event_name == 'workflow_dispatch' && inputs['paired-only'] == true && inputs['paired-macos'] == true && inputs['electrobun-smoke'] != true && inputs['startup-only'] != true && (github.event_name != 'pull_request' || github.event.pull_request.draft == false)
+    runs-on: macos-15
+    timeout-minutes: 75
+    defaults:
+      run:
+        shell: bash
+    env:
+      CARGO_INCREMENTAL: 0
+      PYTHONDONTWRITEBYTECODE: 1
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Checkout exact pre-change source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: 879df62168267ec49a6d6358b5c6c57c10718c9d
+          path: .tree-pairs-baseline
+          persist-credentials: false
+      - name: Checkout pre-overlap startup files
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: 5cfbb71c83a5f3937543ee08aa8159960c1d80a0
+          path: .tree-pairs-startup
+          persist-credentials: false
+      - name: Isolate baseline and verify source boundary
+        run: |
+          set -euo pipefail
+          test "$(cat .tree-pairs-baseline/.git/HEAD)" = 879df62168267ec49a6d6358b5c6c57c10718c9d
+          test "$(cat .tree-pairs-startup/.git/HEAD)" = 5cfbb71c83a5f3937543ee08aa8159960c1d80a0
+          mv .tree-pairs-baseline "$RUNNER_TEMP/tree-pairs-baseline"
+          mv .tree-pairs-startup "$RUNNER_TEMP/tree-pairs-startup"
+          mkdir "$RUNNER_TEMP/tree-pairs"
+          # Reproduce the reverted startup path in the baseline as well. The
+          # test-only lifecycle file is copied to keep the source record exact.
+          for path in native/gpui-host/src/frame_pacing.rs native/gpui-host/src/main.rs native/macos-surface/src/lib.rs tests/native/lifecycle.ts; do
+            cp "$RUNNER_TEMP/tree-pairs-startup/$path" "$RUNNER_TEMP/tree-pairs-baseline/$path"
+            cmp "$RUNNER_TEMP/tree-pairs-baseline/$path" "$GITHUB_WORKSPACE/$path"
+          done
+          python3 - <<'PY'
+          from pathlib import Path
+          import hashlib, os
+          candidate = Path(os.environ['GITHUB_WORKSPACE'])
+          baseline = Path(os.environ['RUNNER_TEMP']) / 'tree-pairs-baseline'
+          for name in ('Cargo.toml', 'Cargo.lock', 'rust-toolchain.toml', 'toolchain.json', 'bun.lock'):
+              assert (candidate / name).read_bytes() == (baseline / name).read_bytes(), name
+          def manifest(root):
+              result = {}
+              for p in (root / 'native').rglob('*'):
+                  if p.is_file():
+                      name = str(p.relative_to(root))
+                      if name not in ('native/protocol/src/tree.rs', 'native/protocol/src/popup_tests.rs'):
+                          result[name] = hashlib.sha256(p.read_bytes()).hexdigest()
+              return result
+          assert manifest(candidate) == manifest(baseline), 'Unexpected native source difference'
+          original = (baseline / 'native/protocol/src/tree.rs').read_text()
+          expected = original.replace('        let mut pending = Vec::new();\n        for &id in attached {',
+              '        let mut pending = Vec::new();\n        // Reuse path capacity across subtrees while resetting each context.\n        let mut layers = Vec::new();\n        for &id in attached {', 1)
+          expected = expected.replace('            let mut layers = Vec::new();\n            while let Some(parent)',
+              '            layers.clear();\n            while let Some(parent)', 1)
+          assert expected != original and (candidate / 'native/protocol/src/tree.rs').read_text() == expected, 'Unexpected tree change'
+          PY
+          {
+            git rev-parse HEAD
+            echo 'Baseline: 879df62168267ec49a6d6358b5c6c57c10718c9d with four startup files from 5cfbb71c83a5f3937543ee08aa8159960c1d80a0'
+            shasum -a 256 "$RUNNER_TEMP/tree-pairs-baseline/native/gpui-host/src/frame_pacing.rs" "$RUNNER_TEMP/tree-pairs-baseline/native/gpui-host/src/main.rs" "$RUNNER_TEMP/tree-pairs-baseline/native/macos-surface/src/lib.rs" "$RUNNER_TEMP/tree-pairs-baseline/tests/native/lifecycle.ts"
+            sw_vers
+            uname -a
+            system_profiler SPHardwareDataType SPDisplaysDataType
+          } > "$RUNNER_TEMP/tree-pairs/environment.txt"
+      - name: Install pinned toolchain
+        uses: ./.github/actions/native-toolchain
+      - name: Build isolated release hosts
+        timeout-minutes: 40
+        run: |
+          set -euo pipefail
+          rustc -Vv > "$RUNNER_TEMP/tree-pairs/rustc.txt"
+          CARGO_TARGET_DIR="$RUNNER_TEMP/tree-target-candidate" cargo build --locked --release -p bun-native-host --bin bun-native-host
+          CARGO_TARGET_DIR="$RUNNER_TEMP/tree-target-candidate" cargo build --locked --release -p bun-native-protocol --example mount_perf
+          CARGO_TARGET_DIR="$RUNNER_TEMP/tree-target-baseline" cargo build --locked --release --manifest-path "$RUNNER_TEMP/tree-pairs-baseline/Cargo.toml" -p bun-native-host --bin bun-native-host
+          CARGO_TARGET_DIR="$RUNNER_TEMP/tree-target-baseline" cargo build --locked --release --manifest-path "$RUNNER_TEMP/tree-pairs-baseline/Cargo.toml" -p bun-native-protocol --example mount_perf
+          cp "$RUNNER_TEMP/tree-target-candidate/release/bun-native-host" "$RUNNER_TEMP/tree-pairs-candidate-host"
+          cp "$RUNNER_TEMP/tree-target-baseline/release/bun-native-host" "$RUNNER_TEMP/tree-pairs-baseline-host"
+          shasum -a 256 "$RUNNER_TEMP/tree-pairs-candidate-host" "$RUNNER_TEMP/tree-pairs-baseline-host" > "$RUNNER_TEMP/tree-pairs/hosts.sha256"
+          shasum -a 256 "$RUNNER_TEMP/tree-target-candidate/release/examples/mount_perf" "$RUNNER_TEMP/tree-target-baseline/release/examples/mount_perf" > "$RUNNER_TEMP/tree-pairs/probes.sha256"
+      - name: Collect alternating protocol mount probes
+        run: |
+          python3 - <<'PY'
+          import json, os, statistics, subprocess
+          from pathlib import Path
+          root = Path(os.environ['RUNNER_TEMP'])
+          binaries = {v: root / f'tree-target-{v}/release/examples/mount_perf' for v in ('baseline', 'candidate')}
+          raw = []
+          for mode in ('single', 'parallel'):
+              for pair in range(30):
+                  for variant in (('baseline', 'candidate') if pair % 2 == 0 else ('candidate', 'baseline')):
+                      args = [str(binaries[variant])] + (['parallel'] if mode == 'parallel' else [])
+                      rows = [list(map(int, line.split(','))) for line in subprocess.check_output(args, text=True).splitlines()]
+                      assert len(rows) == (60 if mode == 'single' else 240)
+                      assert all(len(r) == 3 and r[0] in (32, 1024) and 5 <= r[1] < 35 and r[2] > 0 for r in rows)
+                      raw.append({'mode': mode, 'pair': pair, 'variant': variant, 'rows': rows})
+                      (root / 'tree-pairs/mount-raw.json').write_text(json.dumps(raw, indent=2) + '\n')
+          summary = {}
+          for mode in ('single', 'parallel'):
+              for size in (32, 1024):
+                  differences = []
+                  for pair in range(30):
+                      values = {r['variant']: statistics.median(x[2] for x in r['rows'] if x[0] == size)
+                                for r in raw if r['mode'] == mode and r['pair'] == pair}
+                      assert set(values) == {'baseline', 'candidate'}
+                      differences.append(values['candidate'] - values['baseline'])
+                  summary[f'{mode}-{size}'] = {'pairedDeltasNs': differences,
+                      'medianDeltaNs': statistics.median(differences),
+                      'candidateFasterPairs': sum(d < 0 for d in differences)}
+          (root / 'tree-pairs/mount-summary.json').write_text(json.dumps(summary, indent=2) + '\n')
+          PY
+      - name: Compare calibrated Core AOT workloads in alternating pairs
+        timeout-minutes: 30
+        run: |
+          bun benchmarks/comparison/run.ts \
+            --host "$RUNNER_TEMP/tree-pairs-candidate-host" --host-profile release \
+            --paired-host "$RUNNER_TEMP/tree-pairs-baseline-host" --paired-trials 20 \
+            --adapters core --trials 3 --input-trials 0 --output "$RUNNER_TEMP/tree-pairs/run"
+          bun benchmarks/comparison/paired-analysis.ts "$RUNNER_TEMP/tree-pairs/run" > "$RUNNER_TEMP/tree-pairs/paired-analysis.json"
+      - name: Retain raw results and failures
+        if: ${{ always() }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: tree-path-pairs-${{ runner.arch }}
+          path: |
+            ${{ runner.temp }}/tree-pairs/
+            !${{ runner.temp }}/tree-pairs/run/*/application
+          if-no-files-found: warn
+          retention-days: 30
+
+  tree-path-allocations:
+    name: Ancestor path allocation attribution
+    if: vars.CI_BILLING_PAUSED == 'false' && github.event_name == 'workflow_dispatch' && inputs['paired-only'] == true && inputs['paired-macos'] == true && inputs['electrobun-smoke'] != true && inputs['startup-only'] != true && (github.event_name != 'pull_request' || github.event.pull_request.draft == false)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    defaults:
+      run:
+        shell: bash
+    env:
+      CARGO_INCREMENTAL: 0
+      CARGO_PROFILE_RELEASE_DEBUG: 1
+      CARGO_PROFILE_RELEASE_STRIP: none
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Checkout exact pre-change source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: 879df62168267ec49a6d6358b5c6c57c10718c9d
+          path: .tree-alloc-baseline
+          persist-credentials: false
+      - name: Verify source boundary and isolate baseline
+        run: |
+          set -euo pipefail
+          test "$(cat .tree-alloc-baseline/.git/HEAD)" = 879df62168267ec49a6d6358b5c6c57c10718c9d
+          mv .tree-alloc-baseline "$RUNNER_TEMP/tree-alloc-baseline"
+          mkdir "$RUNNER_TEMP/tree-alloc"
+          python3 - <<'PY'
+          from pathlib import Path
+          import hashlib, os
+          candidate = Path(os.environ['GITHUB_WORKSPACE'])
+          baseline = Path(os.environ['RUNNER_TEMP']) / 'tree-alloc-baseline'
+          for name in ('Cargo.toml', 'Cargo.lock', 'rust-toolchain.toml', 'native/protocol/Cargo.toml'):
+              assert (candidate / name).read_bytes() == (baseline / name).read_bytes(), name
+          def manifest(root):
+              result = {}
+              for p in (root / 'native/protocol').rglob('*'):
+                  if p.is_file():
+                      name = str(p.relative_to(root))
+                      if name not in ('native/protocol/src/tree.rs', 'native/protocol/src/popup_tests.rs'):
+                          result[name] = hashlib.sha256(p.read_bytes()).hexdigest()
+              return result
+          assert manifest(candidate) == manifest(baseline), 'Unexpected protocol source difference'
+          original = (baseline / 'native/protocol/src/tree.rs').read_text()
+          expected = original.replace('        let mut pending = Vec::new();\n        for &id in attached {',
+              '        let mut pending = Vec::new();\n        // Reuse path capacity across subtrees while resetting each context.\n        let mut layers = Vec::new();\n        for &id in attached {', 1)
+          expected = expected.replace('            let mut layers = Vec::new();\n            while let Some(parent)',
+              '            layers.clear();\n            while let Some(parent)', 1)
+          assert expected != original and (candidate / 'native/protocol/src/tree.rs').read_text() == expected, 'Unexpected tree change'
+          PY
+      - name: Install bounded allocation profiler
+        timeout-minutes: 10
+        run: |
+          sudo apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=30 update
+          sudo apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=30 install -y --no-install-recommends heaptrack binutils
+          heaptrack --version > "$RUNNER_TEMP/tree-alloc/profiler-version.txt"
+          heaptrack_print --version >> "$RUNNER_TEMP/tree-alloc/profiler-version.txt"
+          rustc -Vv > "$RUNNER_TEMP/tree-alloc/rustc.txt"
+          uname -a > "$RUNNER_TEMP/tree-alloc/environment.txt"
+          git rev-parse HEAD >> "$RUNNER_TEMP/tree-alloc/environment.txt"
+      - name: Build isolated symbolized release probes
+        timeout-minutes: 15
+        run: |
+          set -euo pipefail
+          CARGO_TARGET_DIR="$RUNNER_TEMP/tree-alloc-target-candidate" cargo build --locked --release -p bun-native-protocol --example mount_perf
+          CARGO_TARGET_DIR="$RUNNER_TEMP/tree-alloc-target-baseline" cargo build --locked --release --manifest-path "$RUNNER_TEMP/tree-alloc-baseline/Cargo.toml" -p bun-native-protocol --example mount_perf
+          shasum -a 256 "$RUNNER_TEMP/tree-alloc-target-candidate/release/examples/mount_perf" "$RUNNER_TEMP/tree-alloc-target-baseline/release/examples/mount_perf" > "$RUNNER_TEMP/tree-alloc/probes.sha256"
+      - name: Capture and interpret allocation traces
+        timeout-minutes: 4
+        run: |
+          set -euo pipefail
+          library=/usr/lib/heaptrack/libheaptrack_preload.so
+          interpreter=/usr/lib/heaptrack/libexec/heaptrack_interpret
+          test -f "$library" && test -x "$interpreter"
+          shasum -a 256 "$library" "$interpreter" "$(command -v heaptrack_print)" > "$RUNNER_TEMP/tree-alloc/profiler.sha256"
+          for variant in baseline candidate; do
+            raw="$RUNNER_TEMP/tree-alloc/$variant.raw"
+            binary="$RUNNER_TEMP/tree-alloc-target-$variant/release/examples/mount_perf"
+            (ulimit -f 131072; timeout 90s env LD_PRELOAD="$library" DUMP_HEAPTRACK_OUTPUT="$raw" "$binary" > "$RUNNER_TEMP/tree-alloc/$variant.stdout")
+            test -s "$raw"
+            shasum -a 256 "$raw" > "$RUNNER_TEMP/tree-alloc/$variant.raw.sha256"
+            "$interpreter" < "$raw" | gzip -n > "$RUNNER_TEMP/tree-alloc/$variant.heaptrack.gz"
+            heaptrack_print --file "$RUNNER_TEMP/tree-alloc/$variant.heaptrack.gz" --merge-backtraces 0 > "$RUNNER_TEMP/tree-alloc/$variant.summary.txt"
+            rm "$raw"
+          done
+          echo 'Instrumented whole-process allocation events; timings and RSS are not latency baselines. Allocator paths bypassing malloc are not counted.' > "$RUNNER_TEMP/tree-alloc/scope.txt"
+      - name: Retain allocation evidence and failures
+        if: ${{ always() }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: tree-path-allocations-${{ runner.arch }}
+          path: ${{ runner.temp }}/tree-alloc/
+          if-no-files-found: warn
+          retention-days: 30
+
+  windows-retention-control:
+    if: vars.CI_BILLING_PAUSED == 'false' && github.event_name == 'workflow_dispatch' && inputs['paired-only'] == true && inputs['paired-macos'] == true && inputs['startup-only'] == true && inputs['electrobun-smoke'] != true && (github.event_name != 'pull_request' || github.event.pull_request.draft == false)
+    runs-on: windows-2022
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/native-toolchain
+        with:
+          rust: 'false'
+      - name: Build the archived control with the pinned AOT compiler
+        shell: pwsh
+        run: |
+          $source = Join-Path $env:RUNNER_TEMP 'queue-v3.ts'
+          python benchmarks/retention/windows-control.py --prepare benchmarks/retention/source/queue-v3.ts.txt $source
+          if ($LASTEXITCODE -ne 0) { throw "Control preparation failed: $LASTEXITCODE" }
+          $binary = Join-Path $env:RUNNER_TEMP 'queue-v3-aot.exe'
+          bun compile $source --outfile $binary --explain=json *> (Join-Path $env:RUNNER_TEMP 'queue-v3-compile.log')
+          if ($LASTEXITCODE -ne 0) { throw "Control compile failed: $LASTEXITCODE" }
+          bun -e 'import { inspectBunExecutable } from "./scripts/native/inspect.ts"; import { inspectBunRuntime } from "./scripts/native/inspect-runtime.ts"; const graph = inspectBunExecutable(process.argv[1]); const runtime = inspectBunRuntime(process.argv[1]); if (!graph.hasCompiledProgram || runtime.jit !== "unused") throw new Error("Not an AOT executable"); console.log(JSON.stringify({ graph, runtime }, null, 2))' $binary > (Join-Path $env:RUNNER_TEMP 'queue-v3-inspection.json')
+          if ($LASTEXITCODE -ne 0) { throw "Control AOT inspection failed: $LASTEXITCODE" }
+      - name: Run 5 fresh processes per cell, alternating order
+        shell: pwsh
+        run: |
+          python benchmarks/retention/windows-control.py (Join-Path $env:RUNNER_TEMP 'queue-v3.ts') (Join-Path $env:RUNNER_TEMP 'queue-v3-aot.exe') (Join-Path $env:RUNNER_TEMP 'retention-control') 5
+          if ($LASTEXITCODE -ne 0) { throw "Control matrix failed: $LASTEXITCODE" }
+      - name: Build matched workloads and headless protocol peer
+        id: headless-build
+        if: ${{ !cancelled() }}
+        shell: pwsh
+        run: |
+          $root = Join-Path $env:RUNNER_TEMP 'headless-adapters'
+          New-Item -ItemType Directory -Path $root | Out-Null
+          $peer = Join-Path $root 'peer.exe'
+          bun build tests/core/protocol-peer.ts --compile --outfile $peer
+          if ($LASTEXITCODE -ne 0) { throw "Peer build failed: $LASTEXITCODE" }
+          $env:HEADLESS_CONTROL_ROOT = $root
+          foreach ($adapter in @('core', 'solid', 'react')) {
+            $env:HEADLESS_ADAPTER = $adapter
+            bun -e 'import { bundleApplication } from "./scripts/native/bundle.ts"; const adapter = process.env.HEADLESS_ADAPTER; const entries = { core: "direct.ts", solid: "reactive.tsx", react: "react.tsx" }; await bundleApplication({ framework: adapter === "react" ? "react" : "solid", entry: "benchmarks/solid/" + entries[adapter], outdir: process.env.HEADLESS_CONTROL_ROOT + "/" + adapter, cwd: process.cwd() })'
+            if ($LASTEXITCODE -ne 0) { throw "$adapter bundle failed: $LASTEXITCODE" }
+            $module = Join-Path $root "$adapter/application.js"
+            $binary = Join-Path $root "$adapter-aot.exe"
+            bun --no-install compile --no-script --production --explain=json $module --outfile $binary *> (Join-Path $root "$adapter-compile.log")
+            if ($LASTEXITCODE -ne 0) { throw "$adapter AOT compile failed: $LASTEXITCODE" }
+            bun -e 'import { inspectBunExecutable } from "./scripts/native/inspect.ts"; import { inspectBunRuntime } from "./scripts/native/inspect-runtime.ts"; const graph = inspectBunExecutable(process.argv[1]); const runtime = inspectBunRuntime(process.argv[1]); if (!graph.hasCompiledProgram || runtime.jit !== "unused") throw new Error("Not an AOT executable"); console.log(JSON.stringify({ graph, runtime }, null, 2))' $binary > (Join-Path $root "$adapter-inspection.json")
+            if ($LASTEXITCODE -ne 0) { throw "$adapter AOT inspection failed: $LASTEXITCODE" }
+          }
+      - name: Run matched workloads against headless peer
+        if: ${{ !cancelled() && steps.headless-build.outcome == 'success' }}
+        shell: pwsh
+        run: |
+          $root = Join-Path $env:RUNNER_TEMP 'headless-adapters'
+          $failed = 0
+          foreach ($adapter in @('core', 'solid', 'react')) {
+            python benchmarks/retention/headless-adapter-control.py $adapter (Join-Path $root 'peer.exe') (Join-Path $root "$adapter/application.js") (Join-Path $root "$adapter-aot.exe") (Join-Path $root "$adapter-results") 5
+            if ($LASTEXITCODE -ne 0) { $failed++ }
+          }
+          if ($failed -ne 0) { throw "$failed headless control matrices failed" }
+      - name: Retain all results and failures
+        if: ${{ always() }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: windows-retention-control-${{ runner.arch }}
+          path: |
+            ${{ runner.temp }}/retention-control/
+            ${{ runner.temp }}/queue-v3-compile.log
+            ${{ runner.temp }}/queue-v3-inspection.json
+            ${{ runner.temp }}/headless-adapters/
+            !${{ runner.temp }}/headless-adapters/peer.exe
+            !${{ runner.temp }}/headless-adapters/*-aot.exe
+          if-no-files-found: warn
           retention-days: 30

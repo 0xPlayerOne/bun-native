@@ -78,6 +78,46 @@ CPU models, logical CPUs, memory, Bun revision, pinned toolchain, `rustc` and
 `cargo` versions, Mesa/Xvfb package versions, display variables, and
 `/proc/loadavg` before every launch.
 
+## Startup attribution
+
+`--startup-trace-calibration` enables bounded startup traces only for the
+separate calibration launches; first and timed launches explicitly disable the
+trace. The calibration JSONL records transport spawn and hello phases and native
+GPUI platform construction, macOS frame-source selection, session initialization
+and hello phases. Records from each process use
+their own monotonic origin: subtract times only within the same process, and
+use the host PID, request ID and nonce to correlate events. The native clock
+starts when evidence is initialized, after process entry, so it does not include
+all process startup. Trace writes perturb execution and the record budget may
+be exhausted later in a calibration; traced startup is diagnostic, not an
+untraced latency sample or display-presentation time.
+
+For a bounded hosted macOS investigation of #678, run
+`gh workflow run benchmark-comparison.yml --ref <branch> -f startup-only=true -f trials=3`.
+That dispatch runs Core development and AOT on macOS and retains their raw
+calibration logs and ordinary untraced trials; it skips the Linux and Windows
+comparison jobs. A single trace per mode cannot establish instrumentation
+overhead or a performance gain.
+
+The explicit `paired-macos` dispatch builds the current release host and the
+fixed pre-candidate host `5cfbb71c83a5f3937543ee08aa8159960c1d80a0` on the
+same macOS runner. It calibrates both against the same inspected Core/AOT
+executable, rejects unequal paint trees and renderer identity, and alternates
+10 fresh-process pairs by default (configurable from 3 to 20), with tracing
+disabled. It checks host and executable
+hashes before each launch, retains raw reports and failures, and independently
+rechecks paired order, fingerprints, cleanup, workloads and startup milestones.
+`paired-analysis.json` reports paired bootstrap intervals for startup and
+acknowledgement differences, CPU time, and sampled process-tree RSS. If any
+resource sample is unavailable, its paired summary is null rather than a
+partial comparison. These milestones are not display presentation;
+the VM, load and caches remain uncontrolled, and the separate native input and
+fairness checks are still required.
+
+```sh
+gh workflow run benchmark-comparison.yml --ref <candidate-branch> -f paired-macos=true -f trials=3
+```
+
 ## Input-to-paint latency
 
 With `--input-trials N` (0 by default, otherwise 3..30) the controller runs N
@@ -200,6 +240,36 @@ and, when the run has input-latency launches, `input-launches.jsonl.gz` (each
 child report plus its driver `result.json`). It prints Markdown summary tables
 for per-launch metrics (with input latency when present), pooled operation
 samples and builds.
+
+### Same-runner input investigation for #675
+
+The manual `paired-only` workflow input runs a separate, Linux-only diagnostic
+on fixed historical source `d67794d1bde2eeb3621f2cd1f96d1379ea87a400` and
+current source `88e48ac73f6286cfde5124eb6741998ccc6bb144`. It builds each
+release host and Core application independently, then runs each source's
+normal comparison preparation with three trials and no input trials in one
+isolated X11 session. The paired runner rejects dirty or wrong source, failed
+preparations, different Bun versions or runner metadata, mismatched calibrated
+paint trees/renderers, and executables without verified AOT and JIT omission.
+
+It then launches 20 fresh Core/AOT processes per variant, alternating order
+within pairs. The existing XTest driver validates initial and final native
+paint, the click event, OS close and unforced cleanup. Binary and host hashes
+are checked before each launch and after the run. Each result and its digest,
+load average, all raw reports and errors are retained; one failed launch makes
+the paired summary fail instead of dropping it. Bootstrap intervals resample
+paired ratios and differences, not individual operations within a process.
+
+```sh
+gh workflow run benchmark-comparison.yml --ref <diagnostic-branch> -f paired-only=true
+```
+
+This diagnostic is limited to these two source revisions, one hosted Linux
+runner and the existing command-start-to-paint-record metric. It is not a
+display-presentation or physical-input measurement. CPU model, runner load and
+cache state can affect the results; paired execution reduces but does not
+eliminate those effects. The normal Linux, macOS and Windows jobs are skipped
+only for this explicit diagnostic dispatch and remain unchanged otherwise.
 
 ## Streaming-list fixture
 

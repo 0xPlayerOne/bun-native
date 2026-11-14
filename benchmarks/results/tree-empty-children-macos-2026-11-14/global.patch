@@ -1,0 +1,34 @@
+--- a/native/protocol/src/tree.rs
++++ b/native/protocol/src/tree.rs
+@@ -10,9 +10,12 @@
+ use serde::Serialize;
+ use std::collections::HashSet;
+ use std::fmt;
+-use std::sync::Arc;
++use std::sync::{Arc, LazyLock};
+ use std::time::Instant;
+ 
++// Empty leaves share one allocation; `Arc::make_mut` separates the first write.
++static EMPTY_CHILDREN: LazyLock<Arc<Vec<NodeId>>> = LazyLock::new(Arc::default);
++
+ #[derive(Debug, Clone, PartialEq)]
+ pub struct Node {
+     element: Arc<Element>,
+@@ -135,7 +138,7 @@
+                     style: Style::default(),
+                 }),
+                 parent: None,
+-                children: Arc::default(),
++                children: Arc::clone(&EMPTY_CHILDREN),
+                 input_revision: None,
+             },
+         );
+@@ -341,7 +344,7 @@
+                         Node {
+                             element: Arc::new(element),
+                             parent: None,
+-                            children: Arc::default(),
++                            children: Arc::clone(&EMPTY_CHILDREN),
+                             input_revision,
+                         },
+                     );

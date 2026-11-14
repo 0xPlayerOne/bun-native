@@ -35,13 +35,23 @@ fn main() {
     };
     startup_log::install_from_environment();
     phases::install_from_environment();
-    let (commands, events) = channel::connect();
     let evidence = evidence::Evidence::from_environment();
+    evidence.startup_phase("host_evidence_ready", None);
+    let (commands, events) = channel::connect();
+    evidence.startup_phase("channels_connected", None);
     #[cfg(target_os = "macos")]
-    frame_pacing::configure();
-    gpui_platform::application()
+    {
+        evidence.startup_phase("frame_pacing_enter", None);
+        frame_pacing::configure();
+        evidence.startup_phase("frame_pacing_complete", None);
+    }
+    evidence.startup_phase("gpui_application_enter", None);
+    let application = gpui_platform::application();
+    evidence.startup_phase("gpui_platform_created", None);
+    application
         .with_quit_mode(QuitMode::Explicit)
         .run(move |cx: &mut App| {
+            evidence.startup_phase("gpui_app_enter", None);
             input::bind_keys(cx);
             view::bind_keys(cx);
             let mut session = Session::new(events, evidence, policy, cx);

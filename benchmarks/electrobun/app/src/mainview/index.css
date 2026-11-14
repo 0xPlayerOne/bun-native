@@ -16,3 +16,27 @@ body {
 .row {
   font-size: 12px;
 }
+
+/* Match the native input fixture's button bounds (x 16..624, y 53..97). */
+.input-comparison .content > :first-child {
+  flex: 0 0 29px;
+}
+.input-comparison .content > button {
+  box-sizing: border-box;
+  flex: 0 0 44px;
+  appearance: none;
+  border: 0;
+  border-radius: 0;
+  background: #2255cc;
+  color: #fff;
+  font:
+    600 16px -apple-system,
+    sans-serif;
+}
+.input-comparison {
+  background: #fff;
+  overflow: hidden;
+}
+.input-comparison .row {
+  line-height: 19px;
+}

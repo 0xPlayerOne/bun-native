@@ -28,6 +28,7 @@ function distribution(samples: number[]) {
 
 class View {
   label = document.createElement('div')
+  button = document.createElement('button')
   list = document.createElement('div')
   rows = new Map<number, HTMLElement>()
   root = document.createElement('div')
@@ -35,8 +36,7 @@ class View {
   constructor(rows: readonly Row[]) {
     this.root.className = 'content'
     this.label.textContent = 'Initial'
-    const button = document.createElement('button')
-    button.textContent = 'Benchmark fixture'
+    this.button.textContent = 'Benchmark fixture'
     this.list.className = 'list'
     for (const row of rows) {
       const node = document.createElement('div')
@@ -45,7 +45,7 @@ class View {
       this.rows.set(row.id, node)
       this.list.append(node)
     }
-    this.root.append(this.label, button, this.list)
+    this.root.append(this.label, this.button, this.list)
     document.getElementById('window-root')!.append(this.root)
     this.mutations.create += 3 + rows.length
   }
@@ -70,7 +70,51 @@ async function main() {
     timeOriginEpochMs: performance.timeOrigin,
     scriptStartMs: performance.now(),
   }
+  if (params.get('input') === '1') {
+    document.documentElement.classList.add('input-comparison')
+    document.body.classList.add('input-comparison')
+  }
   let view = new View(initial)
+  if (params.get('input') === '1') {
+    const nonce = params.get('nonce')
+    if (!nonce) throw new Error('Visible-input comparison requires a nonce')
+    const post = async (path: string, body?: unknown) => {
+      const response = await fetch(`http://127.0.0.1:${port}/input/${path}`, {
+        method: 'POST',
+        headers: { 'x-benchmark-nonce': nonce },
+        ...(body === undefined ? {} : { body: JSON.stringify(body) }),
+      })
+      if (!response.ok) throw new Error(`Input ${path} failed: ${response.status}`)
+    }
+    let clicks = 0
+    let mountedMs = 0
+    view.button.addEventListener('click', () => {
+      clicks++
+      view.update(['Clicked'])
+    })
+    // The controller requests the report only after its capture, so a loopback
+    // fetch cannot run concurrently with the measured click-to-observation path.
+    window.addEventListener('bun-native-benchmark-finish', () => {
+      void post('clicked', {
+        nonce,
+        clicks,
+        label: view.label.textContent,
+        startup: { ...startup, viewMountedMs: mountedMs },
+        workload: { iterations, rotations, mounts, rows: rowCount, warmup: 0 },
+        userAgent: navigator.userAgent,
+      }).catch((error) =>
+        fetch(`http://127.0.0.1:${port}/report`, {
+          method: 'POST',
+          headers: { 'x-benchmark-nonce': nonce },
+          body: JSON.stringify({ error: String(error?.stack ?? error) }),
+        })
+      )
+    })
+    await frame()
+    mountedMs = performance.now()
+    await post('ready', [window.innerWidth, window.innerHeight])
+    return
+  }
   await frame()
   const mountedMs = performance.now()
   for (let index = 0; index < 20; index++) {
@@ -134,8 +178,10 @@ async function main() {
   })
 }
 main().catch(async (error) => {
+  const nonce = params.get('input') === '1' ? params.get('nonce') : null
   await fetch(`http://127.0.0.1:${port}/report`, {
     method: 'POST',
+    ...(nonce ? { headers: { 'x-benchmark-nonce': nonce } } : {}),
     body: JSON.stringify({ error: String(error?.stack ?? error) }),
   })
 })

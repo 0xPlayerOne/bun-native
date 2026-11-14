@@ -48,3 +48,56 @@ and 93 MB after its first launch. Comparison with Bun Native on the same Mac is 
 
 Not measured: per-operation latency comparable to Bun Native, CPU/GPU use, input
 latency, the CEF renderer, other platforms.
+
+## Visible-input fixture under development
+
+For the shared observer in #677, the reference has an opt-in input mode. An
+external controller supplies an absolute `EB_INPUT_CONTROL` path and a random
+UUID `EB_INPUT_NONCE`, alongside `EB_OUTPUT`. After the view's initial animation
+frame, the fixture creates the control file with its loopback port and nonce.
+It also reports the WebKit viewport dimensions for independent geometry checks.
+The controller must verify the owned window, inject one OS click, observe the
+changed output independently, then POST to `/input/finish` with the nonce in
+`x-benchmark-nonce`. The reference reports the click and exits; premature finish,
+wrong nonce, malformed click evidence and duplicate clicks are rejected. The
+reference records its click locally and sends the report only after the finish
+request, outside the click-to-observation interval. The control file must not
+already exist. The default workload does not enter this mode.
+
+This fixture has passed hosted owned-window click and composited-capture smoke
+checks for both applications. Matching visible geometry does not establish complete
+workload equivalence. A WebKit animation frame is not a display presentation timestamp.
+
+`observe-text-macos.m` is a bounded offline Vision OCR helper for a captured
+image; it can enlarge a bounded label crop and map observations back to the
+original image. `visible-text.ts` validates its text and normalized bounding boxes, and
+`visible-pixels.ts` compares a bounded region of two decoded captures. Neither
+establishes window ownership or physical presentation. The eventual driver must
+calibrate a stable unchanged region before using pixel differences as an arrival
+signal, then independently verify the expected text. Record capture, pixel
+comparison and OCR costs separately; an OCR result obtained after the change is
+not a display timestamp.
+
+The explicit `electrobun-smoke` workflow dispatch builds the pinned reference,
+the native release host and an inspected Core/AOT fixture on hosted macOS. It
+attempts an owned-window click and guarded composited-display capture for each
+sequentially. Each sample also captures the owned window surface and requires an
+exact pixel match in the calibrated label region; it records any overlapping
+window bounds. It retains screenshots and failures, and rejects forced cleanup.
+This is a qualification attempt, not the paired comparison or a physical
+display-presentation timestamp. Window-order checks immediately before and
+after capture cannot rule out a transient overlay between them.
+
+```sh
+gh workflow run benchmark-comparison.yml --ref <candidate-branch> -f electrobun-smoke=true
+```
+
+To collect fresh-process controls and alternating comparisons, add
+`-f paired-macos=true -f paired-macos-trials=10`. The job first qualifies both
+fixtures, then runs one warmup per variant, three A/A pairs per variant and the
+requested 3–20 AB/BA pairs. It retains every launch and stops on failure or changed
+binary fingerprints or viewport. The captured interval includes observer overhead;
+controls expose some noise but do not establish physical presentation latency or
+justify a general product ranking. The changed display capture's command-relative
+start and completion are recorded separately from the later surface, guard and
+pixel verification; the exact instant represented by the capture is unknown.

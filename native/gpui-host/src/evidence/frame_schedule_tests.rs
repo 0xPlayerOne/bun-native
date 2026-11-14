@@ -4,6 +4,24 @@ use std::sync::atomic::{AtomicU64, Ordering};
 
 static NEXT_FILE: AtomicU64 = AtomicU64::new(0);
 
+#[test]
+fn startup_phases_are_opt_in_correlated_and_share_the_budget() {
+    let (disabled_file, disabled) = make_log(false);
+    disabled.startup_phase("host_evidence_ready", None);
+    assert!(std::fs::read(&disabled_file.0).unwrap().is_empty());
+    let (file, enabled) = make_log(true);
+    enabled.startup_phase("host_evidence_ready", None);
+    enabled.startup_phase("hello_dispatched", Some(RequestId::try_from(1).unwrap()));
+    let records = rows(&file);
+    assert_eq!(records.len(), 2);
+    assert_eq!(records[0]["phase"], "host_evidence_ready");
+    assert!(records[0]["request_id"].is_null());
+    assert_eq!(records[1]["request_id"], 1);
+    assert_eq!(records[1]["stage"], "startup-diagnostic");
+    assert_eq!(records[1]["source"], "native");
+    assert_eq!(records[1]["index"], 2);
+}
+
 pub(super) struct TemporaryLog(pub(super) PathBuf);
 
 impl Drop for TemporaryLog {

@@ -73,3 +73,37 @@ alongside any new report. A framework-leak claim still needs a demonstrated
 strong ownership path that outlives disposal; a runtime-retention claim needs
 the actual marking source. Neither classification follows from a zero ownership
 counter, a survivor index, or an absent snapshot edge.
+
+## Framework-free Windows control plan
+
+The manual `Benchmark comparison` dispatch with `paired-only`, `paired-macos`,
+and `startup-only` enabled runs only the Windows retention control. It uses the
+archived queue-v3 source with two explicit compatibility changes: the unavailable
+static debugging import is obtained through `Reflect.get`, and hexadecimal
+addresses accept uppercase digits emitted on Windows. The original archive hash
+is checked before these changes, and the transformed source and AOT
+executable hashes are recorded. The executable must pass compiled-program and
+JIT-removal inspection before trials begin.
+
+Five fresh processes run in each of four cells, with cell order reversed on odd
+trials: development with default JSC, development with DFG disabled, AOT with
+`Bun.gc(true)`, and AOT with `releaseWeakRefs` plus `gcAndSweep`. Each control
+retains both original checkpoints and all result files. Process errors fail the
+job; a reachable target is an observation, not a successful benchmark or a
+classified leak. The control has no framework or native host, and its result
+cannot on its own explain the actual Windows React failures. No benchmark
+assertions or timed workload are changed.
+
+The same dispatch also builds the actual Core, Solid and React workloads and
+runs them against the headless public-core protocol peer: five development
+trials per adapter with DFG disabled
+(10 iterations, 10 rotations, two mounts) and five AOT trials per adapter (1,000 iterations,
+1,000 rotations, 100 mounts). Adapters run in Core, Solid, React order; mode
+order alternates within each adapter, and the unchanged workload
+retention assertion is recorded, including failures. The headless peer replaces
+GPUI and the run omits native paint calibration, so this tests the ownership and
+IPC boundary without claiming native rendering or equivalent performance. The
+control verifies the compiled-program flag and JIT omission, hashes the peer,
+module and executable, and requires the exact workload and zero cleanup counters.
+An unrelated process error makes the diagnostic fail rather than count as a
+retention observation.
