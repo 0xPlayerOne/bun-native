@@ -152,6 +152,42 @@ in 8 development and 9 AOT pairs. Unchanged phases varied as well, so these
 figures do not establish an end-to-end UI gain. [Raw paired records](raw/)
 include the per-process measurements and source and executable hashes.
 
+## Reordering siblings in a full window
+
+`moves.ts` measures 2,047 same-parent moves and transaction validation in a
+4,096-node graph: moving tail children to the front, front children to the
+tail, swapping adjacent pairs, and repeatedly appending the current tail. It
+checks the final order and operation count. It excludes renderer work, IPC,
+native model updates and paint. The repeated no-op case is a stress case,
+not a claim about typical application traffic.
+
+```sh
+bun benchmarks/core/moves.ts [samples=30]
+```
+
+On Apple M2 Max, macOS 27.2, AC power and pinned Bun `b1007f117`, twelve
+alternating fresh-process pairs per mode each ran five warmups and 30 measured
+transactions per pattern. The table gives medians of per-process p50s in ms;
+the ratio is the median of paired candidate/baseline ratios. Other load was
+uncontrolled. Both AOT binaries had the compiled-program flag and omitted JIT.
+
+| Pattern       | Dev before | Dev after | Dev ratio | AOT before | AOT after | AOT ratio |
+| ------------- | ---------: | --------: | --------: | ---------: | --------: | --------: |
+| Tail to front |     14.985 |     4.646 |     0.309 |      2.773 |     0.953 |     0.350 |
+| Front to tail |      2.977 |     1.249 |     0.416 |      2.734 |     0.710 |     0.267 |
+| Adjacent      |      9.087 |     6.257 |     0.706 |      4.597 |     1.686 |     0.373 |
+| Tail no-op    |     10.753 |     0.474 |     0.045 |      2.018 |     0.196 |     0.098 |
+
+All 12 pairs favored the candidate except development adjacent moves (9 of 12).
+Longer moves still use splice; adjacent moves swap, a front-to-tail rotation
+uses shift/push, and a tail match avoids a linear search. Every no-op still
+emits an insert. An independent 12-pair `commit.ts` guard found median paired
+ratios of 1.014 development and 1.003 AOT for mount total, and 1.050 and 1.048
+for keystroke total; exploratory bootstrap intervals include 1 for all four.
+These guard results are inconclusive, not proof of no regression. [Raw records](raw/)
+hold every sample and executable and source hashes. None of these results
+establishes end-to-end UI or competitive performance.
+
 ## Bulk removal from a full window
 
 `removals.ts` builds a 4,096-node committed graph and removes 2,048 text
