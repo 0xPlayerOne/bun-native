@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.33.2](https://github.com/0xPlayerOne/bun-native/compare/v0.33.1...v0.33.2) (2026-11-14)
+
+
+### CI
+
+* **codeql:** analyze our Rust crates and the patched vendor files only ([#661](https://github.com/0xPlayerOne/bun-native/issues/661)) ([00e40ba](https://github.com/0xPlayerOne/bun-native/commit/00e40bafeda03ad8f53908b945ec30c1cd7648e1))
+
 ## [0.33.1](https://github.com/0xPlayerOne/bun-native/compare/v0.33.0...v0.33.1) (2026-11-13)
 
 
