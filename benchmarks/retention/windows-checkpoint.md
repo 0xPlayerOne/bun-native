@@ -147,8 +147,12 @@ while the source glob returned physical `D:` paths. The first path patch could
 not relativize across those drive names. The revised build-time patch resolves
 both sides to their canonical paths before constructing the relative arguments
 and resolves the table generator's input names against its own source root.
-The path change and generated-output equivalence remain unverified; the next
-hosted build and workload controls provide checks, not a proof of equivalence.
+The [seventh run](https://github.com/0xPlayerOne/bun-native/actions/runs/43653418885)
+showed that `realpathSync` preserves the mapped drive alias: the preflight
+compared only paths reached through `X:` and the generated commands remained
+unchanged. The next patch explicitly uses the physical checkout root for both
+sides of the calculation. The path change and generated-output equivalence
+remain unverified; workload controls do not prove equivalence.
 
 A separate paired React fixture control tests one ownership hypothesis. Both
 variants use the same async disposal wrapper; after acknowledged disposal, the

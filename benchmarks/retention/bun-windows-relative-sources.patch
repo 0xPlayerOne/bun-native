@@ -13,7 +13,7 @@
          `--codegen-path=${cfg.codegenDir}`,
          `--target=${builtinTableTarget(cfg)}`,
 -        `--sources=${sources.bindgen.map(src => `${crateOf(src)}=${src}`).join(",")}`,
-+        `--sources=${sources.bindgen.map(src => `${crateOf(src)}=${relative(realpathSync(cfg.cwd), realpathSync(src))}`).join(",")}`,
++        `--sources=${sources.bindgen.map(src => `${crateOf(src)}=${relative(realpathSync(process.env.BUN_NATIVE_SOURCE_ROOT!), realpathSync(src))}`).join(",")}`,
          `--engine-directory=${engine.directory}`,
          ...(engine.javaScriptCore === undefined
            ? [`--prebuilt-generated=${engine.builtinsGeneratedDirectory}`]
@@ -33,7 +33,7 @@
          script,
          // Every schema: build/types is shared by every profile, so Bindgen.d.ts describes them all.
 -        `--sources=${sources.bindgen.map(src => `${crates.get(src)}=${src}`).join(",")}`,
-+        `--sources=${sources.bindgen.map(src => `${crates.get(src)}=${relative(realpathSync(cfg.cwd), realpathSync(src))}`).join(",")}`,
++        `--sources=${sources.bindgen.map(src => `${crates.get(src)}=${relative(realpathSync(process.env.BUN_NATIVE_SOURCE_ROOT!), realpathSync(src))}`).join(",")}`,
          typesOnlyFlag(cfg, sources),
          `--codegen-path=${cfg.codegenDir}`,
          `--types-path=${cfg.typesDir}`,
