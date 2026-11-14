@@ -533,6 +533,51 @@ fn preflight_shares_child_lists_until_a_batch_reorders_them() {
 }
 
 #[test]
+fn empty_child_lists_remain_isolated_when_one_leaf_becomes_a_parent() {
+    let tree = Tree::new(id(1))
+        .prepare(
+            0,
+            vec![
+                create(2, box_element()),
+                create(3, box_element()),
+                insert(1, 2, 0),
+                insert(1, 3, 1),
+            ],
+            1,
+        )
+        .unwrap()
+        .tree;
+    let next = tree
+        .prepare(1, vec![create(4, text("child")), insert(2, 4, 0)], 3)
+        .unwrap()
+        .tree;
+    assert!(tree.node(id(2)).unwrap().children().is_empty());
+    assert!(tree.node(id(3)).unwrap().children().is_empty());
+    assert_eq!(next.node(id(2)).unwrap().children(), &[id(4)]);
+    assert!(next.node(id(3)).unwrap().children().is_empty());
+    let other = Tree::new(id(1));
+    assert!(other.node(id(1)).unwrap().children().is_empty());
+}
+
+#[test]
+fn trees_with_empty_children_survive_creator_thread_exit() {
+    let tree = std::thread::spawn(|| {
+        Tree::new(id(1))
+            .prepare(0, vec![create(2, box_element()), insert(1, 2, 0)], 1)
+            .unwrap()
+            .tree
+    })
+    .join()
+    .unwrap();
+    let next = tree
+        .prepare(1, vec![create(3, text("child")), insert(2, 3, 0)], 2)
+        .unwrap()
+        .tree;
+    assert!(tree.node(id(2)).unwrap().children().is_empty());
+    assert_eq!(next.node(id(2)).unwrap().children(), &[id(3)]);
+}
+
+#[test]
 fn node_diff_reports_set_and_restructured_nodes_and_parents() {
     let tree = populated();
     let changed = |before: &Tree, after: &Tree| {
