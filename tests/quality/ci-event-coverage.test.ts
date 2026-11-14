@@ -109,6 +109,11 @@ test('paired input diagnostic requires an explicit dispatch and leaves ordinary 
   })
   expect(parsed.jobs['transaction-pairs']!.if).toContain("github.event_name == 'workflow_dispatch'")
   expect(parsed.jobs['transaction-pairs']!.if).toContain("inputs['transaction-pairs'] == true")
+  // Separate targets prevent Cargo from reusing the baseline protocol rlib
+  // for the candidate, even when workspace packages have identical names.
+  expect(source).toContain('baseline_target="$RUNNER_TEMP/transaction-cargo-baseline"')
+  expect(source).toContain('candidate_target="$RUNNER_TEMP/transaction-cargo-candidate"')
+  expect(source).toContain('if cmp -s "$RUNNER_TEMP/transaction-pairs/baseline-host"')
   for (const job of ['linux', 'macos', 'windows', 'paired-click'])
     expect(parsed.jobs[job]!.if).toContain("inputs['transaction-pairs'] != true")
   expect(parsed.jobs['paired-click']!.if).toContain("github.event_name == 'workflow_dispatch'")
