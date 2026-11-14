@@ -1,9 +1,9 @@
 /** Verify and summarize a completed same-runner paired-host comparison. */
 import assert from 'node:assert/strict'
 import { createHash } from 'node:crypto'
-import { readFileSync } from 'node:fs'
+import { readFileSync, statSync } from 'node:fs'
 import { isAbsolute, join } from 'node:path'
-import { assertEquivalentWorkloads, describe, type Labeled } from './stats.ts'
+import { assertEquivalentWorkloads, bootstrapMedian, describe, type Labeled } from './stats.ts'
 
 type Variant = 'baseline' | 'candidate'
 type Fingerprint = { sha256: string; bytes: number }
@@ -55,10 +55,18 @@ function metrics(samples: unknown, count: unknown) {
   }
 }
 
+function boundedFile(path: string): Buffer {
+  const stat = statSync(path)
+  assert(stat.isFile() && stat.size <= 4_194_304, 'Report exceeds size limit')
+  const bytes = readFileSync(path)
+  assert.equal(bytes.length, stat.size, 'Report changed while reading')
+  return bytes
+}
+
 /** Fail closed on missing, altered, reordered, incomplete or unequal launches. */
 export function analyzePairedRun(directory: string) {
   assert(isAbsolute(directory), 'Run directory must be absolute')
-  const record = JSON.parse(readFileSync(join(directory, 'comparison.json'), 'utf8')) as Run
+  const record = JSON.parse(boundedFile(join(directory, 'comparison.json')).toString('utf8')) as Run
   assert.equal(record.status, 'passed', 'Comparison did not pass')
   const candidate = record.nativeHost
   const baseline = record.pairedHost
@@ -93,7 +101,7 @@ export function analyzePairedRun(directory: string) {
           Number.isFinite(entry.process.wallMs) &&
           entry.process.wallMs > 0
       )
-      const bytes = readFileSync(join(directory, 'launches', `${name}.json`))
+      const bytes = boundedFile(join(directory, 'launches', `${name}.json`))
       assert(
         bytes.length <= 4_194_304 && bytes.length === entry.report?.bytes,
         'Child report size mismatch'
@@ -141,6 +149,31 @@ export function analyzePairedRun(directory: string) {
     trials: pairs.length,
     note: 'Each pair is one fresh process per host; acknowledgement is not input or display presentation.',
     pairs,
+    pairedDelta: {
+      meaning:
+        'Candidate minus baseline per pair; bootstrap assumes independent pairs and does not remove temporal or runner bias.',
+      signalMedianMs: bootstrapMedian(
+        pairs.map(
+          (pair) =>
+            pair.candidate!.phases.signals!.medianMs - pair.baseline!.phases.signals!.medianMs
+        )
+      ),
+      signalP95Ms: bootstrapMedian(
+        pairs.map(
+          (pair) => pair.candidate!.phases.signals!.p95Ms - pair.baseline!.phases.signals!.p95Ms
+        )
+      ),
+      signalSlowCount: bootstrapMedian(
+        pairs.map(
+          (pair) =>
+            pair.candidate!.phases.signals!.slowAtLeast10Ms -
+            pair.baseline!.phases.signals!.slowAtLeast10Ms
+        )
+      ),
+      processWallMs: bootstrapMedian(
+        pairs.map((pair) => pair.candidate!.wallMs - pair.baseline!.wallMs)
+      ),
+    },
     summary: Object.fromEntries(
       (['baseline', 'candidate'] as const).map((variant) => [
         variant,
