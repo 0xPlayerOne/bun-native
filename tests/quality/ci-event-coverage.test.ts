@@ -88,7 +88,13 @@ test('Windows runtime source build is limited to its explicit label and exact Bu
   ) as {
     on: { pull_request: { types: string[] } }
     permissions: Record<string, string>
-    jobs: Record<string, { if: string; steps: { with?: Record<string, string>; run?: string }[] }>
+    jobs: Record<
+      string,
+      {
+        if: string
+        steps: { with?: Record<string, string>; env?: Record<string, string>; run?: string }[]
+      }
+    >
   }
   const pin = JSON.parse(readFileSync(join(root, 'toolchain.json'), 'utf8')) as {
     bun: { revision: string }
@@ -105,6 +111,12 @@ test('Windows runtime source build is limited to its explicit label and exact Bu
   expect(webkit?.ref).toBe('4d45755fed4aeef19e95beb90d3d0c884a2812bd')
   expect(webkit?.['sparse-checkout']).toContain('Source/JavaScriptCore')
   expect(webkit?.['sparse-checkout']).not.toContain('LayoutTests')
+  for (const repository of ['oven-sh/bun', 'oven-sh/WebKit']) {
+    const checkout = job.steps.find((step) => step.with?.repository === repository)
+    expect(checkout?.env?.GIT_CONFIG_KEY_0).toBe('core.autocrlf')
+    expect(String(checkout?.env?.GIT_CONFIG_VALUE_0)).toBe('false')
+  }
+  expect(job.steps.some((step) => step.run?.includes('hash-object --no-filters'))).toBe(true)
   const build = job.steps.find((step) => step.run?.includes('--profile=release-local'))?.run
   expect(build).toContain('--profile=release-local --build-dir=build/release-local -j2')
 })

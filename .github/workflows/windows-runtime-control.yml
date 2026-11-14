@@ -30,6 +30,10 @@ jobs:
           rust: 'false'
       - name: Check out exact Bun source
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        env:
+          GIT_CONFIG_COUNT: '1'
+          GIT_CONFIG_KEY_0: core.autocrlf
+          GIT_CONFIG_VALUE_0: 'false'
         with:
           repository: oven-sh/bun
           ref: b1007f1177fd402fae67387b8548cae5ae9b5707
@@ -37,6 +41,10 @@ jobs:
           persist-credentials: false
       - name: Check out exact WebKit source
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        env:
+          GIT_CONFIG_COUNT: '1'
+          GIT_CONFIG_KEY_0: core.autocrlf
+          GIT_CONFIG_VALUE_0: 'false'
         with:
           repository: oven-sh/WebKit
           ref: 4d45755fed4aeef19e95beb90d3d0c884a2812bd
@@ -50,6 +58,18 @@ jobs:
             Source/ThirdParty
             Tools/Scripts
             icu
+      - name: Verify the checked-out AOT source list bytes
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $webkit = Join-Path $env:GITHUB_WORKSPACE '.diagnostics/webkit'
+          $file = Join-Path $webkit 'Source/JavaScriptCore/aot/Sources.txt'
+          $expected = git -C $webkit rev-parse 'HEAD:Source/JavaScriptCore/aot/Sources.txt'
+          if ($LASTEXITCODE -ne 0) { throw 'Cannot identify the source-list blob' }
+          $actual = git -C $webkit hash-object --no-filters $file
+          if ($LASTEXITCODE -ne 0) { throw 'Cannot hash the checked-out source list' }
+          Write-Host "AOT source list: checkout=$actual git-blob=$expected"
+          if ($actual -ne $expected) { throw 'Checked-out source-list bytes differ from the pinned blob' }
       - name: Install verified LLVM and NASM into the runner
         shell: pwsh
         run: |
