@@ -4,7 +4,7 @@ import {
   summarizePairs,
   verifyLaunch,
   verifyPreparations,
-} from '../../benchmarks/comparison/paired-input.ts'
+} from '../../benchmarks/comparison/paired-input-verify.ts'
 
 type Prepared = Parameters<typeof verifyPreparations>[0]
 type Observation = Parameters<typeof summarizePairs>[0][number]
