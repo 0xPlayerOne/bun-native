@@ -30,6 +30,21 @@ for mutation in ('cleanup', 'index', 'unrelated', 'adapter', 'workload'):
     if mutation == 'adapter': bad['adapter'] = 'solid'
     if mutation == 'workload': bad['workload']['mounts'] = 1
     assert not control.valid_report(bad, 'react', 'development', 0, revision, 1), mutation
+
+spec = importlib.util.spec_from_file_location('dispatch', 'benchmarks/retention/react-dispatch-control.py')
+dispatch = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(dispatch)
+source = 'before\ndispose: () => view.dispose(),\nafter'
+baseline = dispatch.variant_source(source, False)
+clear = dispatch.variant_source(source, True)
+assert baseline.replace('await view.dispose();', 'await view.dispose(); setText = undefined!; setRows = undefined!;') == clear
+assert 'before\n' in clear and '\nafter' in clear
+for invalid in ('no marker', source + source):
+    try:
+        dispatch.variant_source(invalid, False)
+        raise AssertionError('invalid fixture marker accepted')
+    except ValueError:
+        pass
 `
   const result = Bun.spawnSync(
     [process.platform === 'win32' ? 'python' : 'python3', '-c', python],

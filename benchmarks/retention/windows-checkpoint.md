@@ -107,3 +107,12 @@ control verifies the compiled-program flag and JIT omission, hashes the peer,
 module and executable, and requires the exact workload and zero cleanup counters.
 An unrelated process error makes the diagnostic fail rather than count as a
 retention observation.
+
+A separate paired React fixture control tests one ownership hypothesis. Both
+variants use the same async disposal wrapper; after acknowledged disposal, the
+`clear` variant additionally sets its two captured React state dispatchers to
+`undefined`. Five pairs alternate variant order. Each variant runs the same
+headless development and AOT workload checks described above, with all failures
+retained and source, executable and peer hashes recorded. The variants change
+fixture code and compiler liveness, so any difference is a diagnostic lead,
+not proof of a root or a fix. The original workload assertions remain intact.
