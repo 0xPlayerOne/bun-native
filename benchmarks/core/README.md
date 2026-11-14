@@ -107,3 +107,25 @@ encoding. Six alternating processes each, [raw records](raw/)
 `commit-handles-*`, per-process p50 µs: `mount` build 76.5–91.0 (median 80.2)
 → 68.9–88.9 (73.5), `mount` total 128–154 (134.8) → 119–156 (126.3);
 `keystroke` total 1.9–2.5 → 2.0–2.2.
+
+### Avoid duplicate append handle checks
+
+`append` previously resolved both handles to calculate the final index, then
+called `insert`, which resolved the same handles again. Both operations now
+share the insertion logic after their own handle and lifecycle checks. Appends
+still validate ownership, cycles and bounds before mutating the candidate.
+
+On an Apple M2 Max, macOS 27.2, AC power, pinned Bun `b1007f117`, twelve
+alternating fresh processes per version and mode each ran 5,000 samples after
+warm-up. Values are medians of the twelve per-process p50s, in µs; paired raw
+records, source hashes and compiler diagnostics are in [raw/](raw/).
+
+| Scenario and phase | Development before | Development after | AOT before | AOT after |
+| ------------------ | -----------------: | ----------------: | ---------: | --------: |
+| Mount build        |             51.812 |            49.584 |     33.021 |    31.479 |
+| Mount total        |             91.167 |            88.626 |     68.834 |    67.166 |
+| Keystroke total    |              1.125 |             1.125 |      0.708 |     0.708 |
+
+Mount build improved in 11 of 12 pairs in each mode. This isolates the core
+transaction and serialization path; it measures neither native work nor
+application startup, input-to-paint latency or competitive performance.
