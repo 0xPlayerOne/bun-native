@@ -56,6 +56,11 @@ rendering work and platform scheduling affect the observed interval. The actual
 requests in flight while injecting OS input and checks that input and paint
 progress before the producer stops. Reports retain acknowledgement throughput
 alongside responsiveness; they do not equate acknowledgements with presentation.
+The manually dispatched [macOS scheduling diagnostic](../../.github/workflows/benchmark-comparison.yml) (`macos-scheduling-only`)
+uses the same bounded fixture with guarded CoreGraphics input and checks native
+paint while the producer is active. Its geometry handshake captures the input
+before the large tree exceeds the layout-evidence limit. It reports unsupported
+input or missing evidence as a failure rather than a fairness pass.
 
 `bun-native-protocol` owns the [private v11 contract](../protocol/README.md).
 Protocol 11 requires shared layout, interaction and window-display service

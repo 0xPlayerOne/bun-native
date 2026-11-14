@@ -25,6 +25,17 @@ on:
         type: choice
         options: ['on', 'off']
         default: 'on'
+      phase-trials:
+        description: Extra macOS core AOT trace/control pairs for #666 (0 or 3 to 10)
+        default: '0'
+      macos-only:
+        description: Run only the macOS job for a targeted diagnostic
+        type: boolean
+        default: false
+      macos-scheduling-only:
+        description: Run the macOS native input and paint fairness diagnostic only
+        type: boolean
+        default: false
   schedule:
     - cron: '47 6 * * 3'
   pull_request:
@@ -53,7 +64,7 @@ concurrency:
 jobs:
   linux:
     name: Linux core/Solid/React development and AOT comparison
-    if: vars.CI_BILLING_PAUSED == 'false' && (github.event_name != 'pull_request' || github.event.pull_request.draft == false)
+    if: vars.CI_BILLING_PAUSED == 'false' && inputs['macos-only'] != true && inputs['macos-scheduling-only'] != true && (github.event_name != 'pull_request' || github.event.pull_request.draft == false)
     runs-on: ubuntu-24.04
     timeout-minutes: 60
     defaults:
@@ -238,6 +249,7 @@ jobs:
       CARGO_INCREMENTAL: 0
       PYTHONDONTWRITEBYTECODE: 1
       TRIALS: ${{ github.event_name == 'workflow_dispatch' && inputs.trials || '5' }}
+      PHASE_TRIALS: ${{ github.event_name == 'workflow_dispatch' && inputs['phase-trials'] || '0' }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -257,14 +269,29 @@ jobs:
           { time -p cargo build --locked --release --manifest-path Cargo.toml -p bun-native-host --bin bun-native-host --example workload-baseline; } 2>&1 | tee "$COMPARISON/host-build.log"
           shasum -a 256 target/release/bun-native-host target/release/examples/workload-baseline > "$COMPARISON/binary-sha256.txt"
           system_profiler SPDisplaysDataType SPHardwareDataType > "$COMPARISON/hardware.txt" 2>&1 || true
+      - name: Run macOS input and paint under bounded command load
+        if: ${{ inputs['macos-scheduling-only'] == true }}
+        timeout-minutes: 10
+        env:
+          BUN_NATIVE_HOST: ${{ github.workspace }}/target/release/bun-native-host
+        run: |
+          export BUN_NATIVE_PLATFORM_HELPER="$RUNNER_TEMP/native-platform-macos"
+          xcrun clang -fobjc-arc -Wall -Wextra -Werror -framework AppKit -framework CoreGraphics -framework ApplicationServices \
+            scripts/quality/native-platform-macos.m -o "$BUN_NATIVE_PLATFORM_HELPER"
+          bun scripts/quality/compile-aot-entries.ts --entry scheduling --outdir "$COMPARISON/scheduling-package"
+          python3 scripts/quality/native-scheduling-macos.py --output "$COMPARISON/scheduling-development" --mode development -- bun tests/native/scheduling.ts
+          application="$(bun -e 'console.log((await Bun.file(process.argv[1]).json()).application.file)' "$COMPARISON/scheduling-package/manifest.json")"
+          python3 scripts/quality/native-scheduling-macos.py --output "$COMPARISON/scheduling-aot" --mode aot -- "$COMPARISON/scheduling-package/$application"
       - name: Run the equivalent-workload comparison
+        if: ${{ inputs['macos-scheduling-only'] != true }}
         timeout-minutes: 40
         run: |
           bun benchmarks/comparison/run.ts \
             --host "$GITHUB_WORKSPACE/target/release/bun-native-host" --host-profile release \
-            --output "$COMPARISON/run" --trials "$TRIALS" --input-trials 0
+            --output "$COMPARISON/run" --trials "$TRIALS" --input-trials 0 \
+            --phase-trials "$PHASE_TRIALS"
       - name: Run the direct Rust GPUI baseline
-        if: ${{ !cancelled() && hashFiles('target/release/examples/workload-baseline') != '' }}
+        if: ${{ !cancelled() && inputs['macos-scheduling-only'] != true && hashFiles('target/release/examples/workload-baseline') != '' }}
         timeout-minutes: 10
         run: |
           bun benchmarks/rust-gpui/run.ts \
@@ -301,6 +328,7 @@ jobs:
           path: |
             ${{ runner.temp }}/comparison/
             !${{ runner.temp }}/comparison/run/*/application
+            !${{ runner.temp }}/comparison/scheduling-package/application
           include-hidden-files: true
           if-no-files-found: error
           retention-days: 30
@@ -311,7 +339,7 @@ jobs:
   # benchmarks/comparison/windows-processes.ts. The VM has no physical GPU.
   windows:
     name: Windows core/Solid/React and direct Rust GPUI comparison
-    if: vars.CI_BILLING_PAUSED == 'false' && (github.event_name != 'pull_request' || github.event.pull_request.draft == false)
+    if: vars.CI_BILLING_PAUSED == 'false' && inputs['macos-only'] != true && inputs['macos-scheduling-only'] != true && (github.event_name != 'pull_request' || github.event.pull_request.draft == false)
     runs-on: windows-2022
     timeout-minutes: 75
     defaults:

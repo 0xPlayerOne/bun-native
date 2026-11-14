@@ -38,6 +38,31 @@ Other options, with their defaults: `--adapters core,solid,react`, `--trials 5`
 (up to 10,000), `--mounts 100` (up to 1,000), `--rows 32` (up to 128) and
 `--rss-interval-ms 20` (up to 1,000).
 
+For the macOS acknowledgement investigation (#666), `--phase-trials 3` through
+`10` adds that many alternating core/AOT trace and uninstrumented control
+pairs after the normal timed launches. It requires the core adapter. Each
+traced launch writes its own bounded host phase trace and an analysis under
+`launches/`; the extra launches do not enter the normal summary or regression
+gate. The analysis rejects missing or truncated traces and unexpected batch
+sequences. Read-to-foreground timing starts after the worker decodes and validates
+the command; it includes channel enqueue, backpressure and foreground scheduling.
+Previous-yield overlap counts only time after that read and before the preceding
+explicit timer resumed; overlap is correlation, not proof of causation.
+Host preflight-to-reply-enqueue duration is only one part of the
+application's acknowledgement interval: the remainder combines scheduling,
+transport and application work, and neither interval measures presentation.
+The gap from the previous host reply to the next host batch and the intervening
+render count provide correlation only: the gap starts before the application
+submits the next request, so it is not an acknowledgement-time breakdown.
+Compare trace and control results to assess instrumentation overhead before
+interpreting a trace. The compact export omits diagnostic launch files; retain
+the raw run directory or workflow artifact.
+
+The `Benchmark comparison` workflow exposes `phase-trials` for dispatch on
+macOS only. Its default is zero, so scheduled and ordinary PR comparisons do
+not add diagnostic launches. For an isolated diagnostic dispatch, `macos-only`
+skips the Linux and Windows jobs; their results are not implied.
+
 ## Export a recorded run
 
 Both paths must be absolute, and the destination must not exist yet:

@@ -208,6 +208,9 @@ test('the comparison controller rejects invalid options before creating its outp
       [[...base, '--input-trials', '2'], /input-trials must be 0 or at least 3/],
       [[...base, '--input-trials', '31'], /input-trials must be an integer in 1\.\.30/],
       [[...base, '--input-trials', '3'], /requires the isolated Linux X11 session/],
+      [[...base, '--phase-trials', '2'], /phase-trials requires core and at least 3 pairs/],
+      [[...base, '--phase-trials', '11'], /phase-trials must be an integer in 1\.\.10/],
+      [[...base, '--adapters', 'solid', '--phase-trials', '3'], /phase-trials requires core/],
       [['--host', directory, '--host-profile', 'dev', '--output', output], /existing file/],
       [[...base, '--unknown'], /Unknown option/],
     ]
