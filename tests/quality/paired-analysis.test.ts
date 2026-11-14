@@ -70,6 +70,7 @@ test('summarizes every pair and retains tail samples', () => {
   try {
     const result = analyzePairedRun(root)
     expect(result.trials).toBe(3)
+    expect(result.pairedDelta.signalMedianMs.estimate).toBe(-9)
     expect(result.pairs[0]!.baseline!.phases.signals).toMatchObject({
       medianMs: 10.5,
       p95Ms: 20,
@@ -124,6 +125,16 @@ test('rejects unequal workloads even when the changed child hash is updated', ()
     }
     writeFileSync(join(root, 'comparison.json'), JSON.stringify(record))
     expect(() => analyzePairedRun(root)).toThrow(/Unequal workloads/)
+  } finally {
+    rmSync(root, { recursive: true, force: true })
+  }
+})
+
+test('rejects oversized reports before parsing them', () => {
+  const { root } = fixture()
+  try {
+    writeFileSync(join(root, 'comparison.json'), Buffer.alloc(4_194_305))
+    expect(() => analyzePairedRun(root)).toThrow(/size limit/)
   } finally {
     rmSync(root, { recursive: true, force: true })
   }

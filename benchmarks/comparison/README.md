@@ -84,7 +84,9 @@ validation.
 Run `bun benchmarks/comparison/paired-analysis.ts /absolute/run/directory` to
 verify the complete alternating pairs, child-report hashes, workload signatures
 and cleanup, and print per-launch medians, p95s, slow counts and wall times.
-This describes the data; it does not declare a performance win.
+Paired median differences include bootstrap intervals that assume independent
+pairs; they cannot remove temporal or runner bias. This describes the data; it
+does not declare a performance win.
 
 ## Export a recorded run
 
