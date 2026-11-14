@@ -1,10 +1,11 @@
-/** Hosted-only qualification of the Electrobun input fixture, not a paired benchmark. */
+/** Hosted-only qualification of one visible-input fixture, not a paired benchmark. */
 import assert from 'node:assert/strict'
-import { randomUUID } from 'node:crypto'
+import { createHash, randomUUID } from 'node:crypto'
 import { existsSync, mkdirSync, readFileSync, realpathSync, statSync, writeFileSync } from 'node:fs'
 import { dirname, isAbsolute, join, relative } from 'node:path'
 import { parseArgs } from 'node:util'
 import { decodePng } from '../../tests/native/png.ts'
+import { inspectBunExecutable } from '../../scripts/native/inspect.ts'
 import { compareVisiblePixels } from './visible-pixels.ts'
 import { verifyVisibleText } from './visible-text.ts'
 
@@ -12,6 +13,8 @@ const TITLE = 'Bun Native matched renderer workload'
 const { values } = parseArgs({
   options: {
     app: { type: 'string' },
+    'native-app': { type: 'string' },
+    'native-host': { type: 'string' },
     output: { type: 'string' },
     helper: { type: 'string' },
     ocr: { type: 'string' },
@@ -34,30 +37,67 @@ function ownedPath(value: string | undefined, exists: boolean): string {
   assert(part && !part.startsWith('..') && !isAbsolute(part), 'Path must be inside RUNNER_TEMP')
   return path
 }
-const app = ownedPath(values.app, true)
+const reference = Boolean(values.app)
+assert(
+  (reference && !values['native-app'] && !values['native-host']) ||
+    (!reference && values['native-app'] && values['native-host']),
+  'Supply either --app or both --native-app and --native-host'
+)
+const app = ownedPath(reference ? values.app : values['native-app'], true)
 const output = ownedPath(values.output, false)
 const helper = ownedPath(values.helper, true)
 const ocr = ownedPath(values.ocr, true)
 assert(!existsSync(output), 'Output already exists')
-const launcher = ownedPath(join(app, 'Contents/MacOS/launcher'), true)
-const host = ownedPath(join(app, 'Contents/MacOS/bun'), true)
+const launcher = reference ? ownedPath(join(app, 'Contents/MacOS/launcher'), true) : app
+const host = reference
+  ? ownedPath(join(app, 'Contents/MacOS/bun'), true)
+  : ownedPath(values['native-host'], true)
+const inspection = reference ? null : inspectBunExecutable(launcher)
+if (inspection)
+  assert(inspection.hasCompiledProgram, 'Native fixture is not an inspected Bun AOT executable')
+function fingerprint(path: string) {
+  const bytes = readFileSync(path)
+  return { bytes: bytes.length, sha256: createHash('sha256').update(bytes).digest('hex') }
+}
+const artifacts = { launcher: fingerprint(launcher), host: fingerprint(host), inspection }
 mkdirSync(output)
 const reportPath = join(output, 'application.json')
 const controlPath = join(output, 'control.json')
 const nonce = randomUUID()
 const started = performance.now()
-const child = Bun.spawn([launcher], {
-  detached: true,
-  stdin: 'ignore',
-  stdout: Bun.file(join(output, 'application.stdout.log')),
-  stderr: Bun.file(join(output, 'application.stderr.log')),
-  env: {
-    ...process.env,
-    EB_OUTPUT: reportPath,
-    EB_INPUT_CONTROL: controlPath,
-    EB_INPUT_NONCE: nonce,
-  },
-})
+const childEnv = { ...process.env }
+for (const key of Object.keys(childEnv)) if (key.startsWith('BUN_NATIVE_')) delete childEnv[key]
+delete childEnv['EB_INPUT_CONTROL']
+delete childEnv['EB_INPUT_NONCE']
+delete childEnv['EB_OUTPUT']
+const child = Bun.spawn(
+  reference
+    ? [launcher]
+    : [
+        launcher,
+        '--host',
+        host,
+        '--output',
+        reportPath,
+        '--nonce',
+        nonce,
+        '--mode',
+        'aot',
+        '--visible-input',
+      ],
+  {
+    detached: true,
+    stdin: 'ignore',
+    stdout: Bun.file(join(output, 'application.stdout.log')),
+    stderr: Bun.file(join(output, 'application.stderr.log')),
+    env: {
+      ...childEnv,
+      ...(reference
+        ? { EB_OUTPUT: reportPath, EB_INPUT_CONTROL: controlPath, EB_INPUT_NONCE: nonce }
+        : { BUN_NATIVE_HOST_PROFILE: 'release' }),
+    },
+  }
+)
 let groupOwned = false
 let result: Record<string, unknown> = { status: 'failed', nonce }
 function command(args: string[], timeout = 10_000) {
@@ -79,7 +119,11 @@ type WindowState = {
   status: 'ready'
   application: { pid: number; parent: number; image: string; created: string }
   host: { pid: number; parent: number; image: string; created: string }
-  window: { id: number; frame: [number, number, number, number] }
+  window: {
+    id: number
+    frame: [number, number, number, number]
+    titledContentSize: [number, number]
+  }
   windowServerTargetVerified?: boolean
   visibleRegionVerified?: boolean
   visibleRegion?: [number, number, number, number]
@@ -182,23 +226,21 @@ async function main() {
   groupOwned = true
   result['stage'] = 'awaiting-control'
   const deadline = performance.now() + 30_000
-  while (!existsSync(controlPath)) {
-    if (child.exitCode !== null)
-      throw new Error(`Application exited before readiness: ${child.exitCode}`)
-    if (performance.now() > deadline) throw new Error('Input fixture did not become ready')
-    await Bun.sleep(50)
+  let control: { nonce: string; port: number; viewport: [number, number] } | undefined
+  if (reference) {
+    while (!existsSync(controlPath)) {
+      if (child.exitCode !== null)
+        throw new Error(`Application exited before readiness: ${child.exitCode}`)
+      if (performance.now() > deadline) throw new Error('Input fixture did not become ready')
+      await Bun.sleep(50)
+    }
+    const controlStat = statSync(controlPath)
+    assert(controlStat.isFile() && controlStat.size > 0 && controlStat.size <= 4096)
+    control = JSON.parse(readFileSync(controlPath, 'utf8')) as typeof control
+    assert(control)
+    assert.equal(control.nonce, nonce)
+    assert(Number.isSafeInteger(control.port) && control.port > 0 && control.port <= 65535)
   }
-  const controlStat = statSync(controlPath)
-  assert(controlStat.isFile() && controlStat.size > 0 && controlStat.size <= 4096)
-  const control = JSON.parse(readFileSync(controlPath, 'utf8')) as {
-    nonce: string
-    port: number
-    viewport: [number, number]
-  }
-  assert.equal(control.nonce, nonce)
-  assert(Number.isSafeInteger(control.port) && control.port > 0 && control.port <= 65535)
-  assert(Array.isArray(control.viewport) && control.viewport.length === 2)
-  assert(control.viewport.every((n) => Number.isSafeInteger(n) && n >= 128 && n <= 8192))
   const request = { app_pid: child.pid, host, title: TITLE }
   let state: WindowState | PendingState
   for (;;) {
@@ -209,6 +251,9 @@ async function main() {
   }
   assert.equal(state.status, 'ready')
   assert.equal(state['application']['parent'], process.pid, 'Launcher is not our child')
+  const viewport = control?.viewport ?? state.window.titledContentSize
+  assert(Array.isArray(viewport) && viewport.length === 2)
+  assert(viewport.every((n) => Number.isSafeInteger(n) && n >= 128 && n <= 8192))
   const activated = await helperCall({ ...request, action: 'activate', expected: state })
   assert.equal(activated['status'], 'ready')
   result['stage'] = 'initial-capture'
@@ -217,11 +262,11 @@ async function main() {
   assert(Array.isArray(frame) && frame.length === 4 && frame.every(Number.isFinite))
   const windowId = state['window']['id'] as number
   assert(Number.isSafeInteger(windowId) && windowId > 0)
-  const first = await snapshot('initial', request, state, control.viewport)
+  let first = await snapshot('initial', request, state, viewport)
   const scale = first.png.width / frame[2]
   assert(scale >= 1 && scale <= 4 && Math.abs(first.png.height - frame[3] * scale) <= 1)
-  const side = (frame[2] - control.viewport[0]) / 2
-  const top = frame[3] - control.viewport[1] - side
+  const side = (frame[2] - viewport[0]) / 2
+  const top = frame[3] - viewport[1] - side
   assert(side >= 0 && top >= 0, 'Viewport does not fit observed frame')
   const region = [
     Math.floor((side + 12) * scale),
@@ -237,13 +282,38 @@ async function main() {
   ] as const
   result['region'] = region
   result['stage'] = 'initial-ocr'
-  const initialText = verifyVisibleText(
-    recognize(first.path, 'initial', region),
-    'Initial',
-    'Clicked',
-    regionNormalized
-  )
-  const second = await snapshot('initial-control', request, state, control.viewport)
+  let initialText: ReturnType<typeof verifyVisibleText> | undefined
+  let initialAttempts = 0
+  for (let attempt = 1; attempt <= 20; attempt++) {
+    const name = attempt === 1 ? 'initial' : `initial-${String(attempt).padStart(2, '0')}`
+    try {
+      initialText = verifyVisibleText(
+        recognize(first.path, name, region),
+        'Initial',
+        'Clicked',
+        regionNormalized
+      )
+      initialAttempts = attempt
+      break
+    } catch (error) {
+      if (
+        !(error instanceof Error) ||
+        error.message !== 'Captured text does not match the calibrated state' ||
+        performance.now() > deadline ||
+        attempt === 20
+      )
+        throw error
+      first = await snapshot(
+        `initial-${String(attempt + 1).padStart(2, '0')}`,
+        request,
+        state,
+        viewport
+      )
+      assert.equal(first.png.width / frame[2], scale, 'Capture scale changed during readiness')
+    }
+  }
+  assert(initialText, 'Initial label never became visible')
+  const second = await snapshot('initial-control', request, state, viewport)
   const negative = compareVisiblePixels(first.png, second.png, region)
   assert(negative.changedPixels <= 2, 'Initial label region is not stable')
   result['negative'] = negative
@@ -253,7 +323,7 @@ async function main() {
     ...request,
     action: 'click',
     expected: state,
-    viewport: control.viewport,
+    viewport,
     x: 100,
     y: 75,
   })
@@ -265,12 +335,7 @@ async function main() {
   let polls = 0
   while (performance.now() - clickStart < 10_000 && polls < 40) {
     polls++
-    const shot = await snapshot(
-      `post-${String(polls).padStart(2, '0')}`,
-      request,
-      state,
-      control.viewport
-    )
+    const shot = await snapshot(`post-${String(polls).padStart(2, '0')}`, request, state, viewport)
     const candidate = compareVisiblePixels(second.png, shot.png, region)
     if (candidate.changedPixels >= 8) {
       changed = shot
@@ -293,27 +358,64 @@ async function main() {
   assert.deepEqual(after['application'], state['application'])
   assert.deepEqual(after['host'], state['host'])
   assert.deepEqual(after['window'], state['window'])
-  const response = await fetch(`http://127.0.0.1:${control.port}/input/finish`, {
-    method: 'POST',
-    headers: { 'x-benchmark-nonce': nonce },
-  })
-  assert(response.ok, `Reference rejected finish: ${response.status}`)
+  let closeEvidence: WindowState | PendingState | null = null
+  if (reference) {
+    assert(control)
+    const response = await fetch(`http://127.0.0.1:${control.port}/input/finish`, {
+      method: 'POST',
+      headers: { 'x-benchmark-nonce': nonce },
+    })
+    assert(response.ok, `Reference rejected finish: ${response.status}`)
+  } else {
+    closeEvidence = await helperCall({ ...request, action: 'close', expected: state })
+    assert.equal(closeEvidence.status, 'ready')
+  }
   const exit = await Promise.race([child.exited, Bun.sleep(10_000).then(() => null)])
   assert.equal(exit, 0, 'Reference did not exit cleanly after finish')
   const report = JSON.parse(readFileSync(reportPath, 'utf8')) as Record<string, unknown>
-  assert.equal(report['clicks'], 1)
-  assert.equal(report['label'], 'Clicked')
   assert.equal(report['nonce'], nonce)
+  if (reference) {
+    assert.equal(report['clicks'], 1)
+    assert.equal(report['label'], 'Clicked')
+  } else {
+    assert.equal(report['status'], 'passed')
+    assert.equal(report['declaredMode'], 'aot')
+    assert.equal(report['bunRevision'], Bun.revision)
+    assert.equal(realpathSync(String(report['executable'])), launcher)
+    const input = report['input'] as Record<string, unknown>
+    assert.equal(input?.['clicks'], 1)
+    assert.equal(input?.['label'], 'Clicked')
+    const workload = report['workload'] as Record<string, unknown>
+    assert.equal(workload?.['scenario'], 'visible-input')
+    assert.deepEqual(
+      report['cleanup'],
+      {
+        windows: 0,
+        nodes: 0,
+        callbacks: 0,
+        queuedTransactions: 0,
+        queuedCallbacks: 0,
+        activeCallbacks: 0,
+        serviceRequests: 0,
+      },
+      'Native cleanup is incomplete'
+    )
+  }
+  assert.deepEqual(fingerprint(launcher), artifacts.launcher, 'Application binary changed')
+  assert.deepEqual(fingerprint(host), artifacts.host, 'Host binary changed')
   result = {
     status: 'passed',
     stage: 'complete',
     nonce,
     identity: state,
     injection,
+    closeEvidence,
+    artifacts,
     frame,
-    viewport: control.viewport,
+    viewport,
     region,
     initialText,
+    initialAttempts,
     clickedText,
     negative,
     difference,
@@ -336,8 +438,7 @@ async function main() {
       final: changed.guardAndDecodeMs,
     },
     displayGuards: { initial: first.guard, control: second.guard, final: changed.guard },
-    scope:
-      'One owned Electrobun display-region capture and guarded OS click; not paired or a physical presentation timestamp.',
+    scope: `One owned ${reference ? 'Electrobun' : 'Bun Native AOT'} display-region capture and guarded OS click; not paired or a physical presentation timestamp.`,
   }
 }
 try {

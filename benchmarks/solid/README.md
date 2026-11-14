@@ -60,6 +60,12 @@ Use fresh output/session directories outside the repository, preferably under th
 
 The child workload also accepts `--input-latency`: it mounts the same tree, updates the label once when the fixture button is clicked and exits on OS close. Only the [comparison controller](../COMPARISON.md#input-to-paint-latency) uses it, under the XTest driver; this controller never does.
 
+The separate `--visible-input` mode mounts the same input fixture with native
+paint evidence disabled. It is for the hosted macOS display-observer smoke in
+[#677](https://github.com/0xPlayerOne/bun-native/issues/677), which verifies the
+click, captured label and cleanup externally. It cannot be combined with
+`--input-latency` or `--calibration`.
+
 `comparison.json` records source/host/compiler provenance, executable inspection, actual calibration GPU metadata and report digests. Per-trial JSON retains raw timings, mutations, component reuse/disposal, weak-target and heap observations, and cleanup. CPU models, logical count, OS and memory are recorded; power state, other machine load and OS cache state remain uncontrolled. A development-profile host is explicitly diagnostic and does not establish release performance.
 
 Actual pointer/text qualification uses the separate `tests/native/solid-window.py` scenarios. Input-to-paint, display presentation, cumulative allocations, native RSS, hardware-GPU behavior, macOS/Windows GUI, physical input, IME/accessibility, cold-cache startup and long-term leak freedom remain separate acceptance work.
