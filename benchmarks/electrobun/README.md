@@ -64,10 +64,9 @@ reference records its click locally and sends the report only after the finish
 request, outside the click-to-observation interval. The control file must not
 already exist. The default workload does not enter this mode.
 
-This is fixture preparation, not a working comparative benchmark: the owned-window
-observer and externally injected click still need validation for both applications,
-and composited-display capture, calibration and a paired runner remain unfinished.
-A WebKit animation frame is not a display presentation timestamp.
+This fixture has passed hosted owned-window click and composited-capture smoke
+checks for both applications. Matching visible geometry does not establish complete
+workload equivalence. A WebKit animation frame is not a display presentation timestamp.
 
 `observe-text-macos.m` is a bounded offline Vision OCR helper for a captured
 image; it can enlarge a bounded label crop and map observations back to the
@@ -92,3 +91,11 @@ after capture cannot rule out a transient overlay between them.
 ```sh
 gh workflow run benchmark-comparison.yml --ref <candidate-branch> -f electrobun-smoke=true
 ```
+
+To collect fresh-process controls and alternating comparisons, add
+`-f paired-macos=true -f paired-macos-trials=10`. The job first qualifies both
+fixtures, then runs one warmup per variant, three A/A pairs per variant and the
+requested 3–20 AB/BA pairs. It retains every launch and stops on failure or changed
+binary fingerprints or viewport. The captured interval includes observer overhead;
+controls expose some noise but do not establish physical presentation latency or
+justify a general product ranking.

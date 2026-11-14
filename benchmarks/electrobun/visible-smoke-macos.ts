@@ -364,6 +364,7 @@ async function main() {
     const response = await fetch(`http://127.0.0.1:${control.port}/input/finish`, {
       method: 'POST',
       headers: { 'x-benchmark-nonce': nonce },
+      signal: AbortSignal.timeout(10_000),
     })
     assert(response.ok, `Reference rejected finish: ${response.status}`)
   } else {
