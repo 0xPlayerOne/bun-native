@@ -82,6 +82,30 @@ test('draft guards apply to every implementation job, not merely the workflow', 
   expect(() => unguardedJobs('name: no jobs')).toThrow('missing workflow jobs')
 })
 
+test('Windows runtime source build is limited to its explicit label and exact Bun revision', () => {
+  const workflow = Bun.YAML.parse(
+    readFileSync(join(root, '.github/workflows/windows-runtime-control.yml'), 'utf8')
+  ) as {
+    on: { pull_request: { types: string[] } }
+    permissions: Record<string, string>
+    jobs: Record<string, { if: string; steps: { with?: Record<string, string> }[] }>
+  }
+  const pin = JSON.parse(readFileSync(join(root, 'toolchain.json'), 'utf8')) as {
+    bun: { revision: string }
+  }
+  expect(workflow.on.pull_request.types).toEqual(['labeled'])
+  expect(workflow.permissions).toEqual({ contents: 'read' })
+  const job = workflow.jobs['local-runtime']!
+  expect(job.if).toContain("github.event.label.name == 'diagnostic:windows-runtime'")
+  expect(job.if).toContain('github.event.pull_request.draft == false')
+  expect(job.steps.find((step) => step.with?.repository === 'oven-sh/bun')?.with?.ref).toBe(
+    pin.bun.revision
+  )
+  expect(job.steps.find((step) => step.with?.repository === 'oven-sh/WebKit')?.with?.ref).toBe(
+    '4d45755fed4aeef19e95beb90d3d0c884a2812bd'
+  )
+})
+
 test('paired input diagnostic requires an explicit dispatch and leaves ordinary jobs enabled by default', () => {
   const source = readFileSync(join(root, '.github/workflows/benchmark-comparison.yml'), 'utf8')
   const parsed = Bun.YAML.parse(source) as {

@@ -114,6 +114,15 @@ before creating output and records its SHA-256 as `developmentRuntime` in the
 plan. The AOT binary is a separate input and must be compiled and inspected for
 the selected runtime; its hash alone does not prove its provenance.
 
+The label-triggered `Windows runtime build control` builds an uninstrumented
+`release-local` Bun from the pinned Bun and WebKit sources on an isolated
+Windows runner. It compares that runtime with the pinned distribution using
+three alternating sets of the unchanged headless React workload in development
+and inspected AOT modes. The `diagnostic:windows-runtime` label is an explicit
+trigger; ordinary PR events do not start the source build. Its 120-minute limit
+and retained outcomes make build failures and missing coverage visible. This
+control cannot identify a retaining root and does not qualify native paint.
+
 A separate paired React fixture control tests one ownership hypothesis. Both
 variants use the same async disposal wrapper; after acknowledged disposal, the
 `clear` variant additionally sets its two captured React state dispatchers to
