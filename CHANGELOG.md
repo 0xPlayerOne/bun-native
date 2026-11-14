@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.33.4](https://github.com/0xPlayerOne/bun-native/compare/v0.33.3...v0.33.4) (2026-11-14)
+
+
+### Performance
+
+* **core:** accelerate sibling reorders ([#672](https://github.com/0xPlayerOne/bun-native/issues/672)) ([88e48ac](https://github.com/0xPlayerOne/bun-native/commit/88e48ac73f6286cfde5124eb6741998ccc6bb144))
+
 ## [0.33.3](https://github.com/0xPlayerOne/bun-native/compare/v0.33.2...v0.33.3) (2026-11-14)
 
 
