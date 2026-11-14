@@ -111,6 +111,15 @@ try {
     )
   )
   await host.send({ type: 'batch', window_id: 1, base_revision: revision++, operations })
+  if (process.env['BUN_NATIVE_SCHEDULING_GEOMETRY_GATE'] === '1') {
+    record('geometry-ready', { treeRevision: revision })
+    const deadline = performance.now() + 10_000
+    while (!existsSync(join(directory, 'geometry-continue'))) {
+      if (performance.now() >= deadline)
+        throw new Error('Controller did not capture input geometry')
+      await Bun.sleep(5)
+    }
+  }
   const fillerCount = 1024
   for (let start = 0; start < fillerCount; start += 128) {
     const chunk: Operation[] = []
