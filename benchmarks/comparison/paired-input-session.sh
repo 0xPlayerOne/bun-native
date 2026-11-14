@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Run two independently calibrated preparations and then alternating Core/AOT clicks
+# Run two independently calibrated preparations and then alternating Core clicks
 # inside one already-isolated X11/DBus session. All paths are supplied by the workflow.
 set -euo pipefail
 : "${PAIR_ROOT:?}" "${PAIR_BASELINE_SOURCE:?}" "${PAIR_CANDIDATE_SOURCE:?}" \
@@ -22,4 +22,4 @@ bun benchmarks/comparison/paired-input.ts \
   --baseline-source "$PAIR_BASELINE_SOURCE" --candidate-source "$PAIR_CANDIDATE_SOURCE" \
   --baseline-host "$PAIR_BASELINE_HOST" --candidate-host "$PAIR_CANDIDATE_HOST" \
   --baseline-commit "$PAIR_BASELINE_SHA" --candidate-commit "$PAIR_CANDIDATE_SHA" \
-  --output "$PAIR_OUTPUT/pairs" --pairs 20
+  --output "$PAIR_OUTPUT/pairs" --pairs 20 --mode "${PAIR_MODE:-aot}"

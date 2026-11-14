@@ -12,6 +12,7 @@ const cleanup = {
   serviceRequests: 0,
 }
 export type Fingerprint = { bytes: number; sha256: string }
+export type InputMode = 'aot' | 'development'
 export type Prepared = {
   status: string
   source: { commit: string; dirty: boolean }
@@ -20,6 +21,7 @@ export type Prepared = {
   toolchain: { bunRevision: string }
   builds: {
     core: {
+      development?: Fingerprint
       aot: Fingerprint & {
         inspection: { hasCompiledProgram: boolean }
         runtimeFeatures: { jit: string; jitRemovedRanges: { count: number } }
@@ -74,7 +76,8 @@ export function verifyPreparations(
   candidate: Prepared,
   baselineCommit: string,
   candidateCommit: string,
-  expectedInitial: unknown
+  expectedInitial: unknown,
+  mode: InputMode = 'aot'
 ): void {
   for (const [name, report, commit] of [
     ['baseline', baseline, baselineCommit],
@@ -95,8 +98,11 @@ export function verifyPreparations(
       report.builds.core.aot.runtimeFeatures.jitRemovedRanges.count > 0,
       `${name} JIT omission is not established`
     )
+    if (mode === 'development') {
+      assert(report.builds.core.development, `${name} development module missing`)
+    }
     assert(
-      report.calibrations.some((entry) => entry.name === 'core-aot-calibration'),
+      report.calibrations.some((entry) => entry.name === `core-${mode}-calibration`),
       `${name} calibration missing`
     )
   }
@@ -106,8 +112,8 @@ export function verifyPreparations(
     'Bun revisions differ'
   )
   assert.deepEqual(baseline.target, candidate.target, 'Runner environment differs')
-  const a = baseline.calibrations.find((entry) => entry.name === 'core-aot-calibration')!
-  const b = candidate.calibrations.find((entry) => entry.name === 'core-aot-calibration')!
+  const a = baseline.calibrations.find((entry) => entry.name === `core-${mode}-calibration`)!
+  const b = candidate.calibrations.find((entry) => entry.name === `core-${mode}-calibration`)!
   for (const phase of ['initial', 'final'] as const) {
     assert.deepEqual(a[phase].renderer.gpu, b[phase].renderer.gpu, `${phase} renderers differ`)
     assert.deepEqual(a[phase].paint.nodes, b[phase].paint.nodes, `${phase} trees differ`)
@@ -158,7 +164,8 @@ export function verifyLaunch(
   binary: string,
   revision: string,
   gpu: unknown,
-  expectedLabel: string
+  expectedLabel: string,
+  mode: InputMode = 'aot'
 ): number {
   assert.equal(driver.status, 'passed', 'Driver failed')
   for (const check of [
@@ -194,7 +201,7 @@ export function verifyLaunch(
   assert.equal(app.nonce, nonce, 'Wrong child report')
   assert.equal(app.executable, binary, 'Wrong executable')
   assert.equal(app.adapter, 'core')
-  assert.equal(app.declaredMode, 'aot')
+  assert.equal(app.declaredMode, mode)
   assert.equal(app.bunRevision, revision)
   assert.deepEqual(app.workload, { scenario: 'input-latency', rows: 32 })
   assert.equal(app.input.clicks, 1)

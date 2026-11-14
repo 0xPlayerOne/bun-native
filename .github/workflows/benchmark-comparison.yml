@@ -26,7 +26,7 @@ on:
         options: ['on', 'off']
         default: 'on'
       paired-only:
-        description: Run the bounded same-runner Core/AOT investigation for #675 only
+        description: Run the bounded same-runner Core input investigation for #675 only
         type: boolean
         default: false
       startup-only:
@@ -473,7 +473,7 @@ jobs:
           retention-days: 30
 
   paired-click:
-    name: Paired Linux Core AOT input investigation
+    name: Paired Linux Core development input investigation
     if: vars.CI_BILLING_PAUSED == 'false' && github.event_name == 'workflow_dispatch' && inputs['paired-only'] == true && inputs['paired-macos'] != true && inputs['startup-only'] != true && inputs['electrobun-smoke'] != true && (github.event_name != 'pull_request' || github.event.pull_request.draft == false)
     runs-on: ubuntu-24.04
     timeout-minutes: 90
@@ -484,8 +484,9 @@ jobs:
       CARGO_BUILD_JOBS: 2
       CARGO_INCREMENTAL: 0
       PYTHONDONTWRITEBYTECODE: 1
-      PAIR_BASELINE_SHA: d67794d1bde2eeb3621f2cd1f96d1379ea87a400
-      PAIR_CANDIDATE_SHA: 88e48ac73f6286cfde5124eb6741998ccc6bb144
+      PAIR_BASELINE_SHA: 15878c8be33a5e2e551ec410efa913d766322d58
+      PAIR_CANDIDATE_SHA: 6e6f332be4d7a33efb9cbb10d9eb1c9c5c1320e6
+      PAIR_MODE: development
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -507,13 +508,13 @@ jobs:
       - name: Checkout historical baseline
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          ref: d67794d1bde2eeb3621f2cd1f96d1379ea87a400
+          ref: 15878c8be33a5e2e551ec410efa913d766322d58
           path: .bun-native/paired/baseline
           persist-credentials: false
       - name: Checkout current comparison source
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          ref: 88e48ac73f6286cfde5124eb6741998ccc6bb144
+          ref: 6e6f332be4d7a33efb9cbb10d9eb1c9c5c1320e6
           path: .bun-native/paired/candidate
           persist-credentials: false
       - name: Build both exact release hosts
@@ -543,7 +544,7 @@ jobs:
         timeout-minutes: 3
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
-          name: paired-core-aot-input-linux-${{ runner.arch }}
+          name: paired-core-development-input-linux-${{ runner.arch }}
           path: |
             ${{ runner.temp }}/paired-click/
             !${{ runner.temp }}/paired-click/*-host

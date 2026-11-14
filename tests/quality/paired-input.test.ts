@@ -60,6 +60,24 @@ describe('paired input comparison', () => {
     b.calibrations[0]!.initial.paint.nodes = []
     expect(() => verifyPreparations(a, b, before, after, expectedInitial)).toThrow('trees differ')
   })
+  test('development pairs require their module and matching development calibrations', () => {
+    const a = preparation(before)
+    const b = preparation(after)
+    expect(() => verifyPreparations(a, b, before, after, expectedInitial, 'development')).toThrow(
+      'development module missing'
+    )
+    for (const report of [a, b]) {
+      report.builds.core.development = { bytes: 2, sha256: 'module' }
+      report.calibrations.push({ ...report.calibrations[0]!, name: 'core-development-calibration' })
+    }
+    expect(() =>
+      verifyPreparations(a, b, before, after, expectedInitial, 'development')
+    ).not.toThrow()
+    b.calibrations.pop()
+    expect(() => verifyPreparations(a, b, before, after, expectedInitial, 'development')).toThrow(
+      'calibration missing'
+    )
+  })
   test('preserves pairing and rejects failed, incomplete or reordered launches', () => {
     const summary = summarizePairs(observations, 3)
     expect(summary.pairedRatios).toEqual([2, 1.5, 0.5])
@@ -126,6 +144,22 @@ describe('paired input comparison', () => {
         'Clicked'
       )
     expect(check()).toBe(5)
+    app.declaredMode = 'development'
+    expect(check).toThrow()
+    expect(
+      verifyLaunch(
+        driver,
+        app,
+        'nonce',
+        '/host',
+        '/application',
+        'revision',
+        { name: 'renderer' },
+        'Clicked',
+        'development'
+      )
+    ).toBe(5)
+    app.declaredMode = 'aot'
     app.input.label = 'Wrong'
     expect(check).toThrow()
     app.input.label = 'Clicked'

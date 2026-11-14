@@ -61,3 +61,25 @@ bun benchmarks/comparison/metrics.ts gate /tmp/metrics.json benchmarks/compariso
 
 `gate` exits 1 on a stable regression or a missing metric and 0 when no
 baseline has the run's environment label.
+
+## Paired Linux development input investigation
+
+The manual `paired-only` dispatch builds the fixed main and PR revisions named
+in the workflow, then runs 20 alternating fresh-process Core development
+clicks per variant in one X11 session. Each source gets its own release host and
+bundled development module; the controller hashes both hosts, both modules and
+the shared Bun runtime before and after launches. It requires matching native
+paint trees and renderer, OS-injected input and clean shutdown. It reports every
+launch and within-pair differences; a failed launch fails the comparison.
+
+```sh
+gh workflow run benchmark-comparison.yml --ref <candidate-branch> -f paired-only=true
+```
+
+The pinned pair tests the PR against its `main` base, not the older separately
+measured gate baseline. Update the revisions deliberately before assessing
+another candidate; the result alone cannot explain the historical gate failure.
+It measures XTest command start to observed native paint, including driver and
+observation overhead, not physical input or display latency. Runner load and
+cache are uncontrolled. The reusable paired driver still supports AOT mode;
+development and AOT timings must not be combined.

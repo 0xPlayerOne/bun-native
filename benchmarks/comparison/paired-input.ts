@@ -1,4 +1,4 @@
-/** Same-session, alternating Core/AOT click-to-paint diagnostic for #675. */
+/** Same-session, alternating Core click-to-paint diagnostic for #675. */
 import assert from 'node:assert/strict'
 import { createHash, randomUUID } from 'node:crypto'
 import {
@@ -21,6 +21,7 @@ import {
   type Observation,
   type DriverReport,
   type ChildReport,
+  type InputMode,
 } from './paired-input-verify.ts'
 
 const MAX_REPORT_BYTES = 4_194_304
@@ -43,16 +44,18 @@ async function digest(path: string): Promise<Fingerprint> {
   for await (const chunk of createReadStream(path)) hash.update(chunk)
   return { bytes: statSync(path).size, sha256: hash.digest('hex') }
 }
-async function verifyArtifacts(variant: Variant): Promise<void> {
+async function verifyArtifacts(variant: Variant, mode: InputMode): Promise<void> {
   assert.deepEqual(
     await digest(variant.host),
     { bytes: variant.report.nativeHost.bytes, sha256: variant.report.nativeHost.sha256 },
     `${variant.name} host changed`
   )
+  const artifact = variant.report.builds.core[mode]
+  assert(artifact, `${variant.name} artifact missing`)
   assert.deepEqual(
     await digest(variant.binary),
-    { bytes: variant.report.builds.core.aot.bytes, sha256: variant.report.builds.core.aot.sha256 },
-    `${variant.name} binary changed`
+    { bytes: artifact.bytes, sha256: artifact.sha256 },
+    `${variant.name} artifact changed`
   )
 }
 
@@ -69,6 +72,7 @@ async function main(): Promise<void> {
       'baseline-commit': { type: 'string' },
       'candidate-commit': { type: 'string' },
       pairs: { type: 'string', default: '12' },
+      mode: { type: 'string', default: 'aot' },
     },
     strict: true,
   })
@@ -88,18 +92,26 @@ async function main(): Promise<void> {
   assert(!process.env['BUN_NATIVE_PHASE_TRACE'], 'Phase tracing must be off for timed launches')
   const pairs = Number(values.pairs)
   assert(Number.isSafeInteger(pairs) && pairs >= 3 && pairs <= 30, 'Expected 3–30 pairs')
+  assert(values.mode === 'aot' || values.mode === 'development', 'Invalid input mode')
+  const mode: InputMode = values.mode
   const baseline: Variant = {
     name: 'baseline',
     source: required('baseline-source'),
     host: required('baseline-host'),
-    binary: join(baselineDir, 'core/application'),
+    binary: join(
+      baselineDir,
+      mode === 'aot' ? 'core/application' : 'core/development/application.js'
+    ),
     report: readJson(join(baselineDir, 'comparison.json')) as Prepared,
   }
   const candidate: Variant = {
     name: 'candidate',
     source: required('candidate-source'),
     host: required('candidate-host'),
-    binary: join(candidateDir, 'core/application'),
+    binary: join(
+      candidateDir,
+      mode === 'aot' ? 'core/application' : 'core/development/application.js'
+    ),
     report: readJson(join(candidateDir, 'comparison.json')) as Prepared,
   }
   const rows = Array.from({ length: 32 }, (_, id) => ({ id, text: `Row ${id}` }))
@@ -108,10 +120,12 @@ async function main(): Promise<void> {
     candidate.report,
     values['baseline-commit'] ?? '',
     values['candidate-commit'] ?? '',
-    expectedNodes(rows, 'Initial')
+    expectedNodes(rows, 'Initial'),
+    mode
   )
-  await verifyArtifacts(baseline)
-  await verifyArtifacts(candidate)
+  await verifyArtifacts(baseline, mode)
+  await verifyArtifacts(candidate, mode)
+  const runtime = mode === 'development' ? await digest(process.execPath) : null
   assert.equal(
     baseline.report.toolchain.bunRevision,
     Bun.revision,
@@ -131,7 +145,8 @@ async function main(): Promise<void> {
   for (let i = 0; i < pairs; i++) {
     const order = i % 2 === 0 ? [baseline, candidate] : [candidate, baseline]
     for (const variant of order) {
-      await verifyArtifacts(variant)
+      await verifyArtifacts(variant, mode)
+      if (runtime) assert.deepEqual(await digest(process.execPath), runtime, 'Bun runtime changed')
       const name = `${String(i + 1).padStart(2, '0')}-${variant.name}`
       const directory = join(output, name)
       const reportPath = join(output, `${name}.json`)
@@ -142,7 +157,7 @@ async function main(): Promise<void> {
         '--output',
         directory,
         '--mode',
-        'aot',
+        mode,
         '--title',
         WINDOW_TITLE,
         '--timeout',
@@ -163,7 +178,7 @@ async function main(): Promise<void> {
         '100',
         '75',
         '--',
-        variant.binary,
+        ...(mode === 'development' ? [process.execPath, variant.binary] : [variant.binary]),
         '--host',
         variant.host,
         '--output',
@@ -171,7 +186,7 @@ async function main(): Promise<void> {
         '--nonce',
         nonce,
         '--mode',
-        'aot',
+        mode,
         '--iterations',
         '1000',
         '--rotations',
@@ -202,17 +217,18 @@ async function main(): Promise<void> {
         const driverReport = readJson(join(directory, 'result.json')) as DriverReport
         const app = readJson(reportPath) as ChildReport
         const calibration = variant.report.calibrations.find(
-          (item) => item.name === 'core-aot-calibration'
+          (item) => item.name === `core-${mode}-calibration`
         )!
         latencyMs = verifyLaunch(
           driverReport,
           app,
           nonce,
           variant.host,
-          variant.binary,
+          mode === 'development' ? process.execPath : variant.binary,
           Bun.revision,
           calibration.initial.renderer.gpu,
-          INPUT_LABEL
+          INPUT_LABEL,
+          mode
         )
       } catch (cause) {
         error = cause instanceof Error ? cause.message : String(cause)
@@ -233,23 +249,25 @@ async function main(): Promise<void> {
       console.log(JSON.stringify(entries.at(-1)))
     }
   }
-  await verifyArtifacts(baseline)
-  await verifyArtifacts(candidate)
+  await verifyArtifacts(baseline, mode)
+  await verifyArtifacts(candidate, mode)
+  if (runtime) assert.deepEqual(await digest(process.execPath), runtime, 'Bun runtime changed')
   const result = {
     schemaVersion: 1,
     baseline: {
       commit: baseline.report.source.commit,
       host: baseline.report.nativeHost,
-      artifact: baseline.report.builds.core.aot,
+      artifact: baseline.report.builds.core[mode],
     },
     candidate: {
       commit: candidate.report.source.commit,
       host: candidate.report.nativeHost,
-      artifact: candidate.report.builds.core.aot,
+      artifact: candidate.report.builds.core[mode],
     },
     target: baseline.report.target,
-    methodology:
-      'Fresh AOT Core process per observation; pair order alternates; metric starts immediately before xdotool click and ends at validated native paint-record observation, not display presentation. Load and cache uncontrolled.',
+    mode,
+    runtime,
+    methodology: `Fresh ${mode} Core process per observation; pair order alternates; metric starts immediately before xdotool click and ends at validated native paint-record observation, not display presentation. Load and cache uncontrolled.`,
     entries,
     summary: summarizePairs(entries, pairs),
   }
