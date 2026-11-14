@@ -127,42 +127,6 @@ fn missing_keys_never_copy_shared_blocks() {
     assert!(Arc::ptr_eq(before, after));
 }
 
-#[test]
-fn leaf_segments_share_snapshots_and_prune_independently() {
-    let mut map = NodeMap::default();
-    for key in [1, 3, 4, 7, 8, 12, 15] {
-        map.insert(id(key), node(key));
-    }
-    let original = map.clone();
-    map.get_mut(id(3)).unwrap().input_revision = None;
-    let (Some(Block::Leaf(old)), Some(Block::Leaf(new))) = (&original.root, &map.root) else {
-        panic!("these IDs fit one leaf");
-    };
-    assert!(!Arc::ptr_eq(old, new));
-    assert!(!Arc::ptr_eq(
-        old[0].as_ref().unwrap(),
-        new[0].as_ref().unwrap()
-    ));
-    for index in 1..4 {
-        assert!(Arc::ptr_eq(
-            old[index].as_ref().unwrap(),
-            new[index].as_ref().unwrap()
-        ));
-    }
-    assert_eq!(original.get(id(3)).unwrap().input_revision, Some(3));
-    assert_eq!(map.remove(id(1)).unwrap().input_revision, Some(1));
-    assert_eq!(map.remove(id(3)).unwrap().input_revision, None);
-    let Some(Block::Leaf(remaining)) = &map.root else {
-        panic!("other segments remain")
-    };
-    assert!(remaining[0].is_none());
-    assert_eq!(
-        map.iter().map(|(key, _)| key.get()).collect::<Vec<_>>(),
-        [4, 7, 8, 12, 15]
-    );
-    assert_eq!(original.iter().count(), 7);
-}
-
 type Change = (NodeId, Option<u64>, Option<u64>);
 
 /// What `diff` must report, by comparing both versions key by key. A node is

@@ -40,10 +40,6 @@ on:
       paired-macos-trials:
         description: Alternating macOS host pairs (3 to 20)
         default: '10'
-      transaction-pairs:
-        description: Compare segmented transaction leaves against the exact prior host
-        type: boolean
-        default: false
   schedule:
     - cron: '47 6 * * 3'
   pull_request:
@@ -72,7 +68,7 @@ concurrency:
 jobs:
   linux:
     name: Linux core/Solid/React development and AOT comparison
-    if: vars.CI_BILLING_PAUSED == 'false' && (github.event_name != 'pull_request' || github.event.pull_request.draft == false) && (github.event_name != 'workflow_dispatch' || (inputs['paired-only'] != true && inputs['startup-only'] != true && inputs['paired-macos'] != true && inputs['transaction-pairs'] != true))
+    if: vars.CI_BILLING_PAUSED == 'false' && (github.event_name != 'pull_request' || github.event.pull_request.draft == false) && (github.event_name != 'workflow_dispatch' || (inputs['paired-only'] != true && inputs['startup-only'] != true && inputs['paired-macos'] != true))
     runs-on: ubuntu-24.04
     timeout-minutes: 60
     defaults:
@@ -247,7 +243,7 @@ jobs:
   # The hosted VM's paravirtual Metal device is not a physical GPU.
   macos:
     name: macOS core/Solid/React and direct Rust GPUI comparison
-    if: vars.CI_BILLING_PAUSED == 'false' && (github.event_name != 'pull_request' || github.event.pull_request.draft == false) && (github.event_name != 'workflow_dispatch' || (inputs['paired-only'] != true && inputs['transaction-pairs'] != true))
+    if: vars.CI_BILLING_PAUSED == 'false' && (github.event_name != 'pull_request' || github.event.pull_request.draft == false) && (github.event_name != 'workflow_dispatch' || inputs['paired-only'] != true)
     runs-on: macos-15
     timeout-minutes: 60
     defaults:
@@ -361,7 +357,7 @@ jobs:
   # benchmarks/comparison/windows-processes.ts. The VM has no physical GPU.
   windows:
     name: Windows core/Solid/React and direct Rust GPUI comparison
-    if: vars.CI_BILLING_PAUSED == 'false' && (github.event_name != 'pull_request' || github.event.pull_request.draft == false) && (github.event_name != 'workflow_dispatch' || (inputs['paired-only'] != true && inputs['startup-only'] != true && inputs['paired-macos'] != true && inputs['transaction-pairs'] != true))
+    if: vars.CI_BILLING_PAUSED == 'false' && (github.event_name != 'pull_request' || github.event.pull_request.draft == false) && (github.event_name != 'workflow_dispatch' || (inputs['paired-only'] != true && inputs['startup-only'] != true && inputs['paired-macos'] != true))
     runs-on: windows-2022
     timeout-minutes: 75
     defaults:
@@ -474,7 +470,7 @@ jobs:
 
   paired-click:
     name: Paired Linux Core AOT input investigation
-    if: vars.CI_BILLING_PAUSED == 'false' && github.event_name == 'workflow_dispatch' && inputs['paired-only'] == true && inputs['transaction-pairs'] != true && (github.event_name != 'pull_request' || github.event.pull_request.draft == false)
+    if: vars.CI_BILLING_PAUSED == 'false' && github.event_name == 'workflow_dispatch' && inputs['paired-only'] == true && (github.event_name != 'pull_request' || github.event.pull_request.draft == false)
     runs-on: ubuntu-24.04
     timeout-minutes: 90
     defaults:
@@ -550,98 +546,4 @@ jobs:
             !${{ runner.temp }}/paired-click/*/core/application
           include-hidden-files: true
           if-no-files-found: error
-          retention-days: 30
-
-  transaction-pairs:
-    name: Paired release hosts on Linux
-    if: vars.CI_BILLING_PAUSED == 'false' && github.event_name == 'workflow_dispatch' && inputs['transaction-pairs'] == true && (github.event_name != 'pull_request' || github.event.pull_request.draft == false)
-    runs-on: ubuntu-24.04
-    timeout-minutes: 90
-    defaults:
-      run:
-        shell: bash
-    env:
-      CARGO_BUILD_JOBS: 2
-      CARGO_INCREMENTAL: 0
-      PYTHONDONTWRITEBYTECODE: 1
-      BASELINE_SHA: bd84a6621868722c3b5f25775db4f59c40ee576f
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
-      - name: Checkout exact pre-candidate baseline
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          ref: bd84a6621868722c3b5f25775db4f59c40ee576f
-          path: .bun-native/transaction-baseline
-          persist-credentials: false
-      - name: Isolate baseline and record environment
-        run: |
-          set -euo pipefail
-          mkdir "$RUNNER_TEMP/transaction-pairs"
-          mv .bun-native/transaction-baseline "$RUNNER_TEMP/transaction-baseline"
-          {
-            printf 'baseline='
-            git -C "$RUNNER_TEMP/transaction-baseline" rev-parse HEAD
-            printf 'candidate='
-            git rev-parse HEAD
-            uname -a
-            lscpu
-            rustc --version --verbose
-          } > "$RUNNER_TEMP/transaction-pairs/environment.txt"
-          [[ "$(git -C "$RUNNER_TEMP/transaction-baseline" rev-parse HEAD)" == "$BASELINE_SHA" ]]
-          [[ "$(git rev-parse HEAD)" == "$GITHUB_SHA" ]]
-          python3 - <<'PY' > "$RUNNER_TEMP/transaction-pairs/source-difference.txt"
-          import os, pathlib, subprocess
-          base = pathlib.Path(os.environ['RUNNER_TEMP']) / 'transaction-baseline'
-          current = pathlib.Path(os.environ['GITHUB_WORKSPACE'])
-          def files(root):
-              return set(subprocess.check_output(['git', '-C', str(root), 'ls-files', '-z']).decode().split('\0')[:-1])
-          paths = files(base)
-          assert paths == files(current), 'Tracked file inventory differs'
-          changed = {path for path in paths if (base / path).read_bytes() != (current / path).read_bytes()}
-          allowed = {'.github/workflows/benchmark-comparison.yml', 'benchmarks/COMPARISON.md', 'tests/quality/ci-event-coverage.test.ts', 'native/protocol/src/tree/nodes.rs', 'native/protocol/src/tree/nodes/tests.rs'}
-          assert 'native/protocol/src/tree/nodes.rs' in changed and changed <= allowed, f'Unexpected source changes: {changed}'
-          print('\n'.join(sorted(changed)))
-          PY
-      - name: Install pinned toolchain and native prerequisites
-        uses: ./.github/actions/native-toolchain
-      - uses: ./.github/actions/linux-native-prerequisites
-      - name: Build and fingerprint both release hosts
-        run: |
-          set -euo pipefail
-          baseline_target="$RUNNER_TEMP/transaction-cargo-baseline"
-          candidate_target="$RUNNER_TEMP/transaction-cargo-candidate"
-          CARGO_TARGET_DIR="$baseline_target" cargo build --locked --release --manifest-path "$RUNNER_TEMP/transaction-baseline/Cargo.toml" -p bun-native-host --bin bun-native-host 2>&1 | tee "$RUNNER_TEMP/transaction-pairs/baseline-build.log"
-          cp "$baseline_target/release/bun-native-host" "$RUNNER_TEMP/transaction-pairs/baseline-host"
-          CARGO_TARGET_DIR="$candidate_target" cargo build --locked --release --manifest-path "$GITHUB_WORKSPACE/Cargo.toml" -p bun-native-host --bin bun-native-host 2>&1 | tee "$RUNNER_TEMP/transaction-pairs/candidate-build.log"
-          cp "$candidate_target/release/bun-native-host" "$RUNNER_TEMP/transaction-pairs/candidate-host"
-          sha256sum "$RUNNER_TEMP/transaction-pairs/"{baseline,candidate}-host > "$RUNNER_TEMP/transaction-pairs/hosts.sha256"
-          if cmp -s "$RUNNER_TEMP/transaction-pairs/baseline-host" "$RUNNER_TEMP/transaction-pairs/candidate-host"; then
-            echo 'The two hosts are identical; refusing to measure a candidate comparison.' >&2
-            exit 1
-          fi
-      - name: Run alternating AOT workloads in one isolated native session
-        timeout-minutes: 45
-        run: |
-          bash scripts/quality/native-x11-session.sh "$RUNNER_TEMP/transaction-pairs/session" -- \
-            bun benchmarks/comparison/run.ts \
-              --host "$RUNNER_TEMP/transaction-pairs/candidate-host" --host-profile release \
-              --output "$RUNNER_TEMP/transaction-pairs/run" --adapters core --trials 3 --input-trials 0 \
-              --paired-host "$RUNNER_TEMP/transaction-pairs/baseline-host" --paired-trials 12
-      - name: Verify every paired report and summarize
-        run: |
-          bun benchmarks/comparison/paired-analysis.ts "$RUNNER_TEMP/transaction-pairs/run" > "$RUNNER_TEMP/transaction-pairs/paired-analysis.json"
-          jq '{baselineHost,candidateHost,trials,pairedDelta,pairedRatio}' "$RUNNER_TEMP/transaction-pairs/paired-analysis.json" >> "$GITHUB_STEP_SUMMARY"
-      - name: Retain raw results, including failures
-        if: ${{ always() }}
-        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
-        with:
-          name: transaction-performance-linux-${{ runner.arch }}
-          path: |
-            ${{ runner.temp }}/transaction-pairs/
-            !${{ runner.temp }}/transaction-pairs/*-host
-            !${{ runner.temp }}/transaction-pairs/run/*/application
-            !${{ runner.temp }}/transaction-pairs/session/runtime/
-          if-no-files-found: warn
           retention-days: 30
