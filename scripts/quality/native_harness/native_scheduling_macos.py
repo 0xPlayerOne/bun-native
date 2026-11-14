@@ -30,6 +30,17 @@ def paint_progress(native_records, mounted_revision):
     )
 
 
+def observed_paint_during(before, native, after, mounted_revision):
+    """Bracket a paint-log read with producer-active application observations."""
+
+    def active(records):
+        return any(row.get("type") == "stream-start" for row in records) and not any(
+            row.get("type") == "producer-stopped" for row in records
+        )
+
+    return active(before) and active(after) and paint_progress(native, mounted_revision)
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--output", required=True, type=Path)
@@ -155,17 +166,21 @@ def main():
         report["saturation"] = wait_for(
             lambda: application_record("saturated"), "saturated command queue"
         )
+        # Ignore earlier paints: only evidence appended after saturation can
+        # establish progress during this bounded producer.
+        paint_start = len(records("native.jsonl"))
         ownership.host_row(app, host, observed)
         injected = time.monotonic()
         driver.type_text("x")
         report["injectionDurationMs"] = (time.monotonic() - injected) * 1000
         painted_during = False
         while not application_record("completed"):
-            application = records("application.jsonl")
-            if not any(row.get("type") == "producer-stopped" for row in application):
-                painted_during |= paint_progress(
-                    records("native.jsonl"), mounted["treeRevision"]
-                )
+            before = records("application.jsonl")
+            native = records("native.jsonl")[paint_start:]
+            after = records("application.jsonl")
+            painted_during |= observed_paint_during(
+                before, native, after, mounted["treeRevision"]
+            )
             if app.poll() is not None:
                 raise RuntimeError(f"Fixture exited {app.returncode} before completion")
             if time.monotonic() >= started + 90:
