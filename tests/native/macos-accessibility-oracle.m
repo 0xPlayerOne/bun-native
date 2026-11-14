@@ -156,8 +156,14 @@ static AXUIElementRef window_titled(pid_t pid, NSString *title) {
 static void walk(AXUIElementRef element, int depth, NSMutableArray *entries, NSMutableArray *elements) {
     if (depth > 32 || entries.count > 512) fail(@"The accessible tree exceeds the bounded fixture size");
     if (depth > 0) {
+        CFTypeRef rawRole = NULL;
+        AXError roleError = AXUIElementCopyAttributeValue(element, kAXRoleAttribute, &rawRole);
+        id roleValue = nil;
+        if (roleError == kAXErrorSuccess && rawRole) roleValue = CFBridgingRelease(rawRole);
+        else if (rawRole) CFRelease(rawRole);
         [entries addObject:@{
-            @"role" : text(element, kAXRoleAttribute),
+            @"role" : [roleValue isKindOfClass:[NSString class]] ? roleValue : @"",
+            @"roleError" : @((int)roleError),
             @"subrole" : text(element, kAXSubroleAttribute),
             @"title" : text(element, kAXTitleAttribute),
             @"description" : text(element, kAXDescriptionAttribute),
