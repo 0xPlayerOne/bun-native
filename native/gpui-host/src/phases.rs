@@ -414,6 +414,35 @@ mod tests {
     }
 
     #[test]
+    fn foreground_yield_overlap_is_clipped_to_the_command_wait() {
+        let (file, origin) = install();
+        let delta = std::time::Duration::from_millis;
+        let base = origin - delta(10);
+        let start = base + delta(2);
+        let end = base + delta(6);
+        foreground(RequestId::try_from(1).unwrap(), base, Some((start, end)));
+        foreground(
+            RequestId::try_from(2).unwrap(),
+            base + delta(4),
+            Some((start, end)),
+        );
+        foreground(
+            RequestId::try_from(3).unwrap(),
+            base + delta(8),
+            Some((start, end)),
+        );
+        foreground(RequestId::try_from(4).unwrap(), base, None);
+        write();
+        let record = read(&file.0);
+        let rows = record["foreground"].as_array().unwrap();
+        assert_eq!(rows.len(), 4);
+        assert_eq!(rows[0][2], 4_000_000);
+        assert_eq!(rows[1][2], 2_000_000);
+        assert_eq!(rows[2][2], 0);
+        assert_eq!(rows[3][2], 0);
+    }
+
+    #[test]
     fn enabled_trace_writes_batches_frames_and_render_counts_once() {
         let (file, origin) = install();
         assert!(enabled());
