@@ -94,10 +94,12 @@ classified leak. The control has no framework or native host, and its result
 cannot on its own explain the actual Windows React failures. No benchmark
 assertions or timed workload are changed.
 
-The same dispatch also builds the actual React workload and runs it against the
-headless public-core protocol peer: five development trials with DFG disabled
-(10 iterations, 10 rotations, two mounts) and five AOT trials (1,000 iterations,
-1,000 rotations, 100 mounts). Trial order alternates and the unchanged workload
+The same dispatch also builds the actual Core, Solid and React workloads and
+runs them against the headless public-core protocol peer: five development
+trials per adapter with DFG disabled
+(10 iterations, 10 rotations, two mounts) and five AOT trials per adapter (1,000 iterations,
+1,000 rotations, 100 mounts). Adapters run in Core, Solid, React order; mode
+order alternates within each adapter, and the unchanged workload
 retention assertion is recorded, including failures. The headless peer replaces
 GPUI and the run omits native paint calibration, so this tests the ownership and
 IPC boundary without claiming native rendering or equivalent performance. The
