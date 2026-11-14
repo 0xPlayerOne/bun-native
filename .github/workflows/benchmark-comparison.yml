@@ -579,7 +579,6 @@ jobs:
         run: |
           set -euo pipefail
           mkdir "$RUNNER_TEMP/transaction-pairs"
-          echo "CARGO_TARGET_DIR=$RUNNER_TEMP/transaction-cargo" >> "$GITHUB_ENV"
           mv .bun-native/transaction-baseline "$RUNNER_TEMP/transaction-baseline"
           {
             printf 'baseline='
@@ -611,11 +610,17 @@ jobs:
       - name: Build and fingerprint both release hosts
         run: |
           set -euo pipefail
-          cargo build --locked --release --manifest-path "$RUNNER_TEMP/transaction-baseline/Cargo.toml" -p bun-native-host --bin bun-native-host 2>&1 | tee "$RUNNER_TEMP/transaction-pairs/baseline-build.log"
-          cp "$CARGO_TARGET_DIR/release/bun-native-host" "$RUNNER_TEMP/transaction-pairs/baseline-host"
-          cargo build --locked --release --manifest-path "$GITHUB_WORKSPACE/Cargo.toml" -p bun-native-host --bin bun-native-host 2>&1 | tee "$RUNNER_TEMP/transaction-pairs/candidate-build.log"
-          cp "$CARGO_TARGET_DIR/release/bun-native-host" "$RUNNER_TEMP/transaction-pairs/candidate-host"
+          baseline_target="$RUNNER_TEMP/transaction-cargo-baseline"
+          candidate_target="$RUNNER_TEMP/transaction-cargo-candidate"
+          CARGO_TARGET_DIR="$baseline_target" cargo build --locked --release --manifest-path "$RUNNER_TEMP/transaction-baseline/Cargo.toml" -p bun-native-host --bin bun-native-host 2>&1 | tee "$RUNNER_TEMP/transaction-pairs/baseline-build.log"
+          cp "$baseline_target/release/bun-native-host" "$RUNNER_TEMP/transaction-pairs/baseline-host"
+          CARGO_TARGET_DIR="$candidate_target" cargo build --locked --release --manifest-path "$GITHUB_WORKSPACE/Cargo.toml" -p bun-native-host --bin bun-native-host 2>&1 | tee "$RUNNER_TEMP/transaction-pairs/candidate-build.log"
+          cp "$candidate_target/release/bun-native-host" "$RUNNER_TEMP/transaction-pairs/candidate-host"
           sha256sum "$RUNNER_TEMP/transaction-pairs/"{baseline,candidate}-host > "$RUNNER_TEMP/transaction-pairs/hosts.sha256"
+          if cmp -s "$RUNNER_TEMP/transaction-pairs/baseline-host" "$RUNNER_TEMP/transaction-pairs/candidate-host"; then
+            echo 'The two hosts are identical; refusing to measure a candidate comparison.' >&2
+            exit 1
+          fi
       - name: Run alternating AOT workloads in one isolated native session
         timeout-minutes: 45
         run: |
