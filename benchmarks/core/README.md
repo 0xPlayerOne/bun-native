@@ -130,6 +130,28 @@ Mount build improved in 11 of 12 pairs in each mode. This isolates the core
 transaction and serialization path; it measures neither native work nor
 application startup, input-to-paint latency or competitive performance.
 
+### Combine changed-node text checks
+
+Validation now totals text and checks per-text limits in the same pass over
+changed nodes. Either failure still invokes the same full-tree walk, preserving
+its error order. On Apple M2 Max, macOS 27.2, AC power, pinned Bun `b1007f117`,
+12 fresh-process pairs per mode alternated baseline and candidate. Each process
+ran 300 warmups and 5,000 samples. AOT executables were produced by `bun compile`;
+both were inspected for the compiled-program flag and omitted JIT. Other load
+was uncontrolled. The table shows medians of per-process p50s, in µs; ratios
+are medians of the within-pair candidate/baseline ratios.
+
+| Scenario and phase | Dev before | Dev after | Dev ratio | AOT before | AOT after | AOT ratio |
+| ------------------ | ---------: | --------: | --------: | ---------: | --------: | --------: |
+| Mount validation   |     48.645 |    39.396 |     0.862 |     31.562 |    27.812 |     0.857 |
+| Mount total        |    219.562 |   204.312 |     0.963 |    160.500 |   159.396 |     0.968 |
+| Keystroke total    |      2.917 |     2.812 |     0.973 |      1.896 |     1.812 |     0.960 |
+
+Mount validation improved in all 12 pairs in each mode; total mount improved
+in 8 development and 9 AOT pairs. Unchanged phases varied as well, so these
+figures do not establish an end-to-end UI gain. [Raw paired records](raw/)
+include the per-process measurements and source and executable hashes.
+
 ## Bulk removal from a full window
 
 `removals.ts` builds a 4,096-node committed graph and removes 2,048 text
