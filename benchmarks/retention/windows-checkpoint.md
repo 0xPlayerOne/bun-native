@@ -93,3 +93,15 @@ job; a reachable target is an observation, not a successful benchmark or a
 classified leak. The control has no framework or native host, and its result
 cannot on its own explain the actual Windows React failures. No benchmark
 assertions or timed workload are changed.
+
+The same dispatch also builds the actual React workload and runs it against the
+headless public-core protocol peer: five development trials with DFG disabled
+(10 iterations, 10 rotations, two mounts) and five AOT trials (1,000 iterations,
+1,000 rotations, 100 mounts). Trial order alternates and the unchanged workload
+retention assertion is recorded, including failures. The headless peer replaces
+GPUI and the run omits native paint calibration, so this tests the ownership and
+IPC boundary without claiming native rendering or equivalent performance. The
+control verifies the compiled-program flag and JIT omission, hashes the peer,
+module and executable, and requires the exact workload and zero cleanup counters.
+An unrelated process error makes the diagnostic fail rather than count as a
+retention observation.

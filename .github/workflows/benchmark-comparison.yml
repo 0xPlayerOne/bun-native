@@ -906,7 +906,6 @@ jobs:
       - uses: ./.github/actions/native-toolchain
         with:
           rust: 'false'
-          install: 'false'
       - name: Build the archived control with the pinned AOT compiler
         shell: pwsh
         run: |
@@ -923,6 +922,32 @@ jobs:
         run: |
           python benchmarks/retention/windows-control.py (Join-Path $env:RUNNER_TEMP 'queue-v3.ts') (Join-Path $env:RUNNER_TEMP 'queue-v3-aot.exe') (Join-Path $env:RUNNER_TEMP 'retention-control') 5
           if ($LASTEXITCODE -ne 0) { throw "Control matrix failed: $LASTEXITCODE" }
+      - name: Build actual React workload and headless protocol peer
+        id: headless-build
+        if: ${{ !cancelled() }}
+        shell: pwsh
+        run: |
+          $root = Join-Path $env:RUNNER_TEMP 'headless-react'
+          New-Item -ItemType Directory -Path $root | Out-Null
+          $peer = Join-Path $root 'peer.exe'
+          bun build tests/core/protocol-peer.ts --compile --outfile $peer
+          if ($LASTEXITCODE -ne 0) { throw "Peer build failed: $LASTEXITCODE" }
+          $env:HEADLESS_REACT_ROOT = $root
+          bun -e 'import { bundleApplication } from "./scripts/native/bundle.ts"; await bundleApplication({ framework: "react", entry: "benchmarks/solid/react.tsx", outdir: process.env.HEADLESS_REACT_ROOT + "/app", cwd: process.cwd() })'
+          if ($LASTEXITCODE -ne 0) { throw "React bundle failed: $LASTEXITCODE" }
+          $module = Join-Path $root 'app/application.js'
+          $binary = Join-Path $root 'react-aot.exe'
+          bun --no-install compile --no-script --production --explain=json $module --outfile $binary *> (Join-Path $root 'compile.log')
+          if ($LASTEXITCODE -ne 0) { throw "React AOT compile failed: $LASTEXITCODE" }
+          bun -e 'import { inspectBunExecutable } from "./scripts/native/inspect.ts"; import { inspectBunRuntime } from "./scripts/native/inspect-runtime.ts"; const graph = inspectBunExecutable(process.argv[1]); const runtime = inspectBunRuntime(process.argv[1]); if (!graph.hasCompiledProgram || runtime.jit !== "unused") throw new Error("Not an AOT executable"); console.log(JSON.stringify({ graph, runtime }, null, 2))' $binary > (Join-Path $root 'inspection.json')
+          if ($LASTEXITCODE -ne 0) { throw "React AOT inspection failed: $LASTEXITCODE" }
+      - name: Run actual React workload against headless peer
+        if: ${{ !cancelled() && steps.headless-build.outcome == 'success' }}
+        shell: pwsh
+        run: |
+          $root = Join-Path $env:RUNNER_TEMP 'headless-react'
+          python benchmarks/retention/headless-react-control.py (Join-Path $root 'peer.exe') (Join-Path $root 'app/application.js') (Join-Path $root 'react-aot.exe') (Join-Path $root 'results') 5
+          if ($LASTEXITCODE -ne 0) { throw "Headless control failed: $LASTEXITCODE" }
       - name: Retain all results and failures
         if: ${{ always() }}
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
@@ -932,5 +957,8 @@ jobs:
             ${{ runner.temp }}/retention-control/
             ${{ runner.temp }}/queue-v3-compile.log
             ${{ runner.temp }}/queue-v3-inspection.json
+            ${{ runner.temp }}/headless-react/
+            !${{ runner.temp }}/headless-react/peer.exe
+            !${{ runner.temp }}/headless-react/react-aot.exe
           if-no-files-found: warn
           retention-days: 30
