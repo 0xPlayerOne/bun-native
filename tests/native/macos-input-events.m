@@ -124,6 +124,24 @@ int main(void) {
                 }
                 if (!rejected) fail(@"Overlapping, missing or duplicate window was accepted");
             }
+            BOOL overlapDiagnosticsChecked = NO;
+            @try { verify_visible_region(identity, @[foreign, owned], region); }
+            @catch (NSException *error) {
+                NSString *prefix = @"Another onscreen window overlaps the observed region: ";
+                if (![error.name isEqualToString:@"Unsupported"] || ![error.reason hasPrefix:prefix]) @throw error;
+                NSString *json = [error.reason substringFromIndex:prefix.length];
+                NSDictionary *details = [NSJSONSerialization JSONObjectWithData:[json dataUsingEncoding:NSUTF8StringEncoding]
+                    options:0 error:NULL];
+                NSSet *expectedKeys = [NSSet setWithArray:@[@"expectedWindow", @"expectedPID", @"overlapWindow",
+                    @"overlapPID", @"layer", @"alpha", @"frame", @"region"]];
+                if (![details isKindOfClass:NSDictionary.class]
+                    || ![[NSSet setWithArray:details.allKeys] isEqualToSet:expectedKeys]
+                    || ![details[@"overlapPID"] isEqual:@9] || ![details[@"overlapWindow"] isEqual:@456]
+                    || ![details[@"region"] isEqual:@[@300, @200, @100, @40]])
+                    fail(@"Visible-region rejection diagnostics exposed or changed metadata");
+                overlapDiagnosticsChecked = YES;
+            }
+            if (!overlapDiagnosticsChecked) fail(@"Missing visible-region rejection diagnostics");
             BOOL outsideRejected = NO;
             @try { verify_visible_region(identity, @[owned], CGRectMake(0, 0, 10, 10)); }
             @catch (NSException *error) { outsideRejected = [error.name isEqualToString:@"Failed"]; }
@@ -150,6 +168,7 @@ int main(void) {
                 @"targetRejectionDiagnosticsChecked": @(diagnosticsChecked),
                 @"targetIdentityGuardsChecked": @(invalidFields.count),
                 @"visibleRegionControlsChecked": @6,
+                @"visibleRegionDiagnosticsChecked": @YES,
                 @"scope": @"Actual Quartz construction and pure target-guard controls only; WindowServer delivery is separately required"};
             NSData *encoded = [NSJSONSerialization dataWithJSONObject:result options:0 error:NULL];
             if (!encoded) fail(@"Cannot encode SDK event evidence");
