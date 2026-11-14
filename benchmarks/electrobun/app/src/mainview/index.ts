@@ -70,7 +70,10 @@ async function main() {
     timeOriginEpochMs: performance.timeOrigin,
     scriptStartMs: performance.now(),
   }
-  if (params.get('input') === '1') document.body.classList.add('input-comparison')
+  if (params.get('input') === '1') {
+    document.documentElement.classList.add('input-comparison')
+    document.body.classList.add('input-comparison')
+  }
   let view = new View(initial)
   if (params.get('input') === '1') {
     const nonce = params.get('nonce')
