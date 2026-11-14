@@ -72,6 +72,12 @@ test('startup diagnostics are opt-in and do not record command payloads', async 
   expect(enabled.failure).toBeUndefined()
   expect(enabled.exitCode).toBe(0)
   expect(enabled.text).not.toContain('Never record this command payload')
+  expect(enabled.records.slice(0, 2).map((record) => record['phase'])).toEqual([
+    'spawn_enter',
+    'spawn_returned',
+  ])
+  expect(enabled.records[0]?.['host_pid']).toBeUndefined()
+  expect(typeof enabled.records[1]?.['host_pid']).toBe('number')
   const open = enabled.records.filter((record) => record['request_id'] === 2)
   for (const record of enabled.records) {
     expect(record['nonce']).toBe('owned-startup-diagnostic')
@@ -128,7 +134,9 @@ test('startup trace records are bounded without terminating the actual session',
   expect(result.exitCode).toBe(0)
   expect(result.records).toHaveLength(257)
   expect(result.records.filter((record) => record['phase'] === 'record_limit')).toHaveLength(1)
-  expect(new Set(result.records.map((record) => record['host_pid'])).size).toBe(1)
+  const withHostPid = result.records.filter((record) => record['host_pid'] !== undefined)
+  expect(new Set(withHostPid.map((record) => record['host_pid'])).size).toBe(1)
+  expect(result.records.filter((record) => record['host_pid'] === undefined)).toHaveLength(1)
   expect(result.records.at(-1)?.['phase']).toBe('transport_finished')
   expect(result.records.at(-1)?.['exit_code']).toBe(0)
 })

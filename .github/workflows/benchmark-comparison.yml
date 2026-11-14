@@ -29,6 +29,10 @@ on:
         description: Run the bounded same-runner Core/AOT investigation for #675 only
         type: boolean
         default: false
+      startup-only:
+        description: Run the macOS Core startup trace investigation for #678 only
+        type: boolean
+        default: false
   schedule:
     - cron: '47 6 * * 3'
   pull_request:
@@ -57,7 +61,7 @@ concurrency:
 jobs:
   linux:
     name: Linux core/Solid/React development and AOT comparison
-    if: vars.CI_BILLING_PAUSED == 'false' && (github.event_name != 'pull_request' || github.event.pull_request.draft == false) && (github.event_name != 'workflow_dispatch' || inputs['paired-only'] != true)
+    if: vars.CI_BILLING_PAUSED == 'false' && (github.event_name != 'pull_request' || github.event.pull_request.draft == false) && (github.event_name != 'workflow_dispatch' || (inputs['paired-only'] != true && inputs['startup-only'] != true))
     runs-on: ubuntu-24.04
     timeout-minutes: 60
     defaults:
@@ -242,6 +246,7 @@ jobs:
       CARGO_INCREMENTAL: 0
       PYTHONDONTWRITEBYTECODE: 1
       TRIALS: ${{ github.event_name == 'workflow_dispatch' && inputs.trials || '5' }}
+      STARTUP_ONLY: ${{ github.event_name == 'workflow_dispatch' && inputs['startup-only'] || false }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -264,9 +269,11 @@ jobs:
       - name: Run the equivalent-workload comparison
         timeout-minutes: 40
         run: |
+          extra=()
+          if [[ "$STARTUP_ONLY" == 'true' ]]; then extra+=(--startup-trace-calibration --adapters core); fi
           bun benchmarks/comparison/run.ts \
             --host "$GITHUB_WORKSPACE/target/release/bun-native-host" --host-profile release \
-            --output "$COMPARISON/run" --trials "$TRIALS" --input-trials 0
+            --output "$COMPARISON/run" --trials "$TRIALS" --input-trials 0 "${extra[@]}"
       - name: Run the direct Rust GPUI baseline
         if: ${{ !cancelled() && hashFiles('target/release/examples/workload-baseline') != '' }}
         timeout-minutes: 10
@@ -315,7 +322,7 @@ jobs:
   # benchmarks/comparison/windows-processes.ts. The VM has no physical GPU.
   windows:
     name: Windows core/Solid/React and direct Rust GPUI comparison
-    if: vars.CI_BILLING_PAUSED == 'false' && (github.event_name != 'pull_request' || github.event.pull_request.draft == false) && (github.event_name != 'workflow_dispatch' || inputs['paired-only'] != true)
+    if: vars.CI_BILLING_PAUSED == 'false' && (github.event_name != 'pull_request' || github.event.pull_request.draft == false) && (github.event_name != 'workflow_dispatch' || (inputs['paired-only'] != true && inputs['startup-only'] != true))
     runs-on: windows-2022
     timeout-minutes: 75
     defaults:
