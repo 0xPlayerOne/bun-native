@@ -636,6 +636,19 @@ jobs:
             assert.equal(nativeApp.workload.rows, 32);
             assert.equal(nativeApp.workload.scenario, "visible-input");
           '
+      - name: Collect alternating visible-input pairs and controls
+        if: inputs['paired-macos'] == true
+        env:
+          VISIBLE_PAIRS: ${{ inputs['paired-macos-trials'] }}
+        run: |
+          bun benchmarks/electrobun/visible-pairs-macos.ts \
+            --app "$RUNNER_TEMP/eb-inner/workload-baseline.app" \
+            --native-app "$RUNNER_TEMP/eb-smoke/native-build/application" \
+            --native-host "$RUNNER_TEMP/eb-smoke/native-host" \
+            --output "$RUNNER_TEMP/eb-smoke/pairs" \
+            --helper "$RUNNER_TEMP/eb-smoke/window-helper" \
+            --ocr "$RUNNER_TEMP/eb-smoke/text-helper" \
+            --pairs "$VISIBLE_PAIRS"
       - name: Retain smoke evidence, including failures
         if: ${{ always() }}
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
