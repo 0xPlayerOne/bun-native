@@ -116,12 +116,23 @@ the selected runtime; its hash alone does not prove its provenance.
 
 The label-triggered `Windows runtime build control` builds an uninstrumented
 `release-local` Bun from the pinned Bun and WebKit sources on an isolated
-Windows runner. It compares that runtime with the pinned distribution using
+Windows runner. A recorded build-generator-only patch passes codegen sources
+relative to their existing working directory, and temporary drive mappings
+shorten other paths. The workflow verifies the source revision and patch hash
+and checks generated Windows shell command lengths before compilation. This
+is a custom build; the matching revision does not prove binary equivalence to
+the distributed runtime. It compares that runtime with the pinned distribution using
 three alternating sets of the unchanged headless React workload in development
 and inspected AOT modes. The `diagnostic:windows-runtime` label is an explicit
 trigger; ordinary PR events do not start the source build. Its 120-minute limit
 and retained outcomes make build failures and missing coverage visible. This
 control cannot identify a retaining root and does not qualify native paint.
+
+The [fourth control run](https://github.com/0xPlayerOne/bun-native/actions/runs/43647428613)
+passed source-byte verification and reached compilation, but failed at step
+200 because a generated command exceeded the Windows shell limit. It produced
+no runtime or retention observation. The path changes above remain unverified
+until the control completes.
 
 A separate paired React fixture control tests one ownership hypothesis. Both
 variants use the same async disposal wrapper; after acknowledged disposal, the

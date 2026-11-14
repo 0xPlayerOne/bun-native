@@ -94,36 +94,80 @@ jobs:
           rustup toolchain install nightly-2026-09-15 --profile minimal
           if ($LASTEXITCODE -ne 0) { throw 'Rust toolchain installation failed' }
           'RUSTUP_TOOLCHAIN=nightly-2026-09-15' | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+      - name: Apply and record the build-only path patch
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $root = Join-Path $env:RUNNER_TEMP 'runtime-build-control'
+          New-Item -ItemType Directory -Force -Path $root | Out-Null
+          $source = Join-Path $env:GITHUB_WORKSPACE '.diagnostics/bun'
+          $revision = git -C $source rev-parse HEAD
+          if ($LASTEXITCODE -ne 0 -or $revision -ne 'b1007f1177fd402fae67387b8548cae5ae9b5707') { throw 'Unexpected Bun source revision' }
+          $patch = Join-Path $env:GITHUB_WORKSPACE 'benchmarks/retention/bun-windows-relative-sources.patch'
+          git -C $source apply --check $patch
+          if ($LASTEXITCODE -ne 0) { throw 'Build patch does not apply cleanly' }
+          git -C $source apply $patch
+          if ($LASTEXITCODE -ne 0) { throw 'Build patch failed' }
+          Copy-Item $patch (Join-Path $root 'build-only.patch')
+          Get-FileHash $patch -Algorithm SHA256 | Format-List | Out-File (Join-Path $root 'build-patch-hash.txt')
+          $revision | Out-File (Join-Path $root 'bun-source-revision.txt')
       - name: Build the uninstrumented local runtime
         shell: pwsh
         timeout-minutes: 100
         run: |
           $ErrorActionPreference = 'Stop'
-          $env:BUN_WEBKIT_PATH = Join-Path $env:GITHUB_WORKSPACE '.diagnostics/webkit'
           $env:BUN_BUILD_CACHE_DIR = Join-Path $env:RUNNER_TEMP 'bun-build-cache'
           $env:CARGO_BUILD_JOBS = '2'
           $env:PATH = "C:\Program Files\Git\usr\bin;$env:PATH"
           Get-PSDrive C | Format-List Free,Used
           $bunSource = Join-Path $env:GITHUB_WORKSPACE '.diagnostics/bun'
-          Push-Location $bunSource
+          $webkitSource = Join-Path $env:GITHUB_WORKSPACE '.diagnostics/webkit'
+          $root = Join-Path $env:RUNNER_TEMP 'runtime-build-control'
+          $mapped = @()
+          $pushed = $false
           try {
+            foreach ($mapping in @(@('X:', $bunSource), @('Y:', $webkitSource))) {
+              if (Test-Path ($mapping[0] + '\')) { throw "Drive $($mapping[0]) is already in use" }
+              subst $mapping[0] $mapping[1]
+              if ($LASTEXITCODE -ne 0) { throw "Could not map $($mapping[0])" }
+              $mapped += $mapping[0]
+            }
+            $env:BUN_WEBKIT_PATH = 'Y:\'
+            $env:GITHUB_SHA = 'b1007f1177fd402fae67387b8548cae5ae9b5707'
+            $env:BUILDKITE_COMMIT = $env:GITHUB_SHA
+            Push-Location 'X:\'
+            $pushed = $true
             . (Join-Path $bunSource 'scripts\vs-shell.ps1')
             bun install --frozen-lockfile
             if ($LASTEXITCODE -ne 0) { throw 'Bun source install failed' }
+            bun scripts/build.ts --profile=release-local --build-dir=build/release-local --configure-only
+            if ($LASTEXITCODE -ne 0) { throw 'Local Bun configuration failed' }
+            $commands = Join-Path $root 'expanded-commands.tmp'
+            bun scripts/build.ts --profile=release-local --build-dir=build/release-local -t commands > $commands
+            if ($LASTEXITCODE -ne 0) { throw 'Could not inspect generated commands' }
+            $shellCommands = @(Get-Content $commands | Where-Object { $_ -match '^cmd(?:\.exe)? /c ' })
+            if ($shellCommands.Count -eq 0) { throw 'No generated cmd commands found to check' }
+            $longest = ($shellCommands | Measure-Object -Property Length -Maximum).Maximum
+            "Generated cmd commands: $($shellCommands.Count); maximum length: $longest" | Tee-Object -FilePath (Join-Path $root 'command-lengths.txt')
+            Remove-Item $commands
+            if ($longest -gt 8191) { throw 'Generated command exceeds the Windows cmd limit' }
             bun scripts/build.ts --profile=release-local --build-dir=build/release-local -j2
             if ($LASTEXITCODE -ne 0) { throw 'Local Bun build failed' }
-            $local = Join-Path (Get-Location) 'build/release-local/bun.exe'
+            $local = Join-Path $bunSource 'build/release-local/bun.exe'
             if (!(Test-Path $local)) { throw "Missing built runtime: $local" }
             & $local --revision
             if ($LASTEXITCODE -ne 0) { throw 'Built runtime did not start' }
             "LOCAL_BUN=$local" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
-          } finally { Pop-Location }
+          } finally {
+            if ($pushed) { Pop-Location }
+            foreach ($drive in $mapped) { subst $drive /D }
+          }
       - name: Build and inspect the matched workloads
         shell: pwsh
         run: |
           $ErrorActionPreference = 'Stop'
           $root = Join-Path $env:RUNNER_TEMP 'runtime-build-control'
-          New-Item -ItemType Directory -Path $root | Out-Null
+          New-Item -ItemType Directory -Force -Path $root | Out-Null
           $env:CONTROL_ROOT = $root
           $baseline = (Get-Command bun -CommandType Application).Source
           $baseline | Out-File -FilePath (Join-Path $root 'baseline-path.txt') -Encoding utf8
