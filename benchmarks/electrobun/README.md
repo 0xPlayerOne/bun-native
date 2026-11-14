@@ -78,14 +78,15 @@ signal, then independently verify the expected text. Record capture, pixel
 comparison and OCR costs separately; an OCR result obtained after the change is
 not a display timestamp.
 
-The explicit `electrobun-smoke` workflow dispatch builds the pinned reference in
-the hosted macOS runner and exercises one owned-window click and a guarded
-composited-display capture. Each sample also captures the owned window surface
-and requires an exact pixel match in the calibrated label region; it records any
-overlapping window bounds. It retains screenshots and failures, and rejects
-forced cleanup. This is a qualification attempt, not the paired comparison or
-a physical display-presentation timestamp. Window-order checks immediately
-before and after capture cannot rule out a transient overlay between them.
+The explicit `electrobun-smoke` workflow dispatch builds the pinned reference,
+the native release host and an inspected Core/AOT fixture on hosted macOS. It
+attempts an owned-window click and guarded composited-display capture for each
+sequentially. Each sample also captures the owned window surface and requires an
+exact pixel match in the calibrated label region; it records any overlapping
+window bounds. It retains screenshots and failures, and rejects forced cleanup.
+This is a qualification attempt, not the paired comparison or a physical
+display-presentation timestamp. Window-order checks immediately before and
+after capture cannot rule out a transient overlay between them.
 
 ```sh
 gh workflow run benchmark-comparison.yml --ref <candidate-branch> -f electrobun-smoke=true

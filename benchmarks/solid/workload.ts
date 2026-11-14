@@ -33,6 +33,12 @@ export const ROW_STYLE = { font_size: 12 } as const
 export const WINDOW_TITLE = 'Bun Native matched renderer workload'
 export const INPUT_LABEL = 'Clicked'
 
+export function inputScenario(inputLatency: boolean, visibleInput: boolean, calibration: boolean) {
+  if ((inputLatency && visibleInput) || (calibration && (inputLatency || visibleInput)))
+    throw new Error('Input latency, visible input and calibration are separate launches')
+  return inputLatency ? 'input-latency' : visibleInput ? 'visible-input' : null
+}
+
 export function count(value: string | undefined, name: string, maximum: number) {
   const parsed = Number(value)
   if (!Number.isSafeInteger(parsed) || parsed < 1 || parsed > maximum)
@@ -168,6 +174,7 @@ export async function runWorkload(adapter: 'solid' | 'core' | 'react', mount: Mo
       rows: { type: 'string', default: '32' },
       calibration: { type: 'boolean', default: false },
       'input-latency': { type: 'boolean', default: false },
+      'visible-input': { type: 'boolean', default: false },
     },
     strict: true,
     allowPositionals: false,
@@ -183,8 +190,7 @@ export async function runWorkload(adapter: 'solid' | 'core' | 'react', mount: Mo
   const rowCount = count(values.rows, 'rows', 128)
   if (iterations % 10 !== 0) throw new Error('iterations must be a multiple of 10')
   const inputLatency = values['input-latency']!
-  if (inputLatency && values.calibration)
-    throw new Error('--input-latency and --calibration are separate launches')
+  const scenario = inputScenario(inputLatency, values['visible-input']!, values.calibration!)
   const initial = Array.from({ length: rowCount }, (_, id) => ({ id, text: `Row ${id}` }))
   const result: Record<string, unknown> = {
     schemaVersion: 1,
@@ -194,8 +200,8 @@ export async function runWorkload(adapter: 'solid' | 'core' | 'react', mount: Mo
     declaredMode: values.mode,
     executable: process.execPath,
     bunRevision: Bun.revision,
-    workload: inputLatency
-      ? { scenario: 'input-latency', rows: rowCount }
+    workload: scenario
+      ? { scenario, rows: rowCount }
       : { iterations, rotations, mounts, rows: rowCount, warmup: 20 },
     methodology: {
       timings: 'application update submission through public-core acknowledgement',
@@ -240,10 +246,10 @@ export async function runWorkload(adapter: 'solid' | 'core' | 'react', mount: Mo
     const applicationReadyMs = performance.now()
     const window = await application.openWindow({ title: WINDOW_TITLE, width: 640, height: 720 })
     const windowOpenedMs = performance.now()
-    const onClick = inputLatency
+    const onClick = scenario
       ? () => {
           clicks++
-          recordClick(adapter)
+          if (inputLatency) recordClick(adapter)
           clicked ??= active!.update([INPUT_LABEL])
         }
       : undefined
@@ -266,9 +272,9 @@ export async function runWorkload(adapter: 'solid' | 'core' | 'react', mount: Mo
         1,
         expectedNodes(initial, 'Initial')
       )
-    if (inputLatency) {
-      // The external XTest driver measures input command start to the matching
-      // native paint, then closes the window through the OS. One click per launch.
+    if (scenario) {
+      // The external driver owns observation and OS close. The visible-input
+      // mode deliberately leaves native paint instrumentation disabled.
       await window.closed
       assert.equal(clicks, 1, 'Exactly one OS click must reach the fixture button')
       await clicked
@@ -277,8 +283,9 @@ export async function runWorkload(adapter: 'solid' | 'core' | 'react', mount: Mo
       result['input'] = {
         clicks,
         label: INPUT_LABEL,
-        meaning:
-          'one real XTest click updates the label through this adapter; the driver owns the latency clock and OS close',
+        meaning: inputLatency
+          ? 'one real XTest click updates the label through this adapter; the driver owns the latency clock and OS close'
+          : 'one OS click updates the label; the external observer owns capture and OS close',
       }
     } else {
       for (let index = 0; index < 20; index++) {
