@@ -96,12 +96,18 @@ test('paired input diagnostic requires an explicit dispatch and leaves ordinary 
     type: 'boolean',
     default: false,
   })
+  expect(parsed.on.workflow_dispatch.inputs['paired-macos']).toMatchObject({
+    type: 'boolean',
+    default: false,
+  })
   expect(parsed.jobs['paired-click']!.if).toContain("github.event_name == 'workflow_dispatch'")
   expect(parsed.jobs['paired-click']!.if).toContain("inputs['paired-only'] == true")
   for (const job of ['linux', 'macos', 'windows'])
     expect(parsed.jobs[job]!.if).toContain("inputs['paired-only'] != true")
   for (const job of ['linux', 'windows'])
     expect(parsed.jobs[job]!.if).toContain("inputs['startup-only'] != true")
+  for (const job of ['linux', 'windows'])
+    expect(parsed.jobs[job]!.if).toContain("inputs['paired-macos'] != true")
 })
 
 test('event contract parsing supports both activity syntaxes and fails closed', () => {

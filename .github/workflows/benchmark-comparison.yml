@@ -33,6 +33,10 @@ on:
         description: Run the macOS Core startup trace investigation for #678 only
         type: boolean
         default: false
+      paired-macos:
+        description: Run the same-runner macOS Core AOT startup comparison for #678 only
+        type: boolean
+        default: false
   schedule:
     - cron: '47 6 * * 3'
   pull_request:
@@ -61,7 +65,7 @@ concurrency:
 jobs:
   linux:
     name: Linux core/Solid/React development and AOT comparison
-    if: vars.CI_BILLING_PAUSED == 'false' && (github.event_name != 'pull_request' || github.event.pull_request.draft == false) && (github.event_name != 'workflow_dispatch' || (inputs['paired-only'] != true && inputs['startup-only'] != true))
+    if: vars.CI_BILLING_PAUSED == 'false' && (github.event_name != 'pull_request' || github.event.pull_request.draft == false) && (github.event_name != 'workflow_dispatch' || (inputs['paired-only'] != true && inputs['startup-only'] != true && inputs['paired-macos'] != true))
     runs-on: ubuntu-24.04
     timeout-minutes: 60
     defaults:
@@ -247,10 +251,23 @@ jobs:
       PYTHONDONTWRITEBYTECODE: 1
       TRIALS: ${{ github.event_name == 'workflow_dispatch' && inputs.trials || '5' }}
       STARTUP_ONLY: ${{ github.event_name == 'workflow_dispatch' && inputs['startup-only'] || false }}
+      PAIRED_MACOS: ${{ github.event_name == 'workflow_dispatch' && inputs['paired-macos'] || false }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+      - name: Checkout pinned baseline source
+        if: github.event_name == 'workflow_dispatch' && inputs['paired-macos'] == true
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: 5cfbb71c83a5f3937543ee08aa8159960c1d80a0
+          path: .paired-baseline
+          persist-credentials: false
+      - name: Isolate pinned baseline checkout
+        if: github.event_name == 'workflow_dispatch' && inputs['paired-macos'] == true
+        run: |
+          test "$(cat .paired-baseline/.git/HEAD)" = 5cfbb71c83a5f3937543ee08aa8159960c1d80a0
+          mv .paired-baseline "$RUNNER_TEMP/paired-baseline"
       - name: Prepare result directory
         run: |
           mkdir "$RUNNER_TEMP/comparison"
@@ -266,21 +283,35 @@ jobs:
           { time -p cargo build --locked --release --manifest-path Cargo.toml -p bun-native-host --bin bun-native-host --example workload-baseline; } 2>&1 | tee "$COMPARISON/host-build.log"
           shasum -a 256 target/release/bun-native-host target/release/examples/workload-baseline > "$COMPARISON/binary-sha256.txt"
           system_profiler SPDisplaysDataType SPHardwareDataType > "$COMPARISON/hardware.txt" 2>&1 || true
+      - name: Build pinned baseline native host
+        if: github.event_name == 'workflow_dispatch' && inputs['paired-macos'] == true
+        timeout-minutes: 25
+        run: |
+          CARGO_TARGET_DIR="$RUNNER_TEMP/paired-target" cargo build --locked --release \
+            --manifest-path "$RUNNER_TEMP/paired-baseline/Cargo.toml" -p bun-native-host --bin bun-native-host
+          cp "$RUNNER_TEMP/paired-target/release/bun-native-host" "$RUNNER_TEMP/paired-baseline-host"
+          shasum -a 256 "$RUNNER_TEMP/paired-baseline-host" > "$COMPARISON/paired-baseline-sha256.txt"
       - name: Run the equivalent-workload comparison
         timeout-minutes: 40
         run: |
           extra=()
           if [[ "$STARTUP_ONLY" == 'true' ]]; then extra+=(--startup-trace-calibration --adapters core); fi
+          if [[ "$PAIRED_MACOS" == 'true' ]]; then extra+=(--adapters core --paired-host "$RUNNER_TEMP/paired-baseline-host" --paired-trials 10); fi
           bun benchmarks/comparison/run.ts \
             --host "$GITHUB_WORKSPACE/target/release/bun-native-host" --host-profile release \
             --output "$COMPARISON/run" --trials "$TRIALS" --input-trials 0 "${extra[@]}"
       - name: Run the direct Rust GPUI baseline
-        if: ${{ !cancelled() && hashFiles('target/release/examples/workload-baseline') != '' }}
+        if: ${{ !cancelled() && env.PAIRED_MACOS != 'true' && hashFiles('target/release/examples/workload-baseline') != '' }}
         timeout-minutes: 10
         run: |
           bun benchmarks/rust-gpui/run.ts \
             --binary "$GITHUB_WORKSPACE/target/release/examples/workload-baseline" \
             --output "$COMPARISON/rust-gpui" --trials "$TRIALS"
+      - name: Verify paired startup evidence
+        if: ${{ !cancelled() && env.PAIRED_MACOS == 'true' && env.COMPARISON != '' }}
+        run: |
+          test -f "$COMPARISON/run/comparison.json"
+          bun benchmarks/comparison/paired-analysis.ts "$COMPARISON/run" > "$COMPARISON/paired-analysis.json"
       - name: Export the compact record and summary table
         if: ${{ always() && env.COMPARISON != '' }}
         run: |
@@ -322,7 +353,7 @@ jobs:
   # benchmarks/comparison/windows-processes.ts. The VM has no physical GPU.
   windows:
     name: Windows core/Solid/React and direct Rust GPUI comparison
-    if: vars.CI_BILLING_PAUSED == 'false' && (github.event_name != 'pull_request' || github.event.pull_request.draft == false) && (github.event_name != 'workflow_dispatch' || (inputs['paired-only'] != true && inputs['startup-only'] != true))
+    if: vars.CI_BILLING_PAUSED == 'false' && (github.event_name != 'pull_request' || github.event.pull_request.draft == false) && (github.event_name != 'workflow_dispatch' || (inputs['paired-only'] != true && inputs['startup-only'] != true && inputs['paired-macos'] != true))
     runs-on: windows-2022
     timeout-minutes: 75
     defaults:
