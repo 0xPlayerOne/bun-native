@@ -80,7 +80,9 @@ not a display timestamp.
 
 The explicit `electrobun-smoke` workflow dispatch builds the pinned reference in
 the hosted macOS runner and exercises one owned-window click and a guarded
-composited-display capture. It retains screenshots and failures, and rejects
+composited-display capture. Each sample also captures the owned window surface
+and requires an exact pixel match in the calibrated label region; it records any
+overlapping window bounds. It retains screenshots and failures, and rejects
 forced cleanup. This is a qualification attempt, not the paired comparison or
 a physical display-presentation timestamp. Window-order checks immediately
 before and after capture cannot rule out a transient overlay between them.

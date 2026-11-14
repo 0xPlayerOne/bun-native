@@ -283,6 +283,8 @@ static void verify_visible_region(NSDictionary *state, NSArray *windows, CGRect 
         || region.size.width <= 0 || region.size.height <= 0)
         fail(@"Invalid bounded visible-region request");
     BOOL found = NO;
+    NSDictionary *overlap = nil;
+    CGRect overlapBounds = CGRectZero;
     for (NSDictionary *candidate in windows) {
         CGRect bounds = pointer_window_bounds(candidate);
         BOOL owned = [candidate[(__bridge NSString *)kCGWindowNumber] isEqual:state[@"window"][@"id"]];
@@ -292,12 +294,14 @@ static void verify_visible_region(NSDictionary *state, NSArray *windows, CGRect 
                 || !CGRectContainsRect(bounds, region))
                 fail(@"Owned visible-region window metadata is inconsistent");
             found = YES;
-        } else if (!found && [candidate[(__bridge NSString *)kCGWindowAlpha] doubleValue] > 0
+        } else if (!found && !overlap && [candidate[(__bridge NSString *)kCGWindowAlpha] doubleValue] > 0
                    && CGRectIntersectsRect(bounds, region)) {
-            unavailable(visible_region_rejection(state, candidate, bounds, region));
+            overlap = candidate;
+            overlapBounds = bounds;
         }
     }
     if (!found) unavailable(@"Owned window is absent from onscreen metadata");
+    if (overlap) unavailable(visible_region_rejection(state, overlap, overlapBounds, region));
 }
 
 static void post_modifier(CGKeyCode code, CGEventFlags flags, bool down) {
@@ -506,10 +510,21 @@ static NSDictionary *input(NSDictionary *request, NSDictionary *state) {
         NSArray *windows = CFBridgingRelease(CGWindowListCopyWindowInfo(
             kCGWindowListOptionOnScreenOnly | kCGWindowListExcludeDesktopElements, kCGNullWindowID));
         if (!windows) unavailable(@"The current GUI session cannot inspect onscreen windows");
-        verify_visible_region(state, windows, region);
         result[@"visibleRegion"] = @[@(region.origin.x), @(region.origin.y),
             @(region.size.width), @(region.size.height)];
-        result[@"visibleRegionVerified"] = @YES;
+        @try {
+            verify_visible_region(state, windows, region);
+            result[@"visibleRegionVerified"] = @YES;
+        } @catch (NSException *error) {
+            NSString *prefix = @"Another onscreen window overlaps the observed region: ";
+            if (![error.name isEqualToString:@"Unsupported"] || ![error.reason hasPrefix:prefix]) @throw error;
+            NSString *json = [error.reason substringFromIndex:prefix.length];
+            NSDictionary *details = [NSJSONSerialization JSONObjectWithData:[json dataUsingEncoding:NSUTF8StringEncoding]
+                options:0 error:NULL];
+            if (![details isKindOfClass:NSDictionary.class]) fail(@"Invalid visible-region overlap evidence");
+            result[@"visibleRegionVerified"] = @NO;
+            result[@"visibleRegionObstruction"] = details;
+        }
     } else if ([action isEqualToString:@"tab"]) {
         key(pid, 48, 0);
         events = 2;

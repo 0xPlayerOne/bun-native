@@ -83,6 +83,7 @@ type WindowState = {
   windowServerTargetVerified?: boolean
   visibleRegionVerified?: boolean
   visibleRegion?: [number, number, number, number]
+  visibleRegionObstruction?: Record<string, unknown>
   injection?: { method: string; postedEvents: number; delivery: string }
 }
 type PendingState = { status: 'not-ready'; reason?: string }
@@ -123,38 +124,11 @@ async function snapshot(
     height: 36,
   }
   const guardStart = performance.now()
-  let beforeGuard: WindowState | PendingState
-  try {
-    beforeGuard = await helperCall(guard)
-  } catch (error) {
-    // The hosted runner is disposable. Preserve both images only as failure
-    // diagnostics; an obstructed region never becomes a passing observation.
-    if (name === 'initial' && expected.window.frame.every(Number.isSafeInteger)) {
-      try {
-        command([
-          'screencapture',
-          '-x',
-          `-R${expected.window.frame.join(',')}`,
-          join(output, 'obstructed-display.png'),
-        ])
-        command([
-          'screencapture',
-          '-x',
-          '-o',
-          `-l${expected.window.id}`,
-          join(output, 'obstructed-surface.png'),
-        ])
-        result['obstructionDiagnostic'] =
-          'display and owned surface captured after guard rejection; not acceptance evidence'
-      } catch (diagnosticError) {
-        result['obstructionDiagnosticError'] =
-          diagnosticError instanceof Error ? diagnosticError.message : String(diagnosticError)
-      }
-    }
-    throw error
-  }
+  const beforeGuard = await helperCall(guard)
   assert.equal(beforeGuard.status, 'ready')
-  assert.equal(beforeGuard.visibleRegionVerified, true)
+  assert.equal(typeof beforeGuard.visibleRegionVerified, 'boolean')
+  if (!beforeGuard.visibleRegionVerified) assert(beforeGuard.visibleRegionObstruction)
+  else assert.equal(beforeGuard.visibleRegionObstruction, undefined)
   const frame = expected.window.frame
   assert(frame.every(Number.isSafeInteger), 'Display capture requires integral frame coordinates')
   const side = (frame[2] - viewport[0]) / 2
@@ -163,16 +137,37 @@ async function snapshot(
   const before = performance.now()
   command(['screencapture', '-x', `-R${frame.join(',')}`, path])
   const captured = performance.now()
+  const surfacePath = join(output, `${name}-surface.png`)
+  command(['screencapture', '-x', '-o', `-l${expected.window.id}`, surfacePath])
+  const surfaceCaptured = performance.now()
   const afterGuard = await helperCall(guard)
   assert.equal(afterGuard.status, 'ready')
-  assert.equal(afterGuard.visibleRegionVerified, true)
+  assert.equal(afterGuard.visibleRegionVerified, beforeGuard.visibleRegionVerified)
   assert.deepEqual(afterGuard.visibleRegion, beforeGuard.visibleRegion)
+  assert.deepEqual(afterGuard.visibleRegionObstruction, beforeGuard.visibleRegionObstruction)
   const png = decodePng(readFileSync(path))
+  const surface = decodePng(readFileSync(surfacePath))
+  const scale = png.width / frame[2]
+  assert(scale >= 1 && scale <= 4 && Math.abs(png.height - frame[3] * scale) <= 1)
+  const region = [
+    Math.floor((side + 12) * scale),
+    Math.floor((top + 10) * scale),
+    Math.floor(240 * scale),
+    Math.floor(36 * scale),
+  ] as const
+  const correspondence = compareVisiblePixels(png, surface, region, 0)
+  assert.equal(
+    correspondence.changedPixels,
+    0,
+    'Display and owned surface differ in the label region'
+  )
   return {
     path,
     png,
     captureMs: captured - before,
-    guardAndDecodeMs: performance.now() - guardStart - (captured - before),
+    surfaceCaptureMs: surfaceCaptured - captured,
+    guardAndDecodeMs: performance.now() - guardStart - (surfaceCaptured - before),
+    correspondence,
     guard: { before: beforeGuard, after: afterGuard },
   }
 }
@@ -325,6 +320,16 @@ async function main() {
     polls,
     commandToDisplayCaptureObservedMs: observedMs,
     captureMs: { initial: first.captureMs, control: second.captureMs, final: changed.captureMs },
+    surfaceCaptureMs: {
+      initial: first.surfaceCaptureMs,
+      control: second.surfaceCaptureMs,
+      final: changed.surfaceCaptureMs,
+    },
+    correspondence: {
+      initial: first.correspondence,
+      control: second.correspondence,
+      final: changed.correspondence,
+    },
     guardAndDecodeMs: {
       initial: first.guardAndDecodeMs,
       control: second.guardAndDecodeMs,
