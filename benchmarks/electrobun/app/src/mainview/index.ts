@@ -89,6 +89,7 @@ async function main() {
       clicks++
       view.update(['Clicked'])
       void post('clicked', {
+        nonce,
         clicks,
         label: view.label.textContent,
         startup: { ...startup, viewMountedMs: mountedMs },
