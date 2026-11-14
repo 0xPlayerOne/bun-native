@@ -26,22 +26,32 @@ fn batch(element: Value) -> Value {
 #[test]
 fn fragmented_utf8_and_multiple_frames_preserve_boundaries() {
     let bytes = "{\"id\":1,\"type\":\"open\",\"window_id\":1,\"root_id\":1,\"title\":\"界🌍\",\"width\":640,\"height\":480}\n{\"id\":2,\"type\":\"close\",\"window_id\":1}\n";
-    let mut source = BufReader::with_capacity(1, Cursor::new(bytes.as_bytes()));
-    let mut reader = CommandReader::default();
-    assert!(
-        matches!(reader.read(&mut source).unwrap().map(ValidCommand::into_command), Some(Command::Open { title, .. }) if title == "界🌍")
-    );
-    assert_eq!(
-        reader
-            .read(&mut source)
-            .unwrap()
-            .map(ValidCommand::into_command),
-        Some(Command::Close {
-            id: request(2),
-            window_id: window(1)
-        })
-    );
-    assert_eq!(reader.read(&mut source).unwrap(), None);
+    // Exercise refill boundaries around common vector widths, including
+    // boundaries inside UTF-8 sequences and between consecutive frames.
+    for capacity in [1, 2, 15, 16, 31, 32, 63, 64, 127, 128, 4096] {
+        let mut source = BufReader::with_capacity(capacity, Cursor::new(bytes.as_bytes()));
+        let mut reader = CommandReader::default();
+        assert!(
+            matches!(reader.read(&mut source).unwrap().map(ValidCommand::into_command), Some(Command::Open { title, .. }) if title == "界🌍"),
+            "capacity {capacity}"
+        );
+        assert_eq!(
+            reader
+                .read(&mut source)
+                .unwrap()
+                .map(ValidCommand::into_command),
+            Some(Command::Close {
+                id: request(2),
+                window_id: window(1)
+            }),
+            "capacity {capacity}"
+        );
+        assert_eq!(
+            reader.read(&mut source).unwrap(),
+            None,
+            "capacity {capacity}"
+        );
+    }
 }
 
 #[test]
