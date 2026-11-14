@@ -474,7 +474,7 @@ jobs:
 
   paired-click:
     name: Paired Linux Core AOT input investigation
-    if: vars.CI_BILLING_PAUSED == 'false' && github.event_name == 'workflow_dispatch' && inputs['paired-only'] == true && inputs['paired-macos'] != true && inputs['electrobun-smoke'] != true && (github.event_name != 'pull_request' || github.event.pull_request.draft == false)
+    if: vars.CI_BILLING_PAUSED == 'false' && github.event_name == 'workflow_dispatch' && inputs['paired-only'] == true && inputs['paired-macos'] != true && inputs['startup-only'] != true && inputs['electrobun-smoke'] != true && (github.event_name != 'pull_request' || github.event.pull_request.draft == false)
     runs-on: ubuntu-24.04
     timeout-minutes: 90
     defaults:
@@ -659,6 +659,39 @@ jobs:
             !${{ runner.temp }}/eb-smoke/native-host
             !${{ runner.temp }}/eb-smoke/native-build/application
             !${{ runner.temp }}/eb-smoke/native-build/module/
+          if-no-files-found: warn
+          retention-days: 30
+
+  event-registry-pairs:
+    name: Paired event registry microbenchmark (${{ matrix.os }})
+    if: vars.CI_BILLING_PAUSED == 'false' && github.event_name == 'workflow_dispatch' && inputs['paired-only'] == true && inputs['startup-only'] == true && inputs['paired-macos'] != true && inputs['electrobun-smoke'] != true && (github.event_name != 'pull_request' || github.event.pull_request.draft == false)
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, macos-15]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/native-toolchain
+        with:
+          rust: 'false'
+      - name: Record runner hardware
+        run: |
+          mkdir -p "$RUNNER_TEMP/event-registry-pairs"
+          { uname -a; if [[ "$RUNNER_OS" == macOS ]]; then sysctl -n machdep.cpu.brand_string; else lscpu; fi; } > "$RUNNER_TEMP/event-registry-pairs/hardware.txt"
+      - name: Compare source-matched registries in paired processes
+        run: python3 benchmarks/core/event-registry-pairs.py "$RUNNER_TEMP/event-registry-pairs" 12
+      - name: Retain raw samples and failures
+        if: ${{ always() }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: event-registry-pairs-${{ runner.os }}-${{ runner.arch }}
+          path: |
+            ${{ runner.temp }}/event-registry-pairs/
+            !${{ runner.temp }}/event-registry-pairs/*-aot
           if-no-files-found: warn
           retention-days: 30
 

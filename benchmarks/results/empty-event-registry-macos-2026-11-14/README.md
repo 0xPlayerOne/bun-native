@@ -51,3 +51,16 @@ and `ec75eb3f6bdf43d4a6c2d24b72bbfc6f485578a02e5e57aec31acd4045e24ac9`.
 Uncompressed candidate-first and baseline-first JSON SHA-256 values were
 `658069b035dc21ffe7dc22be277c891bc0f772ccec5454ec408980c1ff515033`
 and `88cc8130f35fd6a355d6c659476c36af0bc581899e07497ce03657e8badbf415`.
+
+## Hosted paired reproduction
+
+The manually dispatched `event-registry-pairs` workflow job runs 12 alternating
+fresh-process pairs per mode on Linux and macOS using the pinned toolchain.
+It constructs the baseline by removing only the fast-path line from the exact
+candidate source and records source, probe, and executable hashes. Its separate
+`benchmarks/core/event-registry-pair-probe.ts.txt` adds a mixed case with both
+empty and listener-bearing registries in the same loop. It preserves per-batch
+samples, compiler logs and AOT inspections as workflow artifacts. Trigger it
+with `paired-only=true`, `startup-only=true`, and `paired-macos=false`.
+Like the original probe, this measures synthetic routing work, not end-to-end
+input latency; compiler specialization and runner noise remain possible.

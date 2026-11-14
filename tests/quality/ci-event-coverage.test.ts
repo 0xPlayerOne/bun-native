@@ -114,6 +114,15 @@ test('paired input diagnostic requires an explicit dispatch and leaves ordinary 
   expect(parsed.jobs['paired-click']!.if).toContain("github.event_name == 'workflow_dispatch'")
   expect(parsed.jobs['paired-click']!.if).toContain("inputs['paired-only'] == true")
   expect(parsed.jobs['paired-click']!.if).toContain("inputs['paired-macos'] != true")
+  expect(parsed.jobs['paired-click']!.if).toContain("inputs['startup-only'] != true")
+  for (const condition of [
+    "github.event_name == 'workflow_dispatch'",
+    "inputs['paired-only'] == true",
+    "inputs['startup-only'] == true",
+    "inputs['paired-macos'] != true",
+    "inputs['electrobun-smoke'] != true",
+  ])
+    expect(parsed.jobs['event-registry-pairs']!.if).toContain(condition)
   for (const condition of [
     "github.event_name == 'workflow_dispatch'",
     "inputs['paired-only'] == true",
