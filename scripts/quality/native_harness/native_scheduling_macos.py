@@ -171,7 +171,7 @@ def main():
         paint_start = len(records("native.jsonl"))
         ownership.host_row(app, host, observed)
         injected = time.monotonic()
-        driver.type_text("x")
+        driver.key("x")
         report["injectionDurationMs"] = (time.monotonic() - injected) * 1000
         painted_during = False
         while not application_record("completed"):
