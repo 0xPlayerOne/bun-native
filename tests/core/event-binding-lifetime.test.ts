@@ -17,6 +17,39 @@ function prepare(bindings: EventBindings) {
   return plan
 }
 
+test('an empty registry resumes delivery after registration and stops after the last release', async () => {
+  const bindings = new EventBindings(() => {})
+  const event: RoutedEvent = {
+    type: 'click',
+    window_id: 1,
+    node_id: 1,
+    path: [1],
+    sequence: 1,
+    tree_revision: 1,
+  }
+  expect(bindings.prepare(event, [node])).toBeUndefined()
+  expect(() =>
+    bindings.prepare({ ...event, type: 'invalid' } as unknown as RoutedEvent, [node])
+  ).toThrow()
+  let calls = 0
+  const remove = bindings.register(1, node, 'click', () => {
+    calls++
+  })
+  const plan = prepare(bindings)
+  await dispatchPlan(plan, () => true)
+  bindings.release(plan)
+  expect(calls).toBe(1)
+  remove()
+  expect(bindings.prepare(event, [node])).toBeUndefined()
+  const other = Object.freeze({ kind: 'button' }) as NativeNode<'button'>
+  bindings.register(2, other, 'click', () => {
+    calls++
+  })
+  expect(bindings.prepare(event, [node])).toBeUndefined()
+  bindings.clear()
+  expect(bindings.prepare(event, [node])).toBeUndefined()
+})
+
 for (const reason of ['unsubscribe', 'replace', 'remove-node', 'clear'] as const)
   test(`native event ${reason} revokes the listener before abort handlers run`, async () => {
     const bindings = new EventBindings(() => {})

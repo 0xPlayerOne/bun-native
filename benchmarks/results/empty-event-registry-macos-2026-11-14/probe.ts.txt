@@ -1,0 +1,28 @@
+import { EventBindings, type RoutedEvent } from '../../packages/core/src/EVENTS_FILE'
+import type { NativeNode } from '@bun-native/core'
+const path = Array.from({length: 8}, () => Object.freeze({kind: 'button'}) as NativeNode<'button'>)
+const event = {type:'click',window_id:1,node_id:8,path:[1,2,3,4,5,6,7,8],sequence:1,tree_revision:1} as RoutedEvent
+function measure(scenario: string) {
+  const registries = Array.from({length: 251}, () => new EventBindings(() => {}))
+  for (const bindings of registries) {
+    if (scenario === 'target') bindings.register(8,path[7]!,'click',()=>{})
+    if (scenario === 'off-path') bindings.register(99,path[7]!,'click',()=>{})
+  }
+  const offset = Date.now() % registries.length
+  const expected = scenario === 'target' ? 10000 : 0
+  function cycle() {
+    let found = 0
+    for (let i=0;i<10000;i++) {
+      const bindings=registries[(i+offset)%registries.length]!
+      const plan=bindings.prepare(event,path)
+      if (plan) { found++; bindings.release(plan) }
+    }
+    if (found !== expected) throw new Error(`Unexpected plans: ${scenario} ${found}`)
+  }
+  for (let i=0;i<10;i++) cycle()
+  Bun.gc(true)
+  const samples=[]
+  for (let i=0;i<25;i++) { const start=process.hrtime.bigint(); cycle(); samples.push(Number(process.hrtime.bigint()-start)/10000) }
+  return {scenario,samplesNs:samples,medianNs:samples.toSorted((a,b)=>a-b)[12]}
+}
+console.log(JSON.stringify({revision:Bun.revision,results:['empty','off-path','target'].map(measure)}))
