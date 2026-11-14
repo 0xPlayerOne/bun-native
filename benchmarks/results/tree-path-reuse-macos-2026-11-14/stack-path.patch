@@ -1,0 +1,43 @@
+--- a/native/protocol/src/tree.rs
++++ b/native/protocol/src/tree.rs
+@@ -684,6 +684,7 @@
+         let mut pending = Vec::new();
+         // Reuse path capacity across subtrees while resetting each context.
+         let mut layers = Vec::new();
++        let mut short_path = [self.root_id; MAX_DEPTH + 1];
+         for &id in attached {
+             if seen.contains(&id) || self.nodes.get(id).is_none() {
+                 continue;
+@@ -696,7 +697,11 @@
+             while let Some(parent) = self.nodes.get(top).ok_or_else(invalid_handle)?.parent {
+                 depth += 1;
+                 top = parent;
+-                layers.push(top);
++                if depth <= short_path.len() {
++                    short_path[depth - 1] = top;
++                } else {
++                    layers.push(top);
++                }
+                 if depth > self.nodes.len() {
+                     return Err(error(
+                         ErrorCode::InvalidState,
+@@ -709,12 +714,16 @@
+                 continue;
+             }
+             let (mut overlays, mut popup) = (0, false);
+-            for ancestor in layers.iter().rev() {
++            for ancestor in layers
++                .iter()
++                .rev()
++                .chain(short_path[..depth.min(short_path.len())].iter().rev())
++            {
+                 let node = self.nodes.get(*ancestor).ok_or_else(invalid_handle)?;
+                 (overlays, popup) = check_node(node, overlays, popup)?;
+             }
+-            if let Some(parent) = layers.first() {
+-                let parent = self.nodes.get(*parent).ok_or_else(invalid_handle)?;
++            if depth > 0 {
++                let parent = self.nodes.get(short_path[0]).ok_or_else(invalid_handle)?;
+                 if parent.children.len() > parent.element.max_children() {
+                     return Err(split_panes());
+                 }
