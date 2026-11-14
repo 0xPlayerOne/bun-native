@@ -142,6 +142,31 @@ describe('native transaction candidate graph', () => {
     expect(() => fits.validate()).not.toThrow()
   })
 
+  test('accounts for removed text, multiple input fields and whole-tree error order', () => {
+    const { nodes, box, label, begin } = committed()
+    const fits = begin(nodes)
+    fits.remove(label)
+    fits.append(box, fits.create({ kind: 'input', value: '€€', placeholder: '123456' }))
+    expect(() => fits.validate()).not.toThrow()
+
+    const total = begin(nodes)
+    total.remove(label)
+    total.append(box, total.create({ kind: 'input', value: '€€', placeholder: '1234567' }))
+    expect(() => total.validate()).toThrow('Window text memory limit exceeded')
+
+    const both = begin(nodes)
+    const first = both.create({ kind: 'text', text: '12345678' })
+    both.append(box, first)
+    both.set(label, { kind: 'text', text: '€€€' })
+    expect(() => both.validate()).toThrow('Native text limit exceeded')
+
+    const totalFirst = begin(nodes)
+    totalFirst.set(label, { kind: 'text', text: '12345678' })
+    totalFirst.append(box, totalFirst.create({ kind: 'text', text: '12345678' }))
+    totalFirst.append(box, totalFirst.create({ kind: 'text', text: '€€€' }))
+    expect(() => totalFirst.validate()).toThrow('Window text memory limit exceeded')
+  })
+
   test('checks depth level by level and requires every node to be attached', () => {
     const { nodes, box, begin } = committed()
     const deep = begin(nodes)

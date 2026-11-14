@@ -622,11 +622,17 @@ export class Transaction implements NativeBatch {
    */
   validate(): void {
     const { limits, nodes } = this
-    if (this.text.oversized.size || this.textBytes() > limits.max_text_bytes_per_window)
-      return this.walk()
-    for (const node of nodes.writes.values())
-      for (const size of textSizesOf(node.element))
+    if (this.text.oversized.size) return this.walk()
+    let bytes = this.text.bytes
+    for (const [id, node] of nodes.writes) {
+      bytes -= textBytesOf(nodes.base.get(id)?.element)
+      for (const size of textSizesOf(node.element)) {
         if (size > limits.max_text_bytes) return this.walk()
+        bytes += size
+      }
+    }
+    for (const id of nodes.deletes) bytes -= textBytesOf(nodes.base.get(id)?.element)
+    if (bytes > limits.max_text_bytes_per_window) return this.walk()
     const seen = new Set<number>()
     // Flat (id, depth) pairs.
     const pending: number[] = []
