@@ -49,11 +49,16 @@ fn main() {
                 let executor = cx.background_executor().clone();
                 let mut turn_started = executor.now();
                 let mut commands_in_turn = 0;
+                let mut previous_yield = None;
                 while let Ok(incoming) = commands.recv().await {
                     cx.update(|cx| match incoming {
                         Incoming::Command(command, received) => {
                             if let Some(received) = received {
-                                phases::foreground(command.command().id(), received);
+                                phases::foreground(
+                                    command.command().id(),
+                                    received,
+                                    previous_yield.take(),
+                                );
                             }
                             session.dispatch(command, cx);
                         }
@@ -78,7 +83,10 @@ fn main() {
                         // future. Give native input and paint a turn between
                         // complete atomic commands, even under a full queue.
                         // GPUI's zero-duration timer is ready immediately.
+                        let yield_started = phases::now();
                         executor.timer(COMMAND_YIELD_DELAY).await;
+                        previous_yield =
+                            yield_started.map(|started| (started, std::time::Instant::now()));
                         turn_started = executor.now();
                         commands_in_turn = 0;
                     }

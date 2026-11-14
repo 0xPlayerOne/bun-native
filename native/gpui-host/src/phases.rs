@@ -49,7 +49,7 @@ struct Trace {
     batches: Vec<Batch>,
     frames: Vec<Frame>,
     dropped_batches: u64,
-    foreground: Vec<(RequestId, u64)>,
+    foreground: Vec<(RequestId, u64, u64)>,
     dropped_foreground: u64,
     dropped_frames: u64,
     renders: u64,
@@ -132,7 +132,11 @@ pub(crate) fn now() -> Option<Instant> {
 
 /// Time from completion of command reading and validation on the worker to
 /// entry on the foreground executor. Includes channel enqueue/backpressure.
-pub(crate) fn foreground(id: RequestId, received: Instant) {
+pub(crate) fn foreground(
+    id: RequestId,
+    received: Instant,
+    previous_yield: Option<(Instant, Instant)>,
+) {
     TRACE.with(|trace| {
         let mut trace = trace.borrow_mut();
         let Some(trace) = trace.as_mut() else { return };
@@ -140,9 +144,16 @@ pub(crate) fn foreground(id: RequestId, received: Instant) {
             trace.dropped_foreground += 1;
             return;
         }
+        let overlap = previous_yield.map_or(0, |(start, end)| {
+            if received >= end {
+                0
+            } else {
+                duration(received.max(start), end)
+            }
+        });
         trace
             .foreground
-            .push((id, duration(received, Instant::now())));
+            .push((id, duration(received, Instant::now()), overlap));
     });
 }
 
@@ -287,9 +298,9 @@ pub(crate) fn write() {
             "culledNodes", "cachedViews"],
         "renders": trace.renders,
         "droppedBatches": trace.dropped_batches,
-        "foregroundColumns": ["id", "readToForegroundNanos"],
+        "foregroundColumns": ["id", "readToForegroundNanos", "previousYieldOverlapNanos"],
         "droppedForeground": trace.dropped_foreground,
-        "foreground": trace.foreground.iter().map(|(id, delay)| json!([id, delay])).collect::<Vec<_>>(),
+        "foreground": trace.foreground.iter().map(|(id, delay, overlap)| json!([id, delay, overlap])).collect::<Vec<_>>(),
         "droppedFrames": trace.dropped_frames,
         "dragColumns": ["atNanos", "step"],
         "droppedDrag": trace.dropped_drag,
@@ -408,7 +419,12 @@ mod tests {
         assert!(enabled());
         assert!(now().is_some());
         let window = WindowId::try_from(1).unwrap();
-        foreground(RequestId::try_from(7).unwrap(), origin);
+        let yielded_until = Instant::now();
+        foreground(
+            RequestId::try_from(7).unwrap(),
+            origin,
+            Some((origin, yielded_until)),
+        );
         batch(
             RequestId::try_from(7).unwrap(),
             window,
@@ -444,6 +460,7 @@ mod tests {
         assert_eq!(record["droppedForeground"], 0);
         assert_eq!(record["foreground"][0][0], 7);
         assert!(record["foreground"][0][1].as_u64().is_some());
+        assert_eq!(record["foreground"][0][2], duration(origin, yielded_until));
         assert_eq!(record["droppedFrames"], 0);
         assert_eq!(
             record["batchColumns"],
