@@ -95,39 +95,50 @@ try {
     else viewport = currentViewport
     const elapsed = result['commandToDisplayCaptureObservedMs']
     assert(typeof elapsed === 'number' && Number.isFinite(elapsed) && elapsed > 0)
+    const window = result['commandToChangedCaptureWindowMs'] as Record<string, unknown>
+    assert(window && typeof window['start'] === 'number' && typeof window['end'] === 'number')
+    assert(Number.isFinite(window['start']) && Number.isFinite(window['end']))
+    assert(window['start'] >= 0 && window['start'] <= window['end'] && window['end'] <= elapsed)
   }
 } catch (error) {
   failure = error instanceof Error ? error.message : String(error)
 }
 const summaries: Record<string, unknown> = {}
 if (!failure) {
-  const elapsed = (item: Observation) => Number(item.result!['commandToDisplayCaptureObservedMs'])
-  for (const variant of ['reference', 'native'] as const) {
-    const controls = observations.filter(
-      (item) => item.trial.phase === 'control' && item.trial.variant === variant
-    )
-    const differences = [0, 1, 2].map((pair) => {
-      const items = controls.filter((item) => item.trial.pair === pair)
-      return elapsed(items[1]!) - elapsed(items[0]!)
+  for (const metric of ['captureCompleted', 'fullyVerified'] as const) {
+    const elapsed = (item: Observation) =>
+      metric === 'fullyVerified'
+        ? Number(item.result!['commandToDisplayCaptureObservedMs'])
+        : Number(
+            (item.result!['commandToChangedCaptureWindowMs'] as Record<string, unknown>)['end']
+          )
+    for (const variant of ['reference', 'native'] as const) {
+      const controls = observations.filter(
+        (item) => item.trial.phase === 'control' && item.trial.variant === variant
+      )
+      const differences = [0, 1, 2].map((pair) => {
+        const items = controls.filter((item) => item.trial.pair === pair)
+        return elapsed(items[1]!) - elapsed(items[0]!)
+      })
+      summaries[`${metric}-${variant}ControlDifferencesMs`] = {
+        raw: differences,
+        distribution: describe(differences),
+      }
+    }
+    const differences = Array.from({ length: Number(values.pairs) }, (_, pair) => {
+      const items = observations.filter(
+        (item) => item.trial.phase === 'comparison' && item.trial.pair === pair
+      )
+      return (
+        elapsed(items.find((item) => item.trial.variant === 'native')!) -
+        elapsed(items.find((item) => item.trial.variant === 'reference')!)
+      )
     })
-    summaries[`${variant}ControlDifferencesMs`] = {
+    summaries[`${metric}-nativeMinusReferenceMs`] = {
       raw: differences,
       distribution: describe(differences),
+      interval: bootstrapMedian(differences),
     }
-  }
-  const differences = Array.from({ length: Number(values.pairs) }, (_, pair) => {
-    const items = observations.filter(
-      (item) => item.trial.phase === 'comparison' && item.trial.pair === pair
-    )
-    return (
-      elapsed(items.find((item) => item.trial.variant === 'native')!) -
-      elapsed(items.find((item) => item.trial.variant === 'reference')!)
-    )
-  })
-  summaries['nativeMinusReferenceMs'] = {
-    raw: differences,
-    distribution: describe(differences),
-    interval: bootstrapMedian(differences),
   }
 }
 writeFileSync(
@@ -141,7 +152,7 @@ writeFileSync(
       viewport,
       summaries,
       scope:
-        'Hosted VM; command to verified display-capture observation includes observer overhead, not physical presentation. A/A controls are descriptive, not a precision guarantee. No product ranking follows from this fixture.',
+        'Hosted VM; both intervals include observer overhead and are not physical presentation. Capture completion precedes independent verification; the capture instant is unknown. A/A controls are descriptive, not a precision guarantee. No product ranking follows from this fixture.',
     },
     null,
     2

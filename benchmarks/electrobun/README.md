@@ -98,4 +98,6 @@ fixtures, then runs one warmup per variant, three A/A pairs per variant and the
 requested 3–20 AB/BA pairs. It retains every launch and stops on failure or changed
 binary fingerprints or viewport. The captured interval includes observer overhead;
 controls expose some noise but do not establish physical presentation latency or
-justify a general product ranking.
+justify a general product ranking. The changed display capture's command-relative
+start and completion are recorded separately from the later surface, guard and
+pixel verification; the exact instant represented by the capture is unknown.
