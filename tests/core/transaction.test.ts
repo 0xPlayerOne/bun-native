@@ -91,6 +91,26 @@ describe('native transaction candidate graph', () => {
     expect(nodes.get(1)!.children).toEqual([2])
   })
 
+  test('append moves existing children and preserves handle and lifecycle checks', () => {
+    const { nodes, root, box, label, begin } = committed()
+    const candidate = begin(nodes)
+    const sibling = candidate.create({ kind: 'box' })
+    candidate.append(root, sibling)
+    candidate.append(root, box)
+    expect(candidate.nodes.get(1)!.children).toEqual([4, 2])
+    candidate.append(sibling, label)
+    expect(candidate.nodes.get(2)!.children).toEqual([])
+    expect(candidate.nodes.get(4)!.children).toEqual([3])
+    expect(candidate.nodes.get(3)!.parent).toBe(4)
+    candidate.validate()
+    candidate.finish()
+    expect(() => candidate.append(root, box)).toThrow('Batch callback has already returned')
+    expect(() => candidate.append(root, { kind: 'box' } as NativeNode<'box'>)).toThrow(
+      'Node is forged, disposed or belongs to another window'
+    )
+    expect(nodes.get(1)!.children).toEqual([2])
+  })
+
   test('validates per-text and per-window bytes from replaced elements', () => {
     const { nodes, box, label, begin } = committed()
     const oversize = begin(nodes)

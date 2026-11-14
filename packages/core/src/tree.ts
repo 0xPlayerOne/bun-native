@@ -453,8 +453,10 @@ export class Transaction implements NativeBatch {
 
   insert(parentHandle: NativeNode<ContainerKind>, childHandle: NativeNode, index: number): void {
     this.check()
-    let parent = own(this.nodes, parentHandle)
-    let child = own(this.nodes, childHandle)
+    this.insertNodes(own(this.nodes, parentHandle), own(this.nodes, childHandle), index)
+  }
+
+  private insertNodes(parent: NodeState, child: NodeState, index: number): void {
     if (!isContainer(parent.element) || child.id === this.rootId)
       throw new NativeStateError(
         'invalid_state',
@@ -484,11 +486,8 @@ export class Transaction implements NativeBatch {
   append(parentHandle: NativeNode<ContainerKind>, childHandle: NativeNode): void {
     const parent = own(this.nodes, parentHandle)
     const child = own(this.nodes, childHandle)
-    this.insert(
-      parentHandle,
-      childHandle,
-      parent.children.length - (child.parent === parent.id ? 1 : 0)
-    )
+    this.check()
+    this.insertNodes(parent, child, parent.children.length - (child.parent === parent.id ? 1 : 0))
   }
 
   remove(handle: NativeNode): void {
