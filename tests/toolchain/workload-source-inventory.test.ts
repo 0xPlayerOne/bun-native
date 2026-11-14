@@ -6,6 +6,7 @@ import { dirname, join, posix, resolve } from 'node:path'
 import { sharedWorkloadSources } from '../../benchmarks/solid/sources.ts'
 
 const required = [
+  'benchmarks/solid/input-scenario.ts',
   'benchmarks/solid/ownership.ts',
   'benchmarks/solid/retention-evidence.ts',
   'benchmarks/solid/sources.ts',

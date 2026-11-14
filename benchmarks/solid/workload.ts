@@ -4,6 +4,7 @@ import assert from 'node:assert/strict'
 import { appendFileSync, existsSync, readFileSync, statSync, writeFileSync } from 'node:fs'
 import { isAbsolute } from 'node:path'
 import { parseArgs } from 'node:util'
+import { inputScenario } from './input-scenario.ts'
 import { expectWindowRootOnly } from './ownership.ts'
 import { writeRetentionEvidence } from './retention-evidence.ts'
 
@@ -32,12 +33,6 @@ export const LIST_STYLE = { direction: 'column', gap: 0 } as const
 export const ROW_STYLE = { font_size: 12 } as const
 export const WINDOW_TITLE = 'Bun Native matched renderer workload'
 export const INPUT_LABEL = 'Clicked'
-
-export function inputScenario(inputLatency: boolean, visibleInput: boolean, calibration: boolean) {
-  if ((inputLatency && visibleInput) || (calibration && (inputLatency || visibleInput)))
-    throw new Error('Input latency, visible input and calibration are separate launches')
-  return inputLatency ? 'input-latency' : visibleInput ? 'visible-input' : null
-}
 
 export function count(value: string | undefined, name: string, maximum: number) {
   const parsed = Number(value)

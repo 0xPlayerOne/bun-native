@@ -1,5 +1,5 @@
 import { expect, test } from 'bun:test'
-import { inputScenario } from '../../benchmarks/solid/workload.ts'
+import { inputScenario } from '../../benchmarks/solid/input-scenario.ts'
 
 test('visible input, traced input and calibration are mutually exclusive', () => {
   expect(inputScenario(false, false, false)).toBeNull()
