@@ -81,6 +81,8 @@ type WindowState = {
   host: { pid: number; parent: number; image: string; created: string }
   window: { id: number; frame: [number, number, number, number] }
   windowServerTargetVerified?: boolean
+  visibleRegionVerified?: boolean
+  visibleRegion?: [number, number, number, number]
   injection?: { method: string; postedEvents: number; delivery: string }
 }
 type PendingState = { status: 'not-ready'; reason?: string }
@@ -103,13 +105,47 @@ async function helperCall(request: Record<string, unknown>): Promise<WindowState
     throw new Error(`Owned-window helper failed (${process.exitCode}): ${raw.slice(0, 2000)}`)
   return value
 }
-function snapshot(name: string, id: number) {
+async function snapshot(
+  name: string,
+  request: Record<string, unknown>,
+  expected: WindowState,
+  viewport: [number, number]
+) {
   const path = join(output, `${name}.png`)
+  const guard = {
+    ...request,
+    action: 'visible-region',
+    expected,
+    viewport,
+    x: 12,
+    y: 10,
+    width: 240,
+    height: 36,
+  }
+  const guardStart = performance.now()
+  const beforeGuard = await helperCall(guard)
+  assert.equal(beforeGuard.status, 'ready')
+  assert.equal(beforeGuard.visibleRegionVerified, true)
+  const frame = expected.window.frame
+  assert(frame.every(Number.isSafeInteger), 'Display capture requires integral frame coordinates')
+  const side = (frame[2] - viewport[0]) / 2
+  const top = frame[3] - viewport[1] - side
+  assert.deepEqual(beforeGuard.visibleRegion, [frame[0] + side + 12, frame[1] + top + 10, 240, 36])
   const before = performance.now()
-  command(['screencapture', '-x', '-o', `-l${id}`, path])
+  command(['screencapture', '-x', `-R${frame.join(',')}`, path])
   const captured = performance.now()
+  const afterGuard = await helperCall(guard)
+  assert.equal(afterGuard.status, 'ready')
+  assert.equal(afterGuard.visibleRegionVerified, true)
+  assert.deepEqual(afterGuard.visibleRegion, beforeGuard.visibleRegion)
   const png = decodePng(readFileSync(path))
-  return { path, png, captureMs: captured - before }
+  return {
+    path,
+    png,
+    captureMs: captured - before,
+    guardAndDecodeMs: performance.now() - guardStart - (captured - before),
+    guard: { before: beforeGuard, after: afterGuard },
+  }
 }
 function recognize(path: string, name: string, region: readonly number[]) {
   const raw = command([ocr, path, ...region.map(String)])
@@ -157,7 +193,7 @@ async function main() {
   assert(Array.isArray(frame) && frame.length === 4 && frame.every(Number.isFinite))
   const windowId = state['window']['id'] as number
   assert(Number.isSafeInteger(windowId) && windowId > 0)
-  const first = snapshot('initial', windowId)
+  const first = await snapshot('initial', request, state, control.viewport)
   const scale = first.png.width / frame[2]
   assert(scale >= 1 && scale <= 4 && Math.abs(first.png.height - frame[3] * scale) <= 1)
   const side = (frame[2] - control.viewport[0]) / 2
@@ -183,7 +219,7 @@ async function main() {
     'Clicked',
     regionNormalized
   )
-  const second = snapshot('initial-control', windowId)
+  const second = await snapshot('initial-control', request, state, control.viewport)
   const negative = compareVisiblePixels(first.png, second.png, region)
   assert(negative.changedPixels <= 2, 'Initial label region is not stable')
   result['negative'] = negative
@@ -200,12 +236,17 @@ async function main() {
   assert.equal(injection.status, 'ready')
   assert.equal(injection.windowServerTargetVerified, true)
   assert.equal(injection.injection?.postedEvents, 3)
-  let changed: ReturnType<typeof snapshot> | undefined
+  let changed: Awaited<ReturnType<typeof snapshot>> | undefined
   let difference: ReturnType<typeof compareVisiblePixels> | undefined
   let polls = 0
   while (performance.now() - clickStart < 10_000 && polls < 40) {
     polls++
-    const shot = snapshot(`post-${String(polls).padStart(2, '0')}`, windowId)
+    const shot = await snapshot(
+      `post-${String(polls).padStart(2, '0')}`,
+      request,
+      state,
+      control.viewport
+    )
     const candidate = compareVisiblePixels(second.png, shot.png, region)
     if (candidate.changedPixels >= 8) {
       changed = shot
@@ -253,10 +294,16 @@ async function main() {
     negative,
     difference,
     polls,
-    commandToWindowCaptureObservedMs: observedMs,
+    commandToDisplayCaptureObservedMs: observedMs,
     captureMs: { initial: first.captureMs, control: second.captureMs, final: changed.captureMs },
+    guardAndDecodeMs: {
+      initial: first.guardAndDecodeMs,
+      control: second.guardAndDecodeMs,
+      final: changed.guardAndDecodeMs,
+    },
+    displayGuards: { initial: first.guard, control: second.guard, final: changed.guard },
     scope:
-      'One owned Electrobun window-surface capture and guarded OS click; not paired, composited display, or presentation.',
+      'One owned Electrobun display-region capture and guarded OS click; not paired or a physical presentation timestamp.',
   }
 }
 try {
