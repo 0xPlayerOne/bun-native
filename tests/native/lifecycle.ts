@@ -101,10 +101,11 @@ if (process.env['BUN_NATIVE_STARTUP_TRACE'] === '1') {
   const expectedStartup = [
     'host_evidence_ready',
     'channels_connected',
-    ...(process.platform === 'darwin' ? ['frame_pacing_enter', 'frame_pacing_complete'] : []),
+    ...(process.platform === 'darwin' ? ['frame_pacing_enter', 'frame_pacing_worker_started'] : []),
     'gpui_application_enter',
     'gpui_platform_created',
     'gpui_app_enter',
+    ...(process.platform === 'darwin' ? ['frame_pacing_join_enter', 'frame_pacing_complete'] : []),
     'session_init_enter',
     'session_init_complete',
     'hello_dispatched',

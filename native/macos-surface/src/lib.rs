@@ -98,7 +98,9 @@ pub fn invalidate(handle: WindowHandle<'_>) -> Result<(), SurfaceError> {
 /// The name of the system's default Metal device, or `None` when there is
 /// none. This creates no layer, queue or window; GPUI chooses its own device.
 pub fn system_metal_device_name() -> Option<String> {
-    objc2_metal::MTLCreateSystemDefaultDevice().map(|device| device.name().to_string())
+    objc2::rc::autoreleasepool(|_| {
+        objc2_metal::MTLCreateSystemDefaultDevice().map(|device| device.name().to_string())
+    })
 }
 
 /// Copied identity of the device actually assigned to the borrowed native layer.
