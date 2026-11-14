@@ -25,6 +25,9 @@ on:
         type: choice
         options: ['on', 'off']
         default: 'on'
+      phase-trials:
+        description: Extra macOS core AOT trace/control pairs for #666 (0 or 3 to 10)
+        default: '0'
   schedule:
     - cron: '47 6 * * 3'
   pull_request:
@@ -238,6 +241,7 @@ jobs:
       CARGO_INCREMENTAL: 0
       PYTHONDONTWRITEBYTECODE: 1
       TRIALS: ${{ github.event_name == 'workflow_dispatch' && inputs.trials || '5' }}
+      PHASE_TRIALS: ${{ github.event_name == 'workflow_dispatch' && inputs['phase-trials'] || '0' }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -262,7 +266,8 @@ jobs:
         run: |
           bun benchmarks/comparison/run.ts \
             --host "$GITHUB_WORKSPACE/target/release/bun-native-host" --host-profile release \
-            --output "$COMPARISON/run" --trials "$TRIALS" --input-trials 0
+            --output "$COMPARISON/run" --trials "$TRIALS" --input-trials 0 \
+            --phase-trials "$PHASE_TRIALS"
       - name: Run the direct Rust GPUI baseline
         if: ${{ !cancelled() && hashFiles('target/release/examples/workload-baseline') != '' }}
         timeout-minutes: 10
