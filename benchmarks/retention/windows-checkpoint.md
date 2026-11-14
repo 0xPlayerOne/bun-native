@@ -78,9 +78,10 @@ counter, a survivor index, or an absent snapshot edge.
 
 The manual `Benchmark comparison` dispatch with `paired-only`, `paired-macos`,
 and `startup-only` enabled runs only the Windows retention control. It uses the
-archived queue-v3 source with one explicit compatibility change: the unavailable
-static debugging import is obtained through `Reflect.get` instead. The original
-archive hash is checked before this change, and the transformed source and AOT
+archived queue-v3 source with two explicit compatibility changes: the unavailable
+static debugging import is obtained through `Reflect.get`, and hexadecimal
+addresses accept uppercase digits emitted on Windows. The original archive hash
+is checked before these changes, and the transformed source and AOT
 executable hashes are recorded. The executable must pass compiled-program and
 JIT-removal inspection before trials begin.
 

@@ -28,8 +28,15 @@ def main():
         compatible = b"import * as jsc from 'bun:jsc'\nconst { heapStats, jscDescribe, gcAndSweep, releaseWeakRefs } = jsc\nconst generateHeapSnapshotForDebugging = Reflect.get(jsc, 'generateHeapSnapshotForDebugging') as () => unknown"
         if archive.count(original) != 1:
             raise ValueError("Unexpected control import")
+        address_pattern = b"[0-9a-f]+"
+        if archive.count(address_pattern) != 1:
+            raise ValueError("Unexpected control address pattern")
         with Path(sys.argv[3]).open("xb") as output:
-            output.write(archive.replace(original, compatible))
+            output.write(
+                archive.replace(original, compatible).replace(
+                    address_pattern, b"[0-9a-fA-F]+"
+                )
+            )
         return
     source = Path(sys.argv[1]).resolve()
     binary = Path(sys.argv[2]).resolve()
