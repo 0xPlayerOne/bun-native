@@ -69,7 +69,8 @@ and composited-display capture, calibration and a paired runner remain unfinishe
 A WebKit animation frame is not a display presentation timestamp.
 
 `observe-text-macos.m` is a bounded offline Vision OCR helper for a captured
-image. `visible-text.ts` validates its text and normalized bounding boxes, and
+image; it can enlarge a bounded label crop and map observations back to the
+original image. `visible-text.ts` validates its text and normalized bounding boxes, and
 `visible-pixels.ts` compares a bounded region of two decoded captures. Neither
 establishes window ownership or physical presentation. The eventual driver must
 calibrate a stable unchanged region before using pixel differences as an arrival

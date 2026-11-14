@@ -109,13 +109,16 @@ function snapshot(name: string, id: number) {
   const png = decodePng(readFileSync(path))
   return { path, png, captureMs: captured - before }
 }
-function recognize(path: string) {
-  return JSON.parse(command([ocr, path])) as unknown
+function recognize(path: string, name: string, region: readonly number[]) {
+  const raw = command([ocr, path, ...region.map(String)])
+  writeFileSync(join(output, `${name}-ocr.json`), raw)
+  return JSON.parse(raw) as unknown
 }
 async function main() {
   const group = Number(command(['ps', '-o', 'pgid=', '-p', String(child.pid)]).trim())
   assert.equal(group, child.pid, 'Launcher did not start in an isolated process group')
   groupOwned = true
+  result['stage'] = 'awaiting-control'
   const deadline = performance.now() + 30_000
   while (!existsSync(controlPath)) {
     if (child.exitCode !== null)
@@ -146,6 +149,8 @@ async function main() {
   assert.equal(state['application']['parent'], process.pid, 'Launcher is not our child')
   const activated = await helperCall({ ...request, action: 'activate', expected: state })
   assert.equal(activated['status'], 'ready')
+  result['stage'] = 'initial-capture'
+  result['identity'] = { application: state.application, host: state.host, window: state.window }
   const frame = state['window']['frame'] as [number, number, number, number]
   assert(Array.isArray(frame) && frame.length === 4 && frame.every(Number.isFinite))
   const windowId = state['window']['id'] as number
@@ -168,8 +173,10 @@ async function main() {
     region[2] / first.png.width,
     region[3] / first.png.height,
   ] as const
+  result['region'] = region
+  result['stage'] = 'initial-ocr'
   const initialText = verifyVisibleText(
-    recognize(first.path),
+    recognize(first.path, 'initial', region),
     'Initial',
     'Clicked',
     regionNormalized
@@ -177,6 +184,8 @@ async function main() {
   const second = snapshot('initial-control', windowId)
   const negative = compareVisiblePixels(first.png, second.png, region)
   assert(negative.changedPixels <= 2, 'Initial label region is not stable')
+  result['negative'] = negative
+  result['stage'] = 'click'
   const clickStart = performance.now()
   await helperCall({
     ...request,
@@ -202,8 +211,9 @@ async function main() {
   }
   assert(changed && difference, 'No visible label change was detected')
   const observedMs = performance.now() - clickStart
+  result['stage'] = 'clicked-ocr'
   const clickedText = verifyVisibleText(
-    recognize(changed.path),
+    recognize(changed.path, 'clicked', region),
     'Clicked',
     'Initial',
     regionNormalized
@@ -225,6 +235,7 @@ async function main() {
   assert.equal(report['label'], 'Clicked')
   result = {
     status: 'passed',
+    stage: 'complete',
     nonce,
     frame,
     viewport: control.viewport,
