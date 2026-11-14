@@ -56,7 +56,8 @@ the raw run directory or workflow artifact.
 
 The `Benchmark comparison` workflow exposes `phase-trials` for dispatch on
 macOS only. Its default is zero, so scheduled and ordinary PR comparisons do
-not add diagnostic launches.
+not add diagnostic launches. For an isolated diagnostic dispatch, `macos-only`
+skips the Linux and Windows jobs; their results are not implied.
 
 ## Export a recorded run
 

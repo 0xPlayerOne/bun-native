@@ -28,6 +28,10 @@ on:
       phase-trials:
         description: Extra macOS core AOT trace/control pairs for #666 (0 or 3 to 10)
         default: '0'
+      macos-only:
+        description: Run only the macOS job for a targeted diagnostic
+        type: boolean
+        default: false
   schedule:
     - cron: '47 6 * * 3'
   pull_request:
@@ -56,7 +60,7 @@ concurrency:
 jobs:
   linux:
     name: Linux core/Solid/React development and AOT comparison
-    if: vars.CI_BILLING_PAUSED == 'false' && (github.event_name != 'pull_request' || github.event.pull_request.draft == false)
+    if: vars.CI_BILLING_PAUSED == 'false' && inputs['macos-only'] != true && (github.event_name != 'pull_request' || github.event.pull_request.draft == false)
     runs-on: ubuntu-24.04
     timeout-minutes: 60
     defaults:
@@ -316,7 +320,7 @@ jobs:
   # benchmarks/comparison/windows-processes.ts. The VM has no physical GPU.
   windows:
     name: Windows core/Solid/React and direct Rust GPUI comparison
-    if: vars.CI_BILLING_PAUSED == 'false' && (github.event_name != 'pull_request' || github.event.pull_request.draft == false)
+    if: vars.CI_BILLING_PAUSED == 'false' && inputs['macos-only'] != true && (github.event_name != 'pull_request' || github.event.pull_request.draft == false)
     runs-on: windows-2022
     timeout-minutes: 75
     defaults:
