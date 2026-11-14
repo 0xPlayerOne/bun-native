@@ -51,6 +51,21 @@ for invalid in ('no marker', source + source):
         pass
 fixture = pathlib.Path('benchmarks/solid/react.tsx').read_text()
 workload = pathlib.Path('benchmarks/solid/workload.ts').read_text()
+cycle_baseline = dispatch.cycle_workload(workload, 'baseline')
+cycle_clear = dispatch.cycle_workload(workload, 'clear')
+cycle_pin = dispatch.cycle_workload(workload, 'pin')
+assert cycle_baseline.replace('        return cycleProbes\n', '        view = undefined\n        return cycleProbes\n') == cycle_clear
+assert '__cycleDiagnosticPin = view' in cycle_pin
+assert 'assert.equal(stillReachable.length, 0' in cycle_clear
+assert dispatch.cycle_pin_valid(retained, 'development')
+assert not dispatch.cycle_pin_valid(raw, 'development')
+assert not dispatch.cycle_pin_valid(retained, 'aot')
+for invalid in ('no marker', workload + workload):
+    try:
+        dispatch.cycle_workload(invalid, 'clear')
+        raise AssertionError('invalid cycle marker accepted')
+    except ValueError:
+        pass
 instrumented = dispatch.shutdown_workload(workload)
 assert "beforeShutdownDiagnostic" in instrumented and "afterShutdownDiagnostic" in instrumented
 assert "assert.equal(stillReachable.length, 0" in instrumented

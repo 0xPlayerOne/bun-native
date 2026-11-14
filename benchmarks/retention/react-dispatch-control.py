@@ -1,8 +1,9 @@
-"""Build paired React fixture variants and retain every headless observation.
+"""Build React retention controls and retain every headless observation.
 
 Both variants wrap disposal identically. The clear variant additionally releases
-its two hook dispatch references after acknowledged disposal. Neither variant is
-the shipped fixture, and this does not modify its assertions or prove a root.
+its two hook dispatch references after acknowledged disposal. Other modes probe
+shutdown and lifecycle-local ownership with deliberately pinned controls. These
+variants are not the shipped fixture and do not change its assertions or prove a root.
 """
 
 import hashlib
@@ -90,6 +91,36 @@ def shutdown_record_valid(raw, mode, pin):
     return True
 
 
+def cycle_workload(source, variant):
+    if variant not in ("baseline", "clear", "pin"):
+        raise ValueError("Unknown cycle control variant")
+    source = replace_once(
+        source,
+        "        const view = await mount(window, initial)\n",
+        "        let view: MeasuredView | undefined = await mount(window, initial)\n",
+    )
+    action = {
+        "baseline": "",
+        "clear": "        view = undefined\n",
+        "pin": "        ;(globalThis as unknown as { __cycleDiagnosticPin?: object }).__cycleDiagnosticPin = view\n",
+    }[variant]
+    return replace_once(
+        source,
+        "        return view.probes\n",
+        "        const cycleProbes = view.probes\n"
+        + action
+        + "        return cycleProbes\n",
+    )
+
+
+def cycle_pin_valid(raw, mode):
+    expected = 3 if mode == "development" else 297
+    return (
+        raw["status"] == "failed"
+        and expected in raw["retentionObservation"]["stillReachable"]
+    )
+
+
 def digest(data):
     return hashlib.sha256(data).hexdigest()
 
@@ -103,7 +134,7 @@ def main():
     output = Path(sys.argv[2]).resolve()
     trials = int(sys.argv[3])
     kind = sys.argv[4] if len(sys.argv) > 4 else "dispatch"
-    if kind not in ("dispatch", "shutdown"):
+    if kind not in ("dispatch", "shutdown", "cycle"):
         raise ValueError("Unknown control kind")
     if not 1 <= trials <= 10:
         raise ValueError("Trial count must be in 1..10")
@@ -112,14 +143,29 @@ def main():
     source = fixture.read_text(encoding="utf-8")
     workload_path = fixture.parent / "workload.ts"
     original_workload = (
-        workload_path.read_text(encoding="utf-8") if kind == "shutdown" else None
+        workload_path.read_text(encoding="utf-8")
+        if kind in ("shutdown", "cycle")
+        else None
     )
-    workload = shutdown_workload(original_workload) if original_workload else None
-    variants = ("baseline", "pin") if kind == "shutdown" else ("baseline", "clear")
+    variants = (
+        ("baseline", "pin")
+        if kind == "shutdown"
+        else ("baseline", "clear", "pin")
+        if kind == "cycle"
+        else ("baseline", "clear")
+    )
+    workloads = {
+        name: shutdown_workload(original_workload)
+        if kind == "shutdown"
+        else cycle_workload(original_workload, name)
+        if kind == "cycle"
+        else None
+        for name in variants
+    }
     sources = {
         name: (
-            shutdown_entry(source, name == "pin")
-            if kind == "shutdown"
+            shutdown_entry(source, kind == "shutdown" and name == "pin")
+            if kind in ("shutdown", "cycle")
             else variant_source(source, name == "clear")
         )
         for name in variants
@@ -127,19 +173,35 @@ def main():
     plan = {
         "kind": kind,
         "originalSourceSha256": digest(source.encode()),
+        "originalSourceFileSha256": digest(fixture.read_bytes()),
         "originalWorkloadSha256": digest(original_workload.encode())
+        if original_workload
+        else None,
+        "originalWorkloadFileSha256": digest(workload_path.read_bytes())
         if original_workload
         else None,
         "variantSourceSha256": {
             name: digest(text.encode()) for name, text in sources.items()
         },
-        "instrumentedWorkloadSha256": digest(workload.encode()) if workload else None,
+        "instrumentedWorkloadSha256": (
+            {name: digest(text.encode()) for name, text in workloads.items()}
+            if kind == "cycle"
+            else digest(workloads["baseline"].encode())
+            if kind == "shutdown"
+            else None
+        ),
         "peerSha256": digest(peer.read_bytes()),
         "trialsPerVariant": trials,
-        "ordering": f"{variants[0]} then {variants[1]} on even pairs; reverse on odd pairs",
+        "ordering": (
+            f"{variants} on even pairs; reverse on odd pairs"
+            if kind == "cycle"
+            else f"{variants[0]} then {variants[1]} on even pairs; reverse on odd pairs"
+        ),
         "difference": (
             "Both collect after failure before and after application shutdown; pin deliberately holds the latest root globally."
             if kind == "shutdown"
+            else "Clear explicitly releases the cycle local after copying probes; pin holds that view globally as a positive control."
+            if kind == "cycle"
             else "Both use the same async dispose wrapper; clear additionally assigns undefined to both React hook setters after disposal."
         ),
         "scope": "Headless diagnostic variants, not the actual benchmark fixture or native rendering.",
@@ -152,12 +214,18 @@ def main():
         generated = fixture.parent / ".retention-dispatch-control.tsx"
         created = []
         try:
+            workload = workloads[variant]
             if workload is not None:
                 temporary_workload = fixture.parent / ".retention-post-workload.ts"
                 with temporary_workload.open("x", encoding="utf-8", newline="\n") as f:
                     created.append(temporary_workload)
                     f.write(workload)
-                save_variant(output / "instrumented-workload.ts.txt", workload)
+                workload_name = (
+                    f"{variant}-instrumented-workload.ts.txt"
+                    if kind == "cycle"
+                    else "instrumented-workload.ts.txt"
+                )
+                save_variant(output / workload_name, workload)
             with generated.open("x", encoding="utf-8", newline="\n") as f:
                 created.append(generated)
                 f.write(text)
@@ -245,6 +313,12 @@ def main():
                         valid = valid and shutdown_record_valid(
                             raw, record["mode"], variant == "pin"
                         )
+                if valid and kind == "cycle" and variant == "pin":
+                    for record in records:
+                        raw = json.loads(
+                            (child_output / f"00-{record['mode']}.json").read_text()
+                        )
+                        valid = valid and cycle_pin_valid(raw, record["mode"])
                 result = {
                     "trial": trial,
                     "variant": variant,
@@ -270,7 +344,9 @@ def main():
             (output / "results.json").write_text(json.dumps(results, indent=2) + "\n")
             print(json.dumps(results[-1]), flush=True)
     if invalid:
-        raise SystemExit(f"{invalid} variant pairs had infrastructure or report errors")
+        raise SystemExit(
+            f"{invalid} variant trials had infrastructure or report errors"
+        )
 
 
 if __name__ == "__main__":

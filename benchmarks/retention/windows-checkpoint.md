@@ -125,3 +125,14 @@ that root both times; it is a positive control, not a benchmark. Original
 assertions and failures remain unchanged. Extra collections, altered code shape
 and timing make this a diagnostic lead rather than proof that shutdown caused
 collection or that the production workload is leak-free.
+
+A third control tests whether the benchmark's own async lifecycle local keeps a
+view alive. Both variants change the helper from `const` to `let` and copy the
+weak probes before returning; `clear` additionally assigns `undefined` to the
+local after disposal. A third variant deliberately stores the measured view on
+`globalThis` and must trigger the unchanged assertion in both modes. Five
+alternating baseline/clear/pin triplets retain every report and exact source
+hash, with the same headless workload, cleanup checks and fixed checkpoints.
+This changes the fixture's code shape and compiler liveness, so a difference is
+only a diagnostic lead; it does not identify an application retaining root or
+establish that the original Windows assertion passed.

@@ -1004,6 +1004,14 @@ jobs:
           $root = Join-Path $env:RUNNER_TEMP 'headless-adapters'
           python benchmarks/retention/react-dispatch-control.py (Join-Path $root 'peer.exe') (Join-Path $root 'shutdown-control') 5 shutdown
           if ($LASTEXITCODE -ne 0) { throw "Shutdown control failed: $LASTEXITCODE" }
+      - name: Compare lifecycle-local retention controls
+        if: ${{ !cancelled() && steps.headless-build.outcome == 'success' }}
+        timeout-minutes: 10
+        shell: pwsh
+        run: |
+          $root = Join-Path $env:RUNNER_TEMP 'headless-adapters'
+          python benchmarks/retention/react-dispatch-control.py (Join-Path $root 'peer.exe') (Join-Path $root 'cycle-control') 5 cycle
+          if ($LASTEXITCODE -ne 0) { throw "Lifecycle-local control failed: $LASTEXITCODE" }
       - name: Retain all results and failures
         if: ${{ always() }}
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
