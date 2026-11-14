@@ -533,7 +533,12 @@ test('a report survives a busy installation lock while running and after exit', 
      require(${runtime}).reportHealthy()`
   )
   const deadline = Date.now() + 30_000
-  while (!existsSync(exitedLock) && Date.now() < deadline) await Bun.sleep(5)
+  const lockOwner = () => readFile(exitedLock, 'utf8').catch(() => '')
+  // The launcher itself briefly locks during startup. Wait for the child to
+  // write the test process's PID, not just for any lock file to appear.
+  while ((await lockOwner()).trim() !== String(process.pid) && Date.now() < deadline)
+    await Bun.sleep(5)
+  expect((await lockOwner()).trim()).toBe(String(process.pid))
   await Bun.sleep(700)
   expect(afterExit.exitCode).toBeNull()
   await rm(exitedLock)
