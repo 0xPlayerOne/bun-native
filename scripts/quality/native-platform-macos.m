@@ -256,6 +256,23 @@ static void require_pointer_target(NSDictionary *state, CGPoint point) {
     verify_pointer_target(state, windows, point, hitWindow);
 }
 
+static NSString *visible_region_rejection(NSDictionary *state, NSDictionary *candidate,
+    CGRect bounds, CGRect region) {
+    // Retain only numeric geometry and identity, never another window's title.
+    NSDictionary *details = @{@"expectedWindow": state[@"window"][@"id"],
+        @"expectedPID": state[@"host"][@"pid"],
+        @"overlapWindow": candidate[(__bridge NSString *)kCGWindowNumber],
+        @"overlapPID": candidate[(__bridge NSString *)kCGWindowOwnerPID],
+        @"layer": candidate[(__bridge NSString *)kCGWindowLayer],
+        @"alpha": candidate[(__bridge NSString *)kCGWindowAlpha],
+        @"frame": @[@(bounds.origin.x), @(bounds.origin.y), @(bounds.size.width), @(bounds.size.height)],
+        @"region": @[@(region.origin.x), @(region.origin.y), @(region.size.width), @(region.size.height)]};
+    NSData *encoded = [NSJSONSerialization dataWithJSONObject:details options:0 error:NULL];
+    if (!encoded || encoded.length > 1024) fail(@"Visible-region diagnostics exceed their bound");
+    return [@"Another onscreen window overlaps the observed region: "
+        stringByAppendingString:[[NSString alloc] initWithData:encoded encoding:NSUTF8StringEncoding]];
+}
+
 // kCGWindowListOptionOnScreenOnly returns windows front to back. Conservatively
 // reject any overlapping window above the owned region, including transparent
 // click-through surfaces: pointer hit testing alone does not prove visibility.
@@ -277,7 +294,7 @@ static void verify_visible_region(NSDictionary *state, NSArray *windows, CGRect 
             found = YES;
         } else if (!found && [candidate[(__bridge NSString *)kCGWindowAlpha] doubleValue] > 0
                    && CGRectIntersectsRect(bounds, region)) {
-            unavailable(@"Another onscreen window overlaps the observed region");
+            unavailable(visible_region_rejection(state, candidate, bounds, region));
         }
     }
     if (!found) unavailable(@"Owned window is absent from onscreen metadata");
