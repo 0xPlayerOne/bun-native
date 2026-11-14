@@ -103,7 +103,8 @@ The explicit `paired-macos` dispatch builds the current release host and the
 fixed pre-candidate host `5cfbb71c83a5f3937543ee08aa8159960c1d80a0` on the
 same macOS runner. It calibrates both against the same inspected Core/AOT
 executable, rejects unequal paint trees and renderer identity, and alternates
-10 fresh-process pairs with tracing disabled. It checks host and executable
+10 fresh-process pairs by default (configurable from 3 to 20), with tracing
+disabled. It checks host and executable
 hashes before each launch, retains raw reports and failures, and independently
 rechecks paired order, fingerprints, cleanup, workloads and startup milestones.
 `paired-analysis.json` reports paired bootstrap intervals for startup and
