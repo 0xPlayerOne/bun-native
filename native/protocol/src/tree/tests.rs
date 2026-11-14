@@ -79,6 +79,15 @@ fn rejected(tree: &Tree, operations: Vec<Operation>, last_id: u64, code: ErrorCo
 }
 
 #[test]
+fn sibling_position_finds_tail_and_rejects_missing_nodes() {
+    let siblings = [id(2), id(3), id(4)];
+    assert_eq!(position(&siblings, id(2)), Ok(0));
+    assert_eq!(position(&siblings, id(4)), Ok(2));
+    assert_eq!(position(&siblings, id(5)), Err(invalid_handle()));
+    assert_eq!(position(&[], id(2)), Err(invalid_handle()));
+}
+
+#[test]
 fn successful_batch_commits_once_and_returns_allocation_and_timing() {
     let tree = Tree::new(id(1));
     let prepared = tree

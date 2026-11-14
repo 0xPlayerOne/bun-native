@@ -129,3 +129,54 @@ records, source hashes and compiler diagnostics are in [raw/](raw/).
 Mount build improved in 11 of 12 pairs in each mode. This isolates the core
 transaction and serialization path; it measures neither native work nor
 application startup, input-to-paint latency or competitive performance.
+
+## Bulk removal from a full window
+
+`removals.ts` builds a 4,096-node committed graph and removes 2,048 text
+children in one transaction, then validates the candidate. It checks the
+remaining order and operation count. `front`, `tail` (last to first), and
+`alternate` exercise different sibling positions. It excludes renderer work,
+IPC, native model updates and paint.
+
+```sh
+bun benchmarks/core/removals.ts [samples=30]
+```
+
+Removing the last child used to search the entire sibling array for its ID.
+It now checks that position first and pops it; other positions still use the
+existing search and splice. Twelve alternating fresh processes per version on
+Apple M2 Max, macOS 27.2, AC power, pinned Bun `b1007f117`, each measured 30
+batches after five warm-ups. The table shows medians of per-process p50s in
+milliseconds; [raw records](raw/) retain all samples, source hashes and AOT
+compiler diagnostics. Both AOT binaries had the compiled-program flag.
+
+| Pattern   | Development before | Development after | AOT before | AOT after |
+| --------- | -----------------: | ----------------: | ---------: | --------: |
+| Front     |              1.039 |             1.022 |      0.920 |     0.914 |
+| Tail      |              6.898 |             0.296 |      0.834 |     0.194 |
+| Alternate |              3.084 |             2.048 |      0.934 |     0.935 |
+
+Tail improved in all 12 process pairs in both modes. Front and AOT alternate
+results overlap; the development alternate gain may depend on Bun's JIT and is
+not extrapolated to other environments. These are core-only timings, not
+end-to-end UI latency or a competitive comparison.
+
+The native protocol model also searched each sibling list from the front.
+`native/protocol/examples/removal_perf.rs` measures its `Tree::prepare`
+preflight for the same removal patterns and verifies the remaining order. In
+12 alternating release-build process pairs on the same machine, median
+per-process p50 preflight times in milliseconds were:
+
+| Pattern   | Before | After |
+| --------- | -----: | ----: |
+| Front     |  0.918 | 0.917 |
+| Tail      |  2.241 | 0.182 |
+| Alternate |  1.372 | 1.386 |
+
+The tail case improved in all 12 pairs. This measures the Rust model, not the
+full host or paint. [Raw records](raw/) retain the individual preflight samples
+and source and binary hashes. Reproduce with:
+
+```sh
+cargo run --locked --release -p bun-native-protocol --example removal_perf
+```
