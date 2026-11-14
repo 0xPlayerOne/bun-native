@@ -474,7 +474,7 @@ jobs:
 
   paired-click:
     name: Paired Linux Core AOT input investigation
-    if: vars.CI_BILLING_PAUSED == 'false' && github.event_name == 'workflow_dispatch' && inputs['paired-only'] == true && inputs['electrobun-smoke'] != true && (github.event_name != 'pull_request' || github.event.pull_request.draft == false)
+    if: vars.CI_BILLING_PAUSED == 'false' && github.event_name == 'workflow_dispatch' && inputs['paired-only'] == true && inputs['paired-macos'] != true && inputs['electrobun-smoke'] != true && (github.event_name != 'pull_request' || github.event.pull_request.draft == false)
     runs-on: ubuntu-24.04
     timeout-minutes: 90
     defaults:
@@ -659,5 +659,126 @@ jobs:
             !${{ runner.temp }}/eb-smoke/native-host
             !${{ runner.temp }}/eb-smoke/native-build/application
             !${{ runner.temp }}/eb-smoke/native-build/module/
+          if-no-files-found: warn
+          retention-days: 30
+
+  tree-path-pairs:
+    name: Ancestor path release-host comparison
+    if: vars.CI_BILLING_PAUSED == 'false' && github.event_name == 'workflow_dispatch' && inputs['paired-only'] == true && inputs['paired-macos'] == true && inputs['electrobun-smoke'] != true && (github.event_name != 'pull_request' || github.event.pull_request.draft == false)
+    runs-on: macos-15
+    timeout-minutes: 75
+    defaults:
+      run:
+        shell: bash
+    env:
+      CARGO_INCREMENTAL: 0
+      PYTHONDONTWRITEBYTECODE: 1
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Checkout exact pre-change source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: 879df62168267ec49a6d6358b5c6c57c10718c9d
+          path: .tree-pairs-baseline
+          persist-credentials: false
+      - name: Isolate baseline and verify source boundary
+        run: |
+          set -euo pipefail
+          test "$(cat .tree-pairs-baseline/.git/HEAD)" = 879df62168267ec49a6d6358b5c6c57c10718c9d
+          mv .tree-pairs-baseline "$RUNNER_TEMP/tree-pairs-baseline"
+          mkdir "$RUNNER_TEMP/tree-pairs"
+          python3 - <<'PY'
+          from pathlib import Path
+          import hashlib, os
+          candidate = Path(os.environ['GITHUB_WORKSPACE'])
+          baseline = Path(os.environ['RUNNER_TEMP']) / 'tree-pairs-baseline'
+          for name in ('Cargo.toml', 'Cargo.lock', 'rust-toolchain.toml', 'toolchain.json', 'bun.lock'):
+              assert (candidate / name).read_bytes() == (baseline / name).read_bytes(), name
+          def manifest(root):
+              result = {}
+              for p in (root / 'native').rglob('*'):
+                  if p.is_file():
+                      name = str(p.relative_to(root))
+                      if name not in ('native/protocol/src/tree.rs', 'native/protocol/src/popup_tests.rs'):
+                          result[name] = hashlib.sha256(p.read_bytes()).hexdigest()
+              return result
+          assert manifest(candidate) == manifest(baseline), 'Unexpected native source difference'
+          original = (baseline / 'native/protocol/src/tree.rs').read_text()
+          expected = original.replace('        let mut pending = Vec::new();\n        for &id in attached {',
+              '        let mut pending = Vec::new();\n        // Reuse path capacity across subtrees while resetting each context.\n        let mut layers = Vec::new();\n        for &id in attached {', 1)
+          expected = expected.replace('            let mut layers = Vec::new();\n            while let Some(parent)',
+              '            layers.clear();\n            while let Some(parent)', 1)
+          assert expected != original and (candidate / 'native/protocol/src/tree.rs').read_text() == expected, 'Unexpected tree change'
+          PY
+          {
+            git rev-parse HEAD
+            sw_vers
+            uname -a
+            system_profiler SPHardwareDataType SPDisplaysDataType
+          } > "$RUNNER_TEMP/tree-pairs/environment.txt"
+      - name: Install pinned toolchain
+        uses: ./.github/actions/native-toolchain
+      - name: Build isolated release hosts
+        timeout-minutes: 40
+        run: |
+          set -euo pipefail
+          rustc -Vv > "$RUNNER_TEMP/tree-pairs/rustc.txt"
+          CARGO_TARGET_DIR="$RUNNER_TEMP/tree-target-candidate" cargo build --locked --release -p bun-native-host --bin bun-native-host
+          CARGO_TARGET_DIR="$RUNNER_TEMP/tree-target-candidate" cargo build --locked --release -p bun-native-protocol --example mount_perf
+          CARGO_TARGET_DIR="$RUNNER_TEMP/tree-target-baseline" cargo build --locked --release --manifest-path "$RUNNER_TEMP/tree-pairs-baseline/Cargo.toml" -p bun-native-host --bin bun-native-host
+          CARGO_TARGET_DIR="$RUNNER_TEMP/tree-target-baseline" cargo build --locked --release --manifest-path "$RUNNER_TEMP/tree-pairs-baseline/Cargo.toml" -p bun-native-protocol --example mount_perf
+          cp "$RUNNER_TEMP/tree-target-candidate/release/bun-native-host" "$RUNNER_TEMP/tree-pairs-candidate-host"
+          cp "$RUNNER_TEMP/tree-target-baseline/release/bun-native-host" "$RUNNER_TEMP/tree-pairs-baseline-host"
+          shasum -a 256 "$RUNNER_TEMP/tree-pairs-candidate-host" "$RUNNER_TEMP/tree-pairs-baseline-host" > "$RUNNER_TEMP/tree-pairs/hosts.sha256"
+          shasum -a 256 "$RUNNER_TEMP/tree-target-candidate/release/examples/mount_perf" "$RUNNER_TEMP/tree-target-baseline/release/examples/mount_perf" > "$RUNNER_TEMP/tree-pairs/probes.sha256"
+      - name: Collect alternating protocol mount probes
+        run: |
+          python3 - <<'PY'
+          import json, os, statistics, subprocess
+          from pathlib import Path
+          root = Path(os.environ['RUNNER_TEMP'])
+          binaries = {v: root / f'tree-target-{v}/release/examples/mount_perf' for v in ('baseline', 'candidate')}
+          raw = []
+          for mode in ('single', 'parallel'):
+              for pair in range(30):
+                  for variant in (('baseline', 'candidate') if pair % 2 == 0 else ('candidate', 'baseline')):
+                      args = [str(binaries[variant])] + (['parallel'] if mode == 'parallel' else [])
+                      rows = [list(map(int, line.split(','))) for line in subprocess.check_output(args, text=True).splitlines()]
+                      assert len(rows) == (60 if mode == 'single' else 240)
+                      assert all(len(r) == 3 and r[0] in (32, 1024) and 5 <= r[1] < 35 and r[2] > 0 for r in rows)
+                      raw.append({'mode': mode, 'pair': pair, 'variant': variant, 'rows': rows})
+                      (root / 'tree-pairs/mount-raw.json').write_text(json.dumps(raw, indent=2) + '\n')
+          summary = {}
+          for mode in ('single', 'parallel'):
+              for size in (32, 1024):
+                  differences = []
+                  for pair in range(30):
+                      values = {r['variant']: statistics.median(x[2] for x in r['rows'] if x[0] == size)
+                                for r in raw if r['mode'] == mode and r['pair'] == pair}
+                      assert set(values) == {'baseline', 'candidate'}
+                      differences.append(values['candidate'] - values['baseline'])
+                  summary[f'{mode}-{size}'] = {'pairedDeltasNs': differences,
+                      'medianDeltaNs': statistics.median(differences),
+                      'candidateFasterPairs': sum(d < 0 for d in differences)}
+          (root / 'tree-pairs/mount-summary.json').write_text(json.dumps(summary, indent=2) + '\n')
+          PY
+      - name: Compare calibrated Core AOT workloads in alternating pairs
+        timeout-minutes: 30
+        run: |
+          bun benchmarks/comparison/run.ts \
+            --host "$RUNNER_TEMP/tree-pairs-candidate-host" --host-profile release \
+            --paired-host "$RUNNER_TEMP/tree-pairs-baseline-host" --paired-trials 20 \
+            --adapters core --trials 3 --input-trials 0 --output "$RUNNER_TEMP/tree-pairs/run"
+          bun benchmarks/comparison/paired-analysis.ts "$RUNNER_TEMP/tree-pairs/run" > "$RUNNER_TEMP/tree-pairs/paired-analysis.json"
+      - name: Retain raw results and failures
+        if: ${{ always() }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: tree-path-pairs-${{ runner.arch }}
+          path: |
+            ${{ runner.temp }}/tree-pairs/
+            !${{ runner.temp }}/tree-pairs/run/*/application
           if-no-files-found: warn
           retention-days: 30
