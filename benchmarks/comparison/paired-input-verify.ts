@@ -1,6 +1,5 @@
 /** Validation and statistics for the paired input diagnostic. */
 import assert from 'node:assert/strict'
-import { expectedNodes, INPUT_LABEL } from '../solid/workload.ts'
 import { bootstrapMedian, describe } from './stats.ts'
 
 const cleanup = {
@@ -74,7 +73,8 @@ export function verifyPreparations(
   baseline: Prepared,
   candidate: Prepared,
   baselineCommit: string,
-  candidateCommit: string
+  candidateCommit: string,
+  expectedInitial: unknown
 ): void {
   for (const [name, report, commit] of [
     ['baseline', baseline, baselineCommit],
@@ -112,12 +112,7 @@ export function verifyPreparations(
     assert.deepEqual(a[phase].renderer.gpu, b[phase].renderer.gpu, `${phase} renderers differ`)
     assert.deepEqual(a[phase].paint.nodes, b[phase].paint.nodes, `${phase} trees differ`)
   }
-  const rows = Array.from({ length: 32 }, (_, id) => ({ id, text: `Row ${id}` }))
-  assert.deepEqual(
-    a.initial.paint.nodes,
-    expectedNodes(rows, 'Initial'),
-    'Unexpected input fixture'
-  )
+  assert.deepEqual(a.initial.paint.nodes, expectedInitial, 'Unexpected input fixture')
 }
 
 /** Report only complete ordered pairs; failures never disappear from a comparison. */
@@ -162,7 +157,8 @@ export function verifyLaunch(
   host: string,
   binary: string,
   revision: string,
-  gpu: unknown
+  gpu: unknown,
+  expectedLabel: string
 ): number {
   assert.equal(driver.status, 'passed', 'Driver failed')
   for (const check of [
@@ -202,7 +198,7 @@ export function verifyLaunch(
   assert.equal(app.bunRevision, revision)
   assert.deepEqual(app.workload, { scenario: 'input-latency', rows: 32 })
   assert.equal(app.input.clicks, 1)
-  assert.equal(app.input.label, INPUT_LABEL)
+  assert.equal(app.input.label, expectedLabel)
   assert.deepEqual(app.cleanup, cleanup)
   const latency =
     driver.measurements.native_paint_file_observation.command_start_to_paint_observed_ms
