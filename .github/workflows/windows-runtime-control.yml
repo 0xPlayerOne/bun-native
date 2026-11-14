@@ -54,12 +54,15 @@ jobs:
         shell: pwsh
         run: |
           $ErrorActionPreference = 'Stop'
-          $llvm = Join-Path $env:RUNNER_TEMP 'llvm-23.msi'
-          Invoke-WebRequest 'https://github.com/llvm/llvm-project/releases/download/llvmorg-23.1.1/LLVM-23.1.1-win64.msi' -OutFile $llvm
-          if ((Get-FileHash $llvm -Algorithm SHA256).Hash.ToLower() -ne '11af43ba261a1158090dd6f0da40d7a34f32dbfb4a76b43240bffa1ebb140984') { throw 'LLVM checksum mismatch' }
-          $llvmRoot = Join-Path $env:RUNNER_TEMP 'llvm-23'
-          $install = Start-Process msiexec.exe -ArgumentList @('/i', $llvm, '/qn', "INSTALLDIR=$llvmRoot") -Wait -PassThru
-          if ($install.ExitCode -ne 0) { throw "LLVM installation failed: $($install.ExitCode)" }
+          $llvm = Join-Path $env:RUNNER_TEMP 'llvm-23.tar.zst'
+          Invoke-WebRequest 'https://github.com/llvm/llvm-project/releases/download/llvmorg-23.1.1/clang%2Bllvm-23.1.1-x86_64-pc-windows-msvc.tar.zst' -OutFile $llvm
+          if ((Get-FileHash $llvm -Algorithm SHA256).Hash.ToLower() -ne 'c8a12d754b5050c5668b56a5425c806792d46c70f7244b1216046164aa4b6462') { throw 'LLVM checksum mismatch' }
+          $llvmParent = Join-Path $env:RUNNER_TEMP 'llvm-23'
+          New-Item -ItemType Directory -Path $llvmParent | Out-Null
+          tar -xf $llvm -C $llvmParent
+          if ($LASTEXITCODE -ne 0) { throw 'LLVM archive extraction failed' }
+          Remove-Item $llvm
+          $llvmRoot = Join-Path $llvmParent 'clang+llvm-23.1.1-x86_64-pc-windows-msvc'
           & (Join-Path $llvmRoot 'bin/clang-cl.exe') --version
           if ($LASTEXITCODE -ne 0) { throw 'LLVM version probe failed' }
           "BUN_TOOLCHAIN_LLVM=$llvmRoot" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
