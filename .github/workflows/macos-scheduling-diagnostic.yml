@@ -1,0 +1,51 @@
+name: macOS scheduling diagnostic
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: macos-scheduling-diagnostic-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  scheduling:
+    if: vars.CI_BILLING_PAUSED == 'false'
+    runs-on: macos-15
+    timeout-minutes: 30
+    env:
+      CARGO_INCREMENTAL: 0
+      PYTHONDONTWRITEBYTECODE: 1
+      BUN_NATIVE_HOST: ${{ github.workspace }}/target/release/bun-native-host
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/native-toolchain
+        with:
+          release-target: 'true'
+      - name: Build native host and guarded input helper
+        run: |
+          cargo build --locked --release -p bun-native-host --bin bun-native-host
+          export BUN_NATIVE_PLATFORM_HELPER="$RUNNER_TEMP/native-platform-macos"
+          echo "BUN_NATIVE_PLATFORM_HELPER=$BUN_NATIVE_PLATFORM_HELPER" >> "$GITHUB_ENV"
+          xcrun clang -fobjc-arc -Wall -Wextra -Werror -framework AppKit -framework CoreGraphics -framework ApplicationServices \
+            scripts/quality/native-platform-macos.m -o "$BUN_NATIVE_PLATFORM_HELPER"
+      - name: Compile the AOT scheduling fixture
+        run: bun scripts/quality/compile-aot-entries.ts --entry scheduling --outdir "$RUNNER_TEMP/scheduling-package"
+      - name: Check native input and paint during command load
+        run: |
+          mkdir "$RUNNER_TEMP/scheduling-evidence"
+          python3 scripts/quality/native-scheduling-macos.py --output "$RUNNER_TEMP/scheduling-evidence/development" --mode development -- bun tests/native/scheduling.ts
+          application="$(bun -e 'console.log((await Bun.file(process.argv[1]).json()).application.file)' "$RUNNER_TEMP/scheduling-package/manifest.json")"
+          python3 scripts/quality/native-scheduling-macos.py --output "$RUNNER_TEMP/scheduling-evidence/aot" --mode aot -- "$RUNNER_TEMP/scheduling-package/$application"
+      - name: Retain native evidence
+        if: ${{ always() }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: macos-scheduling-${{ runner.arch }}
+          path: ${{ runner.temp }}/scheduling-evidence/
+          if-no-files-found: warn
+          retention-days: 30
