@@ -16,3 +16,12 @@ body {
 .row {
   font-size: 12px;
 }
+
+/* Match the native input fixture's button bounds (x 16..624, y 53..97). */
+.input-comparison .content > :first-child {
+  flex: 0 0 29px;
+}
+.input-comparison .content > button {
+  box-sizing: border-box;
+  flex: 0 0 44px;
+}
