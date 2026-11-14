@@ -60,8 +60,9 @@ The controller must verify the owned window, inject one OS click, observe the
 changed output independently, then POST to `/input/finish` with the nonce in
 `x-benchmark-nonce`. The reference reports the click and exits; premature finish,
 wrong nonce, malformed click evidence and duplicate clicks are rejected. The
-control file must not already exist. The default workload does not enter this
-mode.
+reference records its click locally and sends the report only after the finish
+request, outside the click-to-observation interval. The control file must not
+already exist. The default workload does not enter this mode.
 
 This is fixture preparation, not a working comparative benchmark: the owned-window
 observer and externally injected click still need validation for both applications,

@@ -10,6 +10,12 @@ const inputNonce = process.env['EB_INPUT_NONCE']
 if (Boolean(control) !== Boolean(inputNonce) || (control && !isAbsolute(control)))
   throw new Error('Input comparison requires an absolute control path and nonce')
 const input = inputNonce ? new InputSession(inputNonce) : undefined
+let notifyClicked: (() => void) | undefined
+const clicked = input
+  ? new Promise<void>((resolve) => {
+      notifyClicked = resolve
+    })
+  : undefined
 const milestones = {
   mainProcessStartEpochMs: performance.timeOrigin,
   mainEntryMs: performance.now(),
@@ -40,7 +46,28 @@ const server = Bun.serve({
       setTimeout(() => Utils.quit(), 50)
     }
     if (input && request.method === 'POST' && path.startsWith('/input/')) {
-      return handleInputRequest(input, request, {
+      if (path === '/input/finish') {
+        if (request.headers.get('x-benchmark-nonce') !== inputNonce)
+          return new Response('unauthorized', { status: 403, headers })
+        window.webview.executeJavascript(
+          "window.dispatchEvent(new Event('bun-native-benchmark-finish'))"
+        )
+        let timeout: ReturnType<typeof setTimeout> | undefined
+        try {
+          if (!clicked) throw new Error('Input session is unavailable')
+          await Promise.race([
+            clicked,
+            new Promise<never>((_, reject) => {
+              timeout = setTimeout(() => reject(new Error('Input click report timed out')), 5_000)
+            }),
+          ])
+        } catch (error) {
+          return new Response(String(error), { status: 409, headers })
+        } finally {
+          if (timeout) clearTimeout(timeout)
+        }
+      }
+      const response = await handleInputRequest(input, request, {
         ready(viewport) {
           writeFileSync(
             control!,
@@ -50,6 +77,8 @@ const server = Bun.serve({
         },
         finish: save,
       })
+      if (path === '/input/clicked' && response.ok) notifyClicked?.()
+      return response
     }
     if (request.method === 'POST' && path === '/report') {
       if (input && request.headers.get('x-benchmark-nonce') !== inputNonce)
