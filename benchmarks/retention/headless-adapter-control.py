@@ -1,4 +1,4 @@
-"""Record fixed React workload observations over the headless protocol peer.
+"""Record fixed adapter workload observations over the headless protocol peer.
 
 This isolates the real workload and public core from GPUI; it is not a native
 rendering or performance comparison. The workload's assertions are unchanged.
@@ -21,8 +21,13 @@ def digest(path):
     return h.hexdigest()
 
 
-def valid_report(raw, mode, trial, revision, exit_code):
+def valid_report(raw, adapter, mode, trial, revision, exit_code):
     observation = raw["retentionObservation"]
+    expected_kinds = (
+        ["container handle", "label handle", "listener"]
+        if adapter == "core"
+        else ["render root", "content node", "listener"]
+    )
     expected_count, mounts = (10, 2) if mode == "development" else (1000, 100)
     workload = {
         "iterations": expected_count,
@@ -63,26 +68,31 @@ def valid_report(raw, mode, trial, revision, exit_code):
     )
     return bool(
         raw["bunRevision"] == revision
-        and raw["adapter"] == "react"
+        and raw["adapter"] == adapter
         and raw["nonce"] == f"{mode}-{trial}"
         and raw["declaredMode"] == mode
         and raw["workload"] == workload
         and raw["cleanup"] == cleanup
         and observation["collectionCheckpoints"] == 2
         and observation["probesPerMount"] == 3
+        and observation["probeKinds"] == expected_kinds
         and disposition
     )
 
 
 def main():
-    peer, module, binary, output = (Path(value).resolve() for value in sys.argv[1:5])
-    trials = int(sys.argv[5])
+    adapter = sys.argv[1]
+    if adapter not in ("core", "solid", "react"):
+        raise ValueError("Unknown adapter")
+    peer, module, binary, output = (Path(value).resolve() for value in sys.argv[2:6])
+    trials = int(sys.argv[6])
     if not 1 <= trials <= 10:
         raise ValueError("Trial count must be in 1..10")
     output.mkdir(parents=True, exist_ok=False)
     revision = json.loads(Path("toolchain.json").read_text())["bun"]["revision"]
     plan = {
         "revision": revision,
+        "adapter": adapter,
         "platform": platform.platform(),
         "machine": platform.machine(),
         "sha256": {
@@ -92,7 +102,7 @@ def main():
         },
         "trialsPerMode": trials,
         "ordering": "development then AOT on even trials; reverse on odd trials",
-        "scope": "Actual React workload and headless public-core IPC, with no GPUI or paint calibration",
+        "scope": "Actual adapter workload and headless public-core IPC, with no GPUI or paint calibration",
         "development": "DFG disabled; 10 iterations, 10 rotations, 2 mounts, 32 rows",
         "aot": "default JSC options; 1000 iterations, 1000 rotations, 100 mounts, 32 rows",
     }
@@ -145,7 +155,10 @@ def main():
                 observation = raw["retentionObservation"] if raw else None
                 cleanup = raw["cleanup"] if raw else None
                 valid = bool(
-                    raw and valid_report(raw, mode, trial, revision, child.returncode)
+                    raw
+                    and valid_report(
+                        raw, adapter, mode, trial, revision, child.returncode
+                    )
                 )
                 result = {
                     "trial": trial,
