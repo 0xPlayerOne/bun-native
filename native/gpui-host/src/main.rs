@@ -40,12 +40,11 @@ fn main() {
     let (commands, events) = channel::connect();
     evidence.startup_phase("channels_connected", None);
     #[cfg(target_os = "macos")]
-    let frame_pacing_worker = {
+    {
         evidence.startup_phase("frame_pacing_enter", None);
-        let worker = frame_pacing::begin();
-        evidence.startup_phase("frame_pacing_worker_started", None);
-        worker
-    };
+        frame_pacing::configure();
+        evidence.startup_phase("frame_pacing_complete", None);
+    }
     evidence.startup_phase("gpui_application_enter", None);
     let application = gpui_platform::application();
     evidence.startup_phase("gpui_platform_created", None);
@@ -53,12 +52,6 @@ fn main() {
         .with_quit_mode(QuitMode::Explicit)
         .run(move |cx: &mut App| {
             evidence.startup_phase("gpui_app_enter", None);
-            #[cfg(target_os = "macos")]
-            {
-                evidence.startup_phase("frame_pacing_join_enter", None);
-                frame_pacing::finish(frame_pacing_worker);
-                evidence.startup_phase("frame_pacing_complete", None);
-            }
             input::bind_keys(cx);
             view::bind_keys(cx);
             let mut session = Session::new(events, evidence, policy, cx);

@@ -71,40 +71,18 @@ impl FrameSource {
 #[cfg(target_os = "macos")]
 static CHOSEN: std::sync::OnceLock<FrameSource> = std::sync::OnceLock::new();
 
-/// Start the device query while GPUI constructs its platform. Only the owned
-/// device name crosses threads; all frame-source changes stay on the UI thread.
+/// Choose the frame source before GPUI opens any window.
 #[cfg(target_os = "macos")]
-pub(crate) fn begin() -> Option<std::thread::JoinHandle<Option<String>>> {
-    std::thread::Builder::new()
-        .name("bun-native-metal-device".into())
-        .spawn(bun_native_macos_surface::system_metal_device_name)
-        .ok()
-}
-
-/// Finish on the UI thread before any application window can be opened.
-/// A failed spawn or worker panic falls back to the original synchronous query.
-#[cfg(target_os = "macos")]
-pub(crate) fn finish(worker: Option<std::thread::JoinHandle<Option<String>>>) {
-    let device = resolve_device(worker, bun_native_macos_surface::system_metal_device_name);
-    let source = FrameSource::for_device(device.as_deref());
+pub(crate) fn configure() {
+    let source =
+        FrameSource::for_device(bun_native_macos_surface::system_metal_device_name().as_deref());
     if source == FrameSource::CvDisplayLink {
         gpui_macos::disable_metal_display_link();
     }
     let _ = CHOSEN.set(source);
 }
 
-#[cfg(any(target_os = "macos", test))]
-fn resolve_device(
-    worker: Option<std::thread::JoinHandle<Option<String>>>,
-    fallback: impl FnOnce() -> Option<String>,
-) -> Option<String> {
-    match worker {
-        Some(worker) => worker.join().unwrap_or_else(|_| fallback()),
-        None => fallback(),
-    }
-}
-
-/// The frame source chosen by [`finish`], for the renderer evidence.
+/// The frame source chosen by [`configure`], for the renderer evidence.
 #[cfg(target_os = "macos")]
 pub(crate) fn chosen() -> Option<FrameSource> {
     CHOSEN.get().copied()
@@ -112,7 +90,7 @@ pub(crate) fn chosen() -> Option<FrameSource> {
 
 /// Whether external commits dirty the backing layer, see
 /// [`FrameSource::invalidates_layer`]. GPUI's default applies until
-/// [`finish`] runs.
+/// [`configure`] runs.
 #[cfg(target_os = "macos")]
 pub(crate) fn invalidates_layer() -> bool {
     chosen().is_none_or(FrameSource::invalidates_layer)
@@ -121,31 +99,6 @@ pub(crate) fn invalidates_layer() -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    #[test]
-    fn device_query_joins_and_only_falls_back_on_worker_failure() {
-        let worker = std::thread::spawn(|| Some("Apple Paravirtual device".to_owned()));
-        let device = resolve_device(Some(worker), || panic!("unexpected fallback"));
-        assert_eq!(
-            FrameSource::for_device(device.as_deref()),
-            FrameSource::CvDisplayLink
-        );
-
-        let no_device = std::thread::spawn(|| None);
-        assert_eq!(
-            resolve_device(Some(no_device), || panic!("unexpected fallback")),
-            None
-        );
-        assert_eq!(
-            resolve_device(None, || Some("fallback".into())),
-            Some("fallback".into())
-        );
-        let failed = std::thread::spawn(|| -> Option<String> { panic!("test worker failure") });
-        assert_eq!(
-            resolve_device(Some(failed), || Some("fallback".into())),
-            Some("fallback".into())
-        );
-    }
 
     #[test]
     fn only_the_paravirtual_device_leaves_the_metal_display_link() {
