@@ -118,6 +118,19 @@ fairness checks are still required.
 gh workflow run benchmark-comparison.yml --ref <candidate-branch> -f paired-macos=true -f trials=3
 ```
 
+The explicit `transaction-pairs` dispatch compares 12 alternating Core/AOT
+workload pairs using release hosts built on the same Linux runner. It pins the
+pre-segmented-leaf host at `bd84a6621868722c3b5f25775db4f59c40ee576f` and
+requires the same inspected application, renderer, paint trees, workload,
+cleanup and host fingerprints. Timed samples disable trace instrumentation.
+It retains failures and reports startup, acknowledgement and resource results;
+acknowledgement is not display presentation. Virtualized runner load and caches
+are uncontrolled, and native interaction and fairness require separate checks.
+
+```sh
+gh workflow run benchmark-comparison.yml --ref <candidate-branch> -f transaction-pairs=true
+```
+
 ## Input-to-paint latency
 
 With `--input-trials N` (0 by default, otherwise 3..30) the controller runs N
