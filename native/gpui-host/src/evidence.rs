@@ -102,6 +102,21 @@ impl Evidence {
 
     /// Opt-in phase evidence only; never changes native dispatch or its deadline.
     pub(crate) fn startup(&self, phase: &'static str, id: RequestId, window_id: WindowId) {
+        self.write_startup_phase(phase, Some(id), Some(window_id));
+    }
+
+    /// Host initialization and hello have no window, but share the same
+    /// process-relative clock and bounded budget as the window phases.
+    pub(crate) fn startup_phase(&self, phase: &'static str, id: Option<RequestId>) {
+        self.write_startup_phase(phase, id, None);
+    }
+
+    fn write_startup_phase(
+        &self,
+        phase: &'static str,
+        id: Option<RequestId>,
+        window_id: Option<WindowId>,
+    ) {
         let Some(log) = &self.0 else {
             return;
         };

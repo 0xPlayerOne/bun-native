@@ -379,6 +379,7 @@ export class NativeHost implements AsyncIterable<HostEvent> {
     private readonly requestedPolicy: Readonly<ServicePolicy>
   ) {
     this.timeout = options.requestTimeoutMs ?? 5_000
+    this.startupTrace?.spawn('spawn_enter')
     this.process = Bun.spawn({
       cmd: [
         options.executable,
@@ -407,6 +408,7 @@ export class NativeHost implements AsyncIterable<HostEvent> {
       // (or closed stdin), so the host runs in its own session on POSIX.
       detached: process.platform !== 'win32',
     })
+    this.startupTrace?.spawn('spawn_returned', this.process.pid)
     this.stdout = this.process.stdout.getReader()
     this.stderr = this.process.stderr.getReader()
     this.exited = this.process.exited

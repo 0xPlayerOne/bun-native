@@ -53,6 +53,8 @@ const { values } = parseArgs({
     'rss-interval-ms': { type: 'string', default: '20' },
     // Separate fresh launches with one real XTest click each; 0 skips them.
     'input-trials': { type: 'string', default: '0' },
+    // Trace only the separately instrumented calibrations, never timed trials.
+    'startup-trace-calibration': { type: 'boolean', default: false },
     // Linux only: sync and drop the page, dentry and inode caches before every
     // timed, first, and calibration launch.
     'cold-cache': { type: 'boolean', default: false },
@@ -513,6 +515,9 @@ const report: Record<string, unknown> = {
       'controller inspects and hashes the exact executable it launches; child mode is only a declaration',
     developmentCalibration:
       'BUN_JSC_useDFGJIT=0 for development calibration only, as in native CI (#287); timed launches keep default tiers',
+    startupTraceCalibration: values['startup-trace-calibration']
+      ? 'Startup traces enabled for calibration launches only; diagnostic I/O affects timing'
+      : 'disabled',
     inputLatency: inputTrials
       ? {
           trials: inputTrials,
@@ -642,7 +647,11 @@ async function run(build: Built, name: string, trial: number, warmup: boolean) {
   const processResult = await launch(
     name,
     [...build.argv, ...workloadArguments(path, nonce, build.mode, false)],
-    { BUN_NATIVE_EVIDENCE_LOG: undefined, BUN_NATIVE_EVIDENCE_NONCE: undefined }
+    {
+      BUN_NATIVE_EVIDENCE_LOG: undefined,
+      BUN_NATIVE_EVIDENCE_NONCE: undefined,
+      BUN_NATIVE_STARTUP_TRACE: undefined,
+    }
   )
   const checked = childReport(build, path, nonce)
   const passed = processResult.exitCode === 0 && !checked.error
@@ -743,6 +752,7 @@ try {
       {
         BUN_NATIVE_EVIDENCE_LOG: evidencePath,
         BUN_NATIVE_EVIDENCE_NONCE: nonce,
+        BUN_NATIVE_STARTUP_TRACE: values['startup-trace-calibration'] ? '1' : undefined,
         ...(build.mode === 'development' ? { BUN_JSC_useDFGJIT: '0' } : {}),
       }
     )

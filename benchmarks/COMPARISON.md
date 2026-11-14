@@ -78,6 +78,26 @@ CPU models, logical CPUs, memory, Bun revision, pinned toolchain, `rustc` and
 `cargo` versions, Mesa/Xvfb package versions, display variables, and
 `/proc/loadavg` before every launch.
 
+## Startup attribution
+
+`--startup-trace-calibration` enables bounded startup traces only for the
+separate calibration launches; first and timed launches explicitly disable the
+trace. The calibration JSONL records transport spawn and hello phases and native
+GPUI/session initialization and hello phases. Records from each process use
+their own monotonic origin: subtract times only within the same process, and
+use the host PID, request ID and nonce to correlate events. The native clock
+starts when evidence is initialized, after process entry, so it does not include
+all process startup. Trace writes perturb execution and the record budget may
+be exhausted later in a calibration; traced startup is diagnostic, not an
+untraced latency sample or display-presentation time.
+
+For a bounded hosted macOS investigation of #678, run
+`gh workflow run benchmark-comparison.yml --ref <branch> -f startup-only=true -f trials=3`.
+That dispatch runs Core development and AOT on macOS and retains their raw
+calibration logs and ordinary untraced trials; it skips the Linux and Windows
+comparison jobs. A single trace per mode cannot establish instrumentation
+overhead or a performance gain.
+
 ## Input-to-paint latency
 
 With `--input-trials N` (0 by default, otherwise 3..30) the controller runs N
