@@ -4,6 +4,8 @@
 #import <CoreGraphics/CoreGraphics.h>
 #import <ImageIO/ImageIO.h>
 #import <Vision/Vision.h>
+#include <errno.h>
+#include <stdlib.h>
 
 static int fail(NSString *message) {
     fprintf(stderr, "%s\n", message.UTF8String);
@@ -12,7 +14,7 @@ static int fail(NSString *message) {
 
 int main(int argc, const char *argv[]) {
     @autoreleasepool {
-        if (argc != 2) return fail(@"Expected one absolute image path");
+        if (argc != 2 && argc != 6) return fail(@"Expected an image path and optional x y width height crop");
         NSString *path = [NSString stringWithUTF8String:argv[1]];
         if (!path.isAbsolutePath) return fail(@"Image path must be absolute");
         NSDictionary *attributes = [NSFileManager.defaultManager attributesOfItemAtPath:path error:NULL];
@@ -36,6 +38,40 @@ int main(int argc, const char *argv[]) {
             CGImageRelease(image);
             return fail(@"Decoded image dimensions do not match its metadata");
         }
+        size_t x = 0, y = 0, cropWidth = width, cropHeight = height;
+        if (argc == 6) {
+            size_t *parts[] = {&x, &y, &cropWidth, &cropHeight};
+            for (int i = 0; i < 4; i++) {
+                char *end = NULL;
+                errno = 0;
+                if (argv[i + 2][0] == '-') { CGImageRelease(image); return fail(@"Invalid crop"); }
+                unsigned long long value = strtoull(argv[i + 2], &end, 10);
+                if (errno || !end || end == argv[i + 2] || *end || value > 8192) {
+                    CGImageRelease(image);
+                    return fail(@"Invalid crop");
+                }
+                *parts[i] = (size_t)value;
+            }
+            if (!cropWidth || !cropHeight || x + cropWidth > width || y + cropHeight > height
+                || cropWidth > 2048 || cropHeight > 2048 || cropWidth * cropHeight > 500000) {
+                CGImageRelease(image);
+                return fail(@"Crop exceeds the image or observer bounds");
+            }
+            CGImageRef crop = CGImageCreateWithImageInRect(image, CGRectMake(x, y, cropWidth, cropHeight));
+            CGImageRelease(image);
+            if (!crop) return fail(@"Cannot crop image");
+            CGColorSpaceRef colors = CGColorSpaceCreateDeviceRGB();
+            CGContextRef context = colors ? CGBitmapContextCreate(NULL, cropWidth * 4, cropHeight * 4, 8, 0,
+                colors, kCGImageAlphaPremultipliedLast | kCGBitmapByteOrder32Big) : NULL;
+            if (colors) CGColorSpaceRelease(colors);
+            if (!context) { CGImageRelease(crop); return fail(@"Cannot allocate scaled crop"); }
+            CGContextSetInterpolationQuality(context, kCGInterpolationHigh);
+            CGContextDrawImage(context, CGRectMake(0, 0, cropWidth * 4, cropHeight * 4), crop);
+            CGImageRelease(crop);
+            image = CGBitmapContextCreateImage(context);
+            CGContextRelease(context);
+            if (!image) return fail(@"Cannot create scaled crop");
+        }
         VNRecognizeTextRequest *request = [VNRecognizeTextRequest new];
         request.recognitionLevel = VNRequestTextRecognitionLevelFast;
         request.usesLanguageCorrection = NO;
@@ -52,7 +88,10 @@ int main(int argc, const char *argv[]) {
         for (VNRecognizedTextObservation *observation in request.results) {
             VNRecognizedText *candidate = [observation topCandidates:1].firstObject;
             if (!candidate || candidate.string.length > 512) return fail(@"Invalid recognized text");
-            CGRect box = observation.boundingBox;
+            CGRect local = observation.boundingBox;
+            CGRect box = CGRectMake((x + local.origin.x * cropWidth) / width,
+                (height - y - cropHeight + local.origin.y * cropHeight) / height,
+                local.size.width * cropWidth / width, local.size.height * cropHeight / height);
             [observations addObject:@{@"text": candidate.string, @"confidence": @(candidate.confidence),
                 @"bounds": @[@(box.origin.x), @(box.origin.y), @(box.size.width), @(box.size.height)]}];
         }
