@@ -79,9 +79,11 @@ comparison and OCR costs separately; an OCR result obtained after the change is
 not a display timestamp.
 
 The explicit `electrobun-smoke` workflow dispatch builds the pinned reference in
-the hosted macOS runner and exercises one owned-window click and window-surface
-capture. It retains screenshots and failures, and rejects forced cleanup. This
-is a qualification attempt, not the paired or composited-display comparison.
+the hosted macOS runner and exercises one owned-window click and a guarded
+composited-display capture. It retains screenshots and failures, and rejects
+forced cleanup. This is a qualification attempt, not the paired comparison or
+a physical display-presentation timestamp. Window-order checks immediately
+before and after capture cannot rule out a transient overlay between them.
 
 ```sh
 gh workflow run benchmark-comparison.yml --ref <candidate-branch> -f electrobun-smoke=true

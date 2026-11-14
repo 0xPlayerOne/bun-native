@@ -256,6 +256,33 @@ static void require_pointer_target(NSDictionary *state, CGPoint point) {
     verify_pointer_target(state, windows, point, hitWindow);
 }
 
+// kCGWindowListOptionOnScreenOnly returns windows front to back. Conservatively
+// reject any overlapping window above the owned region, including transparent
+// click-through surfaces: pointer hit testing alone does not prove visibility.
+static void verify_visible_region(NSDictionary *state, NSArray *windows, CGRect region) {
+    if (![windows isKindOfClass:NSArray.class] || windows.count > 4096
+        || !isfinite(region.origin.x) || !isfinite(region.origin.y)
+        || !isfinite(region.size.width) || !isfinite(region.size.height)
+        || region.size.width <= 0 || region.size.height <= 0)
+        fail(@"Invalid bounded visible-region request");
+    BOOL found = NO;
+    for (NSDictionary *candidate in windows) {
+        CGRect bounds = pointer_window_bounds(candidate);
+        BOOL owned = [candidate[(__bridge NSString *)kCGWindowNumber] isEqual:state[@"window"][@"id"]];
+        if (owned) {
+            if (found || ![candidate[(__bridge NSString *)kCGWindowOwnerPID] isEqual:state[@"host"][@"pid"]]
+                || [candidate[(__bridge NSString *)kCGWindowAlpha] doubleValue] <= 0
+                || !CGRectContainsRect(bounds, region))
+                fail(@"Owned visible-region window metadata is inconsistent");
+            found = YES;
+        } else if (!found && [candidate[(__bridge NSString *)kCGWindowAlpha] doubleValue] > 0
+                   && CGRectIntersectsRect(bounds, region)) {
+            unavailable(@"Another onscreen window overlaps the observed region");
+        }
+    }
+    if (!found) unavailable(@"Owned window is absent from onscreen metadata");
+}
+
 static void post_modifier(CGKeyCode code, CGEventFlags flags, bool down) {
     CGEventRef event = CGEventCreateKeyboardEvent(NULL, code, down);
     if (!event) fail(@"Cannot allocate a bounded CoreGraphics modifier event");
@@ -448,6 +475,24 @@ static NSDictionary *input(NSDictionary *request, NSDictionary *state) {
     NSMutableDictionary *result = [NSMutableDictionary dictionaryWithDictionary:state];
     if ([action isEqualToString:@"activate"]) {
         events = 0;
+    } else if ([action isEqualToString:@"visible-region"]) {
+        CGPoint point = content_point(request, state);
+        NSArray *viewport = request[@"viewport"];
+        id width = request[@"width"], height = request[@"height"];
+        if (!number(width) || !number(height) || [width doubleValue] <= 0 || [height doubleValue] <= 0
+            || [request[@"x"] doubleValue] + [width doubleValue] > [viewport[0] doubleValue]
+            || [request[@"y"] doubleValue] + [height doubleValue] > [viewport[1] doubleValue])
+            fail(@"Visible region exceeds the owned viewport");
+        CGRect region = CGRectMake(point.x, point.y, [width doubleValue], [height doubleValue]);
+        if (!CGRectContainsRect(CGDisplayBounds(CGMainDisplayID()), region))
+            unavailable(@"Visible region is not wholly on the primary display");
+        NSArray *windows = CFBridgingRelease(CGWindowListCopyWindowInfo(
+            kCGWindowListOptionOnScreenOnly | kCGWindowListExcludeDesktopElements, kCGNullWindowID));
+        if (!windows) unavailable(@"The current GUI session cannot inspect onscreen windows");
+        verify_visible_region(state, windows, region);
+        result[@"visibleRegion"] = @[@(region.origin.x), @(region.origin.y),
+            @(region.size.width), @(region.size.height)];
+        result[@"visibleRegionVerified"] = @YES;
     } else if ([action isEqualToString:@"tab"]) {
         key(pid, 48, 0);
         events = 2;

@@ -109,6 +109,25 @@ int main(void) {
                 }
                 if (!rejected) fail(@"Malformed target identity entered rejection evidence");
             }
+            CGRect region = CGRectMake(300, 200, 100, 40);
+            NSDictionary *away = window_record(9, 456, CGRectMake(0, 0, 20, 20), 1);
+            NSDictionary *clearWindow = window_record(9, 457, bounds, 0);
+            verify_visible_region(identity, @[away, clearWindow, owned], region);
+            verify_visible_region(identity, @[owned, foreign], region);
+            NSArray *badLists = @[@[foreign, owned], @[away], @[owned, owned]];
+            for (NSArray *list in badLists) {
+                BOOL rejected = NO;
+                @try { verify_visible_region(identity, list, region); }
+                @catch (NSException *error) {
+                    rejected = [error.name isEqualToString:@"Unsupported"]
+                        || [error.name isEqualToString:@"Failed"];
+                }
+                if (!rejected) fail(@"Overlapping, missing or duplicate window was accepted");
+            }
+            BOOL outsideRejected = NO;
+            @try { verify_visible_region(identity, @[owned], CGRectMake(0, 0, 10, 10)); }
+            @catch (NSException *error) { outsideRejected = [error.name isEqualToString:@"Failed"]; }
+            if (!outsideRejected) fail(@"A region outside the owned window was accepted");
             NSArray *conversions = @[
                 @[@336.0, @348.0, @768.0, @420.0],
                 @[@(-100.25), @900.0, @768.0, @(-132.0)],
@@ -130,6 +149,7 @@ int main(void) {
                 @"windowTargetControlsChecked": @(lists.count), @"coordinateControlsChecked": @(conversions.count + 1),
                 @"targetRejectionDiagnosticsChecked": @(diagnosticsChecked),
                 @"targetIdentityGuardsChecked": @(invalidFields.count),
+                @"visibleRegionControlsChecked": @6,
                 @"scope": @"Actual Quartz construction and pure target-guard controls only; WindowServer delivery is separately required"};
             NSData *encoded = [NSJSONSerialization dataWithJSONObject:result options:0 error:NULL];
             if (!encoded) fail(@"Cannot encode SDK event evidence");
