@@ -231,3 +231,33 @@ What remains proportional to the tree: a recaptured wide parent still copies
 its child list, and a reorder whose middle spans the list (the `swap` rows)
 still builds one position map over that middle. Solid's own `<For>` mapping
 and react-reconciler's `getHostSibling` dominate the adapters' `sync` time.
+
+## Clearing a suffix through core
+
+`clear-core.ts` removes half of a full 4,096-node window through the shared
+renderer and real in-process core transactions. It checks native operation
+counts, surviving order and final disposal. It excludes IPC, native preflight
+and paint. A pure removed suffix now emits deletes last-first; other edits keep
+their previous order. This lets each core and native tree removal use its tail
+fast path, while rescued descendants are still moved before their ancestor is
+deleted.
+
+```sh
+bun benchmarks/renderer/clear-core.ts [samples=12]
+```
+
+Apple M2 Max, macOS 27.2, AC power, pinned Bun `b1007f117`, uncontrolled
+other load: 12 alternating fresh processes per version and mode, each with
+three warm-ups and 12 measured clears. Values are medians of the per-process
+commit p50s in milliseconds. [Raw samples and AOT compiler diagnostics](raw/)
+include the exact source and binary hashes; both AOT binaries have the
+compiled-program flag.
+
+| Pattern | Development before | Development after | AOT before | AOT after |
+| ------- | -----------------: | ----------------: | ---------: | --------: |
+| Tail    |              6.799 |             1.523 |      2.353 |     0.988 |
+| Front   |              2.911 |             3.016 |      2.293 |     2.300 |
+
+Tail improved in all 12 pairs in each mode. The front median increased by
+about 3.6% in development and 0.3% in AOT; these measurements do not establish
+an end-to-end latency or competitive result.

@@ -21,6 +21,7 @@ type Model = { element: Element; parent: Model | undefined; children: Model[]; l
 function modelWindow() {
   const nodes = new Map<number, Model>()
   const ops = { create: 0, set: 0, insert: 0, remove: 0 }
+  const removedHandles: NativeNode[] = []
   let id = 0
   let reject = false
   const top: Model = { element: { kind: 'box' }, parent: undefined, children: [], listeners: 0 }
@@ -81,6 +82,7 @@ function modelWindow() {
         },
         remove: (node) => {
           ops.remove += 1
+          removedHandles.push(node)
           pending.push(() => {
             const model = get(node)
             detach(model)
@@ -106,6 +108,7 @@ function modelWindow() {
   return {
     window,
     ops,
+    removedHandles,
     rejectNext: () => (reject = true),
     native: () => top.children,
   }
@@ -408,6 +411,36 @@ test('a subtree moved within its live root recaptures only its own root', async 
   })
   await root.dispose()
   expect(model.native()).toEqual([])
+})
+
+test('removing a suffix rescues a retained descendant before deleting its ancestor', async () => {
+  const model = modelWindow()
+  const keep = createElement('box')
+  const first = createElement('box')
+  const last = createElement('box')
+  const rescued = createElement('text')
+  insertNode(rescued, createTextNode('retained'))
+  insertNode(last, rescued)
+  let container!: Node
+  const root = createRenderRoot(model.window, (context) => {
+    container = context.container
+    insertNode(container, keep)
+    insertNode(container, first)
+    insertNode(container, last)
+  })
+  await root.ready
+  const handle = rescued.handle
+  const firstHandle = first.handle
+  const lastHandle = last.handle
+  if (!handle || !firstHandle || !lastHandle) throw new Error('Initial handles are missing')
+  insertNode(keep, rescued)
+  removeNode(container, first)
+  removeNode(container, last)
+  await root.flush()
+  expect(model.removedHandles).toEqual([lastHandle, firstHandle])
+  expect(rescued.handle).toBe(handle)
+  expect(model.native().map(nativeShape)).toEqual([stagedShape(container)])
+  await root.dispose()
 })
 
 test('detached subtrees rearranged among themselves mount from their current state', async () => {

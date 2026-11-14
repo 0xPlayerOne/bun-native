@@ -180,7 +180,11 @@ export async function commitNativeTree(
       if (kept === 0) continue
       const retained = new Set(after.slice(start, afterEnd))
       const lost = new Set<Node>()
-      for (let index = start; index < end; index += 1) {
+      // A pure suffix can leave last-first, making each core/native removal a tail pop.
+      const tail = afterEnd === start && end === before.length
+      const stop = tail ? start - 1 : end
+      const step = tail ? -1 : 1
+      for (let index = tail ? end - 1 : start; index !== stop; index += step) {
         const node = before[index]!
         if (changes.has(node) || retained.has(node)) continue
         rescue(node)
