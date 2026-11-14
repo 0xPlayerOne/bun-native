@@ -142,6 +142,13 @@ int main(void) {
                 overlapDiagnosticsChecked = YES;
             }
             if (!overlapDiagnosticsChecked) fail(@"Missing visible-region rejection diagnostics");
+            BOOL missingBehindOverlapRejected = NO;
+            @try { verify_visible_region(identity, @[foreign], region); }
+            @catch (NSException *error) {
+                missingBehindOverlapRejected = [error.name isEqualToString:@"Unsupported"]
+                    && [error.reason isEqualToString:@"Owned window is absent from onscreen metadata"];
+            }
+            if (!missingBehindOverlapRejected) fail(@"Overlap must not hide a missing owned window");
             BOOL outsideRejected = NO;
             @try { verify_visible_region(identity, @[owned], CGRectMake(0, 0, 10, 10)); }
             @catch (NSException *error) { outsideRejected = [error.name isEqualToString:@"Failed"]; }
