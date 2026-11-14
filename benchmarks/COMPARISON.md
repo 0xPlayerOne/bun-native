@@ -99,6 +99,22 @@ calibration logs and ordinary untraced trials; it skips the Linux and Windows
 comparison jobs. A single trace per mode cannot establish instrumentation
 overhead or a performance gain.
 
+The explicit `paired-macos` dispatch builds the current release host and the
+fixed pre-candidate host `5cfbb71c83a5f3937543ee08aa8159960c1d80a0` on the
+same macOS runner. It calibrates both against the same inspected Core/AOT
+executable, rejects unequal paint trees and renderer identity, and alternates
+10 fresh-process pairs with tracing disabled. It checks host and executable
+hashes before each launch, retains raw reports and failures, and independently
+rechecks paired order, fingerprints, cleanup, workloads and startup milestones.
+`paired-analysis.json` reports paired bootstrap intervals for startup and
+acknowledgement differences. These milestones are not display presentation;
+the VM, load and caches remain uncontrolled, and the separate native input and
+fairness checks are still required.
+
+```sh
+gh workflow run benchmark-comparison.yml --ref <candidate-branch> -f paired-macos=true -f trials=3
+```
+
 ## Input-to-paint latency
 
 With `--input-trials N` (0 by default, otherwise 3..30) the controller runs N
