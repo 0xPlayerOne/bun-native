@@ -84,7 +84,15 @@ function fixture() {
         hostSha256: (variant === 'baseline' ? 'b' : 'a').repeat(64),
         artifactSha256: 'c'.repeat(64),
         status: 'passed',
-        process: { exitCode: 0, wallMs: 10, spawnEpochMs: 999 },
+        process: {
+          exitCode: 0,
+          wallMs: 10,
+          spawnEpochMs: 999,
+          cpuUserMs: variant === 'baseline' ? 100 : 80,
+          cpuSystemMs: 20,
+          peakTreeRssBytes: variant === 'baseline' ? 1000 : 900,
+          rssSamples: 3,
+        },
         report: {
           bytes: Buffer.byteLength(raw),
           sha256: createHash('sha256').update(raw).digest('hex'),
@@ -119,6 +127,8 @@ test('summarizes every pair and retains tail samples', () => {
     expect(result.pairedDelta.spawnToReadyMs.estimate).toBe(-3)
     expect(result.pairedDelta.spawnToMountedMs.estimate).toBe(0)
     expect(result.pairedRatio.spawnToReady.estimate).toBeCloseTo(2 / 3)
+    expect(result.pairedDelta.cpuTimeMs?.estimate).toBe(-20)
+    expect(result.pairedDelta.peakTreeRssBytes?.estimate).toBe(-100)
     expect(result.pairs[0]!.baseline!.phases.signals).toMatchObject({
       medianMs: 10.5,
       p95Ms: 20,
@@ -240,6 +250,21 @@ test('rejects altered calibration evidence and wrong host attribution', () => {
     record.pairedDiagnostics[0]!.hostSha256 = 'a'.repeat(64)
     writeFileSync(join(root, 'comparison.json'), JSON.stringify(record))
     expect(() => analyzePairedRun(root)).toThrow('Wrong host fingerprint')
+  } finally {
+    rmSync(root, { recursive: true, force: true })
+  }
+})
+
+test('does not report a resource comparison when a sample is unavailable', () => {
+  const { root, record } = fixture()
+  try {
+    delete (record.pairedDiagnostics[0]!.process as { cpuUserMs?: number }).cpuUserMs
+    record.pairedDiagnostics[0]!.process.rssSamples = 0
+    writeFileSync(join(root, 'comparison.json'), JSON.stringify(record))
+    const result = analyzePairedRun(root)
+    expect(result.pairedDelta.cpuTimeMs).toBeNull()
+    expect(result.pairedDelta.peakTreeRssBytes).toBeNull()
+    expect(result.summary.baseline!.cpuTimeMs).toBeNull()
   } finally {
     rmSync(root, { recursive: true, force: true })
   }
