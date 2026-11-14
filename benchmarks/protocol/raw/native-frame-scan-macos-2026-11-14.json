@@ -1,0 +1,106 @@
+{
+  "schemaVersion": 1,
+  "scope": "CommandReader only; synthetic reused reader and chunked in-memory BufRead; excludes pipe I/O, GPUI, app, native input and display presentation.",
+  "baselineCommit": "1ae30f12007bddcb7d1439aa36eef43b49457c7e",
+  "baselineFramingSha256": "187a9db89b66d7a640c44a4d14272fc77fdf7c2668e41e8361859f771555584e",
+  "candidateFramingSha256": "2a8a90ad35f508b94c49d137e2a182cb69cc5f85978e396ac6390208fafb09fc",
+  "benchmarkSourceSha256": "abc343c19a31fc64595bf5ca7e73dce56fbeed89b84a01b220ca8cdd5f28a5e2",
+  "candidateManifestSha256": "2e22f3b32c4f90625ad330aeebdea37138f515677bad5919ea1a0d4872d2891a",
+  "candidateLockSha256": "f3a6852682dcfd002287be1aee8ab9ba0da31cecd20117fa464263aac51c15b3",
+  "binarySha256": {
+    "baseline": "1b8e595a6f5c070b3c235962534a94c657b6381dd274ebc6db85e8dc2789f1a2",
+    "candidate": "2edb883906f77c74510fec8559bafd8fb96c9b22efd294a841d66ef2a23fb2e1"
+  },
+  "environment": {
+    "system": "macOS 27.2 (26B123)",
+    "cpu": "Apple M2 Max",
+    "architecture": "arm64",
+    "logicalCpus": 12,
+    "rustc": "1.98.1 (48a229cea 2026-09-01)",
+    "profile": "release: thin LTO, 1 codegen unit, strip debuginfo",
+    "otherLoad": "uncontrolled"
+  },
+  "method": "8 alternating baseline/candidate fresh-process pairs; each process times 9 rounds of 5000 parses per scenario; first 2 rounds discarded; reports median and all 7 remaining round values. The candidate uses already-locked memchr 2.8.3 for newline search; serde_json already enabled its std feature.",
+  "runs": [
+    {
+      "trial": 1,
+      "variant": "baseline",
+      "stdout": "small bytes=150 samples=5000 median_ns=1177.62 rounds=[1030.4166, 1107.525, 1166.9168, 1177.625, 1187.15, 1332.5332, 1535.3082]\nmedium bytes=2182 samples=5000 median_ns=2989.68 rounds=[2833.2, 2850.9166, 2938.35, 2989.675, 2990.8666, 3105.3832, 3282.4]\nlarge bytes=12134 samples=5000 median_ns=13784.27 rounds=[12957.5666, 13256.225, 13591.05, 13784.275, 14021.05, 14023.5082, 14052.0584]\nfragmented bytes=12134 samples=5000 median_ns=16632.53 rounds=[15762.6832, 15834.0166, 16096.425, 16632.525, 16674.975, 16953.6584, 17295.1082]\n"
+    },
+    {
+      "trial": 1,
+      "variant": "candidate",
+      "stdout": "small bytes=150 samples=5000 median_ns=802.99 rounds=[798.425, 799.425, 801.575, 802.9918, 804.8666, 824.0084, 868.1916]\nmedium bytes=2182 samples=5000 median_ns=1819.78 rounds=[1575.9834, 1646.8416, 1819.0084, 1819.7834, 1822.1, 1827.0834, 1872.55]\nlarge bytes=12134 samples=5000 median_ns=6461.19 rounds=[6076.325, 6259.6834, 6261.1, 6461.1918, 6469.2084, 6706.1584, 6708.3582]\nfragmented bytes=12134 samples=5000 median_ns=6850.82 rounds=[6755.025, 6814.4084, 6844.7334, 6850.825, 6876.1334, 7157.575, 7191.85]\n"
+    },
+    {
+      "trial": 2,
+      "variant": "candidate",
+      "stdout": "small bytes=150 samples=5000 median_ns=851.27 rounds=[689.025, 711.0, 834.0334, 851.275, 895.3416, 900.4918, 955.6916]\nmedium bytes=2182 samples=5000 median_ns=1804.14 rounds=[1795.775, 1798.025, 1800.2, 1804.1416, 1809.9082, 1813.8582, 1890.425]\nlarge bytes=12134 samples=5000 median_ns=6391.48 rounds=[6186.6918, 6194.6, 6300.125, 6391.475, 6439.2, 6457.0834, 6513.9668]\nfragmented bytes=12134 samples=5000 median_ns=6851.22 rounds=[6649.8, 6690.925, 6847.0, 6851.2166, 6894.0584, 7101.525, 7243.8334]\n"
+    },
+    {
+      "trial": 2,
+      "variant": "baseline",
+      "stdout": "small bytes=150 samples=5000 median_ns=936.51 rounds=[933.4416, 934.35, 934.8334, 936.5082, 947.4334, 949.1, 956.8834]\nmedium bytes=2182 samples=5000 median_ns=3170.40 rounds=[2963.75, 3051.9084, 3167.7584, 3170.4, 3189.925, 3192.4, 3333.6334]\nlarge bytes=12134 samples=5000 median_ns=14056.89 rounds=[13542.3832, 13774.8666, 13844.4416, 14056.8916, 14228.5082, 14538.375, 16668.925]\nfragmented bytes=12134 samples=5000 median_ns=16544.40 rounds=[15057.4416, 15467.1582, 16399.3, 16544.4, 16845.9666, 17063.9916, 17140.4832]\n"
+    },
+    {
+      "trial": 3,
+      "variant": "baseline",
+      "stdout": "small bytes=150 samples=5000 median_ns=951.16 rounds=[804.7918, 806.65, 942.1166, 951.1584, 952.0916, 966.6584, 988.2416]\nmedium bytes=2182 samples=5000 median_ns=3063.22 rounds=[2908.4832, 2981.475, 3011.8166, 3063.2166, 3159.25, 3296.225, 3320.325]\nlarge bytes=12134 samples=5000 median_ns=14235.05 rounds=[13517.65, 13993.775, 14015.3416, 14235.05, 14435.4666, 14514.1918, 14733.3168]\nfragmented bytes=12134 samples=5000 median_ns=15876.73 rounds=[15384.2418, 15504.3584, 15603.6082, 15876.7334, 15934.8166, 16088.2668, 16157.0832]\n"
+    },
+    {
+      "trial": 3,
+      "variant": "candidate",
+      "stdout": "small bytes=150 samples=5000 median_ns=710.59 rounds=[685.6332, 687.0666, 687.5334, 710.5918, 796.5834, 799.9, 801.7334]\nmedium bytes=2182 samples=5000 median_ns=1721.41 rounds=[1549.6418, 1553.3, 1559.8082, 1721.4084, 1742.675, 1744.9418, 1764.3416]\nlarge bytes=12134 samples=5000 median_ns=6232.57 rounds=[6061.6416, 6071.5832, 6163.8334, 6232.5666, 6381.5, 6442.7, 6734.8832]\nfragmented bytes=12134 samples=5000 median_ns=7103.01 rounds=[6559.0334, 6770.775, 7075.6666, 7103.0084, 7310.6, 7487.4166, 7612.15]\n"
+    },
+    {
+      "trial": 4,
+      "variant": "candidate",
+      "stdout": "small bytes=150 samples=5000 median_ns=800.33 rounds=[796.6416, 797.1334, 798.1584, 800.3332, 800.7832, 800.9916, 801.4918]\nmedium bytes=2182 samples=5000 median_ns=1799.38 rounds=[1761.1334, 1780.175, 1798.25, 1799.3834, 1799.8582, 1800.35, 1982.6666]\nlarge bytes=12134 samples=5000 median_ns=6668.23 rounds=[6541.6582, 6561.6416, 6643.2834, 6668.225, 6696.2916, 6772.0084, 6951.55]\nfragmented bytes=12134 samples=5000 median_ns=7297.32 rounds=[7100.025, 7162.175, 7235.475, 7297.3166, 7332.5666, 7523.375, 7702.6334]\n"
+    },
+    {
+      "trial": 4,
+      "variant": "baseline",
+      "stdout": "small bytes=150 samples=5000 median_ns=980.77 rounds=[934.8084, 956.2834, 979.7666, 980.775, 984.2168, 991.0166, 1100.75]\nmedium bytes=2182 samples=5000 median_ns=3286.89 rounds=[3150.1916, 3233.0168, 3266.1084, 3286.8916, 3308.9916, 3312.95, 3402.8832]\nlarge bytes=12134 samples=5000 median_ns=14754.95 rounds=[14090.7834, 14137.7, 14686.625, 14754.95, 14820.4334, 14911.575, 14955.9916]\nfragmented bytes=12134 samples=5000 median_ns=16689.13 rounds=[16276.1666, 16542.3584, 16688.9, 16689.1332, 16826.1916, 17008.3084, 17096.9332]\n"
+    },
+    {
+      "trial": 5,
+      "variant": "baseline",
+      "stdout": "small bytes=150 samples=5000 median_ns=943.73 rounds=[853.0834, 938.4834, 941.075, 943.7332, 944.9332, 948.9584, 949.4]\nmedium bytes=2182 samples=5000 median_ns=3320.03 rounds=[3070.0168, 3148.4, 3305.6834, 3320.0332, 3324.3, 3326.8166, 3338.6168]\nlarge bytes=12134 samples=5000 median_ns=14413.68 rounds=[13727.9916, 13977.3416, 14362.6418, 14413.6832, 14443.0416, 14622.15, 14905.4334]\nfragmented bytes=12134 samples=5000 median_ns=16663.71 rounds=[16148.0416, 16187.3166, 16236.525, 16663.7082, 16728.5, 16785.925, 16845.1084]\n"
+    },
+    {
+      "trial": 5,
+      "variant": "candidate",
+      "stdout": "small bytes=150 samples=5000 median_ns=809.12 rounds=[804.9916, 805.5084, 807.8582, 809.1166, 810.6666, 817.6332, 913.475]\nmedium bytes=2182 samples=5000 median_ns=1837.34 rounds=[1809.35, 1815.4416, 1835.05, 1837.3416, 1845.6584, 1869.0916, 1881.9916]\nlarge bytes=12134 samples=5000 median_ns=6451.77 rounds=[6232.3668, 6254.6168, 6274.7082, 6451.775, 6514.5584, 6685.3084, 7124.4834]\nfragmented bytes=12134 samples=5000 median_ns=7251.64 rounds=[7224.7082, 7236.2, 7240.25, 7251.6418, 7252.775, 7633.0166, 7841.1834]\n"
+    },
+    {
+      "trial": 6,
+      "variant": "candidate",
+      "stdout": "small bytes=150 samples=5000 median_ns=795.43 rounds=[792.2668, 793.325, 794.2332, 795.4334, 798.825, 836.7834, 848.9416]\nmedium bytes=2182 samples=5000 median_ns=1811.45 rounds=[1804.5082, 1806.3832, 1810.05, 1811.45, 1811.9582, 1812.0916, 1903.65]\nlarge bytes=12134 samples=5000 median_ns=6707.12 rounds=[6261.3584, 6663.475, 6700.95, 6707.1168, 6823.1082, 7835.9834, 7853.7334]\nfragmented bytes=12134 samples=5000 median_ns=6841.98 rounds=[6696.0168, 6834.8834, 6837.9916, 6841.9834, 6913.2166, 7164.0, 7189.6834]\n"
+    },
+    {
+      "trial": 6,
+      "variant": "baseline",
+      "stdout": "small bytes=150 samples=5000 median_ns=964.04 rounds=[949.425, 956.3584, 959.2, 964.0416, 971.0168, 974.9334, 993.75]\nmedium bytes=2182 samples=5000 median_ns=3304.66 rounds=[3140.45, 3289.2916, 3304.0916, 3304.6584, 3307.8418, 3308.175, 3313.3834]\nlarge bytes=12134 samples=5000 median_ns=14837.27 rounds=[13983.2334, 14831.7332, 14834.9166, 14837.275, 14843.975, 14851.25, 14950.9418]\nfragmented bytes=12134 samples=5000 median_ns=16406.51 rounds=[15120.5916, 15694.6166, 15784.8418, 16406.5084, 16458.6832, 16532.775, 16639.025]\n"
+    },
+    {
+      "trial": 7,
+      "variant": "baseline",
+      "stdout": "small bytes=150 samples=5000 median_ns=954.12 rounds=[916.1082, 953.45, 953.9334, 954.1168, 954.3334, 957.5834, 999.65]\nmedium bytes=2182 samples=5000 median_ns=3325.63 rounds=[2887.0168, 3008.3666, 3070.8668, 3325.6332, 3330.3916, 3335.35, 3385.3668]\nlarge bytes=12134 samples=5000 median_ns=14294.72 rounds=[14105.575, 14143.5582, 14177.4666, 14294.7166, 14353.0418, 14393.3418, 14824.6916]\nfragmented bytes=12134 samples=5000 median_ns=16150.48 rounds=[15717.6666, 15764.6416, 15990.325, 16150.475, 16159.7834, 16225.8584, 16951.7666]\n"
+    },
+    {
+      "trial": 7,
+      "variant": "candidate",
+      "stdout": "small bytes=150 samples=5000 median_ns=702.55 rounds=[682.275, 683.7918, 685.9832, 702.55, 800.4334, 805.3832, 816.4916]\nmedium bytes=2182 samples=5000 median_ns=1812.06 rounds=[1556.825, 1757.2084, 1760.4584, 1812.0584, 1815.0666, 1827.7584, 1867.9418]\nlarge bytes=12134 samples=5000 median_ns=6380.77 rounds=[6276.4166, 6293.5, 6294.55, 6380.7668, 6463.925, 6633.05, 6762.9]\nfragmented bytes=12134 samples=5000 median_ns=7323.32 rounds=[6552.0416, 7049.1916, 7255.7666, 7323.3166, 7428.2832, 7565.9834, 8271.425]\n"
+    },
+    {
+      "trial": 8,
+      "variant": "candidate",
+      "stdout": "small bytes=150 samples=5000 median_ns=888.15 rounds=[829.0916, 831.3834, 868.9166, 888.15, 1008.4418, 1044.5418, 1223.0334]\nmedium bytes=2182 samples=5000 median_ns=1714.97 rounds=[1589.2, 1645.0584, 1708.3084, 1714.975, 1864.5, 1873.3166, 2119.1]\nlarge bytes=12134 samples=5000 median_ns=6981.53 rounds=[6490.2334, 6696.4168, 6938.9668, 6981.5332, 7020.9584, 7037.3332, 7200.5584]\nfragmented bytes=12134 samples=5000 median_ns=7605.13 rounds=[6786.55, 7334.95, 7530.75, 7605.1334, 7754.5666, 7785.2, 7967.7166]\n"
+    },
+    {
+      "trial": 8,
+      "variant": "baseline",
+      "stdout": "small bytes=150 samples=5000 median_ns=947.63 rounds=[840.6166, 872.0084, 942.375, 947.6334, 950.2416, 1095.5416, 1258.325]\nmedium bytes=2182 samples=5000 median_ns=3096.97 rounds=[2827.525, 2839.15, 2943.6832, 3096.975, 3103.5168, 3221.6, 3236.7]\nlarge bytes=12134 samples=5000 median_ns=13751.27 rounds=[13058.3584, 13660.6334, 13691.5334, 13751.275, 13888.65, 14384.3084, 14397.0]\nfragmented bytes=12134 samples=5000 median_ns=16481.22 rounds=[15555.2416, 16094.7834, 16144.6168, 16481.2166, 16651.3082, 16993.75, 17112.6334]\n"
+    }
+  ]
+}
