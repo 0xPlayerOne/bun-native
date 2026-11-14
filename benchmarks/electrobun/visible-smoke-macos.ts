@@ -209,6 +209,8 @@ async function snapshot(
   return {
     path,
     png,
+    captureStartedAt: before,
+    captureCompletedAt: captured,
     captureMs: captured - before,
     surfaceCaptureMs: surfaceCaptured - captured,
     guardAndDecodeMs: performance.now() - guardStart - (surfaceCaptured - before),
@@ -429,6 +431,10 @@ async function main() {
     negative,
     difference,
     polls,
+    commandToChangedCaptureWindowMs: {
+      start: changed.captureStartedAt - clickStart,
+      end: changed.captureCompletedAt - clickStart,
+    },
     commandToDisplayCaptureObservedMs: observedMs,
     captureMs: { initial: first.captureMs, control: second.captureMs, final: changed.captureMs },
     surfaceCaptureMs: {
