@@ -29,6 +29,10 @@ def digest(data):
     return hashlib.sha256(data).hexdigest()
 
 
+def save_variant(path, text):
+    path.write_text(text, encoding="utf-8", newline="\n")
+
+
 def main():
     peer = Path(sys.argv[1]).resolve()
     output = Path(sys.argv[2]).resolve()
@@ -59,7 +63,7 @@ def main():
         with generated.open("x", encoding="utf-8", newline="\n") as f:
             f.write(text)
         try:
-            (output / f"{variant}-source.tsx.txt").write_text(text, encoding="utf-8")
+            save_variant(output / f"{variant}-source.tsx.txt", text)
             env = os.environ.copy()
             env["CONTROL_ENTRY"] = str(generated.resolve())
             env["CONTROL_OUT"] = str(output / variant)

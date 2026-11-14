@@ -4,7 +4,7 @@ import { expect, test } from 'bun:test'
 // retained target and failures that must never be counted as retention.
 test('headless retention classification fails closed for unrelated failures', () => {
   const python = String.raw`
-import copy, importlib.util
+import copy, importlib.util, pathlib, tempfile
 spec = importlib.util.spec_from_file_location('control', 'benchmarks/retention/headless-adapter-control.py')
 control = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(control)
@@ -39,6 +39,10 @@ baseline = dispatch.variant_source(source, False)
 clear = dispatch.variant_source(source, True)
 assert baseline.replace('await view.dispose();', 'await view.dispose(); setText = undefined!; setRows = undefined!;') == clear
 assert 'before\n' in clear and '\nafter' in clear
+with tempfile.TemporaryDirectory() as directory:
+    saved = pathlib.Path(directory) / 'variant.tsx'
+    dispatch.save_variant(saved, clear)
+    assert saved.read_bytes() == clear.encode('utf-8')
 for invalid in ('no marker', source + source):
     try:
         dispatch.variant_source(invalid, False)
