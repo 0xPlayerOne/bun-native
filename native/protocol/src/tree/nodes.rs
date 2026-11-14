@@ -15,16 +15,11 @@ const MASK: u64 = WIDTH as u64 - 1;
 const MAX_BRANCHES: usize = 13;
 
 type Entry = (NodeId, Node);
-// Each four-entry segment is copied separately. The outer leaf index remains
-// shared, so a write need not clone all 16 entries of a dense leaf.
-const CHUNK: usize = 4;
-type Segment = Arc<[Option<Entry>; CHUNK]>;
-type Leaf = Arc<[Option<Segment>; WIDTH / CHUNK]>;
 
 #[derive(Clone)]
 enum Block {
     Branch(Arc<[Option<Block>; WIDTH]>),
-    Leaf(Leaf),
+    Leaf(Arc<[Option<Entry>; WIDTH]>),
 }
 
 impl Block {
@@ -52,16 +47,7 @@ fn slot(key: u64, shift: u32) -> usize {
 /// Removes `key` below `block`, dropping blocks a removal leaves empty.
 fn remove(block: &mut Block, key: u64, shift: u32) -> Option<Entry> {
     match block {
-        Block::Leaf(slots) => {
-            let index = slot(key, 0);
-            let segment = &mut Arc::make_mut(slots)[index / CHUNK];
-            let entries = Arc::make_mut(segment.as_mut()?);
-            let entry = entries[index % CHUNK].take();
-            if entries.iter().all(Option::is_none) {
-                *segment = None;
-            }
-            entry
-        }
+        Block::Leaf(slots) => Arc::make_mut(slots)[slot(key, 0)].take(),
         Block::Branch(slots) => {
             let child = &mut Arc::make_mut(slots)[slot(key, shift)];
             let removed = remove(child.as_mut()?, key, shift - BITS);
@@ -103,12 +89,7 @@ impl NodeMap {
                     block = slots[slot(key, shift)].as_ref()?;
                     shift -= BITS;
                 }
-                Block::Leaf(slots) => {
-                    let index = slot(key, 0);
-                    return slots[index / CHUNK].as_ref()?[index % CHUNK]
-                        .as_ref()
-                        .map(|(_, node)| node);
-                }
+                Block::Leaf(slots) => return slots[slot(key, 0)].as_ref().map(|(_, node)| node),
             }
         }
     }
@@ -127,11 +108,9 @@ impl NodeMap {
                     shift -= BITS;
                 }
                 Block::Leaf(slots) => {
-                    let index = slot(key, 0);
-                    let segment = Arc::make_mut(slots)[index / CHUNK].as_mut()?;
-                    return Arc::make_mut(segment)[index % CHUNK]
+                    return Arc::make_mut(slots)[slot(key, 0)]
                         .as_mut()
-                        .map(|(_, node)| node);
+                        .map(|(_, node)| node)
                 }
             }
         }
@@ -164,10 +143,7 @@ impl NodeMap {
                     shift -= BITS;
                 }
                 Block::Leaf(slots) => {
-                    let index = slot(key, 0);
-                    let segment = Arc::make_mut(slots)[index / CHUNK]
-                        .get_or_insert_with(|| Arc::new(std::array::from_fn(|_| None)));
-                    break Arc::make_mut(segment)[index % CHUNK].replace((id, node));
+                    break Arc::make_mut(slots)[slot(key, 0)].replace((id, node));
                 }
             }
         };
@@ -197,8 +173,7 @@ impl NodeMap {
                     return slots
                         .iter()
                         .rev()
-                        .flatten()
-                        .find_map(|segment| segment.iter().rev().flatten().next().map(|e| e.0))
+                        .find_map(|entry| entry.as_ref().map(|e| e.0))
                 }
             }
         }
@@ -245,7 +220,6 @@ impl NodeMap {
             branches: [(&[], 0); MAX_BRANCHES],
             depth: 0,
             leaf: [].iter(),
-            segments: [].iter(),
             remaining: self.len,
         };
         match &self.root {
@@ -253,7 +227,7 @@ impl NodeMap {
                 iter.branches[0] = (slots.as_slice(), 0);
                 iter.depth = 1;
             }
-            Some(Block::Leaf(slots)) => iter.segments = slots.iter(),
+            Some(Block::Leaf(slots)) => iter.leaf = slots.iter(),
             None => {}
         }
         iter
@@ -281,22 +255,13 @@ fn diff_blocks<'a>(
                 return;
             }
             for (before, after) in before.iter().zip(after.iter()) {
-                if let (Some(a), Some(b)) = (before, after) {
-                    if Arc::ptr_eq(a, b) {
-                        continue;
+                match (before, after) {
+                    (Some((id, old)), Some((_, new))) if !same(old, new) => {
+                        visit(*id, Some(old), Some(new));
                     }
-                }
-                for index in 0..CHUNK {
-                    let a = before.as_ref().and_then(|s| s[index].as_ref());
-                    let b = after.as_ref().and_then(|s| s[index].as_ref());
-                    match (a, b) {
-                        (Some((id, old)), Some((_, new))) if !same(old, new) => {
-                            visit(*id, Some(old), Some(new))
-                        }
-                        (Some((id, old)), None) => visit(*id, Some(old), None),
-                        (None, Some((id, new))) => visit(*id, None, Some(new)),
-                        _ => {}
-                    }
+                    (Some((id, old)), None) => visit(*id, Some(old), None),
+                    (None, Some((id, new))) => visit(*id, None, Some(new)),
+                    _ => {}
                 }
             }
         }
@@ -315,10 +280,8 @@ fn each_entry<'a>(block: &'a Block, f: &mut impl FnMut(NodeId, &'a Node)) {
             }
         }
         Block::Leaf(slots) => {
-            for segment in slots.iter().flatten() {
-                for (id, node) in segment.iter().flatten() {
-                    f(*id, node);
-                }
+            for (id, node) in slots.iter().flatten() {
+                f(*id, node);
             }
         }
     }
@@ -342,7 +305,6 @@ pub(super) struct Iter<'a> {
     branches: [(&'a [Option<Block>], usize); MAX_BRANCHES],
     depth: usize,
     leaf: std::slice::Iter<'a, Option<Entry>>,
-    segments: std::slice::Iter<'a, Option<Segment>>,
     remaining: usize,
 }
 
@@ -355,10 +317,6 @@ impl<'a> Iterator for Iter<'a> {
                 self.remaining -= 1;
                 return Some((*id, node));
             }
-            if let Some(segment) = self.segments.by_ref().find_map(Option::as_ref) {
-                self.leaf = segment.iter();
-                continue;
-            }
             loop {
                 let (slots, index) = *self.branches.get(self.depth.checked_sub(1)?)?;
                 let Some(block) = slots.get(index) else {
@@ -369,7 +327,7 @@ impl<'a> Iterator for Iter<'a> {
                 match block {
                     None => {}
                     Some(Block::Leaf(slots)) => {
-                        self.segments = slots.iter();
+                        self.leaf = slots.iter();
                         break;
                     }
                     Some(Block::Branch(slots)) => {
