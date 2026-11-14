@@ -1,0 +1,9 @@
+# Exploratory ancestor-path scratch reuse
+
+Two 30-pair local cohorts compare the pre-change protocol tree from `879df62168267ec49a6d6358b5c6c57c10718c9d` with reusing the `layers` vector within `validate_attached`. The timed candidate source was SHA-256 `d09c94622af9dd629a4863dbf6a3f6cadafa19612d43be005cc99709ca5df153`; the proposed source adds a comment only. The release probe binary hashes are baseline `dad790c7ddda5e417dcfdb4277f6360a0a2791c499abde5708013848ee23b44c` and candidate `7f8ceb49e3ee6532976f38e277a90550dc9fc21adf4cac76739141b69f598972`. The fixture is `native/protocol/examples/mount_perf.rs`, SHA-256 `2944a9733d62e912434cf1fec1c18d8efde2f06bf27857979e0c1725a4c94483`.
+
+Apple M2 Max, macOS 27.2, Rust 1.98.1, release profile. Each process ran five warmups and 30 measured preparations per tree size and worker. `single` uses one worker; `parallel` uses four independent trees. Pairs alternate launch order; the second cohort reverses first order. Each gzip contains the raw ordered JSON records, with each row `[leaf_count, trial, preflight_nanoseconds]`. The uncompressed SHA-256 values are `aedc0be4e58a7a6145fa757bc8acdbec7efeebcc44bc96340f2b43051b900f67` and `dc8236e4fd5213a0dda53082aa8e0782c4c2c60bb813fef2940479f851e52ce9`.
+
+First-cohort paired median differences (candidate minus baseline) were -1.49 µs at 32 leaves and -59.06 µs at 1,024 leaves in single mode, and -5.78 µs and -88.58 µs in parallel mode. The reversed-order repeat gave -1.21 µs and -38.05 µs single, and -2.55 µs and -66.41 µs parallel. These are medians of process-level medians, not pooled independent samples.
+
+This is an uncontrolled local microbenchmark. It does not count allocations, measure IPC or native rendering, establish an app-level gain, or rule out other workload regressions. Preserve both cohorts and unfavorable samples. A controlled same-runner release-host comparison and native acceptance remain necessary.
