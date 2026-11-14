@@ -25,6 +25,10 @@ on:
         type: choice
         options: ['on', 'off']
         default: 'on'
+      paired-only:
+        description: Run the bounded same-runner Core/AOT investigation for #675 only
+        type: boolean
+        default: false
   schedule:
     - cron: '47 6 * * 3'
   pull_request:
@@ -53,7 +57,7 @@ concurrency:
 jobs:
   linux:
     name: Linux core/Solid/React development and AOT comparison
-    if: vars.CI_BILLING_PAUSED == 'false' && (github.event_name != 'pull_request' || github.event.pull_request.draft == false)
+    if: vars.CI_BILLING_PAUSED == 'false' && (github.event_name != 'pull_request' || github.event.pull_request.draft == false) && (github.event_name != 'workflow_dispatch' || inputs['paired-only'] != true)
     runs-on: ubuntu-24.04
     timeout-minutes: 60
     defaults:
@@ -228,7 +232,7 @@ jobs:
   # The hosted VM's paravirtual Metal device is not a physical GPU.
   macos:
     name: macOS core/Solid/React and direct Rust GPUI comparison
-    if: vars.CI_BILLING_PAUSED == 'false' && (github.event_name != 'pull_request' || github.event.pull_request.draft == false)
+    if: vars.CI_BILLING_PAUSED == 'false' && (github.event_name != 'pull_request' || github.event.pull_request.draft == false) && (github.event_name != 'workflow_dispatch' || inputs['paired-only'] != true)
     runs-on: macos-15
     timeout-minutes: 60
     defaults:
@@ -311,7 +315,7 @@ jobs:
   # benchmarks/comparison/windows-processes.ts. The VM has no physical GPU.
   windows:
     name: Windows core/Solid/React and direct Rust GPUI comparison
-    if: vars.CI_BILLING_PAUSED == 'false' && (github.event_name != 'pull_request' || github.event.pull_request.draft == false)
+    if: vars.CI_BILLING_PAUSED == 'false' && (github.event_name != 'pull_request' || github.event.pull_request.draft == false) && (github.event_name != 'workflow_dispatch' || inputs['paired-only'] != true)
     runs-on: windows-2022
     timeout-minutes: 75
     defaults:
@@ -418,6 +422,86 @@ jobs:
           path: |
             ${{ runner.temp }}/comparison/
             !${{ runner.temp }}/comparison/run/*/application.exe
+          include-hidden-files: true
+          if-no-files-found: error
+          retention-days: 30
+
+  paired-click:
+    name: Paired Linux Core AOT input investigation
+    if: vars.CI_BILLING_PAUSED == 'false' && github.event_name == 'workflow_dispatch' && inputs['paired-only'] == true
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    defaults:
+      run:
+        shell: bash
+    env:
+      CARGO_BUILD_JOBS: 2
+      CARGO_INCREMENTAL: 0
+      PYTHONDONTWRITEBYTECODE: 1
+      PAIR_BASELINE_SHA: d67794d1bde2eeb3621f2cd1f96d1379ea87a400
+      PAIR_CANDIDATE_SHA: 88e48ac73f6286cfde5124eb6741998ccc6bb144
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Prepare output directory
+        run: |
+          mkdir "$RUNNER_TEMP/paired-click"
+          {
+            echo "PAIR_OUTPUT=$RUNNER_TEMP/paired-click"
+            echo "PAIR_ROOT=$GITHUB_WORKSPACE"
+            echo "PAIR_BASELINE_SOURCE=$GITHUB_WORKSPACE/.bun-native/paired/baseline"
+            echo "PAIR_CANDIDATE_SOURCE=$GITHUB_WORKSPACE/.bun-native/paired/candidate"
+            echo "PAIR_BASELINE_HOST=$RUNNER_TEMP/paired-click/baseline-host"
+            echo "PAIR_CANDIDATE_HOST=$RUNNER_TEMP/paired-click/candidate-host"
+          } >> "$GITHUB_ENV"
+      - name: Install the pinned toolchain and native prerequisites
+        uses: ./.github/actions/native-toolchain
+      - uses: ./.github/actions/linux-native-prerequisites
+      - name: Checkout historical baseline
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: d67794d1bde2eeb3621f2cd1f96d1379ea87a400
+          path: .bun-native/paired/baseline
+          persist-credentials: false
+      - name: Checkout current comparison source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: 88e48ac73f6286cfde5124eb6741998ccc6bb144
+          path: .bun-native/paired/candidate
+          persist-credentials: false
+      - name: Build both exact release hosts
+        timeout-minutes: 45
+        run: |
+          set -o pipefail
+          [[ "$(git -C "$PAIR_BASELINE_SOURCE" rev-parse HEAD)" == "$PAIR_BASELINE_SHA" ]]
+          [[ "$(git -C "$PAIR_CANDIDATE_SOURCE" rev-parse HEAD)" == "$PAIR_CANDIDATE_SHA" ]]
+          export CARGO_TARGET_DIR="$RUNNER_TEMP/paired-target"
+          for variant in baseline candidate; do
+            if [[ "$variant" == baseline ]]; then source_dir="$PAIR_BASELINE_SOURCE"; host="$PAIR_BASELINE_HOST"; else source_dir="$PAIR_CANDIDATE_SOURCE"; host="$PAIR_CANDIDATE_HOST"; fi
+            (
+              cd "$source_dir"
+              bun install --frozen-lockfile
+              cargo build --locked --release -p bun-native-host --bin bun-native-host
+            ) 2>&1 | tee "$PAIR_OUTPUT/$variant-build.log"
+            cp "$CARGO_TARGET_DIR/release/bun-native-host" "$host"
+            sha256sum "$host" > "$PAIR_OUTPUT/$variant-host.sha256"
+          done
+      - name: Calibrate and measure alternating input pairs
+        timeout-minutes: 40
+        run: |
+          bash scripts/quality/native-x11-session.sh "$RUNNER_TEMP/paired-session" -- \
+            bash benchmarks/comparison/paired-input-session.sh
+      - name: Retain paired evidence, including failures
+        if: ${{ always() && env.PAIR_OUTPUT != '' }}
+        timeout-minutes: 3
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: paired-core-aot-input-linux-${{ runner.arch }}
+          path: |
+            ${{ runner.temp }}/paired-click/
+            !${{ runner.temp }}/paired-click/*-host
+            !${{ runner.temp }}/paired-click/*/core/application
           include-hidden-files: true
           if-no-files-found: error
           retention-days: 30

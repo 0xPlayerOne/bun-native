@@ -201,6 +201,36 @@ child report plus its driver `result.json`). It prints Markdown summary tables
 for per-launch metrics (with input latency when present), pooled operation
 samples and builds.
 
+### Same-runner input investigation for #675
+
+The manual `paired-only` workflow input runs a separate, Linux-only diagnostic
+on fixed historical source `d67794d1bde2eeb3621f2cd1f96d1379ea87a400` and
+current source `88e48ac73f6286cfde5124eb6741998ccc6bb144`. It builds each
+release host and Core application independently, then runs each source's
+normal comparison preparation with three trials and no input trials in one
+isolated X11 session. The paired runner rejects dirty or wrong source, failed
+preparations, different Bun versions or runner metadata, mismatched calibrated
+paint trees/renderers, and executables without verified AOT and JIT omission.
+
+It then launches 20 fresh Core/AOT processes per variant, alternating order
+within pairs. The existing XTest driver validates initial and final native
+paint, the click event, OS close and unforced cleanup. Binary and host hashes
+are checked before each launch and after the run. Each result and its digest,
+load average, all raw reports and errors are retained; one failed launch makes
+the paired summary fail instead of dropping it. Bootstrap intervals resample
+paired ratios and differences, not individual operations within a process.
+
+```sh
+gh workflow run benchmark-comparison.yml --ref <diagnostic-branch> -f paired-only=true
+```
+
+This diagnostic is limited to these two source revisions, one hosted Linux
+runner and the existing command-start-to-paint-record metric. It is not a
+display-presentation or physical-input measurement. CPU model, runner load and
+cache state can affect the results; paired execution reduces but does not
+eliminate those effects. The normal Linux, macOS and Windows jobs are skipped
+only for this explicit diagnostic dispatch and remain unchanged otherwise.
+
 ## Streaming-list fixture
 
 The same workflow then runs the versioned streaming/virtualization fixture
