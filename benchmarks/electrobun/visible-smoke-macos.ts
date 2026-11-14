@@ -8,6 +8,7 @@ import { decodePng } from '../../tests/native/png.ts'
 import { inspectBunExecutable } from '../../scripts/native/inspect.ts'
 import { compareVisiblePixels } from './visible-pixels.ts'
 import { verifyVisibleText } from './visible-text.ts'
+import { awaitVisibleReadiness } from './visible-readiness.ts'
 
 const TITLE = 'Bun Native matched renderer workload'
 const { values } = parseArgs({
@@ -250,6 +251,7 @@ async function main() {
     await Bun.sleep(50)
   }
   assert.equal(state.status, 'ready')
+  const readyState = state
   assert.equal(state['application']['parent'], process.pid, 'Launcher is not our child')
   const viewport = control?.viewport ?? state.window.titledContentSize
   assert(Array.isArray(viewport) && viewport.length === 2)
@@ -262,7 +264,17 @@ async function main() {
   assert(Array.isArray(frame) && frame.length === 4 && frame.every(Number.isFinite))
   const windowId = state['window']['id'] as number
   assert(Number.isSafeInteger(windowId) && windowId > 0)
-  let first = await snapshot('initial', request, state, viewport)
+  const readinessMismatches: string[] = []
+  result['readinessMismatches'] = readinessMismatches
+  async function readinessSnapshot(name: string) {
+    return awaitVisibleReadiness(
+      name,
+      deadline,
+      (captureName) => snapshot(captureName, request, readyState, viewport),
+      readinessMismatches
+    )
+  }
+  let first = await readinessSnapshot('initial')
   const scale = first.png.width / frame[2]
   assert(scale >= 1 && scale <= 4 && Math.abs(first.png.height - frame[3] * scale) <= 1)
   const side = (frame[2] - viewport[0]) / 2
@@ -303,12 +315,7 @@ async function main() {
         attempt === 20
       )
         throw error
-      first = await snapshot(
-        `initial-${String(attempt + 1).padStart(2, '0')}`,
-        request,
-        state,
-        viewport
-      )
+      first = await readinessSnapshot(`initial-${String(attempt + 1).padStart(2, '0')}`)
       assert.equal(first.png.width / frame[2], scale, 'Capture scale changed during readiness')
     }
   }
@@ -417,6 +424,7 @@ async function main() {
     region,
     initialText,
     initialAttempts,
+    readinessMismatches,
     clickedText,
     negative,
     difference,
