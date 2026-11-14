@@ -42,6 +42,14 @@ jobs:
           ref: 4d45755fed4aeef19e95beb90d3d0c884a2812bd
           path: .diagnostics/webkit
           persist-credentials: false
+          sparse-checkout: |
+            Source/JavaScriptCore
+            Source/WTF
+            Source/bmalloc
+            Source/cmake
+            Source/ThirdParty
+            Tools/Scripts
+            icu
       - name: Install verified LLVM and NASM into the runner
         shell: pwsh
         run: |
@@ -79,7 +87,7 @@ jobs:
             . (Join-Path $bunSource 'scripts\vs-shell.ps1')
             bun install --frozen-lockfile
             if ($LASTEXITCODE -ne 0) { throw 'Bun source install failed' }
-            bun scripts/build.ts --profile=release-local --build-dir=build/release-local -j 2
+            bun scripts/build.ts --profile=release-local --build-dir=build/release-local -j2
             if ($LASTEXITCODE -ne 0) { throw 'Local Bun build failed' }
             $local = Join-Path (Get-Location) 'build/release-local/bun.exe'
             if (!(Test-Path $local)) { throw "Missing built runtime: $local" }
