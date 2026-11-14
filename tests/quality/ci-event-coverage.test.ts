@@ -82,6 +82,22 @@ test('draft guards apply to every implementation job, not merely the workflow', 
   expect(() => unguardedJobs('name: no jobs')).toThrow('missing workflow jobs')
 })
 
+test('paired input diagnostic requires an explicit dispatch and leaves ordinary jobs enabled by default', () => {
+  const source = readFileSync(join(root, '.github/workflows/benchmark-comparison.yml'), 'utf8')
+  const parsed = Bun.YAML.parse(source) as {
+    on: { workflow_dispatch: { inputs: Record<string, { type: string; default: boolean }> } }
+    jobs: Record<string, { if: string }>
+  }
+  expect(parsed.on.workflow_dispatch.inputs['paired-only']).toMatchObject({
+    type: 'boolean',
+    default: false,
+  })
+  expect(parsed.jobs['paired-click']!.if).toContain("github.event_name == 'workflow_dispatch'")
+  expect(parsed.jobs['paired-click']!.if).toContain("inputs['paired-only'] == true")
+  for (const job of ['linux', 'macos', 'windows'])
+    expect(parsed.jobs[job]!.if).toContain("inputs['paired-only'] != true")
+})
+
 test('event contract parsing supports both activity syntaxes and fails closed', () => {
   expect(pullRequestTypes('on:\n  pull_request:\n    types: [opened, reopened]\n')).toEqual([
     'opened',
