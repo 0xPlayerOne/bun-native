@@ -1,0 +1,1176 @@
+[
+  {
+    "trial": 0,
+    "variant": "baseline",
+    "valid": true,
+    "records": [
+      {
+        "trial": 0,
+        "mode": "development",
+        "exit": 1,
+        "valid": true,
+        "status": "failed",
+        "retention": {
+          "firstReachable": [
+            3,
+            4,
+            5
+          ],
+          "stillReachable": [
+            3,
+            4,
+            5
+          ],
+          "probesPerMount": 3,
+          "probeKinds": [
+            "render root",
+            "content node",
+            "listener"
+          ],
+          "collectionCheckpoints": 2,
+          "quiescence": "empty core transaction queue fence; no additional native command"
+        },
+        "cleanup": {
+          "windows": 0,
+          "nodes": 0,
+          "callbacks": 0,
+          "queuedTransactions": 0,
+          "queuedCallbacks": 0,
+          "activeCallbacks": 0,
+          "serviceRequests": 0
+        }
+      },
+      {
+        "trial": 0,
+        "mode": "aot",
+        "exit": 1,
+        "valid": true,
+        "status": "failed",
+        "retention": {
+          "firstReachable": [
+            297,
+            298,
+            299
+          ],
+          "stillReachable": [
+            298,
+            299
+          ],
+          "probesPerMount": 3,
+          "probeKinds": [
+            "render root",
+            "content node",
+            "listener"
+          ],
+          "collectionCheckpoints": 2,
+          "quiescence": "empty core transaction queue fence; no additional native command"
+        },
+        "cleanup": {
+          "windows": 0,
+          "nodes": 0,
+          "callbacks": 0,
+          "queuedTransactions": 0,
+          "queuedCallbacks": 0,
+          "activeCallbacks": 0,
+          "serviceRequests": 0
+        }
+      }
+    ]
+  },
+  {
+    "trial": 0,
+    "variant": "clear",
+    "valid": true,
+    "records": [
+      {
+        "trial": 0,
+        "mode": "development",
+        "exit": 1,
+        "valid": true,
+        "status": "failed",
+        "retention": {
+          "firstReachable": [
+            3,
+            4,
+            5
+          ],
+          "stillReachable": [
+            3,
+            4,
+            5
+          ],
+          "probesPerMount": 3,
+          "probeKinds": [
+            "render root",
+            "content node",
+            "listener"
+          ],
+          "collectionCheckpoints": 2,
+          "quiescence": "empty core transaction queue fence; no additional native command"
+        },
+        "cleanup": {
+          "windows": 0,
+          "nodes": 0,
+          "callbacks": 0,
+          "queuedTransactions": 0,
+          "queuedCallbacks": 0,
+          "activeCallbacks": 0,
+          "serviceRequests": 0
+        }
+      },
+      {
+        "trial": 0,
+        "mode": "aot",
+        "exit": 1,
+        "valid": true,
+        "status": "failed",
+        "retention": {
+          "firstReachable": [
+            297,
+            298,
+            299
+          ],
+          "stillReachable": [
+            298,
+            299
+          ],
+          "probesPerMount": 3,
+          "probeKinds": [
+            "render root",
+            "content node",
+            "listener"
+          ],
+          "collectionCheckpoints": 2,
+          "quiescence": "empty core transaction queue fence; no additional native command"
+        },
+        "cleanup": {
+          "windows": 0,
+          "nodes": 0,
+          "callbacks": 0,
+          "queuedTransactions": 0,
+          "queuedCallbacks": 0,
+          "activeCallbacks": 0,
+          "serviceRequests": 0
+        }
+      }
+    ]
+  },
+  {
+    "trial": 0,
+    "variant": "pin",
+    "valid": true,
+    "records": [
+      {
+        "trial": 0,
+        "mode": "development",
+        "exit": 1,
+        "valid": true,
+        "status": "failed",
+        "retention": {
+          "firstReachable": [
+            3,
+            4,
+            5
+          ],
+          "stillReachable": [
+            3,
+            4,
+            5
+          ],
+          "probesPerMount": 3,
+          "probeKinds": [
+            "render root",
+            "content node",
+            "listener"
+          ],
+          "collectionCheckpoints": 2,
+          "quiescence": "empty core transaction queue fence; no additional native command"
+        },
+        "cleanup": {
+          "windows": 0,
+          "nodes": 0,
+          "callbacks": 0,
+          "queuedTransactions": 0,
+          "queuedCallbacks": 0,
+          "activeCallbacks": 0,
+          "serviceRequests": 0
+        }
+      },
+      {
+        "trial": 0,
+        "mode": "aot",
+        "exit": 1,
+        "valid": true,
+        "status": "failed",
+        "retention": {
+          "firstReachable": [
+            297,
+            298,
+            299
+          ],
+          "stillReachable": [
+            297,
+            298,
+            299
+          ],
+          "probesPerMount": 3,
+          "probeKinds": [
+            "render root",
+            "content node",
+            "listener"
+          ],
+          "collectionCheckpoints": 2,
+          "quiescence": "empty core transaction queue fence; no additional native command"
+        },
+        "cleanup": {
+          "windows": 0,
+          "nodes": 0,
+          "callbacks": 0,
+          "queuedTransactions": 0,
+          "queuedCallbacks": 0,
+          "activeCallbacks": 0,
+          "serviceRequests": 0
+        }
+      }
+    ]
+  },
+  {
+    "trial": 1,
+    "variant": "pin",
+    "valid": true,
+    "records": [
+      {
+        "trial": 0,
+        "mode": "development",
+        "exit": 1,
+        "valid": true,
+        "status": "failed",
+        "retention": {
+          "firstReachable": [
+            3,
+            4,
+            5
+          ],
+          "stillReachable": [
+            3,
+            4,
+            5
+          ],
+          "probesPerMount": 3,
+          "probeKinds": [
+            "render root",
+            "content node",
+            "listener"
+          ],
+          "collectionCheckpoints": 2,
+          "quiescence": "empty core transaction queue fence; no additional native command"
+        },
+        "cleanup": {
+          "windows": 0,
+          "nodes": 0,
+          "callbacks": 0,
+          "queuedTransactions": 0,
+          "queuedCallbacks": 0,
+          "activeCallbacks": 0,
+          "serviceRequests": 0
+        }
+      },
+      {
+        "trial": 0,
+        "mode": "aot",
+        "exit": 1,
+        "valid": true,
+        "status": "failed",
+        "retention": {
+          "firstReachable": [
+            297,
+            298,
+            299
+          ],
+          "stillReachable": [
+            297,
+            298,
+            299
+          ],
+          "probesPerMount": 3,
+          "probeKinds": [
+            "render root",
+            "content node",
+            "listener"
+          ],
+          "collectionCheckpoints": 2,
+          "quiescence": "empty core transaction queue fence; no additional native command"
+        },
+        "cleanup": {
+          "windows": 0,
+          "nodes": 0,
+          "callbacks": 0,
+          "queuedTransactions": 0,
+          "queuedCallbacks": 0,
+          "activeCallbacks": 0,
+          "serviceRequests": 0
+        }
+      }
+    ]
+  },
+  {
+    "trial": 1,
+    "variant": "clear",
+    "valid": true,
+    "records": [
+      {
+        "trial": 0,
+        "mode": "development",
+        "exit": 1,
+        "valid": true,
+        "status": "failed",
+        "retention": {
+          "firstReachable": [
+            3,
+            4,
+            5
+          ],
+          "stillReachable": [
+            3,
+            4,
+            5
+          ],
+          "probesPerMount": 3,
+          "probeKinds": [
+            "render root",
+            "content node",
+            "listener"
+          ],
+          "collectionCheckpoints": 2,
+          "quiescence": "empty core transaction queue fence; no additional native command"
+        },
+        "cleanup": {
+          "windows": 0,
+          "nodes": 0,
+          "callbacks": 0,
+          "queuedTransactions": 0,
+          "queuedCallbacks": 0,
+          "activeCallbacks": 0,
+          "serviceRequests": 0
+        }
+      },
+      {
+        "trial": 0,
+        "mode": "aot",
+        "exit": 1,
+        "valid": true,
+        "status": "failed",
+        "retention": {
+          "firstReachable": [
+            297,
+            298,
+            299
+          ],
+          "stillReachable": [
+            298,
+            299
+          ],
+          "probesPerMount": 3,
+          "probeKinds": [
+            "render root",
+            "content node",
+            "listener"
+          ],
+          "collectionCheckpoints": 2,
+          "quiescence": "empty core transaction queue fence; no additional native command"
+        },
+        "cleanup": {
+          "windows": 0,
+          "nodes": 0,
+          "callbacks": 0,
+          "queuedTransactions": 0,
+          "queuedCallbacks": 0,
+          "activeCallbacks": 0,
+          "serviceRequests": 0
+        }
+      }
+    ]
+  },
+  {
+    "trial": 1,
+    "variant": "baseline",
+    "valid": true,
+    "records": [
+      {
+        "trial": 0,
+        "mode": "development",
+        "exit": 1,
+        "valid": true,
+        "status": "failed",
+        "retention": {
+          "firstReachable": [
+            3,
+            4,
+            5
+          ],
+          "stillReachable": [
+            3,
+            4,
+            5
+          ],
+          "probesPerMount": 3,
+          "probeKinds": [
+            "render root",
+            "content node",
+            "listener"
+          ],
+          "collectionCheckpoints": 2,
+          "quiescence": "empty core transaction queue fence; no additional native command"
+        },
+        "cleanup": {
+          "windows": 0,
+          "nodes": 0,
+          "callbacks": 0,
+          "queuedTransactions": 0,
+          "queuedCallbacks": 0,
+          "activeCallbacks": 0,
+          "serviceRequests": 0
+        }
+      },
+      {
+        "trial": 0,
+        "mode": "aot",
+        "exit": 1,
+        "valid": true,
+        "status": "failed",
+        "retention": {
+          "firstReachable": [
+            297,
+            298,
+            299
+          ],
+          "stillReachable": [
+            298
+          ],
+          "probesPerMount": 3,
+          "probeKinds": [
+            "render root",
+            "content node",
+            "listener"
+          ],
+          "collectionCheckpoints": 2,
+          "quiescence": "empty core transaction queue fence; no additional native command"
+        },
+        "cleanup": {
+          "windows": 0,
+          "nodes": 0,
+          "callbacks": 0,
+          "queuedTransactions": 0,
+          "queuedCallbacks": 0,
+          "activeCallbacks": 0,
+          "serviceRequests": 0
+        }
+      }
+    ]
+  },
+  {
+    "trial": 2,
+    "variant": "baseline",
+    "valid": true,
+    "records": [
+      {
+        "trial": 0,
+        "mode": "development",
+        "exit": 1,
+        "valid": true,
+        "status": "failed",
+        "retention": {
+          "firstReachable": [
+            3,
+            4,
+            5
+          ],
+          "stillReachable": [
+            3,
+            4,
+            5
+          ],
+          "probesPerMount": 3,
+          "probeKinds": [
+            "render root",
+            "content node",
+            "listener"
+          ],
+          "collectionCheckpoints": 2,
+          "quiescence": "empty core transaction queue fence; no additional native command"
+        },
+        "cleanup": {
+          "windows": 0,
+          "nodes": 0,
+          "callbacks": 0,
+          "queuedTransactions": 0,
+          "queuedCallbacks": 0,
+          "activeCallbacks": 0,
+          "serviceRequests": 0
+        }
+      },
+      {
+        "trial": 0,
+        "mode": "aot",
+        "exit": 1,
+        "valid": true,
+        "status": "failed",
+        "retention": {
+          "firstReachable": [
+            297,
+            298,
+            299
+          ],
+          "stillReachable": [
+            298,
+            299
+          ],
+          "probesPerMount": 3,
+          "probeKinds": [
+            "render root",
+            "content node",
+            "listener"
+          ],
+          "collectionCheckpoints": 2,
+          "quiescence": "empty core transaction queue fence; no additional native command"
+        },
+        "cleanup": {
+          "windows": 0,
+          "nodes": 0,
+          "callbacks": 0,
+          "queuedTransactions": 0,
+          "queuedCallbacks": 0,
+          "activeCallbacks": 0,
+          "serviceRequests": 0
+        }
+      }
+    ]
+  },
+  {
+    "trial": 2,
+    "variant": "clear",
+    "valid": true,
+    "records": [
+      {
+        "trial": 0,
+        "mode": "development",
+        "exit": 1,
+        "valid": true,
+        "status": "failed",
+        "retention": {
+          "firstReachable": [
+            3,
+            4,
+            5
+          ],
+          "stillReachable": [
+            3,
+            4,
+            5
+          ],
+          "probesPerMount": 3,
+          "probeKinds": [
+            "render root",
+            "content node",
+            "listener"
+          ],
+          "collectionCheckpoints": 2,
+          "quiescence": "empty core transaction queue fence; no additional native command"
+        },
+        "cleanup": {
+          "windows": 0,
+          "nodes": 0,
+          "callbacks": 0,
+          "queuedTransactions": 0,
+          "queuedCallbacks": 0,
+          "activeCallbacks": 0,
+          "serviceRequests": 0
+        }
+      },
+      {
+        "trial": 0,
+        "mode": "aot",
+        "exit": 1,
+        "valid": true,
+        "status": "failed",
+        "retention": {
+          "firstReachable": [
+            297,
+            298,
+            299
+          ],
+          "stillReachable": [
+            298,
+            299
+          ],
+          "probesPerMount": 3,
+          "probeKinds": [
+            "render root",
+            "content node",
+            "listener"
+          ],
+          "collectionCheckpoints": 2,
+          "quiescence": "empty core transaction queue fence; no additional native command"
+        },
+        "cleanup": {
+          "windows": 0,
+          "nodes": 0,
+          "callbacks": 0,
+          "queuedTransactions": 0,
+          "queuedCallbacks": 0,
+          "activeCallbacks": 0,
+          "serviceRequests": 0
+        }
+      }
+    ]
+  },
+  {
+    "trial": 2,
+    "variant": "pin",
+    "valid": true,
+    "records": [
+      {
+        "trial": 0,
+        "mode": "development",
+        "exit": 1,
+        "valid": true,
+        "status": "failed",
+        "retention": {
+          "firstReachable": [
+            3,
+            4,
+            5
+          ],
+          "stillReachable": [
+            3,
+            4,
+            5
+          ],
+          "probesPerMount": 3,
+          "probeKinds": [
+            "render root",
+            "content node",
+            "listener"
+          ],
+          "collectionCheckpoints": 2,
+          "quiescence": "empty core transaction queue fence; no additional native command"
+        },
+        "cleanup": {
+          "windows": 0,
+          "nodes": 0,
+          "callbacks": 0,
+          "queuedTransactions": 0,
+          "queuedCallbacks": 0,
+          "activeCallbacks": 0,
+          "serviceRequests": 0
+        }
+      },
+      {
+        "trial": 0,
+        "mode": "aot",
+        "exit": 1,
+        "valid": true,
+        "status": "failed",
+        "retention": {
+          "firstReachable": [
+            297,
+            298,
+            299
+          ],
+          "stillReachable": [
+            297,
+            298,
+            299
+          ],
+          "probesPerMount": 3,
+          "probeKinds": [
+            "render root",
+            "content node",
+            "listener"
+          ],
+          "collectionCheckpoints": 2,
+          "quiescence": "empty core transaction queue fence; no additional native command"
+        },
+        "cleanup": {
+          "windows": 0,
+          "nodes": 0,
+          "callbacks": 0,
+          "queuedTransactions": 0,
+          "queuedCallbacks": 0,
+          "activeCallbacks": 0,
+          "serviceRequests": 0
+        }
+      }
+    ]
+  },
+  {
+    "trial": 3,
+    "variant": "pin",
+    "valid": true,
+    "records": [
+      {
+        "trial": 0,
+        "mode": "development",
+        "exit": 1,
+        "valid": true,
+        "status": "failed",
+        "retention": {
+          "firstReachable": [
+            3,
+            4,
+            5
+          ],
+          "stillReachable": [
+            3,
+            4,
+            5
+          ],
+          "probesPerMount": 3,
+          "probeKinds": [
+            "render root",
+            "content node",
+            "listener"
+          ],
+          "collectionCheckpoints": 2,
+          "quiescence": "empty core transaction queue fence; no additional native command"
+        },
+        "cleanup": {
+          "windows": 0,
+          "nodes": 0,
+          "callbacks": 0,
+          "queuedTransactions": 0,
+          "queuedCallbacks": 0,
+          "activeCallbacks": 0,
+          "serviceRequests": 0
+        }
+      },
+      {
+        "trial": 0,
+        "mode": "aot",
+        "exit": 1,
+        "valid": true,
+        "status": "failed",
+        "retention": {
+          "firstReachable": [
+            297,
+            298,
+            299
+          ],
+          "stillReachable": [
+            297,
+            298,
+            299
+          ],
+          "probesPerMount": 3,
+          "probeKinds": [
+            "render root",
+            "content node",
+            "listener"
+          ],
+          "collectionCheckpoints": 2,
+          "quiescence": "empty core transaction queue fence; no additional native command"
+        },
+        "cleanup": {
+          "windows": 0,
+          "nodes": 0,
+          "callbacks": 0,
+          "queuedTransactions": 0,
+          "queuedCallbacks": 0,
+          "activeCallbacks": 0,
+          "serviceRequests": 0
+        }
+      }
+    ]
+  },
+  {
+    "trial": 3,
+    "variant": "clear",
+    "valid": true,
+    "records": [
+      {
+        "trial": 0,
+        "mode": "development",
+        "exit": 1,
+        "valid": true,
+        "status": "failed",
+        "retention": {
+          "firstReachable": [
+            3,
+            4,
+            5
+          ],
+          "stillReachable": [
+            3,
+            4,
+            5
+          ],
+          "probesPerMount": 3,
+          "probeKinds": [
+            "render root",
+            "content node",
+            "listener"
+          ],
+          "collectionCheckpoints": 2,
+          "quiescence": "empty core transaction queue fence; no additional native command"
+        },
+        "cleanup": {
+          "windows": 0,
+          "nodes": 0,
+          "callbacks": 0,
+          "queuedTransactions": 0,
+          "queuedCallbacks": 0,
+          "activeCallbacks": 0,
+          "serviceRequests": 0
+        }
+      },
+      {
+        "trial": 0,
+        "mode": "aot",
+        "exit": 1,
+        "valid": true,
+        "status": "failed",
+        "retention": {
+          "firstReachable": [
+            297,
+            298,
+            299
+          ],
+          "stillReachable": [
+            298,
+            299
+          ],
+          "probesPerMount": 3,
+          "probeKinds": [
+            "render root",
+            "content node",
+            "listener"
+          ],
+          "collectionCheckpoints": 2,
+          "quiescence": "empty core transaction queue fence; no additional native command"
+        },
+        "cleanup": {
+          "windows": 0,
+          "nodes": 0,
+          "callbacks": 0,
+          "queuedTransactions": 0,
+          "queuedCallbacks": 0,
+          "activeCallbacks": 0,
+          "serviceRequests": 0
+        }
+      }
+    ]
+  },
+  {
+    "trial": 3,
+    "variant": "baseline",
+    "valid": true,
+    "records": [
+      {
+        "trial": 0,
+        "mode": "development",
+        "exit": 1,
+        "valid": true,
+        "status": "failed",
+        "retention": {
+          "firstReachable": [
+            3,
+            4,
+            5
+          ],
+          "stillReachable": [
+            3,
+            4,
+            5
+          ],
+          "probesPerMount": 3,
+          "probeKinds": [
+            "render root",
+            "content node",
+            "listener"
+          ],
+          "collectionCheckpoints": 2,
+          "quiescence": "empty core transaction queue fence; no additional native command"
+        },
+        "cleanup": {
+          "windows": 0,
+          "nodes": 0,
+          "callbacks": 0,
+          "queuedTransactions": 0,
+          "queuedCallbacks": 0,
+          "activeCallbacks": 0,
+          "serviceRequests": 0
+        }
+      },
+      {
+        "trial": 0,
+        "mode": "aot",
+        "exit": 1,
+        "valid": true,
+        "status": "failed",
+        "retention": {
+          "firstReachable": [
+            297,
+            298,
+            299
+          ],
+          "stillReachable": [
+            298,
+            299
+          ],
+          "probesPerMount": 3,
+          "probeKinds": [
+            "render root",
+            "content node",
+            "listener"
+          ],
+          "collectionCheckpoints": 2,
+          "quiescence": "empty core transaction queue fence; no additional native command"
+        },
+        "cleanup": {
+          "windows": 0,
+          "nodes": 0,
+          "callbacks": 0,
+          "queuedTransactions": 0,
+          "queuedCallbacks": 0,
+          "activeCallbacks": 0,
+          "serviceRequests": 0
+        }
+      }
+    ]
+  },
+  {
+    "trial": 4,
+    "variant": "baseline",
+    "valid": true,
+    "records": [
+      {
+        "trial": 0,
+        "mode": "development",
+        "exit": 1,
+        "valid": true,
+        "status": "failed",
+        "retention": {
+          "firstReachable": [
+            3,
+            4,
+            5
+          ],
+          "stillReachable": [
+            3,
+            4,
+            5
+          ],
+          "probesPerMount": 3,
+          "probeKinds": [
+            "render root",
+            "content node",
+            "listener"
+          ],
+          "collectionCheckpoints": 2,
+          "quiescence": "empty core transaction queue fence; no additional native command"
+        },
+        "cleanup": {
+          "windows": 0,
+          "nodes": 0,
+          "callbacks": 0,
+          "queuedTransactions": 0,
+          "queuedCallbacks": 0,
+          "activeCallbacks": 0,
+          "serviceRequests": 0
+        }
+      },
+      {
+        "trial": 0,
+        "mode": "aot",
+        "exit": 1,
+        "valid": true,
+        "status": "failed",
+        "retention": {
+          "firstReachable": [
+            297,
+            298,
+            299
+          ],
+          "stillReachable": [
+            298,
+            299
+          ],
+          "probesPerMount": 3,
+          "probeKinds": [
+            "render root",
+            "content node",
+            "listener"
+          ],
+          "collectionCheckpoints": 2,
+          "quiescence": "empty core transaction queue fence; no additional native command"
+        },
+        "cleanup": {
+          "windows": 0,
+          "nodes": 0,
+          "callbacks": 0,
+          "queuedTransactions": 0,
+          "queuedCallbacks": 0,
+          "activeCallbacks": 0,
+          "serviceRequests": 0
+        }
+      }
+    ]
+  },
+  {
+    "trial": 4,
+    "variant": "clear",
+    "valid": true,
+    "records": [
+      {
+        "trial": 0,
+        "mode": "development",
+        "exit": 1,
+        "valid": true,
+        "status": "failed",
+        "retention": {
+          "firstReachable": [
+            3,
+            4,
+            5
+          ],
+          "stillReachable": [
+            3,
+            4,
+            5
+          ],
+          "probesPerMount": 3,
+          "probeKinds": [
+            "render root",
+            "content node",
+            "listener"
+          ],
+          "collectionCheckpoints": 2,
+          "quiescence": "empty core transaction queue fence; no additional native command"
+        },
+        "cleanup": {
+          "windows": 0,
+          "nodes": 0,
+          "callbacks": 0,
+          "queuedTransactions": 0,
+          "queuedCallbacks": 0,
+          "activeCallbacks": 0,
+          "serviceRequests": 0
+        }
+      },
+      {
+        "trial": 0,
+        "mode": "aot",
+        "exit": 1,
+        "valid": true,
+        "status": "failed",
+        "retention": {
+          "firstReachable": [
+            297,
+            298,
+            299
+          ],
+          "stillReachable": [
+            298,
+            299
+          ],
+          "probesPerMount": 3,
+          "probeKinds": [
+            "render root",
+            "content node",
+            "listener"
+          ],
+          "collectionCheckpoints": 2,
+          "quiescence": "empty core transaction queue fence; no additional native command"
+        },
+        "cleanup": {
+          "windows": 0,
+          "nodes": 0,
+          "callbacks": 0,
+          "queuedTransactions": 0,
+          "queuedCallbacks": 0,
+          "activeCallbacks": 0,
+          "serviceRequests": 0
+        }
+      }
+    ]
+  },
+  {
+    "trial": 4,
+    "variant": "pin",
+    "valid": true,
+    "records": [
+      {
+        "trial": 0,
+        "mode": "development",
+        "exit": 1,
+        "valid": true,
+        "status": "failed",
+        "retention": {
+          "firstReachable": [
+            3,
+            4,
+            5
+          ],
+          "stillReachable": [
+            3,
+            4,
+            5
+          ],
+          "probesPerMount": 3,
+          "probeKinds": [
+            "render root",
+            "content node",
+            "listener"
+          ],
+          "collectionCheckpoints": 2,
+          "quiescence": "empty core transaction queue fence; no additional native command"
+        },
+        "cleanup": {
+          "windows": 0,
+          "nodes": 0,
+          "callbacks": 0,
+          "queuedTransactions": 0,
+          "queuedCallbacks": 0,
+          "activeCallbacks": 0,
+          "serviceRequests": 0
+        }
+      },
+      {
+        "trial": 0,
+        "mode": "aot",
+        "exit": 1,
+        "valid": true,
+        "status": "failed",
+        "retention": {
+          "firstReachable": [
+            297,
+            298,
+            299
+          ],
+          "stillReachable": [
+            297,
+            298,
+            299
+          ],
+          "probesPerMount": 3,
+          "probeKinds": [
+            "render root",
+            "content node",
+            "listener"
+          ],
+          "collectionCheckpoints": 2,
+          "quiescence": "empty core transaction queue fence; no additional native command"
+        },
+        "cleanup": {
+          "windows": 0,
+          "nodes": 0,
+          "callbacks": 0,
+          "queuedTransactions": 0,
+          "queuedCallbacks": 0,
+          "activeCallbacks": 0,
+          "serviceRequests": 0
+        }
+      }
+    ]
+  }
+]

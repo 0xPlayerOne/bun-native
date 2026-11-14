@@ -136,3 +136,13 @@ hash, with the same headless workload, cleanup checks and fixed checkpoints.
 This changes the fixture's code shape and compiler liveness, so a difference is
 only a diagnostic lead; it does not identify an application retaining root or
 establish that the original Windows assertion passed.
+
+On [Windows run 43631326492](https://github.com/0xPlayerOne/bun-native/actions/runs/43631326492),
+all five baseline and five clear trials in each mode observed survivors at the
+unchanged final checkpoint. The deliberately pinned root was observed in all
+five trials in each mode. The [retained plan](raw/windows-cycle-2026-11-14-plan.json.txt)
+and [per-trial results](raw/windows-cycle-2026-11-14-results.json.txt) preserve
+the source hashes, indexes and cleanup counts; the linked CI artifact contains
+full reports and source variants. Clearing this local did not remove the symptom
+in this cohort, and the result does not identify a retaining root or qualify the
+original native benchmark.
