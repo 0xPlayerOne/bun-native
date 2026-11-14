@@ -25,6 +25,71 @@ def variant_source(source, clear):
     )
 
 
+def replace_once(source, old, new):
+    if source.count(old) != 1:
+        raise ValueError("Expected exactly one diagnostic source marker")
+    return source.replace(old, new)
+
+
+def shutdown_workload(source):
+    source = replace_once(
+        source,
+        "  let failure: unknown\n",
+        "  let failure: unknown\n  let diagnosticProbes: WeakRef<object>[] | undefined\n",
+    )
+    source = replace_once(
+        source,
+        "      if (stillReachable.length > 0)\n        result['retentionEvidence']",
+        "      if (stillReachable.length > 0) diagnosticProbes = probes\n      if (stillReachable.length > 0)\n        result['retentionEvidence']",
+    )
+    source = replace_once(
+        source,
+        "  } finally {\n    for (const cleanup of [",
+        "  } finally {\n    if (diagnosticProbes) { await Bun.sleep(1); Bun.gc(true); result['beforeShutdownDiagnostic'] = diagnosticProbes.flatMap((probe, index) => probe.deref() === undefined ? [] : [index]) }\n    for (const cleanup of [",
+    )
+    return replace_once(
+        source,
+        "    result['cleanup'] = application?.diagnostics ?? null",
+        "    if (diagnosticProbes) { await Bun.sleep(1); Bun.gc(true); result['afterShutdownDiagnostic'] = diagnosticProbes.flatMap((probe, index) => probe.deref() === undefined ? [] : [index]) }\n    result['cleanup'] = application?.diagnostics ?? null",
+    )
+
+
+def shutdown_entry(source, pin):
+    source = replace_once(
+        source, "from './workload.ts'", "from './.retention-post-workload.ts'"
+    )
+    if pin:
+        source = replace_once(
+            source,
+            "  await view.ready\n",
+            "  await view.ready\n  ;(globalThis as unknown as { __retentionDiagnosticPin?: object }).__retentionDiagnosticPin = view\n",
+        )
+    return source
+
+
+def shutdown_record_valid(raw, mode, pin):
+    if raw["status"] == "passed":
+        return not pin
+    limit = 6 if mode == "development" else 300
+    for key in ("beforeShutdownDiagnostic", "afterShutdownDiagnostic"):
+        indexes = raw.get(key)
+        if not isinstance(indexes, list) or any(
+            type(index) is not int or not 0 <= index < limit for index in indexes
+        ):
+            return False
+    if pin:
+        expected = 3 if mode == "development" else 297
+        return all(
+            expected in indexes
+            for indexes in (
+                raw["retentionObservation"]["stillReachable"],
+                raw["beforeShutdownDiagnostic"],
+                raw["afterShutdownDiagnostic"],
+            )
+        )
+    return True
+
+
 def digest(data):
     return hashlib.sha256(data).hexdigest()
 
@@ -37,32 +102,65 @@ def main():
     peer = Path(sys.argv[1]).resolve()
     output = Path(sys.argv[2]).resolve()
     trials = int(sys.argv[3])
+    kind = sys.argv[4] if len(sys.argv) > 4 else "dispatch"
+    if kind not in ("dispatch", "shutdown"):
+        raise ValueError("Unknown control kind")
     if not 1 <= trials <= 10:
         raise ValueError("Trial count must be in 1..10")
     output.mkdir(parents=True, exist_ok=False)
     fixture = Path("benchmarks/solid/react.tsx")
     source = fixture.read_text(encoding="utf-8")
+    workload_path = fixture.parent / "workload.ts"
+    original_workload = (
+        workload_path.read_text(encoding="utf-8") if kind == "shutdown" else None
+    )
+    workload = shutdown_workload(original_workload) if original_workload else None
+    variants = ("baseline", "pin") if kind == "shutdown" else ("baseline", "clear")
+    sources = {
+        name: (
+            shutdown_entry(source, name == "pin")
+            if kind == "shutdown"
+            else variant_source(source, name == "clear")
+        )
+        for name in variants
+    }
     plan = {
+        "kind": kind,
         "originalSourceSha256": digest(source.encode()),
+        "originalWorkloadSha256": digest(original_workload.encode())
+        if original_workload
+        else None,
         "variantSourceSha256": {
-            name: digest(variant_source(source, name == "clear").encode())
-            for name in ("baseline", "clear")
+            name: digest(text.encode()) for name, text in sources.items()
         },
+        "instrumentedWorkloadSha256": digest(workload.encode()) if workload else None,
         "peerSha256": digest(peer.read_bytes()),
         "trialsPerVariant": trials,
-        "ordering": "baseline then clear on even pairs; reverse on odd pairs",
-        "difference": "Both use the same async dispose wrapper; clear additionally assigns undefined to both React hook setters after disposal.",
+        "ordering": f"{variants[0]} then {variants[1]} on even pairs; reverse on odd pairs",
+        "difference": (
+            "Both collect after failure before and after application shutdown; pin deliberately holds the latest root globally."
+            if kind == "shutdown"
+            else "Both use the same async dispose wrapper; clear additionally assigns undefined to both React hook setters after disposal."
+        ),
         "scope": "Headless diagnostic variants, not the actual benchmark fixture or native rendering.",
     }
     (output / "plan.json").write_text(json.dumps(plan, indent=2) + "\n")
-    for variant in ("baseline", "clear"):
-        text = variant_source(source, variant == "clear")
+    for variant in variants:
+        text = sources[variant]
         # Keep the entry path identical so the source edit is the only planned
         # difference; create exclusively and remove before building the next.
         generated = fixture.parent / ".retention-dispatch-control.tsx"
-        with generated.open("x", encoding="utf-8", newline="\n") as f:
-            f.write(text)
+        created = []
         try:
+            if workload is not None:
+                temporary_workload = fixture.parent / ".retention-post-workload.ts"
+                with temporary_workload.open("x", encoding="utf-8", newline="\n") as f:
+                    created.append(temporary_workload)
+                    f.write(workload)
+                save_variant(output / "instrumented-workload.ts.txt", workload)
+            with generated.open("x", encoding="utf-8", newline="\n") as f:
+                created.append(generated)
+                f.write(text)
             save_variant(output / f"{variant}-source.tsx.txt", text)
             env = os.environ.copy()
             env["CONTROL_ENTRY"] = str(generated.resolve())
@@ -70,7 +168,8 @@ def main():
             bundle = 'import { bundleApplication } from "./scripts/native/bundle.ts"; await bundleApplication({framework:"react",entry:process.env.CONTROL_ENTRY,outdir:process.env.CONTROL_OUT,cwd:process.cwd()})'
             subprocess.run(["bun", "-e", bundle], env=env, check=True, timeout=180)
         finally:
-            generated.unlink()
+            for path in reversed(created):
+                path.unlink()
         binary = output / (
             f"{variant}-aot.exe" if os.name == "nt" else f"{variant}-aot"
         )
@@ -100,8 +199,8 @@ def main():
     results = []
     invalid = 0
     for trial in range(trials):
-        variants = ("baseline", "clear") if trial % 2 == 0 else ("clear", "baseline")
-        for variant in variants:
+        order = variants if trial % 2 == 0 else tuple(reversed(variants))
+        for variant in order:
             binary = output / (
                 f"{variant}-aot.exe" if os.name == "nt" else f"{variant}-aot"
             )
@@ -138,6 +237,14 @@ def main():
                     and [r["mode"] for r in records] == ["development", "aot"]
                     and all(r["valid"] for r in records)
                 )
+                if valid and kind == "shutdown":
+                    for record in records:
+                        raw = json.loads(
+                            (child_output / f"00-{record['mode']}.json").read_text()
+                        )
+                        valid = valid and shutdown_record_valid(
+                            raw, record["mode"], variant == "pin"
+                        )
                 result = {
                     "trial": trial,
                     "variant": variant,

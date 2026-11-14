@@ -49,6 +49,24 @@ for invalid in ('no marker', source + source):
         raise AssertionError('invalid fixture marker accepted')
     except ValueError:
         pass
+fixture = pathlib.Path('benchmarks/solid/react.tsx').read_text()
+workload = pathlib.Path('benchmarks/solid/workload.ts').read_text()
+instrumented = dispatch.shutdown_workload(workload)
+assert "beforeShutdownDiagnostic" in instrumented and "afterShutdownDiagnostic" in instrumented
+assert "assert.equal(stillReachable.length, 0" in instrumented
+baseline = dispatch.shutdown_entry(fixture, False)
+pinned = dispatch.shutdown_entry(fixture, True)
+assert '__retentionDiagnosticPin' not in baseline and '__retentionDiagnosticPin' in pinned
+assert dispatch.shutdown_record_valid(raw, 'development', False)
+assert not dispatch.shutdown_record_valid(raw, 'development', True)
+after = copy.deepcopy(retained)
+after['beforeShutdownDiagnostic'] = [3]
+after['afterShutdownDiagnostic'] = [3]
+assert dispatch.shutdown_record_valid(after, 'development', True)
+after['afterShutdownDiagnostic'] = []
+assert not dispatch.shutdown_record_valid(after, 'development', True)
+after['afterShutdownDiagnostic'] = [6]
+assert not dispatch.shutdown_record_valid(after, 'development', False)
 `
   const result = Bun.spawnSync(
     [process.platform === 'win32' ? 'python' : 'python3', '-c', python],

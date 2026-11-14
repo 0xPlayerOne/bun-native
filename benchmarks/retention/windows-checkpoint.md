@@ -116,3 +116,12 @@ headless development and AOT workload checks described above, with all failures
 retained and source, executable and peer hashes recorded. The variants change
 fixture code and compiler liveness, so any difference is a diagnostic lead,
 not proof of a root or a fix. The original workload assertions remain intact.
+
+A separate paired shutdown control uses an instrumented copy of the workload.
+Only after the original final checkpoint has already failed does it record an
+additional timer/collection observation before shutdown and one after shutdown.
+A pinned variant deliberately holds the latest root globally and must observe
+that root both times; it is a positive control, not a benchmark. Original
+assertions and failures remain unchanged. Extra collections, altered code shape
+and timing make this a diagnostic lead rather than proof that shutdown caused
+collection or that the production workload is leak-free.

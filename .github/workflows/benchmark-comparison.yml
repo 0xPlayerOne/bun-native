@@ -963,6 +963,14 @@ jobs:
           $root = Join-Path $env:RUNNER_TEMP 'headless-adapters'
           python benchmarks/retention/react-dispatch-control.py (Join-Path $root 'peer.exe') (Join-Path $root 'dispatch-control') 5
           if ($LASTEXITCODE -ne 0) { throw "Dispatch control failed: $LASTEXITCODE" }
+      - name: Observe retention before and after application shutdown
+        if: ${{ !cancelled() && steps.headless-build.outcome == 'success' }}
+        timeout-minutes: 10
+        shell: pwsh
+        run: |
+          $root = Join-Path $env:RUNNER_TEMP 'headless-adapters'
+          python benchmarks/retention/react-dispatch-control.py (Join-Path $root 'peer.exe') (Join-Path $root 'shutdown-control') 5 shutdown
+          if ($LASTEXITCODE -ne 0) { throw "Shutdown control failed: $LASTEXITCODE" }
       - name: Retain all results and failures
         if: ${{ always() }}
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
@@ -976,5 +984,6 @@ jobs:
             !${{ runner.temp }}/headless-adapters/peer.exe
             !${{ runner.temp }}/headless-adapters/*-aot.exe
             !${{ runner.temp }}/headless-adapters/dispatch-control/*-aot.exe
+            !${{ runner.temp }}/headless-adapters/shutdown-control/*-aot.exe
           if-no-files-found: warn
           retention-days: 30
