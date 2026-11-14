@@ -61,3 +61,20 @@ test('readiness retains mismatches, accepts a later exact capture and rejects ot
   ).rejects.toThrow()
   expect(exhausted).toHaveLength(20)
 })
+
+test('readiness defaults wait before retrying a transient mismatch', async () => {
+  let attempts = 0
+  const mismatches: string[] = []
+  const value = await awaitVisibleReadiness(
+    'initial',
+    performance.now() + 5000,
+    async () => {
+      if (++attempts === 1) throw new Error('Display and owned surface differ in the label region')
+      return 'matched'
+    },
+    mismatches
+  )
+  expect(value).toBe('matched')
+  expect(attempts).toBe(2)
+  expect(mismatches).toEqual(['initial'])
+})

@@ -6,6 +6,7 @@ import { join } from 'node:path'
 export async function sharedWorkloadSources(source: string) {
   return Promise.all(
     [
+      'benchmarks/solid/input-scenario.ts',
       'benchmarks/solid/ownership.ts',
       'benchmarks/solid/retention-evidence.ts',
       'benchmarks/solid/sources.ts',
