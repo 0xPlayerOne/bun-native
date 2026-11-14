@@ -90,6 +90,9 @@ fn error(code: ErrorCode, message: &'static str) -> ModelError {
 /// A child's index in its parent. Links are kept consistent, so the child is
 /// listed exactly once.
 fn position(children: &[NodeId], child_id: NodeId) -> Result<usize, ModelError> {
+    if children.last() == Some(&child_id) {
+        return Ok(children.len() - 1);
+    }
     children
         .iter()
         .position(|id| *id == child_id)
