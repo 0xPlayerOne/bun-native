@@ -798,3 +798,99 @@ jobs:
             !${{ runner.temp }}/tree-pairs/run/*/application
           if-no-files-found: warn
           retention-days: 30
+
+  tree-path-allocations:
+    name: Ancestor path allocation attribution
+    if: vars.CI_BILLING_PAUSED == 'false' && github.event_name == 'workflow_dispatch' && inputs['paired-only'] == true && inputs['paired-macos'] == true && inputs['electrobun-smoke'] != true && (github.event_name != 'pull_request' || github.event.pull_request.draft == false)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    defaults:
+      run:
+        shell: bash
+    env:
+      CARGO_INCREMENTAL: 0
+      CARGO_PROFILE_RELEASE_DEBUG: 1
+      CARGO_PROFILE_RELEASE_STRIP: none
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Checkout exact pre-change source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: 879df62168267ec49a6d6358b5c6c57c10718c9d
+          path: .tree-alloc-baseline
+          persist-credentials: false
+      - name: Verify source boundary and isolate baseline
+        run: |
+          set -euo pipefail
+          test "$(cat .tree-alloc-baseline/.git/HEAD)" = 879df62168267ec49a6d6358b5c6c57c10718c9d
+          mv .tree-alloc-baseline "$RUNNER_TEMP/tree-alloc-baseline"
+          mkdir "$RUNNER_TEMP/tree-alloc"
+          python3 - <<'PY'
+          from pathlib import Path
+          import hashlib, os
+          candidate = Path(os.environ['GITHUB_WORKSPACE'])
+          baseline = Path(os.environ['RUNNER_TEMP']) / 'tree-alloc-baseline'
+          for name in ('Cargo.toml', 'Cargo.lock', 'rust-toolchain.toml', 'native/protocol/Cargo.toml'):
+              assert (candidate / name).read_bytes() == (baseline / name).read_bytes(), name
+          def manifest(root):
+              result = {}
+              for p in (root / 'native/protocol').rglob('*'):
+                  if p.is_file():
+                      name = str(p.relative_to(root))
+                      if name not in ('native/protocol/src/tree.rs', 'native/protocol/src/popup_tests.rs'):
+                          result[name] = hashlib.sha256(p.read_bytes()).hexdigest()
+              return result
+          assert manifest(candidate) == manifest(baseline), 'Unexpected protocol source difference'
+          original = (baseline / 'native/protocol/src/tree.rs').read_text()
+          expected = original.replace('        let mut pending = Vec::new();\n        for &id in attached {',
+              '        let mut pending = Vec::new();\n        // Reuse path capacity across subtrees while resetting each context.\n        let mut layers = Vec::new();\n        for &id in attached {', 1)
+          expected = expected.replace('            let mut layers = Vec::new();\n            while let Some(parent)',
+              '            layers.clear();\n            while let Some(parent)', 1)
+          assert expected != original and (candidate / 'native/protocol/src/tree.rs').read_text() == expected, 'Unexpected tree change'
+          PY
+      - name: Install bounded allocation profiler
+        timeout-minutes: 10
+        run: |
+          sudo apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=30 update
+          sudo apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=30 install -y --no-install-recommends heaptrack binutils
+          heaptrack --version > "$RUNNER_TEMP/tree-alloc/profiler-version.txt"
+          heaptrack_print --version >> "$RUNNER_TEMP/tree-alloc/profiler-version.txt"
+          rustc -Vv > "$RUNNER_TEMP/tree-alloc/rustc.txt"
+          uname -a > "$RUNNER_TEMP/tree-alloc/environment.txt"
+          git rev-parse HEAD >> "$RUNNER_TEMP/tree-alloc/environment.txt"
+      - name: Build isolated symbolized release probes
+        timeout-minutes: 15
+        run: |
+          set -euo pipefail
+          CARGO_TARGET_DIR="$RUNNER_TEMP/tree-alloc-target-candidate" cargo build --locked --release -p bun-native-protocol --example mount_perf
+          CARGO_TARGET_DIR="$RUNNER_TEMP/tree-alloc-target-baseline" cargo build --locked --release --manifest-path "$RUNNER_TEMP/tree-alloc-baseline/Cargo.toml" -p bun-native-protocol --example mount_perf
+          shasum -a 256 "$RUNNER_TEMP/tree-alloc-target-candidate/release/examples/mount_perf" "$RUNNER_TEMP/tree-alloc-target-baseline/release/examples/mount_perf" > "$RUNNER_TEMP/tree-alloc/probes.sha256"
+      - name: Capture and interpret allocation traces
+        timeout-minutes: 4
+        run: |
+          set -euo pipefail
+          library=/usr/lib/heaptrack/libheaptrack_preload.so
+          interpreter=/usr/lib/heaptrack/libexec/heaptrack_interpret
+          test -f "$library" && test -x "$interpreter"
+          shasum -a 256 "$library" "$interpreter" "$(command -v heaptrack_print)" > "$RUNNER_TEMP/tree-alloc/profiler.sha256"
+          for variant in baseline candidate; do
+            raw="$RUNNER_TEMP/tree-alloc/$variant.raw"
+            binary="$RUNNER_TEMP/tree-alloc-target-$variant/release/examples/mount_perf"
+            (ulimit -f 131072; timeout 90s env LD_PRELOAD="$library" DUMP_HEAPTRACK_OUTPUT="$raw" "$binary" > "$RUNNER_TEMP/tree-alloc/$variant.stdout")
+            test -s "$raw"
+            shasum -a 256 "$raw" > "$RUNNER_TEMP/tree-alloc/$variant.raw.sha256"
+            "$interpreter" < "$raw" | gzip -n > "$RUNNER_TEMP/tree-alloc/$variant.heaptrack.gz"
+            heaptrack_print --file "$RUNNER_TEMP/tree-alloc/$variant.heaptrack.gz" --merge-backtraces 0 > "$RUNNER_TEMP/tree-alloc/$variant.summary.txt"
+            rm "$raw"
+          done
+          echo 'Instrumented whole-process allocation events; timings and RSS are not latency baselines. Allocator paths bypassing malloc are not counted.' > "$RUNNER_TEMP/tree-alloc/scope.txt"
+      - name: Retain allocation evidence and failures
+        if: ${{ always() }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: tree-path-allocations-${{ runner.arch }}
+          path: ${{ runner.temp }}/tree-alloc/
+          if-no-files-found: warn
+          retention-days: 30

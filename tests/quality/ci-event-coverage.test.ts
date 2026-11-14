@@ -120,7 +120,8 @@ test('paired input diagnostic requires an explicit dispatch and leaves ordinary 
     "inputs['paired-macos'] == true",
     "inputs['electrobun-smoke'] != true",
   ])
-    expect(parsed.jobs['tree-path-pairs']!.if).toContain(condition)
+    for (const job of ['tree-path-pairs', 'tree-path-allocations'])
+      expect(parsed.jobs[job]!.if).toContain(condition)
   for (const job of ['linux', 'macos', 'windows'])
     expect(parsed.jobs[job]!.if).toContain("inputs['paired-only'] != true")
   for (const job of ['linux', 'windows'])
