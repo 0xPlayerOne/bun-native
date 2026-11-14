@@ -64,3 +64,32 @@ samples, compiler logs and AOT inspections as workflow artifacts. Trigger it
 with `paired-only=true`, `startup-only=true`, and `paired-macos=false`.
 Like the original probe, this measures synthetic routing work, not end-to-end
 input latency; compiler specialization and runner noise remain possible.
+
+The [hosted run](https://github.com/0xPlayerOne/bun-native/actions/runs/43627155844)
+completed at `0c5a8a66`. Raw process samples are retained in
+`hosted-linux-pairs.json.gz` and `hosted-macos-pairs.json.gz`; executable
+inspections and compiler logs are in the run artifacts. Each cell below is the
+median paired candidate-minus-baseline nanoseconds per call, with a 95%
+percentile interval over 10,000 process-pair resamples (seed 673). Every empty
+case was faster in all 12 pairs.
+
+| Runner      | Mode        |                   Empty |             Off-path |                  Target |                   Mixed |
+| ----------- | ----------- | ----------------------: | -------------------: | ----------------------: | ----------------------: |
+| Linux x64   | development | -17.02 [-33.48, -14.69] |   +0.59 [0.07, 0.92] |   -23.28 [-75.01, 5.60] | -35.57 [-50.45, -21.27] |
+| Linux x64   | AOT         | -35.12 [-62.70, -34.18] |  -0.35 [-1.23, 0.71] |     -3.97 [-8.48, 1.62] | -22.65 [-25.07, -19.22] |
+| macOS ARM64 | development | -13.84 [-14.73, -12.61] |  -1.64 [-3.92, 2.33] | +31.76 [-11.45, 157.87] |  -9.79 [-103.04, 92.28] |
+| macOS ARM64 | AOT         | -39.83 [-45.23, -39.14] | -2.40 [-6.60, -0.75] |   -15.49 [-43.69, 3.58] |  -21.30 [-32.61, -0.87] |
+
+The Linux development off-path baseline was 33.17 ns/call, making its observed
++0.59 ns change a small regression. Target intervals and the macOS development
+mixed interval include zero. Shared-runner noise and the assumption of
+independent pairs limit the intervals; the results do not measure display
+latency.
+
+Recompute either table from the archived pairs, including validation of process
+order, workload samples and Bun revision, with:
+
+```sh
+python3 benchmarks/core/analyze-event-registry-pairs.py benchmarks/results/empty-event-registry-macos-2026-11-14/hosted-linux-pairs.json.gz
+python3 benchmarks/core/analyze-event-registry-pairs.py benchmarks/results/empty-event-registry-macos-2026-11-14/hosted-macos-pairs.json.gz
+```
