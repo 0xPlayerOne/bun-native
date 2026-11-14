@@ -91,6 +91,27 @@ describe('native transaction candidate graph', () => {
     expect(nodes.get(1)!.children).toEqual([2])
   })
 
+  test('moves adjacent, endpoint and unchanged siblings while retaining every operation', () => {
+    const { nodes, root, box, begin } = committed()
+    const candidate = begin(nodes)
+    const middle = candidate.create({ kind: 'box' })
+    const tail = candidate.create({ kind: 'box' })
+    candidate.append(root, middle)
+    candidate.append(root, tail)
+    candidate.insert(root, middle, 0)
+    expect(candidate.nodes.get(1)!.children).toEqual([4, 2, 5])
+    candidate.append(root, middle)
+    expect(candidate.nodes.get(1)!.children).toEqual([2, 5, 4])
+    const before = candidate.operations.length
+    candidate.append(root, middle)
+    expect(candidate.nodes.get(1)!.children).toEqual([2, 5, 4])
+    expect(candidate.operations.length).toBe(before + 1)
+    candidate.append(box, middle)
+    expect(candidate.nodes.get(1)!.children).toEqual([2, 5])
+    expect(candidate.nodes.get(2)!.children).toEqual([3, 4])
+    candidate.validate()
+  })
+
   test('append moves existing children and preserves handle and lifecycle checks', () => {
     const { nodes, root, box, label, begin } = committed()
     const candidate = begin(nodes)
