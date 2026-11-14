@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.33.3](https://github.com/0xPlayerOne/bun-native/compare/v0.33.2...v0.33.3) (2026-11-14)
+
+
+### Performance
+
+* **protocol:** accelerate command frame scanning ([#669](https://github.com/0xPlayerOne/bun-native/issues/669)) ([3d45557](https://github.com/0xPlayerOne/bun-native/commit/3d45557ef3ff598d8dfa064ed04dc99f9bbb6fd4))
+* **renderer:** remove cleared suffixes from the tail ([#665](https://github.com/0xPlayerOne/bun-native/issues/665)) ([1ae30f1](https://github.com/0xPlayerOne/bun-native/commit/1ae30f12007bddcb7d1439aa36eef43b49457c7e))
+
 ## [0.33.2](https://github.com/0xPlayerOne/bun-native/compare/v0.33.1...v0.33.2) (2026-11-14)
 
 
