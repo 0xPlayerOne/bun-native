@@ -149,6 +149,11 @@ jobs:
             if ($shellCommands.Count -eq 0) { throw 'No generated cmd commands found to check' }
             $longest = ($shellCommands | Measure-Object -Property Length -Maximum).Maximum
             "Generated cmd commands: $($shellCommands.Count); maximum length: $longest" | Tee-Object -FilePath (Join-Path $root 'command-lengths.txt')
+            $shellCommands | Where-Object { $_.Length -gt 8191 } | ForEach-Object {
+              $prefix = $_.Substring(0, [Math]::Min(300, $_.Length))
+              $bindCount = ([regex]::Matches($_, '(?i)\.bind\.ts')).Count
+              "length=$($_.Length); bindgenSources=$bindCount; prefix=$prefix"
+            } | Tee-Object -FilePath (Join-Path $root 'oversized-command-metadata.txt')
             Remove-Item $commands
             if ($longest -gt 8191) { throw 'Generated command exceeds the Windows cmd limit' }
             bun scripts/build.ts --profile=release-local --build-dir=build/release-local -j2

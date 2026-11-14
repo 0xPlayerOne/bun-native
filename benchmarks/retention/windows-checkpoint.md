@@ -134,6 +134,13 @@ passed source-byte verification and reached compilation, but failed at step
 no runtime or retention observation. The path changes above remain unverified
 until the control completes.
 
+The [fifth control run](https://github.com/0xPlayerOne/bun-native/actions/runs/43649864896)
+applied the patch and configured the build, but the preflight found a generated
+command of 14,476 characters and stopped before compilation. The recorded
+maximum does not identify which command remained oversized. A subsequent run
+records bounded command metadata to distinguish the source before changing the
+build again; no runtime or retention result was produced.
+
 A separate paired React fixture control tests one ownership hypothesis. Both
 variants use the same async disposal wrapper; after acknowledged disposal, the
 `clear` variant additionally sets its two captured React state dispatchers to
