@@ -46,6 +46,8 @@ traced launch writes its own bounded host phase trace and an analysis under
 gate. The analysis rejects missing or truncated traces and unexpected batch
 sequences. Read-to-foreground timing starts after the worker decodes and validates
 the command; it includes channel enqueue, backpressure and foreground scheduling.
+Previous-yield overlap counts only time after that read and before the preceding
+explicit timer resumed; overlap is correlation, not proof of causation.
 Host preflight-to-reply-enqueue duration is only one part of the
 application's acknowledgement interval: the remainder combines scheduling,
 transport and application work, and neither interval measures presentation.

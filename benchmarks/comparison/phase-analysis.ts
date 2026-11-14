@@ -60,7 +60,7 @@ export function analyzePhaseTrace(report: unknown, trace: unknown) {
     JSON.stringify(native['batchColumns']) !== JSON.stringify(columns) ||
     native['droppedBatches'] !== 0 ||
     JSON.stringify(native['foregroundColumns']) !==
-      JSON.stringify(['id', 'readToForegroundNanos']) ||
+      JSON.stringify(['id', 'readToForegroundNanos', 'previousYieldOverlapNanos']) ||
     native['droppedForeground'] !== 0 ||
     !Array.isArray(native['foreground']) ||
     !Array.isArray(native['batches'])
@@ -84,16 +84,17 @@ export function analyzePhaseTrace(report: unknown, trace: unknown) {
     )
       throw new Error(`Unexpected batch sequence at ${index}`)
   }
-  const foreground = new Map<number, number>()
+  const foreground = new Map<number, { wait: number; overlap: number }>()
   for (const row of native['foreground'] as unknown[]) {
     if (
       !Array.isArray(row) ||
-      row.length !== 2 ||
+      row.length !== 3 ||
       !row.every((value) => Number.isSafeInteger(value) && value >= 0) ||
+      (row[2] as number) > (row[1] as number) ||
       foreground.has(row[0] as number)
     )
       throw new Error('Invalid foreground trace')
-    foreground.set(row[0] as number, row[1] as number)
+    foreground.set(row[0] as number, { wait: row[1] as number, overlap: row[2] as number })
   }
   const observations = samples.map((value: unknown, index: number) => {
     if (typeof value !== 'number' || !Number.isFinite(value) || value < 0)
@@ -112,7 +113,8 @@ export function analyzePhaseTrace(report: unknown, trace: unknown) {
       index,
       requestId: batch[0]!,
       acknowledgementMs: value,
-      readToForegroundMs: wait / 1e6,
+      readToForegroundMs: wait.wait / 1e6,
+      previousYieldOverlapMs: wait.overlap / 1e6,
       hostMs,
       prepareMs,
       applyMs,
@@ -130,6 +132,8 @@ export function analyzePhaseTrace(report: unknown, trace: unknown) {
     acknowledgementMs: describe(observations.map((sample) => sample.acknowledgementMs)),
     hostMs: describe(observations.map((sample) => sample.hostMs)),
     slowHostMs: describe(slow.map((sample) => sample.hostMs)),
+    slowPreviousYieldOverlapMs: describe(slow.map((sample) => sample.previousYieldOverlapMs)),
+    slowWithYieldOverlap: slow.filter((sample) => sample.previousYieldOverlapMs > 0).length,
     slowReadToForegroundMs: describe(slow.map((sample) => sample.readToForegroundMs)),
     slowPrepareMs: describe(slow.map((sample) => sample.prepareMs)),
     slowApplyMs: describe(slow.map((sample) => sample.applyMs)),
