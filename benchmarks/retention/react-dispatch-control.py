@@ -121,6 +121,19 @@ def cycle_pin_valid(raw, mode):
     )
 
 
+def first_observation_workload(source, omit):
+    original = (
+        "      const firstReachable = probes.flatMap((probe, index) =>\n"
+        "        probe.deref() === undefined ? [] : [index]\n"
+        "      )\n"
+    )
+    if not omit:
+        if source.count(original) != 1:
+            raise ValueError("Expected exactly one first observation")
+        return source
+    return replace_once(source, original, "      const firstReachable: number[] = []\n")
+
+
 def digest(data):
     return hashlib.sha256(data).hexdigest()
 
@@ -134,7 +147,7 @@ def main():
     output = Path(sys.argv[2]).resolve()
     trials = int(sys.argv[3])
     kind = sys.argv[4] if len(sys.argv) > 4 else "dispatch"
-    if kind not in ("dispatch", "shutdown", "cycle"):
+    if kind not in ("dispatch", "shutdown", "cycle", "first-observation"):
         raise ValueError("Unknown control kind")
     if not 1 <= trials <= 10:
         raise ValueError("Trial count must be in 1..10")
@@ -144,7 +157,7 @@ def main():
     workload_path = fixture.parent / "workload.ts"
     original_workload = (
         workload_path.read_text(encoding="utf-8")
-        if kind in ("shutdown", "cycle")
+        if kind in ("shutdown", "cycle", "first-observation")
         else None
     )
     variants = (
@@ -152,6 +165,8 @@ def main():
         if kind == "shutdown"
         else ("baseline", "clear", "pin")
         if kind == "cycle"
+        else ("baseline", "omit-first", "pin-baseline", "pin-omit-first")
+        if kind == "first-observation"
         else ("baseline", "clear")
     )
     workloads = {
@@ -159,13 +174,19 @@ def main():
         if kind == "shutdown"
         else cycle_workload(original_workload, name)
         if kind == "cycle"
+        else first_observation_workload(original_workload, name.endswith("omit-first"))
+        if kind == "first-observation"
         else None
         for name in variants
     }
     sources = {
         name: (
-            shutdown_entry(source, kind == "shutdown" and name == "pin")
-            if kind in ("shutdown", "cycle")
+            shutdown_entry(
+                source,
+                (kind == "shutdown" and name == "pin")
+                or (kind == "first-observation" and name.startswith("pin-")),
+            )
+            if kind in ("shutdown", "cycle", "first-observation")
             else variant_source(source, name == "clear")
         )
         for name in variants
@@ -185,7 +206,7 @@ def main():
         },
         "instrumentedWorkloadSha256": (
             {name: digest(text.encode()) for name, text in workloads.items()}
-            if kind == "cycle"
+            if kind in ("cycle", "first-observation")
             else digest(workloads["baseline"].encode())
             if kind == "shutdown"
             else None
@@ -194,7 +215,7 @@ def main():
         "trialsPerVariant": trials,
         "ordering": (
             f"{variants} on even pairs; reverse on odd pairs"
-            if kind == "cycle"
+            if kind in ("cycle", "first-observation")
             else f"{variants[0]} then {variants[1]} on even pairs; reverse on odd pairs"
         ),
         "difference": (
@@ -202,6 +223,8 @@ def main():
             if kind == "shutdown"
             else "Clear explicitly releases the cycle local after copying probes; pin holds that view globally as a positive control."
             if kind == "cycle"
+            else "Omit-first skips only the diagnostic first dereference; pinned variants retain the latest render root globally."
+            if kind == "first-observation"
             else "Both use the same async dispose wrapper; clear additionally assigns undefined to both React hook setters after disposal."
         ),
         "scope": "Headless diagnostic variants, not the actual benchmark fixture or native rendering.",
@@ -222,7 +245,7 @@ def main():
                     f.write(workload)
                 workload_name = (
                     f"{variant}-instrumented-workload.ts.txt"
-                    if kind == "cycle"
+                    if kind in ("cycle", "first-observation")
                     else "instrumented-workload.ts.txt"
                 )
                 save_variant(output / workload_name, workload)
@@ -319,6 +342,18 @@ def main():
                             (child_output / f"00-{record['mode']}.json").read_text()
                         )
                         valid = valid and cycle_pin_valid(raw, record["mode"])
+                if valid and kind == "first-observation":
+                    for record in records:
+                        raw = json.loads(
+                            (child_output / f"00-{record['mode']}.json").read_text()
+                        )
+                        if variant.endswith("omit-first"):
+                            valid = (
+                                valid
+                                and raw["retentionObservation"]["firstReachable"] == []
+                            )
+                        if variant.startswith("pin-"):
+                            valid = valid and cycle_pin_valid(raw, record["mode"])
                 result = {
                     "trial": trial,
                     "variant": variant,

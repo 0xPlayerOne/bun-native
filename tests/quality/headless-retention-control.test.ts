@@ -51,6 +51,21 @@ for invalid in ('no marker', source + source):
         pass
 fixture = pathlib.Path('benchmarks/solid/react.tsx').read_text()
 workload = pathlib.Path('benchmarks/solid/workload.ts').read_text()
+observed = dispatch.first_observation_workload(workload, False)
+omitted = dispatch.first_observation_workload(workload, True)
+assert observed == workload
+first = '      const firstReachable = probes.flatMap((probe, index) =>\n        probe.deref() === undefined ? [] : [index]\n      )\n'
+assert observed.replace(first, '      const firstReachable: number[] = []\n') == omitted
+assert omitted.count('probe.deref() === undefined ? [] : [index]') == workload.count('probe.deref() === undefined ? [] : [index]') - 1
+assert "assert.equal(stillReachable.length, 0" in omitted
+assert omitted.count('Bun.gc(true)') == workload.count('Bun.gc(true)')
+for invalid in ('no marker', workload + workload):
+    for skip in (True, False):
+        try:
+            dispatch.first_observation_workload(invalid, skip)
+            raise AssertionError('invalid first-observation marker accepted')
+        except ValueError:
+            pass
 cycle_baseline = dispatch.cycle_workload(workload, 'baseline')
 cycle_clear = dispatch.cycle_workload(workload, 'clear')
 cycle_pin = dispatch.cycle_workload(workload, 'pin')

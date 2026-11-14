@@ -146,3 +146,14 @@ the source hashes, indexes and cleanup counts; the linked CI artifact contains
 full reports and source variants. Clearing this local did not remove the symptom
 in this cohort, and the result does not identify a retaining root or qualify the
 original native benchmark.
+
+A fourth control tests whether dereferencing the weak probes at the first
+checkpoint affects the final observation. Its `omit-first` workload performs the
+same first timer and collection but records an empty diagnostic first-observation
+list instead of dereferencing those probes. The queue fence, second timer and
+collection, final dereference and zero-survivor assertion remain unchanged.
+Baseline and omitted-first variants each have a matching deliberately pinned
+positive control, which must fail the final assertion. Five alternating sets
+run in development and AOT. Omission changes the benchmark's observation and
+compiler behavior; it is a diagnostic, not a passing original benchmark or a
+justification to weaken its assertion.
