@@ -1,4 +1,5 @@
 mod channel;
+mod command_receive;
 mod evidence;
 #[cfg(any(target_os = "macos", test))]
 mod frame_pacing;
@@ -50,7 +51,15 @@ fn main() {
                 let mut turn_started = executor.now();
                 let mut commands_in_turn = 0;
                 let mut previous_yield = None;
-                while let Ok(incoming) = commands.recv().await {
+                loop {
+                    let (incoming, suspended) = command_receive::receive(&commands).await;
+                    let Ok(incoming) = incoming else { break };
+                    if suspended {
+                        // A pending receive returned control to the platform;
+                        // idle time is not a continuous command-processing turn.
+                        turn_started = executor.now();
+                        commands_in_turn = 0;
+                    }
                     cx.update(|cx| match incoming {
                         Incoming::Command(command, received) => {
                             if let Some(received) = received {
