@@ -73,3 +73,22 @@ alongside any new report. A framework-leak claim still needs a demonstrated
 strong ownership path that outlives disposal; a runtime-retention claim needs
 the actual marking source. Neither classification follows from a zero ownership
 counter, a survivor index, or an absent snapshot edge.
+
+## Framework-free Windows control plan
+
+The manual `Benchmark comparison` dispatch with `paired-only`, `paired-macos`,
+and `startup-only` enabled runs only the Windows retention control. It uses the
+archived queue-v3 source with one explicit compatibility change: the unavailable
+static debugging import is obtained through `Reflect.get` instead. The original
+archive hash is checked before this change, and the transformed source and AOT
+executable hashes are recorded. The executable must pass compiled-program and
+JIT-removal inspection before trials begin.
+
+Five fresh processes run in each of four cells, with cell order reversed on odd
+trials: development with default JSC, development with DFG disabled, AOT with
+`Bun.gc(true)`, and AOT with `releaseWeakRefs` plus `gcAndSweep`. Each control
+retains both original checkpoints and all result files. Process errors fail the
+job; a reachable target is an observation, not a successful benchmark or a
+classified leak. The control has no framework or native host, and its result
+cannot on its own explain the actual Windows React failures. No benchmark
+assertions or timed workload are changed.
