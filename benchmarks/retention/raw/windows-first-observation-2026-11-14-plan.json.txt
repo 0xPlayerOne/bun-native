@@ -1,0 +1,24 @@
+{
+  "kind": "first-observation",
+  "originalSourceSha256": "ce636a55012d21d54cecc89ad0664d76d3ef9fc0a83211ca27bd301d350745a1",
+  "originalSourceFileSha256": "ce636a55012d21d54cecc89ad0664d76d3ef9fc0a83211ca27bd301d350745a1",
+  "originalWorkloadSha256": "4b079c884ac09e7ddb4ebe0ce3dd2820ca7e41d5e2d1a23956f7b20ba20ba32a",
+  "originalWorkloadFileSha256": "4b079c884ac09e7ddb4ebe0ce3dd2820ca7e41d5e2d1a23956f7b20ba20ba32a",
+  "variantSourceSha256": {
+    "baseline": "491d541a53016a71a2b13971a8092f7a613b4b0bcdbb442d66c08c6f2aa0547e",
+    "omit-first": "491d541a53016a71a2b13971a8092f7a613b4b0bcdbb442d66c08c6f2aa0547e",
+    "pin-baseline": "6cb8a28351425979d9722d6c7c9787d79eeaddb06db9261e91069e54dd6d67ee",
+    "pin-omit-first": "6cb8a28351425979d9722d6c7c9787d79eeaddb06db9261e91069e54dd6d67ee"
+  },
+  "instrumentedWorkloadSha256": {
+    "baseline": "4b079c884ac09e7ddb4ebe0ce3dd2820ca7e41d5e2d1a23956f7b20ba20ba32a",
+    "omit-first": "c9973ea3bfb041db2b42cbaccbf2078166ca0b82bc55b540445d70300de3fcd6",
+    "pin-baseline": "4b079c884ac09e7ddb4ebe0ce3dd2820ca7e41d5e2d1a23956f7b20ba20ba32a",
+    "pin-omit-first": "c9973ea3bfb041db2b42cbaccbf2078166ca0b82bc55b540445d70300de3fcd6"
+  },
+  "peerSha256": "8ecc99d018de06fe5a8de203a00dc2e192445a328c8bdb9afbac7ee76a21fb1e",
+  "trialsPerVariant": 5,
+  "ordering": "('baseline', 'omit-first', 'pin-baseline', 'pin-omit-first') on even pairs; reverse on odd pairs",
+  "difference": "Omit-first skips only the diagnostic first dereference; pinned variants retain the latest render root globally.",
+  "scope": "Headless diagnostic variants, not the actual benchmark fixture or native rendering."
+}

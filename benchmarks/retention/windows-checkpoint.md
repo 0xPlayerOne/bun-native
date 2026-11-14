@@ -157,3 +157,14 @@ positive control, which must fail the final assertion. Five alternating sets
 run in development and AOT. Omission changes the benchmark's observation and
 compiler behavior; it is a diagnostic, not a passing original benchmark or a
 justification to weaken its assertion.
+
+On [Windows run 43636297439](https://github.com/0xPlayerOne/bun-native/actions/runs/43636297439),
+both baseline and omitted-first variants observed the same final survivors in
+all five trials per mode: `[3,4,5]` in development and `[298,299]` in AOT.
+Both pinned positive controls were detected in every trial. The omitted first
+list is empty by construction and is not a collection observation. The
+[plan](raw/windows-first-observation-2026-11-14-plan.json.txt) and
+[per-trial results](raw/windows-first-observation-2026-11-14-results.json.txt)
+retain source identities, indices and cleanup counts. Omitting the first
+observation did not remove the symptom in this cohort; it does not identify a
+retaining root or qualify the original native benchmark.
