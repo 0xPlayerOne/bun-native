@@ -111,6 +111,22 @@ describe('native transaction candidate graph', () => {
     expect(nodes.get(1)!.children).toEqual([2])
   })
 
+  test('removes tail and interior siblings before subsequent inserts', () => {
+    const { nodes, root, box, begin } = committed()
+    const candidate = begin(nodes)
+    const middle = candidate.create({ kind: 'box' })
+    const tail = candidate.create({ kind: 'box' })
+    candidate.append(root, middle)
+    candidate.append(root, tail)
+    candidate.remove(tail)
+    candidate.remove(box)
+    candidate.insert(root, candidate.create({ kind: 'box' }), 0)
+    candidate.validate()
+    expect(candidate.nodes.get(1)!.children).toEqual([6, 4])
+    expect(() => candidate.append(root, tail)).toThrow('Node is forged, disposed or belongs')
+    expect(nodes.get(1)!.children).toEqual([2])
+  })
+
   test('validates per-text and per-window bytes from replaced elements', () => {
     const { nodes, box, label, begin } = committed()
     const oversize = begin(nodes)

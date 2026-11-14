@@ -497,7 +497,8 @@ export class Transaction implements NativeBatch {
       throw new NativeStateError('invalid_state', 'Close the window to dispose its root')
     if (node.parent !== undefined) {
       const parent = this.writable(this.nodes.get(node.parent)!)
-      parent.children.splice(parent.children.indexOf(node.id), 1)
+      if (parent.children[parent.children.length - 1] === node.id) parent.children.pop()
+      else parent.children.splice(parent.children.indexOf(node.id), 1)
     }
     const pending = [node.id]
     for (const id of pending) {
