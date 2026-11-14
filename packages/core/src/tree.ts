@@ -473,8 +473,29 @@ export class Transaction implements NativeBatch {
       throw new NativeStateError('invalid_state', 'Child insertion index is out of range')
     child = this.writable(child)
     if (child.parent !== undefined) {
-      const previous = this.writable(this.nodes.get(child.parent)!)
-      previous.children.splice(previous.children.indexOf(child.id), 1)
+      const siblings = this.writable(this.nodes.get(child.parent)!).children
+      if (child.parent === parent.id) {
+        const from =
+          siblings[siblings.length - 1] === child.id
+            ? siblings.length - 1
+            : siblings.indexOf(child.id)
+        // Adjacent moves swap two entries; a no-op still emits an insert.
+        if (Math.abs(from - index) === 1) {
+          siblings[from] = siblings[index]!
+          siblings[index] = child.id
+        } else if (from === 0 && index > 0 && index === siblings.length - 1) {
+          siblings.shift()
+          siblings.push(child.id)
+        } else if (from !== index) {
+          siblings.splice(from, 1)
+          siblings.splice(index, 0, child.id)
+        }
+        this.attached.push(child.id)
+        this.operations.insert(parent.id, child.id, index)
+        return
+      }
+      if (siblings[siblings.length - 1] === child.id) siblings.pop()
+      else siblings.splice(siblings.indexOf(child.id), 1)
     }
     parent = this.writable(parent)
     parent.children.splice(index, 0, child.id)
