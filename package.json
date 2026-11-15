@@ -30,7 +30,7 @@
     "native": "MIMALLOC_PURGE_DELAY=0 bun scripts/native.ts"
   },
   "devDependencies": {
-    "@babel/core": "7.29.7",
+    "@babel/core": "7.29.13",
     "@bun-native/core": "workspace:*",
     "@bun-native/protocol": "workspace:*",
     "@bun-native/react": "workspace:*",

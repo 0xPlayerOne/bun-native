@@ -9,7 +9,7 @@
     "./build": "./src/build.ts"
   },
   "dependencies": {
-    "@babel/core": "7.29.7",
+    "@babel/core": "7.29.13",
     "@bun-native/core": "workspace:*",
     "babel-preset-solid": "1.9.16",
     "solid-js": "1.9.18",
