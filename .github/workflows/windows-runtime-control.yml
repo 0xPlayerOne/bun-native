@@ -143,18 +143,21 @@ jobs:
           if ($errors.Count -ne 0) { $errors | ForEach-Object { Write-Host $_ }; throw 'Patched ICU script did not parse' }
           $control = Join-Path $root 'tar-drive-control'
           New-Item -ItemType Directory -Force -Path $control | Out-Null
-          Set-Content -NoNewline -Encoding utf8 (Join-Path $control 'input.txt') 'mapped-drive-control'
+          New-Item -ItemType Directory -Path (Join-Path $control 'source') | Out-Null
+          Set-Content -NoNewline -Encoding utf8 (Join-Path $control 'source/input.txt') 'mapped-drive-control'
           if (Test-Path 'X:\') { throw 'Drive X: is already in use' }
           subst X: $control
           if ($LASTEXITCODE -ne 0) { throw 'Could not map X: for tar control' }
           try {
             $tar = Join-Path $env:SystemRoot 'System32/tar.exe'
-            & $tar -czf 'X:\probe.tar.gz' -C 'X:\' 'input.txt'
-            if ($LASTEXITCODE -ne 0) { throw 'System tar could not create a mapped-drive archive' }
+            & $tar -czf (Join-Path $control 'probe.tar.gz') -C (Join-Path $control 'source') 'input.txt'
+            if ($LASTEXITCODE -ne 0) { throw 'System tar could not create a physical-path archive' }
             New-Item -ItemType Directory -Path 'X:\output' | Out-Null
-            & $tar -xzf 'X:\probe.tar.gz' -C 'X:\output'
-            if ($LASTEXITCODE -ne 0 -or (Get-Content 'X:\output\input.txt' -Raw) -ne 'mapped-drive-control') { throw 'System tar mapped-drive extraction failed' }
-            'System tar mapped-drive archive round trip passed' | Out-File (Join-Path $root 'tar-drive-control.txt')
+            $mappedOutput = 'X:\output'
+            $physicalOutput = Join-Path $control ($mappedOutput.Substring(([System.IO.Path]::GetPathRoot($mappedOutput)).Length))
+            & $tar -xzf (Join-Path $control 'probe.tar.gz') -C $physicalOutput
+            if ($LASTEXITCODE -ne 0 -or (Get-Content 'X:\output\input.txt' -Raw) -ne 'mapped-drive-control') { throw 'Physical extraction was not visible through the mapped drive' }
+            'System tar physical-path extraction visible through mapped drive' | Out-File (Join-Path $root 'tar-drive-control.txt')
           } finally {
             subst X: /D
             Remove-Item -Recurse -Force $control
