@@ -426,6 +426,20 @@ unpinned survivors. Compiled baseline trials retained `[299]`, `[299]`,
 trials and modes. Clearing the fixture variable did not reliably remove the
 listener and does not establish the original production-AOT retaining path.
 
+The `diagnostic:windows-production-capture` control repeats the capture-map
+comparison with the checksum-pinned Bun compiler, verifies the compiled
+executable has an embedded program and unused JIT, and keeps the original
+collection checkpoints without early probe dereferences. It still changes the
+bundled capture code and uses a headless peer rather than a native window.
+[Windows run 43775083266](https://github.com/0xPlayerOne/bun-native/actions/runs/43775083266)
+completed five alternating sets and detected both pinned controls in every
+trial and mode. All five development baselines retained `[3,4,5]` and all
+five clear variants retained `[3,5]`. All five compiled baselines retained
+`[298,299]` and all five clear variants retained `[299]`. Thus, releasing the
+completed map removed the content-node survivor in this cohort, but neither
+variant cleared all targets. This intervention does not establish the cause of
+the unchanged benchmark's retention or measure a production performance gain.
+
 The opt-in `diagnostic:windows-origin-ranges` source-build control layers
 `webkit-conservative-origin-experiment.patch` on the existing snapshot patch.
 It classifies root-array entries from the conductor's register-state range,
