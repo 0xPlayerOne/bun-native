@@ -316,6 +316,10 @@ The opt-in `diagnostic:windows-origin-ranges` source-build control layers
 It classifies root-array entries from the conductor's register-state range,
 conductor stack range, and combined copied other-thread ranges. Roots gathered
 elsewhere, including VM, optional C-loop and pinball sources, are unclassified.
+The collector also uses the conservative root reason for other paths such as
+marked lists and AOT frame callees. A root with that reason but no instrumented
+root-array observation is reported as unclassified, not as a stack observation.
+A known range does not exclude additional unobserved sources for that root.
 A copied range combines stacks and register state and cannot identify an
 original thread or slot. The patch does not deliberately alter marking, but
 instrumentation can perturb the collection and its roots.

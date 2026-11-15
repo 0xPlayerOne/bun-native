@@ -62,7 +62,7 @@
  void HeapSnapshotBuilder::analyzePropertyNameEdge(JSCell* from, JSCell* to, UniquedStringImpl* propertyName)
  {
      ASSERT(m_profiler.activeHeapAnalyzer() == this);
-@@ -653,6 +662,23 @@
+@@ -653,6 +662,27 @@
              out.print(snapshotNode.value().identifier);
          }
          out.print(']');
@@ -72,7 +72,7 @@
 +        out.print(",\"conservativeOrigins\":["_s);
 +        bool firstOrigin = true;
 +        for (auto it : m_rootData) {
-+            if (!it.value.conservativeOriginMask)
++            if (!it.value.sawConservativeScan)
 +                continue;
 +            auto snapshotNode = snapshot->nodeForCell(it.key);
 +            if (!snapshotNode)
@@ -80,7 +80,11 @@
 +            if (!firstOrigin)
 +                out.print(',');
 +            firstOrigin = false;
-+            out.print(snapshotNode.value().identifier, ',', static_cast<unsigned>(it.value.conservativeOriginMask));
++            // Other sources can use ConservativeScan as their root reason
++            // without passing through the instrumented root array. Preserve
++            // these as unknown, not as a claimed stack range.
++            auto mask = it.value.conservativeOriginMask ? it.value.conservativeOriginMask : 1;
++            out.print(snapshotNode.value().identifier, ',', static_cast<unsigned>(mask));
 +        }
 +        out.print(']');
      }

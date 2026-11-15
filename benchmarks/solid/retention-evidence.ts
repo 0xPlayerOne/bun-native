@@ -142,7 +142,7 @@ export function analyzeSnapshot(
       seen.add(id)
       const reasons = ['ExperimentalConservativeScan']
       const mask = origins?.get(id) ?? 0
-      if (mask & 1) reasons.push('UnclassifiedRange')
+      if (mask & 1) reasons.push('UnclassifiedOrigin')
       if (mask & 2) reasons.push('ConductorRegisterState')
       if (mask & 4) reasons.push('ConductorStack')
       if (mask & 8) reasons.push('CopiedOtherThreads')

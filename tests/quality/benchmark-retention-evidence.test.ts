@@ -177,7 +177,7 @@ test('conservative origin masks are complete, validated and preserved on paths',
   if (!direct?.presentInSnapshot) throw new Error('direct root missing')
   expect(direct.pathsFromRoots[0]![0]!.rootReasons).toEqual([
     'ExperimentalConservativeScan',
-    'UnclassifiedRange',
+    'UnclassifiedOrigin',
     'ConductorRegisterState',
   ])
   expect(() => conservativeOriginMasks(snapshot())).toThrow('missing')
