@@ -190,13 +190,29 @@ final class Frames: NSObject, SCStreamOutput {
           let displayBytes = [UInt8](displayPixels)
           var changed = 0
           var first: [String: Any] = [:]
+          var minX = 320
+          var minY = 180
+          var maxX = -1
+          var maxY = -1
+          var maxChannelDelta = 0
           for index in 0..<(320 * 180) {
             let offset = index * 3
             if windowBytes[offset..<(offset + 3)] != displayBytes[offset..<(offset + 3)] {
               changed += 1
+              let x = index % 320
+              let y = index / 320
+              minX = min(minX, x)
+              minY = min(minY, y)
+              maxX = max(maxX, x)
+              maxY = max(maxY, y)
+              for channel in 0..<3 {
+                maxChannelDelta = max(
+                  maxChannelDelta,
+                  abs(Int(windowBytes[offset + channel]) - Int(displayBytes[offset + channel])))
+              }
               if first.isEmpty {
                 first = [
-                  "x": index % 320, "y": index / 320,
+                  "x": x, "y": y,
                   "windowBGR": Array(windowBytes[offset..<(offset + 3)]),
                   "displayBGR": Array(displayBytes[offset..<(offset + 3)]),
                 ]
@@ -205,6 +221,7 @@ final class Frames: NSObject, SCStreamOutput {
           }
           let detail: [String: Any] = [
             "color": color, "changedPixels": changed, "firstDifference": first,
+            "changedBounds": [minX, minY, maxX, maxY], "maxChannelDelta": maxChannelDelta,
             "sourceRect": [sourceRect.minX, sourceRect.minY, sourceRect.width, sourceRect.height],
             "windowFrames": frames.snapshot(), "displayFrames": displayFrames.snapshot(),
           ]
