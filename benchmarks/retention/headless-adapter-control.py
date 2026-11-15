@@ -8,6 +8,7 @@ import hashlib
 import json
 import os
 import platform
+import re
 import shutil
 import subprocess
 import sys
@@ -46,6 +47,13 @@ def narrow_scan_setting(environ):
     if value not in (None, "0", "1"):
         raise ValueError("Invalid narrow-reference scan control")
     return value
+
+
+def effective_narrow_scan(stderr):
+    values = re.findall(r"(?m)^\s*useNarrowReferenceScan=(true|false)\b", stderr)
+    if not values or len(set(values)) != 1:
+        raise ValueError("Missing or conflicting narrow-reference option dump")
+    return values[0] == "true"
 
 
 def valid_report(raw, adapter, mode, trial, revision, exit_code):
@@ -118,6 +126,7 @@ def main():
     revision = json.loads(Path("toolchain.json").read_text())["bun"]["revision"]
     runtime = resolve_runtime(sys.argv[7] if len(sys.argv) > 7 else "bun", revision)
     narrow_scan = narrow_scan_setting(os.environ)
+    require_narrow_dump = os.environ.get("BUN_NATIVE_DIAG_NARROW_DUMP") == "1"
     output.mkdir(parents=True, exist_ok=False)
     plan = {
         "revision": revision,
@@ -136,6 +145,7 @@ def main():
         "development": "DFG disabled; 10 iterations, 10 rotations, 2 mounts, 32 rows",
         "aot": "1000 iterations, 1000 rotations, 100 mounts, 32 rows",
         "narrowReferenceScanEnv": narrow_scan,
+        "requireNarrowOptionDump": require_narrow_dump,
     }
     (output / "plan.json").write_text(json.dumps(plan, indent=2) + "\n")
     results = []
@@ -145,6 +155,9 @@ def main():
         for mode in modes:
             report = output / f"{trial:02}-{mode}.json"
             env = os.environ.copy()
+            env.pop("BUN_NATIVE_DIAG_NARROW_DUMP", None)
+            if require_narrow_dump:
+                env["BUN_JSC_dumpOptions"] = "3"
             for key in (
                 "BUN_JSC_useDFGJIT",
                 "BUN_NATIVE_EVIDENCE_LOG",
@@ -187,11 +200,15 @@ def main():
                 raw = json.loads(report.read_text()) if report.exists() else None
                 observation = raw["retentionObservation"] if raw else None
                 cleanup = raw["cleanup"] if raw else None
+                effective_scan = (
+                    effective_narrow_scan(child.stderr) if require_narrow_dump else None
+                )
                 valid = bool(
                     raw
                     and valid_report(
                         raw, adapter, mode, trial, revision, child.returncode
                     )
+                    and (not require_narrow_dump or effective_scan == (narrow_scan != "0"))
                 )
                 result = {
                     "trial": trial,
@@ -201,6 +218,7 @@ def main():
                     "status": raw["status"] if raw else None,
                     "retention": observation,
                     "cleanup": cleanup,
+                    "effectiveNarrowReferenceScan": effective_scan,
                 }
             except (
                 OSError,

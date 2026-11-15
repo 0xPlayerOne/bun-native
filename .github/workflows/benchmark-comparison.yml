@@ -1048,6 +1048,7 @@ jobs:
         run: |
           $ErrorActionPreference = 'Stop'
           $root = Join-Path $env:RUNNER_TEMP 'headless-adapters'
+          $env:BUN_NATIVE_DIAG_NARROW_DUMP = '1'
           try {
             foreach ($trial in 0..4) {
               $order = if ($trial % 2 -eq 0) { @('default', 'disabled') } else { @('disabled', 'default') }
@@ -1066,6 +1067,7 @@ jobs:
             }
           } finally {
             Remove-Item Env:BUN_JSC_useNarrowReferenceScan -ErrorAction SilentlyContinue
+            Remove-Item Env:BUN_NATIVE_DIAG_NARROW_DUMP -ErrorAction SilentlyContinue
           }
       - name: Retain all results and failures
         if: ${{ always() }}

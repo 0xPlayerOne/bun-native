@@ -15,6 +15,14 @@ assert len(control.digest(runtime)) == 64
 assert control.narrow_scan_setting({}) is None
 assert control.narrow_scan_setting({'BUN_JSC_useNarrowReferenceScan': '0'}) == '0'
 assert control.narrow_scan_setting({'BUN_JSC_useNarrowReferenceScan': '1'}) == '1'
+assert control.effective_narrow_scan('  useNarrowReferenceScan=false (default: true)\n') is False
+assert control.effective_narrow_scan('  useNarrowReferenceScan=true (default: true)\n') is True
+for dump in ('unrelated', ' useNarrowReferenceScan=false\n useNarrowReferenceScan=true\n'):
+    try:
+        control.effective_narrow_scan(dump)
+        raise AssertionError('invalid option dump accepted')
+    except ValueError:
+        pass
 try:
     control.narrow_scan_setting({'BUN_JSC_useNarrowReferenceScan': 'invalid'})
     raise AssertionError('invalid narrow scan setting accepted')
