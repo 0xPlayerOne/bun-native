@@ -119,6 +119,9 @@ test('Windows runtime source build is limited to its explicit label and exact Bu
   expect(job.steps.some((step) => step.run?.includes('hash-object --no-filters'))).toBe(true)
   const build = job.steps.find((step) => step.run?.includes('--profile=release-local'))?.run
   expect(build).toContain('--profile=release-local --build-dir=build/release-local -j2')
+  const untrimmed = job.steps.find((step) => step.run?.includes('local-compiled-scope.txt'))?.run
+  expect(untrimmed).toContain("$inspection.runtime.jit -ne 'present'")
+  expect(untrimmed).toContain('not a qualified production AOT executable')
   const candidate = workflow.jobs['candidate-runtime']!
   expect(candidate.if).toContain("github.event.label.name == 'diagnostic:windows-candidate'")
   expect(candidate.if).toContain('github.event.pull_request.draft == false')

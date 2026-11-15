@@ -309,6 +309,21 @@ jobs:
               if ($LASTEXITCODE -ne 0) { throw "$variant control failed outside its retention observation" }
             }
           }
+      - name: Observe source-built compiled workload without release qualification
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $root = Join-Path $env:RUNNER_TEMP 'runtime-build-control'
+          $inspection = Get-Content (Join-Path $root 'local-inspection.json') -Raw | ConvertFrom-Json
+          if (!$inspection.graph.hasCompiledProgram -or $inspection.runtime.jit -ne 'present') { throw 'Unexpected local executable format or JIT state' }
+          @'
+          This source-built executable contains a compiled program but retains the JIT.
+          It is an exploratory runtime control, not a qualified production AOT executable.
+          '@ | Out-File (Join-Path $root 'local-compiled-scope.txt') -Encoding utf8
+          foreach ($trial in 0..2) {
+            python benchmarks/retention/headless-adapter-control.py react (Join-Path $root 'peer.exe') (Join-Path $root 'react/application.js') (Join-Path $root 'local-aot.exe') (Join-Path $root "$trial-local-compiled-untrimmed") 1 $env:LOCAL_BUN
+            if ($LASTEXITCODE -ne 0) { throw "Local compiled control $trial failed outside its retention observation" }
+          }
       - name: Verify pinned-target controls with both runtimes
         shell: pwsh
         run: |

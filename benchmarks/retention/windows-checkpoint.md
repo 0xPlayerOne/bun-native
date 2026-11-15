@@ -135,7 +135,11 @@ The pinned source disables its trimmable link on a Windows host, and the local
 compiled workload failed the strict AOT inspection in [run 43672900369](https://github.com/0xPlayerOne/bun-native/actions/runs/43672900369).
 That run did not save the failing field or produce retention observations;
 subsequent runs retain both inspections without treating the local executable
-as a qualified AOT control. [Run 43680391158](https://github.com/0xPlayerOne/bun-native/actions/runs/43680391158)
+as a qualified AOT control. An exploratory step also runs the source-built
+compiled workload only when inspection confirms both a compiled program and a
+present JIT. These observations are labelled untrimmed and cannot qualify
+production AOT or replace the reference binary's checks.
+[Run 43680391158](https://github.com/0xPlayerOne/bun-native/actions/runs/43680391158)
 recorded three development failures with the distribution and three passes
 with the custom source build; all six common distribution AOT references failed.
 The local compiled executable retained its JIT. These differing builds do not
