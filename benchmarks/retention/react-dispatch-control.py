@@ -142,11 +142,28 @@ def save_variant(path, text):
     path.write_text(text, encoding="utf-8", newline="\n")
 
 
+def control_command(peer, module, binary, output, runtime):
+    command = [
+        sys.executable,
+        "benchmarks/retention/headless-adapter-control.py",
+        "react",
+        str(peer),
+        str(module),
+        str(binary),
+        str(output),
+        "1",
+    ]
+    if runtime is not None:
+        command.append(runtime)
+    return command
+
+
 def main():
     peer = Path(sys.argv[1]).resolve()
     output = Path(sys.argv[2]).resolve()
     trials = int(sys.argv[3])
     kind = sys.argv[4] if len(sys.argv) > 4 else "dispatch"
+    runtime = sys.argv[5] if len(sys.argv) > 5 else None
     if kind not in ("dispatch", "shutdown", "cycle", "first-observation"):
         raise ValueError("Unknown control kind")
     if not 1 <= trials <= 10:
@@ -296,16 +313,9 @@ def main():
                 f"{variant}-aot.exe" if os.name == "nt" else f"{variant}-aot"
             )
             child_output = output / f"{trial:02}-{variant}"
-            command = [
-                sys.executable,
-                "benchmarks/retention/headless-adapter-control.py",
-                "react",
-                str(peer),
-                str(output / variant / "application.js"),
-                str(binary),
-                str(child_output),
-                "1",
-            ]
+            command = control_command(
+                peer, output / variant / "application.js", binary, child_output, runtime
+            )
             summary_file = child_output / "results.json"
             try:
                 child = subprocess.run(

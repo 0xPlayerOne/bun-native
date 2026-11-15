@@ -43,6 +43,9 @@ for mutation in ('cleanup', 'index', 'unrelated', 'adapter', 'workload'):
 spec = importlib.util.spec_from_file_location('dispatch', 'benchmarks/retention/react-dispatch-control.py')
 dispatch = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(dispatch)
+command = dispatch.control_command('peer', 'module', 'binary', 'output', None)
+assert command[-5:] == ['peer', 'module', 'binary', 'output', '1']
+assert dispatch.control_command('peer', 'module', 'binary', 'output', '/runtime with spaces') == command + ['/runtime with spaces']
 source = 'before\ndispose: () => view.dispose(),\nafter'
 baseline = dispatch.variant_source(source, False)
 clear = dispatch.variant_source(source, True)

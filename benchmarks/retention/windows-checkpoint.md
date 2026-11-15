@@ -111,8 +111,9 @@ retention observation.
 `headless-adapter-control.py` accepts an optional Bun executable path after the
 trial count. It verifies the executable's `Bun.revision` against `toolchain.json`
 before creating output and records its SHA-256 as `developmentRuntime` in the
-plan. The AOT binary is a separate input and must be compiled and inspected for
-the selected runtime; its hash alone does not prove its provenance.
+plan. The AOT binary is a separate input: record its compiler and inspect it
+independently. Its hash alone does not prove its provenance, and selecting a
+development runtime does not change the runtime embedded in that binary.
 
 The label-triggered `Windows runtime build control` builds an uninstrumented
 `release-local` Bun from the pinned Bun and WebKit sources on an isolated
@@ -134,7 +135,14 @@ The pinned source disables its trimmable link on a Windows host, and the local
 compiled workload failed the strict AOT inspection in [run 43672900369](https://github.com/0xPlayerOne/bun-native/actions/runs/43672900369).
 That run did not save the failing field or produce retention observations;
 subsequent runs retain both inspections without treating the local executable
-as a qualified AOT control. The
+as a qualified AOT control. [Run 43680391158](https://github.com/0xPlayerOne/bun-native/actions/runs/43680391158)
+recorded three development failures with the distribution and three passes
+with the custom source build; all six common distribution AOT references failed.
+The local compiled executable retained its JIT. These differing builds do not
+identify the cause. A later diagnostic also runs the deliberately pinned cycle
+control against each development runtime, while compiling its AOT variants
+with the distribution. Each child report records its runtime and executable
+hashes; a pinned target must remain observable for the control to be valid. The
 `diagnostic:windows-runtime` label is an explicit
 trigger; ordinary PR events do not start the source build. Its 120-minute limit
 and retained outcomes make build failures and missing coverage visible. This
