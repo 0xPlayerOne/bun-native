@@ -18,9 +18,11 @@ concurrency:
 
 jobs:
   local-runtime:
-    if: vars.CI_BILLING_PAUSED == 'false' && github.event.pull_request.draft == false && (github.event.label.name == 'diagnostic:windows-runtime' || github.event.label.name == 'diagnostic:windows-zero-registers')
+    if: vars.CI_BILLING_PAUSED == 'false' && github.event.pull_request.draft == false && (github.event.label.name == 'diagnostic:windows-runtime' || github.event.label.name == 'diagnostic:windows-zero-registers' || github.event.label.name == 'diagnostic:windows-snapshot-roots')
     runs-on: windows-2022
     timeout-minutes: 120
+    env:
+      BUN_NATIVE_DIAG_SNAPSHOT_SAFE: ${{ github.event.label.name == 'diagnostic:windows-snapshot-roots' && '1' || '0' }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -143,6 +145,23 @@ jobs:
           Copy-Item $patch (Join-Path $root 'experimental-zero-registers.patch')
           Get-FileHash $patch -Algorithm SHA256 | Format-List | Out-File (Join-Path $root 'experimental-zero-registers-hash.txt')
           'Experimental saved-register initialization; not a GC correctness or production AOT qualification.' | Out-File (Join-Path $root 'experimental-zero-registers-scope.txt')
+      - name: Apply experimental conservative snapshot metadata
+        if: github.event.label.name == 'diagnostic:windows-snapshot-roots'
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $webkit = Join-Path $env:GITHUB_WORKSPACE '.diagnostics/webkit'
+          $revision = git -C $webkit rev-parse HEAD
+          if ($LASTEXITCODE -ne 0 -or $revision -ne '4d45755fed4aeef19e95beb90d3d0c884a2812bd') { throw 'Unexpected WebKit source revision' }
+          $patch = Join-Path $env:GITHUB_WORKSPACE 'benchmarks/retention/webkit-conservative-snapshot-experiment.patch'
+          git -C $webkit apply --check $patch
+          if ($LASTEXITCODE -ne 0) { throw 'Experimental snapshot patch does not apply' }
+          git -C $webkit apply $patch
+          if ($LASTEXITCODE -ne 0) { throw 'Experimental snapshot patch failed' }
+          $root = Join-Path $env:RUNNER_TEMP 'runtime-build-control'
+          Copy-Item $patch (Join-Path $root 'experimental-conservative-snapshot.patch')
+          Get-FileHash $patch -Algorithm SHA256 | Format-List | Out-File (Join-Path $root 'experimental-conservative-snapshot-hash.txt')
+          'Later debugging snapshot only; altered source build retains JIT and is not production AOT.' | Out-File (Join-Path $root 'experimental-conservative-snapshot-scope.txt')
       - name: Apply and check the WebKit ICU script patch
         shell: pwsh
         run: |
@@ -309,6 +328,31 @@ jobs:
               if (!$inspection.graph.hasCompiledProgram -or $inspection.runtime.jit -ne 'unused') { throw 'Reference executable is not qualified AOT' }
             }
           }
+      - name: Verify experimental snapshot controls
+        if: github.event.label.name == 'diagnostic:windows-snapshot-roots'
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $root = Join-Path $env:RUNNER_TEMP 'runtime-build-control'
+          $baseline = (Get-Content (Join-Path $root 'baseline-path.txt') -Raw).Trim()
+          $fixture = Join-Path $env:GITHUB_WORKSPACE 'benchmarks/retention/conservative-snapshot-control.ts'
+          python benchmarks/retention/snapshot_safe_run.py $baseline $fixture (Join-Path $root 'negative-snapshot.json.gz') (Join-Path $root 'negative-report.json') *> (Join-Path $root 'negative-snapshot.log')
+          if ($LASTEXITCODE -eq 0 -or !(Select-String -Quiet -Path (Join-Path $root 'negative-snapshot.log') -Pattern 'AssertionError: Experimental conservative root field is missing')) { throw 'Unpatched negative control did not reject the missing field' }
+          if ((Test-Path (Join-Path $root 'negative-snapshot.json.gz')) -or (Test-Path (Join-Path $root 'negative-report.json'))) { throw 'Negative control unexpectedly wrote a snapshot' }
+          $control = Join-Path $root 'snapshot-control.exe'
+          & $env:LOCAL_BUN --no-install compile --no-script --production $fixture --outfile $control *> (Join-Path $root 'snapshot-control-compile.log')
+          if ($LASTEXITCODE -ne 0) { throw 'Experimental snapshot control did not compile' }
+          bun -e 'import { inspectBunExecutable } from "./scripts/native/inspect.ts"; import { inspectBunRuntime } from "./scripts/native/inspect-runtime.ts"; const graph = inspectBunExecutable(process.argv[1]); const runtime = inspectBunRuntime(process.argv[1]); if (!graph.hasCompiledProgram || runtime.jit !== "present") throw new Error("Unexpected experimental executable"); console.log(JSON.stringify({graph,runtime},null,2))' $control > (Join-Path $root 'snapshot-control-inspection.json')
+          if ($LASTEXITCODE -ne 0) { throw 'Experimental executable inspection failed' }
+          foreach ($mode in @('development', 'compiled-untrimmed')) {
+            $snapshot = Join-Path $root "snapshot-control-$mode.json.gz"
+            $report = Join-Path $root "snapshot-control-$mode.json"
+            if ($mode -eq 'development') { python benchmarks/retention/snapshot_safe_run.py $env:LOCAL_BUN $fixture $snapshot $report *> (Join-Path $root "snapshot-control-$mode.log") }
+            else { python benchmarks/retention/snapshot_safe_run.py $control $snapshot $report *> (Join-Path $root "snapshot-control-$mode.log") }
+            if ($LASTEXITCODE -ne 0) { throw "Experimental $mode positive control failed" }
+            python benchmarks/retention/conservative-snapshot-analysis.py $snapshot $report (Join-Path $root "snapshot-control-$mode-analysis.json")
+            if ($LASTEXITCODE -ne 0) { throw "Experimental $mode analysis failed" }
+          }
       - name: Run alternating development controls with common reference AOT
         shell: pwsh
         run: |
@@ -342,6 +386,25 @@ jobs:
             python benchmarks/retention/headless-adapter-control.py react (Join-Path $root 'peer.exe') (Join-Path $root 'react/application.js') (Join-Path $root 'local-aot.exe') (Join-Path $root "$trial-local-compiled-untrimmed") 1 $env:LOCAL_BUN
             if ($LASTEXITCODE -ne 0) { throw "Local compiled control $trial failed outside its retention observation" }
           }
+      - name: Analyze retained targets in experimental snapshots
+        if: github.event.label.name == 'diagnostic:windows-snapshot-roots'
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $root = Join-Path $env:RUNNER_TEMP 'runtime-build-control'
+          $analyzed = 0
+          foreach ($trial in 0..2) {
+            $prefix = Join-Path $root "$trial-local-compiled-untrimmed/00-aot.json.retention"
+            $snapshot = "$prefix-heap.json.gz"
+            $report = "$prefix.json"
+            if ((Test-Path $snapshot) -and (Test-Path $report)) {
+              python benchmarks/retention/conservative-snapshot-analysis.py $snapshot $report (Join-Path $root "snapshot-retention-$trial-analysis.json")
+              if ($LASTEXITCODE -ne 0) { throw "Experimental snapshot $trial analysis failed" }
+              $analyzed++
+            }
+          }
+          if ($analyzed -eq 0) { throw 'No retained-target snapshot was available for analysis' }
+          @{ analyzed = $analyzed; scope = 'Later snapshot only; absence of a path is inconclusive' } | ConvertTo-Json | Out-File (Join-Path $root 'snapshot-retention-summary.json') -Encoding utf8
       - name: Verify pinned-target controls with both runtimes
         shell: pwsh
         run: |

@@ -127,6 +127,7 @@ def main():
     runtime = resolve_runtime(sys.argv[7] if len(sys.argv) > 7 else "bun", revision)
     narrow_scan = narrow_scan_setting(os.environ)
     require_narrow_dump = os.environ.get("BUN_NATIVE_DIAG_NARROW_DUMP") == "1"
+    snapshot_safe = os.environ.get("BUN_NATIVE_DIAG_SNAPSHOT_SAFE") == "1"
     output.mkdir(parents=True, exist_ok=False)
     plan = {
         "revision": revision,
@@ -146,6 +147,7 @@ def main():
         "aot": "1000 iterations, 1000 rotations, 100 mounts, 32 rows",
         "narrowReferenceScanEnv": narrow_scan,
         "requireNarrowOptionDump": require_narrow_dump,
+        "snapshotSafeEnvironment": snapshot_safe,
     }
     (output / "plan.json").write_text(json.dumps(plan, indent=2) + "\n")
     results = []
@@ -154,7 +156,14 @@ def main():
         modes = ("development", "aot") if trial % 2 == 0 else ("aot", "development")
         for mode in modes:
             report = output / f"{trial:02}-{mode}.json"
-            env = os.environ.copy()
+            if snapshot_safe:
+                from snapshot_safe_run import safe_environment
+
+                env = safe_environment(os.environ)
+                if narrow_scan is not None:
+                    env["BUN_JSC_useNarrowReferenceScan"] = narrow_scan
+            else:
+                env = os.environ.copy()
             env.pop("BUN_NATIVE_DIAG_NARROW_DUMP", None)
             if require_narrow_dump:
                 env["BUN_JSC_dumpOptions"] = "3"

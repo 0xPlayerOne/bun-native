@@ -1,0 +1,71 @@
+--- a/Source/JavaScriptCore/heap/SlotVisitor.cpp
++++ b/Source/JavaScriptCore/heap/SlotVisitor.cpp
+@@ -140,8 +140,15 @@
+ {
+     HeapCell** roots = conservativeRoots.roots();
+     size_t size = conservativeRoots.size();
+-    for (size_t i = 0; i < size; ++i)
+-        appendJSCellOrAuxiliary(roots[i]);
++    for (size_t i = 0; i < size; ++i) {
++        HeapCell* root = roots[i];
++        appendJSCellOrAuxiliary(root);
++        if (m_isAnalyzingHeap && root && isJSCellKind(root->cellKind())) {
++            JSCell* cell = static_cast<JSCell*>(root);
++            if (HeapAnalyzer* analyzer = cell->vm().activeHeapAnalyzer())
++                analyzer->analyzeEdge(nullptr, cell, RootMarkReason::ConservativeScan);
++        }
++    }
+ }
+ 
+ void SlotVisitor::appendJSCellOrAuxiliary(HeapCell* heapCell)
+--- a/Source/JavaScriptCore/heap/HeapSnapshotBuilder.h
++++ b/Source/JavaScriptCore/heap/HeapSnapshotBuilder.h
+@@ -160,6 +160,7 @@
+     struct RootData {
+         ASCIILiteral reachabilityFromOpaqueRootReasons;
+         RootMarkReason markReason { RootMarkReason::None };
++        bool sawConservativeScan { false };
+     };
+ 
+     HeapProfiler& m_profiler;
+--- a/Source/JavaScriptCore/heap/HeapSnapshotBuilder.cpp
++++ b/Source/JavaScriptCore/heap/HeapSnapshotBuilder.cpp
+@@ -120,9 +120,12 @@
+                 WTFLogAlways("Cell %p is a root but no root marking reason was supplied", to);
+         }
+ 
+-        m_rootData.ensure(to, [] () -> RootData {
++        auto& root = m_rootData.ensure(to, [] () -> RootData {
+             return { };
+-        }).iterator->value.markReason = rootMarkReason;
++        }).iterator->value;
++        root.markReason = rootMarkReason;
++        if (rootMarkReason == RootMarkReason::ConservativeScan)
++            root.sawConservativeScan = true;
+     }
+ 
+     m_edges.append(HeapSnapshotEdge(from, to));
+@@ -633,6 +636,23 @@
+         }
+ 
+         out.print(']');
++
++        // Experimental, additive metadata: preserve this origin even when a
++        // later root observation overwrites the snapshot's single reason.
++        out.print(",\"conservativeRoots\":["_s);
++        bool firstConservative = true;
++        for (auto it : m_rootData) {
++            if (!it.value.sawConservativeScan)
++                continue;
++            auto snapshotNode = snapshot->nodeForCell(it.key);
++            if (!snapshotNode)
++                continue;
++            if (!firstConservative)
++                out.print(',');
++            firstConservative = false;
++            out.print(snapshotNode.value().identifier);
++        }
++        out.print(']');
+     }
+ 
+     if (m_snapshotType == SnapshotType::GCDebuggingSnapshot) {

@@ -109,6 +109,7 @@ test('Windows runtime source build is limited to its explicit label and exact Bu
   const job = workflow.jobs['local-runtime']!
   expect(job.if).toContain("github.event.label.name == 'diagnostic:windows-runtime'")
   expect(job.if).toContain("github.event.label.name == 'diagnostic:windows-zero-registers'")
+  expect(job.if).toContain("github.event.label.name == 'diagnostic:windows-snapshot-roots'")
   expect(job.if).toContain('github.event.pull_request.draft == false')
   expect(job.steps.find((step) => step.with?.repository === 'oven-sh/bun')?.with?.ref).toBe(
     pin.bun.revision
@@ -124,6 +125,12 @@ test('Windows runtime source build is limited to its explicit label and exact Bu
   expect(zeroRegisters.run).toContain('git -C $webkit apply --check $patch')
   expect(zeroRegisters.run).toContain('experimental-zero-registers-hash.txt')
   expect(zeroRegisters.run).toContain('not a GC correctness or production AOT qualification')
+  const snapshotRoots = job.steps.find((step) =>
+    step.run?.includes('webkit-conservative-snapshot-experiment.patch')
+  )!
+  expect(snapshotRoots.if).toBe("github.event.label.name == 'diagnostic:windows-snapshot-roots'")
+  expect(snapshotRoots.run).toContain('git -C $webkit apply --check $patch')
+  expect(snapshotRoots.run).toContain('not production AOT')
   for (const repository of ['oven-sh/bun', 'oven-sh/WebKit']) {
     const checkout = job.steps.find((step) => step.with?.repository === repository)
     expect(checkout?.env?.GIT_CONFIG_KEY_0).toBe('core.autocrlf')
