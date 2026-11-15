@@ -216,8 +216,9 @@ export type RetentionEvidenceInput = {
  *
  * Snapshot "same-job" is taken while the assertion's own WeakRef.deref() calls
  * still keep the targets alive (root reason of that keep-alive is recorded as
- * such). Snapshot "next-task" is taken after one timer turn, when only real
- * owners remain; a target absent there had only a transient owner.
+ * such). Snapshot "next-task" is taken after one timer turn and another full
+ * collection. A target absent there was not present in that later snapshot;
+ * this does not identify what retained it at the original checkpoint.
  */
 export async function writeRetentionEvidence(input: RetentionEvidenceInput) {
   const reportPath = `${input.output}.retention.json`
