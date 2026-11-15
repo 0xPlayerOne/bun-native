@@ -26,7 +26,7 @@ jobs:
         run: |
           mkdir -p "$RUNNER_TEMP/stream-control"
           xcrun swiftc -parse-as-library benchmarks/electrobun/owned-window-stream-probe.swift -o "$RUNNER_TEMP/stream-control/probe" -framework AppKit -framework ScreenCaptureKit -framework CoreMedia -framework CoreVideo -framework CoreGraphics
-          xcrun swiftc -parse-as-library benchmarks/electrobun/real-window-stream-probe.swift -o "$RUNNER_TEMP/stream-control/external-probe" -framework ScreenCaptureKit -framework CoreMedia -framework CoreVideo -framework CoreGraphics
+          xcrun swiftc -parse-as-library benchmarks/electrobun/real-window-stream-probe.swift -o "$RUNNER_TEMP/stream-control/external-probe" -framework AppKit -framework ScreenCaptureKit -framework CoreMedia -framework CoreVideo -framework CoreGraphics
           "$RUNNER_TEMP/stream-control/probe" --comparison-self-test > "$RUNNER_TEMP/stream-control/comparison-self-test.txt"
           "$RUNNER_TEMP/stream-control/external-probe" --self-test > "$RUNNER_TEMP/stream-control/stream-self-test.txt"
           shasum -a 256 benchmarks/electrobun/owned-window-stream-probe.swift benchmarks/electrobun/real-window-stream-probe.swift "$RUNNER_TEMP/stream-control/probe" "$RUNNER_TEMP/stream-control/external-probe" > "$RUNNER_TEMP/stream-control/hashes.txt"

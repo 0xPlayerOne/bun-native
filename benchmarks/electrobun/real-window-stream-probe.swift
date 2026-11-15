@@ -1,3 +1,4 @@
+import AppKit
 import CoreGraphics
 import CoreMedia
 import CoreVideo
@@ -118,21 +119,33 @@ final class Output: NSObject, SCStreamOutput {
 }
 
 @main struct Probe {
-  static func main() async {
+  @MainActor static func main() {
     if CommandLine.arguments == [CommandLine.arguments[0], "--self-test"] {
       do {
         try selfTest()
         print("stream state self-test passed")
-        return
+        exit(0)
       } catch {
         FileHandle.standardError.write(Data("\(error)\n".utf8))
         exit(1)
       }
     }
-    do { try await run() } catch {
-      FileHandle.standardError.write(Data("\(error)\n".utf8))
+    guard ProcessInfo.processInfo.environment["GITHUB_ACTIONS"] == "true" else {
+      FileHandle.standardError.write(Data("hosted-only diagnostic\n".utf8))
       exit(1)
     }
+    let app = NSApplication.shared
+    app.setActivationPolicy(.prohibited)
+    Task { @MainActor in
+      do {
+        try await run()
+        exit(0)
+      } catch {
+        FileHandle.standardError.write(Data("\(error)\n".utf8))
+        exit(1)
+      }
+    }
+    app.run()
   }
   static func run() async throws {
     guard ProcessInfo.processInfo.environment["GITHUB_ACTIONS"] == "true" else {
