@@ -8,7 +8,7 @@ import { decodePng } from '../../tests/native/png.ts'
 import { inspectBunExecutable } from '../../scripts/native/inspect.ts'
 import { compareVisiblePixels } from './visible-pixels.ts'
 import { verifyVisibleText } from './visible-text.ts'
-import { awaitVisibleReadiness } from './visible-readiness.ts'
+import { awaitUnobstructedStream, awaitVisibleReadiness } from './visible-readiness.ts'
 import { hashCaptureRegion, verifyStreamEvidence } from './stream-evidence.ts'
 
 const TITLE = 'Bun Native matched renderer workload'
@@ -358,12 +358,18 @@ async function main() {
   }
   let streamReady: unknown
   let streamBefore: WindowState | undefined
+  const streamGuardAttempts: (WindowState | PendingState)[] = []
   const streamRegion = [side + 12, top + 10, 240, 36]
   if (streamHelper) {
     result['stage'] = 'stream-readiness'
     assert.equal(scale, 1, 'Stream control requires a one-to-one capture scale')
     assert(streamRegion.every(Number.isSafeInteger), 'Stream region must use integral coordinates')
-    const guard = await helperCall(streamGuardRequest)
+    result['streamGuardAttempts'] = streamGuardAttempts
+    const guard = await awaitUnobstructedStream(
+      performance.now() + 3000,
+      () => helperCall(streamGuardRequest),
+      streamGuardAttempts
+    )
     result['streamGuardBefore'] = guard
     assert.equal(guard.status, 'ready')
     assert.equal(guard.visibleRegionVerified, true, 'Stream label region is obstructed')
@@ -459,7 +465,7 @@ async function main() {
     streamEvidence = {
       ...validated,
       helper: streamFingerprint,
-      guards: { before: streamBefore, after: guard },
+      guards: { attempts: streamGuardAttempts, before: streamBefore, after: guard },
       scope:
         'Exact stream-region matches around a verified click; no click-to-frame or presentation timing claim',
     }

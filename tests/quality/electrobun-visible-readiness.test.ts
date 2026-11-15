@@ -1,5 +1,8 @@
 import { expect, test } from 'bun:test'
-import { awaitVisibleReadiness } from '../../benchmarks/electrobun/visible-readiness.ts'
+import {
+  awaitUnobstructedStream,
+  awaitVisibleReadiness,
+} from '../../benchmarks/electrobun/visible-readiness.ts'
 
 test('readiness retains mismatches, accepts a later exact capture and rejects other failures', async () => {
   const mismatches: string[] = []
@@ -77,4 +80,68 @@ test('readiness defaults wait before retrying a transient mismatch', async () =>
   expect(value).toBe('matched')
   expect(attempts).toBe(2)
   expect(mismatches).toEqual(['initial'])
+})
+
+test('stream readiness retains pre-input obstructions and never accepts malformed guards', async () => {
+  const obstruction = {
+    status: 'ready',
+    visibleRegionVerified: false,
+    visibleRegionObstruction: { id: 7 },
+  }
+  const clear = { status: 'ready', visibleRegionVerified: true }
+  const attempts: (typeof obstruction | typeof clear)[] = []
+  let calls = 0
+  const actual = await awaitUnobstructedStream(
+    10,
+    async () => (++calls === 1 ? obstruction : clear),
+    attempts,
+    () => 0,
+    async () => {}
+  )
+  expect(actual).toEqual(clear)
+  expect(attempts).toEqual([obstruction, clear])
+
+  const invalid: { status: string; visibleRegionVerified: boolean }[] = []
+  await expect(
+    awaitUnobstructedStream(
+      10,
+      async () => ({ status: 'ready', visibleRegionVerified: false }),
+      invalid
+    )
+  ).rejects.toThrow('invalid obstruction evidence')
+  expect(invalid).toHaveLength(1)
+
+  const exhausted: (typeof obstruction)[] = []
+  await expect(
+    awaitUnobstructedStream(
+      10,
+      async () => obstruction,
+      exhausted,
+      () => 0,
+      async () => {}
+    )
+  ).rejects.toThrow('Stream label region is obstructed')
+  expect(exhausted).toHaveLength(20)
+  const expired: (typeof obstruction)[] = []
+  await expect(
+    awaitUnobstructedStream(
+      0,
+      async () => obstruction,
+      expired,
+      () => 1,
+      async () => {}
+    )
+  ).rejects.toThrow('Stream label region is obstructed')
+  expect(expired).toHaveLength(1)
+  const failed: (typeof obstruction)[] = []
+  await expect(
+    awaitUnobstructedStream(
+      10,
+      async () => {
+        throw new Error('identity changed')
+      },
+      failed
+    )
+  ).rejects.toThrow('identity changed')
+  expect(failed).toHaveLength(0)
 })

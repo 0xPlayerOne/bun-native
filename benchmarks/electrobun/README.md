@@ -124,4 +124,7 @@ checks. It requires exact matching label bytes in the streams and verifies their
 hashes against the corresponding screenshots. It records stream metadata but does
 not attribute a stream frame to the click or calculate a latency. Stream setup
 changes the observation workload, so its screenshot timings are not comparable
-with the normal smoke or paired benchmark.
+with the normal smoke or paired benchmark. Before input, an explicitly reported
+obstruction may be retried for up to three seconds and every guard response is
+retained. The post-input guard is checked once; a persistent or later obstruction
+fails the qualification.
