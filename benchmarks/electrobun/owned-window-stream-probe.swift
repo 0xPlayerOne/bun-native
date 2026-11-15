@@ -1,5 +1,5 @@
-// Hosted-only feasibility test. The stream is restricted to a window this
-// process owns; it is not a display capture or a presentation measurement.
+// Hosted-only feasibility test of matching owned-window and bounded-display
+// streams. It does not measure input latency or physical presentation.
 import AppKit
 import CoreGraphics
 import CoreMedia
@@ -10,6 +10,7 @@ import ScreenCaptureKit
 final class Frames: NSObject, SCStreamOutput {
   private let lock = NSLock()
   private var observed: [[String: Any]] = []
+  private var rgbByColor: [String: Data] = [:]
 
   func stream(
     _ stream: SCStream, didOutputSampleBuffer sample: CMSampleBuffer, of type: SCStreamOutputType
@@ -43,6 +44,26 @@ final class Frames: NSObject, SCStreamOutput {
       "receivedUptime": ProcessInfo.processInfo.systemUptime,
     ]
     lock.lock()
+    if color != "other" && rgbByColor[color] == nil {
+      var rgb = Data(count: width * height * 3)
+      rgb.withUnsafeMutableBytes { destination in
+        guard let dest = destination.baseAddress?.assumingMemoryBound(to: UInt8.self) else {
+          return
+        }
+        let source = base.assumingMemoryBound(to: UInt8.self)
+        let stride = CVPixelBufferGetBytesPerRow(image)
+        for y in 0..<height {
+          for x in 0..<width {
+            let sourceIndex = y * stride + x * 4
+            let destIndex = (y * width + x) * 3
+            dest[destIndex] = source[sourceIndex]
+            dest[destIndex + 1] = source[sourceIndex + 1]
+            dest[destIndex + 2] = source[sourceIndex + 2]
+          }
+        }
+      }
+      rgbByColor[color] = rgb
+    }
     observed.append(item)
     lock.unlock()
   }
@@ -51,6 +72,12 @@ final class Frames: NSObject, SCStreamOutput {
     lock.lock()
     defer { lock.unlock() }
     return observed
+  }
+
+  func pixels(_ color: String) -> Data? {
+    lock.lock()
+    defer { lock.unlock() }
+    return rgbByColor[color]
   }
 }
 
@@ -81,9 +108,11 @@ final class Frames: NSObject, SCStreamOutput {
   @MainActor static func run() async throws {
     let app = NSApplication.shared
     let window = NSWindow(
-      contentRect: NSRect(x: 100, y: 100, width: 320, height: 180), styleMask: [.titled],
+      contentRect: NSRect(x: 100, y: 100, width: 320, height: 180), styleMask: [.borderless],
       backing: .buffered, defer: false)
     window.isReleasedWhenClosed = false
+    window.hasShadow = false
+    window.level = .floating
     let view = NSView(frame: NSRect(x: 0, y: 0, width: 320, height: 180))
     view.wantsLayer = true
     view.layer?.backgroundColor = NSColor.red.cgColor
@@ -94,16 +123,28 @@ final class Frames: NSObject, SCStreamOutput {
     defer { window.close() }
     let pid = ProcessInfo.processInfo.processIdentifier
     var target: SCWindow?
+    var display: SCDisplay?
     for _ in 0..<50 {
       let content = try await SCShareableContent.excludingDesktopWindows(
         false, onScreenWindowsOnly: true)
       target = content.windows.first(where: {
         $0.windowID == CGWindowID(window.windowNumber) && $0.owningApplication?.processID == pid
       })
-      if target != nil { break }
+      if let target {
+        let matchingDisplays = content.displays.filter { $0.frame.contains(target.frame) }
+        if matchingDisplays.count == 1 {
+          display = matchingDisplays[0]
+          break
+        }
+      }
       try await Task.sleep(for: .milliseconds(100))
     }
     guard let target else { throw ProbeError.message("owned fixture window unavailable") }
+    guard let display else { throw ProbeError.message("fixture is not inside exactly one display") }
+    let sourceRect = target.frame.offsetBy(dx: -display.frame.minX, dy: -display.frame.minY)
+    guard sourceRect.width == 320, sourceRect.height == 180,
+      CGRect(origin: .zero, size: display.frame.size).contains(sourceRect)
+    else { throw ProbeError.message("unexpected fixture/display geometry") }
     let filter = SCContentFilter(desktopIndependentWindow: target)
     let config = SCStreamConfiguration()
     config.width = 320
@@ -117,20 +158,49 @@ final class Frames: NSObject, SCStreamOutput {
     try stream.addStreamOutput(
       frames, type: .screen,
       sampleHandlerQueue: DispatchQueue(label: "bun-native.owned-window-stream"))
+    let displayConfig = SCStreamConfiguration()
+    displayConfig.sourceRect = sourceRect
+    displayConfig.width = 320
+    displayConfig.height = 180
+    displayConfig.pixelFormat = kCVPixelFormatType_32BGRA
+    displayConfig.minimumFrameInterval = CMTime(value: 1, timescale: 60)
+    displayConfig.queueDepth = 3
+    displayConfig.showsCursor = false
+    let displayFilter = SCContentFilter(display: display, excludingWindows: [])
+    let displayStream = SCStream(filter: displayFilter, configuration: displayConfig, delegate: nil)
+    let displayFrames = Frames()
+    try displayStream.addStreamOutput(
+      displayFrames, type: .screen,
+      sampleHandlerQueue: DispatchQueue(label: "bun-native.bounded-display-stream"))
     try await stream.startCapture()
     do {
+      try await displayStream.startCapture()
       try await waitFor("red", frames)
+      try await waitFor("red", displayFrames)
       view.layer?.backgroundColor = NSColor.blue.cgColor
       try await waitFor("blue", frames)
+      try await waitFor("blue", displayFrames)
+      for color in ["red", "blue"] {
+        guard let windowPixels = frames.pixels(color),
+          let displayPixels = displayFrames.pixels(color),
+          windowPixels.count == 320 * 180 * 3, windowPixels == displayPixels
+        else { throw ProbeError.message("owned-window and display RGB pixels differ for \(color)") }
+      }
+      try await displayStream.stopCapture()
       try await stream.stopCapture()
     } catch {
+      try? await displayStream.stopCapture()
       try? await stream.stopCapture()
       throw error
     }
     let result: [String: Any] = [
       "status": "passed",
-      "scope": "owned window stream only; no display or physical presentation claim",
-      "frames": frames.snapshot(),
+      "scope":
+        "owned fixture and bounded display RGB correspondence; no input or physical presentation claim",
+      "windowFrames": frames.snapshot(),
+      "displayFrames": displayFrames.snapshot(),
+      "sourceRect": [sourceRect.minX, sourceRect.minY, sourceRect.width, sourceRect.height],
+      "rgbCorrespondence": ["red": true, "blue": true],
     ]
     let json = try JSONSerialization.data(withJSONObject: result, options: [.sortedKeys])
     FileHandle.standardOutput.write(json)
