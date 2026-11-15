@@ -83,7 +83,12 @@ spec = importlib.util.spec_from_file_location('boundary', 'benchmarks/retention/
 boundary = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(boundary)
 instrumented_boundary = boundary.workload_variant(workload)
+gc_boundary = boundary.workload_variant(workload, False)
 assert instrumented_boundary.count('generateHeapSnapshotForDebugging') == 1
+assert 'generateHeapSnapshotForDebugging' not in gc_boundary
+assert "assert.equal(stillReachable.length, 0" in gc_boundary
+assert 'boundaryTargets = probes.flatMap' in gc_boundary
+assert "'.boundary-targets.json'" in gc_boundary
 assert "assert.equal(stillReachable.length, 0" in instrumented_boundary
 assert instrumented_boundary.index('const stillReachable =') < instrumented_boundary.index('boundaryFile =')
 assert instrumented_boundary.index('const boundaryTargets =') < instrumented_boundary.index('await Bun.sleep(1)\n      Bun.gc(true)\n      const firstReachable')

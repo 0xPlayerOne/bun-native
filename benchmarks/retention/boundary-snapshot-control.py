@@ -14,7 +14,7 @@ def replace_once(source, old, new):
     return source.replace(old, new)
 
 
-def workload_variant(source):
+def workload_variant(source, snapshot=True):
     source = replace_once(
         source,
         "import { heapStats } from 'bun:jsc'\n",
@@ -30,14 +30,19 @@ def workload_variant(source):
         "async function heapSnapshot(phase: string) {",
         "let boundarySnapshot: unknown\nasync function heapSnapshot(phase: string) {",
     )
+    collector = (
+        "    const generate: unknown = Reflect.get(boundaryJsc, 'generateHeapSnapshotForDebugging')\n"
+        "    assert(typeof generate === 'function', 'Boundary snapshot unavailable')\n"
+        "    boundarySnapshot = generate()\n"
+        if snapshot
+        else "    Bun.gc(true)\n"
+    )
     source = replace_once(
         source,
         "  Bun.gc(true)\n  const stats = heapStats()",
         "  if (phase.startsWith('all views disposed;')) {\n"
-        "    const generate: unknown = Reflect.get(boundaryJsc, 'generateHeapSnapshotForDebugging')\n"
-        "    assert(typeof generate === 'function', 'Boundary snapshot unavailable')\n"
-        "    boundarySnapshot = generate()\n"
-        "  } else Bun.gc(true)\n  const stats = heapStats()",
+        + collector
+        + "  } else Bun.gc(true)\n  const stats = heapStats()",
     )
     source = replace_once(
         source,
@@ -48,15 +53,20 @@ def workload_variant(source):
         "      })\n"
         "      await Bun.sleep(1)\n      Bun.gc(true)\n      const firstReachable",
     )
-    source = replace_once(
-        source,
-        "      const probeKinds =\n",
+    snapshot_output = (
         "      assert(boundarySnapshot, 'Boundary snapshot missing')\n"
         "      const boundaryFile = values.output + '.boundary.json.gz'\n"
         "      const encoded = Bun.gzipSync(JSON.stringify(boundarySnapshot))\n"
         "      assert(encoded.byteLength <= 48 * 1024 * 1024, 'Boundary snapshot too large')\n"
         "      writeFileSync(boundaryFile, encoded, { flag: 'wx' })\n"
-        "      writeFileSync(values.output + '.boundary-targets.json', JSON.stringify({ targets: boundaryTargets.filter(target => stillReachable.includes(target.index)) }), { flag: 'wx' })\n"
+        if snapshot
+        else ""
+    )
+    source = replace_once(
+        source,
+        "      const probeKinds =\n",
+        snapshot_output
+        + "      writeFileSync(values.output + '.boundary-targets.json', JSON.stringify({ targets: boundaryTargets.filter(target => stillReachable.includes(target.index)) }), { flag: 'wx' })\n"
         "      const probeKinds =\n",
     )
     return source
@@ -76,11 +86,18 @@ def entry_variant(source, pin):
 
 
 def main():
-    if len(sys.argv) != 3 or sys.argv[1] not in ("baseline", "pin"):
-        raise ValueError("Expected baseline|pin and output directory")
+    if len(sys.argv) not in (3, 4) or sys.argv[1] not in ("baseline", "pin"):
+        raise ValueError(
+            "Expected baseline|pin, output directory and optional snapshot|gc"
+        )
+    mode = sys.argv[3] if len(sys.argv) == 4 else "snapshot"
+    if mode not in ("snapshot", "gc"):
+        raise ValueError("Expected snapshot|gc")
     directory = Path(sys.argv[2])
     source_dir = Path("benchmarks/solid")
-    workload = workload_variant((source_dir / "workload.ts").read_text())
+    workload = workload_variant(
+        (source_dir / "workload.ts").read_text(), mode == "snapshot"
+    )
     entry = entry_variant((source_dir / "react.tsx").read_text(), sys.argv[1] == "pin")
     for name, text in (
         (".retention-boundary-workload.ts", workload),

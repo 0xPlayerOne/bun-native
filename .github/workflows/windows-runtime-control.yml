@@ -551,6 +551,56 @@ jobs:
           if-no-files-found: warn
           retention-days: 30
 
+  boundary-pairs:
+    if: vars.CI_BILLING_PAUSED == 'false' && github.event.pull_request.draft == false && github.event.label.name == 'diagnostic:windows-boundary-pairs'
+    runs-on: windows-2022
+    timeout-minutes: 45
+    permissions:
+      actions: read
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/native-toolchain
+        with:
+          rust: 'false'
+      - name: Download the identified diagnostic runtime
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $root = Join-Path $env:RUNNER_TEMP 'boundary-reuse'
+          gh run download 43762395712 --repo $env:GITHUB_REPOSITORY --name windows-local-runtime-control --dir $root
+          if ($LASTEXITCODE -ne 0) { throw 'Diagnostic artifact download failed' }
+          $source = Join-Path $root 'instrumented-runtime.bin'
+          $expected = '49266f7b12bcf39af1befe7c7ca416ee239095a660fa9257fd50fe79410fc45f'
+          if ((Get-FileHash $source -Algorithm SHA256).Hash.ToLowerInvariant() -ne $expected) { throw 'Diagnostic runtime hash mismatch' }
+          Copy-Item $source (Join-Path $root 'instrumented-runtime.exe')
+          & (Join-Path $root 'instrumented-runtime.exe') --revision
+          if ($LASTEXITCODE -ne 0) { throw 'Diagnostic runtime could not start' }
+      - name: Run paired boundary controls
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $root = Join-Path $env:RUNNER_TEMP 'boundary-reuse'
+          $peer = Join-Path $root 'paired-peer.exe'
+          bun build tests/core/protocol-peer.ts --compile --outfile $peer
+          if ($LASTEXITCODE -ne 0) { throw 'Peer compilation failed' }
+          python benchmarks/retention/boundary-pairs.py (Join-Path $root 'instrumented-runtime.exe') $peer (Join-Path $root 'paired-results') 5
+          if ($LASTEXITCODE -ne 0) { throw 'Paired controls failed validation' }
+      - name: Retain paired controls
+        if: ${{ always() }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: windows-boundary-pairs
+          path: |
+            ${{ runner.temp }}/boundary-reuse/paired-results/
+            !${{ runner.temp }}/boundary-reuse/paired-results/*.exe
+          if-no-files-found: warn
+          retention-days: 30
+
   candidate-runtime:
     if: vars.CI_BILLING_PAUSED == 'false' && github.event.pull_request.draft == false && github.event.label.name == 'diagnostic:windows-candidate'
     runs-on: windows-2022

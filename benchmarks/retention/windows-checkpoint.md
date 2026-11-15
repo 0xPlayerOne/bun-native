@@ -352,6 +352,17 @@ retains JIT. The tags are not exclusive and identify neither stack slots nor
 whether the roots are stale. They do not establish the roots at an unchanged
 production AOT benchmark checkpoint or rule out another retaining source.
 
+The opt-in `diagnostic:windows-boundary-pairs` control reuses the retained
+instrumented runtime after checking its SHA-256. Five alternating sets run
+normal full collection and debugging-snapshot collection with the same early
+probe inspection, plus a pinned positive control for each collection method.
+The source, executable and peer hashes and every result are retained. It tests
+whether the changed collection affects observations in this fixture; both
+variants remain instrumented headless controls with a JIT-containing runtime,
+not the unchanged native benchmark or qualified production AOT.
+The source artifact has a 30-day retention period; remove or replace this
+temporary artifact-dependent control before merging once its investigation ends.
+
 The opt-in `diagnostic:windows-origin-ranges` source-build control layers
 `webkit-conservative-origin-experiment.patch` on the existing snapshot patch.
 It classifies root-array entries from the conductor's register-state range,
