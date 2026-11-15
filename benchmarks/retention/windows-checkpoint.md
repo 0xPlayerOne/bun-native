@@ -163,6 +163,15 @@ and physical entry and input paths, records each exit code, and stops if the
 current build's mapped-entry and relative-input case fails. No runtime or
 retention observation resulted from the eighth run.
 
+In the [ninth run](https://github.com/0xPlayerOne/bun-native/actions/runs/43657641103),
+matching mapped entry and relative input passed, as did matching physical entry
+and physical input. Both mixed-drive cases rejected the schema export, matching
+the full generator's error. The build still failed at that generator. The next
+build-time patch resolves relative schema inputs against the loader's own root;
+the early control requires both relative-input variants to pass and retains a
+mixed-drive negative control. The full generator and output equivalence remain
+unverified.
+
 A separate paired React fixture control tests one ownership hypothesis. Both
 variants use the same async disposal wrapper; after acknowledged disposal, the
 `clear` variant additionally sets its two captured React state dispatchers to

@@ -39,6 +39,23 @@ jobs:
           ref: b1007f1177fd402fae67387b8548cae5ae9b5707
           path: .diagnostics/bun
           persist-credentials: false
+      - name: Apply and record the build-only path patch
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $root = Join-Path $env:RUNNER_TEMP 'runtime-build-control'
+          New-Item -ItemType Directory -Force -Path $root | Out-Null
+          $source = Join-Path $env:GITHUB_WORKSPACE '.diagnostics/bun'
+          $revision = git -C $source rev-parse HEAD
+          if ($LASTEXITCODE -ne 0 -or $revision -ne 'b1007f1177fd402fae67387b8548cae5ae9b5707') { throw 'Unexpected Bun source revision' }
+          $patch = Join-Path $env:GITHUB_WORKSPACE 'benchmarks/retention/bun-windows-relative-sources.patch'
+          git -C $source apply --check $patch
+          if ($LASTEXITCODE -ne 0) { throw 'Build patch does not apply cleanly' }
+          git -C $source apply $patch
+          if ($LASTEXITCODE -ne 0) { throw 'Build patch failed' }
+          Copy-Item $patch (Join-Path $root 'build-only.patch')
+          Get-FileHash $patch -Algorithm SHA256 | Format-List | Out-File (Join-Path $root 'build-patch-hash.txt')
+          $revision | Out-File (Join-Path $root 'bun-source-revision.txt')
       - name: Compare schema loading through mapped and physical paths
         shell: pwsh
         run: |
@@ -74,8 +91,12 @@ jobs:
               }
             }
             $results | ConvertTo-Json | Out-File (Join-Path $root 'schema-path-controls.json') -Encoding utf8
-            $selected = $results | Where-Object { $_.entry -eq 'mapped' -and $_.input -eq 'relative' }
-            if ($selected.exitCode -ne 0) { throw 'The build schema path failed the early control' }
+            foreach ($entry in @('mapped', 'physical')) {
+              $selected = $results | Where-Object { $_.entry -eq $entry -and $_.input -eq 'relative' }
+              if ($selected.exitCode -ne 0) { throw "Relative schema input failed with $entry loader" }
+            }
+            $mixed = $results | Where-Object { $_.entry -eq 'mapped' -and $_.input -eq 'physical' }
+            if ($mixed.exitCode -eq 0) { throw 'Mixed-path negative control unexpectedly passed' }
           } finally {
             if ($pushed) { Pop-Location }
             subst X: /D
@@ -136,23 +157,6 @@ jobs:
           rustup toolchain install nightly-2026-09-15 --profile minimal
           if ($LASTEXITCODE -ne 0) { throw 'Rust toolchain installation failed' }
           'RUSTUP_TOOLCHAIN=nightly-2026-09-15' | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
-      - name: Apply and record the build-only path patch
-        shell: pwsh
-        run: |
-          $ErrorActionPreference = 'Stop'
-          $root = Join-Path $env:RUNNER_TEMP 'runtime-build-control'
-          New-Item -ItemType Directory -Force -Path $root | Out-Null
-          $source = Join-Path $env:GITHUB_WORKSPACE '.diagnostics/bun'
-          $revision = git -C $source rev-parse HEAD
-          if ($LASTEXITCODE -ne 0 -or $revision -ne 'b1007f1177fd402fae67387b8548cae5ae9b5707') { throw 'Unexpected Bun source revision' }
-          $patch = Join-Path $env:GITHUB_WORKSPACE 'benchmarks/retention/bun-windows-relative-sources.patch'
-          git -C $source apply --check $patch
-          if ($LASTEXITCODE -ne 0) { throw 'Build patch does not apply cleanly' }
-          git -C $source apply $patch
-          if ($LASTEXITCODE -ne 0) { throw 'Build patch failed' }
-          Copy-Item $patch (Join-Path $root 'build-only.patch')
-          Get-FileHash $patch -Algorithm SHA256 | Format-List | Out-File (Join-Path $root 'build-patch-hash.txt')
-          $revision | Out-File (Join-Path $root 'bun-source-revision.txt')
       - name: Build the uninstrumented local runtime
         shell: pwsh
         timeout-minutes: 100
