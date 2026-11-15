@@ -360,9 +360,11 @@ async function main() {
   let streamBefore: WindowState | undefined
   const streamRegion = [side + 12, top + 10, 240, 36]
   if (streamHelper) {
+    result['stage'] = 'stream-readiness'
     assert.equal(scale, 1, 'Stream control requires a one-to-one capture scale')
     assert(streamRegion.every(Number.isSafeInteger), 'Stream region must use integral coordinates')
     const guard = await helperCall(streamGuardRequest)
+    result['streamGuardBefore'] = guard
     assert.equal(guard.status, 'ready')
     assert.equal(guard.visibleRegionVerified, true, 'Stream label region is obstructed')
     streamBefore = guard
@@ -449,6 +451,7 @@ async function main() {
       'Stream change differs from the verified clicked screenshot'
     )
     const guard = await helperCall(streamGuardRequest)
+    result['streamGuardAfter'] = guard
     assert.equal(guard.status, 'ready')
     assert.equal(guard.visibleRegionVerified, true, 'Stream label region became obstructed')
     assert.deepEqual(guard.visibleRegion, streamBefore.visibleRegion)
