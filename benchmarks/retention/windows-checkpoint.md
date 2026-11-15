@@ -339,6 +339,19 @@ pinned control prevents treating this run as validated boundary evidence.
 The subsequent workflow reads reports with case-sensitive hash tables and tests
 that parsing behavior on Windows before starting the expensive source build.
 
+[Windows run 43762395712](https://github.com/0xPlayerOne/bun-native/actions/runs/43762395712)
+completed the repaired controls and retained the instrumented runtime and
+snapshots. Three unpinned development observations had no survivors; the three
+source-built compiled observations retained `[284,298,299]`, `[298,299]`, and
+`[298,299]`. Every survivor was present in its boundary snapshot and had a
+recorded path from a conductor-stack-tagged conservative root. The pinned
+render root was detected in both development and source-built compiled modes.
+All cleanup counters were zero. These are observations of the snapshot's own
+collection after early probe dereferences, with an instrumented runtime that
+retains JIT. The tags are not exclusive and identify neither stack slots nor
+whether the roots are stale. They do not establish the roots at an unchanged
+production AOT benchmark checkpoint or rule out another retaining source.
+
 The opt-in `diagnostic:windows-origin-ranges` source-build control layers
 `webkit-conservative-origin-experiment.patch` on the existing snapshot patch.
 It classifies root-array entries from the conductor's register-state range,
