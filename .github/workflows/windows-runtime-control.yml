@@ -467,6 +467,59 @@ jobs:
             $checked++
           }
           if ($checked -eq 0) { throw 'No origin report was available' }
+      - name: Observe the instrumented collection boundary
+        if: github.event.label.name == 'diagnostic:windows-origin-ranges'
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $root = Join-Path $env:RUNNER_TEMP 'runtime-build-control'
+          $sourceDir = Join-Path $env:GITHUB_WORKSPACE 'benchmarks/solid'
+          $entry = Join-Path $sourceDir '.retention-boundary-react.tsx'
+          $workload = Join-Path $sourceDir '.retention-boundary-workload.ts'
+          'The headless runner calls its compiled mode aot; this source-built executable retains JIT and is not qualified release AOT.' | Out-File (Join-Path $root 'boundary-scope.txt') -Encoding utf8
+          foreach ($variant in @('baseline', 'pin')) {
+            if ((Test-Path $entry) -or (Test-Path $workload)) { throw 'Boundary fixture path already exists' }
+            try {
+              python benchmarks/retention/boundary-snapshot-control.py $variant $sourceDir
+              if ($LASTEXITCODE -ne 0) { throw 'Boundary fixture generation failed' }
+              Copy-Item $entry (Join-Path $root "boundary-$variant-entry.tsx.txt")
+              Copy-Item $workload (Join-Path $root "boundary-$variant-workload.ts.txt")
+              $env:BOUNDARY_ENTRY = $entry
+              $env:BOUNDARY_OUT = Join-Path $root "boundary-$variant"
+              bun -e 'import { bundleApplication } from "./scripts/native/bundle.ts"; await bundleApplication({ framework: "react", entry: process.env.BOUNDARY_ENTRY, outdir: process.env.BOUNDARY_OUT, cwd: process.cwd() })'
+              if ($LASTEXITCODE -ne 0) { throw 'Boundary fixture bundling failed' }
+            } finally {
+              if (Test-Path $entry) { Remove-Item $entry }
+              if (Test-Path $workload) { Remove-Item $workload }
+            }
+            $module = Join-Path $env:BOUNDARY_OUT 'application.js'
+            $binary = Join-Path $root "boundary-$variant.exe"
+            & $env:LOCAL_BUN --no-install compile --no-script --production --explain=json $module --outfile $binary *> (Join-Path $root "boundary-$variant-compile.log")
+            if ($LASTEXITCODE -ne 0) { throw 'Boundary fixture compile failed' }
+            $trials = if ($variant -eq 'baseline') { 3 } else { 1 }
+            $output = Join-Path $root "boundary-$variant-runs"
+            python benchmarks/retention/headless-adapter-control.py react (Join-Path $root 'peer.exe') $module $binary $output $trials $env:LOCAL_BUN
+            if ($LASTEXITCODE -ne 0) { throw 'Boundary fixture report failed validation' }
+            foreach ($trial in 0..($trials - 1)) {
+              foreach ($mode in @('development', 'aot')) {
+                $prefix = Join-Path $output ('{0:D2}-{1}.json' -f $trial, $mode)
+                $report = Get-Content $prefix -Raw | ConvertFrom-Json
+                $targets = Get-Content "$prefix.boundary-targets.json" -Raw | ConvertFrom-Json
+                if (@($targets.targets).Count -ne @($report.retentionObservation.stillReachable).Count) { throw 'Boundary targets do not match observed survivors' }
+                $targetIndexes = @($targets.targets | ForEach-Object { $_.index } | Sort-Object) -join ','
+                $survivorIndexes = @($report.retentionObservation.stillReachable | Sort-Object) -join ','
+                if ($targetIndexes -ne $survivorIndexes) { throw 'Boundary target indexes do not match observed survivors' }
+                if ($variant -eq 'pin') {
+                  $expected = if ($mode -eq 'development') { 3 } else { 297 }
+                  if ($expected -notin $report.retentionObservation.stillReachable) { throw 'Pinned boundary target was not detected' }
+                }
+                bun benchmarks/retention/conservative-snapshot-analysis.ts "$prefix.boundary.json.gz" "$prefix.boundary-targets.json" "$prefix.boundary-analysis.json"
+                if ($LASTEXITCODE -ne 0) { throw 'Boundary snapshot analysis failed' }
+                $analysis = Get-Content "$prefix.boundary-analysis.json" -Raw | ConvertFrom-Json
+                if (@($analysis.targets | Where-Object { !$_.presentInSnapshot }).Count -ne 0) { throw 'Observed boundary target is absent from its snapshot' }
+              }
+            }
+          }
       - name: Verify pinned-target controls with both runtimes
         shell: pwsh
         run: |

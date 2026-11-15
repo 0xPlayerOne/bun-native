@@ -311,6 +311,22 @@ the decompressed SHA-256 values are
 
 ## Experimental scan-range attribution
 
+The opt-in origin-range job also generates a separate boundary-snapshot React
+fixture. It records target cell identities before the existing timer boundary,
+then replaces the final `Bun.gc(true)` with the debugging snapshot's own full
+collection. The final WeakRef observation and zero-survivor assertion remain in
+place. A deliberately pinned view must fail that assertion, and every observed
+target must appear in the snapshot from that collection. The snapshot and target
+identities are retained separately for origin analysis.
+
+This fixture is a diagnostic intervention: early `WeakRef.deref()` calls, heap
+analysis, snapshot allocation and a source-built runtime alter the execution.
+Its result cannot prove the root of the unchanged benchmark's failed collection,
+nor qualify the source-built compiled executable as release AOT. On macOS ARM64,
+one headless baseline passed and one pinned fixture failed as expected in both
+development and release-AOT modes; the pinned target appeared in each boundary
+snapshot. Windows results require the labeled source-build job.
+
 The opt-in `diagnostic:windows-origin-ranges` source-build control layers
 `webkit-conservative-origin-experiment.patch` on the existing snapshot patch.
 It classifies root-array entries from the conductor's register-state range,
