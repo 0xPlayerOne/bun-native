@@ -440,6 +440,22 @@ completed map removed the content-node survivor in this cohort, but neither
 variant cleared all targets. This intervention does not establish the cause of
 the unchanged benchmark's retention or measure a production performance gain.
 
+The `diagnostic:windows-production-detach` control clears completed capture
+maps in both variants and schedules a React state update followed by a flush
+before disposal. The intervention removes the button's handler in that update;
+the baseline keeps it. Both render-root and listener probes are independently
+pinned in positive controls. This changes the React workload and is a
+diagnostic, not a proposed production teardown sequence.
+[Windows run 43775769136](https://github.com/0xPlayerOne/bun-native/actions/runs/43775769136)
+completed five alternating sets. Development baselines retained `[3,5]` in
+all five trials, while all five handler-detached trials cleared. Compiled
+baselines retained `[298,299]`, `[298,299]`, `[298,299]`,
+`[272,275,298,299]`, `[]`; handler-detached trials retained `[298,299]`,
+`[298,299]`, `[]`, `[298,299]`, `[]`. Both pinned objects were detected in
+every pinned trial and mode. These changed-workload results suggest a
+development-mode liveness lead but do not resolve the compiled retention or
+establish why its content-node outcome differs from the preceding control.
+
 The opt-in `diagnostic:windows-origin-ranges` source-build control layers
 `webkit-conservative-origin-experiment.patch` on the existing snapshot patch.
 It classifies root-array entries from the conductor's register-state range,
