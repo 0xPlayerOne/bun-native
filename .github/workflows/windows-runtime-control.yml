@@ -264,7 +264,7 @@ jobs:
             if ($pushed) { Pop-Location }
             foreach ($drive in $mapped) { subst $drive /D }
           }
-      - name: Build and inspect the matched workloads
+      - name: Build and inspect the workloads
         shell: pwsh
         run: |
           $ErrorActionPreference = 'Stop'
@@ -284,10 +284,14 @@ jobs:
             $binary = Join-Path $root "$variant-aot.exe"
             & $compiler --no-install compile --no-script --production --explain=json $module --outfile $binary *> (Join-Path $root "$variant-compile.log")
             if ($LASTEXITCODE -ne 0) { throw "$variant AOT compile failed" }
-            bun -e 'import { inspectBunExecutable } from "./scripts/native/inspect.ts"; import { inspectBunRuntime } from "./scripts/native/inspect-runtime.ts"; const graph = inspectBunExecutable(process.argv[1]); const runtime = inspectBunRuntime(process.argv[1]); if (!graph.hasCompiledProgram || runtime.jit !== "unused") throw new Error("Not an AOT executable"); console.log(JSON.stringify({ graph, runtime }, null, 2))' $binary > (Join-Path $root "$variant-inspection.json")
-            if ($LASTEXITCODE -ne 0) { throw "$variant AOT inspection failed" }
+            bun -e 'import { inspectBunExecutable } from "./scripts/native/inspect.ts"; import { inspectBunRuntime } from "./scripts/native/inspect-runtime.ts"; const graph = inspectBunExecutable(process.argv[1]); const runtime = inspectBunRuntime(process.argv[1]); console.log(JSON.stringify({ graph, runtime }, null, 2))' $binary > (Join-Path $root "$variant-inspection.json")
+            if ($LASTEXITCODE -ne 0) { throw "$variant executable inspection failed" }
+            if ($variant -eq 'baseline') {
+              $inspection = Get-Content (Join-Path $root "$variant-inspection.json") -Raw | ConvertFrom-Json
+              if (!$inspection.graph.hasCompiledProgram -or $inspection.runtime.jit -ne 'unused') { throw 'Reference executable is not qualified AOT' }
+            }
           }
-      - name: Run alternating fresh-process controls
+      - name: Run alternating development controls with common reference AOT
         shell: pwsh
         run: |
           $ErrorActionPreference = 'Stop'
@@ -298,7 +302,10 @@ jobs:
             $order = if ($trial % 2 -eq 0) { @('baseline', 'local') } else { @('local', 'baseline') }
             foreach ($variant in $order) {
               $runtime = if ($variant -eq 'baseline') { $baseline } else { $env:LOCAL_BUN }
-              python benchmarks/retention/headless-adapter-control.py react (Join-Path $root 'peer.exe') $module (Join-Path $root "$variant-aot.exe") (Join-Path $root "$trial-$variant") 1 $runtime
+              # The Windows-hosted local build is not trimmable. Never treat its
+              # compiled executable as a release AOT control. Both runs use the
+              # same inspected distribution AOT binary as a reference.
+              python benchmarks/retention/headless-adapter-control.py react (Join-Path $root 'peer.exe') $module (Join-Path $root 'baseline-aot.exe') (Join-Path $root "$trial-$variant") 1 $runtime
               if ($LASTEXITCODE -ne 0) { throw "$variant control failed outside its retention observation" }
             }
           }

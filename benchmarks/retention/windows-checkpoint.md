@@ -128,7 +128,13 @@ revisions and patch hashes and checks generated Windows shell command lengths
 before compilation. This is a custom build; the matching revision does not
 prove binary equivalence to the distributed runtime. It compares that runtime
 with the pinned distribution using three alternating sets of the unchanged
-headless React workload in development and inspected AOT modes. The
+headless React development workload. Both sides also run the same inspected
+distribution AOT binary as a reference, not as a local-build AOT comparison.
+The pinned source disables its trimmable link on a Windows host, and the local
+compiled workload failed the strict AOT inspection in [run 43672900369](https://github.com/0xPlayerOne/bun-native/actions/runs/43672900369).
+That run did not save the failing field or produce retention observations;
+subsequent runs retain both inspections without treating the local executable
+as a qualified AOT control. The
 `diagnostic:windows-runtime` label is an explicit
 trigger; ordinary PR events do not start the source build. Its 120-minute limit
 and retained outcomes make build failures and missing coverage visible. This

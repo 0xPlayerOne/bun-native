@@ -50,8 +50,9 @@ fails (#629). It writes two files beside that launch's report (`<report>.json`):
   retainers and one shortest strong path from a GC root per distinct owner.
   WeakRef edges are not counted as owners. It holds two analyses. `sameJob` is
   taken while the assertion's own `deref()` calls still keep the targets alive.
-  `nextTask` is taken after one timer turn. A probe that is absent from
-  `nextTask` had only a transient owner.
+  `nextTask` is taken after one timer turn and another snapshot collection. A
+  probe absent there was no longer observed in that later snapshot; this does
+  not identify its earlier retaining root or make the original checkpoint pass.
 - `<report>.json.retention-heap.json.gz`: the `sameJob` JSC GC-debugging heap
   snapshot (`bun:jsc` `generateHeapSnapshotForDebugging`), at most 48 MiB
   compressed.
