@@ -12,8 +12,8 @@ export function analyzeConservativeSnapshot(snapshot: DebugSnapshot, targets: re
   }
 }
 
-if (import.meta.main) {
-  const [snapshotPath, reportPath, outputPath] = process.argv.slice(2)
+export function runConservativeSnapshotAnalysis(args: readonly string[]) {
+  const [snapshotPath, reportPath, outputPath] = args
   assert(snapshotPath && reportPath && outputPath, 'Expected snapshot, report and output paths')
   const snapshot = JSON.parse(new TextDecoder().decode(Bun.gunzipSync(readFileSync(snapshotPath))))
   const report = JSON.parse(readFileSync(reportPath, 'utf8')) as { targets?: unknown }
@@ -37,3 +37,5 @@ if (import.meta.main) {
     }
   )
 }
+
+if (import.meta.main) runConservativeSnapshotAnalysis(process.argv.slice(2))

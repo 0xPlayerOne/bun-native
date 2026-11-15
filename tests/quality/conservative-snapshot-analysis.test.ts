@@ -2,7 +2,10 @@ import { expect, test } from 'bun:test'
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { analyzeConservativeSnapshot } from '../../benchmarks/retention/conservative-snapshot-analysis.ts'
+import {
+  analyzeConservativeSnapshot,
+  runConservativeSnapshotAnalysis,
+} from '../../benchmarks/retention/conservative-snapshot-analysis.ts'
 import type { DebugSnapshot } from '../../benchmarks/solid/retention-evidence.ts'
 
 const snapshot: DebugSnapshot = {
@@ -61,6 +64,13 @@ test('experimental analysis CLI reads bounded evidence and refuses overwrite', (
     expect(Bun.spawnSync(args).exitCode).toBe(0)
     expect(JSON.parse(readFileSync(output, 'utf8')).conservativeRootCount).toBe(1)
     expect(Bun.spawnSync(args).exitCode).not.toBe(0)
+    const directOutput = join(root, 'direct-analysis.json')
+    runConservativeSnapshotAnalysis([heap, report, directOutput])
+    expect(JSON.parse(readFileSync(directOutput, 'utf8'))).toEqual(
+      JSON.parse(readFileSync(output, 'utf8'))
+    )
+    expect(() => runConservativeSnapshotAnalysis([])).toThrow()
+    expect(() => runConservativeSnapshotAnalysis([heap, report, directOutput])).toThrow()
   } finally {
     rmSync(root, { recursive: true, force: true })
   }
