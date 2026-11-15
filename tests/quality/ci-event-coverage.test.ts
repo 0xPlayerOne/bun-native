@@ -175,6 +175,9 @@ test('Windows runtime source build is limited to its explicit label and exact Bu
   expect(productionCapture.if).toContain(
     "github.event.label.name == 'diagnostic:windows-production-detach'"
   )
+  expect(productionCapture.if).toContain(
+    "github.event.label.name == 'diagnostic:windows-production-scope'"
+  )
   expect(productionCapture.if).toContain('github.event.pull_request.draft == false')
   expect(
     productionCapture.steps.find((step) => step.name === 'Run production AOT capture controls')?.run

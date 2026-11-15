@@ -84,6 +84,23 @@ def react_detach_variant(source, detach, pin):
     return source
 
 
+def lifecycle_scope_variant(source):
+    start = "      const probes: WeakRef<object>[] = []\n"
+    end = "      assert.equal(rowsDisposed, rowsCreated)\n"
+    if source.count(start) != 1 or source.count(end) != 1:
+        raise ValueError("Expected exactly one lifecycle collection scope")
+    source = source.replace(
+        start,
+        "      const { probes, lifecycle, rowsCreated, rowsDisposed } = await (async () => {\n"
+        + start,
+    )
+    return source.replace(
+        end,
+        end
+        + "      return { probes, lifecycle, rowsCreated, rowsDisposed }\n      })()\n",
+    )
+
+
 def main():
     if len(sys.argv) not in (5, 6):
         raise ValueError(
@@ -102,7 +119,12 @@ def main():
         variants = ("baseline-gc", "baseline-snapshot", "pin-gc", "pin-snapshot")
     elif experiment == "wrapper-release":
         variants = ("baseline-gc", "release-gc", "pin-gc", "pinrelease-gc")
-    elif experiment in ("capture-release", "production-capture", "production-detach"):
+    elif experiment in (
+        "capture-release",
+        "production-capture",
+        "production-detach",
+        "production-scope",
+    ):
         variants = ("baseline-gc", "clear-gc", "pin-gc", "pinclear-gc")
     elif experiment == "listener-release":
         variants = ("baseline-gc", "clear-gc", "pin-gc", "pinclear-gc")
@@ -116,8 +138,9 @@ def main():
         "variants": variants,
         "ordering": "forward on even trials; reverse on odd trials",
         "scope": (
-            "Headless fixture with original GC checkpoints and verified JIT-free AOT; capture source is modified."
-            if experiment in ("production-capture", "production-detach")
+            "Headless fixture with original GC checkpoints and verified JIT-free AOT; diagnostic source is modified."
+            if experiment
+            in ("production-capture", "production-detach", "production-scope")
             else "Instrumented headless fixture; source-built compiled mode retains JIT and is not release AOT."
         ),
         "sources": {},
@@ -136,10 +159,16 @@ def main():
         created = []
         try:
             workload_text = (source_dir / "workload.ts").read_text(encoding="utf-8")
-            if experiment not in ("production-capture", "production-detach"):
+            if experiment not in (
+                "production-capture",
+                "production-detach",
+                "production-scope",
+            ):
                 workload_text = generator.workload_variant(
                     workload_text, mode == "snapshot"
                 )
+            if experiment == "production-scope" and pin in ("clear", "pinclear"):
+                workload_text = lifecycle_scope_variant(workload_text)
             if pin in ("release", "pinrelease"):
                 workload_text = generator.release_wrapper_callbacks(workload_text)
             entry_text = generator.entry_variant(
@@ -208,7 +237,8 @@ def main():
             )
         expected_jit = (
             "unused"
-            if experiment in ("production-capture", "production-detach")
+            if experiment
+            in ("production-capture", "production-detach", "production-scope")
             else "present"
         )
         inspection = 'import { inspectBunExecutable } from "./scripts/native/inspect.ts"; import { inspectBunRuntime } from "./scripts/native/inspect-runtime.ts"; if (!inspectBunExecutable(process.argv[1]).hasCompiledProgram || inspectBunRuntime(process.argv[1]).jit !== process.argv[2]) throw new Error("Unexpected compiled runtime")'
@@ -220,7 +250,11 @@ def main():
         for variant in variants if trial % 2 == 0 else reversed(variants):
             child_dir = output / f"{trial:02}-{variant}"
             env = os.environ.copy()
-            if experiment in ("production-capture", "production-detach"):
+            if experiment in (
+                "production-capture",
+                "production-detach",
+                "production-scope",
+            ):
                 env.pop("BUN_NATIVE_DIAG_SNAPSHOT_SAFE", None)
             else:
                 env["BUN_NATIVE_DIAG_SNAPSHOT_SAFE"] = "1"
@@ -254,7 +288,11 @@ def main():
                 mode = record["mode"]
                 report = json.loads((child_dir / f"00-{mode}.json").read_text())
                 observed = report["retentionObservation"]["stillReachable"]
-                if experiment not in ("production-capture", "production-detach"):
+                if experiment not in (
+                    "production-capture",
+                    "production-detach",
+                    "production-scope",
+                ):
                     targets = json.loads(
                         (
                             child_dir / f"00-{mode}.json.boundary-targets.json"

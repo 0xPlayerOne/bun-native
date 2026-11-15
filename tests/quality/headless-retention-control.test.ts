@@ -117,6 +117,16 @@ for invalid in ('missing', marker + marker):
     except ValueError:
         pass
 instrumented_boundary = boundary.workload_variant(workload)
+scope = pairs.lifecycle_scope_variant(workload)
+assert scope.count('Bun.gc(true)') == workload.count('Bun.gc(true)')
+assert "assert.equal(stillReachable.length, 0" in scope
+assert scope.index('return { probes, lifecycle, rowsCreated, rowsDisposed }') < scope.index('const firstReachable')
+for invalid in ('missing', workload + workload):
+    try:
+        pairs.lifecycle_scope_variant(invalid)
+        raise AssertionError('invalid lifecycle scope marker accepted')
+    except ValueError:
+        pass
 gc_boundary = boundary.workload_variant(workload, False)
 assert instrumented_boundary.count('generateHeapSnapshotForDebugging') == 1
 assert 'generateHeapSnapshotForDebugging' not in gc_boundary
