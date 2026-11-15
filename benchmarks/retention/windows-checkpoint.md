@@ -363,6 +363,19 @@ not the unchanged native benchmark or qualified production AOT.
 The source artifact has a 30-day retention period; remove or replace this
 temporary artifact-dependent control before merging once its investigation ends.
 
+[Windows run 43772222388](https://github.com/0xPlayerOne/bun-native/actions/runs/43772222388)
+completed all five sets with valid reports. In the unpinned fixture, both
+collection methods had zero survivors in all five development trials and at
+least one survivor in all five source-built compiled trials. Normal collection
+retained `[298,299]`, `[299]`, `[299]`, `[298,299]`, `[298,299]`; snapshot
+collection retained `[298,299]` in every trial. Both pinned controls detected
+their pinned render root in all trials and both modes. Each snapshot survivor
+had a recorded path from a conductor-stack-tagged root in that snapshot's own
+collection. These matched observations do not prove equivalence: the compiled
+source shapes and collection instrumentation differ, and the source-built
+runtime retains JIT. They do not establish an original production-AOT root,
+identify stale stack slots, or rule out additional retaining sources.
+
 The opt-in `diagnostic:windows-origin-ranges` source-build control layers
 `webkit-conservative-origin-experiment.patch` on the existing snapshot patch.
 It classifies root-array entries from the conductor's register-state range,
