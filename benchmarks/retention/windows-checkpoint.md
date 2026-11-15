@@ -275,7 +275,7 @@ On [Windows run 43631326492](https://github.com/0xPlayerOne/bun-native/actions/r
 all five baseline and five clear trials in each mode observed survivors at the
 unchanged final checkpoint. The deliberately pinned root was observed in all
 five trials in each mode. The [retained plan](raw/windows-cycle-2026-11-14-plan.json.txt)
-and [per-trial results](raw/windows-cycle-2026-11-14-results.json.txt) preserve
+and [per-trial results](raw/windows-cycle-2026-11-14-results.json.gz) preserve
 the source hashes, indexes and cleanup counts; the linked CI artifact contains
 full reports and source variants. Clearing this local did not remove the symptom
 in this cohort, and the result does not identify a retaining root or qualify the
@@ -298,7 +298,13 @@ all five trials per mode: `[3,4,5]` in development and `[298,299]` in AOT.
 Both pinned positive controls were detected in every trial. The omitted first
 list is empty by construction and is not a collection observation. The
 [plan](raw/windows-first-observation-2026-11-14-plan.json.txt) and
-[per-trial results](raw/windows-first-observation-2026-11-14-results.json.txt)
+[per-trial results](raw/windows-first-observation-2026-11-14-results.json.gz)
 retain source identities, indices and cleanup counts. Omitting the first
 observation did not remove the symptom in this cohort; it does not identify a
 retaining root or qualify the original native benchmark.
+
+The result files use deterministic gzip. Read them with `gzip -dc <file>`;
+the decompressed SHA-256 values are
+`2970b0087d768a127709788e790056a305cf93d5888b4192e2c8558fe8edccd8`
+(cycle) and `32d750fa079a0773c4ffeab6d649d923d7ebd49646dc753c98840d27355cbaf4`
+(first observation).
