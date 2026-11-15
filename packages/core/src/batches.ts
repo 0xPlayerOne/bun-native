@@ -5,7 +5,7 @@ import { NativeStateError, type NativeBatch } from './types.ts'
 
 /** One caller's batch callback, queued behind the transaction in flight. */
 export interface BatchEntry {
-  update: ((batch: NativeBatch) => unknown) | undefined
+  readonly update: (batch: NativeBatch) => unknown
   resolve(value: unknown): void
   reject(error: unknown): void
 }
@@ -48,7 +48,6 @@ function build(window: BatchWindow, entry: BatchEntry, base: Transaction | undef
   let transaction: Transaction | undefined
   try {
     transaction = base ? base.next() : window.transaction()
-    if (!entry.update) throw new Error('Batch callback was already consumed')
     const value = entry.update(transaction)
     if (isThenable(value)) {
       // Reject the async contract while consuming a later rejection from
@@ -63,7 +62,6 @@ function build(window: BatchWindow, entry: BatchEntry, base: Transaction | undef
   } catch (error) {
     return { entry, failed: true, error }
   } finally {
-    entry.update = undefined
     transaction?.finish()
   }
 }
