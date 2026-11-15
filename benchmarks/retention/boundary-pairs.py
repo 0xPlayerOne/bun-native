@@ -25,6 +25,18 @@ def run(command, **kwargs):
     return subprocess.run(command, check=True, timeout=300, **kwargs)
 
 
+def capture_variant(source, clear):
+    marker = "await this.commit(snapshot(this.root));"
+    if source.count(marker) != 1:
+        raise ValueError("Expected exactly one renderer capture site")
+    cleanup = " completedCapture.clear();" if clear else ""
+    replacement = (
+        "const completedCapture = snapshot(this.root); "
+        "try { await this.commit(completedCapture); } finally {" + cleanup + " }"
+    )
+    return source.replace(marker, replacement)
+
+
 def main():
     if len(sys.argv) not in (5, 6):
         raise ValueError(
@@ -43,6 +55,8 @@ def main():
         variants = ("baseline-gc", "baseline-snapshot", "pin-gc", "pin-snapshot")
     elif experiment == "wrapper-release":
         variants = ("baseline-gc", "release-gc", "pin-gc", "pinrelease-gc")
+    elif experiment == "capture-release":
+        variants = ("baseline-gc", "clear-gc", "pin-gc", "pinclear-gc")
     else:
         raise ValueError("Unknown boundary experiment")
     plan = {
@@ -99,6 +113,13 @@ def main():
             for path in reversed(created):
                 path.unlink()
         module = output / variant / "application.js"
+        if experiment == "capture-release":
+            original = module.read_text(encoding="utf-8")
+            module.write_text(
+                capture_variant(original, pin in ("clear", "pinclear")),
+                encoding="utf-8",
+                newline="\n",
+            )
         binary = output / f"{variant}.exe"
         with (output / f"{variant}-compile.log").open("wb") as log:
             run(

@@ -82,6 +82,19 @@ workload = pathlib.Path('benchmarks/solid/workload.ts').read_text()
 spec = importlib.util.spec_from_file_location('boundary', 'benchmarks/retention/boundary-snapshot-control.py')
 boundary = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(boundary)
+spec = importlib.util.spec_from_file_location('pairs', 'benchmarks/retention/boundary-pairs.py')
+pairs = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(pairs)
+marker = 'await this.commit(snapshot(this.root));'
+baseline_capture = pairs.capture_variant(marker, False)
+clear_capture = pairs.capture_variant(marker, True)
+assert baseline_capture.replace('finally { }', 'finally { completedCapture.clear(); }') == clear_capture
+for invalid in ('missing', marker + marker):
+    try:
+        pairs.capture_variant(invalid, True)
+        raise AssertionError('invalid renderer capture marker accepted')
+    except ValueError:
+        pass
 instrumented_boundary = boundary.workload_variant(workload)
 gc_boundary = boundary.workload_variant(workload, False)
 assert instrumented_boundary.count('generateHeapSnapshotForDebugging') == 1

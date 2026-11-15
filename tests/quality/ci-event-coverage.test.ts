@@ -170,6 +170,7 @@ test('Windows runtime source build is limited to its explicit label and exact Bu
   const pairs = workflow.jobs['boundary-pairs']!
   expect(pairs.if).toContain("github.event.label.name == 'diagnostic:windows-boundary-pairs'")
   expect(pairs.if).toContain("github.event.label.name == 'diagnostic:windows-wrapper-release'")
+  expect(pairs.if).toContain("github.event.label.name == 'diagnostic:windows-capture-release'")
   expect(pairs.if).toContain('github.event.pull_request.draft == false')
   const reused = pairs.steps.find(
     (step) => step.name === 'Download the identified diagnostic runtime'
