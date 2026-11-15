@@ -365,31 +365,56 @@ async function main() {
     assert.equal(scale, 1, 'Stream control requires a one-to-one capture scale')
     assert(streamRegion.every(Number.isSafeInteger), 'Stream region must use integral coordinates')
     result['streamGuardAttempts'] = streamGuardAttempts
-    const guard = await awaitUnobstructedStream(
-      performance.now() + 3000,
-      () => helperCall(streamGuardRequest),
-      streamGuardAttempts
-    )
-    result['streamGuardBefore'] = guard
-    assert.equal(guard.status, 'ready')
-    assert.equal(guard.visibleRegionVerified, true, 'Stream label region is obstructed')
-    streamBefore = guard
-    streamChild = Bun.spawn(
-      [
-        streamHelper,
-        String(state.host.pid),
-        String(windowId),
-        ...streamRegion.map(String),
-        streamReadyPath,
-        streamChangedPath,
-        streamArmPath,
-      ],
-      {
-        stdout: Bun.file(join(output, 'stream.stdout.log')),
-        stderr: Bun.file(join(output, 'stream.stderr.log')),
-        env: childEnv,
+    const startStream = () =>
+      Bun.spawn(
+        [
+          streamHelper,
+          String(state.host.pid),
+          String(windowId),
+          ...streamRegion.map(String),
+          streamReadyPath,
+          streamChangedPath,
+          streamArmPath,
+        ],
+        {
+          stdout: Bun.file(join(output, 'stream.stdout.log')),
+          stderr: Bun.file(join(output, 'stream.stderr.log')),
+          env: childEnv,
+        }
+      )
+    try {
+      const guard = await awaitUnobstructedStream(
+        performance.now() + 3000,
+        () => helperCall(streamGuardRequest),
+        streamGuardAttempts
+      )
+      result['streamGuardBefore'] = guard
+      assert.equal(guard.status, 'ready')
+      assert.equal(guard.visibleRegionVerified, true, 'Stream label region is obstructed')
+      streamBefore = guard
+    } catch (error) {
+      if (error instanceof Error && error.message === 'Stream label region is obstructed') {
+        // Observe the static label only. The failed guard is still fatal and no
+        // input is posted, even if both streams happen to match at one instant.
+        try {
+          streamChild = startStream()
+          const diagnostic = await waitForStreamFile(streamReadyPath, streamChild)
+          result['obstructedStreamDiagnostic'] = {
+            ready: diagnostic,
+            screenshotSha256: hashCaptureRegion(second.png, region),
+            scope: 'Static observation only; the obstruction guard failed and no input was posted',
+          }
+        } catch (diagnosticError) {
+          result['obstructedStreamDiagnostic'] = {
+            error:
+              diagnosticError instanceof Error ? diagnosticError.message : String(diagnosticError),
+            scope: 'Static observation only; the obstruction guard failed and no input was posted',
+          }
+        }
       }
-    )
+      throw error
+    }
+    streamChild = startStream()
     streamReady = await waitForStreamFile(streamReadyPath, streamChild)
   }
   result['stage'] = 'click'
