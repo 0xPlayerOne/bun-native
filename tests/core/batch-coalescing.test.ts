@@ -124,6 +124,52 @@ const OPERATION_BYTES = (() => {
 const native = (message: string) => new NativeCommandError('invalid_state', 1, message)
 
 describe('coalesced batch groups', () => {
+  test('releases an executed callback before native acknowledgement and keeps its result', async () => {
+    const target = window()
+    let acknowledge!: () => void
+    const gate = new Promise<void>((resolve) => (acknowledge = resolve))
+    const apply = target.apply.bind(target)
+    target.apply = async (transactions) => {
+      await gate
+      await apply(transactions)
+    }
+    const outcomes: Outcome[] = []
+    const entry: BatchEntry = {
+      update: function (this: BatchEntry, batch) {
+        expect(this).toBe(entry)
+        label(target, 'retained only until build')(batch)
+        return 'result'
+      },
+      resolve: (value) => outcomes.push({ index: 0, value }),
+      reject: (error) => outcomes.push({ index: 0, error }),
+    }
+    const pending = runBatches(target, [entry], target.limits)
+    expect(entry.update).toBeUndefined()
+    expect(outcomes).toEqual([])
+    acknowledge()
+    const release = await pending
+    expect(outcomes).toEqual([])
+    release()
+    expect(outcomes).toEqual([{ index: 0, value: 'result' }])
+  })
+
+  test('releases a callback that throws while preserving its rejection', async () => {
+    const target = window()
+    const failure = new Error('update failed')
+    const outcomes: Outcome[] = []
+    const entry: BatchEntry = {
+      update: () => {
+        throw failure
+      },
+      resolve: (value) => outcomes.push({ index: 0, value }),
+      reject: (error) => outcomes.push({ index: 0, error }),
+    }
+    const release = await runBatches(target, [entry], target.limits)
+    expect(entry.update).toBeUndefined()
+    release()
+    expect(outcomes).toEqual([{ index: 0, error: failure }])
+  })
+
   test('callbacks run in order over the candidate before them and share one native batch', async () => {
     const target = window()
     let first: NativeNode<'text'> | undefined
