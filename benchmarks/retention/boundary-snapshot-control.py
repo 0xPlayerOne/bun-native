@@ -85,6 +85,20 @@ def entry_variant(source, pin):
     return source
 
 
+def release_wrapper_callbacks(source):
+    """Diagnostic intervention after acknowledged disposal and final inspection."""
+    return replace_once(
+        source,
+        "        return view.probes\n",
+        "        const savedProbes = view.probes\n"
+        "        view.update = undefined!\n"
+        "        view.rotate = undefined!\n"
+        "        view.dispose = undefined!\n"
+        "        view.inspect = undefined!\n"
+        "        return savedProbes\n",
+    )
+
+
 def main():
     if len(sys.argv) not in (3, 4) or sys.argv[1] not in ("baseline", "pin"):
         raise ValueError(

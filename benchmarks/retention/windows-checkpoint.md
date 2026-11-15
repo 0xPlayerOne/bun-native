@@ -376,6 +376,16 @@ source shapes and collection instrumentation differ, and the source-built
 runtime retains JIT. They do not establish an original production-AOT root,
 identify stale stack slots, or rule out additional retaining sources.
 
+The separate `diagnostic:windows-wrapper-release` control tests a narrower
+ownership hypothesis suggested by the snapshot paths. After each view is
+disposed and its final state has been inspected, the `release` variant clears
+the benchmark wrapper's update, rotate, dispose and inspect callbacks. Baseline
+and release variants use the same normal collection and early probe inspection;
+matching pinned variants hold the actual render root globally as positive
+controls. Five alternating sets retain all results. Clearing these wrapper
+callbacks changes fixture behavior and compiler liveness, so any difference is
+a diagnostic lead rather than proof about the unmodified native benchmark.
+
 The opt-in `diagnostic:windows-origin-ranges` source-build control layers
 `webkit-conservative-origin-experiment.patch` on the existing snapshot patch.
 It classifies root-array entries from the conductor's register-state range,

@@ -94,6 +94,18 @@ assert instrumented_boundary.index('const stillReachable =') < instrumented_boun
 assert instrumented_boundary.index('const boundaryTargets =') < instrumented_boundary.index('await Bun.sleep(1)\n      Bun.gc(true)\n      const firstReachable')
 assert '__boundaryPin = view' in boundary.entry_variant(fixture, True)
 assert '__boundaryPin' not in boundary.entry_variant(fixture, False)
+released = boundary.release_wrapper_callbacks(gc_boundary)
+assert "assert.equal(stillReachable.length, 0" in released
+for name in ('update', 'rotate', 'dispose', 'inspect'):
+    assert 'view.' + name + ' = undefined!' in released
+assert released.index('const state = view.inspect()') < released.index('view.inspect = undefined!')
+assert released.index('assert.equal(state.unexpectedClicks, 0)') < released.index('view.dispose = undefined!')
+for invalid in ('missing marker', gc_boundary + gc_boundary):
+    try:
+        boundary.release_wrapper_callbacks(invalid)
+        raise AssertionError('invalid wrapper marker accepted')
+    except ValueError:
+        pass
 for function, original in ((boundary.workload_variant, workload), (lambda value: boundary.entry_variant(value, False), fixture)):
     for invalid in ('missing marker', original + original):
         try:

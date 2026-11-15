@@ -26,8 +26,10 @@ def run(command, **kwargs):
 
 
 def main():
-    if len(sys.argv) != 5:
-        raise ValueError("Expected runtime, peer, output, trials")
+    if len(sys.argv) not in (5, 6):
+        raise ValueError(
+            "Expected runtime, peer, output, trials and optional experiment"
+        )
     runtime, peer, output = (Path(value).resolve() for value in sys.argv[1:4])
     trials = int(sys.argv[4])
     if not 1 <= trials <= 10:
@@ -36,11 +38,18 @@ def main():
     source_dir = Path("benchmarks/solid").resolve()
     entry = source_dir / ".retention-boundary-react.tsx"
     workload = source_dir / ".retention-boundary-workload.ts"
-    variants = ("baseline-gc", "baseline-snapshot", "pin-gc", "pin-snapshot")
+    experiment = sys.argv[5] if len(sys.argv) == 6 else "collection"
+    if experiment == "collection":
+        variants = ("baseline-gc", "baseline-snapshot", "pin-gc", "pin-snapshot")
+    elif experiment == "wrapper-release":
+        variants = ("baseline-gc", "release-gc", "pin-gc", "pinrelease-gc")
+    else:
+        raise ValueError("Unknown boundary experiment")
     plan = {
         "runtimeSha256": sha(runtime),
         "peerSha256": sha(peer),
         "trials": trials,
+        "experiment": experiment,
         "variants": variants,
         "ordering": "forward on even trials; reverse on odd trials",
         "scope": "Instrumented headless fixture; source-built compiled mode retains JIT and is not release AOT.",
@@ -63,8 +72,11 @@ def main():
                 (source_dir / "workload.ts").read_text(encoding="utf-8"),
                 mode == "snapshot",
             )
+            if pin in ("release", "pinrelease"):
+                workload_text = generator.release_wrapper_callbacks(workload_text)
             entry_text = generator.entry_variant(
-                (source_dir / "react.tsx").read_text(encoding="utf-8"), pin == "pin"
+                (source_dir / "react.tsx").read_text(encoding="utf-8"),
+                pin.startswith("pin"),
             )
             for path, contents in ((workload, workload_text), (entry, entry_text)):
                 with path.open("x", encoding="utf-8", newline="\n") as target:
@@ -150,7 +162,7 @@ def main():
                 valid = valid and sorted(
                     target["index"] for target in targets
                 ) == sorted(observed)
-                if variant.startswith("pin-"):
+                if variant.startswith("pin"):
                     valid = valid and (3 if mode == "development" else 297) in observed
                 if variant.endswith("snapshot"):
                     prefix = child_dir / f"00-{mode}.json"
