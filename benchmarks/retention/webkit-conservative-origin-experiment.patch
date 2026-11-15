@@ -1,0 +1,150 @@
+--- a/Source/JavaScriptCore/heap/ConservativeRoots.h
++++ b/Source/JavaScriptCore/heap/ConservativeRoots.h
+@@ -87,6 +87,24 @@
+     size_t size() const;
+     HeapCell** roots() const;
+ 
++    // Diagnostic-only root-array ranges; never record scanned words or addresses.
++    enum class Origin : uint8_t { Unclassified, ConductorRegisters, ConductorStack, OtherThreadCopy };
++    void recordOrigin(Origin origin, size_t begin, size_t end)
++    {
++        ASSERT(origin != Origin::Unclassified);
++        ASSERT(begin <= end && end <= m_size);
++        m_originRanges[static_cast<unsigned>(origin) - 1] = { begin, end };
++    }
++    Origin originAt(size_t index) const
++    {
++        ASSERT(index < m_size);
++        for (unsigned i = 0; i < 3; ++i) {
++            if (index >= m_originRanges[i].begin && index < m_originRanges[i].end)
++                return static_cast<Origin>(i + 1);
++        }
++        return Origin::Unclassified;
++    }
++
+ private:
+     static constexpr size_t inlineCapacity = 2048;
+     
+@@ -100,6 +118,8 @@
+     
+     void grow();
+ 
++    struct OriginRange { size_t begin { 0 }; size_t end { 0 }; };
++    OriginRange m_originRanges[3];
+     HeapCell** m_roots;
+     size_t m_size;
+     size_t m_capacity;
+--- a/Source/JavaScriptCore/heap/HeapAnalyzer.h
++++ b/Source/JavaScriptCore/heap/HeapAnalyzer.h
+@@ -43,6 +43,7 @@
+ 
+     // A reference from one cell to another.
+     virtual void analyzeEdge(JSCell* from, JSCell* to, RootMarkReason) = 0;
++    virtual void analyzeConservativeOrigin(JSCell*, uint8_t) { }
+     virtual void analyzePropertyNameEdge(JSCell* from, JSCell* to, UniquedStringImpl* propertyName) = 0;
+     virtual void analyzeVariableNameEdge(JSCell* from, JSCell* to, UniquedStringImpl* variableName) = 0;
+     virtual void analyzeIndexEdge(JSCell* from, JSCell* to, uint32_t index) = 0;
+--- a/Source/JavaScriptCore/heap/HeapSnapshotBuilder.cpp
++++ b/Source/JavaScriptCore/heap/HeapSnapshotBuilder.cpp
+@@ -131,6 +131,15 @@
+     m_edges.append(HeapSnapshotEdge(from, to));
+ }
+ 
++void HeapSnapshotBuilder::analyzeConservativeOrigin(JSCell* cell, uint8_t mask)
++{
++    if (m_snapshotType != SnapshotType::GCDebuggingSnapshot)
++        return;
++    Locker locker { m_buildingEdgeMutex };
++    auto& root = m_rootData.ensure(cell, [] () -> RootData { return { }; }).iterator->value;
++    root.conservativeOriginMask |= mask;
++}
++
+ void HeapSnapshotBuilder::analyzePropertyNameEdge(JSCell* from, JSCell* to, UniquedStringImpl* propertyName)
+ {
+     ASSERT(m_profiler.activeHeapAnalyzer() == this);
+@@ -653,6 +662,23 @@
+             out.print(snapshotNode.value().identifier);
+         }
+         out.print(']');
++
++        // Flat pairs of snapshot node IDs and origin masks. No scanned words or
++        // slot addresses are exported. A cell may have multiple origins.
++        out.print(",\"conservativeOrigins\":["_s);
++        bool firstOrigin = true;
++        for (auto it : m_rootData) {
++            if (!it.value.conservativeOriginMask)
++                continue;
++            auto snapshotNode = snapshot->nodeForCell(it.key);
++            if (!snapshotNode)
++                continue;
++            if (!firstOrigin)
++                out.print(',');
++            firstOrigin = false;
++            out.print(snapshotNode.value().identifier, ',', static_cast<unsigned>(it.value.conservativeOriginMask));
++        }
++        out.print(']');
+     }
+ 
+     if (m_snapshotType == SnapshotType::GCDebuggingSnapshot) {
+--- a/Source/JavaScriptCore/heap/HeapSnapshotBuilder.h
++++ b/Source/JavaScriptCore/heap/HeapSnapshotBuilder.h
+@@ -121,6 +121,7 @@
+ 
+     // A reference from one cell to another.
+     void analyzeEdge(JSCell* from, JSCell* to, RootMarkReason) final;
++    void analyzeConservativeOrigin(JSCell*, uint8_t) final;
+     void analyzePropertyNameEdge(JSCell* from, JSCell* to, UniquedStringImpl* propertyName) final;
+     void analyzeVariableNameEdge(JSCell* from, JSCell* to, UniquedStringImpl* variableName) final;
+     void analyzeIndexEdge(JSCell* from, JSCell* to, uint32_t index) final;
+@@ -161,6 +162,7 @@
+         ASCIILiteral reachabilityFromOpaqueRootReasons;
+         RootMarkReason markReason { RootMarkReason::None };
+         bool sawConservativeScan { false };
++        uint8_t conservativeOriginMask { 0 };
+     };
+ 
+     HeapProfiler& m_profiler;
+--- a/Source/JavaScriptCore/heap/MachineStackMarker.cpp
++++ b/Source/JavaScriptCore/heap/MachineStackMarker.cpp
+@@ -47,10 +47,14 @@
+     if (conductingMutatorState.registerState) {
+         void* registersBegin = conductingMutatorState.registerState;
+         void* registersEnd = reinterpret_cast<void*>(roundUpToMultipleOf<sizeof(void*)>(reinterpret_cast<uintptr_t>(conductingMutatorState.registerState + 1)));
++        size_t first = conservativeRoots.size();
+         conservativeRoots.add(registersBegin, registersEnd, jitStubRoutines, codeBlocks);
+-    }
+-
++        conservativeRoots.recordOrigin(ConservativeRoots::Origin::ConductorRegisters, first, conservativeRoots.size());
++    }
++
++    size_t first = conservativeRoots.size();
+     conservativeRoots.add(conductingMutatorState.stackTop, conductingMutatorState.stackOrigin, jitStubRoutines, codeBlocks);
++    conservativeRoots.recordOrigin(ConservativeRoots::Origin::ConductorStack, first, conservativeRoots.size());
+ }
+ 
+ static inline int LEGACY_NODELETE osRedZoneAdjustment()
+@@ -239,7 +243,9 @@
+     if (!buffer)
+         return;
+ 
++    size_t first = conservativeRoots.size();
+     conservativeRoots.add(buffer, static_cast<char*>(buffer) + size, jitStubRoutines, codeBlocks);
++    conservativeRoots.recordOrigin(ConservativeRoots::Origin::OtherThreadCopy, first, conservativeRoots.size());
+     fastFree(buffer);
+ }
+ 
+--- a/Source/JavaScriptCore/heap/SlotVisitor.cpp
++++ b/Source/JavaScriptCore/heap/SlotVisitor.cpp
+@@ -145,8 +145,11 @@
+         appendJSCellOrAuxiliary(root);
+         if (m_isAnalyzingHeap && root && isJSCellKind(root->cellKind())) {
+             JSCell* cell = static_cast<JSCell*>(root);
+-            if (HeapAnalyzer* analyzer = cell->vm().activeHeapAnalyzer())
++            if (HeapAnalyzer* analyzer = cell->vm().activeHeapAnalyzer()) {
+                 analyzer->analyzeEdge(nullptr, cell, RootMarkReason::ConservativeScan);
++                auto origin = conservativeRoots.originAt(i);
++                analyzer->analyzeConservativeOrigin(cell, static_cast<uint8_t>(1u << static_cast<unsigned>(origin)));
++            }
+         }
+     }
+ }

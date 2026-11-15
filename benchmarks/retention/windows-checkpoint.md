@@ -308,3 +308,29 @@ the decompressed SHA-256 values are
 `2970b0087d768a127709788e790056a305cf93d5888b4192e2c8558fe8edccd8`
 (cycle) and `32d750fa079a0773c4ffeab6d649d923d7ebd49646dc753c98840d27355cbaf4`
 (first observation).
+
+## Experimental scan-range attribution
+
+The opt-in `diagnostic:windows-origin-ranges` source-build control layers
+`webkit-conservative-origin-experiment.patch` on the existing snapshot patch.
+It classifies root-array entries from the conductor's register-state range,
+conductor stack range, and combined copied other-thread ranges. Roots gathered
+elsewhere, including VM, optional C-loop and pinball sources, are unclassified.
+A copied range combines stacks and register state and cannot identify an
+original thread or slot. The patch does not deliberately alter marking, but
+instrumentation can perturb the collection and its roots.
+It exports only snapshot node IDs and origin masks: bit 1 is unclassified, bit
+2 is conductor register state, bit 4 is conductor stack, and bit 8 is copied
+other-thread state. A node can have multiple bits. Scanned words and slot
+addresses are not exported.
+
+The control requires unpatched Bun to reject missing metadata and requires
+both source-built development and compiled-but-JIT-containing processes to
+observe a deliberately pinned native stack value in a stack or copied-thread
+range. It validates complete node-ID/mask metadata, preserves the existing
+snapshot and retention controls, and requires both same-job and next-task
+origin reports for every available retained-target report. Its heap snapshots
+use the existing environment allowlist. These are later instrumented
+collections; they do not prove the root at the original checkpoint, and the
+source-built executable is not qualified production AOT. A hosted run is
+required before claiming that this instrumentation or its controls work.

@@ -6,6 +6,7 @@ import { gunzipSync } from 'bun'
 import {
   analyzeSnapshot,
   cellAddress,
+  conservativeOriginMasks,
   normalizeAddress,
   rootReasonCounts,
   writeRetentionEvidence,
@@ -147,6 +148,47 @@ test('experimental conservative paths are searched independently of ordinary roo
   expect(() =>
     analyzeSnapshot({ ...snapshot(), conservativeRoots: [1, 1] }, [], 'experimental-conservative')
   ).toThrow('Invalid')
+})
+
+test('conservative origin masks are complete, validated and preserved on paths', () => {
+  const experiment: DebugSnapshot = {
+    ...snapshot(),
+    conservativeRoots: [6, 4],
+    conservativeOrigins: [6, 12, 4, 3],
+  }
+  expect([...conservativeOriginMasks(experiment)]).toEqual([
+    [6, 12],
+    [4, 3],
+  ])
+  const [held, direct] = analyzeSnapshot(
+    experiment,
+    [
+      { index: 3, kind: 'render root', address: '0x30', description: '' },
+      { index: 4, kind: 'direct root', address: '0x40', description: '' },
+    ],
+    'experimental-conservative'
+  )
+  if (!held?.presentInSnapshot) throw new Error('target missing')
+  expect(held.pathsFromRoots[0]![0]!.rootReasons).toEqual([
+    'ExperimentalConservativeScan',
+    'ConductorStack',
+    'CopiedOtherThreads',
+  ])
+  if (!direct?.presentInSnapshot) throw new Error('direct root missing')
+  expect(direct.pathsFromRoots[0]![0]!.rootReasons).toEqual([
+    'ExperimentalConservativeScan',
+    'UnclassifiedRange',
+    'ConductorRegisterState',
+  ])
+  expect(() => conservativeOriginMasks(snapshot())).toThrow('missing')
+  for (const origins of [
+    [6, 12],
+    [6, 0, 4, 3],
+    [6, 16, 4, 3],
+    [6, 12, 6, 3],
+    [6, 12, 9, 3],
+  ])
+    expect(() => conservativeOriginMasks({ ...experiment, conservativeOrigins: origins })).toThrow()
 })
 
 class RetentionEvidenceTarget {

@@ -92,7 +92,9 @@ test('Windows runtime source build is limited to its explicit label and exact Bu
       string,
       {
         if: string
+        env?: Record<string, string>
         steps: {
+          name?: string
           if?: string
           with?: Record<string, string>
           env?: Record<string, string>
@@ -110,6 +112,8 @@ test('Windows runtime source build is limited to its explicit label and exact Bu
   expect(job.if).toContain("github.event.label.name == 'diagnostic:windows-runtime'")
   expect(job.if).toContain("github.event.label.name == 'diagnostic:windows-zero-registers'")
   expect(job.if).toContain("github.event.label.name == 'diagnostic:windows-snapshot-roots'")
+  expect(job.if).toContain("github.event.label.name == 'diagnostic:windows-origin-ranges'")
+  expect(job.env?.BUN_NATIVE_DIAG_SNAPSHOT_SAFE).toContain('diagnostic:windows-origin-ranges')
   expect(job.if).toContain('github.event.pull_request.draft == false')
   expect(job.steps.find((step) => step.with?.repository === 'oven-sh/bun')?.with?.ref).toBe(
     pin.bun.revision
@@ -128,9 +132,32 @@ test('Windows runtime source build is limited to its explicit label and exact Bu
   const snapshotRoots = job.steps.find((step) =>
     step.run?.includes('webkit-conservative-snapshot-experiment.patch')
   )!
-  expect(snapshotRoots.if).toBe("github.event.label.name == 'diagnostic:windows-snapshot-roots'")
+  expect(snapshotRoots.if).toContain(
+    "github.event.label.name == 'diagnostic:windows-snapshot-roots'"
+  )
+  expect(snapshotRoots.if).toContain(
+    "github.event.label.name == 'diagnostic:windows-origin-ranges'"
+  )
   expect(snapshotRoots.run).toContain('git -C $webkit apply --check $patch')
   expect(snapshotRoots.run).toContain('not production AOT')
+  const originRanges = job.steps.find((step) =>
+    step.run?.includes('webkit-conservative-origin-experiment.patch')
+  )!
+  expect(originRanges.if).toBe("github.event.label.name == 'diagnostic:windows-origin-ranges'")
+  expect(originRanges.run).toContain('git -C $webkit apply --check $patch')
+  expect(originRanges.run).toContain('no stack contents or slot addresses')
+  expect(job.steps.indexOf(originRanges)).toBeGreaterThan(job.steps.indexOf(snapshotRoots))
+  const originControl = job.steps.find(
+    (step) => step.name === 'Verify native stack origin control'
+  )!
+  expect(originControl.if).toBe("github.event.label.name == 'diagnostic:windows-origin-ranges'")
+  expect(originControl.run).toContain('snapshot_safe_run.py')
+  expect(originControl.run).toContain('Unpatched origin control did not reject missing metadata')
+  expect(originControl.run).toContain("@('development', 'compiled-untrimmed')")
+  const originReports = job.steps.find((step) => step.name === 'Verify next-task origin reports')!
+  expect(originReports.if).toBe("github.event.label.name == 'diagnostic:windows-origin-ranges'")
+  expect(originReports.run).toContain('originCounts.sameJob')
+  expect(originReports.run).toContain('originCounts.nextTask')
   for (const repository of ['oven-sh/bun', 'oven-sh/WebKit']) {
     const checkout = job.steps.find((step) => step.with?.repository === repository)
     expect(checkout?.env?.GIT_CONFIG_KEY_0).toBe('core.autocrlf')

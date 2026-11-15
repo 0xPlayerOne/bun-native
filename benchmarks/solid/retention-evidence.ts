@@ -21,6 +21,8 @@ export type DebugSnapshot = {
   labels: string[]
   /** Present only in the opt-in source-built collector experiment. */
   conservativeRoots?: number[]
+  /** Flat node-ID/mask pairs; present only in the scan-range experiment. */
+  conservativeOrigins?: number[]
 }
 export type Target = { index: number; kind: string; address: string; description: string }
 type PathStep = {
@@ -69,6 +71,34 @@ function edgeName(snapshot: DebugSnapshot, type: string, data: number) {
   return snapshot.edgeNames[data] ?? `#${data}`
 }
 
+/** Validate the diagnostic's complete, bounded origin metadata. */
+export function conservativeOriginMasks(snapshot: DebugSnapshot): ReadonlyMap<number, number> {
+  const roots = snapshot.conservativeRoots
+  const origins = snapshot.conservativeOrigins
+  if (!Array.isArray(roots) || !Array.isArray(origins))
+    throw new Error('Experimental conservative origin metadata is missing')
+  if (origins.length !== roots.length * 2)
+    throw new Error('Incomplete conservative origin metadata')
+  const expected = new Set(roots)
+  if (expected.size !== roots.length) throw new Error('Duplicate conservative root')
+  const result = new Map<number, number>()
+  for (let i = 0; i < origins.length; i += 2) {
+    const id = origins[i]!
+    const mask = origins[i + 1]!
+    if (
+      !Number.isSafeInteger(id) ||
+      !expected.has(id) ||
+      result.has(id) ||
+      !Number.isInteger(mask) ||
+      mask < 1 ||
+      mask > 15
+    )
+      throw new Error('Invalid conservative origin metadata')
+    result.set(id, mask)
+  }
+  return result
+}
+
 /** Shortest strong retaining paths from GC roots to each target cell. */
 export function analyzeSnapshot(
   snapshot: DebugSnapshot,
@@ -103,12 +133,20 @@ export function analyzeSnapshot(
   } else {
     if (!Array.isArray(snapshot.conservativeRoots))
       throw new Error('Experimental conservative roots are missing')
+    const origins =
+      snapshot.conservativeOrigins === undefined ? undefined : conservativeOriginMasks(snapshot)
     const seen = new Set<number>()
     for (const id of snapshot.conservativeRoots) {
       if (!Number.isSafeInteger(id) || !position.has(id) || seen.has(id))
         throw new Error('Invalid experimental conservative root')
       seen.add(id)
-      rootReasons.set(id, ['ExperimentalConservativeScan'])
+      const reasons = ['ExperimentalConservativeScan']
+      const mask = origins?.get(id) ?? 0
+      if (mask & 1) reasons.push('UnclassifiedRange')
+      if (mask & 2) reasons.push('ConductorRegisterState')
+      if (mask & 4) reasons.push('ConductorStack')
+      if (mask & 8) reasons.push('CopiedOtherThreads')
+      rootReasons.set(id, reasons)
     }
   }
   const incoming = new Map<number, number[]>()
@@ -298,10 +336,20 @@ export async function writeRetentionEvidence(input: RetentionEvidenceInput) {
     // Run this additional graph search only after both snapshots were taken,
     // so its allocations do not occur between the two observations.
     if (sameJob.conservativeRoots !== undefined || nextTask.conservativeRoots !== undefined) {
+      const hasOrigins =
+        sameJob.conservativeOrigins !== undefined || nextTask.conservativeOrigins !== undefined
       report['experimentalConservative'] = {
         scope: 'Snapshot-only paths; missing paths and earlier checkpoints remain inconclusive',
         sameJob: analyzeSnapshot(sameJob, targets, 'experimental-conservative'),
         nextTask: analyzeSnapshot(nextTask, targets, 'experimental-conservative'),
+        ...(hasOrigins
+          ? {
+              originCounts: {
+                sameJob: conservativeOriginMasks(sameJob).size,
+                nextTask: conservativeOriginMasks(nextTask).size,
+              },
+            }
+          : {}),
       }
     }
     report['analysisMs'] = performance.now() - started
