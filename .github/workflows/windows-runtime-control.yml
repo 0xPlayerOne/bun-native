@@ -350,7 +350,7 @@ jobs:
             if ($mode -eq 'development') { python benchmarks/retention/snapshot_safe_run.py $env:LOCAL_BUN $fixture $snapshot $report *> (Join-Path $root "snapshot-control-$mode.log") }
             else { python benchmarks/retention/snapshot_safe_run.py $control $snapshot $report *> (Join-Path $root "snapshot-control-$mode.log") }
             if ($LASTEXITCODE -ne 0) { throw "Experimental $mode positive control failed" }
-            python benchmarks/retention/conservative-snapshot-analysis.py $snapshot $report (Join-Path $root "snapshot-control-$mode-analysis.json")
+            bun benchmarks/retention/conservative-snapshot-analysis.ts $snapshot $report (Join-Path $root "snapshot-control-$mode-analysis.json")
             if ($LASTEXITCODE -ne 0) { throw "Experimental $mode analysis failed" }
           }
       - name: Run alternating development controls with common reference AOT
@@ -398,7 +398,7 @@ jobs:
             $snapshot = "$prefix-heap.json.gz"
             $report = "$prefix.json"
             if ((Test-Path $snapshot) -and (Test-Path $report)) {
-              python benchmarks/retention/conservative-snapshot-analysis.py $snapshot $report (Join-Path $root "snapshot-retention-$trial-analysis.json")
+              bun benchmarks/retention/conservative-snapshot-analysis.ts $snapshot $report (Join-Path $root "snapshot-retention-$trial-analysis.json")
               if ($LASTEXITCODE -ne 0) { throw "Experimental snapshot $trial analysis failed" }
               $analyzed++
             }

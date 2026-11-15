@@ -19,6 +19,8 @@ export type DebugSnapshot = {
   edgeNames: string[]
   roots: number[]
   labels: string[]
+  /** Present only in the opt-in source-built collector experiment. */
+  conservativeRoots?: number[]
 }
 export type Target = { index: number; kind: string; address: string; description: string }
 type PathStep = {
@@ -68,7 +70,11 @@ function edgeName(snapshot: DebugSnapshot, type: string, data: number) {
 }
 
 /** Shortest strong retaining paths from GC roots to each target cell. */
-export function analyzeSnapshot(snapshot: DebugSnapshot, targets: readonly Target[]) {
+export function analyzeSnapshot(
+  snapshot: DebugSnapshot,
+  targets: readonly Target[],
+  rootMode: 'all' | 'experimental-conservative' = 'all'
+) {
   const position = new Map<number, number>()
   const byAddress = new Map<string, number>()
   for (let offset = 0; offset < snapshot.nodes.length; offset += NODE_FIELDS) {
@@ -86,12 +92,24 @@ export function analyzeSnapshot(snapshot: DebugSnapshot, targets: readonly Targe
     }
   }
   const rootReasons = new Map<number, string[]>()
-  for (let offset = 0; offset < snapshot.roots.length; offset += ROOT_FIELDS) {
-    const id = snapshot.roots[offset]!
-    const reason = snapshot.labels[snapshot.roots[offset + 1]!] ?? '?'
-    const reachability = snapshot.labels[snapshot.roots[offset + 2]!] ?? ''
-    const text = reachability ? `${reason}: ${reachability}` : reason
-    rootReasons.set(id, [...(rootReasons.get(id) ?? []), text])
+  if (rootMode === 'all') {
+    for (let offset = 0; offset < snapshot.roots.length; offset += ROOT_FIELDS) {
+      const id = snapshot.roots[offset]!
+      const reason = snapshot.labels[snapshot.roots[offset + 1]!] ?? '?'
+      const reachability = snapshot.labels[snapshot.roots[offset + 2]!] ?? ''
+      const text = reachability ? `${reason}: ${reachability}` : reason
+      rootReasons.set(id, [...(rootReasons.get(id) ?? []), text])
+    }
+  } else {
+    if (!Array.isArray(snapshot.conservativeRoots))
+      throw new Error('Experimental conservative roots are missing')
+    const seen = new Set<number>()
+    for (const id of snapshot.conservativeRoots) {
+      if (!Number.isSafeInteger(id) || !position.has(id) || seen.has(id))
+        throw new Error('Invalid experimental conservative root')
+      seen.add(id)
+      rootReasons.set(id, ['ExperimentalConservativeScan'])
+    }
   }
   const incoming = new Map<number, number[]>()
   for (let offset = 0; offset < snapshot.edges.length; offset += EDGE_FIELDS) {
@@ -276,6 +294,15 @@ export async function writeRetentionEvidence(input: RetentionEvidenceInput) {
       rootReasonCounts: rootReasonCounts(nextTask),
       nodeCount: nextTask.nodes.length / NODE_FIELDS,
       targets: analyzeSnapshot(nextTask, targets),
+    }
+    // Run this additional graph search only after both snapshots were taken,
+    // so its allocations do not occur between the two observations.
+    if (sameJob.conservativeRoots !== undefined || nextTask.conservativeRoots !== undefined) {
+      report['experimentalConservative'] = {
+        scope: 'Snapshot-only paths; missing paths and earlier checkpoints remain inconclusive',
+        sameJob: analyzeSnapshot(sameJob, targets, 'experimental-conservative'),
+        nextTask: analyzeSnapshot(nextTask, targets, 'experimental-conservative'),
+      }
     }
     report['analysisMs'] = performance.now() - started
   } catch (error) {

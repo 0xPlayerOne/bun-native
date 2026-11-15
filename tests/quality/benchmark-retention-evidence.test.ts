@@ -124,6 +124,31 @@ test('a target that is itself a root yields a one-step path', () => {
   expect(root.pathsFromRoots[0]![0]!.rootReasons).toEqual(['Conservative'])
 })
 
+test('experimental conservative paths are searched independently of ordinary roots', () => {
+  const experiment = { ...snapshot(), conservativeRoots: [6, 4] }
+  const [held, weakOnly] = analyzeSnapshot(
+    experiment,
+    [
+      { index: 3, kind: 'render root', address: '0x30', description: '' },
+      { index: 5, kind: 'listener', address: '0x50', description: '' },
+    ],
+    'experimental-conservative'
+  )
+  if (!held?.presentInSnapshot || !weakOnly?.presentInSnapshot) throw new Error('target missing')
+  expect(held.pathsFromRoots.map((path) => path.map((step) => step.className))).toEqual([
+    ['Unrooted', 'Target'],
+  ])
+  expect(held.pathsFromRoots[0]![0]!.rootReasons).toEqual(['ExperimentalConservativeScan'])
+  expect(weakOnly.pathsFromRoots).toEqual([])
+  expect(() => analyzeSnapshot(snapshot(), [], 'experimental-conservative')).toThrow('missing')
+  expect(() =>
+    analyzeSnapshot({ ...snapshot(), conservativeRoots: [999] }, [], 'experimental-conservative')
+  ).toThrow('Invalid')
+  expect(() =>
+    analyzeSnapshot({ ...snapshot(), conservativeRoots: [1, 1] }, [], 'experimental-conservative')
+  ).toThrow('Invalid')
+})
+
 class RetentionEvidenceTarget {
   readonly marker = 'issue-629'
 }
