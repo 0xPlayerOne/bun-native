@@ -135,6 +135,11 @@ final class Frames: NSObject, SCStreamOutput {
     let view = NSView(frame: NSRect(x: 0, y: 0, width: 320, height: 180))
     view.wantsLayer = true
     view.layer?.backgroundColor = NSColor.red.cgColor
+    let label = NSTextField(labelWithString: "Initial")
+    label.frame = NSRect(x: 12, y: 134, width: 240, height: 36)
+    label.font = NSFont.systemFont(ofSize: 18)
+    label.textColor = .white
+    view.addSubview(label)
     window.contentView = view
     window.title = "Bun Native stream diagnostic"
     window.orderFrontRegardless()
@@ -199,6 +204,7 @@ final class Frames: NSObject, SCStreamOutput {
       try await waitFor("red", frames)
       try await waitFor("red", displayFrames)
       view.layer?.backgroundColor = NSColor.blue.cgColor
+      label.stringValue = "Clicked"
       try await waitFor("blue", frames)
       try await waitFor("blue", displayFrames)
       for color in ["red", "blue"] {
@@ -207,7 +213,10 @@ final class Frames: NSObject, SCStreamOutput {
         else { throw ProbeError.message("missing pixel data for \(color)") }
         let detail = try compare(windowPixels, displayPixels)
         comparisons[color] = detail
-        guard detail["labelChangedPixels"] as? Int == 0 else {
+        guard detail["labelChangedPixels"] as? Int == 0,
+          (detail["referenceLightPixels"] as? Int ?? 0) > 10,
+          (detail["displayLightPixels"] as? Int ?? 0) > 10
+        else {
           let data = try JSONSerialization.data(withJSONObject: detail, options: [.sortedKeys])
           throw ProbeError.message(
             "label RGB pixels differ for \(color): \(String(data: data, encoding: .utf8) ?? "unavailable")"
@@ -266,6 +275,8 @@ final class Frames: NSObject, SCStreamOutput {
     let displayBytes = [UInt8](displayPixels)
     var changed = 0
     var labelChanged = 0
+    var referenceLight = 0
+    var displayLight = 0
     var minX = 320
     var minY = 180
     var maxX = -1
@@ -274,11 +285,24 @@ final class Frames: NSObject, SCStreamOutput {
     var first: [String: Any] = [:]
     for index in 0..<(320 * 180) {
       let offset = index * 3
+      let x = index % 320
+      let y = index / 320
+      let inLabel = x >= 12 && x < 252 && y >= 10 && y < 46
+      if inLabel {
+        if windowBytes[offset] > 200 && windowBytes[offset + 1] > 200
+          && windowBytes[offset + 2] > 200
+        {
+          referenceLight += 1
+        }
+        if displayBytes[offset] > 200 && displayBytes[offset + 1] > 200
+          && displayBytes[offset + 2] > 200
+        {
+          displayLight += 1
+        }
+      }
       if windowBytes[offset..<(offset + 3)] != displayBytes[offset..<(offset + 3)] {
         changed += 1
-        let x = index % 320
-        let y = index / 320
-        if x >= 12 && x < 252 && y >= 10 && y < 46 { labelChanged += 1 }
+        if inLabel { labelChanged += 1 }
         minX = min(minX, x)
         minY = min(minY, y)
         maxX = max(maxX, x)
@@ -298,6 +322,7 @@ final class Frames: NSObject, SCStreamOutput {
     let bounds: Any = changed == 0 ? NSNull() : [minX, minY, maxX, maxY]
     return [
       "changedPixels": changed, "labelChangedPixels": labelChanged,
+      "referenceLightPixels": referenceLight, "displayLightPixels": displayLight,
       "changedBounds": bounds, "maxChannelDelta": maxDelta,
       "firstDifference": first,
     ]
@@ -313,6 +338,14 @@ final class Frames: NSObject, SCStreamOutput {
       result["maxChannelDelta"] as? Int == 255,
       result["changedBounds"] as? [Int] == [0, 28, 132, 179]
     else { throw ProbeError.message("comparison self-test failed") }
+    var light = baseline
+    let lightOffset = (28 * 320 + 132) * 3
+    for channel in 0..<3 { light[lightOffset + channel] = 255 }
+    let lightResult = try compare(light, light)
+    guard lightResult["referenceLightPixels"] as? Int == 1,
+      lightResult["displayLightPixels"] as? Int == 1,
+      lightResult["labelChangedPixels"] as? Int == 0
+    else { throw ProbeError.message("light-pixel self-test failed") }
     do {
       _ = try compare(baseline, Data())
       throw ProbeError.message("comparison accepted an invalid buffer")

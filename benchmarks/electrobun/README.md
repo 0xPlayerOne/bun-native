@@ -104,9 +104,10 @@ pixel verification; the exact instant represented by the capture is unknown.
 
 The opt-in `diagnostic:macos-stream` PR label runs a separate hosted feasibility
 probe for persistent ScreenCaptureKit streams. It requires exact RGB equality
-in the benchmark's label-sized region for two known colors, reports full-frame
-differences separately, and checks a deliberately obstructed region. It does not
+in the benchmark's label-sized region for two synthetic text states and colors,
+reports full-frame differences separately, and checks a deliberately obstructed
+region. It verifies light pixels but does not recognize the words. It does not
 request screen-recording permission, inspect the user's desktop, or replace the
 display/surface checks above. A successful probe is not an input or physical-
-presentation measurement; real-window obstruction checks, clock attribution and
-A/A controls must be established independently.
+presentation measurement; real-window obstruction checks, text recognition,
+clock attribution and A/A controls must be established independently.
