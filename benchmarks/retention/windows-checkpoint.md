@@ -414,6 +414,18 @@ The experimental compiler retains JIT, and changed source shape and collection
 instrumentation prevent attributing the unchanged production AOT failure to the
 map or claiming a production improvement from this result.
 
+The `diagnostic:windows-listener-release` control clears the completed capture
+map in both variants, then compares leaving the fixture's mutable listener
+variable intact with clearing it after view disposal. Positive controls pin the
+render root. This changes the fixture and compiler liveness and is not a fix.
+[Windows run 43774077730](https://github.com/0xPlayerOne/bun-native/actions/runs/43774077730)
+completed five alternating sets with valid reports. Development trials had no
+unpinned survivors. Compiled baseline trials retained `[299]`, `[299]`,
+`[299]`, `[290,299]`, `[299]`; listener-clear trials retained `[299]`, `[299]`,
+`[299]`, `[299]`, `[]`. Both pinned variants detected their render root in all
+trials and modes. Clearing the fixture variable did not reliably remove the
+listener and does not establish the original production-AOT retaining path.
+
 The opt-in `diagnostic:windows-origin-ranges` source-build control layers
 `webkit-conservative-origin-experiment.patch` on the existing snapshot patch.
 It classifies root-array entries from the conductor's register-state range,
