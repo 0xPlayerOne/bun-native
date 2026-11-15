@@ -119,7 +119,8 @@ The label-triggered `Windows runtime build control` builds an uninstrumented
 Windows runner. A recorded build-time codegen patch passes canonicalized source
 paths relative to the source root and resolves those inputs against that root;
 temporary drive mappings shorten other paths. A separate recorded WebKit script
-patch fixes a PowerShell variable parse error. The workflow verifies source
+patch fixes a PowerShell variable parse error and selects Windows system tar.
+The workflow verifies source
 revisions and patch hashes and checks generated Windows shell command lengths
 before compilation. This is a custom build; the matching revision does not
 prove binary equivalence to the distributed runtime. It compares that runtime
@@ -180,6 +181,12 @@ then advanced beyond the earlier generator failure. It stopped at build step
 228 when PowerShell could not parse `$ICU_VERSION:` in WebKit's ICU script.
 The next control braces that variable and checks the script with PowerShell's
 parser before compiler installation. No runtime or retention result was made.
+
+The [eleventh run](https://github.com/0xPlayerOne/bun-native/actions/runs/43661301694)
+passed the script parser, but ICU extraction invoked Git's GNU `tar.exe`, which
+interpreted the mapped `X:` archive as a remote host. The revised script patch
+uses Windows system tar; an early mapped-drive archive round trip checks this
+before compiler installation. The full ICU build and runtime remain unverified.
 
 A separate paired React fixture control tests one ownership hypothesis. Both
 variants use the same async disposal wrapper; after acknowledged disposal, the

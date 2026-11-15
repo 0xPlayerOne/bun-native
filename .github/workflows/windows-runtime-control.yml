@@ -141,6 +141,24 @@ jobs:
           $errors = $null
           [void][System.Management.Automation.Language.Parser]::ParseFile((Join-Path $webkit 'build-icu.ps1'), [ref]$tokens, [ref]$errors)
           if ($errors.Count -ne 0) { $errors | ForEach-Object { Write-Host $_ }; throw 'Patched ICU script did not parse' }
+          $control = Join-Path $root 'tar-drive-control'
+          New-Item -ItemType Directory -Force -Path $control | Out-Null
+          Set-Content -NoNewline -Encoding utf8 (Join-Path $control 'input.txt') 'mapped-drive-control'
+          if (Test-Path 'X:\') { throw 'Drive X: is already in use' }
+          subst X: $control
+          if ($LASTEXITCODE -ne 0) { throw 'Could not map X: for tar control' }
+          try {
+            $tar = Join-Path $env:SystemRoot 'System32/tar.exe'
+            & $tar -czf 'X:\probe.tar.gz' -C 'X:\' 'input.txt'
+            if ($LASTEXITCODE -ne 0) { throw 'System tar could not create a mapped-drive archive' }
+            New-Item -ItemType Directory -Path 'X:\output' | Out-Null
+            & $tar -xzf 'X:\probe.tar.gz' -C 'X:\output'
+            if ($LASTEXITCODE -ne 0 -or (Get-Content 'X:\output\input.txt' -Raw) -ne 'mapped-drive-control') { throw 'System tar mapped-drive extraction failed' }
+            'System tar mapped-drive archive round trip passed' | Out-File (Join-Path $root 'tar-drive-control.txt')
+          } finally {
+            subst X: /D
+            Remove-Item -Recurse -Force $control
+          }
       - name: Verify the checked-out AOT source list bytes
         shell: pwsh
         run: |

@@ -9,3 +9,12 @@
          Remove-Item -Recurse -Force $ICU_SOURCE_DIR
      }
  }
+@@ -100,7 +100,7 @@
+     Write-Host ":: Extracting ICU"
+     # ICU tarball extracts to icu/ directory
+     $extractDir = Split-Path -Parent $OutputDir
+-    tar.exe -xzf $ICU_TARBALL -C $extractDir
++    & (Join-Path $env:SystemRoot "System32/tar.exe") -xzf $ICU_TARBALL -C $extractDir
+     if ($LASTEXITCODE -ne 0) { throw "tar failed with exit code $LASTEXITCODE" }
+     # The patch has to stay a plain diff: in a directory of a repository, git apply skips a "diff --git" one and exits with 0.
+     git -C $OutputDir apply --ignore-whitespace (Join-Path $PSScriptRoot "icu/decnum-allocation-failure.patch")
