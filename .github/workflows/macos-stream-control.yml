@@ -26,13 +26,15 @@ jobs:
         run: |
           mkdir -p "$RUNNER_TEMP/stream-control"
           xcrun swiftc -parse-as-library benchmarks/electrobun/owned-window-stream-probe.swift -o "$RUNNER_TEMP/stream-control/probe" -framework AppKit -framework ScreenCaptureKit -framework CoreMedia -framework CoreVideo -framework CoreGraphics
+          xcrun swiftc -parse-as-library benchmarks/electrobun/real-window-stream-probe.swift -o "$RUNNER_TEMP/stream-control/external-probe" -framework ScreenCaptureKit -framework CoreMedia -framework CoreVideo -framework CoreGraphics
           "$RUNNER_TEMP/stream-control/probe" --comparison-self-test > "$RUNNER_TEMP/stream-control/comparison-self-test.txt"
-          shasum -a 256 benchmarks/electrobun/owned-window-stream-probe.swift "$RUNNER_TEMP/stream-control/probe" > "$RUNNER_TEMP/stream-control/hashes.txt"
+          "$RUNNER_TEMP/stream-control/external-probe" --self-test > "$RUNNER_TEMP/stream-control/stream-self-test.txt"
+          shasum -a 256 benchmarks/electrobun/owned-window-stream-probe.swift benchmarks/electrobun/real-window-stream-probe.swift "$RUNNER_TEMP/stream-control/probe" "$RUNNER_TEMP/stream-control/external-probe" > "$RUNNER_TEMP/stream-control/hashes.txt"
           sw_vers > "$RUNNER_TEMP/stream-control/os.txt"
           xcrun swiftc --version > "$RUNNER_TEMP/stream-control/compiler.txt"
       - name: Compare owned window and bounded display
         run: |
-          "$RUNNER_TEMP/stream-control/probe" > "$RUNNER_TEMP/stream-control/result.json" 2> "$RUNNER_TEMP/stream-control/stderr.txt"
+          "$RUNNER_TEMP/stream-control/probe" --external-helper "$RUNNER_TEMP/stream-control/external-probe" > "$RUNNER_TEMP/stream-control/result.json" 2> "$RUNNER_TEMP/stream-control/stderr.txt"
       - name: Retain probe evidence
         if: ${{ always() }}
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
@@ -41,5 +43,6 @@ jobs:
           path: |
             ${{ runner.temp }}/stream-control/
             !${{ runner.temp }}/stream-control/probe
+            !${{ runner.temp }}/stream-control/external-probe
           if-no-files-found: warn
           retention-days: 30

@@ -110,4 +110,6 @@ region. It verifies light pixels but does not recognize the words. It does not
 request screen-recording permission, inspect the user's desktop, or replace the
 display/surface checks above. A successful probe is not an input or physical-
 presentation measurement; real-window obstruction checks, text recognition,
-clock attribution and A/A controls must be established independently.
+clock attribution and A/A controls must be established independently. A separate
+child stream helper is also exercised against the synthetic window before it can
+be considered for either real benchmark fixture.

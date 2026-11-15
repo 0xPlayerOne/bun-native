@@ -198,15 +198,62 @@ final class Frames: NSObject, SCStreamOutput {
       sampleHandlerQueue: DispatchQueue(label: "bun-native.bounded-display-stream"))
     var comparisons: [String: [String: Any]] = [:]
     var negative: [String: Any] = [:]
+    var externalEvidence: [String: Any] = [:]
     try await stream.startCapture()
     do {
       try await displayStream.startCapture()
       try await waitFor("red", frames)
       try await waitFor("red", displayFrames)
+      guard CommandLine.arguments.count == 3, CommandLine.arguments[1] == "--external-helper",
+        let runnerTemp = ProcessInfo.processInfo.environment["RUNNER_TEMP"]
+      else { throw ProbeError.message("missing hosted external stream helper") }
+      let work = URL(fileURLWithPath: runnerTemp, isDirectory: true)
+        .appendingPathComponent("stream-control", isDirectory: true)
+        .appendingPathComponent(UUID().uuidString, isDirectory: true)
+      try FileManager.default.createDirectory(at: work, withIntermediateDirectories: false)
+      let ready = work.appendingPathComponent("ready.json")
+      let changed = work.appendingPathComponent("changed.json")
+      let armed = work.appendingPathComponent("armed")
+      let external = Process()
+      external.executableURL = URL(fileURLWithPath: CommandLine.arguments[2])
+      external.arguments = [
+        String(pid), String(target.windowID), "12", "10", "240", "36", ready.path,
+        changed.path, armed.path,
+      ]
+      try external.run()
+      defer {
+        if external.isRunning {
+          external.terminate()
+          external.waitUntilExit()
+        }
+      }
+      try await waitForFile(ready, process: external)
+      guard
+        let readyData = try JSONSerialization.jsonObject(with: Data(contentsOf: ready))
+          as? [String: Any], readyData["status"] as? String == "ready"
+      else { throw ProbeError.message("invalid external stream readiness") }
       view.layer?.backgroundColor = NSColor.blue.cgColor
       label.stringValue = "Clicked"
+      try Data().write(to: armed, options: .withoutOverwriting)
       try await waitFor("blue", frames)
       try await waitFor("blue", displayFrames)
+      try await waitForFile(changed, process: external)
+      external.waitUntilExit()
+      guard external.terminationStatus == 0,
+        let data = try JSONSerialization.jsonObject(with: Data(contentsOf: changed))
+          as? [String: Any],
+        data["status"] as? String == "changed",
+        (data["windowID"] as? NSNumber)?.uint32Value == target.windowID,
+        (data["ownerPID"] as? NSNumber)?.int32Value == pid,
+        data["region"] as? [Int] == [12, 10, 240, 36],
+        let baseline = data["baseline"] as? [String: Any],
+        let changedData = data["changed"] as? [String: Any],
+        let match = changedData["match"] as? [String: Any],
+        let baselineHash = baseline["sha256"] as? String, baselineHash.count == 64,
+        let changedHash = match["sha256"] as? String, changedHash.count == 64,
+        baselineHash != changedHash
+      else { throw ProbeError.message("external stream control failed") }
+      externalEvidence = data
       for color in ["red", "blue"] {
         guard let windowPixels = frames.pixels(color),
           let displayPixels = displayFrames.pixels(color)
@@ -263,6 +310,7 @@ final class Frames: NSObject, SCStreamOutput {
       "labelRegion": [12, 10, 240, 36],
       "comparisons": comparisons,
       "obstructionControl": negative,
+      "externalStream": externalEvidence,
     ]
     let json = try JSONSerialization.data(withJSONObject: result, options: [.sortedKeys])
     FileHandle.standardOutput.write(json)
@@ -361,6 +409,16 @@ final class Frames: NSObject, SCStreamOutput {
     let data = try JSONSerialization.data(withJSONObject: frames.snapshot(), options: [.sortedKeys])
     let diagnostics = String(data: data, encoding: .utf8) ?? "unavailable"
     throw ProbeError.message("missing expected \(color) frame; observed \(diagnostics)")
+  }
+  static func waitForFile(_ path: URL, process: Process) async throws {
+    for _ in 0..<500 {
+      if FileManager.default.fileExists(atPath: path.path) { return }
+      if !process.isRunning {
+        throw ProbeError.message("external stream exited before \(path.lastPathComponent)")
+      }
+      try await Task.sleep(for: .milliseconds(20))
+    }
+    throw ProbeError.message("external stream timed out before \(path.lastPathComponent)")
   }
   enum ProbeError: Error { case message(String) }
 }
