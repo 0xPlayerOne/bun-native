@@ -117,7 +117,8 @@ the selected runtime; its hash alone does not prove its provenance.
 The label-triggered `Windows runtime build control` builds an uninstrumented
 `release-local` Bun from the pinned Bun and WebKit sources on an isolated
 Windows runner. A recorded build-time codegen patch passes canonicalized source
-paths relative to the source root and resolves those inputs against that root;
+paths relative to the source root, resolves those inputs against that root,
+and uses the physical source root for unified-source exclusions;
 temporary drive mappings shorten other paths. A separate recorded WebKit script
 patch fixes a PowerShell variable parse error and selects physical paths for
 Windows system tar.
@@ -191,6 +192,15 @@ failed its early tar check while creating an archive through the mapped drive.
 The next patch converts the ICU paths to the physical source root; an early
 control extracts through physical paths and verifies the mapped view. The full
 ICU build and runtime remain unverified.
+
+The [thirteenth run](https://github.com/0xPlayerOne/bun-native/actions/runs/43664363779)
+completed ICU and reached step 2,130/2,353. Its unified compilation combined two
+certificate files even though the pinned Bun source explicitly excludes the
+Windows file from unity builds. The exclusion used the mapped build root and
+physical source paths, so it did not match. The next build-only patch uses the
+physical source root for matching; an early three-file control checks that the
+Windows certificate file stays separate while eligible peers remain bundled.
+No runtime or retention observation resulted.
 
 A separate paired React fixture control tests one ownership hypothesis. Both
 variants use the same async disposal wrapper; after acknowledged disposal, the

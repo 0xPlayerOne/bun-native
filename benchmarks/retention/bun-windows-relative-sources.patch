@@ -66,3 +66,14 @@
    const stem = path.basename(file, ".bind.ts");
    const origin: Origin = { stem, namespace: pascalCase(stem), rustModule: snakeCase(stem), crate };
    const result: SchemaFile = { origin, moduleDefinition: null, types: [], functions: [], namespaces: [] };
+--- a/scripts/build/unified.ts
++++ b/scripts/build/unified.ts
+@@ -239,7 +239,7 @@
+       continue;
+     }
+     // slash(): noUnify keys and the dir tag below are posix-style.
+-    const rel = slash(relative(cfg.cwd, abs));
++    const rel = slash(relative(process.env.BUN_NATIVE_SOURCE_ROOT!, abs));
+     const dir = dirname(rel);
+     if (skip.has(rel) || noUnifyDirs.includes(dir)) {
+       standalone.push(abs);

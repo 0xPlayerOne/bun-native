@@ -56,7 +56,7 @@ jobs:
           Copy-Item $patch (Join-Path $root 'build-only.patch')
           Get-FileHash $patch -Algorithm SHA256 | Format-List | Out-File (Join-Path $root 'build-patch-hash.txt')
           $revision | Out-File (Join-Path $root 'bun-source-revision.txt')
-      - name: Compare schema loading through mapped and physical paths
+      - name: Check schema and unified source paths
         shell: pwsh
         run: |
           $ErrorActionPreference = 'Stop'
@@ -97,6 +97,10 @@ jobs:
             }
             $mixed = $results | Where-Object { $_.entry -eq 'mapped' -and $_.input -eq 'physical' }
             if ($mixed.exitCode -eq 0) { throw 'Mixed-path negative control unexpectedly passed' }
+            $env:BUN_NATIVE_SOURCE_ROOT = $source
+            $env:BUN_NATIVE_UNIFIED_PROBE = Join-Path $root 'unified-probe'
+            bun -e 'import { resolve } from "node:path"; import { pathToFileURL } from "node:url"; const root = process.env.BUN_NATIVE_SOURCE_ROOT; const { generateUnifiedSources } = await import(pathToFileURL(resolve(root, "scripts", "build", "unified.ts")).href); const files = ["root_certs.cpp", "root_certs_windows.cpp", "sni_tree.cpp"].map(name => resolve(root, "packages", "bun-usockets", "src", "crypto", name)); const result = generateUnifiedSources({ cwd: process.cwd(), buildDir: process.env.BUN_NATIVE_UNIFIED_PROBE, unifiedSources: true, release: true, windows: true, x64: true }, files); if (!result.standalone.includes(files[1]) || result.bundled.includes(files[1]) || !result.bundled.includes(files[0]) || !result.bundled.includes(files[2])) throw new Error("Unified source exclusions were not preserved"); console.log("Windows certificate source compiles separately")'
+            if ($LASTEXITCODE -ne 0) { throw 'Unified source grouping control failed' }
           } finally {
             if ($pushed) { Pop-Location }
             subst X: /D
