@@ -119,6 +119,18 @@ test('Windows runtime source build is limited to its explicit label and exact Bu
   expect(job.steps.some((step) => step.run?.includes('hash-object --no-filters'))).toBe(true)
   const build = job.steps.find((step) => step.run?.includes('--profile=release-local'))?.run
   expect(build).toContain('--profile=release-local --build-dir=build/release-local -j2')
+  const candidate = workflow.jobs['candidate-runtime']!
+  expect(candidate.if).toContain("github.event.label.name == 'diagnostic:windows-candidate'")
+  expect(candidate.if).toContain('github.event.pull_request.draft == false')
+  const prepare = candidate.steps.find((step) =>
+    step.run?.includes('Candidate archive integrity')
+  )?.run
+  expect(prepare).toContain('runtime.jit !== "unused"')
+  const compare = candidate.steps.find((step) => step.run?.includes('positive control failed'))?.run
+  expect(compare).toContain('foreach ($trial in 0..4)')
+  expect(compare).toContain('headless-adapter-control.py')
+  expect(compare).toContain('react-dispatch-control.py')
+  expect(compare).toContain('[System.IO.File]::WriteAllBytes($toolchain, $original)')
 })
 
 test('paired input diagnostic requires an explicit dispatch and leaves ordinary jobs enabled by default', () => {

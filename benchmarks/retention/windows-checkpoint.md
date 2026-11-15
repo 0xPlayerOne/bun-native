@@ -148,6 +148,18 @@ trigger; ordinary PR events do not start the source build. Its 120-minute limit
 and retained outcomes make build failures and missing coverage visible. This
 control cannot identify a retaining root and does not qualify native paint.
 
+The separate `diagnostic:windows-candidate` label compares the pinned runtime
+with the integrity-checked November 14 Bun canary on a Windows runner. It
+compiles the same React bundle with each compiler, checks both executables for
+machine-code AOT and JIT removal, and records five alternating development/AOT
+pairs against one headless peer. A deliberately pinned cycle target must remain
+observable with each runtime. The runner temporarily changes only the revision
+used by the diagnostic's runtime guard and restores `toolchain.json` afterward;
+the repository pin is unchanged. Passing the diagnostic means its observations
+and positive controls were valid, not that the original benchmark passed or a
+toolchain upgrade is qualified. Runtime and compiler layout differences prevent
+attributing a changed outcome to a specific fix.
+
 The [fourth control run](https://github.com/0xPlayerOne/bun-native/actions/runs/43647428613)
 passed source-byte verification and reached compilation, but failed at step
 200 because a generated command exceeded the Windows shell limit. It produced

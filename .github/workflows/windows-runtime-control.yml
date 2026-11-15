@@ -332,3 +332,97 @@ jobs:
             !${{ runner.temp }}/runtime-build-control/*.exe
           if-no-files-found: warn
           retention-days: 30
+
+  candidate-runtime:
+    if: vars.CI_BILLING_PAUSED == 'false' && github.event.pull_request.draft == false && github.event.label.name == 'diagnostic:windows-candidate'
+    runs-on: windows-2022
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/native-toolchain
+        with:
+          rust: 'false'
+      - name: Prepare verified runtimes and workloads
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $root = Join-Path $env:RUNNER_TEMP 'candidate-runtime-control'
+          New-Item -ItemType Directory -Path $root | Out-Null
+          $baseline = (Get-Command bun -CommandType Application).Source
+          $archive = Join-Path $root 'candidate.tgz'
+          Invoke-WebRequest 'https://registry.npmjs.org/@oven/bun-windows-x64/-/bun-windows-x64-1.4.4-canary.20261114.1.tgz' -OutFile $archive
+          $hash = [Convert]::ToBase64String([System.Security.Cryptography.SHA512]::HashData([System.IO.File]::ReadAllBytes($archive)))
+          if ($hash -ne 'S8s0ZXYbgs+L0YWg9y2XX/Kx6Js//kEPLR3vOhpV4JvXqVjhF8//nzDldMa1nfLC+xra50gMTkVAH9ZkRqzECQ==') { throw 'Candidate archive integrity mismatch' }
+          tar -xf $archive -C $root
+          if ($LASTEXITCODE -ne 0) { throw 'Candidate extraction failed' }
+          $candidate = Join-Path $root 'package/bin/bun.exe'
+          $revision = & $candidate -e 'process.stdout.write(Bun.revision)'
+          if ($LASTEXITCODE -ne 0 -or $revision -ne '9098897a17372d46559d1a68a44061f493546631') { throw 'Candidate revision mismatch' }
+          Get-FileHash $baseline, $candidate -Algorithm SHA256 | Format-List | Out-File (Join-Path $root 'runtime-hashes.txt')
+          $baseline | Out-File (Join-Path $root 'baseline-path.txt') -Encoding utf8
+          bun build tests/core/protocol-peer.ts --compile --outfile (Join-Path $root 'peer.exe')
+          if ($LASTEXITCODE -ne 0) { throw 'Peer build failed' }
+          $env:CONTROL_ROOT = $root
+          bun -e 'import { bundleApplication } from "./scripts/native/bundle.ts"; await bundleApplication({framework:"react",entry:"benchmarks/solid/react.tsx",outdir:process.env.CONTROL_ROOT + "/react",cwd:process.cwd()})'
+          if ($LASTEXITCODE -ne 0) { throw 'React bundle failed' }
+          foreach ($variant in @('baseline', 'candidate')) {
+            $compiler = if ($variant -eq 'baseline') { $baseline } else { $candidate }
+            $binary = Join-Path $root "$variant-aot.exe"
+            & $compiler --no-install compile --no-script --production --explain=json (Join-Path $root 'react/application.js') --outfile $binary *> (Join-Path $root "$variant-compile.log")
+            if ($LASTEXITCODE -ne 0) { throw "$variant compile failed" }
+            bun -e 'import { inspectBunExecutable } from "./scripts/native/inspect.ts"; import { inspectBunRuntime } from "./scripts/native/inspect-runtime.ts"; const graph=inspectBunExecutable(process.argv[1]); const runtime=inspectBunRuntime(process.argv[1]); if (!graph.hasCompiledProgram || runtime.jit !== "unused") throw new Error("Not AOT"); console.log(JSON.stringify({graph,runtime},null,2))' $binary > (Join-Path $root "$variant-inspection.json")
+            if ($LASTEXITCODE -ne 0) { throw "$variant AOT inspection failed" }
+          }
+      - name: Compare paired runtimes and verify pinned targets
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $root = Join-Path $env:RUNNER_TEMP 'candidate-runtime-control'
+          $baseline = (Get-Content (Join-Path $root 'baseline-path.txt') -Raw).Trim()
+          $candidate = Join-Path $root 'package/bin/bun.exe'
+          $toolchain = Join-Path $env:GITHUB_WORKSPACE 'toolchain.json'
+          $original = [System.IO.File]::ReadAllBytes($toolchain)
+          $originalPath = $env:PATH
+          try {
+            foreach ($trial in 0..4) {
+              $order = if ($trial % 2 -eq 0) { @('baseline', 'candidate') } else { @('candidate', 'baseline') }
+              foreach ($variant in $order) {
+                $runtime = if ($variant -eq 'baseline') { $baseline } else { $candidate }
+                $revision = & $runtime -e 'process.stdout.write(Bun.revision)'
+                if ($LASTEXITCODE -ne 0) { throw "$variant revision probe failed" }
+                $config = [System.Text.Encoding]::UTF8.GetString($original) | ConvertFrom-Json
+                $config.bun.revision = $revision
+                [System.IO.File]::WriteAllText($toolchain, ($config | ConvertTo-Json -Depth 30), [System.Text.UTF8Encoding]::new($false))
+                python benchmarks/retention/headless-adapter-control.py react (Join-Path $root 'peer.exe') (Join-Path $root 'react/application.js') (Join-Path $root "$variant-aot.exe") (Join-Path $root "$trial-$variant") 1 $runtime
+                if ($LASTEXITCODE -ne 0) { throw "$variant pair failed outside its retention observation" }
+              }
+            }
+            foreach ($variant in @('baseline', 'candidate')) {
+              $runtime = if ($variant -eq 'baseline') { $baseline } else { $candidate }
+              $revision = & $runtime -e 'process.stdout.write(Bun.revision)'
+              if ($LASTEXITCODE -ne 0) { throw "$variant revision probe failed" }
+              $config = [System.Text.Encoding]::UTF8.GetString($original) | ConvertFrom-Json
+              $config.bun.revision = $revision
+              [System.IO.File]::WriteAllText($toolchain, ($config | ConvertTo-Json -Depth 30), [System.Text.UTF8Encoding]::new($false))
+              $env:PATH = "$(Split-Path $runtime);$originalPath"
+              python benchmarks/retention/react-dispatch-control.py (Join-Path $root 'peer.exe') (Join-Path $root "pin-$variant") 1 cycle $runtime
+              if ($LASTEXITCODE -ne 0) { throw "$variant positive control failed" }
+            }
+          } finally {
+            [System.IO.File]::WriteAllBytes($toolchain, $original)
+            $env:PATH = $originalPath
+          }
+      - name: Retain diagnostic observations
+        if: ${{ always() }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: windows-candidate-runtime-control
+          path: |
+            ${{ runner.temp }}/candidate-runtime-control/
+            !${{ runner.temp }}/candidate-runtime-control/*.exe
+            !${{ runner.temp }}/candidate-runtime-control/package/
+            !${{ runner.temp }}/candidate-runtime-control/*.tgz
+            !${{ runner.temp }}/candidate-runtime-control/pin-*/*-aot.exe
+          retention-days: 30
