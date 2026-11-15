@@ -118,12 +118,14 @@ The label-triggered `Windows runtime build control` builds an uninstrumented
 `release-local` Bun from the pinned Bun and WebKit sources on an isolated
 Windows runner. A recorded build-time codegen patch passes canonicalized source
 paths relative to the source root and resolves those inputs against that root;
-temporary drive mappings shorten other paths. The workflow verifies the source revision and patch hash
-and checks generated Windows shell command lengths before compilation. This
-is a custom build; the matching revision does not prove binary equivalence to
-the distributed runtime. It compares that runtime with the pinned distribution using
-three alternating sets of the unchanged headless React workload in development
-and inspected AOT modes. The `diagnostic:windows-runtime` label is an explicit
+temporary drive mappings shorten other paths. A separate recorded WebKit script
+patch fixes a PowerShell variable parse error. The workflow verifies source
+revisions and patch hashes and checks generated Windows shell command lengths
+before compilation. This is a custom build; the matching revision does not
+prove binary equivalence to the distributed runtime. It compares that runtime
+with the pinned distribution using three alternating sets of the unchanged
+headless React workload in development and inspected AOT modes. The
+`diagnostic:windows-runtime` label is an explicit
 trigger; ordinary PR events do not start the source build. Its 120-minute limit
 and retained outcomes make build failures and missing coverage visible. This
 control cannot identify a retaining root and does not qualify native paint.
@@ -171,6 +173,13 @@ build-time patch resolves relative schema inputs against the loader's own root;
 the early control requires both relative-input variants to pass and retains a
 mixed-drive negative control. The full generator and output equivalence remain
 unverified.
+
+The [tenth run](https://github.com/0xPlayerOne/bun-native/actions/runs/43659427328)
+passed both relative schema-path controls and the mixed-path negative control,
+then advanced beyond the earlier generator failure. It stopped at build step
+228 when PowerShell could not parse `$ICU_VERSION:` in WebKit's ICU script.
+The next control braces that variable and checks the script with PowerShell's
+parser before compiler installation. No runtime or retention result was made.
 
 A separate paired React fixture control tests one ownership hypothesis. Both
 variants use the same async disposal wrapper; after acknowledged disposal, the

@@ -121,6 +121,26 @@ jobs:
             Source/ThirdParty
             Tools/Scripts
             icu
+      - name: Apply and check the WebKit ICU script patch
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $webkit = Join-Path $env:GITHUB_WORKSPACE '.diagnostics/webkit'
+          $revision = git -C $webkit rev-parse HEAD
+          if ($LASTEXITCODE -ne 0 -or $revision -ne '4d45755fed4aeef19e95beb90d3d0c884a2812bd') { throw 'Unexpected WebKit source revision' }
+          $patch = Join-Path $env:GITHUB_WORKSPACE 'benchmarks/retention/webkit-windows-icu-variable.patch'
+          git -C $webkit apply --check $patch
+          if ($LASTEXITCODE -ne 0) { throw 'ICU script patch does not apply cleanly' }
+          git -C $webkit apply $patch
+          if ($LASTEXITCODE -ne 0) { throw 'ICU script patch failed' }
+          $root = Join-Path $env:RUNNER_TEMP 'runtime-build-control'
+          Copy-Item $patch (Join-Path $root 'webkit-icu.patch')
+          Get-FileHash $patch -Algorithm SHA256 | Format-List | Out-File (Join-Path $root 'webkit-icu-patch-hash.txt')
+          $revision | Out-File (Join-Path $root 'webkit-source-revision.txt')
+          $tokens = $null
+          $errors = $null
+          [void][System.Management.Automation.Language.Parser]::ParseFile((Join-Path $webkit 'build-icu.ps1'), [ref]$tokens, [ref]$errors)
+          if ($errors.Count -ne 0) { $errors | ForEach-Object { Write-Host $_ }; throw 'Patched ICU script did not parse' }
       - name: Verify the checked-out AOT source list bytes
         shell: pwsh
         run: |
