@@ -146,7 +146,12 @@ async function readWrite(grant: NativeFileGrant) {
   const stat = await grant.stat('notes.txt')
   assert.equal(stat.kind, 'file')
   assert.equal(stat.size, 3)
-  assert.equal(Math.abs(stat.modifiedMs - statSync(join(work, 'notes.txt')).mtimeMs) < 1, true)
+  const bunModifiedMs = statSync(join(work, 'notes.txt')).mtimeMs
+  assert.equal(
+    Math.abs(stat.modifiedMs - bunModifiedMs) < 1,
+    true,
+    `native modifiedMs=${stat.modifiedMs}; Bun mtimeMs=${bunModifiedMs}`
+  )
 
   // Binary chunks round-trip byte for byte at the chunk bound.
   const binary = new Uint8Array(16_384).map((_, index) => (index * 31) & 0xff)
