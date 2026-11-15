@@ -112,4 +112,16 @@ display/surface checks above. A successful probe is not an input or physical-
 presentation measurement; real-window obstruction checks, text recognition,
 clock attribution and A/A controls must be established independently. A separate
 child stream helper is also exercised against the synthetic window before it can
-be considered for either real benchmark fixture.
+be considered for either real benchmark fixture. To qualify it against both real
+fixtures without running paired comparisons, use:
+
+```sh
+gh workflow run benchmark-comparison.yml --ref <candidate-branch> -f electrobun-smoke=true -f startup-only=true
+```
+
+This opt-in control keeps the existing OS-click, ownership, screenshot and OCR
+checks. It requires exact matching label bytes in the streams and verifies their
+hashes against the corresponding screenshots. It records stream metadata but does
+not attribute a stream frame to the click or calculate a latency. Stream setup
+changes the observation workload, so its screenshot timings are not comparable
+with the normal smoke or paired benchmark.

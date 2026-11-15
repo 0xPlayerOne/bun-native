@@ -30,7 +30,7 @@ on:
         type: boolean
         default: false
       startup-only:
-        description: Run the macOS startup trace; with paired-only and paired-macos, run Windows retention controls
+        description: Run the startup trace; with paired-only and paired-macos run Windows retention controls; with electrobun-smoke probe streams
         type: boolean
         default: false
       paired-macos:
@@ -561,6 +561,9 @@ jobs:
     defaults:
       run:
         shell: bash
+    env:
+      STREAM_CONTROL: ${{ inputs['startup-only'] }}
+      STREAM_PAIRED_MACOS: ${{ inputs['paired-macos'] }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -595,9 +598,17 @@ jobs:
         run: |
           xcrun clang -fobjc-arc -Wall -Wextra -Werror -framework AppKit -framework CoreGraphics -framework ApplicationServices scripts/quality/native-platform-macos.m -o "$RUNNER_TEMP/eb-smoke/window-helper"
           xcrun clang -fobjc-arc -Wall -Wextra -Werror -framework Foundation -framework CoreGraphics -framework ImageIO -framework Vision benchmarks/electrobun/observe-text-macos.m -o "$RUNNER_TEMP/eb-smoke/text-helper"
+      - name: Compile the optional stream helper
+        if: inputs['startup-only'] == true
+        run: |
+          test "$STREAM_PAIRED_MACOS" != 'true'
+          xcrun swiftc -parse-as-library benchmarks/electrobun/real-window-stream-probe.swift -o "$RUNNER_TEMP/eb-smoke/stream-helper" -framework AppKit -framework ScreenCaptureKit -framework CoreMedia -framework CoreVideo -framework CoreGraphics
+          "$RUNNER_TEMP/eb-smoke/stream-helper" --self-test > "$RUNNER_TEMP/eb-smoke/stream-self-test.txt"
       - name: Qualify owned window, OS click and captured label
         run: |
-          bun benchmarks/electrobun/visible-smoke-macos.ts \
+          args=()
+          if [[ "$STREAM_CONTROL" == 'true' ]]; then args+=(--stream-helper "$RUNNER_TEMP/eb-smoke/stream-helper"); fi
+          bun benchmarks/electrobun/visible-smoke-macos.ts "${args[@]}" \
             --app "$RUNNER_TEMP/eb-inner/workload-baseline.app" \
             --output "$RUNNER_TEMP/eb-smoke/run" \
             --helper "$RUNNER_TEMP/eb-smoke/window-helper" \
@@ -611,7 +622,9 @@ jobs:
           bun benchmarks/electrobun/build-native.ts --output "$RUNNER_TEMP/eb-smoke/native-build"
       - name: Qualify native AOT window, OS click and captured label
         run: |
-          bun benchmarks/electrobun/visible-smoke-macos.ts \
+          args=()
+          if [[ "$STREAM_CONTROL" == 'true' ]]; then args+=(--stream-helper "$RUNNER_TEMP/eb-smoke/stream-helper"); fi
+          bun benchmarks/electrobun/visible-smoke-macos.ts "${args[@]}" \
             --native-app "$RUNNER_TEMP/eb-smoke/native-build/application" \
             --native-host "$RUNNER_TEMP/eb-smoke/native-host" \
             --output "$RUNNER_TEMP/eb-smoke/native-run" \
@@ -633,6 +646,10 @@ jobs:
             assert.equal(native.artifacts.launcher.sha256, build.binary.sha256);
             assert.equal(native.artifacts.launcher.bytes, build.binary.bytes);
             assert.equal(native.artifacts.inspection.hasCompiledProgram, true);
+            if (process.env.STREAM_CONTROL === "true") {
+              assert.ok(reference.streamEvidence, "Reference stream evidence missing");
+              assert.ok(native.streamEvidence, "Native stream evidence missing");
+            }
             assert.equal(refApp.workload.rows, 32);
             assert.equal(nativeApp.workload.rows, 32);
             assert.equal(nativeApp.workload.scenario, "visible-input");
@@ -658,6 +675,7 @@ jobs:
           path: |
             ${{ runner.temp }}/eb-smoke/
             !${{ runner.temp }}/eb-smoke/native-host
+            !${{ runner.temp }}/eb-smoke/stream-helper
             !${{ runner.temp }}/eb-smoke/native-build/application
             !${{ runner.temp }}/eb-smoke/native-build/module/
           if-no-files-found: warn

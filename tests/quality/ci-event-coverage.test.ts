@@ -164,6 +164,27 @@ test('macOS stream feasibility probe requires its explicit label and a ready PR'
   expect(job.if).toContain('github.event.pull_request.draft == false')
 })
 
+test('real fixture stream control is opt-in and cannot run paired comparisons', () => {
+  const workflow = Bun.YAML.parse(
+    readFileSync(join(root, '.github/workflows/benchmark-comparison.yml'), 'utf8')
+  ) as {
+    on: { workflow_dispatch: { inputs: Record<string, { type: string; default: boolean }> } }
+    jobs: Record<string, { env?: Record<string, string>; steps: { if?: string; run?: string }[] }>
+  }
+  expect(workflow.on.workflow_dispatch.inputs['startup-only']).toMatchObject({
+    type: 'boolean',
+    default: false,
+  })
+  const job = workflow.jobs['electrobun-smoke']!
+  expect(job.env?.['STREAM_CONTROL']).toBe("${{ inputs['startup-only'] }}")
+  const compile = job.steps.find((step) => step.run?.includes('real-window-stream-probe.swift'))!
+  expect(compile.if).toBe("inputs['startup-only'] == true")
+  expect(compile.run).toContain('test "$STREAM_PAIRED_MACOS" != \'true\'')
+  const qualify = job.steps.filter((step) => step.run?.includes('visible-smoke-macos.ts'))
+  expect(qualify).toHaveLength(2)
+  for (const step of qualify) expect(step.run).toContain('if [[ "$STREAM_CONTROL" == \'true\' ]]')
+})
+
 test('paired input diagnostic requires an explicit dispatch and leaves ordinary jobs enabled by default', () => {
   const source = readFileSync(join(root, '.github/workflows/benchmark-comparison.yml'), 'utf8')
   const parsed = Bun.YAML.parse(source) as {

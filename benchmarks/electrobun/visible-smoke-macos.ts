@@ -9,6 +9,7 @@ import { inspectBunExecutable } from '../../scripts/native/inspect.ts'
 import { compareVisiblePixels } from './visible-pixels.ts'
 import { verifyVisibleText } from './visible-text.ts'
 import { awaitVisibleReadiness } from './visible-readiness.ts'
+import { hashCaptureRegion, verifyStreamEvidence } from './stream-evidence.ts'
 
 const TITLE = 'Bun Native matched renderer workload'
 const { values } = parseArgs({
@@ -19,6 +20,7 @@ const { values } = parseArgs({
     output: { type: 'string' },
     helper: { type: 'string' },
     ocr: { type: 'string' },
+    'stream-helper': { type: 'string' },
   },
   strict: true,
 })
@@ -48,6 +50,7 @@ const app = ownedPath(reference ? values.app : values['native-app'], true)
 const output = ownedPath(values.output, false)
 const helper = ownedPath(values.helper, true)
 const ocr = ownedPath(values.ocr, true)
+const streamHelper = values['stream-helper'] ? ownedPath(values['stream-helper'], true) : undefined
 assert(!existsSync(output), 'Output already exists')
 const launcher = reference ? ownedPath(join(app, 'Contents/MacOS/launcher'), true) : app
 const host = reference
@@ -61,6 +64,7 @@ function fingerprint(path: string) {
   return { bytes: bytes.length, sha256: createHash('sha256').update(bytes).digest('hex') }
 }
 const artifacts = { launcher: fingerprint(launcher), host: fingerprint(host), inspection }
+const streamFingerprint = streamHelper ? fingerprint(streamHelper) : undefined
 mkdirSync(output)
 const reportPath = join(output, 'application.json')
 const controlPath = join(output, 'control.json')
@@ -99,6 +103,7 @@ const child = Bun.spawn(
     },
   }
 )
+let streamChild: ReturnType<typeof Bun.spawn> | undefined
 let groupOwned = false
 let result: Record<string, unknown> = { status: 'failed', nonce }
 function command(args: string[], timeout = 10_000) {
@@ -150,6 +155,18 @@ async function helperCall(request: Record<string, unknown>): Promise<WindowState
   if (process.exitCode !== 0 || (value['status'] !== 'ready' && value['status'] !== 'not-ready'))
     throw new Error(`Owned-window helper failed (${process.exitCode}): ${raw.slice(0, 2000)}`)
   return value
+}
+async function waitForStreamFile(path: string, process: ReturnType<typeof Bun.spawn>) {
+  const deadline = performance.now() + 15_000
+  while (!existsSync(path)) {
+    if (process.exitCode !== null)
+      throw new Error(`Stream helper exited before ${path.split('/').at(-1)}`)
+    if (performance.now() > deadline) throw new Error('Stream helper timed out')
+    await Bun.sleep(20)
+  }
+  const stat = statSync(path)
+  assert(stat.isFile() && stat.size > 0 && stat.size <= 16_384, 'Invalid stream evidence file')
+  return JSON.parse(readFileSync(path, 'utf8')) as unknown
 }
 async function snapshot(
   name: string,
@@ -326,6 +343,47 @@ async function main() {
   const negative = compareVisiblePixels(first.png, second.png, region)
   assert(negative.changedPixels <= 2, 'Initial label region is not stable')
   result['negative'] = negative
+  const streamReadyPath = join(output, 'stream-ready.json')
+  const streamChangedPath = join(output, 'stream-changed.json')
+  const streamArmPath = join(output, 'stream-armed')
+  const streamGuardRequest = {
+    ...request,
+    action: 'visible-region',
+    expected: state,
+    viewport,
+    x: 12,
+    y: 10,
+    width: 240,
+    height: 36,
+  }
+  let streamReady: unknown
+  let streamBefore: WindowState | undefined
+  const streamRegion = [side + 12, top + 10, 240, 36]
+  if (streamHelper) {
+    assert.equal(scale, 1, 'Stream control requires a one-to-one capture scale')
+    assert(streamRegion.every(Number.isSafeInteger), 'Stream region must use integral coordinates')
+    const guard = await helperCall(streamGuardRequest)
+    assert.equal(guard.status, 'ready')
+    assert.equal(guard.visibleRegionVerified, true, 'Stream label region is obstructed')
+    streamBefore = guard
+    streamChild = Bun.spawn(
+      [
+        streamHelper,
+        String(state.host.pid),
+        String(windowId),
+        ...streamRegion.map(String),
+        streamReadyPath,
+        streamChangedPath,
+        streamArmPath,
+      ],
+      {
+        stdout: Bun.file(join(output, 'stream.stdout.log')),
+        stderr: Bun.file(join(output, 'stream.stderr.log')),
+        env: childEnv,
+      }
+    )
+    streamReady = await waitForStreamFile(streamReadyPath, streamChild)
+  }
   result['stage'] = 'click'
   const clickStart = performance.now()
   const injection = await helperCall({
@@ -339,6 +397,7 @@ async function main() {
   assert.equal(injection.status, 'ready')
   assert.equal(injection.windowServerTargetVerified, true)
   assert.equal(injection.injection?.postedEvents, 3)
+  if (streamHelper) writeFileSync(streamArmPath, '', { flag: 'wx' })
   let changed: Awaited<ReturnType<typeof snapshot>> | undefined
   let difference: ReturnType<typeof compareVisiblePixels> | undefined
   let polls = 0
@@ -367,6 +426,41 @@ async function main() {
   assert.deepEqual(after['application'], state['application'])
   assert.deepEqual(after['host'], state['host'])
   assert.deepEqual(after['window'], state['window'])
+  let streamEvidence: Record<string, unknown> | undefined
+  if (streamHelper) {
+    assert(streamChild && streamBefore && streamFingerprint)
+    const changedStream = await waitForStreamFile(streamChangedPath, streamChild)
+    const streamExit = await Promise.race([streamChild.exited, Bun.sleep(3000).then(() => null)])
+    assert.equal(streamExit, 0, 'Stream helper did not exit successfully')
+    const validated = verifyStreamEvidence(streamReady, changedStream, {
+      ownerPID: state.host.pid,
+      windowID: windowId,
+      region: streamRegion,
+      windowSize: [frame[2], frame[3]],
+    })
+    assert.equal(
+      validated.baseline.sha256,
+      hashCaptureRegion(second.png, region),
+      'Stream baseline differs from the verified initial screenshot'
+    )
+    assert.equal(
+      validated.changed.sha256,
+      hashCaptureRegion(changed.png, region),
+      'Stream change differs from the verified clicked screenshot'
+    )
+    const guard = await helperCall(streamGuardRequest)
+    assert.equal(guard.status, 'ready')
+    assert.equal(guard.visibleRegionVerified, true, 'Stream label region became obstructed')
+    assert.deepEqual(guard.visibleRegion, streamBefore.visibleRegion)
+    assert.deepEqual(fingerprint(streamHelper), streamFingerprint, 'Stream helper binary changed')
+    streamEvidence = {
+      ...validated,
+      helper: streamFingerprint,
+      guards: { before: streamBefore, after: guard },
+      scope:
+        'Exact stream-region matches around a verified click; no click-to-frame or presentation timing claim',
+    }
+  }
   let closeEvidence: WindowState | PendingState | null = null
   if (reference) {
     assert(control)
@@ -453,6 +547,7 @@ async function main() {
       final: changed.guardAndDecodeMs,
     },
     displayGuards: { initial: first.guard, control: second.guard, final: changed.guard },
+    ...(streamEvidence ? { streamEvidence } : {}),
     scope: `One owned ${reference ? 'Electrobun' : 'Bun Native AOT'} display-region capture and guarded OS click; not paired or a physical presentation timestamp.`,
   }
 }
@@ -461,6 +556,23 @@ try {
 } catch (error) {
   result['error'] = error instanceof Error ? error.message : String(error)
 } finally {
+  if (streamChild && streamChild.exitCode === null) {
+    try {
+      streamChild.kill('SIGTERM')
+      const stopped = await Promise.race([streamChild.exited, Bun.sleep(2000).then(() => null)])
+      result['streamForcedCleanup'] = true
+      result['status'] = 'failed'
+      if (stopped === null) {
+        streamChild.kill('SIGKILL')
+        const killed = await Promise.race([streamChild.exited, Bun.sleep(2000).then(() => null)])
+        if (killed === null)
+          result['streamCleanupError'] = 'Stream helper did not exit after SIGKILL'
+      }
+    } catch (error) {
+      result['streamCleanupError'] = error instanceof Error ? error.message : String(error)
+      result['status'] = 'failed'
+    }
+  }
   if (groupOwned) {
     try {
       const remaining = groupMembers()
