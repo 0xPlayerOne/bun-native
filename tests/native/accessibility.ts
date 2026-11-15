@@ -442,7 +442,23 @@ try {
     const until = performance.now() + 5_000
     for (;;) {
       const tree = await dump(name, title)
-      if (check(tree)) return tree
+      try {
+        if (check(tree)) return tree
+      } catch (error) {
+        if (mac) {
+          // The normal archive is written on success; retain this exact
+          // observation before propagating the original predicate failure.
+          try {
+            writeFileSync(
+              join(output, 'ax-failed-tree.json'),
+              JSON.stringify({ name, title, raw: dumps[name] }, null, 2) + '\n'
+            )
+          } catch (captureError) {
+            console.error('Could not save failing AX tree:', captureError)
+          }
+        }
+        throw error
+      }
       if (performance.now() > until)
         throw new Error('Timed out waiting for AT-SPI ' + name + ': ' + JSON.stringify(tree))
       await Bun.sleep(50)
