@@ -203,12 +203,14 @@ physical source root for matching; an early three-file control checks that the
 Windows certificate file stays separate while eligible peers remain bundled.
 No runtime or retention observation resulted.
 
-The same mapped-root mismatch also affects per-file compiler-flag matching and
+The same mapped-root mismatch can affect per-file compiler-flag matching and
 object paths in the pinned Bun build generator. The next diagnostic patch
 normalizes physical repository sources for those lookups. After configuration,
-the control requires the Windows resource compiler command to retain its
-`/EHsc` override and place its object under the build directory. These checks
-do not establish generated-output equivalence.
+the control requires the Windows resource command to retain its `/EHsc`
+override and checks that both its object and the physical certificate source's
+object are under the build directory. The resource source is constructed from
+the mapped root, so that override check alone does not exercise the mismatch.
+These checks do not establish generated-output equivalence.
 
 A separate paired React fixture control tests one ownership hypothesis. Both
 variants use the same async disposal wrapper; after acknowledged disposal, the
