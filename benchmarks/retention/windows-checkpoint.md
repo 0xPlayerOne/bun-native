@@ -154,6 +154,15 @@ unchanged. The next patch explicitly uses the physical checkout root for both
 sides of the calculation. The path change and generated-output equivalence
 remain unverified; workload controls do not prove equivalence.
 
+The [eighth run](https://github.com/0xPlayerOne/bun-native/actions/runs/43654846922)
+reduced the longest command to 7,920 characters and reached codegen at step
+202, where the schema loader rejected exports. A mapped-versus-physical module
+identity mismatch is a hypothesis, not an established cause. Before installing
+the compiler, the next control loads one schema in fresh processes with mapped
+and physical entry and input paths, records each exit code, and stops if the
+current build's mapped-entry and relative-input case fails. No runtime or
+retention observation resulted from the eighth run.
+
 A separate paired React fixture control tests one ownership hypothesis. Both
 variants use the same async disposal wrapper; after acknowledged disposal, the
 `clear` variant additionally sets its two captured React state dispatchers to

@@ -39,6 +39,48 @@ jobs:
           ref: b1007f1177fd402fae67387b8548cae5ae9b5707
           path: .diagnostics/bun
           persist-credentials: false
+      - name: Compare schema loading through mapped and physical paths
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $source = Join-Path $env:GITHUB_WORKSPACE '.diagnostics/bun'
+          $root = Join-Path $env:RUNNER_TEMP 'runtime-build-control'
+          New-Item -ItemType Directory -Force -Path $root | Out-Null
+          $probe = Join-Path $source 'src/codegen/bun-native-schema-control.ts'
+          @'
+          import { pathToFileURL } from 'node:url'
+          const { loadSchemaFile } = await import(pathToFileURL(process.env.BUN_NATIVE_LOADER!).href)
+          const schema = await loadSchemaFile(process.env.BUN_NATIVE_SCHEMA_SPEC!)
+          console.log(`loaded ${schema.origin.stem}`)
+          '@ | Set-Content -Encoding utf8 $probe
+          if (Test-Path 'X:\') { throw 'Drive X: is already in use' }
+          subst X: $source
+          if ($LASTEXITCODE -ne 0) { throw 'Could not map X:' }
+          $pushed = $false
+          try {
+            Push-Location 'X:\'
+            $pushed = $true
+            $results = @()
+            foreach ($entry in @('mapped', 'physical')) {
+              foreach ($input in @('relative', 'physical')) {
+                $script = if ($entry -eq 'mapped') { 'X:\src\codegen\bun-native-schema-control.ts' } else { $probe }
+                $env:BUN_NATIVE_LOADER = if ($entry -eq 'mapped') { 'X:\src\codegen\bindgen-load.ts' } else { Join-Path $source 'src/codegen/bindgen-load.ts' }
+                $schema = if ($input -eq 'relative') { 'src\css_jsc\color_js.bind.ts' } else { Join-Path $source 'src/css_jsc/color_js.bind.ts' }
+                $env:BUN_NATIVE_SCHEMA_SPEC = "bun_css_jsc=$schema"
+                & bun $script
+                $code = $LASTEXITCODE
+                $results += [pscustomobject]@{ entry = $entry; input = $input; exitCode = $code }
+                Write-Host "Schema control: entry=$entry input=$input exit=$code"
+              }
+            }
+            $results | ConvertTo-Json | Out-File (Join-Path $root 'schema-path-controls.json') -Encoding utf8
+            $selected = $results | Where-Object { $_.entry -eq 'mapped' -and $_.input -eq 'relative' }
+            if ($selected.exitCode -ne 0) { throw 'The build schema path failed the early control' }
+          } finally {
+            if ($pushed) { Pop-Location }
+            subst X: /D
+            Remove-Item $probe -ErrorAction SilentlyContinue
+          }
       - name: Check out exact WebKit source
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         env:
