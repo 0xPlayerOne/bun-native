@@ -29,15 +29,18 @@ final class Frames: NSObject, SCStreamOutput {
     guard let base = CVPixelBufferGetBaseAddress(image) else { return }
     let width = CVPixelBufferGetWidth(image)
     let height = CVPixelBufferGetHeight(image)
-    guard width > 0, height > 0 else { return }
-    let offset = (height / 2) * CVPixelBufferGetBytesPerRow(image) + (width / 2) * 4
+    guard width == 320, height == 180 else { return }
+    // Sample inside the 240-by-36 label region used by the existing observer.
+    let offset = 28 * CVPixelBufferGetBytesPerRow(image) + 132 * 4
     let pixel = base.advanced(by: offset).assumingMemoryBound(to: UInt8.self)
     let blue = Int(pixel[0])
     let green = Int(pixel[1])
     let red = Int(pixel[2])
     let color =
       red > 160 && green < 80 && blue < 80
-      ? "red" : blue > 160 && red < 80 && green < 80 ? "blue" : "other"
+      ? "red"
+      : blue > 160 && red < 80 && green < 80
+        ? "blue" : red < 80 && green < 80 && blue < 80 ? "black" : "other"
     let item: [String: Any] = [
       "color": color, "width": width, "height": height,
       "displayTime": frame[.displayTime] as? UInt64 ?? 0,
@@ -79,10 +82,26 @@ final class Frames: NSObject, SCStreamOutput {
     defer { lock.unlock() }
     return rgbByColor[color]
   }
+
+  func discard(_ color: String) {
+    lock.lock()
+    rgbByColor.removeValue(forKey: color)
+    lock.unlock()
+  }
 }
 
 @main struct Probe {
   @MainActor static func main() {
+    if CommandLine.arguments == [CommandLine.arguments[0], "--comparison-self-test"] {
+      do {
+        try comparisonSelfTest()
+        print("comparison self-test passed")
+        exit(0)
+      } catch {
+        FileHandle.standardError.write(Data("\(error)\n".utf8))
+        exit(1)
+      }
+    }
     guard ProcessInfo.processInfo.environment["GITHUB_ACTIONS"] == "true" else {
       FileHandle.standardError.write(Data("hosted-only diagnostic\n".utf8))
       exit(1)
@@ -172,6 +191,8 @@ final class Frames: NSObject, SCStreamOutput {
     try displayStream.addStreamOutput(
       displayFrames, type: .screen,
       sampleHandlerQueue: DispatchQueue(label: "bun-native.bounded-display-stream"))
+    var comparisons: [String: [String: Any]] = [:]
+    var negative: [String: Any] = [:]
     try await stream.startCapture()
     do {
       try await displayStream.startCapture()
@@ -182,53 +203,39 @@ final class Frames: NSObject, SCStreamOutput {
       try await waitFor("blue", displayFrames)
       for color in ["red", "blue"] {
         guard let windowPixels = frames.pixels(color),
-          let displayPixels = displayFrames.pixels(color),
-          windowPixels.count == 320 * 180 * 3, displayPixels.count == windowPixels.count
-        else { throw ProbeError.message("unexpected pixel data size for \(color)") }
-        if windowPixels != displayPixels {
-          let windowBytes = [UInt8](windowPixels)
-          let displayBytes = [UInt8](displayPixels)
-          var changed = 0
-          var first: [String: Any] = [:]
-          var minX = 320
-          var minY = 180
-          var maxX = -1
-          var maxY = -1
-          var maxChannelDelta = 0
-          for index in 0..<(320 * 180) {
-            let offset = index * 3
-            if windowBytes[offset..<(offset + 3)] != displayBytes[offset..<(offset + 3)] {
-              changed += 1
-              let x = index % 320
-              let y = index / 320
-              minX = min(minX, x)
-              minY = min(minY, y)
-              maxX = max(maxX, x)
-              maxY = max(maxY, y)
-              for channel in 0..<3 {
-                maxChannelDelta = max(
-                  maxChannelDelta,
-                  abs(Int(windowBytes[offset + channel]) - Int(displayBytes[offset + channel])))
-              }
-              if first.isEmpty {
-                first = [
-                  "x": x, "y": y,
-                  "windowBGR": Array(windowBytes[offset..<(offset + 3)]),
-                  "displayBGR": Array(displayBytes[offset..<(offset + 3)]),
-                ]
-              }
-            }
-          }
-          let detail: [String: Any] = [
-            "color": color, "changedPixels": changed, "firstDifference": first,
-            "changedBounds": [minX, minY, maxX, maxY], "maxChannelDelta": maxChannelDelta,
-            "sourceRect": [sourceRect.minX, sourceRect.minY, sourceRect.width, sourceRect.height],
-            "windowFrames": frames.snapshot(), "displayFrames": displayFrames.snapshot(),
-          ]
+          let displayPixels = displayFrames.pixels(color)
+        else { throw ProbeError.message("missing pixel data for \(color)") }
+        let detail = try compare(windowPixels, displayPixels)
+        comparisons[color] = detail
+        guard detail["labelChangedPixels"] as? Int == 0 else {
           let data = try JSONSerialization.data(withJSONObject: detail, options: [.sortedKeys])
-          let diagnostics = String(data: data, encoding: .utf8) ?? "unavailable"
-          throw ProbeError.message("owned-window and display RGB pixels differ: \(diagnostics)")
+          throw ProbeError.message(
+            "label RGB pixels differ for \(color): \(String(data: data, encoding: .utf8) ?? "unavailable")"
+          )
         }
+      }
+      guard let unobstructed = frames.pixels("blue") else {
+        throw ProbeError.message("missing blue reference")
+      }
+      displayFrames.discard("black")
+      // The overlay is owned by this probe and covers the exact label region.
+      let blocker = NSWindow(
+        contentRect: NSRect(
+          x: window.frame.minX + 12, y: window.frame.minY + 134, width: 240, height: 36),
+        styleMask: [.borderless], backing: .buffered, defer: false)
+      blocker.isReleasedWhenClosed = false
+      blocker.hasShadow = false
+      blocker.level = NSWindow.Level(rawValue: window.level.rawValue + 1)
+      blocker.backgroundColor = .black
+      blocker.orderFrontRegardless()
+      defer { blocker.close() }
+      try await waitFor("black", displayFrames)
+      guard let obstructed = displayFrames.pixels("black") else {
+        throw ProbeError.message("missing obstruction frame")
+      }
+      negative = try compare(unobstructed, obstructed)
+      guard let changed = negative["labelChangedPixels"] as? Int, changed >= 240 * 36 / 2 else {
+        throw ProbeError.message("label comparator did not detect the deliberate obstruction")
       }
       try await displayStream.stopCapture()
       try await stream.stopCapture()
@@ -240,19 +247,82 @@ final class Frames: NSObject, SCStreamOutput {
     let result: [String: Any] = [
       "status": "passed",
       "scope":
-        "owned fixture and bounded display RGB correspondence; no input or physical presentation claim",
+        "exact label-region RGB correspondence and an owned obstruction control; no input or physical presentation claim",
       "windowFrames": frames.snapshot(),
       "displayFrames": displayFrames.snapshot(),
       "sourceRect": [sourceRect.minX, sourceRect.minY, sourceRect.width, sourceRect.height],
-      "rgbCorrespondence": ["red": true, "blue": true],
+      "labelRegion": [12, 10, 240, 36],
+      "comparisons": comparisons,
+      "obstructionControl": negative,
     ]
     let json = try JSONSerialization.data(withJSONObject: result, options: [.sortedKeys])
     FileHandle.standardOutput.write(json)
     FileHandle.standardOutput.write(Data("\n".utf8))
   }
+  static func compare(_ windowPixels: Data, _ displayPixels: Data) throws -> [String: Any] {
+    guard windowPixels.count == 320 * 180 * 3, displayPixels.count == windowPixels.count
+    else { throw ProbeError.message("unexpected pixel data size") }
+    let windowBytes = [UInt8](windowPixels)
+    let displayBytes = [UInt8](displayPixels)
+    var changed = 0
+    var labelChanged = 0
+    var minX = 320
+    var minY = 180
+    var maxX = -1
+    var maxY = -1
+    var maxDelta = 0
+    var first: [String: Any] = [:]
+    for index in 0..<(320 * 180) {
+      let offset = index * 3
+      if windowBytes[offset..<(offset + 3)] != displayBytes[offset..<(offset + 3)] {
+        changed += 1
+        let x = index % 320
+        let y = index / 320
+        if x >= 12 && x < 252 && y >= 10 && y < 46 { labelChanged += 1 }
+        minX = min(minX, x)
+        minY = min(minY, y)
+        maxX = max(maxX, x)
+        maxY = max(maxY, y)
+        for channel in 0..<3 {
+          maxDelta = max(
+            maxDelta, abs(Int(windowBytes[offset + channel]) - Int(displayBytes[offset + channel])))
+        }
+        if first.isEmpty {
+          first = [
+            "x": x, "y": y, "windowBGR": Array(windowBytes[offset..<(offset + 3)]),
+            "displayBGR": Array(displayBytes[offset..<(offset + 3)]),
+          ]
+        }
+      }
+    }
+    let bounds: Any = changed == 0 ? NSNull() : [minX, minY, maxX, maxY]
+    return [
+      "changedPixels": changed, "labelChangedPixels": labelChanged,
+      "changedBounds": bounds, "maxChannelDelta": maxDelta,
+      "firstDifference": first,
+    ]
+  }
+  static func comparisonSelfTest() throws {
+    let baseline = Data(repeating: 0, count: 320 * 180 * 3)
+    var changed = baseline
+    changed[(179 * 320 + 0) * 3] = 1
+    changed[(28 * 320 + 132) * 3] = 255
+    let result = try compare(baseline, changed)
+    guard result["changedPixels"] as? Int == 2,
+      result["labelChangedPixels"] as? Int == 1,
+      result["maxChannelDelta"] as? Int == 255,
+      result["changedBounds"] as? [Int] == [0, 28, 132, 179]
+    else { throw ProbeError.message("comparison self-test failed") }
+    do {
+      _ = try compare(baseline, Data())
+      throw ProbeError.message("comparison accepted an invalid buffer")
+    } catch ProbeError.message("unexpected pixel data size") {
+      // The malformed-buffer control must fail before indexing.
+    }
+  }
   static func waitFor(_ color: String, _ frames: Frames) async throws {
     for _ in 0..<100 {
-      if frames.snapshot().contains(where: { ($0["color"] as? String) == color }) { return }
+      if frames.pixels(color) != nil { return }
       try await Task.sleep(for: .milliseconds(50))
     }
     let data = try JSONSerialization.data(withJSONObject: frames.snapshot(), options: [.sortedKeys])
