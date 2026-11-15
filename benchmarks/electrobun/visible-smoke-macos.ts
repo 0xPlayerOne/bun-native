@@ -418,6 +418,12 @@ async function main() {
     streamReady = await waitForStreamFile(streamReadyPath, streamChild)
   }
   result['stage'] = 'click'
+  if (streamHelper) {
+    assert(streamChild)
+    writeFileSync(streamArmPath, '', { flag: 'wx' })
+    const ack = await waitForStreamFile(streamArmPath + '.ack.json', streamChild)
+    assert.deepEqual(ack, { status: 'armed' }, 'Stream arm acknowledgement is invalid')
+  }
   const clickStart = performance.now()
   const injection = await helperCall({
     ...request,
@@ -430,7 +436,6 @@ async function main() {
   assert.equal(injection.status, 'ready')
   assert.equal(injection.windowServerTargetVerified, true)
   assert.equal(injection.injection?.postedEvents, 3)
-  if (streamHelper) writeFileSync(streamArmPath, '', { flag: 'wx' })
   let changed: Awaited<ReturnType<typeof snapshot>> | undefined
   let difference: ReturnType<typeof compareVisiblePixels> | undefined
   let polls = 0

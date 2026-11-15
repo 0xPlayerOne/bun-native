@@ -42,11 +42,10 @@ final class Matches: @unchecked Sendable {
     lock.lock()
     defer { lock.unlock() }
     armed = true
-    if let window, let display, let baseline, window.rgb == display.rgb,
-      window.rgb != baseline.0.rgb
-    {
-      changed = (window, display)
-    }
+    // Require callbacks from both streams after arming. This does not establish
+    // when a buffered frame was produced or when it reached a physical screen.
+    window = nil
+    display = nil
   }
 
   func state() -> (ready: [String: Any]?, changed: [String: Any]?) {
@@ -162,11 +161,12 @@ final class Output: NSObject, SCStreamOutput {
     let ready = URL(fileURLWithPath: a[7])
     let result = URL(fileURLWithPath: a[8])
     let arm = URL(fileURLWithPath: a[9])
+    let armed = URL(fileURLWithPath: a[9] + ".ack.json")
     guard let temp = ProcessInfo.processInfo.environment["RUNNER_TEMP"], temp.hasPrefix("/") else {
       throw Failure.reason("missing runner temp")
     }
     let prefix = URL(fileURLWithPath: temp).resolvingSymlinksInPath().path + "/"
-    for path in [ready, result, arm] {
+    for path in [ready, result, arm, armed] {
       let parent = path.deletingLastPathComponent().resolvingSymlinksInPath().path + "/"
       guard parent.hasPrefix(prefix), !FileManager.default.fileExists(atPath: path.path) else {
         throw Failure.reason("output outside owned runner temp or exists")
@@ -237,6 +237,8 @@ final class Output: NSObject, SCStreamOutput {
         if readyWritten, !isArmed, FileManager.default.fileExists(atPath: arm.path) {
           matches.arm()
           isArmed = true
+          let data = try JSONSerialization.data(withJSONObject: ["status": "armed"])
+          try data.write(to: armed, options: [.atomic])
         }
         if isArmed, let changed = matches.state().changed {
           let latest = try await SCShareableContent.excludingDesktopWindows(
@@ -283,9 +285,13 @@ final class Output: NSObject, SCStreamOutput {
     matches.add(sample(2), kind: "display")
     guard matches.state().changed == nil else { throw Failure.reason("unarmed change accepted") }
     matches.arm()
-    guard matches.state().changed != nil else {
-      throw Failure.reason("armed matching change rejected")
+    guard matches.state().changed == nil else {
+      throw Failure.reason("pre-arm matching change accepted")
     }
+    matches.add(sample(2), kind: "window")
+    guard matches.state().changed == nil else { throw Failure.reason("stale display accepted") }
+    matches.add(sample(2), kind: "display")
+    guard matches.state().changed != nil else { throw Failure.reason("fresh change rejected") }
     let outOfOrder = Matches()
     outOfOrder.add(sample(1), kind: "window")
     outOfOrder.add(sample(1), kind: "display")
@@ -295,6 +301,10 @@ final class Output: NSObject, SCStreamOutput {
       throw Failure.reason("unmatched armed change accepted")
     }
     outOfOrder.add(sample(2), kind: "display")
+    guard outOfOrder.state().changed == nil else {
+      throw Failure.reason("pre-arm window accepted")
+    }
+    outOfOrder.add(sample(2), kind: "window")
     guard outOfOrder.state().changed != nil else {
       throw Failure.reason("later matching change rejected")
     }

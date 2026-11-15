@@ -232,9 +232,15 @@ final class Frames: NSObject, SCStreamOutput {
         let readyData = try JSONSerialization.jsonObject(with: Data(contentsOf: ready))
           as? [String: Any], readyData["status"] as? String == "ready"
       else { throw ProbeError.message("invalid external stream readiness") }
+      try Data().write(to: armed, options: .withoutOverwriting)
+      let armedAck = URL(fileURLWithPath: armed.path + ".ack.json")
+      try await waitForFile(armedAck, process: external)
+      guard
+        let ack = try JSONSerialization.jsonObject(with: Data(contentsOf: armedAck))
+          as? [String: Any], ack["status"] as? String == "armed"
+      else { throw ProbeError.message("invalid external stream arm acknowledgement") }
       view.layer?.backgroundColor = NSColor.blue.cgColor
       label.stringValue = "Clicked"
-      try Data().write(to: armed, options: .withoutOverwriting)
       try await waitFor("blue", frames)
       try await waitFor("blue", displayFrames)
       try await waitForFile(changed, process: external)
