@@ -167,20 +167,7 @@ test('Windows runtime source build is limited to its explicit label and exact Bu
   expect(reportControl.run).toContain('"string":1,"String":2')
   expect(boundary.run).toContain('Get-Content $prefix -Raw | ConvertFrom-Json -AsHashtable')
   expect(job.steps.indexOf(reportControl)).toBeLessThan(job.steps.indexOf(boundary))
-  const pairs = workflow.jobs['boundary-pairs']!
-  expect(pairs.if).toContain("github.event.label.name == 'diagnostic:windows-boundary-pairs'")
-  expect(pairs.if).toContain("github.event.label.name == 'diagnostic:windows-wrapper-release'")
-  expect(pairs.if).toContain("github.event.label.name == 'diagnostic:windows-capture-release'")
-  expect(pairs.if).toContain("github.event.label.name == 'diagnostic:windows-listener-release'")
-  expect(pairs.if).toContain('github.event.pull_request.draft == false')
-  const reused = pairs.steps.find(
-    (step) => step.name === 'Download the identified diagnostic runtime'
-  )!
-  expect(reused.run).toContain('gh run download 43762395712')
-  expect(reused.run).toContain('49266f7b12bcf39af1befe7c7ca416ee239095a660fa9257fd50fe79410fc45f')
-  expect(pairs.steps.find((step) => step.name === 'Run paired boundary controls')?.run).toContain(
-    'boundary-pairs.py'
-  )
+  expect(workflow.jobs['boundary-pairs']).toBeUndefined()
   const productionCapture = workflow.jobs['production-capture']!
   expect(productionCapture.if).toContain(
     "github.event.label.name == 'diagnostic:windows-production-capture'"

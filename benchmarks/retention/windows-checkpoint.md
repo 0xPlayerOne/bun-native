@@ -352,7 +352,7 @@ retains JIT. The tags are not exclusive and identify neither stack slots nor
 whether the roots are stale. They do not establish the roots at an unchanged
 production AOT benchmark checkpoint or rule out another retaining source.
 
-The opt-in `diagnostic:windows-boundary-pairs` control reuses the retained
+The earlier `diagnostic:windows-boundary-pairs` control reused a retained
 instrumented runtime after checking its SHA-256. Five alternating sets run
 normal full collection and debugging-snapshot collection with the same early
 probe inspection, plus a pinned positive control for each collection method.
@@ -360,8 +360,9 @@ The source, executable and peer hashes and every result are retained. It tests
 whether the changed collection affects observations in this fixture; both
 variants remain instrumented headless controls with a JIT-containing runtime,
 not the unchanged native benchmark or qualified production AOT.
-The source artifact has a 30-day retention period; remove or replace this
-temporary artifact-dependent control before merging once its investigation ends.
+The temporary artifact-dependent workflow job has been removed; reproducing
+this historical control requires rebuilding the instrumented runtime. The
+separate pinned-compiler AOT controls do not depend on that artifact.
 
 [Windows run 43772222388](https://github.com/0xPlayerOne/bun-native/actions/runs/43772222388)
 completed all five sets with valid reports. In the unpinned fixture, both
@@ -376,7 +377,7 @@ source shapes and collection instrumentation differ, and the source-built
 runtime retains JIT. They do not establish an original production-AOT root,
 identify stale stack slots, or rule out additional retaining sources.
 
-The separate `diagnostic:windows-wrapper-release` control tests a narrower
+The earlier `diagnostic:windows-wrapper-release` control tested a narrower
 ownership hypothesis suggested by the snapshot paths. After each view is
 disposed and its final state has been inspected, the `release` variant clears
 the benchmark wrapper's update, rotate, dispose and inspect callbacks. Baseline
@@ -396,7 +397,7 @@ render root in all trials and modes. Clearing these callbacks did not remove the
 symptom in this cohort. This headless intervention neither identifies the
 remaining owner nor qualifies the original native benchmark or production AOT.
 
-The `diagnostic:windows-capture-release` variant tests whether completed renderer
+The earlier `diagnostic:windows-capture-release` variant tested whether completed renderer
 snapshot maps contribute to retention. Both variants capture the map in the
 same local and await the commit in a `try/finally`; the intervention clears
 that map in the `finally` after the commit settles. Pinned variants again hold
@@ -414,7 +415,7 @@ The experimental compiler retains JIT, and changed source shape and collection
 instrumentation prevent attributing the unchanged production AOT failure to the
 map or claiming a production improvement from this result.
 
-The `diagnostic:windows-listener-release` control clears the completed capture
+The earlier `diagnostic:windows-listener-release` control cleared the completed capture
 map in both variants, then compares leaving the fixture's mutable listener
 variable intact with clearing it after view disposal. Positive controls pin the
 render root. This changes the fixture and compiler liveness and is not a fix.
