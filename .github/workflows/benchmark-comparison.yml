@@ -556,7 +556,9 @@ jobs:
   electrobun-smoke:
     name: Electrobun visible-input fixture smoke
     if: vars.CI_BILLING_PAUSED == 'false' && github.event_name == 'workflow_dispatch' && inputs['electrobun-smoke'] == true && (github.event_name != 'pull_request' || github.event.pull_request.draft == false)
-    runs-on: macos-15
+    # Try the stream qualification on a separate hosted image while preserving
+    # the existing macOS 15 comparison cohort and all visibility guards.
+    runs-on: ${{ inputs['startup-only'] && 'macos-26' || 'macos-15' }}
     timeout-minutes: 25
     defaults:
       run:

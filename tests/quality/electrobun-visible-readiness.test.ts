@@ -145,3 +145,22 @@ test('stream readiness retains pre-input obstructions and never accepts malforme
   ).rejects.toThrow('identity changed')
   expect(failed).toHaveLength(0)
 })
+
+test('stream readiness defaults wait before retrying an obstruction', async () => {
+  let calls = 0
+  const attempts: {
+    status: string
+    visibleRegionVerified: boolean
+    visibleRegionObstruction?: object
+  }[] = []
+  const result = await awaitUnobstructedStream(
+    performance.now() + 5000,
+    async () =>
+      ++calls === 1
+        ? { status: 'ready', visibleRegionVerified: false, visibleRegionObstruction: { id: 7 } }
+        : { status: 'ready', visibleRegionVerified: true },
+    attempts
+  )
+  expect(result.visibleRegionVerified).toBe(true)
+  expect(attempts).toHaveLength(2)
+})
