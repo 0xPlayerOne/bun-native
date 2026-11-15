@@ -37,6 +37,18 @@ def capture_variant(source, clear):
     return source.replace(marker, replacement)
 
 
+def listener_variant(source, clear):
+    declaration = "  const listener = () => {"
+    disposal = "    dispose: () => view.dispose(),"
+    if source.count(declaration) != 1 or source.count(disposal) != 1:
+        raise ValueError("Expected exactly one listener declaration and disposal")
+    source = source.replace(declaration, "  let listener = () => {")
+    action = " listener = undefined!;" if clear else ""
+    return source.replace(
+        disposal, "    async dispose() { await view.dispose();" + action + " },"
+    )
+
+
 def main():
     if len(sys.argv) not in (5, 6):
         raise ValueError(
@@ -56,6 +68,8 @@ def main():
     elif experiment == "wrapper-release":
         variants = ("baseline-gc", "release-gc", "pin-gc", "pinrelease-gc")
     elif experiment == "capture-release":
+        variants = ("baseline-gc", "clear-gc", "pin-gc", "pinclear-gc")
+    elif experiment == "listener-release":
         variants = ("baseline-gc", "clear-gc", "pin-gc", "pinclear-gc")
     else:
         raise ValueError("Unknown boundary experiment")
@@ -92,6 +106,8 @@ def main():
                 (source_dir / "react.tsx").read_text(encoding="utf-8"),
                 pin.startswith("pin"),
             )
+            if experiment == "listener-release":
+                entry_text = listener_variant(entry_text, pin in ("clear", "pinclear"))
             for path, contents in ((workload, workload_text), (entry, entry_text)):
                 with path.open("x", encoding="utf-8", newline="\n") as target:
                     created.append(path)
@@ -113,10 +129,13 @@ def main():
             for path in reversed(created):
                 path.unlink()
         module = output / variant / "application.js"
-        if experiment == "capture-release":
+        if experiment in ("capture-release", "listener-release"):
             original = module.read_text(encoding="utf-8")
             module.write_text(
-                capture_variant(original, pin in ("clear", "pinclear")),
+                capture_variant(
+                    original,
+                    experiment == "listener-release" or pin in ("clear", "pinclear"),
+                ),
                 encoding="utf-8",
                 newline="\n",
             )

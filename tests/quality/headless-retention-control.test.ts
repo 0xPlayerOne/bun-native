@@ -89,6 +89,16 @@ marker = 'await this.commit(snapshot(this.root));'
 baseline_capture = pairs.capture_variant(marker, False)
 clear_capture = pairs.capture_variant(marker, True)
 assert baseline_capture.replace('finally { }', 'finally { completedCapture.clear(); }') == clear_capture
+baseline_listener = pairs.listener_variant(fixture, False)
+clear_listener = pairs.listener_variant(fixture, True)
+assert baseline_listener.replace('await view.dispose(); },', 'await view.dispose(); listener = undefined!; },') == clear_listener
+assert '__boundaryPin = view' in pairs.listener_variant(boundary.entry_variant(fixture, True), True)
+for invalid in ('missing', fixture + fixture):
+    try:
+        pairs.listener_variant(invalid, True)
+        raise AssertionError('invalid listener marker accepted')
+    except ValueError:
+        pass
 for invalid in ('missing', marker + marker):
     try:
         pairs.capture_variant(invalid, True)

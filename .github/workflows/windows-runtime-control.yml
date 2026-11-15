@@ -552,7 +552,7 @@ jobs:
           retention-days: 30
 
   boundary-pairs:
-    if: vars.CI_BILLING_PAUSED == 'false' && github.event.pull_request.draft == false && (github.event.label.name == 'diagnostic:windows-boundary-pairs' || github.event.label.name == 'diagnostic:windows-wrapper-release' || github.event.label.name == 'diagnostic:windows-capture-release')
+    if: vars.CI_BILLING_PAUSED == 'false' && github.event.pull_request.draft == false && (github.event.label.name == 'diagnostic:windows-boundary-pairs' || github.event.label.name == 'diagnostic:windows-wrapper-release' || github.event.label.name == 'diagnostic:windows-capture-release' || github.event.label.name == 'diagnostic:windows-listener-release')
     runs-on: windows-2022
     timeout-minutes: 45
     permissions:
@@ -583,7 +583,7 @@ jobs:
       - name: Run paired boundary controls
         shell: pwsh
         env:
-          BOUNDARY_EXPERIMENT: ${{ github.event.label.name == 'diagnostic:windows-capture-release' && 'capture-release' || github.event.label.name == 'diagnostic:windows-wrapper-release' && 'wrapper-release' || 'collection' }}
+          BOUNDARY_EXPERIMENT: ${{ github.event.label.name == 'diagnostic:windows-listener-release' && 'listener-release' || github.event.label.name == 'diagnostic:windows-capture-release' && 'capture-release' || github.event.label.name == 'diagnostic:windows-wrapper-release' && 'wrapper-release' || 'collection' }}
         run: |
           $ErrorActionPreference = 'Stop'
           $root = Join-Path $env:RUNNER_TEMP 'boundary-reuse'

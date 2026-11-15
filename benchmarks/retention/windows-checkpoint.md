@@ -396,6 +396,24 @@ render root in all trials and modes. Clearing these callbacks did not remove the
 symptom in this cohort. This headless intervention neither identifies the
 remaining owner nor qualifies the original native benchmark or production AOT.
 
+The `diagnostic:windows-capture-release` variant tests whether completed renderer
+snapshot maps contribute to retention. Both variants capture the map in the
+same local and await the commit in a `try/finally`; the intervention clears
+that map in the `finally` after the commit settles. Pinned variants again hold
+the actual render root globally. This diagnostic rewrites the bundled fixture,
+changes its compiled code shape and is not a production implementation.
+
+[Windows run 43773669995](https://github.com/0xPlayerOne/bun-native/actions/runs/43773669995)
+completed five alternating sets with valid reports. Both unpinned development
+variants had no survivors in all trials. In source-built compiled trials, the
+baseline retained probes `[298,299]` in all five, while clearing the completed
+capture retained `[299]` in all five. Both pinned variants detected their pinned
+root in every trial and mode. The intervention removes the content-ref survivor
+in this cohort but does not remove the listener survivor or explain its owner.
+The experimental compiler retains JIT, and changed source shape and collection
+instrumentation prevent attributing the unchanged production AOT failure to the
+map or claiming a production improvement from this result.
+
 The opt-in `diagnostic:windows-origin-ranges` source-build control layers
 `webkit-conservative-origin-experiment.patch` on the existing snapshot patch.
 It classifies root-array entries from the conductor's register-state range,
