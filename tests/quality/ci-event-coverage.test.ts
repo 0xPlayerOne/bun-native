@@ -92,7 +92,12 @@ test('Windows runtime source build is limited to its explicit label and exact Bu
       string,
       {
         if: string
-        steps: { with?: Record<string, string>; env?: Record<string, string>; run?: string }[]
+        steps: {
+          if?: string
+          with?: Record<string, string>
+          env?: Record<string, string>
+          run?: string
+        }[]
       }
     >
   }
@@ -103,6 +108,7 @@ test('Windows runtime source build is limited to its explicit label and exact Bu
   expect(workflow.permissions).toEqual({ contents: 'read' })
   const job = workflow.jobs['local-runtime']!
   expect(job.if).toContain("github.event.label.name == 'diagnostic:windows-runtime'")
+  expect(job.if).toContain("github.event.label.name == 'diagnostic:windows-zero-registers'")
   expect(job.if).toContain('github.event.pull_request.draft == false')
   expect(job.steps.find((step) => step.with?.repository === 'oven-sh/bun')?.with?.ref).toBe(
     pin.bun.revision
@@ -111,6 +117,13 @@ test('Windows runtime source build is limited to its explicit label and exact Bu
   expect(webkit?.ref).toBe('4d45755fed4aeef19e95beb90d3d0c884a2812bd')
   expect(webkit?.['sparse-checkout']).toContain('Source/JavaScriptCore')
   expect(webkit?.['sparse-checkout']).not.toContain('LayoutTests')
+  const zeroRegisters = job.steps.find((step) =>
+    step.run?.includes('webkit-windows-zero-registers-experiment.patch')
+  )!
+  expect(zeroRegisters.if).toBe("github.event.label.name == 'diagnostic:windows-zero-registers'")
+  expect(zeroRegisters.run).toContain('git -C $webkit apply --check $patch')
+  expect(zeroRegisters.run).toContain('experimental-zero-registers-hash.txt')
+  expect(zeroRegisters.run).toContain('not a GC correctness or production AOT qualification')
   for (const repository of ['oven-sh/bun', 'oven-sh/WebKit']) {
     const checkout = job.steps.find((step) => step.with?.repository === repository)
     expect(checkout?.env?.GIT_CONFIG_KEY_0).toBe('core.autocrlf')

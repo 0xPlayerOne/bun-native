@@ -1,0 +1,11 @@
+--- a/Source/JavaScriptCore/heap/MachineStackMarker.cpp
++++ b/Source/JavaScriptCore/heap/MachineStackMarker.cpp
+@@ -132,7 +132,7 @@
+ // See: https://bugs.webkit.org/show_bug.cgi?id=146297
+ void MachineThreads::tryCopyOtherThreadStack(const ThreadSuspendLocker& locker, Thread& thread, void* buffer, size_t capacity, size_t* size)
+ {
+-    PlatformRegisters registers;
++    PlatformRegisters registers { };
+     size_t registersSize = thread.getRegisters(locker, registers);
+ 
+     // This is a workaround for <rdar://problem/27607384>. libdispatch recycles work
