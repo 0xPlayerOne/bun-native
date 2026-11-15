@@ -386,6 +386,16 @@ controls. Five alternating sets retain all results. Clearing these wrapper
 callbacks changes fixture behavior and compiler liveness, so any difference is
 a diagnostic lead rather than proof about the unmodified native benchmark.
 
+[Windows run 43772996261](https://github.com/0xPlayerOne/bun-native/actions/runs/43772996261)
+completed all five sets with valid reports. Both unpinned development variants
+had no survivors in all trials; both source-built compiled variants had at least
+one survivor in all five trials. Baseline retained `[298,299]`, `[298]`,
+`[298,299]`, `[299]`, `[299]`; wrapper release retained `[298,299]`,
+`[298,299]`, `[299]`, `[299]`, `[298,299]`. Both pinned variants detected their
+render root in all trials and modes. Clearing these callbacks did not remove the
+symptom in this cohort. This headless intervention neither identifies the
+remaining owner nor qualifies the original native benchmark or production AOT.
+
 The opt-in `diagnostic:windows-origin-ranges` source-build control layers
 `webkit-conservative-origin-experiment.patch` on the existing snapshot patch.
 It classifies root-array entries from the conductor's register-state range,
