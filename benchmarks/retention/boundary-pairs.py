@@ -67,7 +67,7 @@ def main():
         variants = ("baseline-gc", "baseline-snapshot", "pin-gc", "pin-snapshot")
     elif experiment == "wrapper-release":
         variants = ("baseline-gc", "release-gc", "pin-gc", "pinrelease-gc")
-    elif experiment == "capture-release":
+    elif experiment in ("capture-release", "production-capture"):
         variants = ("baseline-gc", "clear-gc", "pin-gc", "pinclear-gc")
     elif experiment == "listener-release":
         variants = ("baseline-gc", "clear-gc", "pin-gc", "pinclear-gc")
@@ -80,7 +80,11 @@ def main():
         "experiment": experiment,
         "variants": variants,
         "ordering": "forward on even trials; reverse on odd trials",
-        "scope": "Instrumented headless fixture; source-built compiled mode retains JIT and is not release AOT.",
+        "scope": (
+            "Headless fixture with original GC checkpoints and verified JIT-free AOT; capture source is modified."
+            if experiment == "production-capture"
+            else "Instrumented headless fixture; source-built compiled mode retains JIT and is not release AOT."
+        ),
         "sources": {},
     }
     spec = importlib.util.spec_from_file_location(
@@ -96,10 +100,11 @@ def main():
             raise FileExistsError("Boundary source path is already occupied")
         created = []
         try:
-            workload_text = generator.workload_variant(
-                (source_dir / "workload.ts").read_text(encoding="utf-8"),
-                mode == "snapshot",
-            )
+            workload_text = (source_dir / "workload.ts").read_text(encoding="utf-8")
+            if experiment != "production-capture":
+                workload_text = generator.workload_variant(
+                    workload_text, mode == "snapshot"
+                )
             if pin in ("release", "pinrelease"):
                 workload_text = generator.release_wrapper_callbacks(workload_text)
             entry_text = generator.entry_variant(
@@ -129,7 +134,7 @@ def main():
             for path in reversed(created):
                 path.unlink()
         module = output / variant / "application.js"
-        if experiment in ("capture-release", "listener-release"):
+        if experiment in ("capture-release", "listener-release", "production-capture"):
             original = module.read_text(encoding="utf-8")
             module.write_text(
                 capture_variant(
@@ -156,8 +161,9 @@ def main():
                 stdout=log,
                 stderr=subprocess.STDOUT,
             )
-        inspection = 'import { inspectBunExecutable } from "./scripts/native/inspect.ts"; import { inspectBunRuntime } from "./scripts/native/inspect-runtime.ts"; if (!inspectBunExecutable(process.argv[1]).hasCompiledProgram || inspectBunRuntime(process.argv[1]).jit !== "present") throw new Error("Unexpected compiled runtime")'
-        run(["bun", "-e", inspection, str(binary)])
+        expected_jit = "unused" if experiment == "production-capture" else "present"
+        inspection = 'import { inspectBunExecutable } from "./scripts/native/inspect.ts"; import { inspectBunRuntime } from "./scripts/native/inspect-runtime.ts"; if (!inspectBunExecutable(process.argv[1]).hasCompiledProgram || inspectBunRuntime(process.argv[1]).jit !== process.argv[2]) throw new Error("Unexpected compiled runtime")'
+        run(["bun", "-e", inspection, str(binary), expected_jit])
         plan["sources"][variant].update(module=sha(module), executable=sha(binary))
     (output / "plan.json").write_text(json.dumps(plan, indent=2) + "\n")
     results = []
@@ -165,7 +171,10 @@ def main():
         for variant in variants if trial % 2 == 0 else reversed(variants):
             child_dir = output / f"{trial:02}-{variant}"
             env = os.environ.copy()
-            env["BUN_NATIVE_DIAG_SNAPSHOT_SAFE"] = "1"
+            if experiment == "production-capture":
+                env.pop("BUN_NATIVE_DIAG_SNAPSHOT_SAFE", None)
+            else:
+                env["BUN_NATIVE_DIAG_SNAPSHOT_SAFE"] = "1"
             process = subprocess.run(
                 [
                     sys.executable,
@@ -196,12 +205,15 @@ def main():
                 mode = record["mode"]
                 report = json.loads((child_dir / f"00-{mode}.json").read_text())
                 observed = report["retentionObservation"]["stillReachable"]
-                targets = json.loads(
-                    (child_dir / f"00-{mode}.json.boundary-targets.json").read_text()
-                )["targets"]
-                valid = valid and sorted(
-                    target["index"] for target in targets
-                ) == sorted(observed)
+                if experiment != "production-capture":
+                    targets = json.loads(
+                        (
+                            child_dir / f"00-{mode}.json.boundary-targets.json"
+                        ).read_text()
+                    )["targets"]
+                    valid = valid and sorted(
+                        target["index"] for target in targets
+                    ) == sorted(observed)
                 if variant.startswith("pin"):
                     valid = valid and (3 if mode == "development" else 297) in observed
                 if variant.endswith("snapshot"):

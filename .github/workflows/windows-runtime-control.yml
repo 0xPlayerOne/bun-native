@@ -603,6 +603,40 @@ jobs:
           if-no-files-found: warn
           retention-days: 30
 
+  production-capture:
+    if: vars.CI_BILLING_PAUSED == 'false' && github.event.pull_request.draft == false && github.event.label.name == 'diagnostic:windows-production-capture'
+    runs-on: windows-2022
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/native-toolchain
+        with:
+          rust: 'false'
+      - name: Run production AOT capture controls
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $root = Join-Path $env:RUNNER_TEMP 'production-capture'
+          New-Item -ItemType Directory -Path $root | Out-Null
+          $peer = Join-Path $root 'peer.exe'
+          bun build tests/core/protocol-peer.ts --compile --outfile $peer
+          if ($LASTEXITCODE -ne 0) { throw 'Peer compilation failed' }
+          $runtime = (Get-Command bun -CommandType Application).Source
+          python benchmarks/retention/boundary-pairs.py $runtime $peer (Join-Path $root 'results') 5 production-capture
+          if ($LASTEXITCODE -ne 0) { throw 'Production capture controls failed validation' }
+      - name: Retain production AOT controls
+        if: ${{ always() }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: windows-production-capture
+          path: |
+            ${{ runner.temp }}/production-capture/results/
+            !${{ runner.temp }}/production-capture/results/*.exe
+          if-no-files-found: warn
+          retention-days: 30
+
   candidate-runtime:
     if: vars.CI_BILLING_PAUSED == 'false' && github.event.pull_request.draft == false && github.event.label.name == 'diagnostic:windows-candidate'
     runs-on: windows-2022
