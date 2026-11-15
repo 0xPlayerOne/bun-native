@@ -77,3 +77,47 @@
      const dir = dirname(rel);
      if (skip.has(rel) || noUnifyDirs.includes(dir)) {
        standalone.push(abs);
+--- a/scripts/build/bun.ts
++++ b/scripts/build/bun.ts
+@@ -12,7 +12,7 @@
+  */
+ 
+ import { existsSync, lstatSync, readdirSync, readFileSync, realpathSync } from "node:fs";
+-import { relative, resolve, sep } from "node:path";
++import { isAbsolute, relative, resolve, sep } from "node:path";
+ import type { Sources } from "../glob-sources.ts";
+ import { binaryExpectations, exportList, shimExpectations, strippedExpectations } from "./binary-expectations.ts";
+ import { emitCodegen, type CodegenOutputs } from "./codegen.ts";
+@@ -357,7 +357,9 @@
+   const cxxObjects: string[] = [];
+   const builtinTableObjects: string[] = [];
+   for (const src of cxxSources) {
+-    const relSrc = relative(cfg.cwd, src);
++    const physical = relative(process.env.BUN_NATIVE_SOURCE_ROOT!, src);
++    const relSrc = !isAbsolute(physical) && physical !== ".." && !physical.startsWith(".." + sep)
++      ? physical : relative(cfg.cwd, src);
+     const extraFlags = extraFlagsFor(cfg, relSrc);
+     const opts: Parameters<typeof cxx>[3] = {
+       flags: [...cxxFlagsFull, ...extraFlags],
+--- a/scripts/build/compile.ts
++++ b/scripts/build/compile.ts
+@@ -8,7 +8,7 @@
+ 
+ import { mkdirSync, readdirSync } from "node:fs";
+ import { availableParallelism } from "node:os";
+-import { basename, delimiter, dirname, extname, relative, resolve, sep } from "node:path";
++import { basename, delimiter, dirname, extname, isAbsolute, relative, resolve, sep } from "node:path";
+ import { builtinUsesJson, removableFeaturesJson, trimDirectory, trimScript } from "./aot.ts";
+ import { linksWithLld, type Config } from "./config.ts";
+ import { assert } from "./error.ts";
+@@ -704,7 +704,9 @@
+   if (absSrc.startsWith(cfg.buildDir)) {
+     relSrc = relative(cfg.buildDir, absSrc);
+   } else {
+-    relSrc = relative(cfg.cwd, absSrc);
++    const physical = relative(process.env.BUN_NATIVE_SOURCE_ROOT!, absSrc);
++    relSrc = !isAbsolute(physical) && physical !== ".." && !physical.startsWith(".." + sep)
++      ? physical : relative(cfg.cwd, absSrc);
+     // --local-deps checkouts may live outside the repo; map them onto the
+     // vendor/<name>/ path the pinned source would have so obj/ stays a tree.
+     for (const [name, dir] of Object.entries(cfg.localDeps)) {

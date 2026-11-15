@@ -118,7 +118,8 @@ The label-triggered `Windows runtime build control` builds an uninstrumented
 `release-local` Bun from the pinned Bun and WebKit sources on an isolated
 Windows runner. A recorded build-time codegen patch passes canonicalized source
 paths relative to the source root, resolves those inputs against that root,
-and uses the physical source root for unified-source exclusions;
+and uses the physical source root for unified-source exclusions, per-file
+flags and object paths;
 temporary drive mappings shorten other paths. A separate recorded WebKit script
 patch fixes a PowerShell variable parse error and selects physical paths for
 Windows system tar.
@@ -201,6 +202,13 @@ physical source paths, so it did not match. The next build-only patch uses the
 physical source root for matching; an early three-file control checks that the
 Windows certificate file stays separate while eligible peers remain bundled.
 No runtime or retention observation resulted.
+
+The same mapped-root mismatch also affects per-file compiler-flag matching and
+object paths in the pinned Bun build generator. The next diagnostic patch
+normalizes physical repository sources for those lookups. After configuration,
+the control requires the Windows resource compiler command to retain its
+`/EHsc` override and place its object under the build directory. These checks
+do not establish generated-output equivalence.
 
 A separate paired React fixture control tests one ownership hypothesis. Both
 variants use the same async disposal wrapper; after acknowledged disposal, the

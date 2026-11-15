@@ -236,6 +236,9 @@ jobs:
             if ($LASTEXITCODE -ne 0) { throw 'Canonical codegen path check failed' }
             bun scripts/build.ts --profile=release-local --build-dir=build/release-local --configure-only
             if ($LASTEXITCODE -ne 0) { throw 'Local Bun configuration failed' }
+            $env:BUN_NATIVE_COMPILE_DATABASE = Join-Path $bunSource 'build/release-local/compile_commands.json'
+            bun -e 'import { relative } from "node:path"; const commands = await Bun.file(process.env.BUN_NATIVE_COMPILE_DATABASE).json(); const matches = commands.filter(entry => entry.file.toLowerCase().replaceAll("\\", "/").endsWith("/src/jsc/bindings/windows/rescle.cpp")); if (matches.length !== 1) throw new Error("Missing or duplicate Windows per-file compile command"); const entry = matches[0]; const eh = entry.arguments.filter(flag => /^\/EH/i.test(flag)); const outputIndex = entry.arguments.lastIndexOf("-o"); const output = entry.arguments[outputIndex + 1]; const object = relative(entry.directory, output).replaceAll("\\", "/"); if (eh.at(-1) !== "/EHsc" || outputIndex < 0 || !object.startsWith("obj/")) throw new Error(`Unexpected exception flags or object path: ${eh} ${object}`); console.log(`Windows per-file override and object path: ${eh.at(-1)} ${object}`)'
+            if ($LASTEXITCODE -ne 0) { throw 'Per-file build path control failed' }
             $commands = Join-Path $root 'expanded-commands.tmp'
             bun scripts/build.ts --profile=release-local --build-dir=build/release-local -t commands > $commands
             if ($LASTEXITCODE -ne 0) { throw 'Could not inspect generated commands' }
