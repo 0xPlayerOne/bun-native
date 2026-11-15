@@ -149,6 +149,21 @@ test('Windows runtime source build is limited to its explicit label and exact Bu
   expect(compare).toContain('[System.IO.File]::WriteAllBytes($toolchain, $original)')
 })
 
+test('macOS stream feasibility probe requires its explicit label and a ready PR', () => {
+  const workflow = Bun.YAML.parse(
+    readFileSync(join(root, '.github/workflows/macos-stream-control.yml'), 'utf8')
+  ) as {
+    on: { pull_request: { types: string[] } }
+    permissions: Record<string, string>
+    jobs: Record<string, { if: string }>
+  }
+  expect(workflow.on.pull_request.types).toEqual(['labeled'])
+  expect(workflow.permissions).toEqual({ contents: 'read' })
+  const job = workflow.jobs['owned-window-stream']!
+  expect(job.if).toContain("github.event.label.name == 'diagnostic:macos-stream'")
+  expect(job.if).toContain('github.event.pull_request.draft == false')
+})
+
 test('paired input diagnostic requires an explicit dispatch and leaves ordinary jobs enabled by default', () => {
   const source = readFileSync(join(root, '.github/workflows/benchmark-comparison.yml'), 'utf8')
   const parsed = Bun.YAML.parse(source) as {

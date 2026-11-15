@@ -101,3 +101,11 @@ controls expose some noise but do not establish physical presentation latency or
 justify a general product ranking. The changed display capture's command-relative
 start and completion are recorded separately from the later surface, guard and
 pixel verification; the exact instant represented by the capture is unknown.
+
+The opt-in `diagnostic:macos-stream` PR label runs a separate hosted feasibility
+probe for a persistent ScreenCaptureKit stream. It captures only a window owned
+by the probe and checks two known colors. It does not request screen-recording
+permission, inspect the user's desktop, or replace the display/surface checks
+above. A successful probe demonstrates neither displayed pixels nor input or
+presentation latency; hosted capture access and subsequent correspondence and
+A/A controls must be established independently.
