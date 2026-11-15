@@ -183,8 +183,35 @@ final class Frames: NSObject, SCStreamOutput {
       for color in ["red", "blue"] {
         guard let windowPixels = frames.pixels(color),
           let displayPixels = displayFrames.pixels(color),
-          windowPixels.count == 320 * 180 * 3, windowPixels == displayPixels
-        else { throw ProbeError.message("owned-window and display RGB pixels differ for \(color)") }
+          windowPixels.count == 320 * 180 * 3, displayPixels.count == windowPixels.count
+        else { throw ProbeError.message("unexpected pixel data size for \(color)") }
+        if windowPixels != displayPixels {
+          let windowBytes = [UInt8](windowPixels)
+          let displayBytes = [UInt8](displayPixels)
+          var changed = 0
+          var first: [String: Any] = [:]
+          for index in 0..<(320 * 180) {
+            let offset = index * 3
+            if windowBytes[offset..<(offset + 3)] != displayBytes[offset..<(offset + 3)] {
+              changed += 1
+              if first.isEmpty {
+                first = [
+                  "x": index % 320, "y": index / 320,
+                  "windowBGR": Array(windowBytes[offset..<(offset + 3)]),
+                  "displayBGR": Array(displayBytes[offset..<(offset + 3)]),
+                ]
+              }
+            }
+          }
+          let detail: [String: Any] = [
+            "color": color, "changedPixels": changed, "firstDifference": first,
+            "sourceRect": [sourceRect.minX, sourceRect.minY, sourceRect.width, sourceRect.height],
+            "windowFrames": frames.snapshot(), "displayFrames": displayFrames.snapshot(),
+          ]
+          let data = try JSONSerialization.data(withJSONObject: detail, options: [.sortedKeys])
+          let diagnostics = String(data: data, encoding: .utf8) ?? "unavailable"
+          throw ProbeError.message("owned-window and display RGB pixels differ: \(diagnostics)")
+        }
       }
       try await displayStream.stopCapture()
       try await stream.stopCapture()
