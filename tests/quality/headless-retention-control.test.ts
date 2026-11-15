@@ -12,6 +12,14 @@ expected = json.loads(pathlib.Path('toolchain.json').read_text())['bun']['revisi
 runtime = control.resolve_runtime('bun', expected)
 assert control.resolve_runtime(str(runtime), expected) == runtime
 assert len(control.digest(runtime)) == 64
+assert control.narrow_scan_setting({}) is None
+assert control.narrow_scan_setting({'BUN_JSC_useNarrowReferenceScan': '0'}) == '0'
+assert control.narrow_scan_setting({'BUN_JSC_useNarrowReferenceScan': '1'}) == '1'
+try:
+    control.narrow_scan_setting({'BUN_JSC_useNarrowReferenceScan': 'invalid'})
+    raise AssertionError('invalid narrow scan setting accepted')
+except ValueError:
+    pass
 try:
     control.resolve_runtime(str(runtime), 'wrong-revision')
     raise AssertionError('wrong runtime revision accepted')

@@ -41,6 +41,13 @@ def resolve_runtime(command, expected_revision):
     return runtime
 
 
+def narrow_scan_setting(environ):
+    value = environ.get("BUN_JSC_useNarrowReferenceScan")
+    if value not in (None, "0", "1"):
+        raise ValueError("Invalid narrow-reference scan control")
+    return value
+
+
 def valid_report(raw, adapter, mode, trial, revision, exit_code):
     observation = raw["retentionObservation"]
     expected_kinds = (
@@ -110,6 +117,7 @@ def main():
         raise ValueError("Trial count must be in 1..10")
     revision = json.loads(Path("toolchain.json").read_text())["bun"]["revision"]
     runtime = resolve_runtime(sys.argv[7] if len(sys.argv) > 7 else "bun", revision)
+    narrow_scan = narrow_scan_setting(os.environ)
     output.mkdir(parents=True, exist_ok=False)
     plan = {
         "revision": revision,
@@ -126,7 +134,8 @@ def main():
         "ordering": "development then AOT on even trials; reverse on odd trials",
         "scope": "Actual adapter workload and headless public-core IPC, with no GPUI or paint calibration",
         "development": "DFG disabled; 10 iterations, 10 rotations, 2 mounts, 32 rows",
-        "aot": "default JSC options; 1000 iterations, 1000 rotations, 100 mounts, 32 rows",
+        "aot": "1000 iterations, 1000 rotations, 100 mounts, 32 rows",
+        "narrowReferenceScanEnv": narrow_scan,
     }
     (output / "plan.json").write_text(json.dumps(plan, indent=2) + "\n")
     results = []
