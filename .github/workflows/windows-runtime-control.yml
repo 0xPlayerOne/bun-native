@@ -27,6 +27,12 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+      - name: Check boundary report parsing
+        if: github.event.label.name == 'diagnostic:windows-origin-ranges'
+        shell: pwsh
+        run: |
+          $report = '{"stats":{"string":1,"String":2},"retentionObservation":{"stillReachable":[299]}}' | ConvertFrom-Json -AsHashtable
+          if ($report.stats['string'] -ne 1 -or $report.stats['String'] -ne 2 -or $report.retentionObservation.stillReachable[0] -ne 299) { throw 'Case-sensitive report parsing failed' }
       - uses: ./.github/actions/native-toolchain
         with:
           rust: 'false'
@@ -477,6 +483,7 @@ jobs:
           $entry = Join-Path $sourceDir '.retention-boundary-react.tsx'
           $workload = Join-Path $sourceDir '.retention-boundary-workload.ts'
           'The headless runner calls its compiled mode aot; this source-built executable retains JIT and is not qualified release AOT.' | Out-File (Join-Path $root 'boundary-scope.txt') -Encoding utf8
+          Copy-Item $env:LOCAL_BUN (Join-Path $root 'instrumented-runtime.bin')
           foreach ($variant in @('baseline', 'pin')) {
             if ((Test-Path $entry) -or (Test-Path $workload)) { throw 'Boundary fixture path already exists' }
             try {
@@ -503,7 +510,7 @@ jobs:
             foreach ($trial in 0..($trials - 1)) {
               foreach ($mode in @('development', 'aot')) {
                 $prefix = Join-Path $output ('{0:D2}-{1}.json' -f $trial, $mode)
-                $report = Get-Content $prefix -Raw | ConvertFrom-Json
+                $report = Get-Content $prefix -Raw | ConvertFrom-Json -AsHashtable
                 $targets = Get-Content "$prefix.boundary-targets.json" -Raw | ConvertFrom-Json
                 if (@($targets.targets).Count -ne @($report.retentionObservation.stillReachable).Count) { throw 'Boundary targets do not match observed survivors' }
                 $targetIndexes = @($targets.targets | ForEach-Object { $_.index } | Sort-Object) -join ','

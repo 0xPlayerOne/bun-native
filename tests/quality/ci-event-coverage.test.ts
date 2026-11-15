@@ -158,6 +158,15 @@ test('Windows runtime source build is limited to its explicit label and exact Bu
   expect(originReports.if).toBe("github.event.label.name == 'diagnostic:windows-origin-ranges'")
   expect(originReports.run).toContain('originCounts.sameJob')
   expect(originReports.run).toContain('originCounts.nextTask')
+  const reportControl = job.steps.find((step) => step.name === 'Check boundary report parsing')!
+  const boundary = job.steps.find(
+    (step) => step.name === 'Observe the instrumented collection boundary'
+  )!
+  expect(reportControl.if).toBe("github.event.label.name == 'diagnostic:windows-origin-ranges'")
+  expect(reportControl.run).toContain('ConvertFrom-Json -AsHashtable')
+  expect(reportControl.run).toContain('"string":1,"String":2')
+  expect(boundary.run).toContain('Get-Content $prefix -Raw | ConvertFrom-Json -AsHashtable')
+  expect(job.steps.indexOf(reportControl)).toBeLessThan(job.steps.indexOf(boundary))
   for (const repository of ['oven-sh/bun', 'oven-sh/WebKit']) {
     const checkout = job.steps.find((step) => step.with?.repository === repository)
     expect(checkout?.env?.GIT_CONFIG_KEY_0).toBe('core.autocrlf')

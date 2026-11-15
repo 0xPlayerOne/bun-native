@@ -327,6 +327,18 @@ one headless baseline passed and one pinned fixture failed as expected in both
 development and release-AOT modes; the pinned target appeared in each boundary
 snapshot. Windows results require the labeled source-build job.
 
+[Windows run 43755000407](https://github.com/0xPlayerOne/bun-native/actions/runs/43755000407)
+completed the source build and six baseline observations, but stopped before the
+pinned control because PowerShell's default JSON parser rejected heap statistics
+containing both `string` and `String` keys. All three development observations
+and one source-built compiled observation had no survivors; two compiled
+observations retained listener 299. Offline analysis of the retained boundary
+snapshots found conductor-stack-tagged root paths to that listener in both. The
+compiled runtime retains JIT, the collection is instrumented, and the missing
+pinned control prevents treating this run as validated boundary evidence.
+The subsequent workflow reads reports with case-sensitive hash tables and tests
+that parsing behavior on Windows before starting the expensive source build.
+
 The opt-in `diagnostic:windows-origin-ranges` source-build control layers
 `webkit-conservative-origin-experiment.patch` on the existing snapshot patch.
 It classifies root-array entries from the conductor's register-state range,
