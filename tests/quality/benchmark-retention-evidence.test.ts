@@ -268,4 +268,6 @@ test('a collected target is recorded rather than failing the evidence', async ()
   } finally {
     rmSync(directory, { recursive: true, force: true })
   }
-})
+  // This also walks the whole test process heap; Windows hosted runners can
+  // exceed Bun's default five-second timeout even when the evidence is valid.
+}, 30_000)
