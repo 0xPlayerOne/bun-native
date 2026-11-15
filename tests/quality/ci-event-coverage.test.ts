@@ -185,10 +185,13 @@ test('Windows runtime source build is limited to its explicit label and exact Bu
   expect(productionCapture.if).toContain(
     "github.event.label.name == 'diagnostic:windows-production-capture'"
   )
+  expect(productionCapture.if).toContain(
+    "github.event.label.name == 'diagnostic:windows-production-detach'"
+  )
   expect(productionCapture.if).toContain('github.event.pull_request.draft == false')
   expect(
     productionCapture.steps.find((step) => step.name === 'Run production AOT capture controls')?.run
-  ).toContain('5 production-capture')
+  ).toContain('5 $env:PRODUCTION_EXPERIMENT')
   for (const repository of ['oven-sh/bun', 'oven-sh/WebKit']) {
     const checkout = job.steps.find((step) => step.with?.repository === repository)
     expect(checkout?.env?.GIT_CONFIG_KEY_0).toBe('core.autocrlf')

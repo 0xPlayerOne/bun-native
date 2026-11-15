@@ -93,6 +93,17 @@ baseline_listener = pairs.listener_variant(fixture, False)
 clear_listener = pairs.listener_variant(fixture, True)
 assert baseline_listener.replace('await view.dispose(); },', 'await view.dispose(); listener = undefined!; },') == clear_listener
 assert '__boundaryPin = view' in pairs.listener_variant(boundary.entry_variant(fixture, True), True)
+baseline_detach = pairs.react_detach_variant(fixture, False, False)
+clear_detach = pairs.react_detach_variant(fixture, True, False)
+assert baseline_detach.replace('onClick={listener}', 'onClick={attached ? listener : undefined}') == clear_detach
+assert 'await view.flush(); await view.dispose()' in clear_detach
+assert '__listenerPin = listener' in pairs.react_detach_variant(boundary.entry_variant(fixture, True), True, True)
+for invalid in ('missing', fixture + fixture):
+    try:
+        pairs.react_detach_variant(invalid, True, False)
+        raise AssertionError('invalid React detach marker accepted')
+    except ValueError:
+        pass
 for invalid in ('missing', fixture + fixture):
     try:
         pairs.listener_variant(invalid, True)

@@ -604,7 +604,7 @@ jobs:
           retention-days: 30
 
   production-capture:
-    if: vars.CI_BILLING_PAUSED == 'false' && github.event.pull_request.draft == false && github.event.label.name == 'diagnostic:windows-production-capture'
+    if: vars.CI_BILLING_PAUSED == 'false' && github.event.pull_request.draft == false && (github.event.label.name == 'diagnostic:windows-production-capture' || github.event.label.name == 'diagnostic:windows-production-detach')
     runs-on: windows-2022
     timeout-minutes: 45
     steps:
@@ -616,6 +616,8 @@ jobs:
           rust: 'false'
       - name: Run production AOT capture controls
         shell: pwsh
+        env:
+          PRODUCTION_EXPERIMENT: ${{ github.event.label.name == 'diagnostic:windows-production-detach' && 'production-detach' || 'production-capture' }}
         run: |
           $ErrorActionPreference = 'Stop'
           $root = Join-Path $env:RUNNER_TEMP 'production-capture'
@@ -624,7 +626,7 @@ jobs:
           bun build tests/core/protocol-peer.ts --compile --outfile $peer
           if ($LASTEXITCODE -ne 0) { throw 'Peer compilation failed' }
           $runtime = (Get-Command bun -CommandType Application).Source
-          python benchmarks/retention/boundary-pairs.py $runtime $peer (Join-Path $root 'results') 5 production-capture
+          python benchmarks/retention/boundary-pairs.py $runtime $peer (Join-Path $root 'results') 5 $env:PRODUCTION_EXPERIMENT
           if ($LASTEXITCODE -ne 0) { throw 'Production capture controls failed validation' }
       - name: Retain production AOT controls
         if: ${{ always() }}
