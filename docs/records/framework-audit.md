@@ -1,7 +1,7 @@
 # Framework audit and optimization record (#260)
 
 This record summarizes the repository-wide audit documented in
-[#260](https://github.com/0xPlayerOne/bun-native/issues/260), closed on
+[#260](https://github.com/AndrewM-F/bun-native/issues/260), closed on
 November 12, 2026 after its hygiene, profiling and release-scope evidence was
 reconciled. Closure does not qualify the separate upstream, Windows,
 physical-hardware or owner-held credential limits linked below. The record
@@ -163,10 +163,10 @@ or physical-hardware qualification:
 
 | Limit                                | Evidence boundary                                                                                                                                     | Open issue                                                                                                                 |
 | ------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
-| Owner-held release credentials       | macOS Developer ID/notarization, Windows code signing, and an application update-signing key are not available                                        | [#636](https://github.com/0xPlayerOne/bun-native/issues/636)                                                               |
-| Windows qualification                | Disposed-probe retention remains unresolved under the unchanged comparison assertion; NVDA, Korean IME, mixed DPI, and Windows packaging are deferred | [#629](https://github.com/0xPlayerOne/bun-native/issues/629), [#638](https://github.com/0xPlayerOne/bun-native/issues/638) |
-| Physical hardware                    | Hosted runners use virtual displays, synthetic input and software/paravirtual GPUs; EDID, GPU presentation and physical devices remain untested       | [#637](https://github.com/0xPlayerOne/bun-native/issues/637)                                                               |
-| Upstream runtime and renderer limits | Babel 8/Solid, pinned GPUI display/Wayland behavior, AccessKit mapping and Bun/JSC retention depend on upstream changes                               | [#635](https://github.com/0xPlayerOne/bun-native/issues/635)                                                               |
+| Owner-held release credentials       | macOS Developer ID/notarization, Windows code signing, and an application update-signing key are not available                                        | [#636](https://github.com/AndrewM-F/bun-native/issues/636)                                                               |
+| Windows qualification                | Disposed-probe retention remains unresolved under the unchanged comparison assertion; NVDA, Korean IME, mixed DPI, and Windows packaging are deferred | [#629](https://github.com/AndrewM-F/bun-native/issues/629), [#638](https://github.com/AndrewM-F/bun-native/issues/638) |
+| Physical hardware                    | Hosted runners use virtual displays, synthetic input and software/paravirtual GPUs; EDID, GPU presentation and physical devices remain untested       | [#637](https://github.com/AndrewM-F/bun-native/issues/637)                                                               |
+| Upstream runtime and renderer limits | Babel 8/Solid, pinned GPUI display/Wayland behavior, AccessKit mapping and Bun/JSC retention depend on upstream changes                               | [#635](https://github.com/AndrewM-F/bun-native/issues/635)                                                               |
 
 Per-platform release support is decided in the **accepted**
 [ADR 0021](../decisions/0021-platform-release-readiness.md#acceptance-2026-11-12):
@@ -196,7 +196,7 @@ So it has **not recurred** since the November 5 reproductions recorded on the
 issue. No code was changed for it; the bounded startup trace stays in place for
 the next occurrence.
 
-**Later disposition (November 12):** [#296](https://github.com/0xPlayerOne/bun-native/issues/296)
+**Later disposition (November 12):** [#296](https://github.com/AndrewM-F/bun-native/issues/296)
 was closed after the documented clean hosted runs and the Lavapipe/LLVM
 first-touch warm-up mitigation (#442). The dated scan above remains a
 historical observation, not an assertion that #296 is currently open.

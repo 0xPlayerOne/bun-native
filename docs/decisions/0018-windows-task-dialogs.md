@@ -5,7 +5,7 @@ desktop; hosted Windows CI is the only runtime evidence, and it has not run yet.
 
 Date: 2026-11-06.
 
-Related: [menus and dialogs #239](https://github.com/0xPlayerOne/bun-native/issues/239),
+Related: [menus and dialogs #239](https://github.com/AndrewM-F/bun-native/issues/239),
 [message dialogs](0014-message-dialogs.md),
 [file dialogs](0013-native-file-dialogs.md) and
 [application menu bar](0015-application-menu-bar.md).

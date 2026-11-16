@@ -1,6 +1,6 @@
 # React behavior qualification
 
-This is the behavior contract for [BN3 #235](https://github.com/0xPlayerOne/bun-native/issues/235).
+This is the behavior contract for [BN3 #235](https://github.com/AndrewM-F/bun-native/issues/235).
 The adapter pins React **19.3.1**, `react-reconciler` **0.34.0** and reconciler
 declarations **0.34.1**. It renders through the same public core, staged renderer,
 protocol4 contract and GPUI host as Solid. These tests introduce no alternate
@@ -166,7 +166,7 @@ performance, display presentation, IME, accessibility, or macOS/Windows behavior
 Independent hosted release-profile qualification remains a required gate.
 
 This behavior work does not close the matched direct-core/Solid/React performance
-comparison or [shared retention investigation #287](https://github.com/0xPlayerOne/bun-native/issues/287).
+comparison or [shared retention investigation #287](https://github.com/AndrewM-F/bun-native/issues/287).
 Public zero-ownership assertions and sampled reference observations are not proof
 that the whole managed or native heap is empty.
 

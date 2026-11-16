@@ -1,6 +1,6 @@
 # Adea components on native Solid
 
-This example ports five Adea Solid components to Bun Native for [#233](https://github.com/0xPlayerOne/bun-native/issues/233): Button, Input, DropdownMenu, Dialog and a streaming conversation view. It runs on the shared GPUI host through the public Solid adapter, with no WebView, DOM, CSS or Kobalte. It is an example in this repository: Adea itself is unchanged.
+This example ports five Adea Solid components to Bun Native for [#233](https://github.com/AndrewM-F/bun-native/issues/233): Button, Input, DropdownMenu, Dialog and a streaming conversation view. It runs on the shared GPUI host through the public Solid adapter, with no WebView, DOM, CSS or Kobalte. It is an example in this repository: Adea itself is unchanged.
 
 Sources inventoried:
 

@@ -4,13 +4,13 @@ Status: accepted (2026-11-12, see [Acceptance](#acceptance-2026-11-12))
 
 Date: 2026-11-11
 
-Related milestone/issues: BN7 [#245](https://github.com/0xPlayerOne/bun-native/issues/245)
-(release-readiness decision), [#249](https://github.com/0xPlayerOne/bun-native/issues/249)
-and [#223](https://github.com/0xPlayerOne/bun-native/issues/223) (signing and
-artifacts), [#296](https://github.com/0xPlayerOne/bun-native/issues/296),
-[#241](https://github.com/0xPlayerOne/bun-native/issues/241),
-[#629](https://github.com/0xPlayerOne/bun-native/issues/629),
-[#260](https://github.com/0xPlayerOne/bun-native/issues/260). It refines
+Related milestone/issues: BN7 [#245](https://github.com/AndrewM-F/bun-native/issues/245)
+(release-readiness decision), [#249](https://github.com/AndrewM-F/bun-native/issues/249)
+and [#223](https://github.com/AndrewM-F/bun-native/issues/223) (signing and
+artifacts), [#296](https://github.com/AndrewM-F/bun-native/issues/296),
+[#241](https://github.com/AndrewM-F/bun-native/issues/241),
+[#629](https://github.com/AndrewM-F/bun-native/issues/629),
+[#260](https://github.com/AndrewM-F/bun-native/issues/260). It refines
 [ADR 0013](0013-release-readiness.md) (release readiness and supported scope,
 the first 0013) and does not replace it.
 
@@ -20,7 +20,7 @@ The owner's bar for a first release is that **macOS and Linux are complete**,
 that **Windows may wait**, and that the Apple Developer ID and Windows
 code-signing certificates are **credentials only the owner can obtain**.
 [`0013-release-readiness`](0013-release-readiness.md), last revised for the November 11 close-out
-([#628](https://github.com/0xPlayerOne/bun-native/pull/628)), keeps Bun Native an
+([#628](https://github.com/AndrewM-F/bun-native/pull/628)), keeps Bun Native an
 experimental developer preview and lists the blockers to anything wider.
 
 This record answers a narrower question: per platform, what is supported now,
@@ -35,7 +35,7 @@ an exact source on the stated environment, not compile success.
    capability rows that are advertised but never run there (below), so "macOS
    complete" is not demonstrated.
 2. **Hold every platform until Windows is ready.** Rejected: it ties Linux and
-   macOS to [#629](https://github.com/0xPlayerOne/bun-native/issues/629), which the
+   macOS to [#629](https://github.com/AndrewM-F/bun-native/issues/629), which the
    owner's bar explicitly excludes.
 3. **Decide per platform**: Linux x64 X11 is the release candidate; macOS ARM64
    is observed with a named list of gaps to close; Windows is explicitly waiting
@@ -51,12 +51,12 @@ supported, macOS 15 ARM64 is supported as a preview, and releases attach hosts.
 
 | Platform                         | State                                                                       | Evidence                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 | What it still needs                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
 | -------------------------------- | --------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Linux x64, X11                   | **Supported (preview); release candidate**                                  | `0013-release-readiness` supported rows: core, Solid and React windows, input, layout, paint and close in development and inspected AOT; templates and watch; standalone consumers; display, clipboard, shortcuts and notification services. Since then: Orca speech gates Native Linux, IBus Hangul composition passes ([native text](../native-text.md)), filesystem grants, processes, file dialogs and drag and drop run in the Linux suite ([capabilities by platform](../native-platforms.md#advertised-capabilities-by-platform)).                | [#296](https://github.com/0xPlayerOne/bun-native/issues/296) is open but has not recurred: no `Native open request N timed out` in any failed main Validation since November 6 or in the 60 most recent failed Validation runs on any branch (checked 2026-11-11, [framework audit](../records/framework-audit.md#first-window-deadline-296)). The first keyless provenance attestation of the host archive runs on the next `main` push ([releasing](../releasing.md#linux-keyless-build-provenance)). Hosted software GPU only.                                                                                                                           |
+| Linux x64, X11                   | **Supported (preview); release candidate**                                  | `0013-release-readiness` supported rows: core, Solid and React windows, input, layout, paint and close in development and inspected AOT; templates and watch; standalone consumers; display, clipboard, shortcuts and notification services. Since then: Orca speech gates Native Linux, IBus Hangul composition passes ([native text](../native-text.md)), filesystem grants, processes, file dialogs and drag and drop run in the Linux suite ([capabilities by platform](../native-platforms.md#advertised-capabilities-by-platform)).                | [#296](https://github.com/AndrewM-F/bun-native/issues/296) is open but has not recurred: no `Native open request N timed out` in any failed main Validation since November 6 or in the 60 most recent failed Validation runs on any branch (checked 2026-11-11, [framework audit](../records/framework-audit.md#first-window-deadline-296)). The first keyless provenance attestation of the host archive runs on the next `main` push ([releasing](../releasing.md#linux-keyless-build-provenance)). Hosted software GPU only.                                                                                                                           |
 | Linux x64, Wayland               | Observed, not supported                                                     | One core case and display changes on headless sway ([ADR 0017](0017-wayland.md)).                                                                                                                                                                                                                                                                                                                                                                                                                                                                        | GNOME/KDE, fractional scaling, IME; clipboard, shortcuts, drag and drop and popup windows are X11-only.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
 | Linux ARM64                      | Unsupported                                                                 | Bun is pinned for it in `toolchain.json`; no GUI evidence.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               | A native run.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
 | macOS 15 ARM64                   | **Observed, not supported**                                                 | Hosted `macos-15`: core, Solid and React development and AOT windows with OS input and joined cleanup; workspace references with keys, text, wheel, resize and OS close; all four templates; throwaway-identity signed `.dmg` installed and healthy; VoiceOver speech and Korean composition gate Native Platforms (development and AOT, runs 43087027363 and 43093920340, [native text](../native-text.md#screen-reader-speech)). Physical M2 Max clean-clone quick-start without input. `0013-release-readiness` revisions for 0.27.2 and November 11. | (1) `split_v1`, `style_decoration_v1`, `overlays_v1` and the rows that share its qualification, `input_states_v1`, `split_resize_v1` and `accessibility_v1` roles are advertised on macOS but **not run there** ([capabilities by platform](../native-platforms.md#advertised-capabilities-by-platform)); (2) `app_menu_v1`, `task_dialogs_v1`, `context_menus_v1` and `display_details_v1` run on hosted macOS but have no retained source-bound evidence record, so they are **unverified**; (3) clipboard, global shortcuts, notifications and file dialogs are **not implemented** on macOS; (4) **owner-only**: Developer ID signing and notarization. |
 | macOS x64                        | Unsupported                                                                 | No GUI evidence.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         | A native run.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
-| Windows x64 (Server 2022 hosted) | **Waiting on [#629](https://github.com/0xPlayerOne/bun-native/issues/629)** | Hosted `windows-2022`: core, Solid and React windows with OS input in development and AOT, all four templates, and a throwaway-identity signed `.zip` installed and healthy (`0013-release-readiness` revisions).                                                                                                                                                                                                                                                                                                                                        | #629 (React, and intermittently Solid AOT, keep disposed views reachable on Windows); NVDA speech and Windows IME fail ([#241](https://github.com/0xPlayerOne/bun-native/issues/241)); **owner-only**: an Authenticode certificate or Trusted Signing account. Deferred by the owner's bar.                                                                                                                                                                                                                                                                                                                                                                 |
+| Windows x64 (Server 2022 hosted) | **Waiting on [#629](https://github.com/AndrewM-F/bun-native/issues/629)** | Hosted `windows-2022`: core, Solid and React windows with OS input in development and AOT, all four templates, and a throwaway-identity signed `.zip` installed and healthy (`0013-release-readiness` revisions).                                                                                                                                                                                                                                                                                                                                        | #629 (React, and intermittently Solid AOT, keep disposed views reachable on Windows); NVDA speech and Windows IME fail ([#241](https://github.com/AndrewM-F/bun-native/issues/241)); **owner-only**: an Authenticode certificate or Trusted Signing account. Deferred by the owner's bar.                                                                                                                                                                                                                                                                                                                                                                 |
 | Windows ARM64                    | Unsupported                                                                 | No GUI evidence.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         | A native run; deferred with Windows.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
 
 ### Signing and artifact trust
@@ -88,12 +88,12 @@ differs, this section governs.
 
 - **Linux x64, X11: supported; release-ready.**
   - Provenance: Native Linux in main Validation
-    [43142396083](https://github.com/0xPlayerOne/bun-native/actions/runs/43142396083)
+    [43142396083](https://github.com/AndrewM-F/bun-native/actions/runs/43142396083)
     (`e1b6c60`) attested the host archive (sha256 `eb8930dc…b426`, Rekor
     index 3822959972) and verified it in the job. The release workflow
-    [43145047946](https://github.com/0xPlayerOne/bun-native/actions/runs/43145047946)
+    [43145047946](https://github.com/AndrewM-F/bun-native/actions/runs/43145047946)
     verified it again ([releasing](../releasing.md#linux-keyless-build-provenance)).
-  - [#296](https://github.com/0xPlayerOne/bun-native/issues/296) closes on the
+  - [#296](https://github.com/AndrewM-F/bun-native/issues/296) closes on the
     documented-clean-runs condition. The cause was measured (first touch of the
     Lavapipe/LLVM closure on hosted VMs) and mitigated by the warm-up step
     (#442). No `Native open request N timed out` appears in any of the 24 failed
@@ -109,7 +109,7 @@ differs, this section governs.
   changes, migration and hotplug run on headless sway in development and AOT.
   Clipboard, global shortcuts, drag and drop and popup windows stay X11-only
   because GPUI owns the Wayland data device and surface roles; those limits are
-  tracked upstream in [#635](https://github.com/0xPlayerOne/bun-native/issues/635)
+  tracked upstream in [#635](https://github.com/AndrewM-F/bun-native/issues/635)
   and do not count against Linux completeness.
 - **macOS 15 ARM64: supported (preview), except notarized distribution.**
   - Gaps (1) and (2): every listed capability now has a retained source-bound
@@ -126,13 +126,13 @@ differs, this section governs.
     ([native text](../native-text.md)).
   - VoiceOver speech and Korean composition gate Native Platforms.
   - Gap (4) remains **owner-only**: a Developer ID identity, notarization and a
-    Gatekeeper-accepted image ([#636](https://github.com/0xPlayerOne/bun-native/issues/636)).
+    Gatekeeper-accepted image ([#636](https://github.com/AndrewM-F/bun-native/issues/636)).
     Until then, macOS artifacts are throwaway- or ad-hoc-signed.
 - **Windows** is unchanged: waiting on
-  [#629](https://github.com/0xPlayerOne/bun-native/issues/629) and the Windows
-  lane follow-up [#638](https://github.com/0xPlayerOne/bun-native/issues/638).
+  [#629](https://github.com/AndrewM-F/bun-native/issues/629) and the Windows
+  lane follow-up [#638](https://github.com/AndrewM-F/bun-native/issues/638).
 - **Physical hardware** (EDID monitors, physical GPUs and keyboards) is tracked in
-  [#637](https://github.com/0xPlayerOne/bun-native/issues/637). All GUI evidence
+  [#637](https://github.com/AndrewM-F/bun-native/issues/637). All GUI evidence
   above comes from hosted VMs.
 
 ### Second architectures (2026-11-12)
@@ -170,9 +170,9 @@ are recorded in [framework audit](../records/framework-audit.md) and
 
 - All GUI evidence is from hosted runners with software or paravirtual GPUs,
   plus one physical Mac run without input; physical-GPU behavior is unmeasured
-  ([#244](https://github.com/0xPlayerOne/bun-native/issues/244)).
+  ([#244](https://github.com/AndrewM-F/bun-native/issues/244)).
 - #296 is intermittent; absence over five days is not a cause.
 - Babel 8 for the Solid compiler remains excluded
-  ([#316](https://github.com/0xPlayerOne/bun-native/issues/316)).
+  ([#316](https://github.com/AndrewM-F/bun-native/issues/316)).
 - Accept this record, or revise it, when the first `main` provenance run
   completes, when #296 closes, or when any macOS gap closes.

@@ -1,6 +1,6 @@
 # Bun Native — product vision
 
-**Decision:** Bunly's experimental browser-based desktop runtime is being replaced by **Bun Native**, a new TypeScript-first native desktop application framework. This is an unconditional rewrite, not a feasibility vote. The old CEF/WebView code is obsolete and will be removed from the active source under [BN0 #251](https://github.com/0xPlayerOne/bun-native/issues/251).
+**Decision:** Bunly's experimental browser-based desktop runtime is being replaced by **Bun Native**, a new TypeScript-first native desktop application framework. This is an unconditional rewrite, not a feasibility vote. The old CEF/WebView code is obsolete and will be removed from the active source under [BN0 #251](https://github.com/AndrewM-F/bun-native/issues/251).
 
 ## The promise
 
@@ -41,13 +41,13 @@ We will measure startup-to-interactive, process-tree memory, CPU/GPU load, frame
 
 ## Delivery phases
 
-- [BN0](https://github.com/0xPlayerOne/bun-native/issues/217) — remove Bunly/CEF, establish real native window and Bun AOT integration.
-- [BN1](https://github.com/0xPlayerOne/bun-native/issues/219) — typed native host API and security/lifecycle contract.
-- [BN2](https://github.com/0xPlayerOne/bun-native/issues/218) — SolidJS renderer.
-- [BN3](https://github.com/0xPlayerOne/bun-native/issues/221) — React renderer.
-- [BN4](https://github.com/0xPlayerOne/bun-native/issues/222) — shared native components, accessibility and OS services.
-- [BN5](https://github.com/0xPlayerOne/bun-native/issues/220) — CLI, fast reload and CI.
-- [BN6](https://github.com/0xPlayerOne/bun-native/issues/223) — native AOT installers, updates, rollback.
-- [BN7](https://github.com/0xPlayerOne/bun-native/issues/224) — real apps, compatibility, benchmarks and final cleanup.
+- [BN0](https://github.com/AndrewM-F/bun-native/issues/217) — remove Bunly/CEF, establish real native window and Bun AOT integration.
+- [BN1](https://github.com/AndrewM-F/bun-native/issues/219) — typed native host API and security/lifecycle contract.
+- [BN2](https://github.com/AndrewM-F/bun-native/issues/218) — SolidJS renderer.
+- [BN3](https://github.com/AndrewM-F/bun-native/issues/221) — React renderer.
+- [BN4](https://github.com/AndrewM-F/bun-native/issues/222) — shared native components, accessibility and OS services.
+- [BN5](https://github.com/AndrewM-F/bun-native/issues/220) — CLI, fast reload and CI.
+- [BN6](https://github.com/AndrewM-F/bun-native/issues/223) — native AOT installers, updates, rollback.
+- [BN7](https://github.com/AndrewM-F/bun-native/issues/224) — real apps, compatibility, benchmarks and final cleanup.
 
-These are parallelizable engineering scopes, not owner approval checkpoints. An agent starting any milestone should execute missing prerequisites and continue. [Full roadmap](https://github.com/0xPlayerOne/bun-native/issues/1).
+These are parallelizable engineering scopes, not owner approval checkpoints. An agent starting any milestone should execute missing prerequisites and continue. [Full roadmap](https://github.com/AndrewM-F/bun-native/issues/1).

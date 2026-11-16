@@ -4,8 +4,8 @@ Status: accepted; local Linux X11 implementation qualified in development and in
 
 Date: 2026-10-31.
 
-Related: [#300](https://github.com/0xPlayerOne/bun-native/issues/300),
-[shared services #255](https://github.com/0xPlayerOne/bun-native/issues/255),
+Related: [#300](https://github.com/AndrewM-F/bun-native/issues/300),
+[shared services #255](https://github.com/AndrewM-F/bun-native/issues/255),
 [trust boundary](0003-bridge-security.md) and [service policy](0005-native-service-policy.md).
 
 ## Context
@@ -120,7 +120,7 @@ run observed zero clipboard-worker CPU ticks and context switches. These are
 bounded correctness observations, not a sustained performance or leak claim.
 The separate [hosted release-host record](../../tests/native/evidence/clipboard-linux-hosted-release.json)
 qualifies main `c9ada928eb86ee44abeb85ba13721a68af0057d6` on November 4, 2026.
-[Validation run 41831891686](https://github.com/0xPlayerOne/bun-native/actions/runs/41831891686)
+[Validation run 41831891686](https://github.com/AndrewM-F/bun-native/actions/runs/41831891686)
 passed its native Linux job and aggregate gate. Its downloaded artifact matches
 the recorded SHA-256 and byte count. All 75 scenario source fingerprints and
 69 compiler fingerprints match that exact commit. Development and inspected

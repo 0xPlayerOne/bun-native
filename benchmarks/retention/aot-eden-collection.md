@@ -1,6 +1,6 @@
 # AOT retention after an eden collection
 
-**Status:** measured runtime defect for the AOT-only positives in [#287](https://github.com/0xPlayerOne/bun-native/issues/287), **absent on the current pinned Bun** `1.4.4-canary.1+b1007f117` (see [Pin comparison](#pin-comparison-november-10)). No renderer or core retention was found, and none of the checks, checkpoints or assertions change.
+**Status:** measured runtime defect for the AOT-only positives in [#287](https://github.com/AndrewM-F/bun-native/issues/287), **absent on the current pinned Bun** `1.4.4-canary.1+b1007f117` (see [Pin comparison](#pin-comparison-november-10)). No renderer or core retention was found, and none of the checks, checkpoints or assertions change.
 
 Measured on main `3863459`, pinned Bun `1.4.4-canary.1+da867c60b`, the release host, Linux x64. Each trial ran in its own Xvfb, dbus and openbox session through `scripts/quality/native-linux-session.sh` with the CI arguments. The core adapter records three probes per mount (root, label, listener), so a survivor pair (3k, 3k+1) is mount k's root and label.
 

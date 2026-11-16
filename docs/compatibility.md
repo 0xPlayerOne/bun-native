@@ -73,7 +73,7 @@ the matching native contract. WebView/CEF is not a fallback.
 
 ### Adea component-port example after the accepted-source snapshot
 
-At [source `e848d5a`](https://github.com/0xPlayerOne/bun-native/commit/e848d5a149a6f123d5e57865a6ea11e33abafc00),
+At [source `e848d5a`](https://github.com/AndrewM-F/bun-native/commit/e848d5a149a6f123d5e57865a6ea11e33abafc00),
 the [Adea components example](../examples/adea-components/README.md) ports
 Button, Input, DropdownMenu, Dialog and a streaming conversation view to the
 **public Solid adapter** and shared native box, input, button, text and overlay
@@ -91,8 +91,8 @@ navigation or accessibility evidence. The
 is a separately documented local manual observation; it is not a
 cross-platform automated acceptance result. Packaging, physical-GPU
 performance, IME/assistive technology and full Adea workspace portability
-remain unqualified for these components. See [PR #566](https://github.com/0xPlayerOne/bun-native/pull/566)
-and [workspace issue #250](https://github.com/0xPlayerOne/bun-native/issues/250)
+remain unqualified for these components. See [PR #566](https://github.com/AndrewM-F/bun-native/pull/566)
+and [workspace issue #250](https://github.com/AndrewM-F/bun-native/issues/250)
 for their precise scope. This later example does not retroactively expand the
 immutable accepted-source snapshot or the release-readiness decision.
 
@@ -158,35 +158,35 @@ assistive technology and hardware-specific GPU behavior need explicit coverage.
 The [platform record][platforms] distinguishes hosted input/paint from those
 unverified capabilities. Mark unavailable checks **unsupported**, not passed.
 
-[BN7 #245](https://github.com/0xPlayerOne/bun-native/issues/245) owns this
+[BN7 #245](https://github.com/AndrewM-F/bun-native/issues/245) owns this
 support matrix and [ADR 0013](decisions/0013-release-readiness.md);
-[#254](https://github.com/0xPlayerOne/bun-native/issues/254) retains the
+[#254](https://github.com/AndrewM-F/bun-native/issues/254) retains the
 complete user-documentation acceptance.
 
-Read [architecture](architecture.md), [testing](testing.md), [releasing](releasing.md) and the [roadmap](https://github.com/0xPlayerOne/bun-native/issues/1).
+Read [architecture](architecture.md), [testing](testing.md), [releasing](releasing.md) and the [roadmap](https://github.com/AndrewM-F/bun-native/issues/1).
 
-[snapshot]: https://github.com/0xPlayerOne/bun-native/tree/3863459588378532a4af4fb27188f051fa0955df
-[v0272]: https://github.com/0xPlayerOne/bun-native/tree/e456a6d2f65f8771b663a7fb8f3a6026ce0a9a54
-[pr481]: https://github.com/0xPlayerOne/bun-native/pull/481
-[pr519]: https://github.com/0xPlayerOne/bun-native/pull/519
-[pr521]: https://github.com/0xPlayerOne/bun-native/pull/521
-[pr545]: https://github.com/0xPlayerOne/bun-native/pull/545
-[pr546]: https://github.com/0xPlayerOne/bun-native/pull/546
-[pr547]: https://github.com/0xPlayerOne/bun-native/pull/547
-[pr549]: https://github.com/0xPlayerOne/bun-native/pull/549
-[pr555]: https://github.com/0xPlayerOne/bun-native/pull/555
-[pr557]: https://github.com/0xPlayerOne/bun-native/pull/557
-[pr559]: https://github.com/0xPlayerOne/bun-native/pull/559
-[pr563]: https://github.com/0xPlayerOne/bun-native/pull/563
-[pr566]: https://github.com/0xPlayerOne/bun-native/pull/566
-[pr582]: https://github.com/0xPlayerOne/bun-native/pull/582
-[run582]: https://github.com/0xPlayerOne/bun-native/actions/runs/42746456002
-[i249]: https://github.com/0xPlayerOne/bun-native/issues/249
-[i305]: https://github.com/0xPlayerOne/bun-native/issues/305
-[i584]: https://github.com/0xPlayerOne/bun-native/issues/584
-[i586]: https://github.com/0xPlayerOne/bun-native/issues/586
-[bn0]: https://github.com/0xPlayerOne/bun-native/blob/3863459588378532a4af4fb27188f051fa0955df/docs/bn0-audit.md
-[bn1]: https://github.com/0xPlayerOne/bun-native/blob/3863459588378532a4af4fb27188f051fa0955df/docs/bn1-audit.md
+[snapshot]: https://github.com/AndrewM-F/bun-native/tree/3863459588378532a4af4fb27188f051fa0955df
+[v0272]: https://github.com/AndrewM-F/bun-native/tree/e456a6d2f65f8771b663a7fb8f3a6026ce0a9a54
+[pr481]: https://github.com/AndrewM-F/bun-native/pull/481
+[pr519]: https://github.com/AndrewM-F/bun-native/pull/519
+[pr521]: https://github.com/AndrewM-F/bun-native/pull/521
+[pr545]: https://github.com/AndrewM-F/bun-native/pull/545
+[pr546]: https://github.com/AndrewM-F/bun-native/pull/546
+[pr547]: https://github.com/AndrewM-F/bun-native/pull/547
+[pr549]: https://github.com/AndrewM-F/bun-native/pull/549
+[pr555]: https://github.com/AndrewM-F/bun-native/pull/555
+[pr557]: https://github.com/AndrewM-F/bun-native/pull/557
+[pr559]: https://github.com/AndrewM-F/bun-native/pull/559
+[pr563]: https://github.com/AndrewM-F/bun-native/pull/563
+[pr566]: https://github.com/AndrewM-F/bun-native/pull/566
+[pr582]: https://github.com/AndrewM-F/bun-native/pull/582
+[run582]: https://github.com/AndrewM-F/bun-native/actions/runs/42746456002
+[i249]: https://github.com/AndrewM-F/bun-native/issues/249
+[i305]: https://github.com/AndrewM-F/bun-native/issues/305
+[i584]: https://github.com/AndrewM-F/bun-native/issues/584
+[i586]: https://github.com/AndrewM-F/bun-native/issues/586
+[bn0]: https://github.com/AndrewM-F/bun-native/blob/3863459588378532a4af4fb27188f051fa0955df/docs/bn0-audit.md
+[bn1]: https://github.com/AndrewM-F/bun-native/blob/3863459588378532a4af4fb27188f051fa0955df/docs/bn1-audit.md
 [lock]: ../bun.lock
 [toolchain]: ../toolchain.json
 [host-manifest]: ../native/gpui-host/Cargo.toml
@@ -194,45 +194,45 @@ Read [architecture](architecture.md), [testing](testing.md), [releasing](releasi
 [solid-pin]: ../packages/solid/package.json
 [react-pin]: ../packages/react/package.json
 [protocol-schema]: ../packages/protocol/schema/wire.json
-[core]: https://github.com/0xPlayerOne/bun-native/blob/3863459588378532a4af4fb27188f051fa0955df/packages/core/README.md
-[solid]: https://github.com/0xPlayerOne/bun-native/blob/3863459588378532a4af4fb27188f051fa0955df/packages/solid/README.md
-[react]: https://github.com/0xPlayerOne/bun-native/blob/3863459588378532a4af4fb27188f051fa0955df/packages/react/README.md
-[react-behavior]: https://github.com/0xPlayerOne/bun-native/blob/3863459588378532a4af4fb27188f051fa0955df/docs/react-behavior.md
-[solid-app]: https://github.com/0xPlayerOne/bun-native/blob/3863459588378532a4af4fb27188f051fa0955df/examples/solid-workspace/README.md
-[react-app]: https://github.com/0xPlayerOne/bun-native/blob/3863459588378532a4af4fb27188f051fa0955df/examples/react-workspace/README.md
+[core]: https://github.com/AndrewM-F/bun-native/blob/3863459588378532a4af4fb27188f051fa0955df/packages/core/README.md
+[solid]: https://github.com/AndrewM-F/bun-native/blob/3863459588378532a4af4fb27188f051fa0955df/packages/solid/README.md
+[react]: https://github.com/AndrewM-F/bun-native/blob/3863459588378532a4af4fb27188f051fa0955df/packages/react/README.md
+[react-behavior]: https://github.com/AndrewM-F/bun-native/blob/3863459588378532a4af4fb27188f051fa0955df/docs/react-behavior.md
+[solid-app]: https://github.com/AndrewM-F/bun-native/blob/3863459588378532a4af4fb27188f051fa0955df/examples/solid-workspace/README.md
+[react-app]: https://github.com/AndrewM-F/bun-native/blob/3863459588378532a4af4fb27188f051fa0955df/examples/react-workspace/README.md
 [a11y]: native-text.md#accessibility-roles-accessibility_v1
-[layout]: https://github.com/0xPlayerOne/bun-native/blob/3863459588378532a4af4fb27188f051fa0955df/docs/native-layout.md
-[events]: https://github.com/0xPlayerOne/bun-native/blob/3863459588378532a4af4fb27188f051fa0955df/docs/native-events.md
-[platforms]: https://github.com/0xPlayerOne/bun-native/blob/3863459588378532a4af4fb27188f051fa0955df/docs/native-platforms.md
-[services]: https://github.com/0xPlayerOne/bun-native/blob/3863459588378532a4af4fb27188f051fa0955df/docs/native-services.md
+[layout]: https://github.com/AndrewM-F/bun-native/blob/3863459588378532a4af4fb27188f051fa0955df/docs/native-layout.md
+[events]: https://github.com/AndrewM-F/bun-native/blob/3863459588378532a4af4fb27188f051fa0955df/docs/native-events.md
+[platforms]: https://github.com/AndrewM-F/bun-native/blob/3863459588378532a4af4fb27188f051fa0955df/docs/native-platforms.md
+[services]: https://github.com/AndrewM-F/bun-native/blob/3863459588378532a4af4fb27188f051fa0955df/docs/native-services.md
 [wayland]: native-platforms.md#linux-wayland
-[service-matrix]: https://github.com/0xPlayerOne/bun-native/blob/3863459588378532a4af4fb27188f051fa0955df/docs/native-services.md#service-and-platform-matrix
-[cli]: https://github.com/0xPlayerOne/bun-native/blob/3863459588378532a4af4fb27188f051fa0955df/docs/developer-tooling.md
-[standalone]: https://github.com/0xPlayerOne/bun-native/blob/3863459588378532a4af4fb27188f051fa0955df/docs/standalone-projects.md
-[comparison]: https://github.com/0xPlayerOne/bun-native/blob/3863459588378532a4af4fb27188f051fa0955df/benchmarks/COMPARISON.md
-[comparison-run]: https://github.com/0xPlayerOne/bun-native/blob/3863459588378532a4af4fb27188f051fa0955df/benchmarks/comparison/results/linux-x64-llvmpipe-2026-11-05/README.md
-[releasing]: https://github.com/0xPlayerOne/bun-native/blob/3863459588378532a4af4fb27188f051fa0955df/docs/releasing.md
-[pr377]: https://github.com/0xPlayerOne/bun-native/pull/377
-[pr388]: https://github.com/0xPlayerOne/bun-native/pull/388
-[pr399]: https://github.com/0xPlayerOne/bun-native/pull/399
-[pr418]: https://github.com/0xPlayerOne/bun-native/pull/418
-[pr422]: https://github.com/0xPlayerOne/bun-native/pull/422
-[pr424]: https://github.com/0xPlayerOne/bun-native/pull/424
-[pr430]: https://github.com/0xPlayerOne/bun-native/pull/430
-[pr453]: https://github.com/0xPlayerOne/bun-native/pull/453
-[run388]: https://github.com/0xPlayerOne/bun-native/actions/runs/41952309890
-[run399]: https://github.com/0xPlayerOne/bun-native/actions/runs/41977270938
-[run422]: https://github.com/0xPlayerOne/bun-native/actions/runs/42103802861/job/127513230930
-[run424]: https://github.com/0xPlayerOne/bun-native/actions/runs/42107349701/job/127525552193
-[run430]: https://github.com/0xPlayerOne/bun-native/actions/runs/42117878399
-[i223]: https://github.com/0xPlayerOne/bun-native/issues/223
-[i241]: https://github.com/0xPlayerOne/bun-native/issues/241
-[i243]: https://github.com/0xPlayerOne/bun-native/issues/243
-[i244]: https://github.com/0xPlayerOne/bun-native/issues/244
-[i247]: https://github.com/0xPlayerOne/bun-native/issues/247
-[i287]: https://github.com/0xPlayerOne/bun-native/issues/287
-[i296]: https://github.com/0xPlayerOne/bun-native/issues/296
-[i316]: https://github.com/0xPlayerOne/bun-native/issues/316
-[i358]: https://github.com/0xPlayerOne/bun-native/issues/358
-[i372]: https://github.com/0xPlayerOne/bun-native/issues/372
-[pr427]: https://github.com/0xPlayerOne/bun-native/pull/427
+[service-matrix]: https://github.com/AndrewM-F/bun-native/blob/3863459588378532a4af4fb27188f051fa0955df/docs/native-services.md#service-and-platform-matrix
+[cli]: https://github.com/AndrewM-F/bun-native/blob/3863459588378532a4af4fb27188f051fa0955df/docs/developer-tooling.md
+[standalone]: https://github.com/AndrewM-F/bun-native/blob/3863459588378532a4af4fb27188f051fa0955df/docs/standalone-projects.md
+[comparison]: https://github.com/AndrewM-F/bun-native/blob/3863459588378532a4af4fb27188f051fa0955df/benchmarks/COMPARISON.md
+[comparison-run]: https://github.com/AndrewM-F/bun-native/blob/3863459588378532a4af4fb27188f051fa0955df/benchmarks/comparison/results/linux-x64-llvmpipe-2026-11-05/README.md
+[releasing]: https://github.com/AndrewM-F/bun-native/blob/3863459588378532a4af4fb27188f051fa0955df/docs/releasing.md
+[pr377]: https://github.com/AndrewM-F/bun-native/pull/377
+[pr388]: https://github.com/AndrewM-F/bun-native/pull/388
+[pr399]: https://github.com/AndrewM-F/bun-native/pull/399
+[pr418]: https://github.com/AndrewM-F/bun-native/pull/418
+[pr422]: https://github.com/AndrewM-F/bun-native/pull/422
+[pr424]: https://github.com/AndrewM-F/bun-native/pull/424
+[pr430]: https://github.com/AndrewM-F/bun-native/pull/430
+[pr453]: https://github.com/AndrewM-F/bun-native/pull/453
+[run388]: https://github.com/AndrewM-F/bun-native/actions/runs/41952309890
+[run399]: https://github.com/AndrewM-F/bun-native/actions/runs/41977270938
+[run422]: https://github.com/AndrewM-F/bun-native/actions/runs/42103802861/job/127513230930
+[run424]: https://github.com/AndrewM-F/bun-native/actions/runs/42107349701/job/127525552193
+[run430]: https://github.com/AndrewM-F/bun-native/actions/runs/42117878399
+[i223]: https://github.com/AndrewM-F/bun-native/issues/223
+[i241]: https://github.com/AndrewM-F/bun-native/issues/241
+[i243]: https://github.com/AndrewM-F/bun-native/issues/243
+[i244]: https://github.com/AndrewM-F/bun-native/issues/244
+[i247]: https://github.com/AndrewM-F/bun-native/issues/247
+[i287]: https://github.com/AndrewM-F/bun-native/issues/287
+[i296]: https://github.com/AndrewM-F/bun-native/issues/296
+[i316]: https://github.com/AndrewM-F/bun-native/issues/316
+[i358]: https://github.com/AndrewM-F/bun-native/issues/358
+[i372]: https://github.com/AndrewM-F/bun-native/issues/372
+[pr427]: https://github.com/AndrewM-F/bun-native/pull/427

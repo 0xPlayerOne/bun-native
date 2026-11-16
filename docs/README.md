@@ -2,7 +2,7 @@
 
 Bun Native is a native Bun + AOT desktop framework. These docs cover the current
 framework only; the retired Bunly/CEF implementation lives in
-[Git history](https://github.com/0xPlayerOne/bun-native/commits/main/).
+[Git history](https://github.com/AndrewM-F/bun-native/commits/main/).
 
 Platform and feature support is in one place: [compatibility](compatibility.md).
 Per-platform capability details are in
@@ -43,7 +43,7 @@ Per-platform capability details are in
 - [Engineering quality](engineering-quality.md): the audits every PR, phase and release needs.
 - [Provenance](provenance.md): licensing, copied code and attribution.
 - [Agent contract](../AGENTS.md) and [contributing](../.github/CONTRIBUTING.md).
-- [Roadmap issue #1](https://github.com/0xPlayerOne/bun-native/issues/1) and the [BN0 to BN7 milestones](https://github.com/0xPlayerOne/bun-native/milestones).
+- [Roadmap issue #1](https://github.com/AndrewM-F/bun-native/issues/1) and the [BN0 to BN7 milestones](https://github.com/AndrewM-F/bun-native/milestones).
 
 ## Records
 

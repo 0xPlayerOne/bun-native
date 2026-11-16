@@ -4,7 +4,7 @@
   "shard": 1,
   "scope": "Hosted macOS feature qualification in development and inspected AOT against one release GPUI host (for notifications also its signed copy installed from the template image). Each report comes from a gating step with a real native window and an independent macOS oracle; hosted VM, software-presented display and synthesized CoreGraphics input, not physical hardware.",
   "run": {
-    "repository": "0xPlayerOne/bun-native",
+    "repository": "AndrewM-F/bun-native",
     "runId": "43142396083",
     "runAttempt": "1",
     "job": "native",

@@ -1,6 +1,6 @@
 # Developer workflow
 
-**Implemented:** the [checkout CLI](developer-tooling.md) creates Solid/React TypeScript or checked JavaScript projects, starts them against an explicitly supplied prebuilt host, optionally watches source with joined full remounts, and produces unsigned same-platform AOT artifacts. These projects use the surrounding repository's dependencies; the explicit `create --packages` mode instead generates [standalone projects from local package sets](standalone-projects.md) under [#382](https://github.com/0xPlayerOne/bun-native/issues/382). `bun run native host install` (or `--host auto`) downloads the matching release host. Native reload qualification and standalone diagnostics remain open under [BN5 #220](https://github.com/0xPlayerOne/bun-native/issues/220).
+**Implemented:** the [checkout CLI](developer-tooling.md) creates Solid/React TypeScript or checked JavaScript projects, starts them against an explicitly supplied prebuilt host, optionally watches source with joined full remounts, and produces unsigned same-platform AOT artifacts. These projects use the surrounding repository's dependencies; the explicit `create --packages` mode instead generates [standalone projects from local package sets](standalone-projects.md) under [#382](https://github.com/AndrewM-F/bun-native/issues/382). `bun run native host install` (or `--host auto`) downloads the matching release host. Native reload qualification and standalone diagnostics remain open under [BN5 #220](https://github.com/AndrewM-F/bun-native/issues/220).
 
 ## The expected workflow
 
@@ -14,7 +14,7 @@ The executable commands are `bun run native create`, `bun run native dev` and `b
 
 ## Reload and state
 
-The default `dev` command starts once. Add `--watch` to rebuild after local source edits and fully remount the app and host. The current app remains live on a syntax error; a successful build replaces it only after zero-resource acknowledgement and process exit. State resets. Generated applications dispose their framework root and shut down the owned host on parent IPC shutdown, window close or SIGINT/SIGTERM. The [watch contract](developer-tooling.md#watch-source-with-a-full-remount) specifies observed files, errors and measured readiness; native edit-to-usable qualification remains [#243](https://github.com/0xPlayerOne/bun-native/issues/243).
+The default `dev` command starts once. Add `--watch` to rebuild after local source edits and fully remount the app and host. The current app remains live on a syntax error; a successful build replaces it only after zero-resource acknowledgement and process exit. State resets. Generated applications dispose their framework root and shut down the owned host on parent IPC shutdown, window close or SIGINT/SIGTERM. The [watch contract](developer-tooling.md#watch-source-with-a-full-remount) specifies observed files, errors and measured readiness; native edit-to-usable qualification remains [#243](https://github.com/AndrewM-F/bun-native/issues/243).
 
 A source-only TS/JS edit should not recompile Rust, replace a native binary or destroy the whole app unnecessarily. Host/version/config changes may require a full restart. Each reload must retire old owners/listeners safely and either preserve documented state or clearly remount. Test rapid saves, errors, partial source, cancellation and 100+ reload cycles with memory/resource tracking.
 
@@ -24,10 +24,10 @@ Application code depends on public host APIs and Solid/React adapters, not GPUI 
 
 ## Implementation order
 
-- [#240](https://github.com/0xPlayerOne/bun-native/issues/240): Bun checker/formatter/tests and AOT release.
-- [#242](https://github.com/0xPlayerOne/bun-native/issues/242): native CLI and project templates.
-- [#243](https://github.com/0xPlayerOne/bun-native/issues/243): fast hot reload and lifetime management.
-- [#256](https://github.com/0xPlayerOne/bun-native/issues/256): native CI across OSs.
-- [#259](https://github.com/0xPlayerOne/bun-native/issues/259): code-health and performance regression automation.
+- [#240](https://github.com/AndrewM-F/bun-native/issues/240): Bun checker/formatter/tests and AOT release.
+- [#242](https://github.com/AndrewM-F/bun-native/issues/242): native CLI and project templates.
+- [#243](https://github.com/AndrewM-F/bun-native/issues/243): fast hot reload and lifetime management.
+- [#256](https://github.com/AndrewM-F/bun-native/issues/256): native CI across OSs.
+- [#259](https://github.com/AndrewM-F/bun-native/issues/259): code-health and performance regression automation.
 
-The old M1–M6 CEF workflows were removed under [#251](https://github.com/0xPlayerOne/bun-native/issues/251). CI must keep meaningful required status contexts and prefer a fast PR lane plus deeper scheduled/hosted native tests. No human approval checkpoints are part of this framework development workflow.
+The old M1–M6 CEF workflows were removed under [#251](https://github.com/AndrewM-F/bun-native/issues/251). CI must keep meaningful required status contexts and prefer a fast PR lane plus deeper scheduled/hosted native tests. No human approval checkpoints are part of this framework development workflow.

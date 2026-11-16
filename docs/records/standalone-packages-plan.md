@@ -1,15 +1,15 @@
 # Standalone local-package qualification plan
 
 > **Status (2026-11-05):** implemented and merged in
-> [#388](https://github.com/0xPlayerOne/bun-native/pull/388); see
+> [#388](https://github.com/AndrewM-F/bun-native/pull/388); see
 > [standalone projects](../standalone-projects.md) for usage. The hosted follow-up
 > described under "Native follow-up and limits" merged in the same change (see the
 > [hosted plan](standalone-native-plan.md) status). This plan and its recorded
 > outcomes are kept as written.
 
-Issue [#382](https://github.com/0xPlayerOne/bun-native/issues/382) extends the
-accepted checkout-only CLI in [#242](https://github.com/0xPlayerOne/bun-native/issues/242).
-It contributes to [#254](https://github.com/0xPlayerOne/bun-native/issues/254);
+Issue [#382](https://github.com/AndrewM-F/bun-native/issues/382) extends the
+accepted checkout-only CLI in [#242](https://github.com/AndrewM-F/bun-native/issues/242).
+It contributes to [#254](https://github.com/AndrewM-F/bun-native/issues/254);
 registry publication, signing and wider platform support remain separate work.
 
 ## Source and scope
@@ -28,7 +28,7 @@ preparation, not prior consumer packaging, installation or build experiments.
 The eventual experiment must name the clean, published implementation commit,
 tree and full tracked-source hashes before its first package/install command.
 The original fixed cohort at published `c908049` ran once and failed on the first
-populated-cache install; [#394](https://github.com/0xPlayerOne/bun-native/pull/394)
+populated-cache install; [#394](https://github.com/AndrewM-F/bun-native/pull/394)
 preserves its unchanged raw records and original plan. The separate corrected-lock
 cohort at `7e102937` reached its first populated-cache install, then failed the
 installed-file inventory check described below. The installed-metadata correction
@@ -224,7 +224,7 @@ failure and diagnose it before proposing a separately source-bound correction.
 ### Owning harness and retained inputs
 
 The single fail-stop cohort runner was retired after #382; it remains at
-[3f0713c](https://github.com/0xPlayerOne/bun-native/blob/3f0713c/scripts/quality/standalone-packages.py).
+[3f0713c](https://github.com/AndrewM-F/bun-native/blob/3f0713c/scripts/quality/standalone-packages.py).
 `scripts/quality/standalone-packages.py` now keeps only the helpers that the live
 `tests/native/cli-standalone.py` job shares. The cohort ran from the actual published source commit, with a clean tree and the exact
 published commit/tree supplied as `--source-commit` and `--source-tree`. An
@@ -341,7 +341,7 @@ consumer cohorts and the parser-only regression.
 The fixed cohort ran once on published
 `cba506b844eb6b91dbdd085389d43690539c1186`, tree
 `afdfcee8bc95042cddc385e55efe454e3d433b57`, and passed. The
-[closed research archive #403](https://github.com/0xPlayerOne/bun-native/pull/403)
+[closed research archive #403](https://github.com/AndrewM-F/bun-native/pull/403)
 retains the original plan, source inventories, all command logs, actual bundles,
 source maps and compiler receipts. Seven packs, four creates, nine installs
 (including the expected empty-cache rejection and four frozen relocated

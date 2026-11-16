@@ -220,20 +220,20 @@ accessibility with `accessibleLabel`; screen-reader qualification remains #241.
 
 ## Current scope
 
-This is an incremental reference app for [#238](https://github.com/0xPlayerOne/bun-native/issues/238).
+This is an incremental reference app for [#238](https://github.com/AndrewM-F/bun-native/issues/238).
 Task changes are intentionally session-local and are not saved to disk.
 Deleting a task asks first through the window's own `showConfirmDialog` (a modal
 overlay drawn by the host, [ADR 0014](../../docs/decisions/0014-message-dialogs.md)),
 so the example simulates no dialog of its own. Menus and OS-native alerts depend on
-[#239](https://github.com/0xPlayerOne/bun-native/issues/239). Accessibility qualification tracks
-[#241](https://github.com/0xPlayerOne/bun-native/issues/241). Large-history,
+[#239](https://github.com/AndrewM-F/bun-native/issues/239). Accessibility qualification tracks
+[#241](https://github.com/AndrewM-F/bun-native/issues/241). Large-history,
 virtualization, streaming, adaptive breakpoints, and performance qualification
-remain in [#257](https://github.com/0xPlayerOne/bun-native/issues/257).
+remain in [#257](https://github.com/AndrewM-F/bun-native/issues/257).
 
 ## Comparison with the Solid workspace
 
 The [Solid conversation workspace](../solid-workspace/README.md) is the Solid
-reference for [#248](https://github.com/0xPlayerOne/bun-native/issues/248).
+reference for [#248](https://github.com/AndrewM-F/bun-native/issues/248).
 Both apps run on the same core, renderer primitives and GPUI host, and use the
 same development/AOT helper, owned X11 driver and native evidence records. They
 are different fixtures, so no equal-workload performance comparison is made.

@@ -6,7 +6,7 @@ physical Mac or Windows machine. Linux reports the service unavailable.
 
 Date: 2026-11-10.
 
-Related: [menus and dialogs #239](https://github.com/0xPlayerOne/bun-native/issues/239),
+Related: [menus and dialogs #239](https://github.com/AndrewM-F/bun-native/issues/239),
 [application menu bar](0015-application-menu-bar.md) and
 [message dialogs](0014-message-dialogs.md).
 

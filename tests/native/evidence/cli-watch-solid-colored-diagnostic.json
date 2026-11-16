@@ -1,13 +1,13 @@
 {
   "schema_version": 1,
   "scope": "Original hosted native outcomes retained as recorded. This receipt is a diagnostic-matcher fixture, not a new native execution or a passing replacement for the failed run.",
-  "pull_request": "https://github.com/0xPlayerOne/bun-native/pull/360",
-  "issue": "https://github.com/0xPlayerOne/bun-native/issues/243",
+  "pull_request": "https://github.com/AndrewM-F/bun-native/pull/360",
+  "issue": "https://github.com/AndrewM-F/bun-native/issues/243",
   "run": {
     "id": 41885823121,
     "attempt": 1,
     "job_id": 126769880531,
-    "url": "https://github.com/0xPlayerOne/bun-native/actions/runs/41885823121/job/126769880531",
+    "url": "https://github.com/AndrewM-F/bun-native/actions/runs/41885823121/job/126769880531",
     "conclusion": "failure"
   },
   "source": {
@@ -44,7 +44,7 @@
       "status": "failed",
       "error": "Native open request 3 timed out",
       "step": "Development public API input, stale revision and window lifecycle",
-      "issue": "https://github.com/0xPlayerOne/bun-native/issues/296",
+      "issue": "https://github.com/AndrewM-F/bun-native/issues/296",
       "scope": "This is separate from the later watch diagnostic oracle failure. Historical later scenarios and baseline were skipped."
     },
     "generated_templates": {

@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "issue": "https://github.com/0xPlayerOne/bun-native/issues/297",
+  "issue": "https://github.com/AndrewM-F/bun-native/issues/297",
   "kind": "instrumented local diagnostic; not a baseline, not hosted CI",
   "environment": {
     "machine": "shared cloud container, Intel Xeon @ 2.80GHz, 4 CPUs, Linux 6.18.44",

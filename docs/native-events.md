@@ -1,6 +1,6 @@
 # Shared native interaction events
 
-This implements the shared native event foundation for [BN2 #234](https://github.com/0xPlayerOne/bun-native/issues/234). The GPUI host, protocol and public core own one event implementation. Solid and React map their listener props to that public API; they do not create native event backends or reconstruct a DOM.
+This implements the shared native event foundation for [BN2 #234](https://github.com/AndrewM-F/bun-native/issues/234). The GPUI host, protocol and public core own one event implementation. Solid and React map their listener props to that public API; they do not create native event backends or reconstruct a DOM.
 
 Protocol **4** requires `interactions_v1` together with `tree`, `input_revisions` and `layout_v1`. Earlier hosts are incompatible and fail negotiation before a window opens. Rebuild and pin packages and the prebuilt native executable together. Historical protocol-2/3 artifacts remain evidence for their original revisions, not for the new event contract.
 
@@ -150,7 +150,7 @@ behavior rather than real shaping. The
 adds actual OS input, complete native paint, independent caret/text/selection
 pixels, resize, restyle and joined cleanup in development and AOT. Its own
 changed-head hosted qualification remains pending under
-[#241](https://github.com/0xPlayerOne/bun-native/issues/241). The earlier short-input
+[#241](https://github.com/AndrewM-F/bun-native/issues/241). The earlier short-input
 native evidence below belongs to its recorded source and is not relabeled as
 qualification of this change. Grapheme editing, Hebrew input, dead-key
 composition, read-only/disabled states, Tab order, scale factor 2 and the AT-SPI

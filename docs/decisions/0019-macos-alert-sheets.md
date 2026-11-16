@@ -5,7 +5,7 @@ runtime evidence; nothing here has run on a physical Mac.
 
 Date: 2026-11-10.
 
-Related: [menus and dialogs #239](https://github.com/0xPlayerOne/bun-native/issues/239),
+Related: [menus and dialogs #239](https://github.com/AndrewM-F/bun-native/issues/239),
 [message dialogs](0014-message-dialogs.md) and
 [Windows task dialogs](0018-windows-task-dialogs.md).
 

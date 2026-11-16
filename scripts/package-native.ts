@@ -129,7 +129,7 @@ async function main(args: string[]): Promise<void> {
             null,
             2
           ) + '\n',
-        'README.md': `# ${name}\n\nPrivate experimental Bun Native source package from [${source.commit}](https://github.com/0xPlayerOne/bun-native/tree/${source.commit}). Install through its local package-set manifest and pinned consumer lock. Use Bun revision ${toolchain.bun.revision}; supply the compatible native host explicitly. No registry release or platform signing is implied. Original license notice is retained in LICENSE.\n`,
+        'README.md': `# ${name}\n\nPrivate experimental Bun Native source package from [${source.commit}](https://github.com/AndrewM-F/bun-native/tree/${source.commit}). Install through its local package-set manifest and pinned consumer lock. Use Bun revision ${toolchain.bun.revision}; supply the compatible native host explicitly. No registry release or platform signing is implied. Original license notice is retained in LICENSE.\n`,
       }
       for (const [path, text] of Object.entries(generated))
         await writeFile(join(directory, path), text, { flag: 'wx' })

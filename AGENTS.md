@@ -2,13 +2,13 @@
 
 **Direction:** Bun Native builds native desktop apps authored in TypeScript or JavaScript with Bun, a native UI renderer (Rust GPUI first) and **Bun AOT production compilation**. SolidJS and React are both supported. There is no WebView or CEF fallback; the old Bunly/CEF runtime is gone and lives only in Git history.
 
-**Owner's authorization:** This public repository is a fully experimental project. An assigned agent may autonomously perform every implementation and cleanup task in [roadmap #1](https://github.com/0xPlayerOne/bun-native/issues/1), including source deletion, refactors, dependencies/toolchain changes, issues, branches, draft/ready PRs, CI, repo release tooling, and auto-merge when GitHub rules permit. **Do not ask for routine approvals, design sign-offs, milestone checkpoints, or manual testing.** Make practical decisions and document major architecture changes. Continue onto other unblocked tasks while CI runs or blockers are repaired.
+**Owner's authorization:** This public repository is a fully experimental project. An assigned agent may autonomously perform every implementation and cleanup task in [roadmap #1](https://github.com/AndrewM-F/bun-native/issues/1), including source deletion, refactors, dependencies/toolchain changes, issues, branches, draft/ready PRs, CI, repo release tooling, and auto-merge when GitHub rules permit. **Do not ask for routine approvals, design sign-offs, milestone checkpoints, or manual testing.** Make practical decisions and document major architecture changes. Continue onto other unblocked tasks while CI runs or blockers are repaired.
 
 **Workspace state:** BN0 and BN1 are complete. The [docs index](docs/README.md) lists current guides and dated records; [compatibility](docs/compatibility.md) is the support table. Do not recover obsolete runtime files to satisfy an old command.
 
 ## Start and operating sequence
 
-1. Read this file, the [roadmap](https://github.com/0xPlayerOne/bun-native/issues/1) and the relevant GitHub issue, and inspect the actual branch and the managed contribution policy below.
+1. Read this file, the [roadmap](https://github.com/AndrewM-F/bun-native/issues/1) and the relevant GitHub issue, and inspect the actual branch and the managed contribution policy below.
 2. Pick the next unblocked task in the BN milestones without waiting for a human choice, and follow its dependencies.
 3. Open a draft PR with the first useful commit, push incremental work, run focused validation, mark ready when prepared and enable auto-merge if repository checks allow. Never bypass protected branch checks, fabricate a passing test, or force a merge. Keep other ready tasks moving.
 4. If an integration test fails, reproduce it, log exact tools/OS/build mode, fix or choose another valid native implementation, and continue. No project stop/go gate. Bun's normal JIT may be used in development; **do not** label a JIT release as AOT. Keep browserless native UI and Bun AOT as the production objective.
@@ -34,7 +34,7 @@ A milestone is incomplete if significant dead/duplicate code, unexplained perfor
 
 ## Safety and scope
 
-The agent has broad discretion **inside `0xPlayerOne/bun-native`**. This does not grant authority to mutate Adea production, unrelated repositories, personal Mac files or external accounts. Use only already configured tool credentials and service flows. Protected branches, sign-in and actual external platform permissions still apply. Preserve required upstream copyright/provenance when reusing code. Do not publish secrets. Experimental unsigned artifacts may be distributed within project workflows; production signing/notarization is only claimed when actually verified.
+The agent has broad discretion **inside `AndrewM-F/bun-native`**. This does not grant authority to mutate Adea production, unrelated repositories, personal Mac files or external accounts. Use only already configured tool credentials and service flows. Protected branches, sign-in and actual external platform permissions still apply. Preserve required upstream copyright/provenance when reusing code. Do not publish secrets. Experimental unsigned artifacts may be distributed within project workflows; production signing/notarization is only claimed when actually verified.
 
 The Code Foundry-managed requirements below remain applicable. Interpret them alongside this explicit owner authorization to avoid unnecessary human checkpoints; they do not require retaining CEF code.
 

@@ -1,7 +1,7 @@
 # Native platform build and paint qualification
 
-This is an incremental implementation of [CI #256](https://github.com/0xPlayerOne/bun-native/issues/256)
-and [target artifacts #246](https://github.com/0xPlayerOne/bun-native/issues/246).
+This is an incremental implementation of [CI #256](https://github.com/AndrewM-F/bun-native/issues/256)
+and [target artifacts #246](https://github.com/AndrewM-F/bun-native/issues/246).
 The wider CI acceptance in #256 remains open. Linux's existing owned-window/input suite stays required;
 this lane adds genuine target-host compilation and a portable native lifecycle
 fixture for macOS and Windows. It does not infer GUI interaction from compilation.
@@ -40,7 +40,7 @@ native paint, lifecycle and owned OS-input checks. These are **finite stress
 checks**, not a long soak, physical-GPU qualification or measured regression
 budget. Linux uses its existing software GPU; all other hardware, IME and
 accessibility limits remain as documented below. Comparable trend/budget
-automation and longer soaks remain [#259](https://github.com/0xPlayerOne/bun-native/issues/259).
+automation and longer soaks remain [#259](https://github.com/AndrewM-F/bun-native/issues/259).
 
 ### Qualification plan for the scheduling change
 
@@ -166,7 +166,7 @@ this extension.
 
 ### macOS pointer association regression
 
-The [subsequent hosted macOS run](https://github.com/0xPlayerOne/bun-native/actions/runs/41238698609/job/124647813058)
+The [subsequent hosted macOS run](https://github.com/AndrewM-F/bun-native/actions/runs/41238698609/job/124647813058)
 passed complete development native paint/lifecycle and owned-window/permission
 checks, then failed OS-input qualification. The initial six-node tree painted
 and its input received focus, but no pointer event reached the application.
@@ -214,7 +214,7 @@ for comparison with the original observation. These diagnostics do not relax
 ownership. Corrected macOS event delivery remains subject to the hosted
 development and AOT checks; SDK conversion and Linux runs cannot establish it.
 
-The [next hosted attempt](https://github.com/0xPlayerOne/bun-native/actions/runs/41242660014/job/124659569247)
+The [next hosted attempt](https://github.com/AndrewM-F/bun-native/actions/runs/41242660014/job/124659569247)
 passed the corrected SDK controls and native paint-only fixture, then still
 failed actual pointer activation. Its retained observation shows posting access
 was true, the exact owned window and process identities matched, and three
@@ -258,7 +258,7 @@ development-profile Linux host and do not qualify macOS delivery.
 
 ### WindowServer routing correction
 
-[Run 41245774144](https://github.com/0xPlayerOne/bun-native/actions/runs/41245774144/job/124668770902)
+[Run 41245774144](https://github.com/AndrewM-F/bun-native/actions/runs/41245774144/job/124668770902)
 again passed paint-only lifecycle but failed the unchanged macOS input gate.
 The trace emitted its ready marker at index 1 of 64, then no mouse move, down
 or up record. The initial native tree painted, posting permission was true,
@@ -287,7 +287,7 @@ real development and AOT button/text input. This correction has no native
 macOS success claim until those results exist. The GPUI capture trace remains
 enabled to distinguish subsequent delivery from targeting failures.
 
-[Run 41247808999](https://github.com/0xPlayerOne/bun-native/actions/runs/41247808999/job/124674782271)
+[Run 41247808999](https://github.com/AndrewM-F/bun-native/actions/runs/41247808999/job/124674782271)
 passed native paint and the actual SDK controls, then rejected the development
 pointer target before posting any event: the first intersecting WindowServer
 rectangle did not match the exact owned window. The window remained visible,
@@ -483,7 +483,7 @@ reclassifying the device.
 
 The [hosted evidence below](#hosted-paint-os-input-and-assigned-device-evidence)
 qualifies the assigned-device identity scope of
-[#292](https://github.com/0xPlayerOne/bun-native/issues/292): all four positive
+[#292](https://github.com/AndrewM-F/bun-native/issues/292): all four positive
 macOS paint/input cases require and report the actual layer's Metal device.
 That identity does not prove GPU utilization, display presentation or hardware
 performance. Complete native paints, lifecycle, joined shutdown and separately
@@ -545,7 +545,7 @@ evidence upload; its hash and rebuild recipe remain.
 
 ### Hosted paint, OS input and assigned-device evidence
 
-[Validation 41904934340](https://github.com/0xPlayerOne/bun-native/actions/runs/41904934340)
+[Validation 41904934340](https://github.com/AndrewM-F/bun-native/actions/runs/41904934340)
 passed all twelve required jobs for PR head
 `5bbce3c1c964baae42ef768126c5736b96a4cfaf`. The actual tested merge was
 `4e12e5b5199cc07e7e1e84186bea39ce2fdfdb71`, tree
@@ -555,8 +555,8 @@ that combined tree.
 
 | Hosted target             | Native job                                                                                          | Retained artifact                                                                                          |
 | ------------------------- | --------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
-| macOS 15.8.2 / ARM64      | [126836941712](https://github.com/0xPlayerOne/bun-native/actions/runs/41904934340/job/126836941712) | `13359239800`, 3,481,699 bytes, SHA-256 `df1706b2e97eb20351487959ce40057d5e61dd4ff60e2b4a0c34c51580011ba4` |
-| Windows Server 2022 / x64 | [126836941557](https://github.com/0xPlayerOne/bun-native/actions/runs/41904934340/job/126836941557) | `13360845884`, 4,015,772 bytes, SHA-256 `8952714a13a10f1030bd4e3d9b5f121611f0d4641e75a8f6a63438006a66c379` |
+| macOS 15.8.2 / ARM64      | [126836941712](https://github.com/AndrewM-F/bun-native/actions/runs/41904934340/job/126836941712) | `13359239800`, 3,481,699 bytes, SHA-256 `df1706b2e97eb20351487959ce40057d5e61dd4ff60e2b4a0c34c51580011ba4` |
+| Windows Server 2022 / x64 | [126836941557](https://github.com/AndrewM-F/bun-native/actions/runs/41904934340/job/126836941557) | `13360845884`, 4,015,772 bytes, SHA-256 `8952714a13a10f1030bd4e3d9b5f121611f0d4641e75a8f6a63438006a66c379` |
 
 Each target passed four actual cases: development and inspected AOT, each with
 paint-only and separately enabled OS-input modes. Every case completed three
@@ -613,7 +613,7 @@ binds both runs to their 61 current compiler/controller source fingerprints and
 the newly compiled application. It retains the dev-host and software-GPU scope;
 these correctness runs are not comparative timing measurements.
 
-The [hosted paint matrix](https://github.com/0xPlayerOne/bun-native/actions/runs/41238694201)
+The [hosted paint matrix](https://github.com/AndrewM-F/bun-native/actions/runs/41238694201)
 passed all twelve required jobs. Its [source-bound target record](../tests/native/evidence/platform-smoke-hosted-macos-windows.json)
 verifies both target archives and every recorded source against the actual tested
 merge. On both macOS ARM64 and Windows x64, development and independently
@@ -623,7 +623,7 @@ rejected the deliberate wrong-paint expectation with the required error and
 clean shutdown. This establishes the build, paint and lifecycle scope above;
 OS input and the other explicitly unverified capabilities remain separate.
 
-The initial [macOS run](https://github.com/0xPlayerOne/bun-native/actions/runs/41236725102)
+The initial [macOS run](https://github.com/AndrewM-F/bun-native/actions/runs/41236725102)
 passed the release host build, Clippy and native unit tests, then failed the old
 controller's unconditional adapter requirement. Its retained evidence contains
 the actual `gpu: null` record, an empty-root paint and an acknowledged populated

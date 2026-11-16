@@ -9,8 +9,8 @@ implemented; the plan for each is below.
 
 Date: 2026-11-06.
 
-Related: [platform acceptance #246](https://github.com/0xPlayerOne/bun-native/issues/246),
-[shared services #255](https://github.com/0xPlayerOne/bun-native/issues/255),
+Related: [platform acceptance #246](https://github.com/AndrewM-F/bun-native/issues/246),
+[shared services #255](https://github.com/AndrewM-F/bun-native/issues/255),
 [service policy](0005-native-service-policy.md),
 [clipboard](0007-native-clipboard.md), [global shortcuts](0008-native-global-shortcuts.md),
 [drag and drop](0012-native-drag-drop.md) and [file dialogs](0013-native-file-dialogs.md).

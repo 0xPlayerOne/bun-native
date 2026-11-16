@@ -1,9 +1,9 @@
 {
   "schemaVersion": 1,
-  "issue": "https://github.com/0xPlayerOne/bun-native/issues/358",
+  "issue": "https://github.com/AndrewM-F/bun-native/issues/358",
   "scope": "Preserved first AOT public-lifecycle OS-close failure. No retry, cause attribution, or later success inferred.",
   "failedRun": {
-    "url": "https://github.com/0xPlayerOne/bun-native/actions/runs/41864425687/job/126694832363",
+    "url": "https://github.com/AndrewM-F/bun-native/actions/runs/41864425687/job/126694832363",
     "pullRequest": 351,
     "headCommit": "9e9f9a6401b72e26486d11f37027c4a5f428c1c7",
     "testedMergeCommit": "67032a5aaf997a2996024ff434e80e663e52ee47",
@@ -114,7 +114,7 @@
       "resultSha256": "4da2843911eb92a5a6babdadf1ec60977d1a97bb8f7df95ec0049b70c016ed9d"
     },
     "priorMain": {
-      "runUrl": "https://github.com/0xPlayerOne/bun-native/actions/runs/41831891686",
+      "runUrl": "https://github.com/AndrewM-F/bun-native/actions/runs/41831891686",
       "artifactSha256": "d2fe33c6a18ce7d8be79fa6c810104598cfd54ff3309f1bc10684c556a3a5a31",
       "aot": {
         "status": "passed",

@@ -1,7 +1,7 @@
 # Portable framework native qualification
 
 > **Status (2026-11-05):** executed and merged in
-> [#399](https://github.com/0xPlayerOne/bun-native/pull/399). The shared fixture is
+> [#399](https://github.com/AndrewM-F/bun-native/pull/399). The shared fixture is
 > [`tests/native/platform-adapter.ts`](../../tests/native/platform-adapter.ts) with
 > [Solid](../../tests/native/solid-platform.tsx) and [React](../../tests/native/react-platform.tsx)
 > adapters in the [`Native Platforms` workflow](../../.github/workflows/native-platforms.yml).

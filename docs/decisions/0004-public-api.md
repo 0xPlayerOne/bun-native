@@ -4,7 +4,7 @@ Status: accepted for the experimental BN1 implementation
 
 Date: October 31, 2026
 
-Related: [#228](https://github.com/0xPlayerOne/bun-native/issues/228), [#229](https://github.com/0xPlayerOne/bun-native/issues/229), [#232](https://github.com/0xPlayerOne/bun-native/issues/232), [#253](https://github.com/0xPlayerOne/bun-native/issues/253)
+Related: [#228](https://github.com/AndrewM-F/bun-native/issues/228), [#229](https://github.com/AndrewM-F/bun-native/issues/229), [#232](https://github.com/AndrewM-F/bun-native/issues/232), [#253](https://github.com/AndrewM-F/bun-native/issues/253)
 
 ## Context and constraints
 

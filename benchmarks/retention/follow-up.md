@@ -1,6 +1,6 @@
 # Follow-up proposal: identify fixed-checkpoint retention in pinned Bun and native AOT
 
-**Tracked in [Bun Native #287](https://github.com/0xPlayerOne/bun-native/issues/287); not an upstream report.** Related work: BN2 #231 and PR #277. No renderer or benchmark assertion is relaxed by filing this follow-up.
+**Tracked in [Bun Native #287](https://github.com/AndrewM-F/bun-native/issues/287); not an upstream report.** Related work: BN2 #231 and PR #277. No renderer or benchmark assertion is relaxed by filing this follow-up.
 
 **Status note (2026-11-05):** [settled-collection.md](settled-collection.md) since identified JSC's DFG tier as the source of the development-mode positives described below; the required collectability checks now run with `BUN_JSC_useDFGJIT=0`. The native AOT failure is still unexplained, so work items 1 and 3–6 still apply. The original text below is unchanged.
 

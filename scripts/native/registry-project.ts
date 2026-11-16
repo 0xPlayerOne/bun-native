@@ -84,7 +84,7 @@ This project depends on the Bun Native ${version} packages from the npm registry
 - \`bun run dev --host auto\` bundles and opens the app once with the released host (or pass \`--host /absolute/path/to/bun-native-host\`). Add \`--watch\` to remount after source edits; state resets on every edit.
 - \`bun run build --host auto --host-profile release\` creates an unsigned same-platform AOT app in \`dist\`. The output directory must be empty.
 
-Keep the template's optional development IPC hooks: they report readiness and clean up the renderer and owned host before a replacement starts. The host is unsigned; see the Bun Native [getting-started guide](https://github.com/0xPlayerOne/bun-native/blob/v${version}/docs/getting-started.md) and [developer tooling](https://github.com/0xPlayerOne/bun-native/blob/v${version}/docs/developer-tooling.md).
+Keep the template's optional development IPC hooks: they report readiness and clean up the renderer and owned host before a replacement starts. The host is unsigned; see the Bun Native [getting-started guide](https://github.com/AndrewM-F/bun-native/blob/v${version}/docs/getting-started.md) and [developer tooling](https://github.com/AndrewM-F/bun-native/blob/v${version}/docs/developer-tooling.md).
 `,
   }
 }

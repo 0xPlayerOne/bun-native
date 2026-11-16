@@ -1,6 +1,6 @@
 # Bun Native — architecture, code health and performance standard
 
-**Status:** Engineering policy for the experimental Bun Native rewrite, October 31, 2026. Referenced from the [roadmap](https://github.com/0xPlayerOne/bun-native/issues/1) and root [AGENTS.md](../AGENTS.md). It applies to every BN0–BN7 task and pull request.
+**Status:** Engineering policy for the experimental Bun Native rewrite, October 31, 2026. Referenced from the [roadmap](https://github.com/AndrewM-F/bun-native/issues/1) and root [AGENTS.md](../AGENTS.md). It applies to every BN0–BN7 task and pull request.
 
 **Goal:** Deliver the smallest maintainable, fast, browserless native desktop framework that genuinely uses Bun machine-code AOT in production. Experimental means architecture can change quickly; it does **not** mean accepting dead code, fake tests, duplicated implementations, uncontrolled dependencies, regressions or a permanently messy repository.
 

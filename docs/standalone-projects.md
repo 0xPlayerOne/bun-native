@@ -2,8 +2,8 @@
 
 The `create --packages` mode uses local archives of the existing Bun Native CLI and libraries
 for a project outside the framework checkout. It advances
-[#382](https://github.com/0xPlayerOne/bun-native/issues/382). The
-[recorded local cohort](https://github.com/0xPlayerOne/bun-native/pull/403) passed
+[#382](https://github.com/AndrewM-F/bun-native/issues/382). The
+[recorded local cohort](https://github.com/AndrewM-F/bun-native/pull/403) passed
 once at published source `cba506b844eb6b91dbdd085389d43690539c1186`: all four
 Solid/React TypeScript/JavaScript consumers installed offline, moved to unrelated
 paths, reinstalled with frozen locks, passed strict checks and public import
@@ -14,11 +14,11 @@ qualification; it now runs in `native-linux.yml` as `tests/native/cli-standalone
 available.
 
 Earlier source-specific failures remain preserved. The
-[first cohort](https://github.com/0xPlayerOne/bun-native/pull/394) failed because
+[first cohort](https://github.com/AndrewM-F/bun-native/pull/394) failed because
 its initial lock omitted local package records. The
-[parser controls](https://github.com/0xPlayerOne/bun-native/pull/397) retain their
+[parser controls](https://github.com/AndrewM-F/bun-native/pull/397) retain their
 failed first diagnostic expectation separately from the three later completed
-calls. The [corrected-lock cohort](https://github.com/0xPlayerOne/bun-native/pull/400)
+calls. The [corrected-lock cohort](https://github.com/AndrewM-F/bun-native/pull/400)
 at `7e102937` stopped after its first successful populated-cache install because
 the file oracle did not account for Bun's exact installer-owned `.bun-tag`.
 The subsequent marker correction and full local pass do not change those outcomes.

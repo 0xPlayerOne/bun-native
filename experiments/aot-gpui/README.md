@@ -1,6 +1,6 @@
 # Bun AOT and native interoperability probe
 
-This is an executable compiler/native-boundary experiment for [#225](https://github.com/0xPlayerOne/bun-native/issues/225). It does **not** render a window, simulate GPUI, or satisfy native UI acceptance in #230/#227.
+This is an executable compiler/native-boundary experiment for [#225](https://github.com/AndrewM-F/bun-native/issues/225). It does **not** render a window, simulate GPUI, or satisfy native UI acceptance in #230/#227.
 
 ## Reproduce
 

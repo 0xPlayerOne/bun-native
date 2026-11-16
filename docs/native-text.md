@@ -1,6 +1,6 @@
 # Native text, focus, Unicode, composition and accessibility
 
-This document is the BN4 ([#241](https://github.com/0xPlayerOne/bun-native/issues/241))
+This document is the BN4 ([#241](https://github.com/AndrewM-F/bun-native/issues/241))
 support matrix for the single-line native `input`, keyboard focus and the
 accessibility tree exposed by the GPUI host. It separates what was **observed**
 on a real native run from what is implemented but **not run** on a platform, and

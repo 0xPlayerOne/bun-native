@@ -27,7 +27,7 @@ async function archive(bytes = 'host archive bytes'): Promise<ProvenancePolicy> 
   await writeFile(file, bytes)
   return {
     file,
-    repository: '0xPlayerOne/bun-native',
+    repository: 'AndrewM-F/bun-native',
     signerWorkflow: '.github/workflows/native-linux.yml',
     sourceRef: 'refs/heads/main',
     sourceDigest: commit,
@@ -52,12 +52,12 @@ function verified(
         signature: {
           certificate: {
             buildSignerURI:
-              'https://github.com/0xPlayerOne/bun-native/.github/workflows/native-linux.yml@refs/heads/main',
-            sourceRepositoryURI: 'https://github.com/0xPlayerOne/bun-native',
+              'https://github.com/AndrewM-F/bun-native/.github/workflows/native-linux.yml@refs/heads/main',
+            sourceRepositoryURI: 'https://github.com/AndrewM-F/bun-native',
             sourceRepositoryRef: 'refs/heads/main',
             sourceRepositoryDigest: commit,
             runnerEnvironment: 'github-hosted',
-            runInvocationURI: 'https://github.com/0xPlayerOne/bun-native/actions/runs/1/attempts/1',
+            runInvocationURI: 'https://github.com/AndrewM-F/bun-native/actions/runs/1/attempts/1',
             ...certificate,
           },
         },
@@ -74,9 +74,9 @@ test('the verify command pins signer workflow, ref, commit, predicate and hosted
     'verify',
     policy.file,
     '--repo',
-    '0xPlayerOne/bun-native',
+    'AndrewM-F/bun-native',
     '--signer-workflow',
-    '0xPlayerOne/bun-native/.github/workflows/native-linux.yml',
+    'AndrewM-F/bun-native/.github/workflows/native-linux.yml',
     '--source-ref',
     'refs/heads/main',
     '--source-digest',
@@ -101,11 +101,11 @@ test('a verified attestation for the exact archive bytes passes', async () => {
     file: policy.file,
     sha256: digest,
     signer:
-      'https://github.com/0xPlayerOne/bun-native/.github/workflows/native-linux.yml@refs/heads/main',
-    sourceRepository: 'https://github.com/0xPlayerOne/bun-native',
+      'https://github.com/AndrewM-F/bun-native/.github/workflows/native-linux.yml@refs/heads/main',
+    sourceRepository: 'https://github.com/AndrewM-F/bun-native',
     sourceRef: 'refs/heads/main',
     sourceDigest: commit,
-    runInvocation: 'https://github.com/0xPlayerOne/bun-native/actions/runs/1/attempts/1',
+    runInvocation: 'https://github.com/AndrewM-F/bun-native/actions/runs/1/attempts/1',
     transparencyLogIndex: '123456',
   })
   expect(calls).toEqual([verifyCommand(policy)])
@@ -131,9 +131,9 @@ test('an attestation for other bytes, signer, ref, commit, runner or predicate i
     [
       verified(digest, {
         buildSignerURI:
-          'https://github.com/0xPlayerOne/bun-native/.github/workflows/other.yml@refs/heads/main',
+          'https://github.com/AndrewM-F/bun-native/.github/workflows/other.yml@refs/heads/main',
       }),
-      'is not https://github.com/0xPlayerOne/bun-native/.github/workflows/native-linux.yml@',
+      'is not https://github.com/AndrewM-F/bun-native/.github/workflows/native-linux.yml@',
     ],
     [
       verified(digest, { sourceRepositoryURI: 'https://github.com/fork/bun-native' }),

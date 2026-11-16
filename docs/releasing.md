@@ -1,6 +1,6 @@
 # Releasing Bun Native desktop applications
 
-**Status (November 12, 2026):** Linux x64 X11 has a hosted-qualified `tar.gz`/`install.sh` installer with verified keyless provenance, but no production identity-signed artifacts exist. macOS 15 ARM64 is a supported preview without Developer ID notarization; Windows is deferred ([accepted platform scope](decisions/0021-platform-release-readiness.md)). [BN6 #223](https://github.com/0xPlayerOne/bun-native/issues/223) tracks remaining packaging, signing, updates and rollback. An experimental [verified update and rollback tool](updates.md) exists for build outputs (#249). [OS code signing, notarization and installer images](#os-code-signing-notarization-and-installers) are implemented and run in hosted CI with **throwaway** identities only. No artifact has been signed with a release identity, because the project has no Apple Developer ID and no Windows code-signing certificate; the [owner steps](#configuring-release-identities-owner-steps) list exactly what that needs.
+**Status (November 12, 2026):** Linux x64 X11 has a hosted-qualified `tar.gz`/`install.sh` installer with verified keyless provenance, but no production identity-signed artifacts exist. macOS 15 ARM64 is a supported preview without Developer ID notarization; Windows is deferred ([accepted platform scope](decisions/0021-platform-release-readiness.md)). [BN6 #223](https://github.com/AndrewM-F/bun-native/issues/223) tracks remaining packaging, signing, updates and rollback. An experimental [verified update and rollback tool](updates.md) exists for build outputs (#249). [OS code signing, notarization and installer images](#os-code-signing-notarization-and-installers) are implemented and run in hosted CI with **throwaway** identities only. No artifact has been signed with a release identity, because the project has no Apple Developer ID and no Windows code-signing certificate; the [owner steps](#configuring-release-identities-owner-steps) list exactly what that needs.
 
 **Note (2026-11-10):** the `Code Foundry Release` workflow ([`release.yml`](../.github/workflows/release.yml)) runs Release Please on `main` only after that exact main commit's own push Validation (which includes the four CodeQL analyses) completes successfully and the commit is still the main head, and advances the preview workspace version recorded in the root [`package.json`](../package.json) and [Release Please manifest](../.release-please-manifest.json). That version release is not an application artifact. It does not qualify native windows, packaging, signing or Bun AOT. `bun scripts/package-native.ts` produces framework package sets for [standalone projects](standalone-projects.md), not signed application installers. [`release-integrity.yml`](../.github/workflows/release-integrity.yml) only checks published immutable releases. It runs on publication only when the `REQUIRE_IMMUTABLE_RELEASES` repository variable is `true` (set once an administrator enables immutable releases), or by manual dispatch for a given tag.
 
@@ -100,26 +100,26 @@ Linux has no OS code-signing authority, so the Linux artifact is signed with [Si
 **Verify a downloaded archive yourself** (GitHub CLI 2.49 or later, signed in; the attestation is looked up by the archive's SHA-256):
 
 ```sh
-gh attestation verify unsigned-native-host.tar.gz --repo 0xPlayerOne/bun-native \
-  --signer-workflow 0xPlayerOne/bun-native/.github/workflows/native-linux.yml \
+gh attestation verify unsigned-native-host.tar.gz --repo AndrewM-F/bun-native \
+  --signer-workflow AndrewM-F/bun-native/.github/workflows/native-linux.yml \
   --source-ref refs/heads/main --deny-self-hosted-runners
 # or check the bundle from the artifact instead of the attestations API:
-gh attestation verify unsigned-native-host.tar.gz --repo 0xPlayerOne/bun-native \
+gh attestation verify unsigned-native-host.tar.gz --repo AndrewM-F/bun-native \
   --bundle unsigned-native-host.sigstore.json
 ```
 
-Or, with the repository checked out, `bun scripts/quality/linux-provenance.ts verify /absolute/unsigned-native-host.tar.gz --repo 0xPlayerOne/bun-native --signer-workflow .github/workflows/native-linux.yml --source-ref refs/heads/main --source-digest COMMIT`.
+Or, with the repository checked out, `bun scripts/quality/linux-provenance.ts verify /absolute/unsigned-native-host.tar.gz --repo AndrewM-F/bun-native --signer-workflow .github/workflows/native-linux.yml --source-ref refs/heads/main --source-digest COMMIT`.
 
 **What it proves and what it does not.** A passing verification shows that these exact archive bytes were produced by `native-linux.yml` on a GitHub-hosted runner from the named `main` commit of this repository. It does not show that the host is free of defects, it is not an OS code signature (no Linux desktop checks one), and it does not cover the application's AOT executable or a `.tar.gz` installer from `release-package.ts installer`; those are built by the application's own release, which can attest them the same way. A version release still attaches no host (see [Version and support policy](#version-and-support-policy)).
 
-**Results.** The unit and workflow-wiring tests pass on Linux x64 with pinned Bun (2026-11-11). On `main` at `e1b6c60`, Native Linux in Validation [43142396083](https://github.com/0xPlayerOne/bun-native/actions/runs/43142396083) attested `unsigned-native-host.tar.gz` (sha256 `eb8930dc37a6209b5338f2bd3834c82d8acf4d4f0e5579e11792b48d36bab426`, Rekor log index 3822959972) and verified it in the job against the `native-linux.yml` signer, `refs/heads/main` and that commit; the release workflow run [43145047946](https://github.com/0xPlayerOne/bun-native/actions/runs/43145047946) verified the checksum and provenance again before Release Please.
+**Results.** The unit and workflow-wiring tests pass on Linux x64 with pinned Bun (2026-11-11). On `main` at `e1b6c60`, Native Linux in Validation [43142396083](https://github.com/AndrewM-F/bun-native/actions/runs/43142396083) attested `unsigned-native-host.tar.gz` (sha256 `eb8930dc37a6209b5338f2bd3834c82d8acf4d4f0e5579e11792b48d36bab426`, Rekor log index 3822959972) and verified it in the job against the `native-linux.yml` signer, `refs/heads/main` and that commit; the release workflow run [43145047946](https://github.com/AndrewM-F/bun-native/actions/runs/43145047946) verified the checksum and provenance again before Release Please.
 
 ### What remains owner-only
 
 These need credentials that only the repository owner can obtain; the repository already consumes them when present ([owner steps](#configuring-release-identities-owner-steps)):
 
 - **macOS Developer ID signing and notarization**: an Apple Developer Program membership, a Developer ID Application certificate and App Store Connect (or Apple ID) notarization credentials. Until they exist, CI signs with a throwaway identity and macOS builds are ad-hoc or throwaway signed; Gatekeeper and notarization are unverified.
-- **Windows Authenticode**: an OV/EV certificate, Azure Trusted Signing account or hardware token. Windows release readiness also waits on [#629](https://github.com/0xPlayerOne/bun-native/issues/629).
+- **Windows Authenticode**: an OV/EV certificate, Azure Trusted Signing account or hardware token. Windows release readiness also waits on [#629](https://github.com/AndrewM-F/bun-native/issues/629).
 - **The Ed25519 update-manifest release key** for a real application channel: a key the application owner generates and keeps; the repository has no release signing key and no CI secret for one.
 
 Linux provenance needs none of these.
@@ -166,14 +166,14 @@ publish completes the set.
 Publishing uses npm **trusted publishing**: npm exchanges the job's GitHub OIDC
 token for a short-lived credential, and every package gets npm provenance. No npm
 token is stored anywhere. Each package needs a trusted publisher on npmjs.com
-with organization or user `0xPlayerOne`, repository `bun-native`, workflow
+with organization or user `AndrewM-F`, repository `bun-native`, workflow
 filename `release.yml`, no environment, and direct `npm publish` allowed. npm
 requires a package to exist before a trusted publisher can be added, so each
 name was first published once by the owner as a `0.0.0-bootstrap.0` placeholder.
 
 ## Configuring release identities (owner steps)
 
-Nothing in the repository changes when these are added. Store each value as a repository secret (**Settings → Secrets and variables → Actions → New repository secret**, or `gh secret set NAME --repo 0xPlayerOne/bun-native`). [`bun-native.yml`](../.github/workflows/bun-native.yml) passes them to Native Platforms, which uses them for pushes and manual runs, never for pull requests.
+Nothing in the repository changes when these are added. Store each value as a repository secret (**Settings → Secrets and variables → Actions → New repository secret**, or `gh secret set NAME --repo AndrewM-F/bun-native`). [`bun-native.yml`](../.github/workflows/bun-native.yml) passes them to Native Platforms, which uses them for pushes and manual runs, never for pull requests.
 
 ### macOS: Developer ID Application certificate and notarization
 
@@ -191,7 +191,7 @@ Nothing in the repository changes when these are added. Store each value as a re
    Or, instead, an Apple ID: create an app-specific password at account.apple.com → Sign-In and Security → App-Specific Passwords, and create `APPLE_ID` (the Apple ID email), `APPLE_TEAM_ID` (the 10-character team ID) and `APPLE_APP_SPECIFIC_PASSWORD`. Set one complete set, never half of one.
 
 6. Delete the local `developer-id.p12` and `.p8` copies, or keep them in a password manager.
-7. Run the workflow on `main`: `gh workflow run native-platforms.yml --repo 0xPlayerOne/bun-native --ref main`. In the macOS shard 1 job, step 1 must print `Provisioned release identity 'Developer ID Application: …'`, step 3 must end with `"status": "accepted"` and `source=Notarized Developer ID`, and step 4 must pass. `signed-template/install-smoke.json` then records the Developer ID chain.
+7. Run the workflow on `main`: `gh workflow run native-platforms.yml --repo AndrewM-F/bun-native --ref main`. In the macOS shard 1 job, step 1 must print `Provisioned release identity 'Developer ID Application: …'`, step 3 must end with `"status": "accepted"` and `source=Notarized Developer ID`, and step 4 must pass. `signed-template/install-smoke.json` then records the Developer ID chain.
 
 ### Windows: Authenticode
 

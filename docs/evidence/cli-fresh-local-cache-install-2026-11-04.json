@@ -10,7 +10,7 @@
     "measured_local_commit": "2446973a74f5113f6e048c4daca73f87ea35b679",
     "git_tree": "6d3b0015907d5fb4f679797b7e5b91aa74c365ee",
     "equivalent_github_source_commit": "bac9f49faf3ecb587b29275a1a3809051bebad0a",
-    "equivalent_github_source_url": "https://github.com/0xPlayerOne/bun-native/commit/bac9f49faf3ecb587b29275a1a3809051bebad0a",
+    "equivalent_github_source_url": "https://github.com/AndrewM-F/bun-native/commit/bac9f49faf3ecb587b29275a1a3809051bebad0a",
     "equivalence_note": "Tree-equivalent GitHub source snapshot verified by the integrating agent; this is separate from the measured local commit. The installer, helpers, toolchain pin, package manifest and frozen lock were hashed before and after installation.",
     "source_files_unchanged": {
       "scripts/install-bun.mjs": {

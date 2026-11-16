@@ -1,24 +1,24 @@
 # Installed-consumer native qualification plan
 
 > **Status (2026-11-05):** this hosted lane merged with
-> [#388](https://github.com/0xPlayerOne/bun-native/pull/388) as
+> [#388](https://github.com/AndrewM-F/bun-native/pull/388) as
 > [`tests/native/cli-standalone.py`](../../tests/native/cli-standalone.py) in the
 > [native Linux workflow](../../.github/workflows/native-linux.yml). Per its merge
 > record, all eight installed Linux development/AOT native cases passed at the
 > qualified head. The plan below is kept as written; its limits still apply.
 
 This is the fixed hosted follow-up to the local installation and build study in
-[#388](https://github.com/0xPlayerOne/bun-native/pull/388). Preparation of this
+[#388](https://github.com/AndrewM-F/bun-native/pull/388). Preparation of this
 harness is not an executed installation or native result. The
-[corrected local cohort](https://github.com/0xPlayerOne/bun-native/pull/403) passed
+[corrected local cohort](https://github.com/AndrewM-F/bun-native/pull/403) passed
 once at `cba506b844eb6b91dbdd085389d43690539c1186`: all four relocated consumers
 passed offline installation, strict checks, public imports and inspected AOT
 builds, with all eight invalid-input controls passing. It executed no application
 or native host. This hosted plan still requires its independent source reviews
 and first source-bound qualification. Earlier failures in
-[#394](https://github.com/0xPlayerOne/bun-native/pull/394),
-[#397](https://github.com/0xPlayerOne/bun-native/pull/397) and
-[#400](https://github.com/0xPlayerOne/bun-native/pull/400) remain failed and source-bound.
+[#394](https://github.com/AndrewM-F/bun-native/pull/394),
+[#397](https://github.com/AndrewM-F/bun-native/pull/397) and
+[#400](https://github.com/AndrewM-F/bun-native/pull/400) remain failed and source-bound.
 
 ## Source and environment
 

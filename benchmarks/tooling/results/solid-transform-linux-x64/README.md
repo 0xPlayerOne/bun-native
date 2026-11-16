@@ -1,7 +1,7 @@
 # Solid transform memory in the watch controller
 
 Follow-up to the [allocator control](../../README.md) for
-[#372](https://github.com/0xPlayerOne/bun-native/issues/372): after
+[#372](https://github.com/AndrewM-F/bun-native/issues/372): after
 `MIMALLOC_PURGE_DELAY=0`, does the Solid Babel universal transform
 (then `scripts/solid/transform.ts`, now
 [`packages/solid/src/build.ts`](../../../../packages/solid/src/build.ts)) have a

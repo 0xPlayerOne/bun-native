@@ -9,7 +9,7 @@ Bun Native is an experimental developer preview (version in [package.json](packa
 - **Linux x64 (X11):** supported. Wayland works where the pinned GPUI allows; clipboard, global shortcuts, drag and drop and popup windows are X11-only.
 - **macOS 15 ARM64:** supported as a preview. Builds are not notarized yet.
 - **Linux ARM64 and macOS x64:** observed. CI builds and runs them, and releases include their hosts, but the full suites don't run there yet.
-- **Windows:** deferred ([#629](https://github.com/0xPlayerOne/bun-native/issues/629)).
+- **Windows:** deferred ([#629](https://github.com/AndrewM-F/bun-native/issues/629)).
 
 [Compatibility](docs/compatibility.md) has the feature-by-feature support table, and the [platform release decision](docs/decisions/0021-platform-release-readiness.md) explains each platform's state. No release is signed with a production identity yet.
 
@@ -55,22 +55,22 @@ In development, Bun runs the app code normally. For distribution, Bun's AOT comp
 
 | Phase                                                       | Deliverable                                                               |
 | ----------------------------------------------------------- | ------------------------------------------------------------------------- |
-| [BN0](https://github.com/0xPlayerOne/bun-native/issues/217) | Replace Bunly/CEF and build the first real Bun AOT native app             |
-| [BN1](https://github.com/0xPlayerOne/bun-native/issues/219) | Shared typed Bun-to-native bridge, public APIs, lifecycle and security    |
-| [BN2](https://github.com/0xPlayerOne/bun-native/issues/218) | SolidJS native renderer                                                   |
-| [BN3](https://github.com/0xPlayerOne/bun-native/issues/221) | React native renderer                                                     |
-| [BN4](https://github.com/0xPlayerOne/bun-native/issues/222) | Shared native components, OS services and accessibility                   |
-| [BN5](https://github.com/0xPlayerOne/bun-native/issues/220) | CLI, Bun tooling, hot reload and native CI                                |
-| [BN6](https://github.com/0xPlayerOne/bun-native/issues/223) | Native AOT packaging, installation, updates and recovery                  |
-| [BN7](https://github.com/0xPlayerOne/bun-native/issues/224) | Real apps, equivalent-workload benchmarks, documentation and optimization |
+| [BN0](https://github.com/AndrewM-F/bun-native/issues/217) | Replace Bunly/CEF and build the first real Bun AOT native app             |
+| [BN1](https://github.com/AndrewM-F/bun-native/issues/219) | Shared typed Bun-to-native bridge, public APIs, lifecycle and security    |
+| [BN2](https://github.com/AndrewM-F/bun-native/issues/218) | SolidJS native renderer                                                   |
+| [BN3](https://github.com/AndrewM-F/bun-native/issues/221) | React native renderer                                                     |
+| [BN4](https://github.com/AndrewM-F/bun-native/issues/222) | Shared native components, OS services and accessibility                   |
+| [BN5](https://github.com/AndrewM-F/bun-native/issues/220) | CLI, Bun tooling, hot reload and native CI                                |
+| [BN6](https://github.com/AndrewM-F/bun-native/issues/223) | Native AOT packaging, installation, updates and recovery                  |
+| [BN7](https://github.com/AndrewM-F/bun-native/issues/224) | Real apps, equivalent-workload benchmarks, documentation and optimization |
 
-The [master roadmap](https://github.com/0xPlayerOne/bun-native/issues/1) contains 8 self-contained milestone epics and linked implementation tasks. It is the current source of engineering work; milestones can progress in parallel when contracts allow.
+The [master roadmap](https://github.com/AndrewM-F/bun-native/issues/1) contains 8 self-contained milestone epics and linked implementation tasks. It is the current source of engineering work; milestones can progress in parallel when contracts allow.
 
 ## Product boundaries
 
 Bun Native is **not** an Electron, Electrobun, Tauri or WebView wrapper. It does not promise arbitrary HTML/CSS, browser DOM APIs, Tailwind, shadcn, Radix or Kobalte components running unchanged. Their functionality must be represented through actual native host elements/adapters, and support is documented per feature.
 
-The [public core API](packages/core/README.md) keeps its native element and lifecycle contract deliberately small. The working commands are `create|dev|build|check|format|lint|doctor|host install`, run as `bun run native …` in a checkout or from the npm-published `@bun-native/cli` (`bunx @bun-native/cli create my-app`; see [getting started](docs/getting-started.md#without-a-checkout-the-npm-cli)). They are documented in [developer tooling](docs/developer-tooling.md). BN5 [#220](https://github.com/0xPlayerOne/bun-native/issues/220) tracks the rest of the developer-facing surface.
+The [public core API](packages/core/README.md) keeps its native element and lifecycle contract deliberately small. The working commands are `create|dev|build|check|format|lint|doctor|host install`, run as `bun run native …` in a checkout or from the npm-published `@bun-native/cli` (`bunx @bun-native/cli create my-app`; see [getting started](docs/getting-started.md#without-a-checkout-the-npm-cli)). They are documented in [developer tooling](docs/developer-tooling.md). BN5 [#220](https://github.com/AndrewM-F/bun-native/issues/220) tracks the rest of the developer-facing surface.
 
 ## Contributing
 

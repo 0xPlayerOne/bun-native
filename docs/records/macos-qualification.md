@@ -4,13 +4,13 @@
 Xcode 27.2, arm64) against `main` at `59cc47a`. It extends the hosted
 `macos-15` runs in [native platforms](../native-platforms.md) with checks that need
 a physical Mac or a second toolchain. It records passed, failed and **not run**
-cases for issues [#247](https://github.com/0xPlayerOne/bun-native/issues/247),
-[#223](https://github.com/0xPlayerOne/bun-native/issues/223),
-[#244](https://github.com/0xPlayerOne/bun-native/issues/244),
-[#249](https://github.com/0xPlayerOne/bun-native/issues/249),
-[#250](https://github.com/0xPlayerOne/bun-native/issues/250),
-[#248](https://github.com/0xPlayerOne/bun-native/issues/248) and
-[#297](https://github.com/0xPlayerOne/bun-native/issues/297). Nothing here is
+cases for issues [#247](https://github.com/AndrewM-F/bun-native/issues/247),
+[#223](https://github.com/AndrewM-F/bun-native/issues/223),
+[#244](https://github.com/AndrewM-F/bun-native/issues/244),
+[#249](https://github.com/AndrewM-F/bun-native/issues/249),
+[#250](https://github.com/AndrewM-F/bun-native/issues/250),
+[#248](https://github.com/AndrewM-F/bun-native/issues/248) and
+[#297](https://github.com/AndrewM-F/bun-native/issues/297). Nothing here is
 signed or notarized, and nothing was run on Windows.
 
 The session could not post CoreGraphics events, so no synthesized pointer or key
@@ -131,10 +131,10 @@ real download.
 ## Workspace references (#250, #248)
 
 Not run in this physical session, which could not post events. Since
-[#582](https://github.com/0xPlayerOne/bun-native/pull/582) the hosted `macos-15`
+[#582](https://github.com/AndrewM-F/bun-native/pull/582) the hosted `macos-15`
 job runs both workspace references with the unchanged Linux scenarios (keys,
 text, wheel, resize and OS close) in development and AOT
-([Validation 42746456002](https://github.com/0xPlayerOne/bun-native/actions/runs/42746456002)).
+([Validation 42746456002](https://github.com/AndrewM-F/bun-native/actions/runs/42746456002)).
 That run is hosted, not physical; a physical run needs event posting granted to
 the controlling process ([runbook](real-machine-validation.md#macos-workspace-references-248-250)).
 The hosted job's third macOS shard runs a bounded 120 s long session of each

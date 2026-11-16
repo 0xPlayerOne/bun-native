@@ -12,9 +12,9 @@ Native Platforms job.
 
 Date: 2026-11-05.
 
-Related: [#304](https://github.com/0xPlayerOne/bun-native/issues/304),
-[shared services #255](https://github.com/0xPlayerOne/bun-native/issues/255),
-[Adea port #250](https://github.com/0xPlayerOne/bun-native/issues/250),
+Related: [#304](https://github.com/AndrewM-F/bun-native/issues/304),
+[shared services #255](https://github.com/AndrewM-F/bun-native/issues/255),
+[Adea port #250](https://github.com/AndrewM-F/bun-native/issues/250),
 [trust boundary](0003-bridge-security.md) and
 [service policy](0005-native-service-policy.md).
 

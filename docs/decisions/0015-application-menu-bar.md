@@ -7,8 +7,8 @@ service ([ADR 0020](0020-os-context-menus.md)).
 
 Date: 2026-11-06.
 
-Related: [menus and dialogs #239](https://github.com/0xPlayerOne/bun-native/issues/239),
-[shared services #255](https://github.com/0xPlayerOne/bun-native/issues/255),
+Related: [menus and dialogs #239](https://github.com/AndrewM-F/bun-native/issues/239),
+[shared services #255](https://github.com/AndrewM-F/bun-native/issues/255),
 [service policy](0005-native-service-policy.md),
 [global shortcuts](0008-native-global-shortcuts.md) and
 [file dialogs](0013-native-file-dialogs.md#application-menu-bars).

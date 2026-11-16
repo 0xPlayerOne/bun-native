@@ -1,7 +1,7 @@
 """Shared helpers for the installed-consumer CLI harness (tests/native/cli-standalone.py).
 
 The fixed #382 cohort runner that used to live here is retired; see it at
-https://github.com/0xPlayerOne/bun-native/blob/3f0713c/scripts/quality/standalone-packages.py.
+https://github.com/AndrewM-F/bun-native/blob/3f0713c/scripts/quality/standalone-packages.py.
 `installed_inventory` stays a deliberately independent Python oracle for the CLI's
 own verifyInstalledPackages (scripts/native/package-set.ts), including the
 installer's `.bun-tag` format, so a bug in one is not mirrored in the other.

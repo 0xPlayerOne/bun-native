@@ -27,4 +27,4 @@ redistribution notice bundle for every linked crate/runtime remains part of
 BN6 packaging. Do not describe the experimental two-executable fixture as a
 completed licensed/signed public distribution.
 
-See [architecture](architecture.md), [releasing](releasing.md) and [BN7 docs/provenance #254](https://github.com/0xPlayerOne/bun-native/issues/254).
+See [architecture](architecture.md), [releasing](releasing.md) and [BN7 docs/provenance #254](https://github.com/AndrewM-F/bun-native/issues/254).

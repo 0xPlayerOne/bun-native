@@ -1,6 +1,6 @@
 # Selected native allocation diagnostic
 
-This diagnostic supports the remaining allocation investigation in [#297](https://github.com/0xPlayerOne/bun-native/issues/297). The [paired benchmark](../BRIDGE_PAIRS.md) remains the timing experiment. This increment qualifies an independent Rust/Heaptrack gate and prepares source patches; it does **not** compile or profile either historical GPUI host, explain the measured cost, or claim an optimization.
+This diagnostic supports the remaining allocation investigation in [#297](https://github.com/AndrewM-F/bun-native/issues/297). The [paired benchmark](../BRIDGE_PAIRS.md) remains the timing experiment. This increment qualifies an independent Rust/Heaptrack gate and prepares source patches; it does **not** compile or profile either historical GPUI host, explain the measured cost, or claim an optimization.
 
 ## Fixed source and interval
 

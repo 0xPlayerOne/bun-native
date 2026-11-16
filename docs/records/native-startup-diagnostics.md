@@ -8,7 +8,7 @@ retains its **45-second** outer ceiling and every existing assertion.
 ## Failure motivating the trace
 
 The hosted release-host job [124648082336 in run 41238544825, attempt
-2](https://github.com/0xPlayerOne/bun-native/actions/runs/41238544825/attempts/2)
+2](https://github.com/AndrewM-F/bun-native/actions/runs/41238544825/attempts/2)
 failed with `Native open request 3 timed out` before running the added Solid
 scenarios. This is the **first** open: hello is request 1 and the expected invalid
 close is request 2. No previous window had been opened or closed.
@@ -21,7 +21,7 @@ native phase trace or retained stderr tail, so it does not distinguish a stalled
 stdin continuation, UI dispatch, window/GPU initialization or response delivery.
 It does not establish a Solid regression or a close/reopen ownership defect.
 The unresolved runner failure is tracked in
-[#296](https://github.com/0xPlayerOne/bun-native/issues/296); adding diagnostics or
+[#296](https://github.com/AndrewM-F/bun-native/issues/296); adding diagnostics or
 obtaining a passing rerun does not close that investigation.
 
 In the pinned [GPUI `App::open_window`](https://github.com/zed-industries/zed/blob/ba63a022c9a22ca66d68ef2a8f0bb9b5b0a9984d/crates/gpui/src/app.rs),
@@ -113,7 +113,7 @@ cause of #296 or substitute for the controlled hosted release run.
 
 ## Existing GPUI log points
 
-The later required native job in [run 41245052851](https://github.com/0xPlayerOne/bun-native/actions/runs/41245052851)
+The later required native job in [run 41245052851](https://github.com/AndrewM-F/bun-native/actions/runs/41245052851)
 retained hello and expected invalid-close responses, the completed open-request
 flush, and native `open_dispatched` / `open_window_enter`. It timed out before
 `root_constructor_enter`; stderr was empty. The first draw in GPUI's
@@ -198,7 +198,7 @@ GPU, hosted release qualification, startup speed or cause of #296 is inferred
 from these successful diagnostic cases.
 
 The [hosted release record](../../tests/native/evidence/startup-log-hosted-linux.json)
-comes from run [41247548396](https://github.com/0xPlayerOne/bun-native/actions/runs/41247548396)
+comes from run [41247548396](https://github.com/AndrewM-F/bun-native/actions/runs/41247548396)
 at tested merge `744a08ffbbfc4b1b382796df18ed2c4d9808501f`. Its five-window
 development lifecycle passed and emitted 16 bounded logger records totaling
 5,679 bytes, with a maximum line of 406 bytes. Actual visual/colormap selection

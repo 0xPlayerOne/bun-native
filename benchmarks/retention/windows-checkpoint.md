@@ -1,17 +1,17 @@
 # Failure-only Windows retention metadata
 
-[Issue #287](https://github.com/0xPlayerOne/bun-native/issues/287) remains unresolved.
-The Windows protocol job in [run 41243736310](https://github.com/0xPlayerOne/bun-native/actions/runs/41243736310)
+[Issue #287](https://github.com/AndrewM-F/bun-native/issues/287) remains unresolved.
+The Windows protocol job in [run 41243736310](https://github.com/AndrewM-F/bun-native/actions/runs/41243736310)
 failed the existing Solid collectability assertion: one of ten disposed render
 roots remained observable where the test requires zero. The job passed 418 of
 419 tests. The failure took 41.48 ms and used the pinned Bun revision
 `da867c60bf0bcbf9d6d36994f8ca0efa42075115`.
 
 The exact tested merge was
-[`788feca5b893390e7acfc9c3a83d01ba03f742af`](https://github.com/0xPlayerOne/bun-native/commit/788feca5b893390e7acfc9c3a83d01ba03f742af).
+[`788feca5b893390e7acfc9c3a83d01ba03f742af`](https://github.com/AndrewM-F/bun-native/commit/788feca5b893390e7acfc9c3a83d01ba03f742af).
 Its shared renderer, Solid adapter, failing test and shared test support are
 byte-identical to the accepted Solid source at
-[`59d921461075b839085823bdc6ef42377bf8d7d5`](https://github.com/0xPlayerOne/bun-native/commit/59d921461075b839085823bdc6ef42377bf8d7d5).
+[`59d921461075b839085823bdc6ef42377bf8d7d5`](https://github.com/AndrewM-F/bun-native/commit/59d921461075b839085823bdc6ef42377bf8d7d5).
 The original log identifies a retained count but not which root survived or its
 state at that checkpoint. This increment adds those observations; it is not a
 collection or ownership fix.

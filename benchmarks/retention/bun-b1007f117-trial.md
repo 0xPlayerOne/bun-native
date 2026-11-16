@@ -1,6 +1,6 @@
 # Bun `b1007f117` trial: retention flake counts against `da867c60b`
 
-**Status:** trial pin evidence for [#287](https://github.com/0xPlayerOne/bun-native/issues/287). Local Linux x64 only. It does not qualify macOS, Windows or the hosted first-window timeout [#296](https://github.com/0xPlayerOne/bun-native/issues/296).
+**Status:** trial pin evidence for [#287](https://github.com/AndrewM-F/bun-native/issues/287). Local Linux x64 only. It does not qualify macOS, Windows or the hosted first-window timeout [#296](https://github.com/AndrewM-F/bun-native/issues/296).
 
 Measured on November 6, 2026 on source `a0e60de` plus the pin change, Linux x86_64 with four shared vCPUs (Intel Xeon). The release host was `target/release/bun-native-host` from the same source, SHA-256 `d6340497dbdfd5793b5c0d02d623121843c145f63b45860744543bbf48a750e9`. The environment used Xvfb `21.1.12-1ubuntu1.9` and Mesa llvmpipe/lavapipe `25.2.8-0ubuntu0.24.04.4`.
 

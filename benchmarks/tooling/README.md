@@ -1,8 +1,8 @@
 # Watch controller allocator control
 
 [`controller-allocator.ts`](controller-allocator.ts) isolates the persistent
-`native dev --watch` compiler path ([#372](https://github.com/0xPlayerOne/bun-native/issues/372),
-[#243](https://github.com/0xPlayerOne/bun-native/issues/243)). Each case is a
+`native dev --watch` compiler path ([#372](https://github.com/AndrewM-F/bun-native/issues/372),
+[#243](https://github.com/AndrewM-F/bun-native/issues/243)). Each case is a
 fresh Bun process that creates one TypeScript checkout template, then calls the
 production `bundleProject` once per distinct label edit, verifies the label in the
 bundle and removes the output. Cases differ only in `MIMALLOC_PURGE_DELAY`

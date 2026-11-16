@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "scope": "Controller telemetry correction; historical macOS failure replay and fresh actual Linux dev/AOT validation. No fresh macOS native pass or independent physical adapter qualification.",
-  "issue": "https://github.com/0xPlayerOne/bun-native/issues/292",
+  "issue": "https://github.com/AndrewM-F/bun-native/issues/292",
   "parents": {
     "platforms": "f09a13ea459631e85f353a96b77ef1f80a1e8e24",
     "input": "443586950d9e05a8953dbf1fbac2aa2df89c5254"
@@ -24,7 +24,7 @@
     }
   },
   "retainedMacFailure": {
-    "run": "https://github.com/0xPlayerOne/bun-native/actions/runs/41236725102",
+    "run": "https://github.com/AndrewM-F/bun-native/actions/runs/41236725102",
     "artifactId": 13056257372,
     "archiveSha256": "1e37448b367a403ae8be6bc81584404d9e03b6c7ead02a1f9d4cd03cae08cac5",
     "status": "failed",

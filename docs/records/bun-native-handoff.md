@@ -6,7 +6,7 @@ BN0 is complete. Source replacement #264, pinned compiler/native interoperabilit
 #265, the actual GPUI window #266, and the repeated release baseline/audit #273
 are merged. The final baseline merge is
 `c7bcf4e63906b97c9639c7a48ca4645d06aa98d2`.
-[Validation 41181547360](https://github.com/0xPlayerOne/bun-native/actions/runs/41181547360)
+[Validation 41181547360](https://github.com/AndrewM-F/bun-native/actions/runs/41181547360)
 passed every required job, including actual release-host development/AOT input,
 all 12 matched baseline trials, the Linux/macOS/Windows headless contracts and
 `Validation / Gate`. BN0 #217 and its implementation issues are closed.
@@ -17,7 +17,7 @@ passing run. That acceptance is Linux X11/XTest with Mesa software rendering;
 it does not qualify other OS GUIs, physical GPU/input, IME, accessibility or
 production installers.
 
-BN1 is complete. The merged source in [#271](https://github.com/0xPlayerOne/bun-native/pull/271)
+BN1 is complete. The merged source in [#271](https://github.com/AndrewM-F/bun-native/pull/271)
 replaces the fixed fixture with protocol 2, a bounded multi-window native tree,
 atomic mutations, independent input revisions and the public
 [`@bun-native/core`](../../packages/core/README.md) TS/JS API. Both framework
@@ -33,7 +33,7 @@ protocol-2 sources; old hosts fail negotiation with the current packages.
 Real development and inspected AOT checks cover the public API and JavaScript
 consumer, pointer/text/Enter events, stale-input rejection, 1,000 native
 subtree/listener lifecycle cycles and 1,000 OS-delivered input events.
-The complete required [hosted run 41224338023](https://github.com/0xPlayerOne/bun-native/actions/runs/41224338023)
+The complete required [hosted run 41224338023](https://github.com/AndrewM-F/bun-native/actions/runs/41224338023)
 passed the expanded release-host suite, actual startup/crash and scheduling
 checks, native allocation profiles, the portable matrix and the aggregate gate.
 The protected merge is `515c0bda14ce4f40c0ddd1469a161315d03356a8`.
@@ -67,15 +67,15 @@ fallback remains in the active packages.
    native allocation regressions. The final release suite passed; use its
    retained exact-source evidence when comparing future changes.
 2. Preserve the merged Solid renderer
-   [#277](https://github.com/0xPlayerOne/bun-native/pull/277) and React renderer
-   [#280](https://github.com/0xPlayerOne/bun-native/pull/280), which share one
+   [#277](https://github.com/AndrewM-F/bun-native/pull/277) and React renderer
+   [#280](https://github.com/AndrewM-F/bun-native/pull/280), which share one
    private renderer package and the public core. Keep their recorded native
    evidence and handler-lifetime/error-propagation regressions; matched
    performance comparisons and the retention investigation
-   [#287](https://github.com/0xPlayerOne/bun-native/issues/287) remain open.
+   [#287](https://github.com/AndrewM-F/bun-native/issues/287) remain open.
 3. Preserve the merged native layout/scroll/focus qualification in
-   [#281](https://github.com/0xPlayerOne/bun-native/pull/281), Bun command
-   controls in [#278](https://github.com/0xPlayerOne/bun-native/pull/278) and the
+   [#281](https://github.com/AndrewM-F/bun-native/pull/281), Bun command
+   controls in [#278](https://github.com/AndrewM-F/bun-native/pull/278) and the
    [checkout CLI](../developer-tooling.md). Ordinary TS/JS edits reuse a prebuilt
    host and must not silently invoke Cargo.
 4. Preserve the default-denied [native services](../native-services.md): display
@@ -86,7 +86,7 @@ fallback remains in the active packages.
    qualification is Linux-only; continue platform qualification by issue
    dependencies.
 5. Preserve the experimental release tooling merged in
-   [#483](https://github.com/0xPlayerOne/bun-native/pull/483): verified
+   [#483](https://github.com/AndrewM-F/bun-native/pull/483): verified
    [updates, rollback, launchers and uninstall](../updates.md) (#249),
    [reproducible build checks](../reproducible-builds.md), the
    [security and crash qualification matrix](../qualification-matrix.md) (#247),

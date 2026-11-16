@@ -13,7 +13,7 @@ const ROOT = resolve(import.meta.dir, '../..')
 const CLAIM =
   /\b(?:faster|slower|smaller|lighter|leaner|quicker) than\b|\b(?:blazing|lightning)[- ]?fast\b|\boutperform|\bbest[- ]in[- ]class\b|\b\d+(?:\.\d+)?\s*[x×] (?:faster|smaller|lighter|less)\b/i
 const EVIDENCE =
-  /\]\((?:\.\.\/|\.\/)*(?:benchmarks|docs\/evidence)\/|https:\/\/github\.com\/0xPlayerOne\/bun-native\/actions\/runs\/\d+/
+  /\]\((?:\.\.\/|\.\/)*(?:benchmarks|docs\/evidence)\/|https:\/\/github\.com\/AndrewM-F\/bun-native\/actions\/runs\/\d+/
 
 /** Lines that make a comparative claim without citing a recorded measurement. */
 function unsupportedClaims(files: Record<string, string>): string[] {
@@ -35,7 +35,7 @@ describe('measured-claims rule', () => {
         'README.md': [
           'Bun Native is 3x faster than Electron.',
           'AOT starts faster than development ([record](benchmarks/comparison/results/x/README.md)).',
-          'Smaller than the JIT build, see https://github.com/0xPlayerOne/bun-native/actions/runs/123.',
+          'Smaller than the JIT build, see https://github.com/AndrewM-F/bun-native/actions/runs/123.',
           'A plain sentence.',
         ].join('\n'),
         'benchmarks/BRIDGE.md': 'values are noisier and slower than hosted CI',

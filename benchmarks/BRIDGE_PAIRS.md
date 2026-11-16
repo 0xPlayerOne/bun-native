@@ -1,6 +1,6 @@
 # Historical bridge pairs
 
-This is the first controlled collection step for [#297](https://github.com/0xPlayerOne/bun-native/issues/297). It compares the two **complete source revisions** that produced the historical acknowledgement-tail signal. It does not attribute that signal to a particular change or establish a performance improvement.
+This is the first controlled collection step for [#297](https://github.com/AndrewM-F/bun-native/issues/297). It compares the two **complete source revisions** that produced the historical acknowledgement-tail signal. It does not attribute that signal to a particular change or establish a performance improvement.
 
 | Variant          | Exact tested merge                         | Client and native protocol |
 | ---------------- | ------------------------------------------ | -------------------------- |
@@ -68,7 +68,7 @@ If the paired records reproduce a meaningful shift, #297 next requires separate 
 
 ## First hosted collection
 
-[Run 41245052954, attempt 1](https://github.com/0xPlayerOne/bun-native/actions/runs/41245052954) completed all four warmups and twenty measured launches once, with no forced cleanup, remaining child processes or truncated logs. The [compact record](evidence/bridge-pairs-41245052954.json) binds the original artifacts, exact sources, application/native hashes, every raw observation and all five pair comparisons per mode. Offline verification recomputes all 24,000 individual and 240 batch samples, validates the complete saved order and verifies the historical source blobs and AOT inspection records. It performs no new native execution or binary inspection.
+[Run 41245052954, attempt 1](https://github.com/AndrewM-F/bun-native/actions/runs/41245052954) completed all four warmups and twenty measured launches once, with no forced cleanup, remaining child processes or truncated logs. The [compact record](evidence/bridge-pairs-41245052954.json) binds the original artifacts, exact sources, application/native hashes, every raw observation and all five pair comparisons per mode. Offline verification recomputes all 24,000 individual and 240 batch samples, validates the complete saved order and verifies the historical source blobs and AOT inspection records. It performs no new native execution or binary inspection.
 
 The earlier unmatched roughly elevenfold p95 increase **did not recur under these matched conditions**. It must not be treated as an elevenfold source-regression claim. The smaller sum increase remains consistent across all five pairs in each mode, so #297 remains open for attribution:
 
@@ -80,7 +80,7 @@ The earlier unmatched roughly elevenfold p95 increase **did not recur under thes
 
 The batch results are variable; their ten-sample p95/p99 equal the maximum. They remain part of the evidence. This one four-CPU hosted Linux session used an explicit Mesa lavapipe ICD without logging the actual GPUI adapter. Power, load and page caches were uncontrolled. The results do not isolate event implementation changes from other source/dependency differences or establish a performance improvement.
 
-The separate [required validation run 41245052851](https://github.com/0xPlayerOne/bun-native/actions/runs/41245052851) failed at first native open request 3 after the unchanged five-second deadline. Native build/lint/tests passed; later GUI scenarios were skipped. Its startup trace reached `open_window_enter` but not `root_constructor_enter`, narrowing [#296](https://github.com/0xPlayerOne/bun-native/issues/296) to GPUI's pre-root construction. No source cause is established. This failure is retained separately from the successful paired collection; neither attempt was rerun.
+The separate [required validation run 41245052851](https://github.com/AndrewM-F/bun-native/actions/runs/41245052851) failed at first native open request 3 after the unchanged five-second deadline. Native build/lint/tests passed; later GUI scenarios were skipped. Its startup trace reached `open_window_enter` but not `root_constructor_enter`, narrowing [#296](https://github.com/AndrewM-F/bun-native/issues/296) to GPUI's pre-root construction. No source cause is established. This failure is retained separately from the successful paired collection; neither attempt was rerun.
 
 ### Reproduce the offline audit
 

@@ -1,8 +1,8 @@
 # Create your first Bun Native app
 
-Create a Solid or React application inside a Bun Native checkout, run it against a supplied native host, and compile it with Bun's AOT compiler. TypeScript is the default; checked JavaScript with JSX is also supported. This accepted [#242](https://github.com/0xPlayerOne/bun-native/issues/242) workflow uses the checkout's framework packages and build tools. The separate [standalone local-package route](standalone-projects.md) is tracked in [#382](https://github.com/0xPlayerOne/bun-native/issues/382), with its own installation and native qualification. Registry publication, automatic host acquisition and the wider support contract remain separate work.
+Create a Solid or React application inside a Bun Native checkout, run it against a supplied native host, and compile it with Bun's AOT compiler. TypeScript is the default; checked JavaScript with JSX is also supported. This accepted [#242](https://github.com/AndrewM-F/bun-native/issues/242) workflow uses the checkout's framework packages and build tools. The separate [standalone local-package route](standalone-projects.md) is tracked in [#382](https://github.com/AndrewM-F/bun-native/issues/382), with its own installation and native qualification. Registry publication, automatic host acquisition and the wider support contract remain separate work.
 
-Steps 1, 2, 4 and 5 are the same for both frameworks. Step 3 has one walkthrough for [SolidJS](#3a-solidjs-walkthrough) and one for [React](#3b-react-walkthrough). This walkthrough describes Bun Native 0.27.2; that is the version whose checkout-based flow it originally qualified. It does not imply that every later release, platform, or separately supplied host has passed the same fresh-project procedure. Read the checked-out version from [`package.json`](../package.json), consult the dated [compatibility evidence](compatibility.md), and inspect the [protected-main Validation history](https://github.com/0xPlayerOne/bun-native/actions/workflows/bun-native.yml?query=branch%3Amain) for exact-commit hosted results.
+Steps 1, 2, 4 and 5 are the same for both frameworks. Step 3 has one walkthrough for [SolidJS](#3a-solidjs-walkthrough) and one for [React](#3b-react-walkthrough). This walkthrough describes Bun Native 0.27.2; that is the version whose checkout-based flow it originally qualified. It does not imply that every later release, platform, or separately supplied host has passed the same fresh-project procedure. Read the checked-out version from [`package.json`](../package.json), consult the dated [compatibility evidence](compatibility.md), and inspect the [protected-main Validation history](https://github.com/AndrewM-F/bun-native/actions/workflows/bun-native.yml?query=branch%3Amain) for exact-commit hosted results.
 
 ## Without a checkout: the npm CLI
 
@@ -25,7 +25,7 @@ The project pins `@bun-native/core`, the selected adapter and `@bun-native/cli` 
 Use Git, Node 22 or newer for the Bun bootstrap, and the exact Bun revision in [`toolchain.json`](../toolchain.json). These commands use a POSIX shell:
 
 ```sh
-git clone https://github.com/0xPlayerOne/bun-native.git
+git clone https://github.com/AndrewM-F/bun-native.git
 cd bun-native
 node scripts/install-bun.mjs --destination "$PWD/.bun-native/toolchain"
 export PATH="$PWD/.bun-native/toolchain:$PATH"
@@ -86,7 +86,7 @@ bun run check
 cd ../..
 ```
 
-Solid is the default framework. The entry imports `render` from `@bun-native/solid` and `createSignal` from `solid-js`. `App` runs once; reading `clicks()` inside the `text` expression subscribes that one native text node, so each click updates only that node. `render(App, window)` takes the component itself. The Solid compiler pairing is pinned (Babel 7 with `babel-preset-solid`; Babel 8 is excluded under [#316](https://github.com/0xPlayerOne/bun-native/issues/316)), and `solid-js/web` is not available: use native elements such as `box`, `text`, `button` and `input`, described in the [native layout contract](native-layout.md) and the [Solid adapter README](../packages/solid/README.md).
+Solid is the default framework. The entry imports `render` from `@bun-native/solid` and `createSignal` from `solid-js`. `App` runs once; reading `clicks()` inside the `text` expression subscribes that one native text node, so each click updates only that node. `render(App, window)` takes the component itself. The Solid compiler pairing is pinned (Babel 7 with `babel-preset-solid`; Babel 8 is excluded under [#316](https://github.com/AndrewM-F/bun-native/issues/316)), and `solid-js/web` is not available: use native elements such as `box`, `text`, `button` and `input`, described in the [native layout contract](native-layout.md) and the [Solid adapter README](../packages/solid/README.md).
 
 ### 3b. React walkthrough
 
@@ -113,7 +113,7 @@ On a desktop with the host's platform prerequisites, this opens the native count
 bun run native dev apps/my-app --host "$BUN_NATIVE_PREBUILT_HOST" --watch
 ```
 
-Watch rebuilds and remounts the app and host after a successful edit, so component state resets. A rejected source edit leaves the working app running. Closing the native window or pressing Ctrl-C ends the session. Since 0.27.2 the host runs in its own POSIX session, so Ctrl-C reaches only the application, which then shuts the host down ([#584](https://github.com/0xPlayerOne/bun-native/issues/584); covered by [`tests/runtime/host-exit.test.ts`](../tests/runtime/host-exit.test.ts) and by the hosted macOS template runs [below](#linux-and-hosted-gui-launches), not yet re-run on a physical Mac). Keep the template's lifecycle and optional IPC hooks when extending it. The [CLI reference](developer-tooling.md) explains the watch contract and exact native qualification boundaries.
+Watch rebuilds and remounts the app and host after a successful edit, so component state resets. A rejected source edit leaves the working app running. Closing the native window or pressing Ctrl-C ends the session. Since 0.27.2 the host runs in its own POSIX session, so Ctrl-C reaches only the application, which then shuts the host down ([#584](https://github.com/AndrewM-F/bun-native/issues/584); covered by [`tests/runtime/host-exit.test.ts`](../tests/runtime/host-exit.test.ts) and by the hosted macOS template runs [below](#linux-and-hosted-gui-launches), not yet re-run on a physical Mac). Keep the template's lifecycle and optional IPC hooks when extending it. The [CLI reference](developer-tooling.md) explains the watch contract and exact native qualification boundaries.
 
 ## 5. Build the AOT package
 
@@ -162,7 +162,7 @@ Then rebuild the host with `bun run native:build`, or take the CI artifact from 
 
 ## What the onboarding check proves
 
-The [recorded Linux x64 onboarding check](../tests/native/evidence/checkout-cli-onboarding-linux.json) began with a clean worktree at `ef1c14a7973ddc907511ccd1a4ff62f6da990475` and no installed dependencies. Its [published equivalent source](https://github.com/0xPlayerOne/bun-native/tree/1406bd3fcbacf4dad3b06c55a270368206e9a4bb) has the identical Git tree `040abd1f0367f9f02ab7feda05060a181213a0b6`; commit metadata differs. It verified the exact compiler and restored 72 packages using `--frozen-lockfile --offline` from a populated cache. An independent empty-cache attempt failed with the expected cache-miss diagnostic. Both attempts preserved the lockfiles and toolchain pins.
+The [recorded Linux x64 onboarding check](../tests/native/evidence/checkout-cli-onboarding-linux.json) began with a clean worktree at `ef1c14a7973ddc907511ccd1a4ff62f6da990475` and no installed dependencies. Its [published equivalent source](https://github.com/AndrewM-F/bun-native/tree/1406bd3fcbacf4dad3b06c55a270368206e9a4bb) has the identical Git tree `040abd1f0367f9f02ab7feda05060a181213a0b6`; commit metadata differs. It verified the exact compiler and restored 72 packages using `--frozen-lockfile --offline` from a populated cache. An independent empty-cache attempt failed with the expected cache-miss diagnostic. Both attempts preserved the lockfiles and toolchain pins.
 
 | App              | Strict source check | Actual AOT build and inspection |
 | ---------------- | ------------------- | ------------------------------- |
@@ -177,7 +177,7 @@ A [separate fresh-cache installation check](evidence/cli-fresh-local-cache-insta
 
 ### macOS arm64, physical Mac
 
-On 2026-11-09 the same steps ran from a fresh clone at [`df7ffcf`](https://github.com/0xPlayerOne/bun-native/tree/df7ffcf) (release 0.27.2) on macOS 27.2 (26B123), Apple M2 Max (12 CPU), arm64 ([#254 comment](https://github.com/0xPlayerOne/bun-native/issues/254#issuecomment-6752594147)). The installer gave the pinned `1.4.4-canary.1+b1007f117`, `bun install --frozen-lockfile` passed, the release host built from source in 4 min 20 s, and `doctor` passed.
+On 2026-11-09 the same steps ran from a fresh clone at [`df7ffcf`](https://github.com/AndrewM-F/bun-native/tree/df7ffcf) (release 0.27.2) on macOS 27.2 (26B123), Apple M2 Max (12 CPU), arm64 ([#254 comment](https://github.com/AndrewM-F/bun-native/issues/254#issuecomment-6752594147)). The installer gave the pinned `1.4.4-canary.1+b1007f117`, `bun install --frozen-lockfile` passed, the release host built from source in 4 min 20 s, and `doctor` passed.
 
 | Step                           | Solid TypeScript         | React TypeScript         |
 | ------------------------------ | ------------------------ | ------------------------ |
@@ -187,7 +187,7 @@ On 2026-11-09 the same steps ran from a fresh clone at [`df7ffcf`](https://githu
 | `build --host-profile release` | Passed                   | Passed                   |
 | AOT `application`              | One owned window         | One owned window         |
 
-Window presence comes from CGWindowList only: the terminal had no Screen Recording permission, and no input was sent. JavaScript templates, Windows and signing were not run. Ending each session with Ctrl-C reported an unexpected host exit, fixed afterwards by [#584](https://github.com/0xPlayerOne/bun-native/issues/584) as described in step 4.
+Window presence comes from CGWindowList only: the terminal had no Screen Recording permission, and no input was sent. JavaScript templates, Windows and signing were not run. Ending each session with Ctrl-C reported an unexpected host exit, fixed afterwards by [#584](https://github.com/AndrewM-F/bun-native/issues/584) as described in step 4.
 
 ### Linux and hosted GUI launches
 
@@ -202,7 +202,7 @@ The next step of the same job, "Generated templates open, take an OS click and c
 - one real OS click at the centre of the button's painted bounds, a native left down and up inside those bounds in the host's pointer trace, and the complete `Clicks: 1` tree in its paint record, with no later paint;
 - an OS window close (the Accessibility close button on macOS, `WM_SYSCOMMAND` `SC_CLOSE` on Windows), then exit code 0, no `Native host exited unexpectedly` or `NativeHostExitError` output, no surviving host, no leftover development bundle and unchanged prepared artifacts.
 
-On macOS each case runs again ending with SIGINT to the application's process group instead of a window close, which is what Ctrl-C in a terminal sends ([#584](https://github.com/0xPlayerOne/bun-native/issues/584)); it must meet the same exit conditions. Windows has no equivalent case. Each run's `result.json`, raw `native.jsonl` and output logs are kept under `cli-templates-desktop` in the shard-1 `native-platform-<OS>-<arch>-<sha>` artifact, together with the OS version, CPU name and runner image. A Linux check of the driver (2026-11-11, Xvfb with openbox and lavapipe in a 4-vCPU container) passed all sixteen cases (four templates × development and AOT × window close and SIGINT). With the runtime's [#584](https://github.com/0xPlayerOne/bun-native/issues/584) fix reverted, the SIGINT cases failed with `application exited 1` and `Native host exited unexpectedly`, as on the physical Mac. Linux CI keeps its own template cases in `native-linux.yml`.
+On macOS each case runs again ending with SIGINT to the application's process group instead of a window close, which is what Ctrl-C in a terminal sends ([#584](https://github.com/AndrewM-F/bun-native/issues/584)); it must meet the same exit conditions. Windows has no equivalent case. Each run's `result.json`, raw `native.jsonl` and output logs are kept under `cli-templates-desktop` in the shard-1 `native-platform-<OS>-<arch>-<sha>` artifact, together with the OS version, CPU name and runner image. A Linux check of the driver (2026-11-11, Xvfb with openbox and lavapipe in a 4-vCPU container) passed all sixteen cases (four templates × development and AOT × window close and SIGINT). With the runtime's [#584](https://github.com/AndrewM-F/bun-native/issues/584) fix reverted, the SIGINT cases failed with `application exited 1` and `Native host exited unexpectedly`, as on the physical Mac. Linux CI keeps its own template cases in `native-linux.yml`.
 
 This step is a fresh-clone-equivalent run: each job starts from a fresh `actions/checkout`, installs the pinned Bun with `node scripts/install-bun.mjs`, runs `bun install --frozen-lockfile` (from a restored download cache) and builds the release host with Cargo before the templates run. It records `bootstrap-environment.json` and `toolchain.txt` beside the template results. The runners are GitHub-hosted virtual machines (`macos-15` arm64, `windows-2022` x64) with software or paravirtual GPUs, not physical machines. Their input is injected by the OS APIs, not from a physical mouse, and a paint record is not a screenshot or proof of display presentation. A passing step on a run is the evidence for that run's commit; read the step result before citing it.
 

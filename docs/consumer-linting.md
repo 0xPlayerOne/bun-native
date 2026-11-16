@@ -1,6 +1,6 @@
 # Linting generated projects
 
-`native lint` runs [oxlint](https://oxc.rs/docs/guide/usage/linter) on a Bun Native project. `native check` runs it as a third step after the type checker and the formatter check. This page covers the consumer lint step from [BN5 #220](https://github.com/0xPlayerOne/bun-native/issues/220). For the other project commands, see the [CLI reference](developer-tooling.md).
+`native lint` runs [oxlint](https://oxc.rs/docs/guide/usage/linter) on a Bun Native project. `native check` runs it as a third step after the type checker and the formatter check. This page covers the consumer lint step from [BN5 #220](https://github.com/AndrewM-F/bun-native/issues/220). For the other project commands, see the [CLI reference](developer-tooling.md).
 
 ```sh
 bun run native lint apps/my-app

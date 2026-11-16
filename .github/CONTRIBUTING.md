@@ -1,6 +1,6 @@
 # Contributing to Bun Native
 
-**Bun Native is a browserless native desktop framework under active implementation.** The Bunly browser runtime is retired; its source remains in Git history. Follow the [active roadmap](https://github.com/0xPlayerOne/bun-native/issues/1), [agent operating instructions](../AGENTS.md), and [current testing commands](../docs/testing.md). Native rendering and production Bun AOT have distinct acceptance criteria; passing the foundation checks alone does not qualify either capability.
+**Bun Native is a browserless native desktop framework under active implementation.** The Bunly browser runtime is retired; its source remains in Git history. Follow the [active roadmap](https://github.com/AndrewM-F/bun-native/issues/1), [agent operating instructions](../AGENTS.md), and [current testing commands](../docs/testing.md). Native rendering and production Bun AOT have distinct acceptance criteria; passing the foundation checks alone does not qualify either capability.
 
 ## Current foundation checks
 

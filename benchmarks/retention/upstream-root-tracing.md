@@ -1,6 +1,6 @@
 # Prepared upstream investigation note
 
-**Prepared for review; not submitted upstream.** Bun Native [#287](https://github.com/0xPlayerOne/bun-native/issues/287) tracks the unresolved original native AOT retention. The concrete, reduced reproduction below concerns a diagnostic visibility gap. It does not claim to reproduce the original AOT retained view.
+**Prepared for review; not submitted upstream.** Bun Native [#287](https://github.com/AndrewM-F/bun-native/issues/287) tracks the unresolved original native AOT retention. The concrete, reduced reproduction below concerns a diagnostic visibility gap. It does not claim to reproduce the original AOT retained view.
 
 ## Environment and exact inputs
 

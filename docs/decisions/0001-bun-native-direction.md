@@ -4,7 +4,7 @@
 
 **Date:** 2026-10-31
 
-**Related:** [roadmap #1](https://github.com/0xPlayerOne/bun-native/issues/1), [BN0 #217](https://github.com/0xPlayerOne/bun-native/issues/217), [source replacement #251](https://github.com/0xPlayerOne/bun-native/issues/251)
+**Related:** [roadmap #1](https://github.com/AndrewM-F/bun-native/issues/1), [BN0 #217](https://github.com/AndrewM-F/bun-native/issues/217), [source replacement #251](https://github.com/AndrewM-F/bun-native/issues/251)
 
 ## Context
 

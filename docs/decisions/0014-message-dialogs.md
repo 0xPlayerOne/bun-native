@@ -7,7 +7,7 @@ AOT; macOS and Windows build the same code path but are not qualified.
 
 Date: 2026-11-06.
 
-Related: [menus and dialogs #239](https://github.com/0xPlayerOne/bun-native/issues/239),
+Related: [menus and dialogs #239](https://github.com/AndrewM-F/bun-native/issues/239),
 [file dialogs](0013-native-file-dialogs.md), [overlays](../native-overlays.md)
 and [service policy](0005-native-service-policy.md).
 

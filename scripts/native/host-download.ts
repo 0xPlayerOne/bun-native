@@ -14,7 +14,7 @@ export const releaseHostTargets = [
 ] as const
 export type ReleaseHostTarget = (typeof releaseHostTargets)[number]
 
-const releases = 'https://github.com/0xPlayerOne/bun-native/releases/download'
+const releases = 'https://github.com/AndrewM-F/bun-native/releases/download'
 const maximumArchiveBytes = 512 * 1024 * 1024
 const maximumChecksumBytes = 64 * 1024
 const defaultTimeoutMs = 5 * 60_000

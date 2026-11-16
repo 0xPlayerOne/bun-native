@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "status": "Original fixed-checkpoint retention unresolved; proposed graph lifetime oracle inconclusive",
-  "trackedIssue": "https://github.com/0xPlayerOne/bun-native/issues/287",
+  "trackedIssue": "https://github.com/AndrewM-F/bun-native/issues/287",
   "sourceCommit": "f41010568900a01aa1051766b760a1d67ed606a4",
   "bunRevision": "da867c60bf0bcbf9d6d36994f8ca0efa42075115",
   "experiments": {

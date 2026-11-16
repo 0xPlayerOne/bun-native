@@ -1,6 +1,6 @@
 # Root tracing and ownership visibility
 
-**Issue [#287](https://github.com/0xPlayerOne/bun-native/issues/287) remains open.** The original direct-core AOT retention and the intermittent Solid WeakRef failure are not explained by this increment. No production implementation, collection checkpoint, timer, retained-object allowance or assertion changed. The original failures remain in the [fixed-checkpoint archive](README.md).
+**Issue [#287](https://github.com/AndrewM-F/bun-native/issues/287) remains open.** The original direct-core AOT retention and the intermittent Solid WeakRef failure are not explained by this increment. No production implementation, collection checkpoint, timer, retained-object allowance or assertion changed. The original failures remain in the [fixed-checkpoint archive](README.md).
 
 This investigation checked the exact pinned Bun/WebKit source before running one two-case observer experiment and one two-mode, framework-free visibility control. [root-tracing-summary.json](root-tracing-summary.json) binds every new source, plan, observation, selected graph and compiler report to its SHA-256. Full process snapshots remain external research artifacts; their hashes and the relevant paths are retained here.
 

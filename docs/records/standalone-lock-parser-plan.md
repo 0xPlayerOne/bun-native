@@ -3,11 +3,11 @@
 > **Status (2026-11-05):** executed. The three controls ran once at `39d2b878` and
 > met their declared outcomes, as recorded in the
 > [package plan](standalone-packages-plan.md). The later full consumer cohort and
-> its hosted native lane merged in [#388](https://github.com/0xPlayerOne/bun-native/pull/388).
+> its hosted native lane merged in [#388](https://github.com/AndrewM-F/bun-native/pull/388).
 > This plan is kept as written.
 
 This bounded source check follows the failed `c908049` consumer cohort retained in
-[#394](https://github.com/0xPlayerOne/bun-native/pull/394) and the separately failed
+[#394](https://github.com/AndrewM-F/bun-native/pull/394) and the separately failed
 first parser control at `c16db305`. Both failures remain unchanged. No installation,
 archive extraction, public import, compilation or application acceptance is inferred
 from these controls. This follow-up does not repeat an already executed command.
@@ -84,7 +84,7 @@ an explicit minimal environment and owned cache. The before/after inventory must
 remain unchanged. No node_modules or extra lock/config file is supplied.
 
 The one-off control harness `scripts/quality/standalone-lock-control.ts` (retired; see it at
-[3f0713c](https://github.com/0xPlayerOne/bun-native/blob/3f0713c/scripts/quality/standalone-lock-control.ts))
+[3f0713c](https://github.com/AndrewM-F/bun-native/blob/3f0713c/scripts/quality/standalone-lock-control.ts))
 used the existing retained `c908049`
 package-set manifest, original generated Solid/React TypeScript manifests and
 original seed bytes. It computes corrected seeds through the unchanged corrected

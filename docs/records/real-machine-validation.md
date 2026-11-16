@@ -4,12 +4,12 @@
 Windows PC or on a Mac that grants event posting. It lists what to set up, what
 to run and what output counts as evidence, for the cases that
 [macOS qualification](macos-qualification.md) and the issue trackers still hold
-open: the Windows drive-path drop ([#303](https://github.com/0xPlayerOne/bun-native/issues/303)),
-the real-click fault ([#247](https://github.com/0xPlayerOne/bun-native/issues/247)),
+open: the Windows drive-path drop ([#303](https://github.com/AndrewM-F/bun-native/issues/303)),
+the real-click fault ([#247](https://github.com/AndrewM-F/bun-native/issues/247)),
 the macOS workspace references
-([#248](https://github.com/0xPlayerOne/bun-native/issues/248),
-[#250](https://github.com/0xPlayerOne/bun-native/issues/250)) and the next macOS
-drag-entry failure ([#303](https://github.com/0xPlayerOne/bun-native/issues/303)).
+([#248](https://github.com/AndrewM-F/bun-native/issues/248),
+[#250](https://github.com/AndrewM-F/bun-native/issues/250)) and the next macOS
+drag-entry failure ([#303](https://github.com/AndrewM-F/bun-native/issues/303)).
 
 A case passes only when its command ran on the named machine and printed the
 named evidence. Anything else is recorded as **not run** with the reason. Do not
@@ -201,8 +201,8 @@ and `bun <package>/development/application.js` for development mode.
 **Evidence that counts:** the final JSON line has `"status": "passed"` and
 `result.json` has `hostSurvivors: 0` and `application.status: "passed"`.
 Accessibility and a PTY typed through OS input remain separate gaps
-([#241](https://github.com/0xPlayerOne/bun-native/issues/241),
-[#305](https://github.com/0xPlayerOne/bun-native/issues/305)).
+([#241](https://github.com/AndrewM-F/bun-native/issues/241),
+[#305](https://github.com/AndrewM-F/bun-native/issues/305)).
 
 ### Long session on a physical Mac (#248, #250)
 

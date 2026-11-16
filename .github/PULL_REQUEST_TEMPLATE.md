@@ -30,4 +30,4 @@ Describe the native framework behavior changed and link the specific BN issue. U
 
 Open draft on first commit, iterate, run focused checks, mark ready and enable auto-merge when protected checks permit. **No routine human design checkpoint.** Never bypass a required check or claim an untested native feature works.
 
-See [engineering quality](../docs/engineering-quality.md) and [roadmap](https://github.com/0xPlayerOne/bun-native/issues/1).
+See [engineering quality](../docs/engineering-quality.md) and [roadmap](https://github.com/AndrewM-F/bun-native/issues/1).

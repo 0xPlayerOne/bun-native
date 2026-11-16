@@ -6,8 +6,8 @@ host. Other platforms remain unavailable.
 
 Date: 2026-11-05.
 
-Related: [#302](https://github.com/0xPlayerOne/bun-native/issues/302),
-[shared services #255](https://github.com/0xPlayerOne/bun-native/issues/255),
+Related: [#302](https://github.com/AndrewM-F/bun-native/issues/302),
+[shared services #255](https://github.com/AndrewM-F/bun-native/issues/255),
 [trust boundary](0003-bridge-security.md), [service policy](0005-native-service-policy.md)
 and [global shortcuts](0008-native-global-shortcuts.md).
 

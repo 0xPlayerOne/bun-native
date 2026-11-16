@@ -1,6 +1,6 @@
 # Native OS-close diagnostics
 
-[Issue #358](https://github.com/0xPlayerOne/bun-native/issues/358) tracks the
+[Issue #358](https://github.com/AndrewM-F/bun-native/issues/358) tracks the
 public-core AOT lifecycle failure preserved in
 [the original evidence summary](../../tests/native/evidence/public-lifecycle-aot-close-timeout.json).
 The hosted application completed all 1,000 cycles and the full native paint at

@@ -9,9 +9,9 @@ qualification remains pending.
 
 Date: October 31, 2026
 
-Related: [#255](https://github.com/0xPlayerOne/bun-native/issues/255),
-[#252](https://github.com/0xPlayerOne/bun-native/issues/252),
-[#250](https://github.com/0xPlayerOne/bun-native/issues/250)
+Related: [#255](https://github.com/AndrewM-F/bun-native/issues/255),
+[#252](https://github.com/AndrewM-F/bun-native/issues/252),
+[#250](https://github.com/AndrewM-F/bun-native/issues/250)
 
 ## Context and decision
 

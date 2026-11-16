@@ -8,9 +8,9 @@ bars in [ADR 0015](0015-application-menu-bar.md).
 
 Date: 2026-11-05.
 
-Related: [menus and dialogs #239](https://github.com/0xPlayerOne/bun-native/issues/239),
-[shared services #255](https://github.com/0xPlayerOne/bun-native/issues/255),
-[filesystem grants #304](https://github.com/0xPlayerOne/bun-native/issues/304),
+Related: [menus and dialogs #239](https://github.com/AndrewM-F/bun-native/issues/239),
+[shared services #255](https://github.com/AndrewM-F/bun-native/issues/255),
+[filesystem grants #304](https://github.com/AndrewM-F/bun-native/issues/304),
 [trust boundary](0003-bridge-security.md), [service policy](0005-native-service-policy.md)
 and [notifications](0009-native-notifications.md).
 
@@ -73,7 +73,7 @@ Native does not treat a chosen path as permission. Scoped filesystem grants
 ([ADR 0010](0010-filesystem-grants.md)) open only on launch-policy
 `filesystemRoots`, so a chosen path cannot become a grant at run time;
 converting a user selection into a grant
-([#304](https://github.com/0xPlayerOne/bun-native/issues/304)) would be a
+([#304](https://github.com/AndrewM-F/bun-native/issues/304)) would be a
 separate, explicit operation outside this decision. Applications that read the path with
 ordinary Bun APIs use their own trusted authority, as with any other string.
 

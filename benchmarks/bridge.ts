@@ -199,7 +199,7 @@ const result: RecordValue = {
       'Match this prebuilt host hash to native build evidence; this runner does not invoke Cargo.',
   },
   source: {
-    repository: 'https://github.com/0xPlayerOne/bun-native',
+    repository: 'https://github.com/AndrewM-F/bun-native',
     commit: git('rev-parse', 'HEAD'),
     dirty: git('status', '--porcelain') !== '',
     files,

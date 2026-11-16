@@ -18,7 +18,7 @@ import { registryTemplates, type RegistryTemplates } from './native/registry-pro
  * publishes one consistent set (docs/releasing.md).
  */
 
-export const repositoryUrl = 'git+https://github.com/0xPlayerOne/bun-native.git'
+export const repositoryUrl = 'git+https://github.com/AndrewM-F/bun-native.git'
 
 export type RegistryManifest = Omit<PackageManifest, 'private'> & {
   description: string
@@ -76,8 +76,8 @@ export function registryManifest(
       url: repositoryUrl,
       directory: short === 'cli' ? 'scripts' : `packages/${short}`,
     },
-    homepage: 'https://github.com/0xPlayerOne/bun-native#readme',
-    bugs: 'https://github.com/0xPlayerOne/bun-native/issues',
+    homepage: 'https://github.com/AndrewM-F/bun-native#readme',
+    bugs: 'https://github.com/AndrewM-F/bun-native/issues',
     publishConfig: { access: 'public', provenance: true },
     // The CLI creates projects on this release (`bun-native create` outside a checkout).
     ...(manifest.name === '@bun-native/cli' && consumers
@@ -104,7 +104,7 @@ export function publishOrder(manifests: Record<string, PackageManifest>): string
 }
 
 function readme(name: string, version: string, commit: string): string {
-  return `# ${name}\n\n${descriptions[name]}\n\nPart of [Bun Native](https://github.com/0xPlayerOne/bun-native), an experimental developer preview. Version ${version} was built from [${commit.slice(0, 12)}](https://github.com/0xPlayerOne/bun-native/tree/${commit}) and published from GitHub Actions with npm provenance. Use the Bun revision pinned in that commit's toolchain.json. Start with the [getting-started guide](https://github.com/0xPlayerOne/bun-native/blob/${commit}/docs/getting-started.md); \`bun-native host install\` fetches the matching release host. The license notice is in LICENSE.\n`
+  return `# ${name}\n\n${descriptions[name]}\n\nPart of [Bun Native](https://github.com/AndrewM-F/bun-native), an experimental developer preview. Version ${version} was built from [${commit.slice(0, 12)}](https://github.com/AndrewM-F/bun-native/tree/${commit}) and published from GitHub Actions with npm provenance. Use the Bun revision pinned in that commit's toolchain.json. Start with the [getting-started guide](https://github.com/AndrewM-F/bun-native/blob/${commit}/docs/getting-started.md); \`bun-native host install\` fetches the matching release host. The license notice is in LICENSE.\n`
 }
 
 export async function main(args: string[]): Promise<void> {

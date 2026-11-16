@@ -18,12 +18,12 @@ samples.
 
 | File                                             | Run                                                                               | Source commit                     | Trials | CPU                   |
 | ------------------------------------------------ | --------------------------------------------------------------------------------- | --------------------------------- | ------ | --------------------- |
-| `linux-x64-ubuntu-24.04-epyc-9v74-llvmpipe.json` | [42361841424](https://github.com/0xPlayerOne/bun-native/actions/runs/42361841424) | `d67794d1` (PR #557 head)         | 5      | AMD EPYC 9V74, 4 vCPU |
-| `linux-x64-ubuntu-24.04-epyc-7763-llvmpipe.json` | [42360358389](https://github.com/0xPlayerOne/bun-native/actions/runs/42360358389) | `f27d44be` (PR #557 earlier head) | 5      | AMD EPYC 7763, 4 vCPU |
+| `linux-x64-ubuntu-24.04-epyc-9v74-llvmpipe.json` | [42361841424](https://github.com/AndrewM-F/bun-native/actions/runs/42361841424) | `d67794d1` (PR #557 head)         | 5      | AMD EPYC 9V74, 4 vCPU |
+| `linux-x64-ubuntu-24.04-epyc-7763-llvmpipe.json` | [42360358389](https://github.com/AndrewM-F/bun-native/actions/runs/42360358389) | `f27d44be` (PR #557 earlier head) | 5      | AMD EPYC 7763, 4 vCPU |
 
 Both runs used Bun `1.4.4-canary.1+b1007f117`, a release host and the software
 Vulkan renderer (llvmpipe) on Xvfb, with an uncontrolled page cache. A third
-passed run on an EPYC 7763 ([42358377765](https://github.com/0xPlayerOne/bun-native/actions/runs/42358377765),
+passed run on an EPYC 7763 ([42358377765](https://github.com/AndrewM-F/bun-native/actions/runs/42358377765),
 `fa5c8117`) compared against the 7763 file shows no regression: every per-launch
 metric is `unchanged` or `improved`, and two click-to-paint medians are
 `suspected` with intervals that include no change (runner noise).

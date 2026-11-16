@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "scope": "Historical hosted release-host failure before the Solid scenarios; no failure cause or subsequent passing result inferred.",
   "failedRun": {
-    "url": "https://github.com/0xPlayerOne/bun-native/actions/runs/41238544825/attempts/2",
+    "url": "https://github.com/AndrewM-F/bun-native/actions/runs/41238544825/attempts/2",
     "jobId": 124648082336,
     "artifactId": 13057305522,
     "commit": "606613a2b9a4a8791c48fa1cee0af7e7683d0342",
@@ -10,7 +10,7 @@
     "hostBytes": 29206992
   },
   "priorPassingRun": {
-    "url": "https://github.com/0xPlayerOne/bun-native/actions/runs/41238155555",
+    "url": "https://github.com/AndrewM-F/bun-native/actions/runs/41238155555",
     "commit": "4549e75ca5463f136898a2f5fb49d22b58dffa11",
     "hostSha256": "fa26c6eaa07de733142ee47b80962345f4546ccbf5b566d927a21f7bfa2dca54",
     "hostBytes": 29206992,

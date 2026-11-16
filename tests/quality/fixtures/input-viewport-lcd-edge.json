@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "scope": "Exact RGB neighborhood from a failed native screenshot; tests compose it with synthetic geometry and caret controls. It is not a complete native qualification.",
   "source": {
-    "repository": "0xPlayerOne/bun-native",
+    "repository": "AndrewM-F/bun-native",
     "head": "af956a154fff0c0afcc5e26adbe55f5af76f9f1b",
     "testedMerge": "44334f79d05e8cdca9bb0298871f6aea9236b2b0",
     "tree": "1a9d22268ed5e0c86b3e6fd5dfd5efe7f61995f2",
