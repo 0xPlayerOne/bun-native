@@ -228,6 +228,21 @@ showed no non-leaf benefit against the broader shortcut and was discarded;
 [its samples and reconstructed patch](raw/native-leaf-ancestor-detached-macos-2026-11-15.json.gz)
 are retained. Neither run measures IPC, actual native rendering or presentation.
 
+[Post-rewrite run 43800699999](https://github.com/AndrewM-F/bun-native/actions/runs/43800699999)
+verified the original baseline remained fetchable and compared it with the
+published candidate `044c4465`. Its [raw records](raw/native-leaf-ancestor-hosted-rewritten-2026-11-16.json.gz)
+retain all 25 pairs per platform. Median paired ratios and candidate wins were:
+
+| Case           | Linux x64  | macOS ARM64 | Windows x64 |
+| -------------- | ---------- | ----------- | ----------- |
+| Depth 1        | 0.988 (18) | 0.974 (21)  | 0.997 (14)  |
+| Depth 8        | 0.913 (25) | 0.805 (25)  | 0.945 (22)  |
+| Depth 32       | 0.754 (25) | 0.685 (25)  | 0.826 (25)  |
+| Non-leaf moves | 1.004 (4)  | 0.995 (13)  | 1.026 (2)   |
+
+The repeated Windows non-leaf cost remains a measured tradeoff; this preflight
+does not measure a visible window or end-to-end desktop performance.
+
 A local condition-order control checked whether testing nonempty children
 before equality reduced the move cost. Against the broad implementation in 25
 alternating pairs, its non-leaf ratio was 1.011 (7 candidate wins), so the
