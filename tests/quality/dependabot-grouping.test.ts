@@ -11,7 +11,7 @@ type Update = {
   'open-pull-requests-limit'?: number
   patterns?: string[]
   groups?: unknown
-  ignore?: { 'dependency-name': string; 'update-types'?: string[] }[]
+  ignore?: { 'dependency-name': string; 'update-types'?: string[]; versions?: string[] }[]
 }
 
 const document = Bun.YAML.parse(
@@ -102,5 +102,15 @@ test('Babel major upgrades remain held without suppressing its patch updates', (
   expect(actions.ignore?.map((item) => item['dependency-name'])).toEqual([
     'AndrewM-F/code-foundry*',
     '0xPlayerOne/code-foundry*',
+  ])
+})
+
+test('GPUI-bound incompatible versions remain held until coordinated upgrade', () => {
+  const cargo = document.updates.find((update) => update['package-ecosystem'] === 'cargo')!
+  expect(cargo.ignore).toEqual([
+    { 'dependency-name': 'accesskit', versions: ['>= 0.25.0'] },
+    { 'dependency-name': 'accesskit_consumer', versions: ['>= 0.39.0'] },
+    { 'dependency-name': 'base64', versions: ['>= 0.23.0'] },
+    { 'dependency-name': 'xkbcommon', versions: ['>= 0.9.0'] },
   ])
 })
