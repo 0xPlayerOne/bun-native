@@ -1,0 +1,76 @@
+name: Frame reader pairs
+
+on:
+  pull_request:
+    branches: [main]
+    types: [labeled]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: frame-reader-pairs-${{ github.event.pull_request.number }}
+  cancel-in-progress: false
+
+jobs:
+  pairs:
+    if: vars.CI_BILLING_PAUSED == 'false' && github.event.pull_request.draft == false && github.event.label.name == 'diagnostic:frame-reader-pairs'
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, macos-15, windows-2022]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: 8ca85c34492cf48463bab164937d7d2e2da8e038
+          path: .reader-baseline
+          persist-credentials: false
+      - name: Build and compare exact reader sources
+        shell: pwsh
+        env:
+          CANDIDATE_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $root = Join-Path $env:RUNNER_TEMP 'frame-reader-pairs'
+          New-Item -ItemType Directory -Path $root | Out-Null
+          $baseline = (git -C .reader-baseline rev-parse HEAD).Trim()
+          $candidate = (git rev-parse HEAD).Trim()
+          if ($baseline -ne '8ca85c34492cf48463bab164937d7d2e2da8e038' -or $candidate -ne $env:CANDIDATE_SHA) { throw 'Unexpected source revisions' }
+          foreach ($file in @('rust-toolchain.toml', 'Cargo.lock', 'Cargo.toml', 'native/protocol/Cargo.toml', 'native/protocol/examples/frame_scan_perf.rs')) {
+            if ((Get-FileHash $file).Hash -ne (Get-FileHash (Join-Path '.reader-baseline' $file)).Hash) { throw "Benchmark input differs: $file" }
+          }
+          $rust = (rustc --version --verbose | Out-String).Trim()
+          @{ baseline = $baseline; candidate = $candidate; baselineFraming = (Get-FileHash '.reader-baseline/native/protocol/src/framing.rs').Hash; candidateFraming = (Get-FileHash 'native/protocol/src/framing.rs').Hash; rustc = $rust; runner = $env:RUNNER_OS; architecture = $env:RUNNER_ARCH; image = $env:ImageVersion } | ConvertTo-Json | Set-Content -Encoding utf8 (Join-Path $root 'sources.json')
+          $originalTarget = $env:CARGO_TARGET_DIR
+          try {
+            foreach ($variant in @('baseline', 'candidate')) {
+              $env:CARGO_TARGET_DIR = Join-Path $root "$variant-target"
+              if ($variant -eq 'baseline') { Push-Location .reader-baseline }
+              try {
+                cargo build --locked --release -p bun-native-protocol --example frame_scan_perf
+                if ($LASTEXITCODE -ne 0) { throw "$variant build failed" }
+              } finally {
+                if ($variant -eq 'baseline') { Pop-Location }
+              }
+            }
+          } finally { $env:CARGO_TARGET_DIR = $originalTarget }
+          $suffix = if ($env:RUNNER_OS -eq 'Windows') { '.exe' } else { '' }
+          $baselineBinary = Join-Path $root "baseline-target/release/examples/frame_scan_perf$suffix"
+          $candidateBinary = Join-Path $root "candidate-target/release/examples/frame_scan_perf$suffix"
+          python benchmarks/protocol/frame_reader_pairs.py $baselineBinary $candidateBinary (Join-Path $root 'results.json') (Join-Path $root 'sources.json')
+          if ($LASTEXITCODE -ne 0) { throw 'Reader comparison failed' }
+      - name: Retain paired measurements
+        if: ${{ always() }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: frame-reader-${{ matrix.os }}
+          path: |
+            ${{ runner.temp }}/frame-reader-pairs/*.json
+          if-no-files-found: warn
+          retention-days: 30

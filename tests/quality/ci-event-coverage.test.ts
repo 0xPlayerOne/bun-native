@@ -54,6 +54,21 @@ const readyOnlyWorkflows = [
   '.github/workflows/native-bridge-pairs.yml',
 ] as const
 
+test('reader pairs run only on the explicit label for a ready PR and bind both sources', () => {
+  const source = readFileSync(join(root, '.github/workflows/frame-reader-pairs.yml'), 'utf8')
+  const workflow = Bun.YAML.parse(source) as {
+    jobs: Record<string, { if?: string; steps: Array<{ name?: string; run?: string }> }>
+  }
+  expect(pullRequestTypes(source)).toEqual(['labeled'])
+  const job = workflow.jobs['pairs']!
+  expect(job.if).toContain("github.event.label.name == 'diagnostic:frame-reader-pairs'")
+  expect(job.if).toContain('github.event.pull_request.draft == false')
+  const run = job.steps.find((step) => step.name === 'Build and compare exact reader sources')?.run
+  expect(run).toContain('8ca85c34492cf48463bab164937d7d2e2da8e038')
+  expect(run).toContain('Benchmark input differs')
+  expect(run).toContain('frame_reader_pairs.py')
+})
+
 for (const path of readyOnlyWorkflows) {
   test(`${path} covers ready-created and reopened PRs without validating drafts`, () => {
     const source = readFileSync(join(root, path), 'utf8')
