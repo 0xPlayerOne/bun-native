@@ -1,0 +1,702 @@
+{
+  "description": "Alternating fresh-process release reader timings. Complete frames may use the borrowed source buffer; fragmented frames require the bounded accumulation buffer. The fixture includes parsing and validation, not native window or IPC.",
+  "baseline_revision": "8ca85c34492cf48463bab164937d7d2e2da8e038",
+  "candidate_source_file": "native/protocol/src/framing.rs",
+  "cpu": "Apple M2 Max",
+  "load_and_power": "uncontrolled",
+  "runs": [
+    {
+      "baseline_sha256": "9c7a327e0776b50c90d8ea8f30cc1e5cfee5a1f9b7dcbfebd1809f475af02cd8",
+      "candidate_sha256": "615df099fdd993dbc5a43bc13fa7ce303eedb67eefcd65fe35b9dbf71e698f6e",
+      "platform": "macOS-27.2-arm64-arm-64bit",
+      "machine": "arm64",
+      "rustc": "rustc 1.98.1 (48a229cea 2026-09-01)",
+      "samples": 5000,
+      "pairs": [
+        {
+          "trial": 0,
+          "baseline": {
+            "raw": "small bytes=150 samples=5000 median_ns=382.66 rounds=[377.4082, 380.6916, 382.325, 382.6584, 387.9334, 389.1582, 395.125]\nmedium bytes=2182 samples=5000 median_ns=792.88 rounds=[767.6084, 786.7668, 790.5082, 792.875, 800.6084, 807.975, 808.5416]\nlarge bytes=12134 samples=5000 median_ns=2891.47 rounds=[2865.5834, 2871.15, 2887.4, 2891.475, 2891.5584, 2894.375, 2905.6334]\nfragmented bytes=12134 samples=5000 median_ns=3126.19 rounds=[3115.3416, 3116.8834, 3118.075, 3126.1918, 3127.3832, 3139.2416, 3155.1918]\n",
+            "median_ns": {
+              "small": 382.66,
+              "medium": 792.88,
+              "large": 2891.47,
+              "fragmented": 3126.19
+            }
+          },
+          "candidate": {
+            "raw": "small bytes=150 samples=5000 median_ns=481.00 rounds=[449.35, 450.6832, 453.8584, 481.0, 490.7, 491.225, 529.4168]\nmedium bytes=2182 samples=5000 median_ns=822.96 rounds=[791.875, 806.85, 819.7666, 822.9584, 846.1166, 869.3, 878.7]\nlarge bytes=12134 samples=5000 median_ns=2843.57 rounds=[2812.3084, 2835.975, 2843.2666, 2843.575, 2847.1, 2882.8832, 2885.1166]\nfragmented bytes=12134 samples=5000 median_ns=3127.84 rounds=[3093.8668, 3108.125, 3113.9584, 3127.8416, 3137.5918, 3140.6084, 3141.375]\n",
+            "median_ns": {
+              "small": 481.0,
+              "medium": 822.96,
+              "large": 2843.57,
+              "fragmented": 3127.84
+            }
+          }
+        },
+        {
+          "trial": 1,
+          "candidate": {
+            "raw": "small bytes=150 samples=5000 median_ns=346.05 rounds=[336.875, 339.3334, 344.2416, 346.05, 346.1168, 347.45, 347.7334]\nmedium bytes=2182 samples=5000 median_ns=755.88 rounds=[739.25, 749.45, 753.3168, 755.8834, 756.3, 770.9918, 790.275]\nlarge bytes=12134 samples=5000 median_ns=2903.29 rounds=[2874.9832, 2887.1, 2901.7916, 2903.2918, 2905.625, 2906.0166, 2919.7166]\nfragmented bytes=12134 samples=5000 median_ns=3195.92 rounds=[3141.2, 3170.1834, 3186.575, 3195.9166, 3199.8166, 3207.075, 3209.4916]\n",
+            "median_ns": {
+              "small": 346.05,
+              "medium": 755.88,
+              "large": 2903.29,
+              "fragmented": 3195.92
+            }
+          },
+          "baseline": {
+            "raw": "small bytes=150 samples=5000 median_ns=341.88 rounds=[337.8584, 338.9, 341.5584, 341.875, 347.2668, 353.3916, 356.0666]\nmedium bytes=2182 samples=5000 median_ns=780.08 rounds=[766.3834, 767.4, 776.0916, 780.0834, 783.9334, 784.2084, 792.4834]\nlarge bytes=12134 samples=5000 median_ns=2848.68 rounds=[2837.2168, 2838.9334, 2843.05, 2848.675, 2850.6666, 2852.2166, 2871.85]\nfragmented bytes=12134 samples=5000 median_ns=3098.38 rounds=[3074.6582, 3082.725, 3091.4, 3098.3834, 3101.125, 3110.0834, 3123.425]\n",
+            "median_ns": {
+              "small": 341.88,
+              "medium": 780.08,
+              "large": 2848.68,
+              "fragmented": 3098.38
+            }
+          }
+        },
+        {
+          "trial": 2,
+          "baseline": {
+            "raw": "small bytes=150 samples=5000 median_ns=339.22 rounds=[337.475, 338.2, 338.6334, 339.2168, 344.175, 344.275, 354.6082]\nmedium bytes=2182 samples=5000 median_ns=774.80 rounds=[760.9168, 768.3666, 772.8084, 774.8, 777.5416, 779.9832, 784.8]\nlarge bytes=12134 samples=5000 median_ns=2912.18 rounds=[2856.0332, 2862.6916, 2883.4, 2912.175, 2925.9418, 2932.05, 2935.35]\nfragmented bytes=12134 samples=5000 median_ns=3096.67 rounds=[3076.7334, 3081.575, 3084.325, 3096.6668, 3096.9416, 3111.6584, 3135.0918]\n",
+            "median_ns": {
+              "small": 339.22,
+              "medium": 774.8,
+              "large": 2912.18,
+              "fragmented": 3096.67
+            }
+          },
+          "candidate": {
+            "raw": "small bytes=150 samples=5000 median_ns=342.07 rounds=[337.1, 337.875, 340.0084, 342.075, 343.0668, 343.975, 346.6]\nmedium bytes=2182 samples=5000 median_ns=744.29 rounds=[734.6666, 736.7082, 743.05, 744.2916, 747.9666, 754.9916, 756.6918]\nlarge bytes=12134 samples=5000 median_ns=2862.12 rounds=[2836.8334, 2851.85, 2855.9, 2862.1166, 2869.4668, 2876.1166, 2877.525]\nfragmented bytes=12134 samples=5000 median_ns=3163.24 rounds=[3132.4332, 3141.7834, 3144.45, 3163.2418, 3184.3668, 3207.4082, 3365.8582]\n",
+            "median_ns": {
+              "small": 342.07,
+              "medium": 744.29,
+              "large": 2862.12,
+              "fragmented": 3163.24
+            }
+          }
+        },
+        {
+          "trial": 3,
+          "candidate": {
+            "raw": "small bytes=150 samples=5000 median_ns=335.53 rounds=[332.5082, 332.7834, 333.3, 335.5332, 339.1, 345.0166, 345.4]\nmedium bytes=2182 samples=5000 median_ns=754.16 rounds=[740.05, 747.7834, 754.0834, 754.1584, 764.4666, 770.3166, 771.7584]\nlarge bytes=12134 samples=5000 median_ns=2861.57 rounds=[2795.9418, 2811.3916, 2834.3334, 2861.575, 2880.4834, 2882.125, 2950.9582]\nfragmented bytes=12134 samples=5000 median_ns=3077.68 rounds=[3062.675, 3069.7166, 3075.7916, 3077.675, 3081.7918, 3085.6584, 3108.6666]\n",
+            "median_ns": {
+              "small": 335.53,
+              "medium": 754.16,
+              "large": 2861.57,
+              "fragmented": 3077.68
+            }
+          },
+          "baseline": {
+            "raw": "small bytes=150 samples=5000 median_ns=352.16 rounds=[338.975, 340.4666, 345.3332, 352.1584, 353.7416, 367.6584, 369.7418]\nmedium bytes=2182 samples=5000 median_ns=792.91 rounds=[773.625, 776.925, 786.5082, 792.9084, 804.7916, 805.5916, 806.3166]\nlarge bytes=12134 samples=5000 median_ns=2849.51 rounds=[2814.7666, 2826.6832, 2847.0, 2849.5082, 2857.0166, 2865.925, 2877.2584]\nfragmented bytes=12134 samples=5000 median_ns=3105.30 rounds=[3075.6334, 3076.3084, 3080.3918, 3105.3, 3106.4418, 3118.8, 3125.2334]\n",
+            "median_ns": {
+              "small": 352.16,
+              "medium": 792.91,
+              "large": 2849.51,
+              "fragmented": 3105.3
+            }
+          }
+        },
+        {
+          "trial": 4,
+          "baseline": {
+            "raw": "small bytes=150 samples=5000 median_ns=348.89 rounds=[341.8666, 346.3832, 346.675, 348.8916, 349.35, 349.8666, 353.2916]\nmedium bytes=2182 samples=5000 median_ns=774.83 rounds=[768.25, 772.9416, 774.5916, 774.825, 783.9834, 800.525, 813.1168]\nlarge bytes=12134 samples=5000 median_ns=2873.64 rounds=[2851.8084, 2867.5082, 2870.925, 2873.6416, 2874.9582, 2895.925, 2902.9]\nfragmented bytes=12134 samples=5000 median_ns=3121.49 rounds=[3101.2, 3108.0166, 3116.525, 3121.4916, 3123.1834, 3125.2916, 3133.4]\n",
+            "median_ns": {
+              "small": 348.89,
+              "medium": 774.83,
+              "large": 2873.64,
+              "fragmented": 3121.49
+            }
+          },
+          "candidate": {
+            "raw": "small bytes=150 samples=5000 median_ns=336.94 rounds=[335.325, 336.1332, 336.1666, 336.9418, 338.5, 349.8, 356.4]\nmedium bytes=2182 samples=5000 median_ns=741.19 rounds=[731.0334, 733.9, 740.0418, 741.1918, 752.925, 772.7416, 783.6582]\nlarge bytes=12134 samples=5000 median_ns=2830.30 rounds=[2817.2332, 2819.7, 2828.0666, 2830.3, 2848.525, 2854.2832, 2898.6916]\nfragmented bytes=12134 samples=5000 median_ns=3102.45 rounds=[3084.325, 3093.5666, 3096.5832, 3102.45, 3105.8584, 3122.5418, 3136.65]\n",
+            "median_ns": {
+              "small": 336.94,
+              "medium": 741.19,
+              "large": 2830.3,
+              "fragmented": 3102.45
+            }
+          }
+        },
+        {
+          "trial": 5,
+          "candidate": {
+            "raw": "small bytes=150 samples=5000 median_ns=345.77 rounds=[339.5418, 343.2166, 343.8584, 345.7666, 351.4082, 353.2, 355.4168]\nmedium bytes=2182 samples=5000 median_ns=752.38 rounds=[735.2166, 739.6, 748.4168, 752.375, 752.9834, 756.8334, 763.3334]\nlarge bytes=12134 samples=5000 median_ns=2872.53 rounds=[2835.5084, 2852.0582, 2852.475, 2872.5334, 2878.7166, 2884.8082, 2893.8]\nfragmented bytes=12134 samples=5000 median_ns=3104.49 rounds=[3091.4416, 3096.3084, 3096.35, 3104.4918, 3105.925, 3114.9084, 3120.275]\n",
+            "median_ns": {
+              "small": 345.77,
+              "medium": 752.38,
+              "large": 2872.53,
+              "fragmented": 3104.49
+            }
+          },
+          "baseline": {
+            "raw": "small bytes=150 samples=5000 median_ns=337.70 rounds=[336.8916, 337.0332, 337.125, 337.7, 337.9918, 338.5168, 343.125]\nmedium bytes=2182 samples=5000 median_ns=782.97 rounds=[773.9584, 780.925, 782.3584, 782.9668, 787.7666, 789.6834, 804.9832]\nlarge bytes=12134 samples=5000 median_ns=2927.21 rounds=[2849.7084, 2900.4834, 2924.2334, 2927.2084, 2936.2, 2977.1584, 2978.0834]\nfragmented bytes=12134 samples=5000 median_ns=3109.05 rounds=[3091.275, 3103.7584, 3104.4332, 3109.05, 3122.4834, 3123.3666, 3136.4082]\n",
+            "median_ns": {
+              "small": 337.7,
+              "medium": 782.97,
+              "large": 2927.21,
+              "fragmented": 3109.05
+            }
+          }
+        },
+        {
+          "trial": 6,
+          "baseline": {
+            "raw": "small bytes=150 samples=5000 median_ns=345.77 rounds=[338.3416, 338.95, 341.3334, 345.775, 348.2084, 349.2, 349.4582]\nmedium bytes=2182 samples=5000 median_ns=782.62 rounds=[780.0916, 781.35, 782.375, 782.625, 785.6166, 789.7584, 802.4334]\nlarge bytes=12134 samples=5000 median_ns=2847.55 rounds=[2793.1416, 2810.6168, 2846.1084, 2847.55, 2850.2168, 2877.6332, 2885.2166]\nfragmented bytes=12134 samples=5000 median_ns=3136.75 rounds=[3074.6166, 3113.5168, 3132.675, 3136.75, 3171.9082, 3224.6334, 3224.6918]\n",
+            "median_ns": {
+              "small": 345.77,
+              "medium": 782.62,
+              "large": 2847.55,
+              "fragmented": 3136.75
+            }
+          },
+          "candidate": {
+            "raw": "small bytes=150 samples=5000 median_ns=352.38 rounds=[346.3334, 346.7668, 348.0, 352.3834, 353.425, 357.0334, 360.9082]\nmedium bytes=2182 samples=5000 median_ns=751.94 rounds=[736.725, 739.3332, 740.7334, 751.9416, 758.6582, 760.0916, 766.15]\nlarge bytes=12134 samples=5000 median_ns=2878.18 rounds=[2850.175, 2858.875, 2864.8918, 2878.175, 2885.625, 3011.2666, 5736.2668]\nfragmented bytes=12134 samples=5000 median_ns=3158.24 rounds=[3107.85, 3132.5, 3135.55, 3158.2418, 3159.5, 3162.025, 3167.3834]\n",
+            "median_ns": {
+              "small": 352.38,
+              "medium": 751.94,
+              "large": 2878.18,
+              "fragmented": 3158.24
+            }
+          }
+        },
+        {
+          "trial": 7,
+          "candidate": {
+            "raw": "small bytes=150 samples=5000 median_ns=342.72 rounds=[339.575, 341.9834, 342.2582, 342.7168, 353.8416, 353.9084, 366.8]\nmedium bytes=2182 samples=5000 median_ns=754.52 rounds=[734.85, 748.4334, 749.7082, 754.5166, 755.0084, 755.1082, 774.375]\nlarge bytes=12134 samples=5000 median_ns=2861.28 rounds=[2842.5668, 2853.4918, 2855.25, 2861.2834, 2866.3584, 2887.925, 2888.225]\nfragmented bytes=12134 samples=5000 median_ns=3121.07 rounds=[3095.775, 3098.45, 3111.4416, 3121.075, 3130.3918, 3143.9666, 3172.0916]\n",
+            "median_ns": {
+              "small": 342.72,
+              "medium": 754.52,
+              "large": 2861.28,
+              "fragmented": 3121.07
+            }
+          },
+          "baseline": {
+            "raw": "small bytes=150 samples=5000 median_ns=344.65 rounds=[340.6084, 341.2, 341.8666, 344.65, 350.1418, 352.5584, 352.9918]\nmedium bytes=2182 samples=5000 median_ns=779.58 rounds=[764.1584, 765.4916, 769.2666, 779.575, 788.875, 790.375, 791.9418]\nlarge bytes=12134 samples=5000 median_ns=2838.57 rounds=[2820.575, 2830.2, 2832.25, 2838.575, 2840.8082, 2848.0832, 2875.775]\nfragmented bytes=12134 samples=5000 median_ns=3074.07 rounds=[3037.0, 3054.7166, 3055.6166, 3074.075, 3077.225, 3086.5834, 3099.475]\n",
+            "median_ns": {
+              "small": 344.65,
+              "medium": 779.58,
+              "large": 2838.57,
+              "fragmented": 3074.07
+            }
+          }
+        },
+        {
+          "trial": 8,
+          "baseline": {
+            "raw": "small bytes=150 samples=5000 median_ns=342.86 rounds=[339.2168, 339.6666, 341.525, 342.8582, 346.4918, 348.125, 351.6582]\nmedium bytes=2182 samples=5000 median_ns=779.30 rounds=[761.2832, 765.85, 770.225, 779.3, 783.3082, 788.0084, 801.4416]\nlarge bytes=12134 samples=5000 median_ns=2853.67 rounds=[2842.6334, 2843.6918, 2849.6168, 2853.6668, 2856.225, 2869.0334, 2885.2834]\nfragmented bytes=12134 samples=5000 median_ns=3093.90 rounds=[3087.2416, 3087.5084, 3090.6916, 3093.9, 3094.3168, 3098.5834, 3110.95]\n",
+            "median_ns": {
+              "small": 342.86,
+              "medium": 779.3,
+              "large": 2853.67,
+              "fragmented": 3093.9
+            }
+          },
+          "candidate": {
+            "raw": "small bytes=150 samples=5000 median_ns=346.52 rounds=[336.2334, 336.8916, 343.1332, 346.525, 349.1666, 350.85, 352.7834]\nmedium bytes=2182 samples=5000 median_ns=748.00 rounds=[728.6166, 745.75, 746.9416, 748.0, 753.8834, 755.6666, 755.7332]\nlarge bytes=12134 samples=5000 median_ns=2842.32 rounds=[2756.4166, 2796.3, 2830.1916, 2842.3166, 2845.7084, 2852.9, 2864.4584]\nfragmented bytes=12134 samples=5000 median_ns=3125.58 rounds=[3113.4082, 3120.975, 3121.2084, 3125.5834, 3134.0166, 3136.925, 3162.9082]\n",
+            "median_ns": {
+              "small": 346.52,
+              "medium": 748.0,
+              "large": 2842.32,
+              "fragmented": 3125.58
+            }
+          }
+        },
+        {
+          "trial": 9,
+          "candidate": {
+            "raw": "small bytes=150 samples=5000 median_ns=346.53 rounds=[335.375, 339.25, 344.7332, 346.5332, 351.125, 353.4916, 360.8834]\nmedium bytes=2182 samples=5000 median_ns=750.27 rounds=[736.2166, 738.5834, 748.9666, 750.2666, 750.7582, 753.0084, 756.225]\nlarge bytes=12134 samples=5000 median_ns=2845.06 rounds=[2808.95, 2841.5334, 2842.5334, 2845.0584, 2846.9, 2867.5, 2870.8418]\nfragmented bytes=12134 samples=5000 median_ns=3098.78 rounds=[3058.0166, 3083.0832, 3088.0084, 3098.775, 3106.525, 3141.5334, 3162.0416]\n",
+            "median_ns": {
+              "small": 346.53,
+              "medium": 750.27,
+              "large": 2845.06,
+              "fragmented": 3098.78
+            }
+          },
+          "baseline": {
+            "raw": "small bytes=150 samples=5000 median_ns=344.17 rounds=[340.45, 340.8084, 343.1166, 344.1668, 345.15, 348.9582, 352.55]\nmedium bytes=2182 samples=5000 median_ns=774.65 rounds=[767.4168, 772.0, 773.85, 774.65, 790.4, 790.8916, 812.2166]\nlarge bytes=12134 samples=5000 median_ns=2902.24 rounds=[2875.675, 2875.825, 2880.15, 2902.2418, 2913.7666, 2917.4584, 2935.65]\nfragmented bytes=12134 samples=5000 median_ns=3134.05 rounds=[3073.5, 3088.575, 3113.5918, 3134.05, 3145.4918, 3161.3, 3171.6084]\n",
+            "median_ns": {
+              "small": 344.17,
+              "medium": 774.65,
+              "large": 2902.24,
+              "fragmented": 3134.05
+            }
+          }
+        },
+        {
+          "trial": 10,
+          "baseline": {
+            "raw": "small bytes=150 samples=5000 median_ns=347.82 rounds=[346.2668, 346.4668, 347.6418, 347.8168, 351.2416, 355.6, 355.6584]\nmedium bytes=2182 samples=5000 median_ns=781.56 rounds=[770.95, 773.75, 774.9834, 781.5582, 792.5918, 799.4584, 808.8084]\nlarge bytes=12134 samples=5000 median_ns=2852.37 rounds=[2821.7666, 2823.1334, 2832.7918, 2852.3666, 2872.5084, 2885.8666, 2908.0332]\nfragmented bytes=12134 samples=5000 median_ns=3103.43 rounds=[3068.8832, 3085.025, 3087.65, 3103.425, 3103.675, 3108.275, 3123.75]\n",
+            "median_ns": {
+              "small": 347.82,
+              "medium": 781.56,
+              "large": 2852.37,
+              "fragmented": 3103.43
+            }
+          },
+          "candidate": {
+            "raw": "small bytes=150 samples=5000 median_ns=336.47 rounds=[330.75, 333.5084, 333.5916, 336.4666, 336.4918, 338.8666, 340.5168]\nmedium bytes=2182 samples=5000 median_ns=749.76 rounds=[734.5916, 734.925, 742.05, 749.7584, 755.9918, 760.6334, 772.4834]\nlarge bytes=12134 samples=5000 median_ns=2887.38 rounds=[2851.2, 2867.3334, 2885.0418, 2887.3834, 2887.6582, 2889.3416, 2893.425]\nfragmented bytes=12134 samples=5000 median_ns=3155.03 rounds=[3123.4834, 3142.725, 3148.75, 3155.025, 3158.0416, 3164.9, 3173.45]\n",
+            "median_ns": {
+              "small": 336.47,
+              "medium": 749.76,
+              "large": 2887.38,
+              "fragmented": 3155.03
+            }
+          }
+        },
+        {
+          "trial": 11,
+          "candidate": {
+            "raw": "small bytes=150 samples=5000 median_ns=342.72 rounds=[338.1084, 339.3416, 341.2082, 342.7166, 343.1084, 349.7, 350.5584]\nmedium bytes=2182 samples=5000 median_ns=755.55 rounds=[739.2334, 744.575, 749.9166, 755.55, 758.1166, 759.9, 766.1084]\nlarge bytes=12134 samples=5000 median_ns=2860.39 rounds=[2849.275, 2853.3918, 2854.3, 2860.3916, 2866.475, 2877.5082, 2905.825]\nfragmented bytes=12134 samples=5000 median_ns=3129.42 rounds=[3118.5834, 3118.7666, 3128.1418, 3129.4166, 3130.6, 3158.5834, 3165.4918]\n",
+            "median_ns": {
+              "small": 342.72,
+              "medium": 755.55,
+              "large": 2860.39,
+              "fragmented": 3129.42
+            }
+          },
+          "baseline": {
+            "raw": "small bytes=150 samples=5000 median_ns=347.02 rounds=[344.1, 344.2166, 345.0082, 347.0166, 348.0082, 348.0666, 348.15]\nmedium bytes=2182 samples=5000 median_ns=780.57 rounds=[762.4416, 765.8166, 765.925, 780.5668, 783.6418, 789.175, 793.4668]\nlarge bytes=12134 samples=5000 median_ns=2865.40 rounds=[2838.2334, 2854.05, 2856.5, 2865.4, 2874.3666, 2886.4082, 2891.325]\nfragmented bytes=12134 samples=5000 median_ns=3089.54 rounds=[3060.8084, 3073.225, 3077.4834, 3089.5416, 3100.75, 3106.8, 3130.7334]\n",
+            "median_ns": {
+              "small": 347.02,
+              "medium": 780.57,
+              "large": 2865.4,
+              "fragmented": 3089.54
+            }
+          }
+        }
+      ]
+    },
+    {
+      "baseline_sha256": "9c7a327e0776b50c90d8ea8f30cc1e5cfee5a1f9b7dcbfebd1809f475af02cd8",
+      "candidate_sha256": "615df099fdd993dbc5a43bc13fa7ce303eedb67eefcd65fe35b9dbf71e698f6e",
+      "candidate_framing_sha256": "28909988ffc14243433c66b2f6f04b1e0a25127cceeb10486e73a594ae091582",
+      "platform": "macOS-27.2-arm64-arm-64bit",
+      "machine": "arm64",
+      "rustc": "rustc 1.98.1 (48a229cea 2026-09-01)",
+      "samples": 10000,
+      "pairs": [
+        {
+          "trial": 0,
+          "baseline": {
+            "raw": "small bytes=150 samples=10000 median_ns=346.78 rounds=[340.1417, 343.6375, 344.2792, 346.7791, 348.5917, 350.775, 354.25]\nmedium bytes=2182 samples=10000 median_ns=782.69 rounds=[765.4458, 778.6459, 780.4667, 782.6917, 785.2708, 788.1, 788.6208]\nlarge bytes=12134 samples=10000 median_ns=2903.81 rounds=[2839.0666, 2847.8375, 2855.2042, 2903.8084, 3029.2125, 4200.0375, 5625.4417]\nfragmented bytes=12134 samples=10000 median_ns=3117.55 rounds=[3102.5375, 3107.2792, 3113.4333, 3117.55, 3122.6084, 3136.4083, 3139.7416]\n",
+            "median_ns": {
+              "small": 346.78,
+              "medium": 782.69,
+              "large": 2903.81,
+              "fragmented": 3117.55
+            }
+          },
+          "candidate": {
+            "raw": "small bytes=150 samples=10000 median_ns=343.92 rounds=[339.8708, 341.6542, 342.5667, 343.9208, 346.9875, 348.6958, 350.0042]\nmedium bytes=2182 samples=10000 median_ns=760.99 rounds=[747.6, 751.1667, 757.3041, 760.9917, 763.35, 775.975, 777.0208]\nlarge bytes=12134 samples=10000 median_ns=2841.93 rounds=[2838.6708, 2839.3667, 2839.5625, 2841.925, 2846.4916, 2851.2125, 2879.0917]\nfragmented bytes=12134 samples=10000 median_ns=3109.37 rounds=[3071.0583, 3093.3833, 3095.9667, 3109.3667, 3109.9125, 3114.6625, 3123.6209]\n",
+            "median_ns": {
+              "small": 343.92,
+              "medium": 760.99,
+              "large": 2841.93,
+              "fragmented": 3109.37
+            }
+          }
+        },
+        {
+          "trial": 1,
+          "candidate": {
+            "raw": "small bytes=150 samples=10000 median_ns=345.68 rounds=[337.475, 337.9916, 340.6708, 345.6792, 347.5042, 347.5875, 355.05]\nmedium bytes=2182 samples=10000 median_ns=750.56 rounds=[736.3708, 742.5417, 745.9208, 750.5625, 755.6125, 757.5042, 758.5583]\nlarge bytes=12134 samples=10000 median_ns=2871.85 rounds=[2867.7916, 2869.0042, 2870.0667, 2871.85, 2873.3, 2879.8375, 2902.8542]\nfragmented bytes=12134 samples=10000 median_ns=3129.93 rounds=[3120.3333, 3123.2541, 3127.8083, 3129.925, 3136.25, 3136.5833, 3152.9333]\n",
+            "median_ns": {
+              "small": 345.68,
+              "medium": 750.56,
+              "large": 2871.85,
+              "fragmented": 3129.93
+            }
+          },
+          "baseline": {
+            "raw": "small bytes=150 samples=10000 median_ns=348.76 rounds=[342.5292, 344.9459, 347.9458, 348.7584, 349.4291, 350.3833, 352.1959]\nmedium bytes=2182 samples=10000 median_ns=798.73 rounds=[779.3959, 781.5875, 783.5667, 798.7292, 802.4041, 802.5167, 806.1542]\nlarge bytes=12134 samples=10000 median_ns=2878.47 rounds=[2860.5209, 2862.7459, 2871.7542, 2878.4667, 2883.9417, 2887.3666, 2887.5584]\nfragmented bytes=12134 samples=10000 median_ns=3129.39 rounds=[3111.025, 3113.1375, 3126.3458, 3129.3875, 3134.8625, 3185.7584, 3206.5542]\n",
+            "median_ns": {
+              "small": 348.76,
+              "medium": 798.73,
+              "large": 2878.47,
+              "fragmented": 3129.39
+            }
+          }
+        },
+        {
+          "trial": 2,
+          "baseline": {
+            "raw": "small bytes=150 samples=10000 median_ns=350.92 rounds=[344.0416, 347.3125, 349.875, 350.9209, 352.5583, 352.9584, 363.8167]\nmedium bytes=2182 samples=10000 median_ns=781.70 rounds=[766.9459, 776.7709, 778.3166, 781.7, 783.125, 786.9042, 788.0708]\nlarge bytes=12134 samples=10000 median_ns=2876.11 rounds=[2864.4167, 2865.4458, 2874.2166, 2876.1125, 2889.275, 2894.9125, 2901.8]\nfragmented bytes=12134 samples=10000 median_ns=3118.98 rounds=[3087.0666, 3104.875, 3111.2375, 3118.9791, 3133.9917, 3145.1917, 3154.5584]\n",
+            "median_ns": {
+              "small": 350.92,
+              "medium": 781.7,
+              "large": 2876.11,
+              "fragmented": 3118.98
+            }
+          },
+          "candidate": {
+            "raw": "small bytes=150 samples=10000 median_ns=342.61 rounds=[338.9833, 340.0875, 341.45, 342.6084, 345.8209, 350.3959, 350.5833]\nmedium bytes=2182 samples=10000 median_ns=742.15 rounds=[734.7833, 739.4584, 739.9042, 742.1542, 744.0041, 751.8167, 758.8583]\nlarge bytes=12134 samples=10000 median_ns=2831.46 rounds=[2814.9875, 2829.9291, 2829.9417, 2831.4583, 2834.9709, 2835.2042, 2843.9125]\nfragmented bytes=12134 samples=10000 median_ns=3132.82 rounds=[3122.1334, 3127.0375, 3129.1792, 3132.8208, 3133.3083, 3140.525, 3194.7875]\n",
+            "median_ns": {
+              "small": 342.61,
+              "medium": 742.15,
+              "large": 2831.46,
+              "fragmented": 3132.82
+            }
+          }
+        },
+        {
+          "trial": 3,
+          "candidate": {
+            "raw": "small bytes=150 samples=10000 median_ns=340.39 rounds=[336.8459, 337.7333, 338.6542, 340.3875, 345.4917, 348.5958, 349.2916]\nmedium bytes=2182 samples=10000 median_ns=750.47 rounds=[744.8833, 747.85, 747.9625, 750.4708, 755.1791, 756.2125, 757.7125]\nlarge bytes=12134 samples=10000 median_ns=2851.30 rounds=[2834.6917, 2837.8667, 2843.6917, 2851.3042, 2860.8542, 2870.675, 2877.7667]\nfragmented bytes=12134 samples=10000 median_ns=3126.57 rounds=[3099.2917, 3105.125, 3117.5417, 3126.5709, 3128.0083, 3135.3167, 3160.2042]\n",
+            "median_ns": {
+              "small": 340.39,
+              "medium": 750.47,
+              "large": 2851.3,
+              "fragmented": 3126.57
+            }
+          },
+          "baseline": {
+            "raw": "small bytes=150 samples=10000 median_ns=345.40 rounds=[340.1542, 341.0917, 343.3375, 345.4042, 348.875, 351.6209, 355.3583]\nmedium bytes=2182 samples=10000 median_ns=780.61 rounds=[773.325, 779.4208, 780.0875, 780.6125, 785.6291, 788.975, 797.0584]\nlarge bytes=12134 samples=10000 median_ns=2911.07 rounds=[2887.4834, 2888.9709, 2901.9584, 2911.0667, 2915.3708, 2935.3125, 2971.1417]\nfragmented bytes=12134 samples=10000 median_ns=3155.72 rounds=[3135.2417, 3147.3208, 3148.4833, 3155.7209, 3161.0833, 3173.5125, 3182.15]\n",
+            "median_ns": {
+              "small": 345.4,
+              "medium": 780.61,
+              "large": 2911.07,
+              "fragmented": 3155.72
+            }
+          }
+        },
+        {
+          "trial": 4,
+          "baseline": {
+            "raw": "small bytes=150 samples=10000 median_ns=353.62 rounds=[349.525, 350.4209, 351.7417, 353.6209, 354.9959, 355.4666, 357.7167]\nmedium bytes=2182 samples=10000 median_ns=780.83 rounds=[776.1334, 776.5708, 779.9625, 780.825, 785.5292, 789.2041, 792.8833]\nlarge bytes=12134 samples=10000 median_ns=2871.22 rounds=[2866.8042, 2868.6625, 2869.9208, 2871.225, 2878.5375, 2888.45, 2937.2084]\nfragmented bytes=12134 samples=10000 median_ns=3122.48 rounds=[3101.6375, 3114.7125, 3115.5084, 3122.4833, 3129.6958, 3142.7042, 3144.5375]\n",
+            "median_ns": {
+              "small": 353.62,
+              "medium": 780.83,
+              "large": 2871.22,
+              "fragmented": 3122.48
+            }
+          },
+          "candidate": {
+            "raw": "small bytes=150 samples=10000 median_ns=345.07 rounds=[337.5666, 340.8625, 341.0916, 345.0708, 345.9875, 347.8542, 348.375]\nmedium bytes=2182 samples=10000 median_ns=757.32 rounds=[744.0666, 752.8083, 757.15, 757.3208, 765.4625, 767.9209, 774.9083]\nlarge bytes=12134 samples=10000 median_ns=2842.33 rounds=[2823.5959, 2831.6583, 2841.7792, 2842.3292, 2851.2125, 2858.5875, 2859.375]\nfragmented bytes=12134 samples=10000 median_ns=3144.47 rounds=[3106.0541, 3117.3625, 3137.3416, 3144.4708, 3145.0666, 3178.8125, 3180.8417]\n",
+            "median_ns": {
+              "small": 345.07,
+              "medium": 757.32,
+              "large": 2842.33,
+              "fragmented": 3144.47
+            }
+          }
+        },
+        {
+          "trial": 5,
+          "candidate": {
+            "raw": "small bytes=150 samples=10000 median_ns=346.85 rounds=[337.4, 342.2125, 342.95, 346.85, 351.6125, 352.1333, 352.6084]\nmedium bytes=2182 samples=10000 median_ns=752.23 rounds=[743.075, 750.25, 751.6625, 752.2333, 755.25, 758.3125, 759.9166]\nlarge bytes=12134 samples=10000 median_ns=2813.48 rounds=[2773.8417, 2783.6792, 2797.625, 2813.4792, 2817.55, 2828.5167, 2831.075]\nfragmented bytes=12134 samples=10000 median_ns=3089.21 rounds=[3080.6167, 3081.5875, 3085.1458, 3089.2084, 3103.9, 3118.2334, 3153.2042]\n",
+            "median_ns": {
+              "small": 346.85,
+              "medium": 752.23,
+              "large": 2813.48,
+              "fragmented": 3089.21
+            }
+          },
+          "baseline": {
+            "raw": "small bytes=150 samples=10000 median_ns=347.65 rounds=[340.4459, 340.5917, 345.9042, 347.6458, 349.0916, 349.2542, 349.6333]\nmedium bytes=2182 samples=10000 median_ns=777.21 rounds=[771.0667, 772.45, 774.4584, 777.2083, 777.5917, 778.65, 786.3084]\nlarge bytes=12134 samples=10000 median_ns=2872.41 rounds=[2852.5542, 2867.8875, 2868.7916, 2872.4083, 2878.9583, 2893.1083, 2903.3084]\nfragmented bytes=12134 samples=10000 median_ns=3113.65 rounds=[3100.0083, 3105.4334, 3111.625, 3113.6541, 3123.2875, 3151.0625, 3185.4583]\n",
+            "median_ns": {
+              "small": 347.65,
+              "medium": 777.21,
+              "large": 2872.41,
+              "fragmented": 3113.65
+            }
+          }
+        },
+        {
+          "trial": 6,
+          "baseline": {
+            "raw": "small bytes=150 samples=10000 median_ns=345.68 rounds=[340.0917, 340.7208, 343.6875, 345.6791, 346.9208, 350.15, 351.9541]\nmedium bytes=2182 samples=10000 median_ns=789.57 rounds=[779.275, 783.9375, 788.9083, 789.5708, 789.85, 795.825, 801.0167]\nlarge bytes=12134 samples=10000 median_ns=2913.51 rounds=[2903.2667, 2903.2833, 2904.0708, 2913.5083, 2928.3042, 2935.7541, 2946.9125]\nfragmented bytes=12134 samples=10000 median_ns=3116.01 rounds=[3106.7958, 3107.55, 3113.4292, 3116.0125, 3122.8958, 3125.5625, 3140.9958]\n",
+            "median_ns": {
+              "small": 345.68,
+              "medium": 789.57,
+              "large": 2913.51,
+              "fragmented": 3116.01
+            }
+          },
+          "candidate": {
+            "raw": "small bytes=150 samples=10000 median_ns=339.02 rounds=[334.7333, 334.8917, 336.2125, 339.0208, 340.4416, 341.4416, 342.5791]\nmedium bytes=2182 samples=10000 median_ns=754.35 rounds=[739.125, 753.8667, 754.0709, 754.3458, 758.7041, 760.1, 767.1333]\nlarge bytes=12134 samples=10000 median_ns=2876.44 rounds=[2857.7792, 2866.7, 2874.7959, 2876.4375, 2883.0458, 2897.7208, 2923.8458]\nfragmented bytes=12134 samples=10000 median_ns=3158.03 rounds=[3142.2167, 3144.8875, 3152.0209, 3158.025, 3159.3208, 3166.5084, 3170.6334]\n",
+            "median_ns": {
+              "small": 339.02,
+              "medium": 754.35,
+              "large": 2876.44,
+              "fragmented": 3158.03
+            }
+          }
+        },
+        {
+          "trial": 7,
+          "candidate": {
+            "raw": "small bytes=150 samples=10000 median_ns=344.42 rounds=[332.6417, 338.5333, 342.9125, 344.4167, 344.4958, 344.725, 344.9458]\nmedium bytes=2182 samples=10000 median_ns=748.84 rounds=[744.4375, 748.1208, 748.725, 748.8417, 750.1667, 750.3458, 755.375]\nlarge bytes=12134 samples=10000 median_ns=2847.09 rounds=[2831.7791, 2838.0958, 2838.2583, 2847.0917, 2850.3333, 2852.4542, 2911.3583]\nfragmented bytes=12134 samples=10000 median_ns=3151.56 rounds=[3127.375, 3132.2375, 3136.0042, 3151.5583, 3152.475, 3170.9292, 3195.8292]\n",
+            "median_ns": {
+              "small": 344.42,
+              "medium": 748.84,
+              "large": 2847.09,
+              "fragmented": 3151.56
+            }
+          },
+          "baseline": {
+            "raw": "small bytes=150 samples=10000 median_ns=341.91 rounds=[340.5625, 341.2291, 341.7125, 341.9125, 347.6666, 350.6459, 354.8167]\nmedium bytes=2182 samples=10000 median_ns=801.20 rounds=[772.55, 783.6375, 796.6625, 801.2042, 808.6959, 813.5083, 816.85]\nlarge bytes=12134 samples=10000 median_ns=2843.11 rounds=[2830.025, 2833.9375, 2841.9833, 2843.1125, 2864.6667, 2866.2833, 2871.9167]\nfragmented bytes=12134 samples=10000 median_ns=3104.06 rounds=[3097.3, 3097.45, 3102.6875, 3104.0584, 3105.175, 3110.4875, 3125.9625]\n",
+            "median_ns": {
+              "small": 341.91,
+              "medium": 801.2,
+              "large": 2843.11,
+              "fragmented": 3104.06
+            }
+          }
+        },
+        {
+          "trial": 8,
+          "baseline": {
+            "raw": "small bytes=150 samples=10000 median_ns=347.93 rounds=[344.3167, 344.7791, 344.825, 347.9334, 350.7542, 352.2916, 356.8083]\nmedium bytes=2182 samples=10000 median_ns=779.85 rounds=[766.775, 774.8459, 777.7, 779.8541, 780.4166, 782.125, 788.9083]\nlarge bytes=12134 samples=10000 median_ns=2871.06 rounds=[2861.0125, 2866.3917, 2869.2667, 2871.0625, 2881.2041, 2892.0708, 2990.7459]\nfragmented bytes=12134 samples=10000 median_ns=3129.45 rounds=[3110.0833, 3120.2709, 3123.5625, 3129.45, 3134.7708, 3154.5667, 3223.7459]\n",
+            "median_ns": {
+              "small": 347.93,
+              "medium": 779.85,
+              "large": 2871.06,
+              "fragmented": 3129.45
+            }
+          },
+          "candidate": {
+            "raw": "small bytes=150 samples=10000 median_ns=337.27 rounds=[333.7209, 334.5625, 335.9125, 337.2667, 345.675, 346.9708, 347.2875]\nmedium bytes=2182 samples=10000 median_ns=744.61 rounds=[738.4333, 738.7417, 739.9333, 744.6125, 745.9625, 749.3208, 752.6917]\nlarge bytes=12134 samples=10000 median_ns=2848.93 rounds=[2834.8209, 2843.8833, 2845.6708, 2848.9292, 2856.1709, 2856.7917, 2871.5084]\nfragmented bytes=12134 samples=10000 median_ns=3125.75 rounds=[3108.5666, 3116.3417, 3119.4791, 3125.7458, 3133.7334, 3139.2375, 3207.7583]\n",
+            "median_ns": {
+              "small": 337.27,
+              "medium": 744.61,
+              "large": 2848.93,
+              "fragmented": 3125.75
+            }
+          }
+        },
+        {
+          "trial": 9,
+          "candidate": {
+            "raw": "small bytes=150 samples=10000 median_ns=339.08 rounds=[336.8042, 338.3292, 338.4958, 339.0792, 339.25, 340.7584, 349.9666]\nmedium bytes=2182 samples=10000 median_ns=743.00 rounds=[734.6458, 740.6708, 742.375, 742.9958, 743.5625, 745.6625, 746.4583]\nlarge bytes=12134 samples=10000 median_ns=2814.12 rounds=[2790.9208, 2798.4, 2809.8833, 2814.1166, 2825.95, 2830.4459, 2830.4959]\nfragmented bytes=12134 samples=10000 median_ns=3106.91 rounds=[3074.1875, 3084.4084, 3085.3708, 3106.9083, 3106.9583, 3129.9666, 3139.8583]\n",
+            "median_ns": {
+              "small": 339.08,
+              "medium": 743.0,
+              "large": 2814.12,
+              "fragmented": 3106.91
+            }
+          },
+          "baseline": {
+            "raw": "small bytes=150 samples=10000 median_ns=346.67 rounds=[341.7208, 344.3, 344.7875, 346.6709, 348.0291, 350.9583, 353.3]\nmedium bytes=2182 samples=10000 median_ns=772.14 rounds=[766.7, 767.5916, 769.3459, 772.1375, 782.5792, 782.7583, 785.7333]\nlarge bytes=12134 samples=10000 median_ns=2877.85 rounds=[2859.6791, 2873.55, 2876.9875, 2877.85, 2900.7, 2931.9875, 3922.7292]\nfragmented bytes=12134 samples=10000 median_ns=3129.61 rounds=[3115.575, 3119.2209, 3122.0792, 3129.6084, 3131.775, 3137.7708, 3138.7166]\n",
+            "median_ns": {
+              "small": 346.67,
+              "medium": 772.14,
+              "large": 2877.85,
+              "fragmented": 3129.61
+            }
+          }
+        },
+        {
+          "trial": 10,
+          "baseline": {
+            "raw": "small bytes=150 samples=10000 median_ns=349.09 rounds=[344.2, 344.6542, 345.925, 349.0916, 350.175, 350.8125, 351.7541]\nmedium bytes=2182 samples=10000 median_ns=787.50 rounds=[769.775, 778.225, 782.45, 787.5041, 788.175, 788.3833, 799.8208]\nlarge bytes=12134 samples=10000 median_ns=2877.32 rounds=[2860.1875, 2872.4, 2873.4333, 2877.3208, 2893.8583, 2925.4541, 2937.8084]\nfragmented bytes=12134 samples=10000 median_ns=3114.48 rounds=[3097.8208, 3109.1292, 3111.4083, 3114.4833, 3115.7458, 3116.0708, 3119.2125]\n",
+            "median_ns": {
+              "small": 349.09,
+              "medium": 787.5,
+              "large": 2877.32,
+              "fragmented": 3114.48
+            }
+          },
+          "candidate": {
+            "raw": "small bytes=150 samples=10000 median_ns=335.68 rounds=[333.8959, 334.0375, 335.6291, 335.6834, 336.4667, 336.9375, 343.3584]\nmedium bytes=2182 samples=10000 median_ns=751.56 rounds=[745.7667, 746.3958, 748.55, 751.5584, 752.4292, 764.9375, 766.7833]\nlarge bytes=12134 samples=10000 median_ns=2847.16 rounds=[2835.0709, 2835.75, 2844.8208, 2847.1583, 2850.0417, 2852.4, 2854.5666]\nfragmented bytes=12134 samples=10000 median_ns=3105.85 rounds=[3087.6208, 3100.25, 3101.0875, 3105.8458, 3111.9208, 3115.6584, 3121.9333]\n",
+            "median_ns": {
+              "small": 335.68,
+              "medium": 751.56,
+              "large": 2847.16,
+              "fragmented": 3105.85
+            }
+          }
+        },
+        {
+          "trial": 11,
+          "candidate": {
+            "raw": "small bytes=150 samples=10000 median_ns=350.62 rounds=[345.4583, 348.3417, 348.6458, 350.6208, 351.2083, 352.0583, 362.45]\nmedium bytes=2182 samples=10000 median_ns=742.24 rounds=[732.1083, 733.275, 735.6875, 742.2375, 744.3375, 747.1667, 758.3083]\nlarge bytes=12134 samples=10000 median_ns=2821.62 rounds=[2812.9458, 2815.5875, 2819.3958, 2821.625, 2823.1584, 2829.0084, 2829.4541]\nfragmented bytes=12134 samples=10000 median_ns=3104.57 rounds=[3081.7833, 3094.1125, 3096.7834, 3104.5708, 3126.7167, 3143.8708, 3150.925]\n",
+            "median_ns": {
+              "small": 350.62,
+              "medium": 742.24,
+              "large": 2821.62,
+              "fragmented": 3104.57
+            }
+          },
+          "baseline": {
+            "raw": "small bytes=150 samples=10000 median_ns=340.01 rounds=[338.4708, 338.5583, 339.7875, 340.0125, 340.5583, 348.0042, 348.05]\nmedium bytes=2182 samples=10000 median_ns=773.51 rounds=[761.4209, 763.9792, 766.8292, 773.5083, 775.0959, 775.7541, 779.1]\nlarge bytes=12134 samples=10000 median_ns=2838.00 rounds=[2823.4417, 2826.7791, 2827.725, 2838.0, 2857.8166, 2866.85, 2912.3791]\nfragmented bytes=12134 samples=10000 median_ns=3083.97 rounds=[3078.45, 3081.8041, 3083.9542, 3083.975, 3096.2791, 3144.8083, 3148.675]\n",
+            "median_ns": {
+              "small": 340.01,
+              "medium": 773.51,
+              "large": 2838.0,
+              "fragmented": 3083.97
+            }
+          }
+        },
+        {
+          "trial": 12,
+          "baseline": {
+            "raw": "small bytes=150 samples=10000 median_ns=342.88 rounds=[341.5708, 342.2083, 342.275, 342.875, 344.3875, 353.525, 353.9083]\nmedium bytes=2182 samples=10000 median_ns=787.26 rounds=[771.6625, 776.6208, 779.9208, 787.2583, 788.9291, 795.7416, 805.9875]\nlarge bytes=12134 samples=10000 median_ns=2909.88 rounds=[2879.1792, 2889.475, 2901.8708, 2909.8792, 2912.8625, 2923.5792, 2930.8833]\nfragmented bytes=12134 samples=10000 median_ns=3127.34 rounds=[3114.0042, 3120.5375, 3121.425, 3127.3417, 3127.8125, 3129.3334, 3145.1708]\n",
+            "median_ns": {
+              "small": 342.88,
+              "medium": 787.26,
+              "large": 2909.88,
+              "fragmented": 3127.34
+            }
+          },
+          "candidate": {
+            "raw": "small bytes=150 samples=10000 median_ns=346.36 rounds=[338.3917, 339.025, 346.1417, 346.3584, 346.6417, 346.6875, 358.5458]\nmedium bytes=2182 samples=10000 median_ns=752.78 rounds=[744.3834, 750.4875, 751.3666, 752.7833, 760.3083, 763.0917, 766.025]\nlarge bytes=12134 samples=10000 median_ns=2855.27 rounds=[2833.1333, 2848.5417, 2853.0791, 2855.2667, 2884.1667, 2892.1917, 2945.1042]\nfragmented bytes=12134 samples=10000 median_ns=3141.88 rounds=[3109.2333, 3113.0, 3116.1792, 3141.8833, 3142.6, 3144.7292, 3150.3416]\n",
+            "median_ns": {
+              "small": 346.36,
+              "medium": 752.78,
+              "large": 2855.27,
+              "fragmented": 3141.88
+            }
+          }
+        },
+        {
+          "trial": 13,
+          "candidate": {
+            "raw": "small bytes=150 samples=10000 median_ns=348.06 rounds=[339.0333, 339.525, 346.3959, 348.0584, 349.5542, 353.7583, 355.375]\nmedium bytes=2182 samples=10000 median_ns=759.62 rounds=[753.1709, 754.8208, 759.1042, 759.6167, 760.2709, 771.8542, 772.3959]\nlarge bytes=12134 samples=10000 median_ns=2895.46 rounds=[2848.0333, 2865.1416, 2878.9583, 2895.4625, 2907.6625, 2910.2416, 2934.4875]\nfragmented bytes=12134 samples=10000 median_ns=3143.39 rounds=[3109.7125, 3115.4333, 3135.1625, 3143.3875, 3165.5042, 3166.9459, 3179.7208]\n",
+            "median_ns": {
+              "small": 348.06,
+              "medium": 759.62,
+              "large": 2895.46,
+              "fragmented": 3143.39
+            }
+          },
+          "baseline": {
+            "raw": "small bytes=150 samples=10000 median_ns=343.68 rounds=[340.75, 341.5333, 341.7542, 343.6833, 345.675, 351.3958, 360.5583]\nmedium bytes=2182 samples=10000 median_ns=785.09 rounds=[775.525, 777.1542, 784.4583, 785.0875, 790.575, 793.1458, 793.575]\nlarge bytes=12134 samples=10000 median_ns=2870.18 rounds=[2829.3208, 2840.1833, 2850.9125, 2870.175, 2874.9458, 2885.1, 2928.7125]\nfragmented bytes=12134 samples=10000 median_ns=3088.99 rounds=[3071.0958, 3074.4833, 3077.0417, 3088.9875, 3092.0333, 3103.1125, 3116.2166]\n",
+            "median_ns": {
+              "small": 343.68,
+              "medium": 785.09,
+              "large": 2870.18,
+              "fragmented": 3088.99
+            }
+          }
+        },
+        {
+          "trial": 14,
+          "baseline": {
+            "raw": "small bytes=150 samples=10000 median_ns=347.59 rounds=[340.125, 341.7333, 346.125, 347.5875, 348.2208, 353.5083, 357.0333]\nmedium bytes=2182 samples=10000 median_ns=795.00 rounds=[780.9167, 782.8292, 787.5125, 794.9958, 807.8833, 809.0916, 814.8375]\nlarge bytes=12134 samples=10000 median_ns=2900.59 rounds=[2880.9083, 2882.425, 2893.425, 2900.5875, 2901.1708, 2907.0875, 2925.5792]\nfragmented bytes=12134 samples=10000 median_ns=3141.68 rounds=[3115.05, 3127.2333, 3134.7791, 3141.675, 3160.2083, 3169.8792, 3182.1459]\n",
+            "median_ns": {
+              "small": 347.59,
+              "medium": 795.0,
+              "large": 2900.59,
+              "fragmented": 3141.68
+            }
+          },
+          "candidate": {
+            "raw": "small bytes=150 samples=10000 median_ns=340.47 rounds=[335.2833, 337.0, 337.5042, 340.4667, 340.6083, 345.975, 347.2666]\nmedium bytes=2182 samples=10000 median_ns=747.38 rounds=[739.8208, 741.8, 742.6541, 747.375, 754.6, 755.25, 764.4792]\nlarge bytes=12134 samples=10000 median_ns=2860.95 rounds=[2847.6542, 2859.7042, 2859.8791, 2860.95, 2862.95, 2868.9917, 2898.8167]\nfragmented bytes=12134 samples=10000 median_ns=3151.71 rounds=[3134.6208, 3146.3333, 3149.3625, 3151.7125, 3156.7875, 3193.7584, 3257.9958]\n",
+            "median_ns": {
+              "small": 340.47,
+              "medium": 747.38,
+              "large": 2860.95,
+              "fragmented": 3151.71
+            }
+          }
+        },
+        {
+          "trial": 15,
+          "candidate": {
+            "raw": "small bytes=150 samples=10000 median_ns=348.24 rounds=[338.8375, 348.0167, 348.1084, 348.2375, 349.8916, 350.225, 351.6708]\nmedium bytes=2182 samples=10000 median_ns=751.65 rounds=[738.8708, 740.5833, 751.3333, 751.6458, 757.6958, 759.45, 770.8167]\nlarge bytes=12134 samples=10000 median_ns=2876.94 rounds=[2845.2334, 2852.2917, 2870.9167, 2876.9375, 2880.2917, 2885.1875, 2901.25]\nfragmented bytes=12134 samples=10000 median_ns=3166.57 rounds=[3134.2291, 3144.1541, 3160.0667, 3166.5667, 3170.0333, 3186.7916, 3200.4458]\n",
+            "median_ns": {
+              "small": 348.24,
+              "medium": 751.65,
+              "large": 2876.94,
+              "fragmented": 3166.57
+            }
+          },
+          "baseline": {
+            "raw": "small bytes=150 samples=10000 median_ns=344.06 rounds=[340.3375, 340.3709, 340.4459, 344.0625, 348.4042, 350.5167, 351.4792]\nmedium bytes=2182 samples=10000 median_ns=781.60 rounds=[764.8292, 767.6041, 770.5083, 781.6, 782.4, 782.6958, 787.9292]\nlarge bytes=12134 samples=10000 median_ns=2862.60 rounds=[2819.8375, 2832.8625, 2855.9625, 2862.6041, 2878.45, 2910.65, 2932.7041]\nfragmented bytes=12134 samples=10000 median_ns=3112.15 rounds=[3086.2375, 3100.6041, 3102.1209, 3112.1541, 3113.8416, 3116.8, 3124.825]\n",
+            "median_ns": {
+              "small": 344.06,
+              "medium": 781.6,
+              "large": 2862.6,
+              "fragmented": 3112.15
+            }
+          }
+        },
+        {
+          "trial": 16,
+          "baseline": {
+            "raw": "small bytes=150 samples=10000 median_ns=348.27 rounds=[337.1917, 342.9416, 344.2625, 348.2708, 349.0208, 352.525, 354.4667]\nmedium bytes=2182 samples=10000 median_ns=778.77 rounds=[777.6917, 778.4875, 778.65, 778.7708, 784.6042, 791.0917, 793.0125]\nlarge bytes=12134 samples=10000 median_ns=2876.57 rounds=[2838.8584, 2842.5958, 2859.2458, 2876.5667, 2886.0917, 2932.8417, 2949.4042]\nfragmented bytes=12134 samples=10000 median_ns=3087.03 rounds=[3074.6333, 3078.6875, 3083.6458, 3087.0333, 3087.55, 3106.8, 3117.425]\n",
+            "median_ns": {
+              "small": 348.27,
+              "medium": 778.77,
+              "large": 2876.57,
+              "fragmented": 3087.03
+            }
+          },
+          "candidate": {
+            "raw": "small bytes=150 samples=10000 median_ns=343.18 rounds=[337.0916, 337.6042, 338.5334, 343.175, 349.0083, 352.6792, 353.0542]\nmedium bytes=2182 samples=10000 median_ns=741.95 rounds=[730.6792, 731.8375, 733.9875, 741.9458, 743.2459, 745.2542, 754.4791]\nlarge bytes=12134 samples=10000 median_ns=2852.30 rounds=[2840.4417, 2847.8833, 2852.1583, 2852.2958, 2859.7083, 2860.7666, 2956.4417]\nfragmented bytes=12134 samples=10000 median_ns=3124.49 rounds=[3110.6334, 3124.0417, 3124.3042, 3124.4917, 3129.4125, 3136.9625, 3153.7]\n",
+            "median_ns": {
+              "small": 343.18,
+              "medium": 741.95,
+              "large": 2852.3,
+              "fragmented": 3124.49
+            }
+          }
+        },
+        {
+          "trial": 17,
+          "candidate": {
+            "raw": "small bytes=150 samples=10000 median_ns=335.76 rounds=[334.0083, 335.0084, 335.6083, 335.7625, 338.3667, 342.2875, 345.6625]\nmedium bytes=2182 samples=10000 median_ns=766.66 rounds=[757.9583, 758.625, 762.0709, 766.6625, 766.8833, 770.8959, 783.1958]\nlarge bytes=12134 samples=10000 median_ns=2862.18 rounds=[2858.4041, 2858.9459, 2859.6417, 2862.1792, 2875.2292, 2880.9791, 2892.1459]\nfragmented bytes=12134 samples=10000 median_ns=3153.83 rounds=[3134.5833, 3139.3, 3147.3333, 3153.8334, 3157.9417, 3164.4416, 3222.6041]\n",
+            "median_ns": {
+              "small": 335.76,
+              "medium": 766.66,
+              "large": 2862.18,
+              "fragmented": 3153.83
+            }
+          },
+          "baseline": {
+            "raw": "small bytes=150 samples=10000 median_ns=340.36 rounds=[338.0209, 339.7792, 340.2375, 340.3625, 346.2209, 347.4708, 360.5334]\nmedium bytes=2182 samples=10000 median_ns=776.52 rounds=[775.1333, 775.2125, 776.4958, 776.5166, 783.225, 784.9667, 790.8125]\nlarge bytes=12134 samples=10000 median_ns=2881.25 rounds=[2847.175, 2868.4625, 2877.1584, 2881.25, 2894.0292, 2899.1042, 2924.8583]\nfragmented bytes=12134 samples=10000 median_ns=3101.68 rounds=[3088.0666, 3088.35, 3098.8584, 3101.6833, 3114.0042, 3136.1625, 3140.5417]\n",
+            "median_ns": {
+              "small": 340.36,
+              "medium": 776.52,
+              "large": 2881.25,
+              "fragmented": 3101.68
+            }
+          }
+        },
+        {
+          "trial": 18,
+          "baseline": {
+            "raw": "small bytes=150 samples=10000 median_ns=350.60 rounds=[342.8791, 345.1041, 347.7917, 350.5959, 351.35, 352.725, 353.9458]\nmedium bytes=2182 samples=10000 median_ns=786.84 rounds=[775.4833, 783.3542, 785.275, 786.8375, 791.8875, 793.0166, 795.6916]\nlarge bytes=12134 samples=10000 median_ns=2904.17 rounds=[2875.5125, 2893.6334, 2898.7834, 2904.1666, 2906.1416, 2907.55, 2918.8208]\nfragmented bytes=12134 samples=10000 median_ns=3132.30 rounds=[3126.8583, 3130.4083, 3130.4667, 3132.3042, 3151.5208, 3159.1375, 3195.925]\n",
+            "median_ns": {
+              "small": 350.6,
+              "medium": 786.84,
+              "large": 2904.17,
+              "fragmented": 3132.3
+            }
+          },
+          "candidate": {
+            "raw": "small bytes=150 samples=10000 median_ns=343.70 rounds=[337.6875, 337.8042, 338.6833, 343.6958, 345.0417, 346.725, 354.5959]\nmedium bytes=2182 samples=10000 median_ns=749.79 rounds=[747.3708, 747.4625, 749.0541, 749.7875, 756.8917, 757.375, 758.1125]\nlarge bytes=12134 samples=10000 median_ns=2872.12 rounds=[2863.0792, 2871.3959, 2871.8084, 2872.1208, 2874.0917, 2877.4792, 2901.8208]\nfragmented bytes=12134 samples=10000 median_ns=3119.77 rounds=[3107.9125, 3110.5542, 3117.0542, 3119.7667, 3125.0708, 3128.4167, 3136.6458]\n",
+            "median_ns": {
+              "small": 343.7,
+              "medium": 749.79,
+              "large": 2872.12,
+              "fragmented": 3119.77
+            }
+          }
+        },
+        {
+          "trial": 19,
+          "candidate": {
+            "raw": "small bytes=150 samples=10000 median_ns=342.43 rounds=[335.7708, 337.6083, 342.1042, 342.425, 343.9667, 348.975, 349.8875]\nmedium bytes=2182 samples=10000 median_ns=751.16 rounds=[741.7375, 747.1167, 750.075, 751.1625, 752.8667, 754.2958, 755.3042]\nlarge bytes=12134 samples=10000 median_ns=2886.23 rounds=[2882.9375, 2883.0208, 2885.1667, 2886.2291, 2892.5708, 2929.5791, 3035.9375]\nfragmented bytes=12134 samples=10000 median_ns=3156.41 rounds=[3134.7541, 3145.5291, 3152.3083, 3156.4083, 3156.7125, 3180.2667, 3187.8208]\n",
+            "median_ns": {
+              "small": 342.43,
+              "medium": 751.16,
+              "large": 2886.23,
+              "fragmented": 3156.41
+            }
+          },
+          "baseline": {
+            "raw": "small bytes=150 samples=10000 median_ns=347.41 rounds=[342.25, 343.9292, 346.9917, 347.4084, 347.5958, 350.2209, 352.4625]\nmedium bytes=2182 samples=10000 median_ns=789.07 rounds=[784.6625, 785.9958, 787.8584, 789.0708, 792.7167, 796.0084, 802.1375]\nlarge bytes=12134 samples=10000 median_ns=2894.43 rounds=[2885.45, 2891.0834, 2894.0, 2894.4334, 2905.3542, 2918.1583, 2957.4]\nfragmented bytes=12134 samples=10000 median_ns=3134.65 rounds=[3102.6167, 3116.4584, 3117.9125, 3134.6459, 3136.0958, 3142.9167, 3175.8]\n",
+            "median_ns": {
+              "small": 347.41,
+              "medium": 789.07,
+              "large": 2894.43,
+              "fragmented": 3134.65
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

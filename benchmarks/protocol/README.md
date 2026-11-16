@@ -83,3 +83,32 @@ already in the lockfile and its `std` feature was already enabled by
 `serde_json`; it is now a direct protocol dependency. These measurements do
 not quantify whole-application speed or justify comparisons with other desktop
 shells. Repeated release-host tests on the supported platforms remain useful.
+
+## Borrowed complete command frames
+
+The reader can decode a complete frame directly from the `BufRead` buffer;
+fragmented frames still use the bounded accumulation buffer. The command owns
+its decoded data before the reader consumes the input. Invalid frames retain
+the same consumption and poisoning behavior.
+
+[Raw paired records](raw/native-frame-direct-macos-2026-11-15.json) compare
+baseline `8ca85c34492cf48463bab164937d7d2e2da8e038` with the candidate on macOS
+27.2, Apple M2 Max, Rust 1.98.1, in release mode. A first 12-pair run used
+5,000 parses per round; a second 20-pair run used 10,000. Each pair alternated
+process order; other load and power were uncontrolled. The table reports the
+second run's median per-process medians, median paired ratio, and candidate
+wins. The 8,192-byte reader chunk contains the complete small and medium frames;
+large and fragmented frames require accumulation.
+
+| Case       | Baseline ns | Candidate ns | Paired ratio |  Wins |
+| ---------- | ----------: | -----------: | -----------: | ----: |
+| small      |      347.10 |       343.44 |        0.986 | 15/20 |
+| medium     |      782.20 |       750.86 |        0.956 | 20/20 |
+| large      |    2,877.59 |     2,851.80 |        0.990 | 17/20 |
+| fragmented |    3,118.27 |     3,131.38 |        1.005 |  7/20 |
+
+The first run's paired ratios were 1.008, 0.961, 0.997 and 1.009 respectively.
+The medium-frame improvement is consistent in these local reader samples; the
+small and fragmented differences are close to noise and include a possible
+fragmented-frame cost. This does not measure IPC, native UI, end-to-end latency,
+or other platforms. Hosted release-host confirmation remains necessary.
