@@ -169,7 +169,17 @@ The current candidate archive is `@oven/bun-windows-x64` version
 revision `ed436333444b0b99937967b857fef0131b23b800` before running it. The
 matching integrity-verified macOS archive reports Bun `1.4.5-canary.1` at that
 revision, despite the npm archive's 1.4.4 version label. The Windows candidate
-has not yet been qualified; no repository toolchain pin changes here.
+has not been qualified for the repository toolchain; the pin is unchanged.
+
+[Run 43800489814](https://github.com/AndrewM-F/bun-native/actions/runs/43800489814)
+compared this candidate with the pinned runtime at source `044c4465`. Both AOT
+executables passed compiled-program and JIT-removal inspection, and the pinned
+render-root controls remained observable in both modes. All five pinned-runtime
+development trials retained `[3,4,5]`; the candidate cleared once and retained
+`[4]` in the other four. All five AOT trials for each runtime retained `[298,299]`.
+The [compact records](raw/windows-candidate-ed436333-2026-11-15.json.gz) retain
+the plans, observations, hashes, inspections and positive controls. This is a
+headless diagnostic, and it does not establish a fix for the native benchmark.
 
 [Run 43695919927](https://github.com/AndrewM-F/bun-native/actions/runs/43695919927)
 completed this control at source `4f145720` with the pinned Bun revision
