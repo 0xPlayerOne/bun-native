@@ -21,7 +21,7 @@ function workflow(name: string): Workflow {
 test('the required Validation / Gate waits for a real four-language CodeQL analysis (#607)', () => {
   const validation = workflow('bun-native.yml')
   const codeql = validation.jobs.codeql
-  expect(codeql?.uses).toStartWith('0xPlayerOne/code-foundry/.github/workflows/codeql.yml@')
+  expect(codeql?.uses).toStartWith('AndrewM-F/code-foundry/.github/workflows/codeql.yml@')
   expect(codeql?.permissions?.['security-events']).toBe('write')
 
   const plan = JSON.parse(String(codeql?.with?.plan)) as { enabled: string; matrix: string }
@@ -52,6 +52,23 @@ test('the required Validation / Gate waits for a real four-language CodeQL analy
 test('the standalone CodeQL workflow no longer scans pull requests or main pushes twice', () => {
   const codeql = workflow('codeql.yml')
   expect(Object.keys(codeql.on).sort()).toEqual(['schedule', 'workflow_dispatch'])
+})
+
+test('reusable workflows use the current repository owners', () => {
+  for (const file of [
+    'bun-native.yml',
+    'codeql.yml',
+    'draft-pr.yml',
+    'release.yml',
+    'release-integrity.yml',
+    'opencode-security.yml',
+  ]) {
+    const contents = readFileSync(join(root, '.github/workflows', file), 'utf8')
+    expect(contents).not.toContain('0xPlayerOne/code-foundry')
+    expect(contents).not.toContain('0xPlayerOne/opencode-security')
+  }
+  const config = readFileSync(join(root, '.github/code-foundry.yml'), 'utf8')
+  expect(config).toContain('runtime_repository: AndrewM-F/code-foundry')
 })
 
 // GitHub rejects a caller whose reusable workflow asks for more than the caller
