@@ -269,5 +269,24 @@ to 1.014. A same-binary A/A run ranged from 0.982 to 1.010 across the five
 cases; it checks run variability, not independent-build code layout. Other
 machine load and power were uncontrolled. [Raw samples and source identities](raw/native-reorder-macos-2026-11-16.json.gz)
 retain all pairs. These preflight measurements do not include IPC or native
-paint, and hosted platform confirmation is still needed. The cross-parent cost
-tracked in [#691](https://github.com/AndrewM-F/bun-native/issues/691) remains.
+paint. The cross-parent cost tracked in
+[#691](https://github.com/AndrewM-F/bun-native/issues/691) remains.
+
+[Hosted run 43804666877](https://github.com/AndrewM-F/bun-native/actions/runs/43804666877)
+compared baseline `6a6b7f8d` and candidate `93b9fde6` with the same fixture
+in 25 alternating pairs per platform. The [raw records](raw/native-reorder-hosted-2026-11-16.json.gz)
+include all samples, runner details and source and binary hashes. Entries are
+median paired ratios, with candidate wins out of 25:
+
+| Case                 | Linux x64  | macOS ARM64 | Windows x64 |
+| -------------------- | ---------- | ----------- | ----------- |
+| Depth 1              | 0.999 (13) | 0.998 (14)  | 1.014 (11)  |
+| Depth 8              | 1.008 (6)  | 0.984 (18)  | 0.977 (16)  |
+| Depth 32             | 1.005 (11) | 1.000 (13)  | 0.987 (19)  |
+| Cross-parent moves   | 1.005 (10) | 1.000 (12)  | 0.998 (17)  |
+| Same-parent reorders | 0.966 (24) | 0.905 (23)  | 0.966 (20)  |
+
+The Windows depth-1 median increase was 3.35 µs per 512-leaf batch, with
+mixed wins; Linux depth-8 increased 0.98 µs per batch with six wins. These are
+possible guard costs. Neither these measurements nor the reorder gain establish
+an improvement in native-window input or presentation.
