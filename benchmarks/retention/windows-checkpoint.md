@@ -164,6 +164,19 @@ and positive controls were valid, not that the original benchmark passed or a
 toolchain upgrade is qualified. Runtime and compiler layout differences prevent
 attributing a changed outcome to a specific fix.
 
+[Run 43695919927](https://github.com/AndrewM-F/bun-native/actions/runs/43695919927)
+completed this control at source `4f145720` with the pinned Bun revision
+`b1007f117` and candidate `9098897a`. Both AOT executables passed compiled-program
+and JIT-removal inspection. The pinned development workload retained probes
+`[3,4,5]` in all five trials; the candidate retained `[4]` in all five. Both
+AOT workloads retained at least one probe in all five trials; the candidate
+retained `[298,299]` every time. The deliberately pinned render-root control
+was detected in both modes for each runtime. [Compact records](raw/windows-candidate-runtime-2026-11-15.json.gz)
+retain each observation, source and executable hashes, inspection and controls;
+the full artifact remains attached to the run. This was headless IPC with DFG
+disabled in development, not the native-window benchmark. The newer canary did
+not clear the AOT symptom in this cohort and is not a qualified toolchain fix.
+
 The [fourth control run](https://github.com/0xPlayerOne/bun-native/actions/runs/43647428613)
 passed source-byte verification and reached compilation, but failed at step
 200 because a generated command exceeded the Windows shell limit. It produced
