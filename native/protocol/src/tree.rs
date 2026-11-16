@@ -573,16 +573,20 @@ impl Tree {
                 "the window root cannot be reparented",
             ));
         }
-        let old_parent = self.nodes.get(child_id).ok_or_else(invalid_handle)?.parent;
-        let mut ancestor = Some(parent_id);
-        while let Some(id) = ancestor {
-            if id == child_id {
-                return Err(error(
-                    ErrorCode::InvalidState,
-                    "insert would create a cycle",
-                ));
+        let child = self.nodes.get(child_id).ok_or_else(invalid_handle)?;
+        let old_parent = child.parent;
+        // A leaf cannot be an ancestor of another node in the valid tree.
+        if child_id == parent_id || !child.children.is_empty() {
+            let mut ancestor = Some(parent_id);
+            while let Some(id) = ancestor {
+                if id == child_id {
+                    return Err(error(
+                        ErrorCode::InvalidState,
+                        "insert would create a cycle",
+                    ));
+                }
+                ancestor = self.nodes.get(id).ok_or_else(invalid_handle)?.parent;
             }
-            ancestor = self.nodes.get(id).ok_or_else(invalid_handle)?.parent;
         }
         if old_parent == Some(parent_id) {
             // A move within one parent shifts only the children between its

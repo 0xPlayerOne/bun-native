@@ -151,3 +151,36 @@ its median candidate/baseline ratios were 1.004 small, 1.030 medium, 0.999
 large and 0.996 fragmented. Medium frames were slower in all 20 pairs, so this
 alternative was discarded. The [raw record](raw/native-frame-one-branch-macos-2026-11-15.json.gz)
 includes the exact candidate patch and executable identities.
+
+## Leaf insertion ancestor check
+
+A leaf with a different ID from its destination parent cannot be an ancestor
+of that parent in the transaction's consistent tree. The native preflight now
+skips the ancestor walk for that case, while self-insertion and non-leaf
+subtrees retain cycle checks. Root, invalid-handle and parent validation keep
+their previous ordering.
+
+`native/protocol/examples/leaf_ancestor_perf.rs` times a 512-leaf mount under
+parents at depths 1, 8 and 32, and a guard with 2,048 moves of a non-leaf subtree.
+Each process checks the resulting node count, ordered children and subtree
+parent. These are preflight measurements; they do not include IPC or painting.
+[Raw local samples](raw/native-leaf-ancestor-macos-2026-11-15.json.gz) compare
+baseline `80a5267b` and this candidate in 25 alternating fresh-process pairs
+on an Apple M2 Max, macOS 27.2, Rust 1.98.1 release mode; other load was not
+controlled. Each process records 30 trials after five warmups. Values are median
+paired candidate/baseline ratios with candidate wins out of 25.
+
+| Parent depth / case | Paired ratio | Wins |
+| ------------------- | -----------: | ---: |
+| 1                   |        0.987 |   17 |
+| 8                   |        0.899 |   25 |
+| 32                  |        0.681 |   25 |
+| Non-leaf moves      |        1.006 |   10 |
+
+The depth-8 baseline and candidate medians were 127.1 and 113.5 µs per batch;
+at depth 32 they were 364.7 and 247.3 µs. A repeat with the same binaries gave
+ratios of 0.987, 0.898, 0.680 and 1.001 in table order. The non-leaf guard may
+have a small cost; its first run's paired ratios ranged from 0.936 to 1.087.
+Earlier 256-move guards were noisier and are included in the raw record. These
+results do not establish end-to-end application or market performance; hosted
+cross-platform comparisons are required before generalizing them.

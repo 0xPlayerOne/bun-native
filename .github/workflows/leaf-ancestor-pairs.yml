@@ -1,0 +1,79 @@
+name: Leaf ancestor pairs
+
+on:
+  pull_request:
+    branches: [main]
+    types: [labeled]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: leaf-ancestor-pairs-${{ github.event.pull_request.number }}
+  cancel-in-progress: false
+
+jobs:
+  pairs:
+    if: vars.CI_BILLING_PAUSED == 'false' && github.event.pull_request.draft == false && github.event.label.name == 'diagnostic:leaf-ancestor-pairs'
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, macos-15, windows-2022]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: 80a5267b0ba5781ee6c4cb0b982411c986967188
+          path: .leaf-baseline
+          persist-credentials: false
+      - name: Build and compare exact tree sources
+        shell: pwsh
+        env:
+          CANDIDATE_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $root = Join-Path $env:RUNNER_TEMP 'leaf-ancestor-pairs'
+          New-Item -ItemType Directory -Path $root | Out-Null
+          $baseline = (git -C .leaf-baseline rev-parse HEAD).Trim()
+          $candidate = (git rev-parse HEAD).Trim()
+          if ($baseline -ne '80a5267b0ba5781ee6c4cb0b982411c986967188' -or $candidate -ne $env:CANDIDATE_SHA) { throw 'Unexpected source revisions' }
+          foreach ($file in @('rust-toolchain.toml', 'Cargo.lock', 'Cargo.toml', 'native/protocol/Cargo.toml')) {
+            if ((Get-FileHash $file).Hash -ne (Get-FileHash (Join-Path '.leaf-baseline' $file)).Hash) { throw "Benchmark input differs: $file" }
+          }
+          $source = Get-ChildItem -Recurse -File 'native/protocol/src' | Where-Object { $_.FullName -notmatch '[\\/]tree\.rs$|[\\/]tree[\\/]tests\.rs$' }
+          foreach ($file in $source) {
+            $relative = [System.IO.Path]::GetRelativePath((Get-Location).Path, $file.FullName)
+            $other = Join-Path '.leaf-baseline' $relative
+            if (!(Test-Path $other) -or (Get-FileHash $file.FullName).Hash -ne (Get-FileHash $other).Hash) { throw "Protocol source differs: $relative" }
+          }
+          $baselineCount = @(Get-ChildItem -Recurse -File '.leaf-baseline/native/protocol/src').Count
+          if ($baselineCount -ne @(Get-ChildItem -Recurse -File 'native/protocol/src').Count) { throw 'Protocol source inventory differs' }
+          Copy-Item 'native/protocol/examples/leaf_ancestor_perf.rs' '.leaf-baseline/native/protocol/examples/leaf_ancestor_perf.rs'
+          @{ baseline = $baseline; candidate = $candidate; baselineTree = (Get-FileHash '.leaf-baseline/native/protocol/src/tree.rs').Hash; candidateTree = (Get-FileHash 'native/protocol/src/tree.rs').Hash; fixture = (Get-FileHash 'native/protocol/examples/leaf_ancestor_perf.rs').Hash; rustc = (rustc --version --verbose | Out-String).Trim(); runner = $env:RUNNER_OS; architecture = $env:RUNNER_ARCH; image = $env:ImageVersion } | ConvertTo-Json | Set-Content -Encoding utf8 (Join-Path $root 'sources.json')
+          $originalTarget = $env:CARGO_TARGET_DIR
+          try {
+            foreach ($side in @('baseline', 'candidate')) {
+              $env:CARGO_TARGET_DIR = Join-Path $root "$side-target"
+              if ($side -eq 'baseline') { Push-Location .leaf-baseline }
+              try {
+                cargo build --locked --release -p bun-native-protocol --example leaf_ancestor_perf
+                if ($LASTEXITCODE -ne 0) { throw "$side build failed" }
+              } finally { if ($side -eq 'baseline') { Pop-Location } }
+            }
+          } finally { $env:CARGO_TARGET_DIR = $originalTarget }
+          $suffix = if ($env:RUNNER_OS -eq 'Windows') { '.exe' } else { '' }
+          python benchmarks/protocol/leaf_ancestor_pairs.py (Join-Path $root "baseline-target/release/examples/leaf_ancestor_perf$suffix") (Join-Path $root "candidate-target/release/examples/leaf_ancestor_perf$suffix") (Join-Path $root 'results.json') (Join-Path $root 'sources.json')
+          if ($LASTEXITCODE -ne 0) { throw 'Leaf comparison failed' }
+      - name: Retain paired measurements
+        if: ${{ always() }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: leaf-ancestor-${{ matrix.os }}
+          path: ${{ runner.temp }}/leaf-ancestor-pairs/*.json
+          if-no-files-found: warn
+          retention-days: 30

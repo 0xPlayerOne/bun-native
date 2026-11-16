@@ -152,6 +152,8 @@ fn cycles_roots_and_leaf_parents_are_rejected_without_partial_changes() {
         .unwrap()
         .tree;
     rejected(&nested, vec![insert(5, 2, 0)], 5, ErrorCode::InvalidState);
+    // An empty container is a leaf, but inserting it into itself is a cycle.
+    rejected(&nested, vec![insert(5, 5, 0)], 5, ErrorCode::InvalidState);
 }
 
 #[test]
