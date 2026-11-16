@@ -1,0 +1,100 @@
+name: Native append pairs
+
+on:
+  pull_request:
+    branches: [main]
+    types: [labeled]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: native-append-pairs-${{ github.event.pull_request.number }}
+  cancel-in-progress: false
+
+jobs:
+  pairs:
+    if: vars.CI_BILLING_PAUSED == 'false' && github.event.pull_request.draft == false && github.event.label.name == 'diagnostic:native-append-pairs'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    env:
+      CARGO_BUILD_JOBS: 2
+      CARGO_INCREMENTAL: 0
+      PYTHONDONTWRITEBYTECODE: 1
+      CANDIDATE_SHA: ${{ github.event.pull_request.head.sha }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: 717e4c975f5aac79675e1c57ba4bb704cf44cd15
+          path: .renderer-baseline
+          persist-credentials: false
+      - uses: ./.github/actions/native-toolchain
+        with:
+          release-target: 'true'
+      - uses: ./.github/actions/linux-native-prerequisites
+      - name: Build the shared host and source-matched clients
+        shell: bash
+        run: |
+          set -euo pipefail
+          out="$RUNNER_TEMP/native-append"
+          mkdir "$out"
+          baseline=$(git -C .renderer-baseline rev-parse HEAD)
+          candidate=$(git rev-parse HEAD)
+          [[ "$baseline" == 717e4c975f5aac79675e1c57ba4bb704cf44cd15 && "$candidate" == "$CANDIDATE_SHA" ]]
+          for path in native packages/core packages/protocol bun.lock Cargo.lock Cargo.toml toolchain.json rust-toolchain.toml; do
+            [[ "$(git rev-parse "HEAD:$path")" == "$(git -C .renderer-baseline rev-parse "HEAD:$path")" ]] || { echo "Mismatch: $path"; exit 1; }
+          done
+          python3 - <<'PY'
+          import hashlib, pathlib
+          paths = [pathlib.Path('packages/renderer'), pathlib.Path('.renderer-baseline/packages/renderer')]
+          def files(root):
+              return {p.relative_to(root).as_posix(): hashlib.sha256(p.read_bytes()).hexdigest() for p in root.rglob('*') if p.is_file() and p.relative_to(root).as_posix() != 'src/native-tree.ts'}
+          if files(paths[0]) != files(paths[1]):
+              raise SystemExit('Renderer inputs differ outside native-tree.ts')
+          PY
+          cp benchmarks/renderer/native-append.ts .renderer-baseline/benchmarks/renderer/native-append.ts
+          (
+            cd .renderer-baseline
+            bun install --frozen-lockfile
+          )
+          cargo build --locked --release -p bun-native-host --bin bun-native-host
+          for side in baseline candidate; do
+            source_dir="$GITHUB_WORKSPACE"
+            [[ "$side" == baseline ]] && source_dir="$GITHUB_WORKSPACE/.renderer-baseline"
+            (
+              cd "$source_dir"
+              bun build benchmarks/renderer/native-append.ts --target bun --outfile "$out/$side.js"
+              bun compile --no-install --no-script --production --explain=json "$out/$side.js" --outfile "$out/$side-aot" > "$out/$side-compile.log" 2>&1
+            )
+            bun -e 'import { inspectBunExecutable } from "./scripts/native/inspect.ts"; import { inspectBunRuntime } from "./scripts/native/inspect-runtime.ts"; const p=process.argv[1]; if (!inspectBunExecutable(p).hasCompiledProgram || inspectBunRuntime(p).jit!=="unused") throw new Error("Expected JIT-free AOT")' "$out/$side-aot"
+          done
+          BASELINE_SHA="$baseline" CANDIDATE_SHA="$candidate" python3 - <<'PY'
+          import hashlib, json, os, pathlib, subprocess
+          source = pathlib.Path('benchmarks/renderer/native-append.ts')
+          result = {'baseline': os.environ['BASELINE_SHA'], 'candidate': os.environ['CANDIDATE_SHA'], 'fixtureSha256': hashlib.sha256(source.read_bytes()).hexdigest(), 'bun': subprocess.check_output(['bun', '--revision'], text=True).strip(), 'runnerImage': os.environ.get('ImageVersion'), 'rust': subprocess.check_output(['rustc', '-Vv'], text=True)}
+          pathlib.Path(os.environ['RUNNER_TEMP'], 'native-append', 'sources.json').write_text(json.dumps(result, indent=2) + '\n')
+          PY
+      - name: Measure predeclared pairs in an isolated native session
+        shell: bash
+        run: |
+          out="$RUNNER_TEMP/native-append"
+          bash scripts/quality/native-x11-session.sh "$out/session" -- \
+            python3 benchmarks/renderer/native_append_pairs.py "$(command -v bun)" \
+            "$GITHUB_WORKSPACE/target/release/bun-native-host" "$out" "$out/results" "$out/sources.json"
+      - name: Retain observations and failures
+        if: ${{ always() }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: native-append-linux-${{ runner.arch }}
+          path: |
+            ${{ runner.temp }}/native-append/
+            !${{ runner.temp }}/native-append/baseline-aot
+            !${{ runner.temp }}/native-append/candidate-aot
+            !${{ runner.temp }}/native-append/session/runtime/
+          include-hidden-files: true
+          if-no-files-found: warn
+          retention-days: 30

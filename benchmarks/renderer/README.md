@@ -103,6 +103,16 @@ possible small costs with run-to-run variability, not established zero cost.
 [Raw repeat records](raw/append-prefix-hosted-repeat-2026-11-15.json.gz)
 retain all samples and source and executable identities.
 
+The opt-in `diagnostic:native-append-pairs` PR label runs a separate Linux X11
+probe with a real release host and 384 rows, small enough for complete native
+paint records. It compares the same fixture against `717e4c97`, verifies the
+shared host and core sources, inspects both AOT clients, and retains one warmup
+plus five alternating process pairs per mode. Each launch checks every full
+append and removal paint tree and owned-process cleanup. Its acknowledgement
+and observed-paint intervals include host/IPC work; the latter also includes
+paint instrumentation, file I/O and polling. Neither measures presentation.
+The probe must produce a successful retained run before supporting a claim.
+
 ## Recorded comparison
 
 Linux x64 container, Bun `1.4.4-canary.1+da867c60b`, five processes each,
