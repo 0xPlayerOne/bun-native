@@ -92,6 +92,17 @@ to median per-process increases of about 0.28–0.30 µs; this is a possible cos
 Other guard results and variability are retained in the raw records. This
 still excludes the native host, IPC and paint; it is not an end-to-end result.
 
+A [repeat on `e48a05d6`](https://github.com/0xPlayerOne/bun-native/actions/runs/43787619557)
+used the tracked guard fixture at the same six-decimal precision. In 12 pairs,
+append ratios in development/AOT were 0.867/0.788 on Linux, 0.824/0.617 on
+macOS, and 0.875/0.744 on Windows; AOT won 12, 12 and 11 pairs respectively.
+The Windows AOT text guard ratio was 1.079 (a 0.20 µs median paired increase),
+and the macOS AOT row guard ratio was 1.054 (a 2.17 µs increase). The first
+hosted run's corresponding ratios were 1.000 and 0.994, so these remain
+possible small costs with run-to-run variability, not established zero cost.
+[Raw repeat records](raw/append-prefix-hosted-repeat-2026-11-15.json.gz)
+retain all samples and source and executable identities.
+
 ## Recorded comparison
 
 Linux x64 container, Bun `1.4.4-canary.1+da867c60b`, five processes each,
