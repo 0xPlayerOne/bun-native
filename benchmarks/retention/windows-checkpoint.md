@@ -457,6 +457,19 @@ every pinned trial and mode. These changed-workload results suggest a
 development-mode liveness lead but do not resolve the compiled retention or
 establish why its content-node outcome differs from the preceding control.
 
+The `diagnostic:windows-production-scope` control moves only the lifecycle
+mount/update/dispose loop into a completed async scope before the existing two
+collection checkpoints. It leaves both collections, the zero-survivor
+assertion, and the workload counts intact; pinned variants retain the actual
+render root globally. The altered fixture uses the pinned compiler and a
+headless peer, not the unchanged native-window benchmark.
+[Windows run 43777698512](https://github.com/0xPlayerOne/bun-native/actions/runs/43777698512)
+completed five alternating sets. All development baselines and scoped variants
+retained `[3,4,5]`; all compiled baselines and scoped variants retained
+`[298,299]`. Both pinned controls detected their pinned render root in every
+trial and mode. Completing this loop scope did not remove the symptom in this
+cohort, and the result does not identify the retaining root.
+
 The opt-in `diagnostic:windows-origin-ranges` source-build control layers
 `webkit-conservative-origin-experiment.patch` on the existing snapshot patch.
 It classifies root-array entries from the conductor's register-state range,
