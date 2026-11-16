@@ -113,7 +113,7 @@ small and fragmented differences are close to noise and include a possible
 fragmented-frame cost. This does not measure IPC, native UI, end-to-end latency,
 or other platforms. Hosted release-host confirmation remains necessary.
 
-[Hosted paired run 43779313132](https://github.com/0xPlayerOne/bun-native/actions/runs/43779313132)
+[Hosted paired run 43779313132](https://github.com/AndrewM-F/bun-native/actions/runs/43779313132)
 compared baseline `8ca85c34` and candidate `7c3b1729` on the same runner for
 each platform, with 20 alternating pairs of 10,000 parses per round. The
 [complete raw records](raw/native-frame-direct-hosted-2026-11-15.json.gz)
@@ -184,3 +184,46 @@ have a small cost; its first run's paired ratios ranged from 0.936 to 1.087.
 Earlier 256-move guards were noisier and are included in the raw record. These
 results do not establish end-to-end application or market performance; hosted
 cross-platform comparisons are required before generalizing them.
+
+[Hosted run 43795568047](https://github.com/AndrewM-F/bun-native/actions/runs/43795568047)
+compared baseline `80a5267b` with candidate `d6f295fb` using the same fixture,
+locked dependencies and Rust release build on each runner. Its
+[raw records](raw/native-leaf-ancestor-hosted-2026-11-15.json.gz) retain all
+30 measured trials in each of 25 alternating pairs, source and binary hashes,
+compiler version and runner information. Entries are median paired ratios with
+candidate wins out of 25.
+
+| Case           | Linux x64  | macOS ARM64 | Windows x64 |
+| -------------- | ---------- | ----------- | ----------- |
+| Depth 1        | 0.982 (17) | 0.974 (19)  | 0.981 (16)  |
+| Depth 8        | 0.907 (25) | 0.812 (25)  | 0.928 (22)  |
+| Depth 32       | 0.758 (25) | 0.695 (25)  | 0.770 (25)  |
+| Non-leaf moves | 1.005 (9)  | 1.001 (11)  | 1.006 (5)   |
+
+The non-leaf results show a possible small regression, especially on Windows;
+their ranges and individual samples are retained. They do not establish a
+whole-application gain, physical GPU result or absence of regressions in other
+workloads.
+
+[Repeat run 43796010394](https://github.com/AndrewM-F/bun-native/actions/runs/43796010394)
+used the same source revisions and fixture on fresh runners. Its
+[raw records](raw/native-leaf-ancestor-hosted-repeat-2026-11-15.json.gz)
+retain all pairs. Median ratios and candidate wins out of 25 were:
+
+| Case           | Linux x64  | macOS ARM64 | Windows x64 |
+| -------------- | ---------- | ----------- | ----------- |
+| Depth 1        | 0.963 (25) | 0.987 (17)  | 1.026 (10)  |
+| Depth 8        | 0.873 (25) | 0.812 (25)  | 0.952 (22)  |
+| Depth 32       | 0.750 (25) | 0.694 (25)  | 0.809 (25)  |
+| Non-leaf moves | 1.005 (5)  | 0.998 (14)  | 1.026 (0)   |
+
+On that Windows runner the median paired non-leaf increase was 2.4 µs per
+2,048-move batch, while the depth-32 leaf batch decreased by 102.7 µs. The
+repeat's shallow Windows result was also slower at the paired median, but had
+10 candidate wins; the first run favored the candidate. This is a measured
+tradeoff rather than evidence of no regressions, and
+[#691](https://github.com/AndrewM-F/bun-native/issues/691) tracks further
+investigation. A local candidate that limited the shortcut to detached leaves
+showed no non-leaf benefit against the broader shortcut and was discarded;
+[its samples and reconstructed patch](raw/native-leaf-ancestor-detached-macos-2026-11-15.json.gz)
+are retained. Neither run measures IPC, actual native rendering or presentation.
