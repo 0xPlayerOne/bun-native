@@ -30,12 +30,49 @@ over five runs after a warm-up run.
 bun benchmarks/renderer/clear.ts [rows] [runs]
 ```
 
+`append.ts` measures an acknowledged append to a stable wide list, then removes
+the appended node outside the timing sample. It checks the native-operation
+counts and committed node count for every sample.
+
+```sh
+bun benchmarks/renderer/append.ts [rows=4000] [samples=200]
+```
+
 The window is an in-process stand-in that counts operations and acknowledges
 immediately. Samples therefore cover only the renderer's snapshot, diff,
 publish and listener reconciliation work. They exclude core validation,
 serialization, IPC, native model work and paint, and are not input-to-paint
 latency. Timings are wall-clock per commit with nearest-rank percentiles; run
 several processes and compare distributions rather than one result.
+
+## Appending to a stable prefix
+
+When a nonempty current child list matches the start of a longer desired list,
+the renderer attaches the suffix in order without constructing and walking a
+longest-subsequence bitmap for the existing prefix. A last-element check avoids
+the full prefix scan when a changed list plainly differs. Moved and newly
+created nodes still use the same native attach operation; a protocol-peer test
+checks their resulting order.
+
+[Raw samples](raw/append-prefix-macos-2026-11-15.json.gz) compare baseline
+`717e4c975f5aac79675e1c57ba4bb704cf44cd15` and the candidate on macOS 27.2,
+Apple M2 Max, pinned Bun `b1007f117`, with other load and power uncontrolled.
+For a 4,000-row list, 20 alternating fresh-process pairs each measured 200
+appends after 20 warmups. Both AOT executables were inspected for a compiled
+program and unused JIT. The window acknowledges in process; no core
+validation, IPC, native host, or paint is measured.
+
+| Mode        | Baseline p50 | Candidate p50 | Median paired ratio |  Wins |
+| ----------- | -----------: | ------------: | ------------------: | ----: |
+| Development |     0.072 ms |      0.057 ms |               0.813 | 20/20 |
+| AOT         |     0.057 ms |      0.037 ms |               0.655 | 20/20 |
+
+A 20-pair guard using the `commit.ts` text, row, move and swap scenarios at
+1,667 rows found median paired ratios of 0.984–1.014 in development and
+1.000–1.011 in AOT; these guards do not prove the absence of small regressions.
+The original broader prefix check was rejected after row and development-move
+regressions. The measurements above do not establish end-to-end or native-paint
+latency; hosted and actual-window confirmation are still needed.
 
 ## Recorded comparison
 
