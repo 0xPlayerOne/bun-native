@@ -135,6 +135,44 @@ fn reordering_uses_index_after_detachment_and_reparenting_has_one_owner() {
 }
 
 #[test]
+fn reordering_a_subtree_preserves_cycle_and_index_checks() {
+    let tree = populated()
+        .prepare(
+            1,
+            vec![
+                create(5, box_element()),
+                insert(2, 5, 2),
+                create(6, text("child")),
+                insert(5, 6, 0),
+            ],
+            4,
+        )
+        .unwrap()
+        .tree;
+    let reordered = tree.prepare(2, vec![insert(2, 5, 0)], 6).unwrap().tree;
+    assert_eq!(
+        reordered.node(id(2)).unwrap().children(),
+        &[id(5), id(3), id(4)]
+    );
+    rejected(
+        &reordered,
+        vec![insert(2, 5, 3)],
+        6,
+        ErrorCode::InvalidCommand,
+    );
+    rejected(
+        &reordered,
+        vec![insert(2, 5, 2), insert(5, 2, 0)],
+        6,
+        ErrorCode::InvalidState,
+    );
+    assert_eq!(
+        reordered.node(id(2)).unwrap().children(),
+        &[id(5), id(3), id(4)]
+    );
+}
+
+#[test]
 fn cycles_roots_and_leaf_parents_are_rejected_without_partial_changes() {
     let tree = populated();
     rejected(&tree, vec![insert(2, 2, 0)], 4, ErrorCode::InvalidState);

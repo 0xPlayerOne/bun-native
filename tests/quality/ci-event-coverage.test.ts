@@ -98,7 +98,7 @@ test('leaf preflight pairs require their label and bind both protocol sources', 
   expect(job.if).toContain("github.event.label.name == 'diagnostic:leaf-ancestor-pairs'")
   expect(job.if).toContain('github.event.pull_request.draft == false')
   const run = job.steps.find((step) => step.name === 'Build and compare exact tree sources')?.run
-  expect(run).toContain('80a5267b0ba5781ee6c4cb0b982411c986967188')
+  expect(run).toContain('6a6b7f8d0f092083f3152150a08b85fc8f8e55f8')
   expect(run).toContain('Protocol source differs')
   expect(run).toContain('leaf_ancestor_pairs.py')
 })

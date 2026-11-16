@@ -70,15 +70,41 @@ fn nonleaf() -> (Tree, Vec<Operation>, u64) {
     }
     (tree, operations, 5)
 }
+fn reorder() -> (Tree, Vec<Operation>, u64) {
+    let tree = Tree::new(id(1))
+        .prepare(
+            0,
+            vec![
+                create(2, true),
+                insert(1, 2, 0),
+                create(3, true),
+                insert(2, 3, 0),
+                create(4, false),
+                insert(3, 4, 0),
+                create(5, false),
+                insert(2, 5, 1),
+            ],
+            1,
+        )
+        .unwrap()
+        .tree;
+    let mut operations = Vec::new();
+    for _ in 0..1024 {
+        operations.push(insert(2, 3, 1));
+        operations.push(insert(2, 3, 0));
+    }
+    (tree, operations, 5)
+}
 fn main() {
     for (name, tree, operations, last, count) in [
         ("depth1", mount(1, 512)),
         ("depth8", mount(8, 512)),
         ("depth32", mount(32, 512)),
         ("nonleaf", nonleaf()),
+        ("reorder", reorder()),
     ]
     .map(|(name, (tree, ops, last))| {
-        let count = if name == "nonleaf" {
+        let count = if name == "nonleaf" || name == "reorder" {
             5
         } else {
             last as usize + 512
@@ -88,7 +114,14 @@ fn main() {
         for trial in 0..35 {
             let prepared = tree.prepare(1, operations.clone(), last).unwrap();
             assert_eq!(prepared.metrics.node_count, count);
-            if name == "nonleaf" {
+            if name == "reorder" {
+                assert_eq!(prepared.tree.parent(id(3)), Some(id(2)));
+                assert_eq!(
+                    prepared.tree.node(id(2)).unwrap().children(),
+                    &[id(3), id(5)]
+                );
+                assert_eq!(prepared.tree.node(id(3)).unwrap().children(), &[id(4)]);
+            } else if name == "nonleaf" {
                 assert_eq!(prepared.tree.parent(id(4)), Some(id(2)));
                 assert_eq!(prepared.tree.node(id(4)).unwrap().children(), &[id(5)]);
             } else {

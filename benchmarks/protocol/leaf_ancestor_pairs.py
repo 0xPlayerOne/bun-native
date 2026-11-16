@@ -10,7 +10,7 @@ from pathlib import Path
 
 from frame_reader_pairs import cpu_model
 
-CASES = ("depth1", "depth8", "depth32", "nonleaf")
+CASES = ("depth1", "depth8", "depth32", "nonleaf", "reorder")
 
 
 def parse(output):

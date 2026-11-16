@@ -249,3 +249,25 @@ alternating pairs, its non-leaf ratio was 1.011 (7 candidate wins), so the
 alternative was discarded. The [raw local record](raw/native-leaf-ancestor-order-macos-2026-11-15.json.gz)
 contains every trial and the reconstructed patch; it does not establish the
 cause of the hosted Windows guard cost.
+
+## Same-parent subtree reorder
+
+A subtree already attached to its destination parent cannot acquire a cycle
+when it is reordered in that parent's children. The preflight handles that case
+before the ancestor walk; self-insertion and moves between parents still pass
+through the existing cycle checks. Invalid indices and transactional rejection
+are covered by a non-leaf reorder regression.
+
+The release preflight fixture now also alternates 2,048 moves of a non-leaf
+subtree within one parent and checks its final ownership and order. Two local
+25-pair runs compared baseline `6a6b7f8d` and this candidate with identical
+fixture bytes on macOS 27.2, Apple M2 Max, Rust 1.98.1. The reorder's median
+paired ratios were 0.944 and 0.929, with 22 and 21 candidate wins; median
+batch times were 139.9 versus 132.2 µs and 138.6 versus 129.9 µs respectively.
+The depth-1, depth-8, depth-32 and cross-parent guard ratios ranged from 0.997
+to 1.014. A same-binary A/A run ranged from 0.982 to 1.010 across the five
+cases; it checks run variability, not independent-build code layout. Other
+machine load and power were uncontrolled. [Raw samples and source identities](raw/native-reorder-macos-2026-11-16.json.gz)
+retain all pairs. These preflight measurements do not include IPC or native
+paint, and hosted platform confirmation is still needed. The cross-parent cost
+tracked in [#691](https://github.com/AndrewM-F/bun-native/issues/691) remains.

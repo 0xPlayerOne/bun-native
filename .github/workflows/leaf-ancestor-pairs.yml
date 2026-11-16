@@ -28,7 +28,7 @@ jobs:
           persist-credentials: false
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          ref: 80a5267b0ba5781ee6c4cb0b982411c986967188
+          ref: 6a6b7f8d0f092083f3152150a08b85fc8f8e55f8
           path: .leaf-baseline
           persist-credentials: false
       - name: Build and compare exact tree sources
@@ -41,7 +41,7 @@ jobs:
           New-Item -ItemType Directory -Path $root | Out-Null
           $baseline = (git -C .leaf-baseline rev-parse HEAD).Trim()
           $candidate = (git rev-parse HEAD).Trim()
-          if ($baseline -ne '80a5267b0ba5781ee6c4cb0b982411c986967188' -or $candidate -ne $env:CANDIDATE_SHA) { throw 'Unexpected source revisions' }
+          if ($baseline -ne '6a6b7f8d0f092083f3152150a08b85fc8f8e55f8' -or $candidate -ne $env:CANDIDATE_SHA) { throw 'Unexpected source revisions' }
           foreach ($file in @('rust-toolchain.toml', 'Cargo.lock', 'Cargo.toml', 'native/protocol/Cargo.toml')) {
             if ((Get-FileHash $file).Hash -ne (Get-FileHash (Join-Path '.leaf-baseline' $file)).Hash) { throw "Benchmark input differs: $file" }
           }
