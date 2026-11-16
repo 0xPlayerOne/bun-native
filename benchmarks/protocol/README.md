@@ -137,3 +137,10 @@ To investigate the fragmented cost, a separate local 20-pair control reversed
 the order of the two fast-path conditions. Its median candidate/baseline ratios
 were 0.995 small, 1.000 medium, 1.004 large and 1.002 fragmented. That change
 did not establish an improvement and was discarded. [Raw records](raw/native-frame-branch-order-macos-2026-11-15.json.gz).
+
+A second local candidate split the first buffer read from the fragmented loop.
+Two 20-pair runs gave fragmented candidate/baseline ratios of 0.996 and 0.989,
+with 12 and 13 wins respectively. Those small and variable gains did not
+justify the duplicated control flow, so it was discarded. The [raw records](raw/native-frame-split-macos-2026-11-15.json.gz)
+retain both executable hashes and all rounds; the candidate patch was
+reconstructed after the experiment rather than captured before its revert.
