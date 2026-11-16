@@ -9,7 +9,7 @@ updates:
     open-pull-requests-limit: 3
     ignore:
       # Code Foundry runtime pins are maintained together with runtime_ref.
-      - dependency-name: '0xPlayerOne/code-foundry*'
+      - dependency-name: 'AndrewM-F/code-foundry*'
     groups:
       github-actions:
         applies-to: version-updates

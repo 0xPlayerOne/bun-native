@@ -318,9 +318,9 @@ jobs:
       contents: read
       packages: read
       security-events: write
-    uses: 0xPlayerOne/code-foundry/.github/workflows/codeql.yml@a8fcac90f8c96e1f294aecc7f3a2e874803b9c2b
+    uses: AndrewM-F/code-foundry/.github/workflows/codeql.yml@a8fcac90f8c96e1f294aecc7f3a2e874803b9c2b
     with:
-      runtime-repository: 0xPlayerOne/code-foundry
+      runtime-repository: AndrewM-F/code-foundry
       runtime-ref: a8fcac90f8c96e1f294aecc7f3a2e874803b9c2b
       runner: ubuntu-latest
       # Rust analysis covers our crates plus the vendored files our patches
