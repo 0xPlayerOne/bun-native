@@ -144,3 +144,10 @@ with 12 and 13 wins respectively. Those small and variable gains did not
 justify the duplicated control flow, so it was discarded. The [raw records](raw/native-frame-split-macos-2026-11-15.json.gz)
 retain both executable hashes and all rounds; the candidate patch was
 reconstructed after the experiment rather than captured before its revert.
+
+A third local candidate used one newline branch per read, decoding from the
+source buffer or accumulated buffer in that branch. In 20 alternating pairs
+its median candidate/baseline ratios were 1.004 small, 1.030 medium, 0.999
+large and 0.996 fragmented. Medium frames were slower in all 20 pairs, so this
+alternative was discarded. The [raw record](raw/native-frame-one-branch-macos-2026-11-15.json.gz)
+includes the exact candidate patch and executable identities.
