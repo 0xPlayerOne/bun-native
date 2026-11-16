@@ -159,8 +159,8 @@ function layout(window: NativeWindow): Promise<Layout> {
  * by the spawned host). On a missing entry this tells a drag GPUI never saw
  * from a drag whose target handler never ran.
  */
-const dragTrace = backend === 'appkit' ? join(output, `drag-trace-${process.pid}.json`) : undefined
-if (dragTrace !== undefined) process.env['BUN_NATIVE_PHASE_TRACE'] = dragTrace
+const dragTracePath = (stage: string) => join(output, `drag-trace-${process.pid}-${stage}.json`)
+const dragTrace = backend === 'appkit' ? dragTracePath('qualification') : undefined
 function dragTraceEvidence(): unknown {
   if (dragTrace === undefined || !existsSync(dragTrace)) return null
   try {
@@ -614,13 +614,18 @@ async function rawHandles() {
 }
 
 try {
+  // Each application owns a host that creates its trace exclusively. Reusing
+  // one path suppresses the later host's diagnostics with EEXIST.
+  if (dragTrace !== undefined) process.env['BUN_NATIVE_PHASE_TRACE'] = dragTracePath('denial')
   await deniedByDefault()
+  if (dragTrace !== undefined) process.env['BUN_NATIVE_PHASE_TRACE'] = dragTrace
   const targets = await qualification()
   assert.deepEqual(
     targets.map((target) => target.active),
     [false, false, false]
   )
   record('shutdownRevokes', { active: 0 })
+  if (dragTrace !== undefined) process.env['BUN_NATIVE_PHASE_TRACE'] = dragTracePath('raw-handles')
   await rawHandles()
 } finally {
   rmSync(base, { recursive: true, force: true })
