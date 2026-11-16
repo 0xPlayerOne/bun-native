@@ -72,7 +72,25 @@ A 20-pair guard using the `commit.ts` text, row, move and swap scenarios at
 1.000–1.011 in AOT; these guards do not prove the absence of small regressions.
 The original broader prefix check was rejected after row and development-move
 regressions. The measurements above do not establish end-to-end or native-paint
-latency; hosted and actual-window confirmation are still needed.
+latency; actual-window confirmation is still needed.
+
+[Hosted run 43786037588](https://github.com/0xPlayerOne/bun-native/actions/runs/43786037588)
+compared baseline `717e4c97` with candidate `155c8592`, using the same fixture,
+pinned Bun and 12 alternating pairs on each runner. Both AOT executables were
+inspected for a compiled program and unused JIT. [Raw records](raw/append-prefix-hosted-2026-11-15.json.gz)
+retain every append sample, guard result and source/executable identity. Values
+are median paired candidate/baseline ratios, with candidate wins out of 12.
+
+| Mode        | Linux x64  | macOS ARM64 | Windows x64 |
+| ----------- | ---------- | ----------- | ----------- |
+| Development | 0.977 (6)  | 0.811 (10)  | 0.836 (11)  |
+| AOT         | 0.805 (12) | 0.626 (12)  | 0.762 (11)  |
+
+Linux development is inconclusive. The development text guard ratios were
+1.036, 1.035 and 1.059 on Linux, macOS and Windows respectively, corresponding
+to median per-process increases of about 0.28–0.30 µs; this is a possible cost.
+Other guard results and variability are retained in the raw records. This
+still excludes the native host, IPC and paint; it is not an end-to-end result.
 
 ## Recorded comparison
 
