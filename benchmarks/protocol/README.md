@@ -112,3 +112,28 @@ The medium-frame improvement is consistent in these local reader samples; the
 small and fragmented differences are close to noise and include a possible
 fragmented-frame cost. This does not measure IPC, native UI, end-to-end latency,
 or other platforms. Hosted release-host confirmation remains necessary.
+
+[Hosted paired run 43779313132](https://github.com/0xPlayerOne/bun-native/actions/runs/43779313132)
+compared baseline `8ca85c34` and candidate `7c3b1729` on the same runner for
+each platform, with 20 alternating pairs of 10,000 parses per round. The
+[complete raw records](raw/native-frame-direct-hosted-2026-11-15.json.gz)
+include each round, compiler, runner image, CPU and executable hashes. Entries
+below are median paired candidate/baseline ratios (candidate wins out of 20).
+
+| Case       | Linux x64  | macOS ARM64 | Windows x64 |
+| ---------- | ---------- | ----------- | ----------- |
+| small      | 0.959 (16) | 0.941 (15)  | 0.980 (18)  |
+| medium     | 0.973 (18) | 0.961 (12)  | 0.944 (20)  |
+| large      | 1.001 (7)  | 0.975 (13)  | 0.969 (20)  |
+| fragmented | 1.007 (4)  | 1.021 (6)   | 0.972 (20)  |
+
+Complete small and medium frames favored the candidate on each hosted runner.
+The macOS fragmented case had a 2.1% median increase and Linux a 0.7% increase;
+these samples are retained as possible regressions, not treated as proof of no
+cost. The measurements remain an in-memory reader comparison rather than native
+window or end-to-end evidence.
+
+To investigate the fragmented cost, a separate local 20-pair control reversed
+the order of the two fast-path conditions. Its median candidate/baseline ratios
+were 0.995 small, 1.000 medium, 1.004 large and 1.002 fragmented. That change
+did not establish an improvement and was discarded. [Raw records](raw/native-frame-branch-order-macos-2026-11-15.json.gz).
