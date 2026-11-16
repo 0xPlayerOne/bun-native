@@ -27,8 +27,8 @@ describe('standalone package source contracts (inert fixtures; no install, app b
     const raw = Bun.JSONC.parse(await Bun.file(join(repository, 'bun.lock')).text())
     const lock = lockedPackages(raw)
     const subset = dependencyClosure(lock, {
-      '@babel/core': '7.29.7',
-      'babel-preset-solid': '1.9.16',
+      '@babel/core': '7.29.13',
+      'babel-preset-solid': '1.9.19',
       '@types/bun': '1.4.4',
     })
     const nested = 'babel-plugin-jsx-dom-expressions/@babel/helper-module-imports'
@@ -72,7 +72,7 @@ describe('standalone package source contracts (inert fixtures; no install, app b
     expect(() => dependencyClosure(lock, { '@types/bun': '0.0.1' })).toThrow('does not pin')
     const missing = structuredClone(lock)
     delete missing.packages['@babel/parser']
-    expect(() => dependencyClosure(missing, { '@babel/core': '7.29.7' })).toThrow(
+    expect(() => dependencyClosure(missing, { '@babel/core': '7.29.13' })).toThrow(
       'Source lock is missing'
     )
     expect(() => lockedPackages(null)).toThrow()
@@ -234,7 +234,7 @@ describe('standalone package source contracts (inert fixtures; no install, app b
           expect(pkg.scripts.dev).toStartWith('MIMALLOC_PURGE_DELAY=0 bun --no-install ')
           expect(pkg.scripts.build).not.toContain('MIMALLOC')
           expect(pkg.dependencies[framework === 'solid' ? 'solid-js' : 'react']).toBe(
-            framework === 'solid' ? '1.9.18' : '19.3.1'
+            framework === 'solid' ? '1.9.19' : '19.3.1'
           )
           expect(pkg.devDependencies['@types/bun']).toBe('1.4.4')
           if (framework === 'react')
