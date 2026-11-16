@@ -15,6 +15,9 @@ afterEach(() => {
 })
 
 const COMMIT = 'a'.repeat(40)
+// A hosted Windows fixture took 7.8 seconds, exceeding Bun's default timeout;
+// every source and evidence assertion remains unchanged.
+const FILE_IO_TIMEOUT_MS = 30_000
 
 function write(path: string, text: string) {
   mkdirSync(dirname(path), { recursive: true })
@@ -119,56 +122,70 @@ test('every advertised macOS feature that M1 and M2 name has an expected report'
   for (const feature of FEATURES) expect(feature.reports.length).toBeGreaterThan(0)
 })
 
-test('a complete, source-matched evidence tree passes and binds every file', () => {
-  const inputs = passingTree()
-  const record = buildRecord(inputs)
-  expect(record.failures).toEqual([])
-  expect(record.status).toBe('passed')
-  expect(record.features.every((feature) => feature.status === 'passed')).toBe(true)
-  expect(Object.keys(record.source.filesSha256)).toContain('tests/native/fixture.ts')
-  expect(Object.keys(record.source.filesSha256)).toContain('.github/workflows/native-platforms.yml')
-  expect(record.host?.sha256).toBe(sha256(inputs.host))
-})
+test(
+  'a complete, source-matched evidence tree passes and binds every file',
+  () => {
+    const inputs = passingTree()
+    const record = buildRecord(inputs)
+    expect(record.failures).toEqual([])
+    expect(record.status).toBe('passed')
+    expect(record.features.every((feature) => feature.status === 'passed')).toBe(true)
+    expect(Object.keys(record.source.filesSha256)).toContain('tests/native/fixture.ts')
+    expect(Object.keys(record.source.filesSha256)).toContain(
+      '.github/workflows/native-platforms.yml'
+    )
+    expect(record.host?.sha256).toBe(sha256(inputs.host))
+  },
+  FILE_IO_TIMEOUT_MS
+)
 
-test('a report that is missing, unverified, Linux or short of outcomes fails the record', () => {
-  const inputs = passingTree()
-  rmSync(join(inputs.evidence, 'overlays-aot/overlays.json'))
-  write(
-    join(inputs.evidence, 'app-menu-development/app-menu.json'),
-    JSON.stringify({ status: 'unverified', platform: 'darwin', mode: 'development' })
-  )
-  write(
-    join(inputs.evidence, 'processes-aot/processes.json'),
-    JSON.stringify({ backend: 'posix', mode: 'development' })
-  )
-  const record = buildRecord(inputs)
-  expect(record.status).toBe('failed')
-  expect(record.failures).toContain('overlays-aot/overlays.json: missing')
-  expect(record.failures.join('\n')).toContain(
-    'app-menu-development/app-menu.json: status="unverified" (want "verified")'
-  )
-  expect(record.failures.join('\n')).toContain(
-    'app-menu-development/app-menu.json: outcomes missing'
-  )
-  expect(record.failures.join('\n')).toContain('processes-aot/processes.json: mode="development"')
-})
+test(
+  'a report that is missing, unverified, Linux or short of outcomes fails the record',
+  () => {
+    const inputs = passingTree()
+    rmSync(join(inputs.evidence, 'overlays-aot/overlays.json'))
+    write(
+      join(inputs.evidence, 'app-menu-development/app-menu.json'),
+      JSON.stringify({ status: 'unverified', platform: 'darwin', mode: 'development' })
+    )
+    write(
+      join(inputs.evidence, 'processes-aot/processes.json'),
+      JSON.stringify({ backend: 'posix', mode: 'development' })
+    )
+    const record = buildRecord(inputs)
+    expect(record.status).toBe('failed')
+    expect(record.failures).toContain('overlays-aot/overlays.json: missing')
+    expect(record.failures.join('\n')).toContain(
+      'app-menu-development/app-menu.json: status="unverified" (want "verified")'
+    )
+    expect(record.failures.join('\n')).toContain(
+      'app-menu-development/app-menu.json: outcomes missing'
+    )
+    expect(record.failures.join('\n')).toContain('processes-aot/processes.json: mode="development"')
+  },
+  FILE_IO_TIMEOUT_MS
+)
 
-test('an AOT package built from other sources, another host or a changed binary fails', () => {
-  const inputs = passingTree()
-  writeFileSync(join(inputs.source, 'tests/native/fixture.ts'), '// edited after the build\n')
-  writeFileSync(join(inputs.evidence, 'overlays-package/overlays'), 'replaced')
-  const record = buildRecord({ ...inputs, commit: 'c'.repeat(40) })
-  const failures = record.failures.join('\n')
-  expect(failures).toContain(
-    'overlays: AOT sources differ from the checkout: tests/native/fixture.ts'
-  )
-  expect(failures).toContain('overlays: the AOT application differs from its manifest')
-  expect(failures).toContain(`overlays: AOT source commit ${COMMIT} is not ${'c'.repeat(40)}`)
-  writeFileSync(inputs.host, 'another host')
-  expect(buildRecord(inputs).failures.join('\n')).toContain(
-    'overlays: AOT package names another host or profile'
-  )
-})
+test(
+  'an AOT package built from other sources, another host or a changed binary fails',
+  () => {
+    const inputs = passingTree()
+    writeFileSync(join(inputs.source, 'tests/native/fixture.ts'), '// edited after the build\n')
+    writeFileSync(join(inputs.evidence, 'overlays-package/overlays'), 'replaced')
+    const record = buildRecord({ ...inputs, commit: 'c'.repeat(40) })
+    const failures = record.failures.join('\n')
+    expect(failures).toContain(
+      'overlays: AOT sources differ from the checkout: tests/native/fixture.ts'
+    )
+    expect(failures).toContain('overlays: the AOT application differs from its manifest')
+    expect(failures).toContain(`overlays: AOT source commit ${COMMIT} is not ${'c'.repeat(40)}`)
+    writeFileSync(inputs.host, 'another host')
+    expect(buildRecord(inputs).failures.join('\n')).toContain(
+      'overlays: AOT package names another host or profile'
+    )
+  },
+  FILE_IO_TIMEOUT_MS
+)
 
 type Step = { name?: string; if?: string; run?: string; 'continue-on-error'?: unknown }
 const steps = (
