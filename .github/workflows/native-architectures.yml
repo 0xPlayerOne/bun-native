@@ -207,6 +207,9 @@ jobs:
           key: ${{ steps.toolchain.outputs.target-cache-key }}
       - name: Development actual native paint and lifecycle
         timeout-minutes: 3
+        env:
+          BUN_NATIVE_STARTUP_TRACE: '1'
+          BUN_NATIVE_STARTUP_LOG: '1'
         run: |
           python3 scripts/quality/native-platform-smoke.py `
             --output (Join-Path $env:NATIVE_EVIDENCE 'development') `
@@ -228,6 +231,9 @@ jobs:
           }
       - name: AOT actual native paint and lifecycle
         timeout-minutes: 3
+        env:
+          BUN_NATIVE_STARTUP_TRACE: '1'
+          BUN_NATIVE_STARTUP_LOG: '1'
         run: |
           python3 scripts/quality/native-platform-smoke.py `
             --output (Join-Path $env:NATIVE_EVIDENCE 'aot') `

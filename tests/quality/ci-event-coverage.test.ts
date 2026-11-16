@@ -103,6 +103,24 @@ test('leaf preflight pairs require their label and bind both protocol sources', 
   expect(run).toContain('leaf_ancestor_pairs.py')
 })
 
+test('macOS x64 smoke retains bounded startup evidence in both execution modes', () => {
+  const source = readFileSync(join(root, '.github/workflows/native-architectures.yml'), 'utf8')
+  const workflow = Bun.YAML.parse(source) as {
+    jobs: Record<
+      string,
+      { steps: Array<{ name?: string; env?: Record<string, string>; run?: string }> }
+    >
+  }
+  const steps = workflow.jobs['macos-x64']!.steps
+  for (const mode of ['Development', 'AOT']) {
+    const step = steps.find((item) => item.name === `${mode} actual native paint and lifecycle`)
+    expect(step?.env?.['BUN_NATIVE_STARTUP_TRACE']).toBe('1')
+    expect(step?.env?.['BUN_NATIVE_STARTUP_LOG']).toBe('1')
+    expect(step?.run).toContain('native-platform-smoke.py')
+    expect(step?.run).toContain('--require-metal-device')
+  }
+})
+
 for (const path of readyOnlyWorkflows) {
   test(`${path} covers ready-created and reopened PRs without validating drafts`, () => {
     const source = readFileSync(join(root, path), 'utf8')
