@@ -227,3 +227,10 @@ investigation. A local candidate that limited the shortcut to detached leaves
 showed no non-leaf benefit against the broader shortcut and was discarded;
 [its samples and reconstructed patch](raw/native-leaf-ancestor-detached-macos-2026-11-15.json.gz)
 are retained. Neither run measures IPC, actual native rendering or presentation.
+
+A local condition-order control checked whether testing nonempty children
+before equality reduced the move cost. Against the broad implementation in 25
+alternating pairs, its non-leaf ratio was 1.011 (7 candidate wins), so the
+alternative was discarded. The [raw local record](raw/native-leaf-ancestor-order-macos-2026-11-15.json.gz)
+contains every trial and the reconstructed patch; it does not establish the
+cause of the hosted Windows guard cost.
