@@ -45,19 +45,17 @@ jobs:
           $baseline = (git -C .renderer-baseline rev-parse HEAD).Trim()
           $candidate = (git rev-parse HEAD).Trim()
           if ($baseline -ne '717e4c975f5aac79675e1c57ba4bb704cf44cd15' -or $candidate -ne $env:CANDIDATE_SHA) { throw 'Unexpected source revisions' }
-          foreach ($file in @('bun.lock', 'toolchain.json', 'benchmarks/renderer/commit.ts')) {
+          foreach ($file in @('bun.lock', 'toolchain.json')) {
             if ((Get-FileHash $file).Hash -ne (Get-FileHash (Join-Path '.renderer-baseline' $file)).Hash) { throw "Benchmark input differs: $file" }
           }
           Copy-Item 'benchmarks/renderer/append.ts' '.renderer-baseline/benchmarks/renderer/append.ts'
           $guard = [System.IO.File]::ReadAllText('benchmarks/renderer/commit.ts')
+          $baselineGuard = [System.IO.File]::ReadAllText('.renderer-baseline/benchmarks/renderer/commit.ts')
           $marker = '.toFixed(4)'
-          $position = $guard.IndexOf($marker, [System.StringComparison]::Ordinal)
-          if ($position -lt 0 -or $position -ne $guard.LastIndexOf($marker, [System.StringComparison]::Ordinal)) { throw 'Unexpected guard precision marker' }
-          $guard = $guard.Replace('.toFixed(4)', '.toFixed(6)')
-          foreach ($prefix in @('.', '.renderer-baseline')) {
-            [System.IO.File]::WriteAllText((Join-Path (Resolve-Path $prefix) 'benchmarks/renderer/.guard-precision.ts'), $guard, [System.Text.UTF8Encoding]::new($false))
-          }
-          @{ baseline = $baseline; candidate = $candidate; baselineSource = (Get-FileHash '.renderer-baseline/packages/renderer/src/native-tree.ts').Hash; candidateSource = (Get-FileHash 'packages/renderer/src/native-tree.ts').Hash; appendFixture = (Get-FileHash 'benchmarks/renderer/append.ts').Hash; guardFixture = (Get-FileHash 'benchmarks/renderer/.guard-precision.ts').Hash; bun = (bun --revision | Out-String).Trim(); runner = $env:RUNNER_OS; architecture = $env:RUNNER_ARCH; image = $env:ImageVersion } | ConvertTo-Json | Set-Content -Encoding utf8 (Join-Path $root 'sources.json')
+          $position = $baselineGuard.IndexOf($marker, [System.StringComparison]::Ordinal)
+          if ($position -lt 0 -or $position -ne $baselineGuard.LastIndexOf($marker, [System.StringComparison]::Ordinal) -or $baselineGuard.Replace($marker, '.toFixed(6)') -cne $guard) { throw 'Guard fixture differs beyond output precision' }
+          Copy-Item 'benchmarks/renderer/commit.ts' '.renderer-baseline/benchmarks/renderer/commit.ts' -Force
+          @{ baseline = $baseline; candidate = $candidate; baselineSource = (Get-FileHash '.renderer-baseline/packages/renderer/src/native-tree.ts').Hash; candidateSource = (Get-FileHash 'packages/renderer/src/native-tree.ts').Hash; appendFixture = (Get-FileHash 'benchmarks/renderer/append.ts').Hash; guardFixture = (Get-FileHash 'benchmarks/renderer/commit.ts').Hash; bun = (bun --revision | Out-String).Trim(); runner = $env:RUNNER_OS; architecture = $env:RUNNER_ARCH; image = $env:ImageVersion } | ConvertTo-Json | Set-Content -Encoding utf8 (Join-Path $root 'sources.json')
           $suffix = if ($env:RUNNER_OS -eq 'Windows') { '.exe' } else { '' }
           foreach ($side in @('baseline', 'candidate')) {
             if ($side -eq 'baseline') { Push-Location .renderer-baseline }
@@ -67,7 +65,7 @@ jobs:
                 if ($LASTEXITCODE -ne 0) { throw 'Baseline install failed' }
               }
               foreach ($kind in @('append', 'guard')) {
-                $entry = if ($kind -eq 'append') { 'benchmarks/renderer/append.ts' } else { 'benchmarks/renderer/.guard-precision.ts' }
+                $entry = if ($kind -eq 'append') { 'benchmarks/renderer/append.ts' } else { 'benchmarks/renderer/commit.ts' }
                 $module = Join-Path $root "$kind-$side.js"
                 $binary = Join-Path $root "$kind-$side-aot$suffix"
                 bun build $entry --target bun --outfile $module

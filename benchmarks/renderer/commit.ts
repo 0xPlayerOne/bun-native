@@ -165,7 +165,7 @@ async function measure(scenario: Scenario, rows: number, samples: number) {
   await root.dispose().catch(() => {})
   close()
   const sorted = timings.toSorted((left, right) => left - right)
-  const ms = (value: number) => Number((value / 1e6).toFixed(4))
+  const ms = (value: number) => Number((value / 1e6).toFixed(6))
   return {
     scenario,
     rows,

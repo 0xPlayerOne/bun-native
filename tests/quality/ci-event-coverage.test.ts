@@ -83,6 +83,7 @@ test('renderer pairs use the explicit label, matching fixtures and inspected AOT
   )?.run
   expect(run).toContain('717e4c975f5aac79675e1c57ba4bb704cf44cd15')
   expect(run).toContain('Benchmark input differs')
+  expect(run).toContain('Guard fixture differs beyond output precision')
   expect(run).toContain('jit!=="unused"')
   expect(run).toContain('append_pairs.py')
 })
