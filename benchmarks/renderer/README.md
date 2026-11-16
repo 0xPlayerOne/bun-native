@@ -111,7 +111,27 @@ plus five alternating process pairs per mode. Each launch checks every full
 append and removal paint tree and owned-process cleanup. Its acknowledgement
 and observed-paint intervals include host/IPC work; the latter also includes
 paint instrumentation, file I/O and polling. Neither measures presentation.
-The probe must produce a successful retained run before supporting a claim.
+
+Two runs on Linux x64 hosted VMs with Intel Xeon 6975P-C and llvmpipe compared
+baseline `717e4c97` with candidate `085254c5` using pinned Bun `b1007f117`.
+Both completed every native tree and process-cleanup check. Values below are
+median paired candidate/baseline ratios, with candidate wins out of five; each
+pair contains eight samples after two per-process warmups.
+
+| Run                                                                          | Development ack |   AOT ack | Development paint observed | AOT paint observed |
+| ---------------------------------------------------------------------------- | --------------: | --------: | -------------------------: | -----------------: |
+| [First](https://github.com/0xPlayerOne/bun-native/actions/runs/43790911829)  |       0.755 (3) | 0.879 (4) |                  0.963 (5) |          0.970 (5) |
+| [Repeat](https://github.com/0xPlayerOne/bun-native/actions/runs/43791763023) |       0.755 (5) | 1.083 (1) |                  0.990 (3) |          1.001 (2) |
+
+The AOT acknowledgement ratio ranged from 0.223 to 2.542 in the first run;
+the repeat's paired median increased by 0.027 ms. These small samples and
+opposite AOT results do not establish a real-host gain. The paint observation
+includes polling and full-tree evidence generation, which can dominate the
+renderer change. The [first](raw/native-append-linux-first-2026-11-15.json.gz)
+and [repeat](raw/native-append-linux-repeat-2026-11-15.json.gz) compact records
+retain all timings, cleanup results, the initial tree and hashes of each raw
+evidence file. The linked Actions artifacts retain the complete original
+paint and process records for their retention period.
 
 ## Recorded comparison
 
