@@ -88,6 +88,21 @@ test('renderer pairs use the explicit label, matching fixtures and inspected AOT
   expect(run).toContain('append_pairs.py')
 })
 
+test('leaf preflight pairs require their label and bind both protocol sources', () => {
+  const source = readFileSync(join(root, '.github/workflows/leaf-ancestor-pairs.yml'), 'utf8')
+  const workflow = Bun.YAML.parse(source) as {
+    jobs: Record<string, { if?: string; steps: Array<{ name?: string; run?: string }> }>
+  }
+  expect(pullRequestTypes(source)).toEqual(['labeled'])
+  const job = workflow.jobs['pairs']!
+  expect(job.if).toContain("github.event.label.name == 'diagnostic:leaf-ancestor-pairs'")
+  expect(job.if).toContain('github.event.pull_request.draft == false')
+  const run = job.steps.find((step) => step.name === 'Build and compare exact tree sources')?.run
+  expect(run).toContain('80a5267b0ba5781ee6c4cb0b982411c986967188')
+  expect(run).toContain('Protocol source differs')
+  expect(run).toContain('leaf_ancestor_pairs.py')
+})
+
 for (const path of readyOnlyWorkflows) {
   test(`${path} covers ready-created and reopened PRs without validating drafts`, () => {
     const source = readFileSync(join(root, path), 'utf8')
