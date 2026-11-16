@@ -153,7 +153,7 @@ and retained outcomes make build failures and missing coverage visible. This
 control cannot identify a retaining root and does not qualify native paint.
 
 The separate `diagnostic:windows-candidate` label compares the pinned runtime
-with the integrity-checked November 14 Bun canary on a Windows runner. It
+with the integrity-checked November 15 Bun canary archive on a Windows runner. It
 compiles the same React bundle with each compiler, checks both executables for
 machine-code AOT and JIT removal, and records five alternating development/AOT
 pairs against one headless peer. A deliberately pinned cycle target must remain
@@ -163,6 +163,13 @@ the repository pin is unchanged. Passing the diagnostic means its observations
 and positive controls were valid, not that the original benchmark passed or a
 toolchain upgrade is qualified. Runtime and compiler layout differences prevent
 attributing a changed outcome to a specific fix.
+
+The current candidate archive is `@oven/bun-windows-x64` version
+`1.4.4-canary.20261115.1`, pinned by SHA-512; the runner must also verify
+revision `ed436333444b0b99937967b857fef0131b23b800` before running it. The
+matching integrity-verified macOS archive reports Bun `1.4.5-canary.1` at that
+revision, despite the npm archive's 1.4.4 version label. The Windows candidate
+has not yet been qualified; no repository toolchain pin changes here.
 
 [Run 43695919927](https://github.com/AndrewM-F/bun-native/actions/runs/43695919927)
 completed this control at source `4f145720` with the pinned Bun revision

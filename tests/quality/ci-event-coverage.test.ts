@@ -267,6 +267,11 @@ test('Windows runtime source build is limited to its explicit label and exact Bu
     step.run?.includes('Candidate archive integrity')
   )?.run
   expect(prepare).toContain('runtime.jit !== "unused"')
+  expect(prepare).toContain('bun-windows-x64-1.4.4-canary.20261115.1.tgz')
+  expect(prepare).toContain(
+    'avVJ9gPeZAmu964r0U8+OGBHtPuXJ11yVaE4Oi1QxrtcaQIdu4xE6HDqZkoqQUoy0Q3+2D4KX0yBgl1/PpKH6A=='
+  )
+  expect(prepare).toContain('ed436333444b0b99937967b857fef0131b23b800')
   const compare = candidate.steps.find((step) => step.run?.includes('positive control failed'))?.run
   expect(compare).toContain('foreach ($trial in 0..4)')
   expect(compare).toContain('headless-adapter-control.py')

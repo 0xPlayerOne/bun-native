@@ -605,14 +605,14 @@ jobs:
           New-Item -ItemType Directory -Path $root | Out-Null
           $baseline = (Get-Command bun -CommandType Application).Source
           $archive = Join-Path $root 'candidate.tgz'
-          Invoke-WebRequest 'https://registry.npmjs.org/@oven/bun-windows-x64/-/bun-windows-x64-1.4.4-canary.20261114.1.tgz' -OutFile $archive
+          Invoke-WebRequest 'https://registry.npmjs.org/@oven/bun-windows-x64/-/bun-windows-x64-1.4.4-canary.20261115.1.tgz' -OutFile $archive
           $hash = [Convert]::ToBase64String([System.Security.Cryptography.SHA512]::HashData([System.IO.File]::ReadAllBytes($archive)))
-          if ($hash -ne 'S8s0ZXYbgs+L0YWg9y2XX/Kx6Js//kEPLR3vOhpV4JvXqVjhF8//nzDldMa1nfLC+xra50gMTkVAH9ZkRqzECQ==') { throw 'Candidate archive integrity mismatch' }
+          if ($hash -ne 'avVJ9gPeZAmu964r0U8+OGBHtPuXJ11yVaE4Oi1QxrtcaQIdu4xE6HDqZkoqQUoy0Q3+2D4KX0yBgl1/PpKH6A==') { throw 'Candidate archive integrity mismatch' }
           tar -xf $archive -C $root
           if ($LASTEXITCODE -ne 0) { throw 'Candidate extraction failed' }
           $candidate = Join-Path $root 'package/bin/bun.exe'
           $revision = & $candidate -e 'process.stdout.write(Bun.revision)'
-          if ($LASTEXITCODE -ne 0 -or $revision -ne '9098897a17372d46559d1a68a44061f493546631') { throw 'Candidate revision mismatch' }
+          if ($LASTEXITCODE -ne 0 -or $revision -ne 'ed436333444b0b99937967b857fef0131b23b800') { throw 'Candidate revision mismatch' }
           Get-FileHash $baseline, $candidate -Algorithm SHA256 | Format-List | Out-File (Join-Path $root 'runtime-hashes.txt')
           $baseline | Out-File (Join-Path $root 'baseline-path.txt') -Encoding utf8
           bun build tests/core/protocol-peer.ts --compile --outfile (Join-Path $root 'peer.exe')
