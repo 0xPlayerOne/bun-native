@@ -1,54 +1,45 @@
 version: 2
+multi-ecosystem-groups:
+  dependencies:
+    schedule:
+      interval: weekly
+      day: sunday
 updates:
   - package-ecosystem: github-actions
     directory: /
     target-branch: main
-    schedule:
-      interval: weekly
-      day: sunday
-    open-pull-requests-limit: 3
+    multi-ecosystem-group: dependencies
+    patterns: ['*']
     ignore:
       # Code Foundry runtime pins are maintained together with runtime_ref.
+      - dependency-name: 'AndrewM-F/code-foundry*'
       - dependency-name: '0xPlayerOne/code-foundry*'
-    groups:
-      github-actions:
-        applies-to: version-updates
-        patterns: ['*']
   - package-ecosystem: bun
     directory: /
     target-branch: main
+    multi-ecosystem-group: dependencies
+    patterns: ['*']
     ignore:
       # Solid's pinned preset requires Babel 7; qualify the next major in #316.
       - dependency-name: '@babel/core'
         update-types: ['version-update:semver-major']
-    schedule:
-      interval: weekly
-      day: sunday
-    open-pull-requests-limit: 3
-    groups:
-      bun-dependencies:
-        applies-to: version-updates
-        patterns: ['*']
-        # Babel's pinned compiler pairing and transitive lockfile need separate validation.
-        exclude-patterns: ['@babel/core']
   - package-ecosystem: cargo
     directory: /
     target-branch: main
-    schedule:
-      interval: weekly
-      day: sunday
-    open-pull-requests-limit: 3
-    groups:
-      cargo-dependencies:
-        applies-to: version-updates
-        patterns: ['*']
-        # #578 demonstrated duplicate GPUI-bound crate identities and native ABI failures.
-        # Keep these upgrades individually reviewable until a compatible integration lands.
-        exclude-patterns: ['accesskit', 'base64', 'x11rb']
+    multi-ecosystem-group: dependencies
+    patterns: ['*']
+    ignore:
+      # These need a coordinated GPUI upgrade; remove the holds with #697.
+      - dependency-name: accesskit
+        versions: ['>= 0.25.0']
+      - dependency-name: accesskit_consumer
+        versions: ['>= 0.39.0']
+      - dependency-name: base64
+        versions: ['>= 0.23.0']
+      - dependency-name: xkbcommon
+        versions: ['>= 0.9.0']
   - package-ecosystem: pip
     directory: /scripts/quality
     target-branch: main
-    schedule:
-      interval: weekly
-      day: sunday
-    open-pull-requests-limit: 1
+    multi-ecosystem-group: dependencies
+    patterns: ['*']

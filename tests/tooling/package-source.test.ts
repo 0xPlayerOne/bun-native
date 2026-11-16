@@ -81,9 +81,9 @@ describe('package export/import materialization (source reads only)', () => {
       './build': './src/build.ts',
     })
     expect(manifests['@bun-native/solid']!.dependencies).toMatchObject({
-      '@babel/core': '7.29.7',
-      'babel-preset-solid': '1.9.16',
-      'solid-js': '1.9.18',
+      '@babel/core': '7.29.13',
+      'babel-preset-solid': '1.9.19',
+      'solid-js': '1.9.19',
     })
     expect(manifests['@bun-native/react']!.dependencies).toMatchObject({
       react: '19.3.1',
@@ -91,7 +91,7 @@ describe('package export/import materialization (source reads only)', () => {
       '@types/react': '19.3.0',
       '@types/react-reconciler': '0.34.1',
     })
-    expect(manifests['@bun-native/cli']!.dependencies).toEqual({ oxlint: '1.92.0' })
+    expect(manifests['@bun-native/cli']!.dependencies).toEqual({ oxlint: '1.93.0' })
     const consumers = await consumerDefinitions(repository, manifests)
     for (const framework of ['solid', 'react'] as const) {
       expect(consumers[framework].devDependencies['@types/bun']).toBe('1.4.4')
@@ -105,7 +105,7 @@ describe('package export/import materialization (source reads only)', () => {
       ]![0]
     ).toBe('@babel/helper-module-imports@7.18.6')
     expect(consumers.solid.lock.packages['babel-preset-solid']![0]).toBe(
-      'babel-preset-solid@1.9.16'
+      'babel-preset-solid@1.9.19'
     )
     // ... and React projects install none of it.
     expect(
