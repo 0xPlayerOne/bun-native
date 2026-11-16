@@ -69,6 +69,24 @@ test('reader pairs run only on the explicit label for a ready PR and bind both s
   expect(run).toContain('frame_reader_pairs.py')
 })
 
+test('renderer pairs use the explicit label, matching fixtures and inspected AOT', () => {
+  const source = readFileSync(join(root, '.github/workflows/renderer-append-pairs.yml'), 'utf8')
+  const workflow = Bun.YAML.parse(source) as {
+    jobs: Record<string, { if?: string; steps: Array<{ name?: string; run?: string }> }>
+  }
+  expect(pullRequestTypes(source)).toEqual(['labeled'])
+  const job = workflow.jobs['pairs']!
+  expect(job.if).toContain("github.event.label.name == 'diagnostic:renderer-append-pairs'")
+  expect(job.if).toContain('github.event.pull_request.draft == false')
+  const run = job.steps.find(
+    (step) => step.name === 'Build and compare exact renderer sources'
+  )?.run
+  expect(run).toContain('717e4c975f5aac79675e1c57ba4bb704cf44cd15')
+  expect(run).toContain('Benchmark input differs')
+  expect(run).toContain('jit!=="unused"')
+  expect(run).toContain('append_pairs.py')
+})
+
 for (const path of readyOnlyWorkflows) {
   test(`${path} covers ready-created and reopened PRs without validating drafts`, () => {
     const source = readFileSync(join(root, path), 'utf8')

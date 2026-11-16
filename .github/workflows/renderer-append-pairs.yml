@@ -1,0 +1,99 @@
+name: Renderer append pairs
+
+on:
+  pull_request:
+    branches: [main]
+    types: [labeled]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: renderer-append-pairs-${{ github.event.pull_request.number }}
+  cancel-in-progress: false
+
+jobs:
+  pairs:
+    if: vars.CI_BILLING_PAUSED == 'false' && github.event.pull_request.draft == false && github.event.label.name == 'diagnostic:renderer-append-pairs'
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, macos-15, windows-2022]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: 717e4c975f5aac79675e1c57ba4bb704cf44cd15
+          path: .renderer-baseline
+          persist-credentials: false
+      - uses: ./.github/actions/native-toolchain
+        with:
+          rust: 'false'
+      - name: Build and compare exact renderer sources
+        shell: pwsh
+        env:
+          CANDIDATE_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $root = Join-Path $env:RUNNER_TEMP 'renderer-append-pairs'
+          New-Item -ItemType Directory -Path $root | Out-Null
+          $baseline = (git -C .renderer-baseline rev-parse HEAD).Trim()
+          $candidate = (git rev-parse HEAD).Trim()
+          if ($baseline -ne '717e4c975f5aac79675e1c57ba4bb704cf44cd15' -or $candidate -ne $env:CANDIDATE_SHA) { throw 'Unexpected source revisions' }
+          foreach ($file in @('bun.lock', 'toolchain.json', 'benchmarks/renderer/commit.ts')) {
+            if ((Get-FileHash $file).Hash -ne (Get-FileHash (Join-Path '.renderer-baseline' $file)).Hash) { throw "Benchmark input differs: $file" }
+          }
+          Copy-Item 'benchmarks/renderer/append.ts' '.renderer-baseline/benchmarks/renderer/append.ts'
+          $guard = [System.IO.File]::ReadAllText('benchmarks/renderer/commit.ts')
+          $marker = '.toFixed(4)'
+          $position = $guard.IndexOf($marker, [System.StringComparison]::Ordinal)
+          if ($position -lt 0 -or $position -ne $guard.LastIndexOf($marker, [System.StringComparison]::Ordinal)) { throw 'Unexpected guard precision marker' }
+          $guard = $guard.Replace('.toFixed(4)', '.toFixed(6)')
+          foreach ($prefix in @('.', '.renderer-baseline')) {
+            [System.IO.File]::WriteAllText((Join-Path (Resolve-Path $prefix) 'benchmarks/renderer/.guard-precision.ts'), $guard, [System.Text.UTF8Encoding]::new($false))
+          }
+          @{ baseline = $baseline; candidate = $candidate; baselineSource = (Get-FileHash '.renderer-baseline/packages/renderer/src/native-tree.ts').Hash; candidateSource = (Get-FileHash 'packages/renderer/src/native-tree.ts').Hash; appendFixture = (Get-FileHash 'benchmarks/renderer/append.ts').Hash; guardFixture = (Get-FileHash 'benchmarks/renderer/.guard-precision.ts').Hash; bun = (bun --revision | Out-String).Trim(); runner = $env:RUNNER_OS; architecture = $env:RUNNER_ARCH; image = $env:ImageVersion } | ConvertTo-Json | Set-Content -Encoding utf8 (Join-Path $root 'sources.json')
+          $suffix = if ($env:RUNNER_OS -eq 'Windows') { '.exe' } else { '' }
+          foreach ($side in @('baseline', 'candidate')) {
+            if ($side -eq 'baseline') { Push-Location .renderer-baseline }
+            try {
+              if ($side -eq 'baseline') {
+                bun install --frozen-lockfile
+                if ($LASTEXITCODE -ne 0) { throw 'Baseline install failed' }
+              }
+              foreach ($kind in @('append', 'guard')) {
+                $entry = if ($kind -eq 'append') { 'benchmarks/renderer/append.ts' } else { 'benchmarks/renderer/.guard-precision.ts' }
+                $module = Join-Path $root "$kind-$side.js"
+                $binary = Join-Path $root "$kind-$side-aot$suffix"
+                bun build $entry --target bun --outfile $module
+                if ($LASTEXITCODE -ne 0) { throw "$kind $side bundling failed" }
+                bun compile --no-install --no-script --production --explain=json $module --outfile $binary *> (Join-Path $root "$kind-$side-compile.log")
+                if ($LASTEXITCODE -ne 0) { throw "$kind $side compilation failed" }
+              }
+            } finally { if ($side -eq 'baseline') { Pop-Location } }
+          }
+          foreach ($side in @('baseline', 'candidate')) {
+            foreach ($kind in @('append', 'guard')) {
+              $binary = Join-Path $root "$kind-$side-aot$suffix"
+              bun -e 'import { inspectBunExecutable } from "./scripts/native/inspect.ts"; import { inspectBunRuntime } from "./scripts/native/inspect-runtime.ts"; const p=process.argv[1]; if (!inspectBunExecutable(p).hasCompiledProgram || inspectBunRuntime(p).jit!=="unused") throw new Error("Expected JIT-free AOT")' $binary
+              if ($LASTEXITCODE -ne 0) { throw "$kind $side AOT inspection failed" }
+            }
+          }
+          $runtime = (Get-Command bun -CommandType Application).Source
+          python benchmarks/renderer/append_pairs.py $runtime $root (Join-Path $root 'results.json') (Join-Path $root 'sources.json')
+          if ($LASTEXITCODE -ne 0) { throw 'Renderer comparison failed' }
+      - name: Retain paired measurements
+        if: ${{ always() }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: renderer-append-${{ matrix.os }}
+          path: |
+            ${{ runner.temp }}/renderer-append-pairs/*.json
+            ${{ runner.temp }}/renderer-append-pairs/*-compile.log
+          if-no-files-found: warn
+          retention-days: 30
