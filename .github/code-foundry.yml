@@ -7,7 +7,9 @@ toolchain: native
 runtime_repository: 0xPlayerOne/code-foundry
 # Code Foundry v1.49.0, pinned to the immutable release source.
 runtime_ref: a8fcac90f8c96e1f294aecc7f3a2e874803b9c2b
-features: draft-pr,dependabot,release
+# Dependabot configuration is repository-owned to retain multi-ecosystem grouping.
+# When pausing billing, set each Dependabot version-update limit to zero too.
+features: draft-pr,release
 draft_protection: true
 billing_paused: false
 billing_lanes: false
