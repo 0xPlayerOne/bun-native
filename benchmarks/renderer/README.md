@@ -30,9 +30,10 @@ over five runs after a warm-up run.
 bun benchmarks/renderer/clear.ts [rows] [runs]
 ```
 
-`append.ts` measures an acknowledged append to a stable wide list, then removes
-the appended node outside the timing sample. It checks the native-operation
-counts and committed node count for every sample.
+`append.ts` separately measures an acknowledged append to a stable wide list
+and removal of the appended node. It checks the native-operation counts and
+committed node count for every sample. Staging the append and removal is outside
+their respective commit timings.
 
 ```sh
 bun benchmarks/renderer/append.ts [rows=4000] [samples=200]
@@ -44,6 +45,24 @@ publish and listener reconciliation work. They exclude core validation,
 serialization, IPC, native model work and paint, and are not input-to-paint
 latency. Timings are wall-clock per commit with nearest-rank percentiles; run
 several processes and compare distributions rather than one result.
+
+### Rejected tail-removal candidate
+
+A development CPU profile of 10,000 append/remove cycles at 4,000 rows
+identified sibling filtering on removal as a significant sampled cost; it
+includes both halves of each cycle and instrumentation. A guarded slice for a
+fully removed, unchanged suffix reduced the median paired removal ratio to
+0.608 in development and 0.677 in AOT, winning all 20 local pairs. However,
+the same candidate increased the AOT append median ratio to 1.096 and lost all
+20 append pairs. Moving the guard into a helper yielded removal ratios of
+0.612/0.676 in development/AOT but an AOT append ratio of 1.083, again losing
+all 20. An A/A control using byte-identical input modules and separately compiled
+AOT executables had ratios of 0.998 for append and 1.002 for removal. These
+results are local to an Apple M2 Max with pinned Bun `b1007f117`, and do not
+measure core, native IPC or paint. The candidate was rejected; no production
+removal path changed. [Raw samples, fixture, path-normalized CPU profile and reconstructed candidate patches](raw/tail-removal-rejected-macos-2026-11-15.json.gz)
+include the executable and source hashes and all 200 samples in each of 20
+alternating pairs per mode.
 
 ## Appending to a stable prefix
 

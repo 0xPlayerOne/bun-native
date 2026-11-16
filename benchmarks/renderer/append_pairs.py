@@ -35,13 +35,17 @@ def valid_sample(kind, value):
             value["rows"] == 4000
             and value["samples"] == 200
             and len(value["timingsMs"]) == 200
+            and len(value["removalTimingsMs"]) == 200
             and all(
                 isinstance(x, (float, int)) and math.isfinite(x) and x >= 0
-                for x in value["timingsMs"]
+                for x in value["timingsMs"] + value["removalTimingsMs"]
             )
             and isinstance(value["p50Ms"], (float, int))
             and math.isfinite(value["p50Ms"])
             and value["p50Ms"] > 0
+            and isinstance(value["removalP50Ms"], (float, int))
+            and math.isfinite(value["removalP50Ms"])
+            and value["removalP50Ms"] > 0
         )
     results = value["results"]
     return (
@@ -101,12 +105,15 @@ def main():
         result["pairs"].append(pair)
         output.write_text(json.dumps(result, indent=2) + "\n", encoding="utf-8")
     for mode in ("dev", "aot"):
-        for scenario in ("append", *SCENARIOS):
+        for scenario in ("append", "remove-tail", *SCENARIOS):
             ratios = []
             for pair in result["pairs"]:
                 if scenario == "append":
                     a = pair[f"append/baseline/{mode}"]["p50Ms"]
                     b = pair[f"append/candidate/{mode}"]["p50Ms"]
+                elif scenario == "remove-tail":
+                    a = pair[f"append/baseline/{mode}"]["removalP50Ms"]
+                    b = pair[f"append/candidate/{mode}"]["removalP50Ms"]
                 else:
                     a = next(
                         x["p50Ms"]

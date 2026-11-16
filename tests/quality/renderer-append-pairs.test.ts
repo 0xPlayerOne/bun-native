@@ -6,14 +6,17 @@ import copy, importlib.util
 spec = importlib.util.spec_from_file_location('pairs', 'benchmarks/renderer/append_pairs.py')
 pairs = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(pairs)
-append = {'rows': 4000, 'samples': 200, 'timingsMs': [0.1] * 200, 'p50Ms': 0.1}
+append = {'rows': 4000, 'samples': 200, 'timingsMs': [0.1] * 200, 'p50Ms': 0.1, 'removalTimingsMs': [0.1] * 200, 'removalP50Ms': 0.1}
 assert pairs.valid_sample('append', append)
-for change in ('length', 'nan', 'zero', 'rows'):
+for change in ('length', 'nan', 'zero', 'rows', 'removal-length', 'removal-nan', 'removal-zero'):
     bad = copy.deepcopy(append)
     if change == 'length': bad['timingsMs'].pop()
     if change == 'nan': bad['timingsMs'][0] = float('nan')
     if change == 'zero': bad['p50Ms'] = 0
     if change == 'rows': bad['rows'] = 1000
+    if change == 'removal-length': bad['removalTimingsMs'].pop()
+    if change == 'removal-nan': bad['removalTimingsMs'][0] = float('nan')
+    if change == 'removal-zero': bad['removalP50Ms'] = 0
     assert not pairs.valid_sample('append', bad), change
 guard = {'results': [{'scenario': name, 'rows': 1667, 'samples': 1000, 'p50Ms': 0.1} for name in pairs.SCENARIOS]}
 assert pairs.valid_sample('guard', guard)

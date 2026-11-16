@@ -50,6 +50,7 @@ const root = createRenderRoot(window, ({ container }) => {
 await root.ready
 const initial = root.diagnostics.nodes
 const timings: number[] = []
+const removalTimings: number[] = []
 for (let sample = -20; sample < samples; sample++) {
   const child = createElement('text')
   setProperty(child, 'text', `new ${sample}`)
@@ -69,11 +70,24 @@ for (let sample = -20; sample < samples; sample++) {
   assert.equal(root.diagnostics.nodes, initial + 1)
   if (sample >= 0) timings.push(elapsed)
   removeNode(list, child)
+  const beforeRemoval = { ...count }
+  const removalStart = performance.now()
   await root.flush()
+  const removalElapsed = performance.now() - removalStart
+  assert.deepEqual(
+    {
+      created: count.created - beforeRemoval.created,
+      inserted: count.inserted - beforeRemoval.inserted,
+      removed: count.removed - beforeRemoval.removed,
+    },
+    { created: 0, inserted: 0, removed: 1 }
+  )
+  if (sample >= 0) removalTimings.push(removalElapsed)
   assert.equal(root.diagnostics.nodes, initial)
 }
 await root.dispose()
 timings.sort((a, b) => a - b)
+const sortedRemovals = [...removalTimings].sort((a, b) => a - b)
 console.log(
   JSON.stringify({
     rows,
@@ -81,5 +95,8 @@ console.log(
     p50Ms: timings[Math.floor(timings.length / 2)],
     p95Ms: timings[Math.floor(timings.length * 0.95)],
     timingsMs: timings,
+    removalP50Ms: sortedRemovals[Math.floor(sortedRemovals.length / 2)],
+    removalP95Ms: sortedRemovals[Math.floor(sortedRemovals.length * 0.95)],
+    removalTimingsMs: removalTimings,
   })
 )
