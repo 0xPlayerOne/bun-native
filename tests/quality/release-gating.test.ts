@@ -111,7 +111,30 @@ test('stable releases wait for the exact main head to pass its own Validation (#
 
   const job = release.jobs.release
   expect(job?.needs).toEqual(['qualified', 'linux-provenance'])
-  expect(job?.if).toBe("needs.qualified.outputs.release == 'true'")
+  // Sharing the `qualified` gate is the invariant; a manual probe dispatch may
+  // only narrow it further, never widen it.
+  expect(job?.if).toContain("needs.qualified.outputs.release == 'true'")
+})
+
+test('a manual npm publisher probe never releases or publishes', () => {
+  const release = workflow('release.yml')
+  const input = (release.on.workflow_dispatch as { inputs?: Record<string, { default?: unknown }> })
+    ?.inputs?.['probe-npm-publishers']
+  expect(input?.default).toBe(false)
+  // Every job that can publish or publish artifacts must be excluded by the
+  // probe input, so the only job that runs is the read-only reporter.
+  for (const name of ['linux-provenance', 'release', 'release-hosts', 'npm']) {
+    const condition = release.jobs[name]?.if ?? ''
+    expect(condition).toContain("inputs['probe-npm-publishers'] != true")
+  }
+  const probe = release.jobs['probe-npm-publishers']
+  expect(probe?.if).toBe(
+    "github.event_name == 'workflow_dispatch' && inputs['probe-npm-publishers'] == true"
+  )
+  expect(probe?.permissions).toEqual({ contents: 'read', 'id-token': 'write' })
+  const script = (probe?.steps ?? []).map((step) => step.run ?? '').join('\n')
+  expect(script).toContain('bun scripts/quality/npm-trusted-publishers.ts')
+  expect(script).not.toContain('npm publish')
 })
 
 const level = { none: 0, read: 1, write: 2 } as Record<string, number>
@@ -169,7 +192,7 @@ test('a release refuses a main head whose Linux host archive lacks verified prov
   const release = workflow('release.yml')
   const job = release.jobs['linux-provenance']
   expect(job?.needs).toBe('qualified')
-  expect(job?.if).toBe("needs.qualified.outputs.release == 'true'")
+  expect(job?.if).toContain("needs.qualified.outputs.release == 'true'")
   expect(job?.permissions).toEqual({ actions: 'read', attestations: 'read', contents: 'read' })
   const script = (job?.steps ?? []).map((step) => step.run ?? '').join('\n')
   expect(script).toContain('--name linux-host-provenance-X64')
