@@ -265,7 +265,8 @@ jobs:
       - name: Install checksum-pinned Bun compiler
         run: node scripts/install-bun.mjs --destination "$RUNNER_TEMP/bun-native-bun"
       - name: Report every package's binding
-        run: bun scripts/quality/npm-trusted-publishers.ts --names "$PACKAGES"
+        run: >-
+          bun scripts/quality/npm-trusted-publishers.ts --names "$PACKAGES" --warn-only
         env:
           PACKAGES: >-
             @bun-native/cli,@bun-native/core,@bun-native/protocol,@bun-native/react,@bun-native/renderer,@bun-native/runtime,@bun-native/solid

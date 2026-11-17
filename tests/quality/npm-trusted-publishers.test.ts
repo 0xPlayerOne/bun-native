@@ -102,6 +102,7 @@ describe('npm trusted publisher probe', () => {
     expect(parseOptions(['--names', 'a,b ,c'])).toEqual({
       registry: 'https://registry.npmjs.org/',
       names: ['a', 'b', 'c'],
+      warnOnly: false,
     })
     expect(parseOptions(['--names', 'a', '--registry', 'https://r.example/']).registry).toBe(
       'https://r.example/'
@@ -109,6 +110,7 @@ describe('npm trusted publisher probe', () => {
     expect(() => parseOptions([])).toThrow('Pass --names')
     expect(() => parseOptions(['--names'])).toThrow('needs a value')
     expect(() => parseOptions(['stray'])).toThrow('Unexpected argument')
+    expect(parseOptions(['--names', 'a', '--warn-only']).warnOnly).toBe(true)
   })
 })
 
@@ -135,6 +137,13 @@ describe('npm trusted publisher probe requests', () => {
       statuses: { '@bun-native%2fcli': 200, '@bun-native%2fcore': 200 },
     })
     expect(await run(['--names', '@bun-native/cli,@bun-native/core'], env, fetchImpl)).toBe(0)
+  })
+
+  test('reports without failing when asked to warn only', async () => {
+    const { fetchImpl } = fetchDouble({ statuses: { '@bun-native%2fcli': 200 } })
+    expect(
+      await run(['--names', '@bun-native/cli,@bun-native/core', '--warn-only'], env, fetchImpl)
+    ).toBe(0)
   })
 
   test('fails and names the identity to register when any package rejects it', async () => {
