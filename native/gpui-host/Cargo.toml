@@ -30,7 +30,7 @@ bun-native-windows-services = { path = "../windows-services" }
 # reproducible builds (.cargo/config.toml), so unify in `runtime-rng` to keep
 # the keys randomized per process at runtime.
 ahash = { version = "=0.8.12", default-features = false, features = ["runtime-rng"] }
-x11rb = "=0.13.2"
+x11rb = "=0.14.0"
 futures = { version = "=0.3.34", default-features = false, features = ["std"] }
 futures-lite = "=2.6.1"
 zbus = { version = "=5.19.0", default-features = false, features = ["async-io"] }
