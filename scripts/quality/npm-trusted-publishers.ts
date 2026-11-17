@@ -38,6 +38,8 @@ export type ProbeResult = {
 export type Options = {
   registry: string
   names: string[]
+  /** Report rejections as warnings and exit 0; for operator diagnostics. */
+  warnOnly?: boolean
   /** Injected for tests; defaults to the global fetch. */
   fetchImpl?: typeof fetch
 }
@@ -96,17 +98,24 @@ export function registryPackages(directory: string): string[] {
     .map((short) => JSON.parse(readFileSync(join(directory, short, 'package.json'), 'utf8')).name)
 }
 
+const FLAGS = new Set(['warn-only'])
+
 export function parseOptions(argv: string[]): Options {
   const args = new Map<string, string>()
   for (let index = 0; index < argv.length; index += 1) {
     const key = argv[index]
     if (!key?.startsWith('--')) throw new Error(`Unexpected argument: ${key}`)
+    if (FLAGS.has(key.slice(2))) {
+      args.set(key.slice(2), 'true')
+      continue
+    }
     const value = argv[index + 1]
     if (value === undefined) throw new Error(`${key} needs a value`)
     args.set(key.slice(2), value)
     index += 1
   }
   const registry = args.get('registry') ?? DEFAULT_REGISTRY
+  const warnOnly = args.has('warn-only')
   const directory = args.get('registry-directory')
   const names = directory
     ? registryPackages(directory)
@@ -116,7 +125,7 @@ export function parseOptions(argv: string[]): Options {
         .filter((name) => name !== '')
   if (names.length === 0)
     throw new Error('Pass --names scope/a,scope/b or --registry-directory with a publish-order.txt')
-  return { registry, names }
+  return { registry, names, warnOnly }
 }
 
 async function exchangeOidcRequest(
@@ -190,13 +199,16 @@ export async function run(
   const rejected = results.filter((result) => !result.accepted)
   if (rejected.length === 0) return 0
   const [owner = '', repository = ''] = (env.GITHUB_REPOSITORY ?? '').split('/')
+  // A release must stop here; an operator diagnostic only reports, so probing a
+  // known-broken binding does not mark the tested commit as failed.
+  const level = options.warnOnly ? 'warning' : 'error'
   for (const result of rejected)
-    console.error(
-      `::error::${result.name} rejected this trusted publisher. Register organization or user ` +
+    console.log(
+      `::${level}::${result.name} rejected this trusted publisher. Register organization or user ` +
         `'${owner}', repository '${repository}', workflow filename 'release.yml' and no ` +
         `environment on npmjs.com; see docs/releasing.md and #703.`
     )
-  return 1
+  return options.warnOnly ? 0 : 1
 }
 
 if (import.meta.main) process.exit(await run(process.argv.slice(2)))
