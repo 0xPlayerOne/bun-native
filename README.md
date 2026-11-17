@@ -53,8 +53,8 @@ In development, Bun runs the app code normally. For distribution, Bun's AOT comp
 
 ## Roadmap
 
-| Phase                                                       | Deliverable                                                               |
-| ----------------------------------------------------------- | ------------------------------------------------------------------------- |
+| Phase                                                     | Deliverable                                                               |
+| --------------------------------------------------------- | ------------------------------------------------------------------------- |
 | [BN0](https://github.com/AndrewM-F/bun-native/issues/217) | Replace Bunly/CEF and build the first real Bun AOT native app             |
 | [BN1](https://github.com/AndrewM-F/bun-native/issues/219) | Shared typed Bun-to-native bridge, public APIs, lifecycle and security    |
 | [BN2](https://github.com/AndrewM-F/bun-native/issues/218) | SolidJS native renderer                                                   |

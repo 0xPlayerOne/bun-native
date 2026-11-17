@@ -64,8 +64,10 @@ test('reusable workflows use the current repository owners', () => {
     'opencode-security.yml',
   ]) {
     const contents = readFileSync(join(root, '.github/workflows', file), 'utf8')
-    expect(contents).not.toContain('AndrewM-F/code-foundry')
-    expect(contents).not.toContain('AndrewM-F/opencode-security')
+    // These owners are the renamed account's previous names; referencing one
+    // resolves to nothing (or to an unrelated owner), never to this repository.
+    expect(contents).not.toContain('0xPlayerOne/code-foundry')
+    expect(contents).not.toContain('0xPlayerOne/opencode-security')
   }
   const config = readFileSync(join(root, '.github/code-foundry.yml'), 'utf8')
   expect(config).toContain('runtime_repository: AndrewM-F/code-foundry')
