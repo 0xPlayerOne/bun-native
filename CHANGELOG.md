@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.33.6](https://github.com/AndrewM-F/bun-native/compare/v0.33.5...v0.33.6) (2026-11-17)
+
+
+### Bug Fixes
+
+* **ci:** move target-branch to the multi-ecosystem group ([#700](https://github.com/AndrewM-F/bun-native/issues/700)) ([eb31af1](https://github.com/AndrewM-F/bun-native/commit/eb31af1432c283138a654db069a8ceb2339d54c5))
+
 ## [0.33.5](https://github.com/AndrewM-F/bun-native/compare/v0.33.4...v0.33.5) (2026-11-17)
 
 
