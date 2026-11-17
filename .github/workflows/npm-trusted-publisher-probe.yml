@@ -1,0 +1,60 @@
+name: npm trusted publisher probe
+
+# Read-only diagnostic for docs/releasing.md trusted publishing. It requests the
+# same OIDC token `npm publish` uses and asks npm to exchange it for each
+# published package, so a broken publisher binding shows as a registry status
+# instead of a bare ENEEDAUTH at publish time (#703). It never publishes.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  probe:
+    name: Probe the npm OIDC exchange
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Explain the identity npm must have registered
+        run: |
+          echo "GitHub repository: $GITHUB_REPOSITORY"
+          echo "Workflow file: $GITHUB_WORKFLOW_REF"
+          echo "Each package's trusted publisher must name owner '${GITHUB_REPOSITORY%%/*}', repository '${GITHUB_REPOSITORY##*/}', workflow filename 'release.yml', no environment."
+      - name: Probe every package
+        env:
+          PACKAGES: >-
+            @bun-native/core
+            @bun-native/protocol
+            @bun-native/renderer
+            @bun-native/react
+            @bun-native/solid
+            @bun-native/runtime
+            @bun-native/cli
+        run: |
+          set -uo pipefail
+          token=$(curl -sS --fail \
+            -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
+            "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=npm:registry.npmjs.org" | jq -r .value)
+          echo "Requested an npm-audience OIDC token (${#token} characters)."
+          failed=0
+          for package in $PACKAGES; do
+            encoded=$(node -p "encodeURIComponent(process.argv[1])" "$package")
+            response=$(curl -sS -w '\n%{http_code}' -X POST \
+              -H "Authorization: Bearer $token" \
+              "https://registry.npmjs.org/-/npm/v1/oidc/token/exchange/package/$encoded")
+            status=$(printf '%s' "$response" | tail -1)
+            body=$(printf '%s' "$response" | sed '$d' | head -c 300)
+            if [ "$status" = "200" ]; then
+              echo "OK    $package - npm exchanged the token, this publisher matches."
+            else
+              echo "FAIL  $package - HTTP $status $body"
+              failed=$((failed+1))
+            fi
+          done
+          echo
+          if [ "$failed" -ne 0 ]; then
+            echo "::error::$failed package(s) rejected the trusted publisher; update them at npmjs.com (see docs/releasing.md and #703)."
+            exit 1
+          fi
