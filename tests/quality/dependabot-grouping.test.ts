@@ -14,13 +14,18 @@ type Update = {
   ignore?: { 'dependency-name': string; 'update-types'?: string[]; versions?: string[] }[]
 }
 
-const document = Bun.YAML.parse(
-  readFileSync(join(import.meta.dir, '..', '..', '.github', 'dependabot.yml'), 'utf8')
-) as {
+type Document = {
   version: number
-  'multi-ecosystem-groups': Record<string, { schedule: { interval: string; day: string } }>
+  'multi-ecosystem-groups': Record<
+    string,
+    { schedule: { interval: string; day: string }; 'target-branch'?: string }
+  >
   updates: Update[]
 }
+
+const document = Bun.YAML.parse(
+  readFileSync(join(import.meta.dir, '..', '..', '.github', 'dependabot.yml'), 'utf8')
+) as Document
 
 test('Dependabot groups the configured ecosystems into one weekly update', () => {
   expect(document.version).toBe(2)
@@ -29,6 +34,9 @@ test('Dependabot groups the configured ecosystems into one weekly update', () =>
     interval: 'weekly',
     day: 'sunday',
   })
+  // Dependabot rejects `target-branch` on a member of a multi-ecosystem group;
+  // the group itself targets main.
+  expect(document['multi-ecosystem-groups']['dependencies']?.['target-branch']).toBe('main')
   const expected = [
     ['github-actions', '/'],
     ['bun', '/'],
@@ -40,7 +48,7 @@ test('Dependabot groups the configured ecosystems into one weekly update', () =>
   )
   for (const update of document.updates) {
     expect(update['multi-ecosystem-group']).toBe('dependencies')
-    expect(update['target-branch']).toBe('main')
+    expect(update['target-branch']).toBeUndefined()
     expect(update.patterns).toEqual(['*'])
     expect(update.groups).toBeUndefined()
   }
