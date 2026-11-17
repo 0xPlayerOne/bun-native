@@ -51,6 +51,9 @@ describe('npm trusted publisher probe', () => {
     expect(escapePackageName('@bun-native/cli')).toBe('@bun-native%2fcli')
     expect(escapePackageName('left-pad')).toBe('left-pad')
     expect(escapePackageName('@bun-native/cli')).not.toBe(encodeURIComponent('@bun-native/cli'))
+    // A malformed name must not be able to add a path segment to the request.
+    for (const bad of ['', 'a/b/c', '@scope/', '/name'])
+      expect(() => escapePackageName(bad)).toThrow('not scope/name')
   })
 
   test('asks the registry endpoint npm publish uses', () => {

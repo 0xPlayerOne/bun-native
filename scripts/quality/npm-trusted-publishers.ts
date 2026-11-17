@@ -54,10 +54,18 @@ const DEFAULT_REGISTRY = 'https://registry.npmjs.org/'
 /**
  * npm escapes a scoped name with `npm-package-arg`'s escapedName: the scope
  * separator becomes `%2f` and the leading `@` is kept. `encodeURIComponent`
- * would produce `%40scope%2Fname` instead, so it is not equivalent.
+ * would produce `%40scope%2Fname` instead, so the whole name is not encoded.
+ *
+ * The shape is validated instead of substituting separators across the string,
+ * so a malformed name can never smuggle an extra path segment into the request.
  */
 export function escapePackageName(name: string): string {
-  return name.replace('/', '%2f')
+  const parts = name.split('/')
+  if (parts.length > 2 || parts.some((part) => part === ''))
+    throw new Error(`Refusing a package name that is not scope/name: ${name}`)
+  return parts.length === 2
+    ? `${parts[0]}%2f${encodeURIComponent(parts[1]!)}`
+    : encodeURIComponent(name)
 }
 
 export function exchangeUrl(registry: string, name: string): string {
