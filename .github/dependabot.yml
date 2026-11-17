@@ -1,13 +1,15 @@
 version: 2
 multi-ecosystem-groups:
   dependencies:
+    # A multi-ecosystem group owns the target branch; setting it on a member
+    # update is rejected by Dependabot's config parser.
+    target-branch: main
     schedule:
       interval: weekly
       day: sunday
 updates:
   - package-ecosystem: github-actions
     directory: /
-    target-branch: main
     multi-ecosystem-group: dependencies
     patterns: ['*']
     ignore:
@@ -15,7 +17,6 @@ updates:
       - dependency-name: 'AndrewM-F/code-foundry*'
   - package-ecosystem: bun
     directory: /
-    target-branch: main
     multi-ecosystem-group: dependencies
     patterns: ['*']
     ignore:
@@ -24,7 +25,6 @@ updates:
         update-types: ['version-update:semver-major']
   - package-ecosystem: cargo
     directory: /
-    target-branch: main
     multi-ecosystem-group: dependencies
     patterns: ['*']
     ignore:
@@ -39,6 +39,5 @@ updates:
         versions: ['>= 0.9.0']
   - package-ecosystem: pip
     directory: /scripts/quality
-    target-branch: main
     multi-ecosystem-group: dependencies
     patterns: ['*']
