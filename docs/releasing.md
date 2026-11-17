@@ -171,6 +171,15 @@ filename `release.yml`, no environment, and direct `npm publish` allowed. npm
 requires a package to exist before a trusted publisher can be added, so each
 name was first published once by the owner as a `0.0.0-bootstrap.0` placeholder.
 
+A publisher that no longer matches this repository, or a workflow file renamed
+away from `release.yml`, fails only at publish time with a bare `ENEEDAUTH`. The
+`npm` job therefore asks npm to exchange the same OIDC token `npm publish` uses
+for every package before it publishes, and prints `OK` or `FAIL` with the
+registry status per package. Because that check runs from `release.yml` it
+presents exactly the identity the publishers must have registered, so it
+distinguishes a stale publisher from any other publish failure and confirms a
+repair before a release is cut.
+
 ## Configuring release identities (owner steps)
 
 Nothing in the repository changes when these are added. Store each value as a repository secret (**Settings → Secrets and variables → Actions → New repository secret**, or `gh secret set NAME --repo AndrewM-F/bun-native`). [`bun-native.yml`](../.github/workflows/bun-native.yml) passes them to Native Platforms, which uses them for pushes and manual runs, never for pull requests.
