@@ -16,8 +16,8 @@ Every sample is one fresh process from a measured trial (5 per adapter/mode
 here). Warmup launches, failed launches and pooled operation samples are not
 samples.
 
-| File                                             | Run                                                                               | Source commit                     | Trials | CPU                   |
-| ------------------------------------------------ | --------------------------------------------------------------------------------- | --------------------------------- | ------ | --------------------- |
+| File                                             | Run                                                                             | Source commit                     | Trials | CPU                   |
+| ------------------------------------------------ | ------------------------------------------------------------------------------- | --------------------------------- | ------ | --------------------- |
 | `linux-x64-ubuntu-24.04-epyc-9v74-llvmpipe.json` | [42361841424](https://github.com/AndrewM-F/bun-native/actions/runs/42361841424) | `d67794d1` (PR #557 head)         | 5      | AMD EPYC 9V74, 4 vCPU |
 | `linux-x64-ubuntu-24.04-epyc-7763-llvmpipe.json` | [42360358389](https://github.com/AndrewM-F/bun-native/actions/runs/42360358389) | `f27d44be` (PR #557 earlier head) | 5      | AMD EPYC 7763, 4 vCPU |
 

@@ -101,7 +101,6 @@ test('Babel major upgrades remain held without suppressing its patch updates', (
   )!
   expect(actions.ignore?.map((item) => item['dependency-name'])).toEqual([
     'AndrewM-F/code-foundry*',
-    'AndrewM-F/code-foundry*',
   ])
 })
 

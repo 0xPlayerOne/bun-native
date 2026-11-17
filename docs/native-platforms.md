@@ -553,8 +553,8 @@ passed all twelve required jobs for PR head
 change with the CLI integration; this record does not represent a fresh run of
 that combined tree.
 
-| Hosted target             | Native job                                                                                          | Retained artifact                                                                                          |
-| ------------------------- | --------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
+| Hosted target             | Native job                                                                                        | Retained artifact                                                                                          |
+| ------------------------- | ------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
 | macOS 15.8.2 / ARM64      | [126836941712](https://github.com/AndrewM-F/bun-native/actions/runs/41904934340/job/126836941712) | `13359239800`, 3,481,699 bytes, SHA-256 `df1706b2e97eb20351487959ce40057d5e61dd4ff60e2b4a0c34c51580011ba4` |
 | Windows Server 2022 / x64 | [126836941557](https://github.com/AndrewM-F/bun-native/actions/runs/41904934340/job/126836941557) | `13360845884`, 4,015,772 bytes, SHA-256 `8952714a13a10f1030bd4e3d9b5f121611f0d4641e75a8f6a63438006a66c379` |
 

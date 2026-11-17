@@ -13,7 +13,6 @@ updates:
     ignore:
       # Code Foundry runtime pins are maintained together with runtime_ref.
       - dependency-name: 'AndrewM-F/code-foundry*'
-      - dependency-name: 'AndrewM-F/code-foundry*'
   - package-ecosystem: bun
     directory: /
     target-branch: main
