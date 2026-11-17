@@ -35,6 +35,22 @@ export type ProbeResult = {
   detail: string
 }
 
+export type Options = {
+  registry: string
+  names: string[]
+  /** Injected for tests; defaults to the global fetch. */
+  fetchImpl?: typeof fetch
+}
+
+export type Environment = {
+  ACTIONS_ID_TOKEN_REQUEST_URL?: string
+  ACTIONS_ID_TOKEN_REQUEST_TOKEN?: string
+  GITHUB_REPOSITORY?: string
+  GITHUB_WORKFLOW_REF?: string
+}
+
+const DEFAULT_REGISTRY = 'https://registry.npmjs.org/'
+
 /**
  * npm escapes a scoped name with `npm-package-arg`'s escapedName: the scope
  * separator becomes `%2f` and the leading `@` is kept. `encodeURIComponent`
@@ -54,12 +70,7 @@ export function audienceFor(registry: string): string {
 
 /** Classifies one exchange response; npm treats anything but 200 as "no token". */
 export function classify(name: string, status: number, body: string): ProbeResult {
-  return {
-    name,
-    status,
-    accepted: status === 200,
-    detail: body.trim().slice(0, 300),
-  }
+  return { name, status, accepted: status === 200, detail: body.trim().slice(0, 300) }
 }
 
 export function formatResult(result: ProbeResult): string {
@@ -77,46 +88,7 @@ export function registryPackages(directory: string): string[] {
     .map((short) => JSON.parse(readFileSync(join(directory, short, 'package.json'), 'utf8')).name)
 }
 
-async function oidcToken(
-  requestUrl: string,
-  requestToken: string,
-  audience: string
-): Promise<string> {
-  const url = new URL(requestUrl)
-  url.searchParams.append('audience', audience)
-  const response = await fetch(url, {
-    headers: { Accept: 'application/json', Authorization: `Bearer ${requestToken}` },
-  })
-  if (!response.ok) throw new Error(`GitHub rejected the OIDC request with ${response.status}`)
-  const payload = (await response.json()) as { value?: unknown }
-  if (typeof payload.value !== 'string' || payload.value === '')
-    throw new Error('GitHub returned no OIDC token value')
-  return payload.value
-}
-
-export async function probe(
-  names: string[],
-  options: { registry: string; token: string }
-): Promise<ProbeResult[]> {
-  const results: ProbeResult[] = []
-  for (const name of names) {
-    const response = await fetch(exchangeUrl(options.registry, name), {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${options.token}` },
-    })
-    results.push(classify(name, response.status, await response.text()))
-  }
-  return results
-}
-
-function parseNames(value: string | undefined): string[] {
-  return (value ?? '')
-    .split(',')
-    .map((name) => name.trim())
-    .filter((name) => name !== '')
-}
-
-async function main(argv: string[]): Promise<void> {
+export function parseOptions(argv: string[]): Options {
   const args = new Map<string, string>()
   for (let index = 0; index < argv.length; index += 1) {
     const key = argv[index]
@@ -126,45 +98,97 @@ async function main(argv: string[]): Promise<void> {
     args.set(key.slice(2), value)
     index += 1
   }
-  const registry = args.get('registry') ?? 'https://registry.npmjs.org/'
+  const registry = args.get('registry') ?? DEFAULT_REGISTRY
   const directory = args.get('registry-directory')
-  const names = directory ? registryPackages(directory) : parseNames(args.get('names'))
+  const names = directory
+    ? registryPackages(directory)
+    : (args.get('names') ?? '')
+        .split(',')
+        .map((name) => name.trim())
+        .filter((name) => name !== '')
   if (names.length === 0)
     throw new Error('Pass --names scope/a,scope/b or --registry-directory with a publish-order.txt')
+  return { registry, names }
+}
 
-  const requestUrl = process.env.ACTIONS_ID_TOKEN_REQUEST_URL
-  const requestToken = process.env.ACTIONS_ID_TOKEN_REQUEST_TOKEN
-  if (!requestUrl || !requestToken)
-    throw new Error(
-      'No GitHub OIDC request URL or token; this needs the id-token: write permission'
-    )
+async function exchangeOidcRequest(
+  requestUrl: string,
+  requestToken: string,
+  audience: string,
+  fetchImpl: typeof fetch
+): Promise<string> {
+  const url = new URL(requestUrl)
+  url.searchParams.append('audience', audience)
+  const response = await fetchImpl(url, {
+    headers: { Accept: 'application/json', Authorization: `Bearer ${requestToken}` },
+  })
+  if (!response.ok) throw new Error(`GitHub rejected the OIDC request with ${response.status}`)
+  const payload = (await response.json()) as { value?: unknown }
+  if (typeof payload.value !== 'string' || payload.value === '')
+    throw new Error('GitHub returned no OIDC token value')
+  return payload.value
+}
 
+/** Probes every package, keeping later results even when an earlier one fails. */
+export async function probe(options: Options & { token: string }): Promise<ProbeResult[]> {
+  const fetchImpl = options.fetchImpl ?? fetch
+  const results: ProbeResult[] = []
+  for (const name of options.names) {
+    const response = await fetchImpl(exchangeUrl(options.registry, name), {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${options.token}` },
+    })
+    results.push(classify(name, response.status, await response.text()))
+  }
+  return results
+}
+
+/**
+ * Runs the probe and returns the process exit code, so the workflow path and
+ * every failure branch stay testable without exiting the test process.
+ */
+export async function run(
+  argv: string[],
+  env: Environment = process.env as Environment,
+  fetchImpl: typeof fetch = fetch
+): Promise<number> {
+  const options = parseOptions(argv)
   console.log(
-    `Identity npm must have registered: repository ${process.env.GITHUB_REPOSITORY ?? 'unknown'}, ` +
-      `workflow ${process.env.GITHUB_WORKFLOW_REF ?? 'unknown'}, no environment\n`
+    `Identity npm must have registered: repository ${env.GITHUB_REPOSITORY ?? 'unknown'}, ` +
+      `workflow ${env.GITHUB_WORKFLOW_REF ?? 'unknown'}, no environment\n`
   )
-
+  const oidcRequestUrl = env.ACTIONS_ID_TOKEN_REQUEST_URL
+  const oidcRequestToken = env.ACTIONS_ID_TOKEN_REQUEST_TOKEN
+  if (!oidcRequestUrl || !oidcRequestToken) {
+    console.error(
+      '::error::No GitHub OIDC request URL or token; this job needs the id-token: write permission'
+    )
+    return 1
+  }
   let token: string
   try {
-    token = await oidcToken(requestUrl, requestToken, audienceFor(registry))
+    token = await exchangeOidcRequest(
+      oidcRequestUrl,
+      oidcRequestToken,
+      audienceFor(options.registry),
+      fetchImpl
+    )
   } catch (error) {
     console.error(`::error::${(error as Error).message}`)
-    process.exit(1)
+    return 1
   }
-
-  const results = await probe(names, { registry, token })
+  const results = await probe({ ...options, token, fetchImpl })
   for (const result of results) console.log(formatResult(result))
-
   const rejected = results.filter((result) => !result.accepted)
-  if (rejected.length === 0) return
+  if (rejected.length === 0) return 0
+  const [owner = '', repository = ''] = (env.GITHUB_REPOSITORY ?? '').split('/')
   for (const result of rejected)
     console.error(
       `::error::${result.name} rejected this trusted publisher. Register organization or user ` +
-        `'${process.env.GITHUB_REPOSITORY?.split('/')[0] ?? ''}', repository ` +
-        `'${process.env.GITHUB_REPOSITORY?.split('/')[1] ?? ''}', workflow filename 'release.yml' and no ` +
+        `'${owner}', repository '${repository}', workflow filename 'release.yml' and no ` +
         `environment on npmjs.com; see docs/releasing.md and #703.`
     )
-  process.exit(1)
+  return 1
 }
 
-if (import.meta.main) await main(process.argv.slice(2))
+if (import.meta.main) process.exit(await run(process.argv.slice(2)))
