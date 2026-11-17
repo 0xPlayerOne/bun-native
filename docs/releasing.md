@@ -173,11 +173,12 @@ name was first published once by the owner as a `0.0.0-bootstrap.0` placeholder.
 
 A publisher that no longer matches this repository, or a workflow file renamed
 away from `release.yml`, fails only at publish time with a bare `ENEEDAUTH`. The
-[`npm-trusted-publisher-probe`](../.github/workflows/npm-trusted-publisher-probe.yml)
-workflow (`gh workflow run npm-trusted-publisher-probe.yml`) asks npm to
-exchange the same OIDC token `npm publish` uses and reports a status per
-package, so the binding can be checked, and a fix confirmed, without
-publishing anything.
+`npm` job therefore asks npm to exchange the same OIDC token `npm publish` uses
+for every package before it publishes, and prints `OK` or `FAIL` with the
+registry status per package. Because that check runs from `release.yml` it
+presents exactly the identity the publishers must have registered, so it
+distinguishes a stale publisher from any other publish failure and confirms a
+repair before a release is cut.
 
 ## Configuring release identities (owner steps)
 

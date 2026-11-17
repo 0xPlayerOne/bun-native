@@ -219,6 +219,34 @@ jobs:
         run: |
           bun scripts/package-native.ts --outdir "$RUNNER_TEMP/package-set"
           bun scripts/registry-packages.ts --package-set "$RUNNER_TEMP/package-set/manifest.json" --outdir "$RUNNER_TEMP/registry"
+      - name: Report the npm trusted publisher binding
+        # A publisher that names another owner, repository or workflow only
+        # surfaces as a bare ENEEDAUTH from the publish steps. Ask npm to
+        # exchange the same OIDC token here, from this same workflow file, so
+        # each package reports whether its registered publisher matches.
+        run: |
+          set -uo pipefail
+          token=$(curl -sS --fail \
+            -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
+            "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=npm:registry.npmjs.org" |
+            node -e 'let body="";process.stdin.on("data",(c)=>body+=c).on("end",()=>process.stdout.write(JSON.parse(body).value))')
+          echo "GitHub identity npm must have registered: $GITHUB_REPOSITORY, workflow release.yml, no environment."
+          while read -r short; do
+            name=$(node -p "require('$RUNNER_TEMP/registry/$short/package.json').name")
+            # npm escapes a scoped name as `@scope%2fname` (npa escapedName),
+            # so the exchange path matches what `npm publish` requests.
+            encoded=$(node -p 'process.argv[1].replace("/", "%2f")' "$name")
+            response=$(curl -sS -w '\n%{http_code}' -X POST -H "Authorization: Bearer $token" \
+              "https://registry.npmjs.org/-/npm/v1/oidc/token/exchange/package/$encoded")
+            status=$(printf '%s' "$response" | tail -1)
+            body=$(printf '%s' "$response" | sed '$d' | head -c 200)
+            if [ "$status" = '200' ]; then
+              echo "OK    $name - npm exchanged the token; the trusted publisher matches."
+            else
+              echo "FAIL  $name - HTTP $status $body"
+              echo "::warning::$name rejected this trusted publisher (HTTP $status). Add organization or user '${GITHUB_REPOSITORY%%/*}', repository '${GITHUB_REPOSITORY##*/}', workflow filename 'release.yml' and no environment on npmjs.com; see docs/releasing.md."
+            fi
+          done < "$RUNNER_TEMP/registry/publish-order.txt"
       - name: Publish in dependency order with provenance
         run: |
           set -euo pipefail
