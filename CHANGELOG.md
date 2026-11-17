@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.33.5](https://github.com/AndrewM-F/bun-native/compare/v0.33.4...v0.33.5) (2026-11-17)
+
+
+### Bug Fixes
+
+* **quality:** restore the stale-owner guard and re-align tables after the rename ([#698](https://github.com/AndrewM-F/bun-native/issues/698)) ([cbb2b24](https://github.com/AndrewM-F/bun-native/commit/cbb2b248ced875d305ee5324e6e865f49214d348))
+
+
+### Maintenance
+
+* **deps:** consolidate dependency updates ([#696](https://github.com/AndrewM-F/bun-native/issues/696)) ([5b8442f](https://github.com/AndrewM-F/bun-native/commit/5b8442fccaea83bf2f2cd37ac1c82fa32f1175f9))
+* point GitHub references at AndrewM-F ([ec26679](https://github.com/AndrewM-F/bun-native/commit/ec2667925b5de90b8d25a370599102349eeae931))
+
 ## [0.33.4](https://github.com/AndrewM-F/bun-native/compare/v0.33.3...v0.33.4) (2026-11-14)
 
 
