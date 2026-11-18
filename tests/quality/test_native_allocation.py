@@ -20,6 +20,30 @@ else:
 
 
 @unittest.skipUnless(sys.platform == "linux", "Linux allocation-runner limits")
+class ProfileBytesTests(unittest.TestCase):
+    def test_a_file_that_vanishes_between_listing_and_stat_does_not_fail(self):
+        # The wrapper writes host-identity.json through a .tmp sibling and renames
+        # it. is_file() can answer True for that sibling and stat() then raise,
+        # which is the FileNotFoundError the size budget hit on shard 1/3.
+        with tempfile.TemporaryDirectory() as directory:
+            present = Path(directory) / "native.heaptrack.gz"
+            present.write_bytes(b"12345")
+
+            class Vanishing:
+                def is_file(self):
+                    return True
+
+                def stat(self):
+                    raise FileNotFoundError(self)
+
+            class Listed:
+                def iterdir(self):
+                    return iter([present, Vanishing()])
+
+            self.assertEqual(ALLOCATION.profile_bytes(Listed()), 5)
+
+
+@unittest.skipUnless(sys.platform == "linux", "Linux allocation-runner limits")
 class AllocationLimitsTests(unittest.TestCase):
     def setUp(self):
         self.directory = tempfile.TemporaryDirectory()

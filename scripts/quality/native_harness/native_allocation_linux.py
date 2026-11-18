@@ -164,7 +164,17 @@ def cleanup_driver(process, observed):
 
 
 def profile_bytes(output):
-    return sum(path.stat().st_size for path in output.iterdir() if path.is_file())
+    # The wrapper writes host-identity.json through a .tmp sibling and renames it,
+    # so an entry can disappear between iterdir() and stat(). That is the writer
+    # finishing, not a profile to measure: only present files count.
+    total = 0
+    for path in output.iterdir():
+        try:
+            if path.is_file():
+                total += path.stat().st_size
+        except FileNotFoundError:
+            continue
+    return total
 
 
 interrupt = interrupt_handler("Native allocation diagnostic")
