@@ -14,6 +14,12 @@ The methodology, equivalence rules and statistics are in
   (`export`) and gates it against the matching committed baseline (`gate`),
   covered by `tests/quality/benchmark-metrics.test.ts`.
 - `baselines/`: committed regression baselines, one per hosted runner CPU.
+- `paired.ts`: the ABBA driver for #677. Runs the comparison controller and the
+  Electrobun reference in A, B, B, A order — two blocks each, so a session drift
+  cancels instead of favouring whichever system ran later — then reports one
+  comparison: peak process-tree RSS. Wall time, startup and input timing are
+  recorded per block but never ratioed, because the WebView workload is
+  vsync-locked and the two sides measure different endpoints.
 - `results/`: recorded runs, each with its own README.
 
 ## Run
@@ -50,6 +56,20 @@ bun benchmarks/comparison/export.ts "$out" \
 The export writes `comparison.json` and `launches.jsonl.gz` (every raw child
 report plus the tail of its stderr log). Write the run's README by hand from the
 printed table and the recorded environment.
+
+## Paired comparison with the pinned Electrobun reference
+
+```sh
+bun benchmarks/comparison/paired.ts \
+  --bun-native 'bun benchmarks/comparison/run.ts --host /abs/host --host-profile release --trials 5 --output {output}' \
+  --electrobun 'bun benchmarks/electrobun/run.ts --app /abs/App.app --trials 5 --output {output}' \
+  --output /abs/new-paired-run
+```
+
+Each command receives a fresh `{output}` directory per block; the driver reads
+`comparison.json` or `electrobun.json` from it. It writes `paired.json`, and
+`paired.md` when all four blocks produced a record. A missing block is an
+incomplete run, never a median over survivors.
 
 ## Gate a run against the committed baseline
 
