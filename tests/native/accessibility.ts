@@ -270,6 +270,10 @@ for (const capability of [
 
 let window: NativeWindow | undefined
 let macWindow: MacWindow | undefined
+// Collected AX/AT-SPI trees. Declared outside the scenario so a failed assertion
+// can retain the exact tree its predicate saw (#682); it is normally written
+// after the scenario passes, as ax-trees.json / atspi-trees.json.
+const dumps: Record<string, unknown> = {}
 try {
   window = await app.openWindow({ title: TITLE, width: WIDTH, height: HEIGHT })
   const owned = window
@@ -400,7 +404,6 @@ try {
     if (macWindow) await macWindow.press(...keys)
     else await run(['xdotool', 'key', '--clearmodifiers', ...keys])
   }
-  const dumps: Record<string, unknown> = {}
   const dump = async (name: string, title = TITLE) => {
     if (mac) {
       const raw = JSON.parse(await run([axOracle!, 'dump', String(pid), title])) as Array<
@@ -1164,6 +1167,32 @@ try {
     JSON.stringify(dumps, null, 2) + '\n'
   )
   await owned.close()
+} catch (error) {
+  // A failed assertion used to discard every collected tree, which left #682
+  // undiagnosable: the predicate's own input was gone. Retain it unchanged
+  // before rethrowing, so the raw attributes, roles and depths survive.
+  writeFileSync(
+    join(output, mac ? 'ax-trees-failure.json' : 'atspi-trees-failure.json'),
+    JSON.stringify(dumps, null, 2) + '\n'
+  )
+  writeFileSync(
+    join(output, 'failure.json'),
+    JSON.stringify(
+      {
+        status: 'failed',
+        scenario: 'accessibility',
+        platform: process.platform,
+        mode,
+        elapsedMs: Math.round(performance.now() - started),
+        error:
+          error instanceof Error ? { name: error.name, message: error.message } : String(error),
+        dumps: Object.keys(dumps),
+      },
+      null,
+      2
+    ) + '\n'
+  )
+  throw error
 } finally {
   await app.shutdown()
   await app.closed
