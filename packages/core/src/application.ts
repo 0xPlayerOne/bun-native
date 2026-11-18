@@ -161,6 +161,9 @@ class Identities {
 
 class Application implements NativeApplication {
   readonly closed: Promise<void>
+  get launchPhases() {
+    return this.host.launchPhases
+  }
   readonly limits: Readonly<Limits>
   // NativeHost.launch has negotiated every mandatory protocol feature.
   readonly capabilities: readonly Capability[]

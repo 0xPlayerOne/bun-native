@@ -349,6 +349,18 @@ const MAX_QUEUED_EVENTS = 128
  */
 export class NativeHost implements AsyncIterable<HostEvent> {
   readonly exited: Promise<number>
+  /**
+   * In-process launch milestones, in milliseconds on the `performance` clock of
+   * the launching process (#678): when `launch` was entered, when the host
+   * process had been spawned, and when it acknowledged the protocol handshake.
+   * `hi` minus `lo` is the phase duration; `createApplication` adds no work of
+   * its own beyond these. Instrumentation only — nothing waits on it.
+   */
+  readonly launchPhases: { entryMs: number; spawnedMs: number; helloMs: number } = {
+    entryMs: 0,
+    spawnedMs: 0,
+    helloMs: 0,
+  }
   private readonly process: Bun.Subprocess<'pipe', 'pipe', 'pipe'>
   private readonly stdout: ReadableStreamDefaultReader<Uint8Array>
   private readonly stderr: ReadableStreamDefaultReader<Uint8Array>
@@ -407,6 +419,7 @@ export class NativeHost implements AsyncIterable<HostEvent> {
       // (or closed stdin), so the host runs in its own session on POSIX.
       detached: process.platform !== 'win32',
     })
+    this.launchPhases.spawnedMs = performance.now()
     this.stdout = this.process.stdout.getReader()
     this.stderr = this.process.stderr.getReader()
     this.exited = this.process.exited
@@ -427,10 +440,13 @@ export class NativeHost implements AsyncIterable<HostEvent> {
       throw new TypeError(
         'Native service arguments are reserved for the explicit permissions option'
       )
+    const entryMs = performance.now()
     const host = new NativeHost(options, policy)
+    host.launchPhases.entryMs = entryMs
     try {
       await host.request({ type: 'hello', protocol: PROTOCOL_VERSION })
       if (!host.ready) throw new ProtocolError('Host acknowledged hello before protocol readiness')
+      host.launchPhases.helloMs = performance.now()
       host.phase = 'running'
       return host
     } catch (error) {

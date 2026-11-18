@@ -253,6 +253,7 @@ export async function runWorkload(adapter: 'solid' | 'core' | 'react', mount: Mo
     result['startup'] = {
       timeOriginEpochMs: performance.timeOrigin,
       workloadEntryMs: started,
+      launchPhases: { ...application.launchPhases },
       applicationReadyMs,
       windowOpenedMs,
       viewMountedMs: performance.now(),

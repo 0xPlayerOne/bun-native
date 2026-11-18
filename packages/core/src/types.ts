@@ -329,6 +329,12 @@ export interface NativeWindow {
 
 export interface NativeApplication {
   readonly closed: Promise<void>
+  /**
+   * In-process launch milestones on the `performance` clock (#678): entry to
+   * hydration, host spawn and protocol handshake. Instrumentation for startup
+   * attribution; it does not gate readiness and adds no work to the launch.
+   */
+  readonly launchPhases: Readonly<{ entryMs: number; spawnedMs: number; helloMs: number }>
   readonly limits: Readonly<Limits>
   readonly capabilities: readonly NativeCapability[]
   /** Implemented service features and their effective grants, not an OS sandbox. */
