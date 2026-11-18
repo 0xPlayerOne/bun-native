@@ -4,6 +4,23 @@ import { isAbsolute } from 'node:path'
 import { redactDiagnostic } from './exit-diagnostic.ts'
 
 const MAX_RECORDS = 256
+/** Upper bound for an explicit diagnostic override; the default stays bounded. */
+const MAX_RECORDS_LIMIT = 100_000
+
+/**
+ * `BUN_NATIVE_STARTUP_TRACE_RECORDS` raises the record cap for a diagnostic run
+ * that needs more than the default window — attributing a stall that appears
+ * once per thousand updates, for example (#666). It stays bounded and only
+ * applies when tracing is already enabled.
+ */
+function recordCap(): number {
+  const raw = process.env['BUN_NATIVE_STARTUP_TRACE_RECORDS']
+  if (raw === undefined) return MAX_RECORDS
+  const value = Number(raw)
+  if (!Number.isInteger(value) || value < MAX_RECORDS || value > MAX_RECORDS_LIMIT)
+    throw new Error(`BUN_NATIVE_STARTUP_TRACE_RECORDS must be ${MAX_RECORDS}..${MAX_RECORDS_LIMIT}`)
+  return value
+}
 
 /** Explicit diagnostic mode only. This is not a request scheduler or transport proxy. */
 export class StartupTrace {
@@ -13,13 +30,24 @@ export class StartupTrace {
 
   private constructor(
     private readonly path: string,
-    private readonly nonce: string
+    private readonly nonce: string,
+    private readonly maximum = MAX_RECORDS
   ) {}
 
   static fromEnvironment(): StartupTrace | undefined {
     if (process.env['BUN_NATIVE_STARTUP_TRACE'] !== '1') return
-    const path = process.env['BUN_NATIVE_EVIDENCE_LOG']
-    const nonce = process.env['BUN_NATIVE_EVIDENCE_NONCE']
+    // `BUN_NATIVE_STARTUP_TRACE_LOG` writes the transport trace on its own path.
+    // It exists so a timed workload can be traced without setting the host's
+    // `BUN_NATIVE_EVIDENCE_LOG`, which would add per-paint file I/O and perturb
+    // the measurement (#666). The evidence log remains the fallback.
+    const dedicated = process.env['BUN_NATIVE_STARTUP_TRACE_LOG']
+    const path = dedicated ?? process.env['BUN_NATIVE_EVIDENCE_LOG']
+    // A dedicated transport path needs no evidence nonce: a timed workload drops
+    // every `BUN_NATIVE_EVIDENCE_*` variable on purpose, and requiring one turned
+    // an opt-in diagnostic into a launch failure (#666). The evidence-log path
+    // keeps the strict binding because its records are qualification evidence.
+    const nonce =
+      process.env['BUN_NATIVE_EVIDENCE_NONCE'] ?? (dedicated ? 'transport-only' : undefined)
     if (
       !path ||
       !isAbsolute(path) ||
@@ -31,7 +59,7 @@ export class StartupTrace {
       })
     )
       throw new Error('Native startup tracing requires an absolute evidence path and valid nonce')
-    return new StartupTrace(path, nonce)
+    return new StartupTrace(path, nonce, recordCap())
   }
 
   request(phase: string, command: Command, hostPid: number): void {
@@ -78,10 +106,10 @@ export class StartupTrace {
   }
 
   private write(phase: string, fields: Record<string, unknown>, terminal = false): void {
-    if (this.unavailable || (!terminal && this.records >= MAX_RECORDS)) return
-    if (!terminal && this.records === MAX_RECORDS - 1) {
+    if (this.unavailable || (!terminal && this.records >= this.maximum)) return
+    if (!terminal && this.records === this.maximum - 1) {
       phase = 'record_limit'
-      fields = { host_pid: fields['host_pid'], maximum_records: MAX_RECORDS }
+      fields = { host_pid: fields['host_pid'], maximum_records: this.maximum }
     }
     const record = {
       nonce: this.nonce,
