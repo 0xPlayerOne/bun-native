@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.33.7](https://github.com/AndrewM-F/bun-native/compare/v0.33.6...v0.33.7) (2026-11-17)
+
+
+### CI
+
+* **release:** keep the on-demand probe from failing the commit it inspects ([#707](https://github.com/AndrewM-F/bun-native/issues/707)) ([13cdc50](https://github.com/AndrewM-F/bun-native/commit/13cdc50af23e79910121f057436f443dc277dd96))
+* **release:** probe the npm trusted publisher binding on demand ([#706](https://github.com/AndrewM-F/bun-native/issues/706)) ([24a8447](https://github.com/AndrewM-F/bun-native/commit/24a8447ba3c2227b335ed0e78169c468c851b577))
+* **release:** report the npm trusted publisher binding before publishing ([#704](https://github.com/AndrewM-F/bun-native/issues/704)) ([e8e9d30](https://github.com/AndrewM-F/bun-native/commit/e8e9d304eb7bc048d8f09f868d8d05445f6e674f))
+
 ## [0.33.6](https://github.com/AndrewM-F/bun-native/compare/v0.33.5...v0.33.6) (2026-11-17)
 
 
