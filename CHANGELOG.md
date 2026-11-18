@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.33.12](https://github.com/AndrewM-F/bun-native/compare/v0.33.11...v0.33.12) (2026-11-18)
+
+
+### Tests
+
+* **native:** let an AX poll re-read a mid-publication element ([#679](https://github.com/AndrewM-F/bun-native/issues/679)) ([#723](https://github.com/AndrewM-F/bun-native/issues/723)) ([e4f02f4](https://github.com/AndrewM-F/bun-native/commit/e4f02f471d4da63ce82116b42f987a715dbcad65))
+* **native:** name both mtime values when the grant disagrees ([#681](https://github.com/AndrewM-F/bun-native/issues/681)) ([#722](https://github.com/AndrewM-F/bun-native/issues/722)) ([7a57cf3](https://github.com/AndrewM-F/bun-native/commit/7a57cf3026496736f4f30a44f3ff9f9ca3f80566))
+* **native:** wait for the app to register before VoiceOver activates it ([#695](https://github.com/AndrewM-F/bun-native/issues/695)) ([#724](https://github.com/AndrewM-F/bun-native/issues/724)) ([e7014b2](https://github.com/AndrewM-F/bun-native/commit/e7014b2c7ba4e735dd32e2fc4f18e1dc59ca12ee))
+
+
+### Maintenance
+
+* **ci:** pin code-foundry workflows to the current-owner release ([#721](https://github.com/AndrewM-F/bun-native/issues/721)) ([415b84f](https://github.com/AndrewM-F/bun-native/commit/415b84f87ee9392829a27b6a66834a8fa7404de5))
+
 ## [0.33.11](https://github.com/AndrewM-F/bun-native/compare/v0.33.10...v0.33.11) (2026-11-18)
 
 
