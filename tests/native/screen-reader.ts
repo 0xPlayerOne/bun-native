@@ -439,7 +439,21 @@ class VoiceOver implements Reader {
 
   async attach(pid: number) {
     this.#pid = pid
-    await run([driver!, 'activate', String(pid)])
+    // The oracle activates the app by PID. Immediately after launch the process is
+    // not yet registered with the accessibility system, and the oracle exits 1
+    // with "No running application with that process id" — observed in hosted
+    // runs where the same head passed on retry (#695). Waiting for registration is
+    // setup, not an assertion: the original error surfaces if it never registers.
+    const deadline = performance.now() + 10_000
+    for (;;) {
+      try {
+        await run([driver!, 'activate', String(pid)])
+        return
+      } catch (error) {
+        if (performance.now() > deadline) throw error
+        await Bun.sleep(100)
+      }
+    }
   }
 
   async press(key: Key) {
