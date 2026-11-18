@@ -41,7 +41,13 @@ export class StartupTrace {
     // `BUN_NATIVE_EVIDENCE_LOG`, which would add per-paint file I/O and perturb
     // the measurement (#666). The evidence log remains the fallback.
     const dedicated = process.env['BUN_NATIVE_STARTUP_TRACE_LOG']
-    const path = dedicated ?? process.env['BUN_NATIVE_EVIDENCE_LOG']
+    // `{pid}` keeps one file per launching process. A comparison run starts a new
+    // app process per launch, and sharing one path merges their records, which is
+    // exactly what obscured the first attribution attempt (#666).
+    const path = (dedicated ?? process.env['BUN_NATIVE_EVIDENCE_LOG'])?.replaceAll(
+      '{pid}',
+      String(process.pid)
+    )
     // A dedicated transport path needs no evidence nonce: a timed workload drops
     // every `BUN_NATIVE_EVIDENCE_*` variable on purpose, and requiring one turned
     // an opt-in diagnostic into a launch failure (#666). The evidence-log path
