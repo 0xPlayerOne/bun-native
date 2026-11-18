@@ -37,6 +37,10 @@ updates:
         versions: ['>= 0.23.0']
       - dependency-name: xkbcommon
         versions: ['>= 0.9.0']
+      # zed-xim (pinned git revision under vendored gpui_linux) still requires
+      # x11rb ^0.13, so 0.14 cannot unify and duplicates x11rb-protocol. See #710.
+      - dependency-name: x11rb
+        versions: ['>= 0.14.0']
   - package-ecosystem: pip
     directory: /scripts/quality
     multi-ecosystem-group: dependencies

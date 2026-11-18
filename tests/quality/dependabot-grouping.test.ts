@@ -119,5 +119,6 @@ test('GPUI-bound incompatible versions remain held until coordinated upgrade', (
     { 'dependency-name': 'accesskit_consumer', versions: ['>= 0.39.0'] },
     { 'dependency-name': 'base64', versions: ['>= 0.23.0'] },
     { 'dependency-name': 'xkbcommon', versions: ['>= 0.9.0'] },
+    { 'dependency-name': 'x11rb', versions: ['>= 0.14.0'] },
   ])
 })
