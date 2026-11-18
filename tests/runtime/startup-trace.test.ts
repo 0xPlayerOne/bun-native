@@ -1,5 +1,6 @@
 import { expect, spyOn, test } from 'bun:test'
 import { NativeHost } from '@bun-native/runtime'
+import { StartupTrace } from '../../packages/runtime/src/startup-trace.ts'
 import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
@@ -152,5 +153,88 @@ test('diagnostic file failure remains explicit and does not replace transport se
     )
   } finally {
     warning.mockRestore()
+  }
+})
+
+test('an explicit record cap raises the bounded window and still ends at the limit', async () => {
+  // Default is 256, which covers about fifty request cycles; attributing a stall
+  // that appears once per thousand updates needs the whole run (#666).
+  const previous = process.env['BUN_NATIVE_STARTUP_TRACE_RECORDS']
+  try {
+    process.env['BUN_NATIVE_STARTUP_TRACE_RECORDS'] = '600'
+    const result = await run('budget')
+    expect(result.failure).toBeUndefined()
+    expect(result.records).toHaveLength(601)
+    expect(result.records.filter((record) => record['phase'] === 'record_limit')).toHaveLength(1)
+    expect(
+      result.records.find((record) => record['phase'] === 'record_limit')?.['maximum_records']
+    ).toBe(600)
+  } finally {
+    if (previous === undefined) delete process.env['BUN_NATIVE_STARTUP_TRACE_RECORDS']
+    else process.env['BUN_NATIVE_STARTUP_TRACE_RECORDS'] = previous
+  }
+})
+
+test('an out-of-range record cap is refused rather than silently clamped', () => {
+  // The cap only applies when tracing is already enabled; an invalid value must
+  // fail loudly there rather than silently falling back to the default window.
+  const directory = mkdtempSync(join(tmpdir(), 'bun-native-cap-'))
+  const names = [
+    'BUN_NATIVE_STARTUP_TRACE',
+    'BUN_NATIVE_EVIDENCE_LOG',
+    'BUN_NATIVE_EVIDENCE_NONCE',
+    'BUN_NATIVE_STARTUP_TRACE_RECORDS',
+  ]
+  const previous = new Map(names.map((name) => [name, process.env[name]]))
+  try {
+    Object.assign(process.env, {
+      BUN_NATIVE_STARTUP_TRACE: '1',
+      BUN_NATIVE_EVIDENCE_LOG: join(directory, 'events.jsonl'),
+      BUN_NATIVE_EVIDENCE_NONCE: 'cap-check',
+    })
+    for (const value of ['0', '255', '100001', 'x', '1.5']) {
+      process.env['BUN_NATIVE_STARTUP_TRACE_RECORDS'] = value
+      expect(() => StartupTrace.fromEnvironment()).toThrow('BUN_NATIVE_STARTUP_TRACE_RECORDS')
+    }
+  } finally {
+    for (const [name, value] of previous) {
+      if (value === undefined) delete process.env[name]
+      else process.env[name] = value
+    }
+    rmSync(directory, { recursive: true, force: true })
+  }
+})
+
+test('a dedicated trace path records the transport without host evidence', async () => {
+  // The workload deletes BUN_NATIVE_EVIDENCE_LOG for a timed run so the host does
+  // no per-paint file I/O. A trace on its own path still observes the transport,
+  // which is what #666 needs to attribute a stall.
+  const directory = mkdtempSync(join(tmpdir(), 'bun-native-trace-path-'))
+  const names = [
+    'BUN_NATIVE_STARTUP_TRACE',
+    'BUN_NATIVE_STARTUP_TRACE_LOG',
+    'BUN_NATIVE_EVIDENCE_LOG',
+    'BUN_NATIVE_EVIDENCE_NONCE',
+  ]
+  const previous = new Map(names.map((name) => [name, process.env[name]]))
+  const tracePath = join(directory, 'transport.jsonl')
+  try {
+    Object.assign(process.env, {
+      BUN_NATIVE_STARTUP_TRACE: '1',
+      BUN_NATIVE_STARTUP_TRACE_LOG: tracePath,
+      BUN_NATIVE_EVIDENCE_NONCE: 'transport-only',
+    })
+    delete process.env['BUN_NATIVE_EVIDENCE_LOG']
+    const trace = StartupTrace.fromEnvironment()
+    expect(trace).toBeDefined()
+    trace!.request('request_queued', { id: 1, type: 'shutdown' } as never, 1)
+    expect(existsSync(tracePath)).toBe(true)
+    expect(readFileSync(tracePath, 'utf8')).toContain('request_queued')
+  } finally {
+    for (const [name, value] of previous) {
+      if (value === undefined) delete process.env[name]
+      else process.env[name] = value
+    }
+    rmSync(directory, { recursive: true, force: true })
   }
 })
