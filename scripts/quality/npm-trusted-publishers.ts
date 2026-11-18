@@ -78,9 +78,18 @@ export function audienceFor(registry: string): string {
   return `npm:${new URL(registry).hostname}`
 }
 
-/** Classifies one exchange response; npm treats anything but 200 as "no token". */
+/**
+ * Classifies one exchange response. npm answers a granted exchange with
+ * `201 Created` and a short-lived `token`, so any 2xx is an accepted binding;
+ * a 404 means no trusted publisher matches the presented claims.
+ */
 export function classify(name: string, status: number, body: string): ProbeResult {
-  return { name, status, accepted: status === 200, detail: body.trim().slice(0, 300) }
+  return {
+    name,
+    status,
+    accepted: status >= 200 && status < 300,
+    detail: body.trim().slice(0, 300),
+  }
 }
 
 export function formatResult(result: ProbeResult): string {

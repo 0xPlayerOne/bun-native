@@ -68,13 +68,15 @@ describe('npm trusted publisher probe', () => {
   })
 
   test('only an exchanged token counts as an accepted publisher', () => {
-    expect(classify('@bun-native/cli', 200, '{"token":"short-lived"}').accepted).toBe(true)
+    // npm answers a granted exchange with 201 Created and a short-lived token.
+    for (const status of [200, 201, 204])
+      expect(classify('@bun-native/cli', status, '{"token":"short-lived"}').accepted).toBe(true)
     for (const status of [401, 403, 404, 422, 500])
       expect(classify('@bun-native/cli', status, '{"error":"no publisher"}').accepted).toBe(false)
   })
 
   test('keeps the registry status in the reported detail', () => {
-    expect(formatResult(classify('@bun-native/cli', 200, ''))).toStartWith('OK    @bun-native/cli')
+    expect(formatResult(classify('@bun-native/cli', 201, ''))).toStartWith('OK    @bun-native/cli')
     const rejected = formatResult(classify('@bun-native/core', 404, '{"error":"Not found"}'))
     expect(rejected).toStartWith('FAIL  @bun-native/core - HTTP 404')
     expect(rejected).toContain('Not found')
