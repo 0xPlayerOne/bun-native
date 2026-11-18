@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.33.10](https://github.com/AndrewM-F/bun-native/compare/v0.33.9...v0.33.10) (2026-11-18)
+
+
+### Tests
+
+* **quality:** give slow Windows integration cases file-scoped time budgets ([#715](https://github.com/AndrewM-F/bun-native/issues/715)) ([9dff821](https://github.com/AndrewM-F/bun-native/commit/9dff8214ab2b9b4fb20413465c1a78163fa55628))
+
 ## [0.33.9](https://github.com/AndrewM-F/bun-native/compare/v0.33.8...v0.33.9) (2026-11-18)
 
 
