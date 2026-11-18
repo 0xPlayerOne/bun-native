@@ -1011,40 +1011,52 @@ try {
       selected: boolean
       text: string[]
     }
+    // Why the last read was not a settled tree; surfaced if the poll expires.
+    let unsettled = ''
     const listItems = (tree: Accessible[]): ListItem[] | undefined => {
+      unsettled = ''
       const list = find(tree, 'list', 'Messages')
       if (!list) return undefined
       const below = tree.slice(tree.indexOf(list) + 1)
       const end = below.findIndex((node) => node.depth <= list.depth)
       const inside = end < 0 ? below : below.slice(0, end)
-      return inside
-        .filter((node) => node.depth === list.depth + 1)
-        .map((item) => {
-          assert.equal(item.role, 'list-item', 'every child of the list is a list item')
-          if (mac)
-            // AccessKit answers isAccessibilitySelected for every item-like
-            // node (accesskit_macos 0.26.3 src/node.rs): AXSelected is a
-            // boolean on every row.
-            assert(
-              item.axSelected !== undefined,
-              'an item with accessible_selected reports AXSelected'
-            )
-          else
-            assert(
-              item.states.includes('selectable'),
-              'an item with accessible_selected is selectable'
-            )
-          const after = inside.slice(inside.indexOf(item) + 1)
-          const stop = after.findIndex((node) => node.depth <= item.depth)
-          return {
-            position: mac ? null : Number(item.attributes?.posinset),
-            setSize: mac ? null : Number(item.attributes?.setsize),
-            selected: item.states.includes('selected'),
-            text: (stop < 0 ? after : after.slice(0, stop)).map(
-              (node) => node.role + ':' + node.name
-            ),
+      const items: ListItem[] = []
+      for (const item of inside.filter((node) => node.depth === list.depth + 1)) {
+        // A macOS AX read can land between a row's creation and the publication
+        // of its properties and children: the element is present but answers
+        // nothing, so AXSelected reads as absent while the row is still empty
+        // (#682, retained evidence in #716). That is an unsettled observation,
+        // not a violation, so report it and let the caller's poll re-read rather
+        // than aborting the loop. A tree that stays in this shape still fails,
+        // and now names the reason.
+        if (item.role !== 'list-item') {
+          unsettled = 'every child of the list is a list item'
+          return undefined
+        }
+        if (mac) {
+          // AccessKit answers isAccessibilitySelected for every item-like node
+          // (accesskit_macos 0.26.3 src/node.rs): AXSelected is a boolean on
+          // every realized row.
+          if (item.axSelected === undefined) {
+            unsettled = 'an item with accessible_selected reports AXSelected'
+            return undefined
           }
+        } else if (!item.states.includes('selectable')) {
+          unsettled = 'an item with accessible_selected is selectable'
+          return undefined
+        }
+        const after = inside.slice(inside.indexOf(item) + 1)
+        const stop = after.findIndex((node) => node.depth <= item.depth)
+        items.push({
+          position: mac ? null : Number(item.attributes?.posinset),
+          setSize: mac ? null : Number(item.attributes?.setsize),
+          selected: item.states.includes('selected'),
+          text: (stop < 0 ? after : after.slice(0, stop)).map(
+            (node) => node.role + ':' + node.name
+          ),
         })
+      }
+      return items
     }
     const expectItems = async (name: string, first: number, selected: number) => {
       // macOS: no set size or position (MAC_LIST_LIMITS), checked below.
@@ -1054,14 +1066,21 @@ try {
         selected: first + index === selected,
         text: ['label:Message ' + (first + index)],
       }))
-      const tree = await poll(
-        name,
-        (candidate) => {
-          const items = listItems(candidate)
-          return items !== undefined && JSON.stringify(items) === JSON.stringify(expected)
-        },
-        LIST_TITLE
-      )
+      let tree: Accessible[]
+      try {
+        tree = await poll(
+          name,
+          (candidate) => {
+            const items = listItems(candidate)
+            return items !== undefined && JSON.stringify(items) === JSON.stringify(expected)
+          },
+          LIST_TITLE
+        )
+      } catch (error) {
+        throw new Error(
+          `${(error as Error).message}${unsettled ? ` (last read unsettled: ${unsettled})` : ''}`
+        )
+      }
       const list = find(tree, 'list', 'Messages')!
       assert.equal(list.attributes?.posinset, undefined, 'the list itself has no position')
       if (mac) {
