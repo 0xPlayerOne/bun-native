@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict'
+import { failedLaunches, runStatus } from './status.ts'
 import { createHash } from 'node:crypto'
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { arch, cpus, platform, release, totalmem } from 'node:os'
@@ -155,6 +156,10 @@ async function launch(name: string) {
   const failed = exitCode !== 0 || !report || report.error
   return {
     name,
+    // Position in this run. The first launch after a build and a launch on an
+    // idle machine start measurably faster than mid-sequence ones (#677), so the
+    // order has to be part of the record for any paired comparison.
+    order: name === 'first' ? 0 : Number(name.slice('trial-'.length)),
     status: failed ? 'failed' : 'passed',
     exitCode,
     wallMs,
@@ -208,7 +213,13 @@ const summary = {
 }
 const record = {
   schemaVersion: 1,
-  status: measured.length === trials ? 'passed' : 'failed',
+  status: runStatus(trials, launches),
+  firstLaunch: {
+    status: launches[0]!.status,
+    spawnToViewMountedMs: launches[0]!.spawnToViewMountedMs,
+    includedInSummary: false,
+  },
+  failedLaunches: failedLaunches(launches),
   startedAt: new Date().toISOString(),
   command: process.argv,
   app: {
@@ -250,7 +261,10 @@ const record = {
     startup:
       'controller spawn epoch to the page performance.timeOrigin + viewMounted (first animation frame after mount); not display presentation',
     rss: `ps rss of the launcher and its descendants every ${rssInterval} ms, plus WebKit helper processes (com.apple.WebKit.WebContent/GPU/Networking) that did not exist before the launch. Those helpers are launchd XPC services, so any other application starting WebKit work during the run is also counted: this is a heuristic upper bound.`,
-    failures: 'failed launches are retained and excluded; never retried',
+    failures:
+      'failed launches are retained and excluded from medians; never retried. A failed first launch fails the run',
+    launchOrder:
+      'each launch records its order; first-launch and ordering effects are excluded from medians',
     firstLaunch: 'launch "first" is reported separately and excluded from the summary',
   },
   launches,
