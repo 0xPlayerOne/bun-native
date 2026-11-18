@@ -1,4 +1,5 @@
-import { expect, test } from 'bun:test'
+import { describe, expect, test } from 'bun:test'
+import { startupMetrics } from '../../benchmarks/comparison/stats.ts'
 import {
   assertEquivalentPaint,
   assertEquivalentWorkloads,
@@ -422,4 +423,51 @@ test('CPU utilization is CPU seconds per wall second and absent without usage', 
   ])
   const group = summary.groups['core/aot'] as Record<string, any>
   expect(group.perLaunch.cpuTimeMs.count).toBe(2)
+})
+
+describe('startup phase attribution (#678)', () => {
+  function launch(report: Record<string, unknown>) {
+    return { report, process: { spawnEpochMs: 1_000 } } as never
+  }
+
+  test('splits createApplication at the runtime handshake', () => {
+    const metrics = startupMetrics(
+      launch({
+        startup: {
+          timeOriginEpochMs: 1_010,
+          workloadEntryMs: 20,
+          launchPhases: { entryMs: 15, spawnedMs: 16, helloMs: 216 },
+          applicationReadyMs: 217,
+          windowOpenedMs: 400,
+          viewMountedMs: 500,
+        },
+      })
+    ) as Record<string, number>
+    expect(metrics['spawnToLaunchEntryMs']).toBe(25)
+    expect(metrics['launchEntryToHostSpawnMs']).toBe(1)
+    expect(metrics['hostSpawnToHandshakeMs']).toBe(200)
+    expect(metrics['handshakeToApplicationReadyMs']).toBe(1)
+    // The attribution is a partition of the pre-ready span, not an addition.
+    expect(
+      metrics['launchEntryToHostSpawnMs']! +
+        metrics['hostSpawnToHandshakeMs']! +
+        metrics['handshakeToApplicationReadyMs']!
+    ).toBe(202)
+  })
+
+  test('reports no phase split for a report written before the phases existed', () => {
+    const metrics = startupMetrics(
+      launch({
+        startup: {
+          timeOriginEpochMs: 1_010,
+          workloadEntryMs: 20,
+          applicationReadyMs: 217,
+          windowOpenedMs: 400,
+          viewMountedMs: 500,
+        },
+      })
+    ) as Record<string, number>
+    expect(metrics['spawnToApplicationReadyMs']).toBe(227)
+    expect(metrics['hostSpawnToHandshakeMs']).toBeUndefined()
+  })
 })

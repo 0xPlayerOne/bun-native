@@ -304,13 +304,26 @@ export type Launch = {
   }
 }
 
-function startupMetrics(launch: Launch) {
-  const startup = field(launch.report, ['startup']) as Record<string, number> | undefined
+export function startupMetrics(launch: Launch) {
+  const startup = field(launch.report, ['startup']) as
+    | (Record<string, number> & { launchPhases?: Record<string, number> })
+    | undefined
   if (!startup) return null
   const origin = startup['timeOriginEpochMs']! - launch.process.spawnEpochMs
+  const phases = startup.launchPhases
   return {
     spawnToRuntimeOriginMs: origin,
     spawnToWorkloadEntryMs: origin + startup['workloadEntryMs']!,
+    // #678: divide createApplication at the runtime's own boundaries instead of
+    // leaving entry-to-ready as one opaque span.
+    ...(phases
+      ? {
+          spawnToLaunchEntryMs: origin + phases['entryMs']!,
+          launchEntryToHostSpawnMs: phases['spawnedMs']! - phases['entryMs']!,
+          hostSpawnToHandshakeMs: phases['helloMs']! - phases['spawnedMs']!,
+          handshakeToApplicationReadyMs: startup['applicationReadyMs']! - phases['helloMs']!,
+        }
+      : {}),
     spawnToApplicationReadyMs: origin + startup['applicationReadyMs']!,
     spawnToWindowOpenedMs: origin + startup['windowOpenedMs']!,
     spawnToViewMountedMs: origin + startup['viewMountedMs']!,
