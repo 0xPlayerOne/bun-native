@@ -1,4 +1,7 @@
 import { describe, expect, test } from 'bun:test'
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 import {
   ABBA,
   abbaCompare,
@@ -6,6 +9,7 @@ import {
   bunNativeSamples,
   electrobunSamples,
   renderMarkdown,
+  runPaired,
   type Samples,
 } from '../../benchmarks/comparison/paired.ts'
 
@@ -85,5 +89,81 @@ describe('ABBA pairing (#677)', () => {
     ])
     expect(markdown).toContain('| peakProcessTreeRssMB | 100.00 | 200.00 | 0.500 |')
     expect(markdown).toContain('Not compared: wall time, startup and input timing')
+  })
+})
+
+describe('ABBA driver orchestration', () => {
+  const bunNativeRecord = {
+    launches: [
+      { status: 'passed', warmup: true, process: { wallMs: 1, peakTreeRssBytes: 1e6 } },
+      { status: 'passed', process: { wallMs: 2_000, peakTreeRssBytes: 140e6 } },
+    ],
+  }
+  const electrobunRecord = {
+    launches: [
+      { status: 'passed', order: 0, wallMs: 1, peakTotalRssBytes: 1e6 },
+      { status: 'passed', order: 1, wallMs: 37_000, peakTotalRssBytes: 220e6 },
+    ],
+  }
+
+  function harness(options: { failBlock?: number } = {}) {
+    const work = mkdtempSync(join(tmpdir(), 'paired-'))
+    const output = join(work, 'run')
+    mkdirSync(output)
+    const seen: string[] = []
+    const spawn = (command: string) => {
+      seen.push(command)
+      const index = seen.length - 1
+      const directory = command.replace('harness ', '')
+      if (index === options.failBlock) return 1
+      mkdirSync(directory, { recursive: true })
+      const file = index === 0 || index === 3 ? 'comparison.json' : 'electrobun.json'
+      writeFileSync(
+        join(directory, file),
+        JSON.stringify(file === 'comparison.json' ? bunNativeRecord : electrobunRecord)
+      )
+      return 0
+    }
+    const commands = {
+      'bun-native': 'harness {output}',
+      electrobun: 'harness {output}',
+    } as const
+    return { work, output, seen, spawn, commands }
+  }
+
+  test('runs A, B, B, A and reports the drift-cancelled RSS comparison', () => {
+    const { work, output, seen, spawn, commands } = harness()
+    try {
+      const { report, complete } = runPaired({ output, commands, spawn })
+      expect(complete).toBe(true)
+      expect(seen).toHaveLength(4)
+      // The placeholder is substituted per block, so each block gets its own directory.
+      expect(seen[0]).toContain('run-block-0')
+      expect(seen[3]).toContain('run-block-3')
+      expect(seen[1]).not.toBe(seen[0])
+      expect(report.status).toBe('recorded')
+      expect(report.blocks.map((block) => block.system)).toEqual([...ABBA])
+      expect(report.comparisons).toHaveLength(1)
+      expect(report.comparisons[0]!.ratio).toBeCloseTo(140 / 220, 5)
+      // Wall time is present but explicitly not comparable.
+      expect(report.recordedWallMs?.comparable).toBe(false)
+      expect(report.recordedWallMs?.bunNative).toEqual([2_000, 2_000])
+    } finally {
+      rmSync(work, { recursive: true, force: true })
+    }
+  })
+
+  test('a block that produces no record makes the run incomplete', () => {
+    const { work, output, spawn, commands } = harness({ failBlock: 1 })
+    try {
+      const { report, complete } = runPaired({ output, commands, spawn })
+      expect(complete).toBe(false)
+      expect(report.status).toBe('incomplete')
+      expect(report.comparisons).toEqual([])
+      expect(report.blocks.filter((block) => !block.succeeded)).toHaveLength(1)
+      expect(report.recordedWallMs).toBeNull()
+    } finally {
+      rmSync(work, { recursive: true, force: true })
+    }
   })
 })

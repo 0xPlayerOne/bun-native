@@ -138,46 +138,55 @@ export function renderMarkdown(order: readonly System[], comparisons: readonly C
   return lines.join('\n') + '\n'
 }
 
-if (import.meta.main) {
-  const { values } = parseArgs({
-    args: process.argv.slice(2),
-    strict: true,
-    options: {
-      'bun-native': { type: 'string' },
-      electrobun: { type: 'string' },
-      output: { type: 'string' },
-    },
-  })
-  for (const name of ['bun-native', 'electrobun', 'output'] as const)
-    assert(values[name], `--${name} is required`)
-  const output = values.output!
-  assert(isAbsolute(output), '--output must be absolute')
-  assert(!existsSync(output), '--output must not exist yet')
-  for (const name of ['bun-native', 'electrobun'] as const)
-    assert(values[name]!.includes('{output}'), `--${name} must contain {output}`)
+export type PairedOptions = {
+  /** Absolute directory that must not exist yet; one subdirectory per block. */
+  output: string
+  commands: Record<System, string>
+  /** Injectable for tests; runs one block and returns its exit code. */
+  spawn?: (command: string) => number
+}
 
-  mkdirSync(output)
-  const record: Record<System, string> = {
-    'bun-native': 'comparison.json',
-    electrobun: 'electrobun.json',
-  }
+export type PairedReport = {
+  schemaVersion: number
+  status: 'recorded' | 'incomplete'
+  order: readonly System[]
+  blocks: { index: number; system: System; directory: string; succeeded: boolean }[]
+  comparisons: Comparison[]
+  recordedWallMs: {
+    bunNative: number[]
+    electrobun: number[]
+    comparable: false
+    reason: string
+  } | null
+  notCompared: string
+}
+
+const RECORD: Record<System, string> = {
+  'bun-native': 'comparison.json',
+  electrobun: 'electrobun.json',
+}
+
+/**
+ * Runs the ABBA blocks and builds the report. Separated from argv handling so the
+ * pairing, the incomplete-block rule and the report shape are testable without
+ * launching a native application.
+ */
+export function runPaired(options: PairedOptions): {
+  report: PairedReport
+  complete: boolean
+} {
+  const spawn =
+    options.spawn ?? ((command: string) => Bun.spawnSync(['bash', '-lc', command]).exitCode)
   const samples: Record<System, Samples[]> = { 'bun-native': [], electrobun: [] }
-  const blocks: { index: number; system: System; directory: string; succeeded: boolean }[] = []
+  const blocks: PairedReport['blocks'] = []
 
   for (const [index, system] of ABBA.entries()) {
-    const directory = blockDirectory(output, index)
-    const command = values[system]!.replaceAll('{output}', directory)
-    console.log(JSON.stringify({ phase: 'block-start', index, system, directory }))
-    const result = Bun.spawnSync(['bash', '-lc', command], { stdout: 'inherit', stderr: 'inherit' })
-    const file = join(directory, record[system])
-    const succeeded = result.exitCode === 0 && existsSync(file)
+    const directory = blockDirectory(options.output, index)
+    spawn(options.commands[system].replaceAll('{output}', directory))
+    const file = join(directory, RECORD[system])
+    const succeeded = existsSync(file)
     blocks.push({ index, system, directory, succeeded })
-    if (!succeeded) {
-      console.error(
-        `${system} block ${index} did not produce ${file}; an ABBA pair needs both blocks`
-      )
-      continue
-    }
+    if (!succeeded) continue
     const parsed = JSON.parse(readFileSync(file, 'utf8'))
     samples[system].push(
       system === 'bun-native' ? bunNativeSamples(parsed, file) : electrobunSamples(parsed, file)
@@ -196,29 +205,60 @@ if (import.meta.main) {
         ),
       ]
     : []
-  // Wall time is reported per system but never compared: the workload on the
-  // WebView side is frame-synchronized, so its duration is a property of vsync.
-  const recordedWallMs = complete
-    ? {
-        bunNative: samples['bun-native'].map((item) => median(item.wallMs)),
-        electrobun: samples.electrobun.map((item) => median(item.wallMs)),
-        comparable: false,
-        reason:
-          'the Electrobun workload is vsync-locked (~2,100 frame-synchronized operations), so wall time measures frame pacing rather than efficiency',
-      }
-    : null
-  const report = {
-    schemaVersion: 1,
-    status: complete ? 'recorded' : 'incomplete',
-    order: ABBA,
-    blocks,
-    comparisons,
-    recordedWallMs,
-    notCompared:
-      'startup and input timing are recorded per block on each side but not compared: an acknowledged native view and a WebView mount are different endpoints',
+  return {
+    complete,
+    report: {
+      schemaVersion: 1,
+      status: complete ? 'recorded' : 'incomplete',
+      order: ABBA,
+      blocks,
+      comparisons,
+      // Wall time is reported per system but never compared: the workload on the
+      // WebView side is frame-synchronized, so its duration is a property of vsync.
+      recordedWallMs: complete
+        ? {
+            bunNative: samples['bun-native'].map((item) => median(item.wallMs)),
+            electrobun: samples.electrobun.map((item) => median(item.wallMs)),
+            comparable: false,
+            reason:
+              'the Electrobun workload is vsync-locked (~2,100 frame-synchronized operations), so wall time measures frame pacing rather than efficiency',
+          }
+        : null,
+      notCompared:
+        'startup and input timing are recorded per block on each side but not compared: an acknowledged native view and a WebView mount are different endpoints',
+    },
   }
+}
+
+if (import.meta.main) {
+  const { values } = parseArgs({
+    args: process.argv.slice(2),
+    strict: true,
+    options: {
+      'bun-native': { type: 'string' },
+      electrobun: { type: 'string' },
+      output: { type: 'string' },
+    },
+  })
+  for (const name of ['bun-native', 'electrobun', 'output'] as const)
+    assert(values[name], `--${name} is required`)
+  const output = values.output!
+  assert(isAbsolute(output), '--output must be absolute')
+  assert(!existsSync(output), '--output must not exist yet')
+  const commands: Record<System, string> = {
+    'bun-native': values['bun-native']!,
+    electrobun: values.electrobun!,
+  }
+  for (const system of ABBA)
+    assert(commands[system].includes('{output}'), `--${system} must contain {output}`)
+
+  mkdirSync(output)
+  const { report, complete } = runPaired({ output, commands })
   writeFileSync(join(output, 'paired.json'), JSON.stringify(report, null, 2) + '\n')
-  if (complete) writeFileSync(join(output, 'paired.md'), renderMarkdown(ABBA, comparisons))
-  console.log(renderMarkdown(ABBA, comparisons))
-  if (!complete) process.exit(1)
+  if (complete) writeFileSync(join(output, 'paired.md'), renderMarkdown(ABBA, report.comparisons))
+  console.log(renderMarkdown(ABBA, report.comparisons))
+  if (!complete) {
+    console.error('an ABBA pair needs both blocks of each system; this run is incomplete')
+    process.exit(1)
+  }
 }
