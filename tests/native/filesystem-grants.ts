@@ -146,7 +146,27 @@ async function readWrite(grant: NativeFileGrant) {
   const stat = await grant.stat('notes.txt')
   assert.equal(stat.kind, 'file')
   assert.equal(stat.size, 3)
-  assert.equal(Math.abs(stat.modifiedMs - statSync(join(work, 'notes.txt')).mtimeMs) < 1, true)
+  // The comparison is unchanged. When it fails, name both values and the
+  // surrounding clock facts instead of reporting only "false !== true": #681
+  // needs the native wire value, the Bun value and the raw file timestamps to
+  // tell a conversion defect from a rounding or filesystem-granularity effect.
+  const bunStat = statSync(join(work, 'notes.txt'))
+  const modification = {
+    nativeModifiedMs: stat.modifiedMs,
+    bunMtimeMs: bunStat.mtimeMs,
+    deltaMs: stat.modifiedMs - bunStat.mtimeMs,
+    bunCtimeMs: bunStat.ctimeMs,
+    bunBirthtimeMs: bunStat.birthtimeMs,
+    platform: process.platform,
+    release: release(),
+    operation: 'write truncate',
+    mode,
+  }
+  assert.equal(
+    Math.abs(modification.deltaMs) < 1,
+    true,
+    `native and Bun disagree on mtime: ${JSON.stringify(modification)}`
+  )
 
   // Binary chunks round-trip byte for byte at the chunk bound.
   const binary = new Uint8Array(16_384).map((_, index) => (index * 31) & 0xff)
