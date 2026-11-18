@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.33.8](https://github.com/AndrewM-F/bun-native/compare/v0.33.7...v0.33.8) (2026-11-18)
+
+
+### Bug Fixes
+
+* **quality:** accept any 2xx from the npm token exchange ([#708](https://github.com/AndrewM-F/bun-native/issues/708)) ([3fb4aeb](https://github.com/AndrewM-F/bun-native/commit/3fb4aebf2eb86d49a70c231851fa7b5b7fd7cfe6))
+
 ## [0.33.7](https://github.com/AndrewM-F/bun-native/compare/v0.33.6...v0.33.7) (2026-11-17)
 
 
