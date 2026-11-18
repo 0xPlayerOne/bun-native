@@ -1,7 +1,13 @@
-import { afterEach, expect, test } from 'bun:test'
+import { afterEach, expect, setDefaultTimeout, test } from 'bun:test'
 import { existsSync } from 'node:fs'
 import { copyFile, mkdir, readdir, readFile, rm, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
+
+// These cases spawn the installed launchers and write real integration files.
+// Hosted Windows process startup put the slowest case at 5.43 s against
+// bun:test's 5 s default (273 ms locally on macOS), which failed a correct run
+// at the deadline (#714). The budget is file-scoped.
+setDefaultTimeout(30_000)
 import {
   dataDirectory,
   directorySource,

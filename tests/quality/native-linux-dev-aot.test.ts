@@ -1,4 +1,4 @@
-import { afterAll, beforeAll, expect, test } from 'bun:test'
+import { afterAll, beforeAll, expect, setDefaultTimeout, test } from 'bun:test'
 import {
   chmodSync,
   copyFileSync,
@@ -11,6 +11,12 @@ import {
 } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
+
+// Every case below spawns `bash` plus the two session scripts. Git Bash startup on a
+// hosted Windows runner regularly exceeds bun:test's 5 s default, which killed a
+// correct run at the deadline (exitCode null rather than a non-zero exit) (#714).
+// The budget is file-scoped: a sibling file keeps the default.
+setDefaultTimeout(20_000)
 
 const root = join(import.meta.dir, '..', '..')
 let work = ''
