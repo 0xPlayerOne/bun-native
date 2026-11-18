@@ -367,6 +367,14 @@ and the precise transition-completion limit.
 
 Each input scenario writes a `result.json`, bounded stdout/stderr and event logs,
 before/after screenshots, renderer details and owned process-tree RSS samples.
+
+The accessibility scenario writes its collected trees to `ax-trees.json` (macOS)
+or `atspi-trees.json` (Linux) after it passes. When an assertion fails it retains
+the same trees unchanged as `ax-trees-failure.json` / `atspi-trees-failure.json`
+plus a `failure.json` naming the error and the collected dumps, so a failed
+predicate keeps the exact attributes, roles and depths it evaluated (#682). The
+native workflows upload the evidence directory with `!cancelled()`, so those
+files survive a failed job.
 The lifecycle fixture also writes `public-lifecycle.json` beside the event log,
 with raw cycle timings, Bun memory checkpoints, weak-reference observations,
 public resource counts and callback cancellation results. Weak-reference or
