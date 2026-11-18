@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.33.9](https://github.com/AndrewM-F/bun-native/compare/v0.33.8...v0.33.9) (2026-11-18)
+
+
+### Maintenance
+
+* **deps:** take the security pin from [#701](https://github.com/AndrewM-F/bun-native/issues/701) and hold x11rb at 0.13 ([#711](https://github.com/AndrewM-F/bun-native/issues/711)) ([072b142](https://github.com/AndrewM-F/bun-native/commit/072b142db0ab7ff6f6c9212fe14f0463f756e6f7))
+
 ## [0.33.8](https://github.com/AndrewM-F/bun-native/compare/v0.33.7...v0.33.8) (2026-11-18)
 
 
