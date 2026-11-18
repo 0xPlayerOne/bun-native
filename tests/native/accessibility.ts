@@ -273,6 +273,9 @@ let macWindow: MacWindow | undefined
 // Collected AX/AT-SPI trees. Declared outside the scenario so a failed assertion
 // can retain the exact tree its predicate saw (#682); it is normally written
 // after the scenario passes, as ax-trees.json / atspi-trees.json.
+/** A macOS AX read that landed mid-publication; a poll should re-read it. */
+class UnsettledAxTree extends Error {}
+
 const dumps: Record<string, unknown> = {}
 try {
   window = await app.openWindow({ title: TITLE, width: WIDTH, height: HEIGHT })
@@ -419,6 +422,18 @@ try {
       const unknown = content.filter(
         (entry) => !rows[raw.indexOf(entry)] && !MAC_ROLES[String(entry['role'])]
       )
+      // An entry with no role and no title, value, extents or description is an AX
+      // element read between its creation and publication; #679 retained exactly
+      // that shape (one depth-4 entry, empty role, no other attributes). Report it
+      // as unsettled so a poll re-reads. A settled tree that still maps no role
+      // fails below, unchanged.
+      const emptyRole = (entry: Record<string, unknown>) =>
+        (entry['role'] === null || entry['role'] === '') &&
+        [entry['title'], entry['value'], entry['extents'], entry['description']].every(
+          (value) => value === null || value === '' || value === undefined
+        )
+      if (unknown.some(emptyRole))
+        throw new UnsettledAxTree('every GPUI content node has a mapped AX role')
       assert.deepEqual(unknown, [], 'every GPUI content node has a mapped AX role')
       return content.map((entry) => fromAx(entry, rows[raw.indexOf(entry)]))
     }
@@ -432,10 +447,22 @@ try {
   const poll = async (name: string, check: (tree: Accessible[]) => boolean, title = TITLE) => {
     const until = performance.now() + 5_000
     for (;;) {
-      const tree = await dump(name, title)
-      if (check(tree)) return tree
+      let tree: Accessible[] | undefined
+      let unsettled = ''
+      try {
+        tree = await dump(name, title)
+      } catch (error) {
+        if (!(error instanceof UnsettledAxTree)) throw error
+        unsettled = error.message
+      }
+      if (tree && check(tree)) return tree
       if (performance.now() > until)
-        throw new Error('Timed out waiting for AT-SPI ' + name + ': ' + JSON.stringify(tree))
+        throw new Error(
+          'Timed out waiting for AT-SPI ' +
+            name +
+            ': ' +
+            (tree === undefined ? `(last read unsettled: ${unsettled})` : JSON.stringify(tree))
+        )
       await Bun.sleep(50)
     }
   }
