@@ -238,3 +238,29 @@ test('a dedicated trace path records the transport without host evidence', async
     rmSync(directory, { recursive: true, force: true })
   }
 })
+
+test('a {pid} placeholder keeps one trace file per launching process', () => {
+  const directory = mkdtempSync(join(tmpdir(), 'bun-native-trace-pid-'))
+  const names = [
+    'BUN_NATIVE_STARTUP_TRACE',
+    'BUN_NATIVE_STARTUP_TRACE_LOG',
+    'BUN_NATIVE_EVIDENCE_LOG',
+  ]
+  const previous = new Map(names.map((name) => [name, process.env[name]]))
+  try {
+    Object.assign(process.env, {
+      BUN_NATIVE_STARTUP_TRACE: '1',
+      BUN_NATIVE_STARTUP_TRACE_LOG: join(directory, '{pid}.jsonl'),
+    })
+    delete process.env['BUN_NATIVE_EVIDENCE_LOG']
+    const trace = StartupTrace.fromEnvironment()!
+    trace.request('request_queued', { id: 1, type: 'shutdown' } as never, 1)
+    expect(existsSync(join(directory, `${process.pid}.jsonl`))).toBe(true)
+  } finally {
+    for (const [name, value] of previous) {
+      if (value === undefined) delete process.env[name]
+      else process.env[name] = value
+    }
+    rmSync(directory, { recursive: true, force: true })
+  }
+})

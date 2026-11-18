@@ -156,6 +156,10 @@ async function launch(name: string) {
   const failed = exitCode !== 0 || !report || report.error
   return {
     name,
+    // Same keys as the Bun Native controller, so an alternating block can be
+    // compared launch-for-launch on the load and power state it ran under (#677).
+    loadAverageBeforeLaunch: loadAverage(),
+    powerBeforeLaunch: run(['pmset', '-g', 'batt']),
     // Position in this run. The first launch after a build and a launch on an
     // idle machine start measurably faster than mid-sequence ones (#677), so the
     // order has to be part of the record for any paired comparison.
@@ -180,6 +184,11 @@ async function launch(name: string) {
       : null,
     report,
   }
+}
+
+function loadAverage() {
+  if (platform() !== 'darwin') return 'unavailable'
+  return run(['sysctl', '-n', 'vm.loadavg']) ?? 'unavailable'
 }
 
 function bundleBytes(path: string) {
@@ -266,6 +275,8 @@ const record = {
     launchOrder:
       'each launch records its order; first-launch and ordering effects are excluded from medians',
     firstLaunch: 'launch "first" is reported separately and excluded from the summary',
+    pairing:
+      'each launch records loadAverageBeforeLaunch and powerBeforeLaunch with the same keys as the Bun Native controller, so an alternating block is comparable launch-for-launch',
   },
   launches,
   summary,
