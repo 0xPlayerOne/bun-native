@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.33.11](https://github.com/AndrewM-F/bun-native/compare/v0.33.10...v0.33.11) (2026-11-18)
+
+
+### Bug Fixes
+
+* **quality:** size the allocation profile without racing its writer ([#719](https://github.com/AndrewM-F/bun-native/issues/719)) ([f6a1d6c](https://github.com/AndrewM-F/bun-native/commit/f6a1d6cccfc3da383a41321ede3660062192aaed))
+
+
+### Tests
+
+* **native:** let the AX list check re-read an unsettled row ([#682](https://github.com/AndrewM-F/bun-native/issues/682)) ([#718](https://github.com/AndrewM-F/bun-native/issues/718)) ([0ada087](https://github.com/AndrewM-F/bun-native/commit/0ada087e5a89deed4142a94464849a2cb632006e))
+* **native:** retain the accessibility tree when its predicate fails ([#716](https://github.com/AndrewM-F/bun-native/issues/716)) ([5c72983](https://github.com/AndrewM-F/bun-native/commit/5c72983510b9d34a8ad5e784b9c831e7417b17c9))
+
 ## [0.33.10](https://github.com/AndrewM-F/bun-native/compare/v0.33.9...v0.33.10) (2026-11-18)
 
 
