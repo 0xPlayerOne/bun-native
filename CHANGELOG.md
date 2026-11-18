@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.34.0](https://github.com/AndrewM-F/bun-native/compare/v0.33.12...v0.34.0) (2026-11-18)
+
+
+### Features
+
+* **runtime:** record launch phases so startup can be attributed ([#678](https://github.com/AndrewM-F/bun-native/issues/678)) ([#726](https://github.com/AndrewM-F/bun-native/issues/726)) ([369bdf9](https://github.com/AndrewM-F/bun-native/commit/369bdf9deb775372e1855fd08a6f75781292888d))
+
 ## [0.33.12](https://github.com/AndrewM-F/bun-native/compare/v0.33.11...v0.33.12) (2026-11-18)
 
 
