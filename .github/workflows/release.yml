@@ -131,12 +131,12 @@ jobs:
     # Release Please manages version metadata. A version release is not native
     # window, packaging, signing or Bun AOT acceptance; those have separate gates.
     if: needs.qualified.outputs.release == 'true' && inputs['probe-npm-publishers'] != true
-    uses: AndrewM-F/code-foundry/.github/workflows/release.yml@a8fcac90f8c96e1f294aecc7f3a2e874803b9c2b
+    uses: AndrewM-F/code-foundry/.github/workflows/release.yml@55b918115765efbbe799cee1edfec89756ebda6f
     with:
       billing-pause-bypass: ${{ github.event_name == 'workflow_dispatch' && inputs['release-while-paused'] == true }}
       runner: ubuntu-slim
       runtime-repository: AndrewM-F/code-foundry
-      runtime-ref: a8fcac90f8c96e1f294aecc7f3a2e874803b9c2b
+      runtime-ref: 55b918115765efbbe799cee1edfec89756ebda6f
       git-workflow: direct
     permissions:
       actions: write

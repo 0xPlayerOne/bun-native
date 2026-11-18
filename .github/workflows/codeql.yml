@@ -24,10 +24,10 @@ jobs:
       contents: read
       packages: read
       security-events: write
-    uses: AndrewM-F/code-foundry/.github/workflows/codeql.yml@a8fcac90f8c96e1f294aecc7f3a2e874803b9c2b
+    uses: AndrewM-F/code-foundry/.github/workflows/codeql.yml@55b918115765efbbe799cee1edfec89756ebda6f
     with:
       runtime-repository: AndrewM-F/code-foundry
-      runtime-ref: a8fcac90f8c96e1f294aecc7f3a2e874803b9c2b
+      runtime-ref: 55b918115765efbbe799cee1edfec89756ebda6f
       runner: ubuntu-latest
       rust-shards: '["native/protocol,native/gpui-host,native/macos-surface,native/posix-services,native/windows-services,native/vendor/gpui_linux/src/linux.rs,native/vendor/gpui_linux/src/linux/accesskit_delta.rs,native/vendor/gpui_linux/src/linux/platform.rs,native/vendor/gpui_linux/src/linux/wayland/window.rs,native/vendor/gpui_linux/src/linux/x11/window.rs,native/vendor/gpui_macos/src/display_link.rs,native/vendor/gpui_macos/src/gpui_macos.rs,native/vendor/gpui_macos/src/window.rs,native/vendor/gpui_wgpu/src/wgpu_renderer.rs,native/vendor/wgpu-hal/src/auxil/renderdoc.rs,native/vendor/wgpu-hal/src/gles/egl.rs"]'
       rust-threads: '1'

@@ -318,10 +318,10 @@ jobs:
       contents: read
       packages: read
       security-events: write
-    uses: AndrewM-F/code-foundry/.github/workflows/codeql.yml@a8fcac90f8c96e1f294aecc7f3a2e874803b9c2b
+    uses: AndrewM-F/code-foundry/.github/workflows/codeql.yml@55b918115765efbbe799cee1edfec89756ebda6f
     with:
       runtime-repository: AndrewM-F/code-foundry
-      runtime-ref: a8fcac90f8c96e1f294aecc7f3a2e874803b9c2b
+      runtime-ref: 55b918115765efbbe799cee1edfec89756ebda6f
       runner: ubuntu-latest
       # Rust analysis covers our crates plus the vendored files our patches
       # change; unpatched upstream vendor code is out of scope.
