@@ -113,6 +113,67 @@ export function electrobunSamples(record: unknown, file = 'electrobun.json'): Sa
   }
 }
 
+/** Artifact and build facts from a Bun Native `comparison.json`. */
+export function bunNativeMetrics(record: unknown) {
+  const builds = (record as { builds?: Record<string, Record<string, unknown>> }).builds
+  assert(builds && Object.keys(builds).length > 0, 'comparison.json has no builds')
+  const perAdapter = Object.entries(builds).map(([adapter, build]) => {
+    const aot = build['aot'] as { bytes?: number } | undefined
+    const development = build['development'] as { bytes?: number } | undefined
+    const moduleBuild = build['moduleBuildWallMs'] as
+      | { fresh?: number; unchangedRebuild?: number }
+      | undefined
+    return {
+      adapter,
+      // Bun Native records what a consumer actually needs: the AOT executable plus
+      // the release host, and separately the development module plus a Bun runtime.
+      shippedBytes:
+        (build['shippedBytes'] as
+          | { developmentModulePlusHost: number; aotExecutablePlusHost: number; note?: string }
+          | undefined) ?? null,
+      aotBytes: aot?.bytes ?? null,
+      developmentBytes: development?.bytes ?? null,
+      aotCompileWallMs: (build['aotCompileWallMs'] as number | undefined) ?? null,
+      moduleBuildFreshMs: moduleBuild?.fresh ?? null,
+      moduleBuildRebuildMs: moduleBuild?.unchangedRebuild ?? null,
+    }
+  })
+  return perAdapter
+}
+
+/**
+ * CPU seconds consumed per launch from a Bun Native `comparison.json`. Absent in
+ * older records, which recorded wall time and RSS only; reported as null rather
+ * than as zero.
+ */
+export function bunNativeCpu(record: unknown) {
+  const launches = launchesOf(record, 'comparison.json').filter(
+    (launch) => launch['status'] === 'passed' && launch['warmup'] !== true
+  ) as unknown as { adapter: string; process: { cpuUserMs?: number; cpuSystemMs?: number } }[]
+  const byAdapter = new Map<string, number[]>()
+  for (const launch of launches) {
+    const user = launch.process?.cpuUserMs
+    const system = launch.process?.cpuSystemMs
+    if (user === undefined || system === undefined) return null
+    const list = byAdapter.get(launch.adapter) ?? []
+    list.push((user + system) / 1000)
+    byAdapter.set(launch.adapter, list)
+  }
+  if (byAdapter.size === 0) return null
+  return Object.fromEntries([...byAdapter].map(([adapter, values]) => [adapter, mean(values)]))
+}
+
+/** Artifact facts from an Electrobun `electrobun.json`. */
+export function electrobunMetrics(record: unknown) {
+  const artifacts = (record as { artifacts?: Record<string, number | null> }).artifacts
+  assert(artifacts, 'electrobun.json has no artifacts block')
+  return {
+    appBundleBytes: artifacts['appBundleBytes'] ?? null,
+    diskImageBytes: artifacts['diskImageBytes'] ?? null,
+    appTarZstBytes: artifacts['appTarZstBytes'] ?? null,
+  }
+}
+
 export function blockDirectory(base: string, index: number) {
   return `${base}-block-${index}`
 }
@@ -159,6 +220,7 @@ export type PairedReport = {
     reason: string
   } | null
   notCompared: string
+  recorded: Record<string, unknown>
 }
 
 const RECORD: Record<System, string> = {
@@ -178,6 +240,7 @@ export function runPaired(options: PairedOptions): {
   const spawn =
     options.spawn ?? ((command: string) => Bun.spawnSync(['bash', '-lc', command]).exitCode)
   const samples: Record<System, Samples[]> = { 'bun-native': [], electrobun: [] }
+  const metrics: Record<System, unknown[]> = { 'bun-native': [], electrobun: [] }
   const blocks: PairedReport['blocks'] = []
 
   for (const [index, system] of ABBA.entries()) {
@@ -190,6 +253,9 @@ export function runPaired(options: PairedOptions): {
     const parsed = JSON.parse(readFileSync(file, 'utf8'))
     samples[system].push(
       system === 'bun-native' ? bunNativeSamples(parsed, file) : electrobunSamples(parsed, file)
+    )
+    metrics[system].push(
+      system === 'bun-native' ? bunNativeMetrics(parsed) : electrobunMetrics(parsed)
     )
   }
 
@@ -205,6 +271,43 @@ export function runPaired(options: PairedOptions): {
         ),
       ]
     : []
+  // Artifact size, build time and CPU are recorded where they exist, and named as
+  // unsupported where they do not. None is ratioed: the shipped artifacts contain
+  // different things and the two workloads do different amounts of work.
+  const recorded = {
+    artifacts: {
+      bunNative: metrics['bun-native'][0] ?? null,
+      electrobun: metrics.electrobun[0] ?? null,
+      compared: false,
+      reason:
+        'a Bun Native entry is one AOT application per adapter and excludes the release host archive; the Electrobun entry is one .app bundle including its Bun runtime, and its WebView is the system one',
+    },
+    build: {
+      bunNative: metrics['bun-native'][0] ?? null,
+      electrobun: {
+        recorded: false,
+        reason: 'the Electrobun build runs outside the runner, so it is not timed here',
+      },
+      compared: false,
+    },
+    cpu: {
+      bunNative: (() => {
+        const file = blocks.find((block) => block.system === 'bun-native' && block.succeeded)
+        if (!file) return null
+        try {
+          return bunNativeCpu(
+            JSON.parse(readFileSync(join(file.directory, RECORD['bun-native']), 'utf8'))
+          )
+        } catch {
+          return null
+        }
+      })(),
+      electrobun: { recorded: false, reason: 'the reference records wall time and RSS, not CPU' },
+      compared: false,
+      reason:
+        'the workloads differ in amount of work and frame pacing, so CPU totals are not comparable',
+    },
+  }
   return {
     complete,
     report: {
@@ -224,6 +327,7 @@ export function runPaired(options: PairedOptions): {
               'the Electrobun workload is vsync-locked (~2,100 frame-synchronized operations), so wall time measures frame pacing rather than efficiency',
           }
         : null,
+      recorded,
       notCompared:
         'startup and input timing are recorded per block on each side but not compared: an acknowledged native view and a WebView mount are different endpoints',
     },

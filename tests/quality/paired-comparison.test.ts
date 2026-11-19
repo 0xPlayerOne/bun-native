@@ -8,6 +8,9 @@ import {
   blockDirectory,
   bunNativeSamples,
   electrobunSamples,
+  bunNativeCpu,
+  bunNativeMetrics,
+  electrobunMetrics,
   renderMarkdown,
   runPaired,
   type Samples,
@@ -94,12 +97,39 @@ describe('ABBA pairing (#677)', () => {
 
 describe('ABBA driver orchestration', () => {
   const bunNativeRecord = {
+    builds: {
+      core: {
+        shippedBytes: {
+          developmentModulePlusHost: 9_448_590,
+          aotExecutablePlusHost: 64_695_906,
+          note: 'development additionally requires a Bun runtime',
+        },
+        aot: { bytes: 55_000_000 },
+        development: { bytes: 200_000 },
+        aotCompileWallMs: 1_200,
+        moduleBuildWallMs: { fresh: 7, unchangedRebuild: 4 },
+      },
+    },
     launches: [
-      { status: 'passed', warmup: true, process: { wallMs: 1, peakTreeRssBytes: 1e6 } },
-      { status: 'passed', process: { wallMs: 2_000, peakTreeRssBytes: 140e6 } },
+      {
+        status: 'passed',
+        warmup: true,
+        adapter: 'core',
+        process: { wallMs: 1, peakTreeRssBytes: 1e6, cpuUserMs: 1, cpuSystemMs: 1 },
+      },
+      {
+        status: 'passed',
+        adapter: 'core',
+        process: { wallMs: 2_000, peakTreeRssBytes: 140e6, cpuUserMs: 1_500, cpuSystemMs: 500 },
+      },
     ],
   }
   const electrobunRecord = {
+    artifacts: {
+      appBundleBytes: 95_645_696,
+      diskImageBytes: 33_131_223,
+      appTarZstBytes: 31_941_739,
+    },
     launches: [
       { status: 'passed', order: 0, wallMs: 1, peakTotalRssBytes: 1e6 },
       { status: 'passed', order: 1, wallMs: 37_000, peakTotalRssBytes: 220e6 },
@@ -148,6 +178,11 @@ describe('ABBA driver orchestration', () => {
       // Wall time is present but explicitly not comparable.
       expect(report.recordedWallMs?.comparable).toBe(false)
       expect(report.recordedWallMs?.bunNative).toEqual([2_000, 2_000])
+      // Artifact/build/CPU facts are recorded, and every one is marked unsupported.
+      const recorded = report.recorded as Record<string, { compared?: boolean }>
+      expect(recorded.artifacts?.compared).toBe(false)
+      expect(recorded.build?.compared).toBe(false)
+      expect(recorded.cpu?.compared).toBe(false)
     } finally {
       rmSync(work, { recursive: true, force: true })
     }
@@ -165,5 +200,81 @@ describe('ABBA driver orchestration', () => {
     } finally {
       rmSync(work, { recursive: true, force: true })
     }
+  })
+})
+
+describe('artifact, build and CPU facts (#677)', () => {
+  test('reads per-adapter artifact and build facts from a comparison record', () => {
+    const record = {
+      builds: {
+        core: {
+          shippedBytes: {
+            developmentModulePlusHost: 9_448_590,
+            aotExecutablePlusHost: 64_695_906,
+            note: 'development additionally requires a Bun runtime',
+          },
+          aot: { bytes: 55_456_994 },
+          development: { bytes: 209_678 },
+          aotCompileWallMs: 1193.5,
+          moduleBuildWallMs: { fresh: 7.8, unchangedRebuild: 3.9 },
+        },
+      },
+    }
+    expect(bunNativeMetrics(record)).toEqual([
+      {
+        adapter: 'core',
+        shippedBytes: {
+          developmentModulePlusHost: 9_448_590,
+          aotExecutablePlusHost: 64_695_906,
+          note: 'development additionally requires a Bun runtime',
+        },
+        aotBytes: 55_456_994,
+        developmentBytes: 209_678,
+        aotCompileWallMs: 1193.5,
+        moduleBuildFreshMs: 7.8,
+        moduleBuildRebuildMs: 3.9,
+      },
+    ])
+  })
+
+  test('reads artifact sizes from an Electrobun record', () => {
+    expect(
+      electrobunMetrics({
+        artifacts: {
+          appBundleBytes: 95_645_696,
+          diskImageBytes: 33_131_223,
+          appTarZstBytes: 31_941_739,
+        },
+      })
+    ).toEqual({
+      appBundleBytes: 95_645_696,
+      diskImageBytes: 33_131_223,
+      appTarZstBytes: 31_941_739,
+    })
+  })
+
+  test('reports CPU per adapter when the record carries it, and null when it does not', () => {
+    const withCpu = {
+      launches: [
+        {
+          status: 'passed',
+          warmup: true,
+          adapter: 'core',
+          process: { cpuUserMs: 1, cpuSystemMs: 1 },
+        },
+        { status: 'passed', adapter: 'core', process: { cpuUserMs: 1_500, cpuSystemMs: 500 } },
+        { status: 'passed', adapter: 'core', process: { cpuUserMs: 2_500, cpuSystemMs: 500 } },
+      ],
+    }
+    expect(bunNativeCpu(withCpu)).toEqual({ core: 2.5 })
+    // An older record without CPU fields is reported as unknown, never as zero.
+    expect(
+      bunNativeCpu({ launches: [{ status: 'passed', adapter: 'core', process: { wallMs: 1 } }] })
+    ).toBeNull()
+  })
+
+  test('refuses a record with no artifacts block', () => {
+    expect(() => electrobunMetrics({ launches: [] })).toThrow('no artifacts block')
+    expect(() => bunNativeMetrics({ launches: [] })).toThrow('no builds')
   })
 })
