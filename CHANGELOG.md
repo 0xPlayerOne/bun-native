@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.37.0](https://github.com/AndrewM-F/bun-native/compare/v0.36.0...v0.37.0) (2026-11-19)
+
+
+### Features
+
+* **native:** add a real pointer click to the macOS input oracle ([#677](https://github.com/AndrewM-F/bun-native/issues/677)) ([#736](https://github.com/AndrewM-F/bun-native/issues/736)) ([0fa62ef](https://github.com/AndrewM-F/bun-native/commit/0fa62ef1d490cbbd7b142d06f408af6f38e930d8))
+
 ## [0.36.0](https://github.com/AndrewM-F/bun-native/compare/v0.35.0...v0.36.0) (2026-11-19)
 
 
