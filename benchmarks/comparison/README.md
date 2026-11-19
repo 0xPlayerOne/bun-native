@@ -19,7 +19,12 @@ The methodology, equivalence rules and statistics are in
   cancels instead of favouring whichever system ran later — then reports one
   comparison: peak process-tree RSS. Wall time, startup and input timing are
   recorded per block but never ratioed, because the WebView workload is
-  vsync-locked and the two sides measure different endpoints.
+  vsync-locked and the two sides measure different endpoints. Artifact size, build
+  time and CPU are recorded under `recorded` in `paired.json` and each carries an
+  explicit reason for not being compared — a Bun Native entry is one AOT
+  application per adapter and excludes the release host archive, the Electrobun
+  entry is a whole `.app` including its Bun runtime, the Electrobun build runs
+  outside the runner, and the two workloads do different amounts of work.
 - `results/`: recorded runs, each with its own README.
 
 ## Run

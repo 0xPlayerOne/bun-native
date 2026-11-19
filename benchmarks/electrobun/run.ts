@@ -1,9 +1,9 @@
 import assert from 'node:assert/strict'
 import { failedLaunches, runStatus } from './status.ts'
 import { createHash } from 'node:crypto'
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { arch, cpus, platform, release, totalmem } from 'node:os'
-import { isAbsolute, join } from 'node:path'
+import { dirname, isAbsolute, join } from 'node:path'
 import { parseArgs } from 'node:util'
 
 // Electrobun system-WebView baseline for the matched renderer workload (#244).
@@ -186,6 +186,25 @@ async function launch(name: string) {
   }
 }
 
+/**
+ * Shipped artifact sizes found beside the built `.app`: Electrobun's build writes a
+ * disk image and a compressed app bundle next to it. Recorded rather than guessed,
+ * and `null` when the build produced neither (a plain `electrobun build` run).
+ */
+function artifactSizes(app: string) {
+  const directory = dirname(app)
+  const files = readdirSync(directory)
+  const bytes = (suffix: string) => {
+    const name = files.find((file) => file.endsWith(suffix))
+    return name ? bundleBytes(join(directory, name)) : null
+  }
+  return {
+    appBundleBytes: bundleBytes(app),
+    diskImageBytes: bytes('.dmg'),
+    appTarZstBytes: bytes('.app.tar.zst'),
+  }
+}
+
 function loadAverage() {
   if (platform() !== 'darwin') return 'unavailable'
   return run(['sysctl', '-n', 'vm.loadavg']) ?? 'unavailable'
@@ -231,6 +250,7 @@ const record = {
   failedLaunches: failedLaunches(launches),
   startedAt: new Date().toISOString(),
   command: process.argv,
+  artifacts: artifactSizes(values.app),
   app: {
     path: values.app,
     bundleBytes: bundleBytes(values.app),
