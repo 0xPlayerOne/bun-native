@@ -1,5 +1,20 @@
 # Changelog
 
+## [0.35.0](https://github.com/AndrewM-F/bun-native/compare/v0.34.0...v0.35.0) (2026-11-19)
+
+
+### Features
+
+* **bench:** pair Bun Native and Electrobun in ABBA order ([#677](https://github.com/AndrewM-F/bun-native/issues/677)) ([#733](https://github.com/AndrewM-F/bun-native/issues/733)) ([45f4f51](https://github.com/AndrewM-F/bun-native/commit/45f4f51c979b344b8dca157b1e15d5c691b0e481))
+* **bench:** record per-launch load and power in the Electrobun reference ([#677](https://github.com/AndrewM-F/bun-native/issues/677)) ([#732](https://github.com/AndrewM-F/bun-native/issues/732)) ([1b8b2a4](https://github.com/AndrewM-F/bun-native/commit/1b8b2a4d98a057f4148a07ec57985707c1a6d418))
+* **runtime:** keep one transport trace per launching process ([#666](https://github.com/AndrewM-F/bun-native/issues/666)) ([#731](https://github.com/AndrewM-F/bun-native/issues/731)) ([fda5568](https://github.com/AndrewM-F/bun-native/commit/fda5568ae53a356f231238b5489541ebc64cb287))
+* **runtime:** make the startup trace usable for a timed acknowledgement run ([#666](https://github.com/AndrewM-F/bun-native/issues/666)) ([#729](https://github.com/AndrewM-F/bun-native/issues/729)) ([81616a0](https://github.com/AndrewM-F/bun-native/commit/81616a0c2cbedac4b1fc23c5d5a2cd78bb417f23))
+
+
+### Bug Fixes
+
+* **bench:** fail an Electrobun run when its first launch fails ([#677](https://github.com/AndrewM-F/bun-native/issues/677)) ([#728](https://github.com/AndrewM-F/bun-native/issues/728)) ([3139859](https://github.com/AndrewM-F/bun-native/commit/31398595084a0016d26c9d8dc5be3ee19948ccb6))
+
 ## [0.34.0](https://github.com/AndrewM-F/bun-native/compare/v0.33.12...v0.34.0) (2026-11-18)
 
 
