@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.36.0](https://github.com/AndrewM-F/bun-native/compare/v0.35.0...v0.36.0) (2026-11-19)
+
+
+### Features
+
+* **bench:** record artifact, build and CPU facts in the paired report ([#677](https://github.com/AndrewM-F/bun-native/issues/677)) ([#734](https://github.com/AndrewM-F/bun-native/issues/734)) ([b077ee1](https://github.com/AndrewM-F/bun-native/commit/b077ee1ed1d0f277049355345184f890bacb6467))
+
 ## [0.35.0](https://github.com/AndrewM-F/bun-native/compare/v0.34.0...v0.35.0) (2026-11-19)
 
 
