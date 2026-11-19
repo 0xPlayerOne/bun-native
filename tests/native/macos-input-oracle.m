@@ -6,6 +6,11 @@
 // while PID is the frontmost application. NAME is one of tab, shift+tab,
 // space, return, end, home, left, right, shift+end, backspace, or a single
 // letter a-z.
+// `click PID X Y` posts a real left-button press and release at screen
+// coordinates through CGEventPost, only while PID is the frontmost application.
+// It exists so an external observer can drive another process's window with a
+// pointer, which is what the paired comparison needs for an input-to-output
+// measurement (#677); `key` alone cannot express a click.
 // `sources PREFIX` lists the installed input sources whose ID starts with
 // PREFIX, with their enabled, selectable and selected states.
 // `current` prints the selected keyboard input source.
@@ -100,9 +105,30 @@ static void post_key(pid_t pid, CGKeyCode code, CGEventFlags flags) {
     if (origin) CFRelease(origin);
 }
 
+static void post_click(pid_t pid, double x, double y) {
+    wait_frontmost(pid, 2);
+    CGEventSourceRef origin = CGEventSourceCreate(kCGEventSourceStateHIDSystemState);
+    CGPoint point = CGPointMake(x, y);
+    for (int down = 1; down >= 0; down--) {
+        CGEventRef event = CGEventCreateMouseEvent(origin, down == 1 ? kCGEventLeftMouseDown
+                                                                    : kCGEventLeftMouseUp,
+                                                   point, kCGMouseButtonLeft);
+        if (!event) fail(@"CGEventCreateMouseEvent failed");
+        // A click without its own position is delivered at the event's location;
+        // set both so a coalesced move cannot move the press.
+        CGEventSetLocation(event, point);
+        if (NSWorkspace.sharedWorkspace.frontmostApplication.processIdentifier != pid)
+            fail(@"The frontmost application changed before input");
+        CGEventPost(kCGSessionEventTap, event);
+        CFRelease(event);
+        usleep(8000);
+    }
+    if (origin) CFRelease(origin);
+}
+
 int main(int argc, const char *argv[]) {
     @autoreleasepool {
-        if (argc < 2) fail(@"usage: activate PID | key PID NAME | sources PREFIX | current | select ID");
+        if (argc < 2) fail(@"usage: activate PID | key PID NAME | click PID X Y | sources PREFIX | current | select ID");
         NSString *command = [NSString stringWithUTF8String:argv[1]];
         if ([command isEqualToString:@"activate"] && argc == 3) {
             pid_t pid = parse_pid(argv[2]);
@@ -140,6 +166,12 @@ int main(int argc, const char *argv[]) {
             if (!key) fail(@"Unknown key name");
             post_key(pid, (CGKeyCode)[key[0] unsignedShortValue], (CGEventFlags)[key[1] unsignedLongLongValue]);
             emit(@{@"key": name, @"method": @"CGEventPost(kCGSessionEventTap)"});
+        } else if ([command isEqualToString:@"click"] && argc == 5) {
+            pid_t pid = parse_pid(argv[2]);
+            double x = strtod(argv[3], NULL);
+            double y = strtod(argv[4], NULL);
+            post_click(pid, x, y);
+            emit(@{@"click": @[@(x), @(y)], @"method": @"CGEventPost(kCGSessionEventTap)"});
         } else if ([command isEqualToString:@"sources"] && argc == 3) {
             NSMutableArray *list = [NSMutableArray array];
             for (NSDictionary *entry in sources([NSString stringWithUTF8String:argv[2]])) [list addObject:entry[@"info"]];
