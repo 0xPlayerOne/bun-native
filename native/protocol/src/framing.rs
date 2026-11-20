@@ -98,6 +98,15 @@ impl CommandReader {
             if frame.len() + count > MAX_FRAME_BYTES {
                 return Err(ProtocolError::Oversized);
             }
+            if frame.is_empty() && newline.is_some() {
+                // The decoded command owns its contents, so a complete frame
+                // can be parsed directly before releasing the source buffer.
+                let result = decode_command(&available[..count]).and_then(|command| {
+                    ValidCommand::new(command).map_err(ProtocolError::InvalidCommand)
+                });
+                source.consume(count + 1);
+                return result.map(Some);
+            }
             frame.extend_from_slice(&available[..count]);
             source.consume(count + usize::from(newline.is_some()));
             if newline.is_some() {
