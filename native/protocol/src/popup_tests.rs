@@ -194,6 +194,56 @@ fn popup_content_rejects_editors_and_nested_layers_atomically() {
 }
 
 #[test]
+fn validation_keeps_distinct_ancestor_contexts_between_attached_subtrees() {
+    let tree = Tree::new(node(1))
+        .prepare(
+            0,
+            vec![
+                create(2, popup()),
+                insert(1, 2),
+                create(
+                    3,
+                    Element::Box {
+                        accessibility: Default::default(),
+                        style: Style::default(),
+                    },
+                ),
+                insert(1, 3),
+            ],
+            1,
+        )
+        .unwrap()
+        .tree;
+    let input = || Element::Input {
+        value: String::new(),
+        placeholder: String::new(),
+        disabled: false,
+        read_only: false,
+        style: Style::default(),
+    };
+    let next = tree
+        .prepare(
+            1,
+            vec![text(4), insert(2, 4), create(5, input()), insert(3, 5)],
+            3,
+        )
+        .unwrap()
+        .tree;
+    assert_eq!(next.node(node(2)).unwrap().children(), &[node(4)]);
+    assert_eq!(next.node(node(3)).unwrap().children(), &[node(5)]);
+    let error = tree
+        .prepare(
+            1,
+            vec![text(4), insert(3, 4), create(5, input()), insert(2, 5)],
+            3,
+        )
+        .err()
+        .unwrap();
+    assert_eq!(error.code, ErrorCode::InvalidState);
+    assert!(tree.node(node(4)).is_none());
+}
+
+#[test]
 fn dismiss_events_carry_a_validated_route_and_reason() {
     let event = Event::Dismiss {
         sequence: EventSequence::try_from(1).unwrap(),

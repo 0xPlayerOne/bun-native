@@ -64,3 +64,45 @@ test('one commit appends 1,000 rows to a committed list without ending the root'
     await root.dispose()
     await window.close()
   }))
+
+test('appending moved and new nodes preserves the native suffix order', () =>
+  withApp(async (app) => {
+    const window = await app.openWindow({ title: 'Append moved nodes' })
+    let source!: Node
+    let target!: Node
+    const text = (value: string) => {
+      const child = createElement('text')
+      setProperty(child, 'text', value)
+      return child
+    }
+    const first = text('first')
+    const second = text('second')
+    const root = createRenderRoot(window, ({ container }) => {
+      source = createElement('box')
+      target = createElement('box')
+      insertNode(container, source)
+      insertNode(container, target)
+      insertNode(source, first)
+      insertNode(source, second)
+      insertNode(target, text('existing'))
+    })
+    await root.ready
+    const marker = await window.batch((batch) => {
+      const value = batch.create({ kind: 'text', text: 'marker' })
+      batch.append(window.root, value)
+      return value
+    })
+    insertNode(target, first)
+    insertNode(target, second)
+    insertNode(target, text('new'))
+    await root.flush()
+    expect(await nativeTexts(window, marker)).toEqual([
+      'existing',
+      'first',
+      'second',
+      'new',
+      'marker',
+    ])
+    await root.dispose()
+    await window.close()
+  }))

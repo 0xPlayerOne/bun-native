@@ -7,7 +7,7 @@ use crate::{
 };
 use serde_json::{json, Value};
 use std::fmt::Write as _;
-use std::io::Cursor;
+use std::io::{BufReader, Cursor};
 
 const FIXTURES: [&str; 6] = [
     include_str!("../../../tests/fixtures/bridge-security.json"),
@@ -212,7 +212,10 @@ fn reader_reuses_its_frame_buffer_and_releases_it_when_done() {
         )
     };
     let large = frame(super::RETAINED_FRAME_BYTES);
-    let mut source = Cursor::new(format!("{large}\n{{\"id\":2,\"type\":\"shutdown\"}}\n"));
+    let mut source = BufReader::with_capacity(
+        8192,
+        Cursor::new(format!("{large}\n{{\"id\":2,\"type\":\"shutdown\"}}\n")),
+    );
     assert!(matches!(
         reader
             .read(&mut source)
@@ -237,7 +240,8 @@ fn reader_reuses_its_frame_buffer_and_releases_it_when_done() {
 
     // A maximum frame borrows its memory only while it is read.
     let mut reader = CommandReader::default();
-    let mut source = Cursor::new(format!("{}\n", frame(MAX_FRAME_BYTES)));
+    let mut source =
+        BufReader::with_capacity(8192, Cursor::new(format!("{}\n", frame(MAX_FRAME_BYTES))));
     assert!(matches!(
         reader
             .read(&mut source)

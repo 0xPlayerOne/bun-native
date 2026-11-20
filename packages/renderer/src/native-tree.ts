@@ -244,6 +244,19 @@ export async function commitNativeTree(
           current.every((child, index) => child === state.children[index]))
       )
         continue
+      if (
+        current.length > 0 &&
+        current.length < state.children.length &&
+        current[current.length - 1] === state.children[current.length - 1] &&
+        current.every((child, index) => child === state.children[index])
+      ) {
+        // The existing prefix is already stable; attach the new suffix in
+        // order without allocating and walking a full subsequence bitmap.
+        const start = current.length
+        for (let index = start; index < state.children.length; index += 1)
+          attach(parent, state.children[index]!, index)
+        continue
+      }
       const siblings = editChildren(parent)
       const stable = stableChildren(siblings, state.children)
       // `before` tracks the anchor's working index from the end; it only moves

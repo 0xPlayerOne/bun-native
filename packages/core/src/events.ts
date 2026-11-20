@@ -251,6 +251,7 @@ export class EventBindings {
   prepare(event: RoutedEvent, path: readonly NativeNode[]): DispatchPlan | undefined {
     // Events without a binding on their path allocate nothing here.
     const { capture, bubble } = bindingKeys[event.type]
+    if (this.nodes.size === 0) return
     const target = path.length - 1
     let deliveries: Delivery[] | undefined
     for (let index = 0; index < path.length; index++) {

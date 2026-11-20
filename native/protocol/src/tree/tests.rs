@@ -135,6 +135,44 @@ fn reordering_uses_index_after_detachment_and_reparenting_has_one_owner() {
 }
 
 #[test]
+fn reordering_a_subtree_preserves_cycle_and_index_checks() {
+    let tree = populated()
+        .prepare(
+            1,
+            vec![
+                create(5, box_element()),
+                insert(2, 5, 2),
+                create(6, text("child")),
+                insert(5, 6, 0),
+            ],
+            4,
+        )
+        .unwrap()
+        .tree;
+    let reordered = tree.prepare(2, vec![insert(2, 5, 0)], 6).unwrap().tree;
+    assert_eq!(
+        reordered.node(id(2)).unwrap().children(),
+        &[id(5), id(3), id(4)]
+    );
+    rejected(
+        &reordered,
+        vec![insert(2, 5, 3)],
+        6,
+        ErrorCode::InvalidCommand,
+    );
+    rejected(
+        &reordered,
+        vec![insert(2, 5, 2), insert(5, 2, 0)],
+        6,
+        ErrorCode::InvalidState,
+    );
+    assert_eq!(
+        reordered.node(id(2)).unwrap().children(),
+        &[id(5), id(3), id(4)]
+    );
+}
+
+#[test]
 fn cycles_roots_and_leaf_parents_are_rejected_without_partial_changes() {
     let tree = populated();
     rejected(&tree, vec![insert(2, 2, 0)], 4, ErrorCode::InvalidState);
@@ -152,6 +190,8 @@ fn cycles_roots_and_leaf_parents_are_rejected_without_partial_changes() {
         .unwrap()
         .tree;
     rejected(&nested, vec![insert(5, 2, 0)], 5, ErrorCode::InvalidState);
+    // An empty container is a leaf, but inserting it into itself is a cycle.
+    rejected(&nested, vec![insert(5, 5, 0)], 5, ErrorCode::InvalidState);
 }
 
 #[test]
@@ -530,6 +570,51 @@ fn preflight_shares_child_lists_until_a_batch_reorders_them() {
     assert!(shared(&edited, &moved, 1) && !shared(&edited, &moved, 2));
     assert_eq!(edited.node(id(2)).unwrap().children(), &[id(3), id(4)]);
     assert_eq!(moved.node(id(2)).unwrap().children(), &[id(4), id(3)]);
+}
+
+#[test]
+fn empty_child_lists_remain_isolated_when_one_leaf_becomes_a_parent() {
+    let tree = Tree::new(id(1))
+        .prepare(
+            0,
+            vec![
+                create(2, box_element()),
+                create(3, box_element()),
+                insert(1, 2, 0),
+                insert(1, 3, 1),
+            ],
+            1,
+        )
+        .unwrap()
+        .tree;
+    let next = tree
+        .prepare(1, vec![create(4, text("child")), insert(2, 4, 0)], 3)
+        .unwrap()
+        .tree;
+    assert!(tree.node(id(2)).unwrap().children().is_empty());
+    assert!(tree.node(id(3)).unwrap().children().is_empty());
+    assert_eq!(next.node(id(2)).unwrap().children(), &[id(4)]);
+    assert!(next.node(id(3)).unwrap().children().is_empty());
+    let other = Tree::new(id(1));
+    assert!(other.node(id(1)).unwrap().children().is_empty());
+}
+
+#[test]
+fn trees_with_empty_children_survive_creator_thread_exit() {
+    let tree = std::thread::spawn(|| {
+        Tree::new(id(1))
+            .prepare(0, vec![create(2, box_element()), insert(1, 2, 0)], 1)
+            .unwrap()
+            .tree
+    })
+    .join()
+    .unwrap();
+    let next = tree
+        .prepare(1, vec![create(3, text("child")), insert(2, 3, 0)], 2)
+        .unwrap()
+        .tree;
+    assert!(tree.node(id(2)).unwrap().children().is_empty());
+    assert_eq!(next.node(id(2)).unwrap().children(), &[id(3)]);
 }
 
 #[test]

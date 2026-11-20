@@ -99,6 +99,36 @@ fn terminated_frame_one_byte_over_the_limit_is_oversized() {
 }
 
 #[test]
+fn complete_frames_do_not_allocate_a_copy_and_preserve_stream_position() {
+    let mut source =
+        Cursor::new(b"{\"id\":1,\"type\":\"shutdown\"}\n{\"id\":2,\"type\":\"shutdown\"}\n");
+    let mut reader = CommandReader::default();
+    for expected in [1, 2] {
+        assert_eq!(
+            reader.read(&mut source).unwrap().unwrap().command().id(),
+            RequestId::try_from(expected).unwrap()
+        );
+        assert_eq!(reader.frame.capacity(), 0);
+    }
+    assert!(reader.read(&mut source).unwrap().is_none());
+}
+
+#[test]
+fn complete_invalid_frame_is_consumed_and_poisons_the_reader() {
+    let mut source = Cursor::new(b"invalid\n{\"id\":1,\"type\":\"shutdown\"}\n");
+    let mut reader = CommandReader::default();
+    assert!(matches!(
+        reader.read(&mut source),
+        Err(ProtocolError::InvalidJson(_))
+    ));
+    assert_eq!(source.position(), 8);
+    assert!(matches!(
+        reader.read(&mut source),
+        Err(ProtocolError::Poisoned)
+    ));
+}
+
+#[test]
 fn eof_inside_a_frame_is_truncated_and_poisons() {
     let mut source = Cursor::new(b"{\"id\":1,\"type\":\"shutdown\"}\n{\"id\":2".to_vec());
     let mut reader = CommandReader::default();
